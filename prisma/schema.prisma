@@ -1,0 +1,137 @@
+// NextReport Engine (NRE v1) — Prisma schema
+// Auth models follow the Auth.js (NextAuth v5) Prisma adapter contract.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────── AUTH (Auth.js v5) ────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  // bcrypt hash — null for OAuth-only accounts
+  passwordHash  String?
+
+  accounts Account[]
+  sessions Session[]
+  clients  Client[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────── DOMAIN MODELS ─────────────────────────────────
+
+enum Currency {
+  INR
+  USD
+  GBP
+  AUD
+  CAD
+  AED
+}
+
+enum ReportTemplate {
+  DARK
+  LIGHT
+  EMERALD
+  PURPLE
+  CRIMSON
+  GRAPHITE
+}
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  COMPLETE
+  FAILED
+}
+
+model Client {
+  id            String         @id @default(cuid())
+  userId        String
+  accountName   String
+  currency      Currency       @default(INR)
+  timezone      String         @default("Asia/Kolkata")
+  monthlyBudget Float?
+  template      ReportTemplate @default(DARK)
+
+  // User-supplied AI API keys (v1: user provides their own keys)
+  groqApiKey   String?
+  geminiApiKey String?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Report {
+  id       String       @id @default(cuid())
+  clientId String
+  status   ReportStatus @default(PENDING)
+
+  weekStart String?
+  weekEnd   String?
+  fileName  String?
+  filePath  String?
+
+  // Snapshot of computed metrics for history/preview without re-parsing the pptx
+  summaryJson  String? @db.Text
+  errorMessage String? @db.Text
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
