@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const mtdParsed = parseCsvText(mtdDailyCsv);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows);
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
   if (!validation.valid) {
     return NextResponse.json(
       { error: validation.errors.map((e) => e.message).join(" ") },

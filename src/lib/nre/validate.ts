@@ -27,10 +27,21 @@ export interface ValidationResult {
 const MAX_RANGE_DAYS = 90;
 const FUTURE_GRACE_DAYS = 1; // small allowance for timezone edge effects at the CSV's export boundary
 
+/**
+ * `headers` is the raw, as-parsed header row (from parseCsvText). It isn't
+ * used for any pass/fail decision — only to build a diagnostic message when
+ * column detection fails, since "no Campaign name column found" is useless
+ * for self-diagnosis if the actual parsed headers never surface anywhere.
+ * A single garbled/glued-together header (wrong delimiter, a title row
+ * mistaken for the header row, an encoding issue) fails EVERY structural
+ * check at once — this makes that failure mode visible immediately instead
+ * of requiring a round trip to ask "what did the server actually see?".
+ */
 export function validateMtdDailyCsv(
   colMap: ColumnMap,
   rows: NreRow[],
   now: Date = new Date(),
+  headers: string[] = [],
 ): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
@@ -61,6 +72,21 @@ export function validateMtdDailyCsv(
     errors.push({
       field: "results",
       message: "No result/conversion metric column found — cannot determine campaign performance.",
+    });
+  }
+
+  // All four structural checks failing together almost always means the
+  // header row itself wasn't split into columns correctly (wrong delimiter
+  // auto-detected, a title/summary line above the real header row, a stray
+  // encoding artifact) rather than genuinely missing columns — surface what
+  // was actually parsed so that's diagnosable without guessing.
+  if (errors.length === 4) {
+    const preview = headers.length
+      ? headers.map((h) => JSON.stringify(h)).join(", ")
+      : "(none — the header row did not parse into any columns)";
+    errors.push({
+      field: "diagnostic",
+      message: `Detected ${headers.length} column header(s): ${preview}. If this doesn't match your file's actual columns, the CSV likely isn't being split into columns correctly (check the delimiter, or whether a title/summary row precedes the real header row).`,
     });
   }
 
