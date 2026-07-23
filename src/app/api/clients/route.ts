@@ -2,16 +2,21 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { clientSchema } from "@/lib/validators/client";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const clients = await prisma.client.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json({ clients });
+  try {
+    const clients = await prisma.client.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ clients });
+  } catch (err) {
+    return apiErrorResponse(err, "clients:list");
+  }
 }
 
 export async function POST(req: Request) {
@@ -27,8 +32,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const client = await prisma.client.create({
-    data: { ...parsed.data, userId: session.user.id },
-  });
-  return NextResponse.json({ client }, { status: 201 });
+  try {
+    const client = await prisma.client.create({
+      data: { ...parsed.data, userId: session.user.id },
+    });
+    return NextResponse.json({ client }, { status: 201 });
+  } catch (err) {
+    return apiErrorResponse(err, "clients:create");
+  }
 }

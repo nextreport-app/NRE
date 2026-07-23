@@ -9,13 +9,19 @@ import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderPptx } from "@/lib/pptx/render";
 import { loadTemplateBuffer } from "@/lib/pptx/templates";
 import { saveReportFile } from "@/lib/storage";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const client = await prisma.client.findUnique({ where: { id } });
+  let client;
+  try {
+    client = await prisma.client.findUnique({ where: { id } });
+  } catch (err) {
+    return apiErrorResponse(err, "reports:generate:lookup");
+  }
   if (!client || client.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -54,22 +60,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     : [undefined, undefined];
   const fileName = "Meta Ads Report - " + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
 
-  const report = await prisma.report.create({
-    data: {
-      clientId: client.id,
-      status: "GENERATING",
-      weekStart,
-      weekEnd,
-      fileName,
-      summaryJson: JSON.stringify({
-        isPaused: data.isPaused,
-        healthScore: data.cover.healthScore,
-        healthBadge: data.cover.healthBadge,
-        campaignCount: data.campaignSlides.length,
-        adSetCount: data.adSetSlides.length,
-      }),
-    },
-  });
+  let report;
+  try {
+    report = await prisma.report.create({
+      data: {
+        clientId: client.id,
+        status: "GENERATING",
+        weekStart,
+        weekEnd,
+        fileName,
+        summaryJson: JSON.stringify({
+          isPaused: data.isPaused,
+          healthScore: data.cover.healthScore,
+          healthBadge: data.cover.healthBadge,
+          campaignCount: data.campaignSlides.length,
+          adSetCount: data.adSetSlides.length,
+        }),
+      },
+    });
+  } catch (err) {
+    return apiErrorResponse(err, "reports:generate:create");
+  }
 
   try {
     const aiCopyBySlideKey = await generateInsights(data, {
@@ -89,11 +100,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({ ok: true, reportId: report.id });
   } catch (err) {
+    console.error("[api:reports:generate] failed:", err);
     const message = err instanceof Error ? err.message : "Report generation failed.";
-    await prisma.report.update({
-      where: { id: report.id },
-      data: { status: "FAILED", errorMessage: message },
-    });
+    try {
+      await prisma.report.update({
+        where: { id: report.id },
+        data: { status: "FAILED", errorMessage: message },
+      });
+    } catch (updateErr) {
+      console.error("[api:reports:generate] failed to record failure status:", updateErr);
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -20,6 +20,24 @@ describe("parseDate", () => {
     expect(parseDate("13-07-26")).toEqual({ day: 13, month: 7, year: 2026 });
   });
 
+  it("detects ISO 8601 (YYYY-MM-DD) via the unambiguous 4-digit year", () => {
+    expect(parseDate("2026-07-01")).toEqual({ day: 1, month: 7, year: 2026 });
+    expect(parseDate("2026-07-22")).toEqual({ day: 22, month: 7, year: 2026 });
+    expect(parseDate("2026/12/31")).toEqual({ day: 31, month: 12, year: 2026 });
+  });
+
+  it("does not misparse a whole month of ISO dates into a multi-year spread (regression)", () => {
+    // Reproduces the reported bug: a "Day" column of 2026-07-01 .. 2026-07-22
+    // must parse to a 21-day span, not ~7670 days from the pre-fix bug where
+    // the 4-digit year was read as a day-of-month.
+    const days = Array.from({ length: 22 }, (_, i) => `2026-07-${String(i + 1).padStart(2, "0")}`);
+    const parsed = days.map((d) => parseDate(d)!);
+    const timestamps = parsed.map((d) => Date.UTC(d.year, d.month - 1, d.day));
+    const spanDays = (Math.max(...timestamps) - Math.min(...timestamps)) / (24 * 60 * 60 * 1000);
+    expect(spanDays).toBe(21);
+    expect(parsed.every((d) => d.year === 2026 && d.month === 7)).toBe(true);
+  });
+
   it("returns null for empty or unparseable input", () => {
     expect(parseDate("")).toBeNull();
     expect(parseDate(null)).toBeNull();

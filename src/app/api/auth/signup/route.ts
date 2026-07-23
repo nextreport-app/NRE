@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signupSchema } from "@/lib/validators/auth";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -15,15 +16,19 @@ export async function POST(req: Request) {
 
   const { name, email, password } = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await prisma.user.create({
+      data: { name, email, passwordHash },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return apiErrorResponse(err, "signup");
   }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({
-    data: { name, email, passwordHash },
-  });
-
-  return NextResponse.json({ ok: true });
 }

@@ -90,11 +90,31 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
 
 /**
  * Port of the inline getRowDate() helper inside splitMTDDaily_ — the
- * "Reporting starts/ends" columns hold the export's overall date range, but
- * each row's actual date lives in a "Day"/"Date" column that may not map to
- * a standard keyword, so it's read straight from _raw.
+ * "Reporting starts/ends" columns hold the export's overall date range
+ * (constant across every row), and Meta daily exports can additionally carry
+ * campaign-level "Starts"/"Ends" columns (also constant per campaign, and
+ * "Ends" may read "Ongoing" for active campaigns) — none of these represent
+ * a given row's actual date. Only a column whose header is exactly "Day" or
+ * "Date" does.
+ *
+ * Matching is done on the trimmed, lowercased header rather than exact
+ * bracket lookups (`raw["Day"]`) so real-world header variance — trailing
+ * whitespace, "DAY", "date " — can't cause a silent fall-through to one of
+ * those decoy columns. This is a whole-header match, not a substring one:
+ * "Reporting starts"/"Starts"/"Ends" never equal "day" or "date" outright,
+ * so they can never be picked up here even by accident.
  */
 export function getRowDate(row: NreRow): string {
   const raw = row._raw || {};
-  return raw["Day"] || raw["day"] || raw["Date"] || raw["date"] || row.date_start || "";
+  const normalized = Object.entries(raw).map(([header, value]) => [header.trim().toLowerCase(), value] as const);
+
+  const day = normalized.find(([h, v]) => h === "day" && v);
+  if (day) return day[1];
+
+  const date = normalized.find(([h, v]) => h === "date" && v);
+  if (date) return date[1];
+
+  // Last-resort fallback for exports with no real per-row date column at
+  // all (rare) — matches the source's own fallback to date_start.
+  return row.date_start || "";
 }

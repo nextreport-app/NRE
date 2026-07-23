@@ -68,4 +68,53 @@ describe("validateMtdDailyCsv", () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.field === "rows")).toBe(true);
   });
+
+  it("passes a real-shaped Meta export: ISO 'Day' column plus constant 'Reporting starts/ends' noise (regression)", () => {
+    // Reproduces the reported bug report exactly: 22 days of July, each row
+    // carrying a per-day ISO "Day" value alongside the export's constant
+    // "Reporting starts"/"Reporting ends" range — must validate using Day,
+    // and Day must parse correctly as ISO, not blow up into a ~7670 day span.
+    const headers = [
+      "Campaign name",
+      "Day",
+      "Reporting starts",
+      "Reporting ends",
+      "Amount spent (USD)",
+      "Results",
+    ];
+    const rows = Array.from({ length: 22 }, (_, i) => {
+      const day = `2026-07-${String(i + 1).padStart(2, "0")}`;
+      return ["Shoes", day, "2026-07-01", "2026-07-22", "100", "5"];
+    });
+    const { colMap, rows: parsedRows } = parse(headers, rows);
+    const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-07-23T12:00:00Z"));
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("passes with campaign Starts/Ends and export Reporting starts/ends as decoy columns (regression)", () => {
+    // Reproduces the exact reported CSV shape: Day (DD-MM-YY, the real
+    // per-row date), Starts (campaign start date — constant per campaign),
+    // Ends (campaign end date — "Ongoing" text for active campaigns), and
+    // Reporting starts/ends (export date range — constant across all rows).
+    // Only Day should determine the validated date range.
+    const headers = [
+      "Campaign name",
+      "Day",
+      "Starts",
+      "Ends",
+      "Reporting starts",
+      "Reporting ends",
+      "Amount spent (USD)",
+      "Results",
+    ];
+    const rows = Array.from({ length: 22 }, (_, i) => {
+      const day = `${String(i + 1).padStart(2, "0")}-07-26`;
+      return ["Shoes", day, "01-05-26", "Ongoing", "01-07-26", "22-07-26", "100", "5"];
+    });
+    const { colMap, rows: parsedRows } = parse(headers, rows);
+    const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-07-23T12:00:00Z"));
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
 });

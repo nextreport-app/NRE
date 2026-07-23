@@ -6,6 +6,16 @@
  * parseDate_ auto-distinguishes Indian DD-MM-YY from US MM-DD-YY by checking
  * which of the first two numbers is > 12; if ambiguous it assumes Indian
  * DD-MM-YY (this is intentional — do not "fix" to default US format).
+ *
+ * Extension beyond the source: also detects ISO 8601 (YYYY-MM-DD), which the
+ * Apps Script version never had to handle but current Meta/Google exports'
+ * "Day"/"Reporting starts"/"Reporting ends" columns increasingly use. Without
+ * this, a 4-digit year in the first position gets misread as a day-of-month
+ * (e.g. "2026-07-01" → day 2026, month 07, year "01"+2000), which silently
+ * produces wildly wrong, far-future-or-past dates — exactly the "date range
+ * spans thousands of days" symptom this fixes. Detection is unambiguous: a
+ * day-of-month or month is never written with 4 digits, so a 4-digit first
+ * group can only be a year.
  */
 
 export interface ParsedDate {
@@ -36,6 +46,12 @@ export function parseDate(rawValue: unknown): ParsedDate | null {
   const n0 = parseInt(nums[0], 10);
   const n1 = parseInt(nums[1], 10);
   let n2 = parseInt(nums[2], 10);
+
+  // ISO 8601 (YYYY-MM-DD, YYYY/MM/DD, ...) — year-first, unambiguous.
+  if (nums[0].length === 4) {
+    return { day: n2, month: n1, year: n0 };
+  }
+
   if (n2 < 100) n2 += 2000;
   if (n0 > 12) return { day: n0, month: n1, year: n2 };
   if (n1 > 12) return { day: n1, month: n0, year: n2 };

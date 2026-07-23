@@ -5,13 +5,19 @@ import { parseCsvText } from "@/lib/nre/parse-csv";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildReportData } from "@/lib/nre/report-data";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const client = await prisma.client.findUnique({ where: { id } });
+  let client;
+  try {
+    client = await prisma.client.findUnique({ where: { id } });
+  } catch (err) {
+    return apiErrorResponse(err, "reports:preview:lookup");
+  }
   if (!client || client.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
