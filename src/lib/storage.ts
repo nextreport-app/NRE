@@ -1,58 +1,43 @@
 /**
  * File storage abstraction for generated report .pptx files.
  *
- * Production (Vercel): uses Vercel Blob when BLOB_READ_WRITE_TOKEN is set
- * (auto-injected once Blob storage is enabled on the Vercel project — see
- * Storage tab → Create Database → Blob). Vercel's serverless functions have
- * an ephemeral, per-invocation filesystem, so local disk cannot be used to
- * hand a file from the "generate" request to a later "download" request.
+ * Always uses Vercel Blob — no local-disk fallback. Vercel's serverless
+ * functions have an ephemeral, per-invocation filesystem: there is no
+ * writable directory that survives from the "generate" request to a later
+ * "download" request. Requires BLOB_READ_WRITE_TOKEN — set this locally too
+ * (e.g. `vercel env pull .env` after connecting Blob storage to the project)
+ * if running report generation outside Vercel.
  *
- * Local dev: falls back to local disk under STORAGE_DIR when no Blob token
- * is configured, so `npm run dev` works without any Blob setup.
- *
- * Blob objects are stored with public access (Vercel Blob's only access
- * mode) but their URL is never exposed to the browser — the download route
- * stays the sole authenticated entry point and fetches+streams server-side,
- * so reaching a report still requires being logged in as its owner.
+ * Stored with `access: 'private'` (this project's Blob store is configured
+ * private-only — `access: 'public'` is rejected outright). Reads go through
+ * the SDK's `get()`, which authenticates with BLOB_READ_WRITE_TOKEN
+ * server-side and returns the content directly — no signed/presigned URL is
+ * generated or handed to the browser at any point. That's a deliberately
+ * tighter fit than presigned URLs here: the download route
+ * (/api/reports/[id]/download) is already the sole authenticated entry
+ * point and streams the file itself, so there's no untrusted client that
+ * would ever need a presigned URL to fetch directly from Blob's CDN.
  */
 
-import fs from "node:fs/promises";
-import path from "node:path";
-import { put, del } from "@vercel/blob";
-
-const STORAGE_DIR = process.env.STORAGE_DIR || "./storage";
-const REPORTS_DIR = path.join(STORAGE_DIR, "reports");
-const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
+import { put, del, get } from "@vercel/blob";
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
-  if (USE_BLOB) {
-    const blob = await put(`reports/${reportId}.pptx`, buffer, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    });
-    return blob.url;
-  }
-
-  await fs.mkdir(REPORTS_DIR, { recursive: true });
-  const filePath = path.join(REPORTS_DIR, `${reportId}.pptx`);
-  await fs.writeFile(filePath, buffer);
-  return filePath;
+  const blob = await put(`reports/${reportId}.pptx`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  });
+  return blob.url;
 }
 
-export async function readReportFile(filePathOrUrl: string): Promise<Buffer> {
-  if (/^https?:\/\//.test(filePathOrUrl)) {
-    const res = await fetch(filePathOrUrl);
-    if (!res.ok) throw new Error(`Failed to fetch stored report (${res.status})`);
-    return Buffer.from(await res.arrayBuffer());
+export async function readReportFile(url: string): Promise<Buffer> {
+  const result = await get(url, { access: "private" });
+  if (!result || result.statusCode !== 200) {
+    throw new Error("Report file not found in storage.");
   }
-  return fs.readFile(filePathOrUrl);
+  return Buffer.from(await new Response(result.stream).arrayBuffer());
 }
 
-export async function deleteReportFile(filePathOrUrl: string): Promise<void> {
-  if (/^https?:\/\//.test(filePathOrUrl)) {
-    await del(filePathOrUrl).catch(() => {});
-    return;
-  }
-  await fs.unlink(filePathOrUrl).catch(() => {});
+export async function deleteReportFile(url: string): Promise<void> {
+  await del(url).catch(() => {});
 }

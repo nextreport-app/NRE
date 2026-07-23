@@ -13,14 +13,16 @@ aggregation, account health scoring, and native PPTX generation from the
 
 ```bash
 npm install                # also runs `prisma generate` via postinstall
-cp .env.example .env       # fill in DATABASE_URL and AUTH_SECRET at minimum
+cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 110 tests covering the NRE engine, PPTX and AI modules
+npm test                   # 119 tests covering the NRE engine, PPTX and AI modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted
-Postgres — Supabase, Neon, etc.).
+Postgres — Supabase, Neon, etc.). Report generation also requires
+`BLOB_READ_WRITE_TOKEN` locally (see the storage row below) — everything else
+works without it.
 
 ## Deploying to Vercel
 
@@ -32,8 +34,7 @@ Postgres — Supabase, Neon, etc.).
 | `AUTH_SECRET` | Yes | Random secret for NextAuth session signing. Generate with `openssl rand -base64 32` — do **not** reuse the dev placeholder from `.env.example`. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Only if using "Continue with Google" | From a Google Cloud Console OAuth client. Add `https://<your-domain>/api/auth/callback/google` as an authorized redirect URI. Leave blank to disable Google login (email/password still works). |
 | `NEXTAUTH_URL` | Recommended | Your production URL, e.g. `https://nre-plum.vercel.app`. |
-| `BLOB_READ_WRITE_TOKEN` | Yes (for report downloads to work) | **Don't set this by hand.** Go to the project's **Storage** tab → **Create Database** → **Blob**, then connect it to this project — Vercel injects the token automatically. Without this, generated reports are written to local disk, which doesn't survive between serverless invocations, so downloads will fail. |
-| `STORAGE_DIR` | No | Local-dev-only fallback path; unused when `BLOB_READ_WRITE_TOKEN` is set. |
+| `BLOB_READ_WRITE_TOKEN` | Yes | **Don't set this by hand on Vercel.** Go to the project's **Storage** tab → **Create Database** → **Blob**, then connect it to this project — Vercel injects the token automatically. Works with the store set to **private** access (the app never generates a public/signed URL — it authenticates server-side with this token on every read). There is no local-disk fallback (Vercel's serverless functions have no writable filesystem), so report generation fails without this in every environment, including local dev — run `vercel env pull .env` after connecting Blob storage to get the same token locally. |
 
 Groq/Gemini API keys are **not** environment variables — each client profile
 in the app has its own key fields (Client page → "AI insight writing"
