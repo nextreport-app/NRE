@@ -271,6 +271,57 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   };
 }
 
+/**
+ * The Combined Total ("Campaign Overview") slide's table is fixed at exactly
+ * 3 rows × 10 columns — this is the single, explicit source of truth for
+ * that shape and what goes in each of the 30 cells, consumed positionally
+ * by the PPTX render layer (see pptx/table-slide.ts) so a column can never
+ * silently disappear: the render layer validates the template's actual
+ * table against these same dimensions and throws if they ever drift apart,
+ * instead of quietly dropping whatever doesn't line up.
+ *
+ * Column order: Month, Ad Spend, Reach, Impressions, CTR (All), CPC (All),
+ * then the 4 dynamic result-type columns (result1/cpr1/result2/cpr2) — this
+ * is a direct positional mapping of TableRowData's own field order, so
+ * adding/reordering a TableRowData field must be a deliberate, visible
+ * change here too, not something that happens to line up implicitly.
+ */
+export const COMBINED_TOTAL_STATIC_HEADERS = [
+  "Month",
+  "Ad Spend",
+  "Reach",
+  "Impressions",
+  "CTR (All)",
+  "CPC (All)",
+] as const;
+
+export function buildCombinedTotalTableGrid(
+  periodRow: TableRowData,
+  mtdRow: TableRowData,
+  headers: TableHeaderLabels,
+): string[][] {
+  const headerRow = [
+    ...COMBINED_TOTAL_STATIC_HEADERS,
+    headers.result1Label,
+    headers.cpr1Label,
+    headers.result2Label,
+    headers.cpr2Label,
+  ];
+  const dataRow = (row: TableRowData): string[] => [
+    row.monthLabel,
+    row.spend,
+    row.reach,
+    row.impressions,
+    row.ctr,
+    row.cpc,
+    row.result1,
+    row.cpr1,
+    row.result2,
+    row.cpr2,
+  ];
+  return [headerRow, dataRow(periodRow), dataRow(mtdRow)];
+}
+
 // ─────────────────────────── Main entry point ──────────────────────────────
 
 export function buildReportData(input: BuildReportDataInput): ReportData {

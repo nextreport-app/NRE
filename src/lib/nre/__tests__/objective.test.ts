@@ -43,8 +43,19 @@ describe("getResultLabels", () => {
     ["ThruPlay", "VIDEO VIEWS", "COST PER VIEW"],
     ["App install", "APP INSTALLS", "COST PER INSTALL"],
     ["Conversion", "CONVERSIONS", "COST PER CONV"],
+    ["Quote Request Submitted", "QUOTE REQUESTS", "COST PER QUOTE REQUEST"],
+    ["Quote request", "QUOTE REQUESTS", "COST PER QUOTE REQUEST"],
+    ["Quote requests", "QUOTE REQUESTS", "COST PER QUOTE REQUEST"],
+    ["Contact", "CONTACTS", "COST PER CONTACT"],
+    ["Schedule", "APPOINTMENTS", "COST PER APPOINTMENT"],
+    ["Find location", "STORE VISITS", "COST PER VISIT"],
+    ["Store visits", "STORE VISITS", "COST PER VISIT"],
+    ["Complete registration", "REGISTRATIONS", "COST PER REGISTRATION"],
+    ["Submit application", "APPLICATIONS", "COST PER APPLICATION"],
+    ["Start trial", "TRIALS", "COST PER TRIAL"],
+    ["Donate", "DONATIONS", "COST PER DONATION"],
+    ["Donations", "DONATIONS", "COST PER DONATION"],
     ["", "RESULTS", "COST PER RESULT"],
-    ["Something unrecognised", "RESULTS", "COST PER RESULT"],
   ])("classifies %s as %s / %s", (input, resultLabel, costLabel) => {
     expect(getResultLabels(input)).toEqual({ resultLabel, costLabel });
   });
@@ -56,6 +67,28 @@ describe("getResultLabels", () => {
   it("keeps 'Leads (form)' distinct from the generic LEADS bucket a bare 'Lead' falls into", () => {
     expect(getResultLabels("Leads (form)").resultLabel).toBe("LEADS (FORM)");
     expect(getResultLabels("Lead").resultLabel).toBe("LEADS");
+  });
+
+  it("keeps 'Submit application' distinct from the generic APP INSTALLS bucket's 'app' substring match", () => {
+    expect(getResultLabels("Submit application").resultLabel).toBe("APPLICATIONS");
+    expect(getResultLabels("App install").resultLabel).toBe("APP INSTALLS");
+  });
+
+  it("falls back to the raw result_type (cleaned up), not a generic RESULTS label, when unrecognized", () => {
+    expect(getResultLabels("Some Custom Event")).toEqual({
+      resultLabel: "SOME CUSTOM EVENT",
+      costLabel: "COST PER SOME CUSTOM EVENT",
+    });
+  });
+
+  it("still falls back to the generic RESULTS bucket for a genuinely blank result_type", () => {
+    // aggregate.ts's data-first objective correction relies on a blank
+    // result_type mapping to the generic RESULTS bucket to detect "no
+    // result type set" rows — only a *present*, unrecognized string should
+    // keep its own text.
+    expect(getResultLabels("")).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
+    expect(getResultLabels(null)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
+    expect(getResultLabels(undefined)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
   });
 });
 

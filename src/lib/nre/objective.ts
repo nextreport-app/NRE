@@ -18,25 +18,51 @@ export interface ResultLabels {
   costLabel: string;
 }
 
-/** Port of getResultLabels_ — comprehensive regex-based objective detection. */
+/**
+ * Port of getResultLabels_ — comprehensive regex-based objective detection,
+ * extended with Meta's common website-conversion-event names (per product
+ * owner, from testing against real accounts).
+ *
+ * Order matters: specific, known objective/event strings are checked first
+ * so a distinct objective never collapses into a broader bucket's generic
+ * label — e.g. "Leads (form)" must stay "LEADS (FORM)" rather than the
+ * generic "LEADS" the lead|form bucket below would produce, and "Submit
+ * application" must stay "APPLICATIONS" rather than being caught by the
+ * app-install bucket's "app" substring match.
+ */
 export function getResultLabels(resultType: string | null | undefined): ResultLabels {
   const rt = (resultType || "").toLowerCase().trim();
 
-  // Specific, known Meta objective strings — checked before the broader
-  // regex buckets below so a distinct objective doesn't collapse into a
-  // generic bucket label: "Leads (form)" must stay "LEADS (FORM)" (not the
-  // generic "LEADS" the lead|form bucket below would otherwise produce),
-  // and "Website subscriptions" is its own objective, not a generic result.
   if (/leads?\s*\(\s*form\s*\)/.test(rt))
     return { resultLabel: "LEADS (FORM)", costLabel: "COST PER LEAD" };
 
-  if (/subscription/.test(rt))
+  if (/quote request/.test(rt))
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE REQUEST" };
+
+  if (/subscri/.test(rt))
     return { resultLabel: "WEBSITE SUBSCRIPTIONS", costLabel: "COST PER SUBSCRIPTION" };
+
+  if (/contact/.test(rt)) return { resultLabel: "CONTACTS", costLabel: "COST PER CONTACT" };
+
+  if (/schedule/.test(rt)) return { resultLabel: "APPOINTMENTS", costLabel: "COST PER APPOINTMENT" };
+
+  if (/find location|store visit/.test(rt))
+    return { resultLabel: "STORE VISITS", costLabel: "COST PER VISIT" };
+
+  if (/complete registration/.test(rt))
+    return { resultLabel: "REGISTRATIONS", costLabel: "COST PER REGISTRATION" };
+
+  if (/submit application/.test(rt))
+    return { resultLabel: "APPLICATIONS", costLabel: "COST PER APPLICATION" };
+
+  if (/start trial/.test(rt)) return { resultLabel: "TRIALS", costLabel: "COST PER TRIAL" };
+
+  if (/donat/.test(rt)) return { resultLabel: "DONATIONS", costLabel: "COST PER DONATION" };
 
   if (/purchase|buy|checkout|transaction|order|sale/.test(rt))
     return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
 
-  if (/lead|form|sign.?up|registration|subscribe/.test(rt))
+  if (/lead|form|sign.?up|registration/.test(rt))
     return { resultLabel: "LEADS", costLabel: "COST PER LEAD" };
 
   if (/landing.?page|lpv|page.?view/.test(rt))
@@ -56,6 +82,16 @@ export function getResultLabels(resultType: string | null | undefined): ResultLa
 
   if (/conv|action/.test(rt)) return { resultLabel: "CONVERSIONS", costLabel: "COST PER CONV" };
 
+  // Last resort: a genuinely blank result_type (common on rows Meta didn't
+  // populate) still falls back to the generic RESULTS bucket — aggregate.ts's
+  // data-first objective correction relies on that to detect "no result type
+  // set" rows. But an unrecognized-and-non-empty result_type keeps its own
+  // text (cleaned up) instead of being hidden behind a generic label, so a
+  // custom or newly-added Meta conversion event still shows its real name.
+  if (rt) {
+    const cleaned = String(resultType).trim().toUpperCase();
+    return { resultLabel: cleaned, costLabel: `COST PER ${cleaned}` };
+  }
   return { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
 }
 

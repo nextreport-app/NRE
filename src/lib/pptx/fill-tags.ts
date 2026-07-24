@@ -5,8 +5,9 @@
  * appearance (see the long comment above buildCampaignOrAdSetSlideXml).
  */
 
-import type { CoverData, SlideData, TableHeaderLabels, TableRowData } from "../nre/report-data";
+import { buildCombinedTotalTableGrid, type CoverData, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
 import { forceRunStyle, replaceTagRun, type StyleOverride } from "./ooxml";
+import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 
 function fillTags(xml: string, values: Record<string, string>, styleOverrides: Record<string, StyleOverride> = {}): string {
@@ -120,33 +121,17 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
   return xml;
 }
 
-function tableRowTagValues(prefix: "PERIOD" | "MTD", row: TableRowData): Record<string, string> {
-  return {
-    [`${prefix}_MONTH`]: row.monthLabel,
-    [`${prefix}_SPEND`]: row.spend,
-    [`${prefix}_REACH`]: row.reach,
-    [`${prefix}_IMPRESSIONS`]: row.impressions,
-    [`${prefix}_CTR`]: row.ctr,
-    [`${prefix}_CPC`]: row.cpc,
-    [`${prefix}_RESULT1`]: row.result1,
-    [`${prefix}_CPR1`]: row.cpr1,
-    [`${prefix}_RESULT2`]: row.result2,
-    [`${prefix}_CPR2`]: row.cpr2,
-  };
-}
-
+/**
+ * Fills the Combined Total table positionally (see table-slide.ts) rather
+ * than by scanning for named {{TAG}} runs — a structure mismatch throws
+ * immediately instead of a column silently going missing.
+ */
 export function buildTableSlideXml(
   template: TemplateSlide,
   periodRow: TableRowData,
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
 ): string {
-  return fillTags(template.xml, {
-    ...tableRowTagValues("PERIOD", periodRow),
-    ...tableRowTagValues("MTD", mtdRow),
-    PERIOD_RESULT1_LABEL: headers.result1Label,
-    PERIOD_CPR1_LABEL: headers.cpr1Label,
-    PERIOD_RESULT2_LABEL: headers.result2Label,
-    PERIOD_CPR2_LABEL: headers.cpr2Label,
-  });
+  const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+  return fillCombinedTotalTable(template.xml, grid);
 }
