@@ -72,6 +72,17 @@ first use, and again after any future schema changes:
 DATABASE_URL="<your production URL>" npx prisma migrate deploy
 ```
 
+A forgotten migration is the most common cause of a generic "This page
+couldn't load — A server error occurred" screen: Prisma queries select every
+column on a model by default, so a field that exists in the deployed code's
+schema but not yet in the actual database table (e.g. after pulling a new
+zip) makes the query fail outright. `npx prisma migrate status` (with
+`DATABASE_URL` set to the production database) shows whether any migrations
+are pending. Every page now has an `error.tsx` boundary showing an "Error
+reference" digest instead of Next.js's bare default message — pass that
+digest along when reporting a server error so it can be matched to the exact
+failure in Vercel's function logs.
+
 ### 3. Deploy
 
 Push to the connected branch — Vercel builds automatically. Confirm the

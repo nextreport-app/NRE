@@ -206,7 +206,8 @@ describe("buildReportData — multi-campaign integration", () => {
       hasData: true,
       monthLabel: "Jul 13 - Jul 19",
       spend: "₹2,450",
-      reach: "82,600",
+      // Never a summed daily reach total — see the dedicated reach test below.
+      reach: "—",
       impressions: "140,000",
       ctr: "1.60%",
       cpc: "₹3.50",
@@ -217,10 +218,18 @@ describe("buildReportData — multi-campaign integration", () => {
     });
     expect(data.tableHeaderLabels).toEqual({
       result1Label: "PURCHASES",
-      cpr1Label: "CPP",
+      cpr1Label: "COST PER PURCHASE",
       result2Label: "—",
       cpr2Label: "—",
     });
+  });
+
+  it("never sums daily reach in the MTD row — reach de-dupes people, so summing per-day totals wildly overcounts", () => {
+    // Regression test for the exact scenario reported: daily CSV reach summed
+    // to 90,779 while the account's actual (Meta-deduplicated) reach was
+    // 46,266 — any positive summed total would be wrong, so the MTD row must
+    // always show "—" for reach regardless of what the daily rows total to.
+    expect(data.mtdRow.reach).toBe("—");
   });
 });
 
@@ -278,5 +287,83 @@ describe("buildReportData — paused account", () => {
     expect(data.mtdRow.hasData).toBe(false);
     // MTD is empty, so header labels fall back to the period row's groups.
     expect(data.tableHeaderLabels.result1Label).toBe("PURCHASES");
+  });
+});
+
+describe("buildReportData — Leads (form) + Website subscriptions campaigns", () => {
+  // Regression test for the exact real-account scenario reported: a "Leads
+  // (form)" campaign and a "Website subscriptions" campaign must show their
+  // real objective names everywhere — campaign slides, the Combined Total
+  // table's column headers, and the MTD chart slide — never a generic
+  // "RESULTS"/"CPR" bucket label.
+  const leadsForm = buildDailyRows({
+    campaign_name: "Lead Gen",
+    ad_set_name: "Ad Set 1",
+    result_type: "Leads (form)",
+    spend: 100,
+    reach: 4000,
+    impressions: 8000,
+    results: 6,
+    link_clicks: 40,
+    ctr: 1.2,
+    cpc: 2.5,
+    frequency: 1.8,
+  });
+  const websiteSubs = buildDailyRows({
+    campaign_name: "Subscriptions",
+    ad_set_name: "Ad Set 1",
+    result_type: "Website subscriptions",
+    spend: 80,
+    reach: 3000,
+    impressions: 6000,
+    results: 5,
+    link_clicks: 20,
+    ctr: 1.0,
+    cpc: 2.0,
+    frequency: 1.5,
+  });
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "₹",
+    timezone: "Asia/Kolkata",
+    monthlyBudget: null,
+    mtdDailyRows: [...leadsForm, ...websiteSubs],
+    now: NOW,
+  });
+
+  it("shows the real objective name (not a generic bucket) on each campaign's summary slide", () => {
+    const leadSlide = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    expect(leadSlide.resultLabel).toBe("LEADS (FORM)");
+    expect(leadSlide.costLabel).toBe("COST PER LEAD");
+
+    const subsSlide = data.campaignSlides.find((s) => s.campaignName === "Subscriptions")!;
+    expect(subsSlide.resultLabel).toBe("WEBSITE SUBSCRIPTIONS");
+    expect(subsSlide.costLabel).toBe("COST PER SUBSCRIPTION");
+  });
+
+  it("shows the real objective name on the MTD chart slide, never the generic word RESULTS", () => {
+    const leadChart = data.chart!.campaigns.find((c) => c.name === "Lead Gen")!;
+    expect(leadChart.resLabel).toBe("LEADS (FORM)");
+    expect(leadChart.cprLabel).toBe("COST PER LEAD");
+
+    const subsChart = data.chart!.campaigns.find((c) => c.name === "Subscriptions")!;
+    expect(subsChart.resLabel).toBe("WEBSITE SUBSCRIPTIONS");
+    expect(subsChart.cprLabel).toBe("COST PER SUBSCRIPTION");
+  });
+
+  it("uses the real objective names as the Combined Total table's column headers", () => {
+    // Leads (form) has more results (42) than Website subscriptions (35), so
+    // it's group 1 (columns 7-8) and subscriptions is group 2 (columns 9-10).
+    expect(data.tableHeaderLabels).toEqual({
+      result1Label: "LEADS (FORM)",
+      cpr1Label: "COST PER LEAD",
+      result2Label: "WEBSITE SUBSCRIPTIONS",
+      cpr2Label: "COST PER SUBSCRIPTION",
+    });
+  });
+
+  it("never sums daily reach in the MTD row for this scenario either", () => {
+    expect(data.mtdRow.reach).toBe("—");
   });
 });

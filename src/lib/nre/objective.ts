@@ -22,6 +22,17 @@ export interface ResultLabels {
 export function getResultLabels(resultType: string | null | undefined): ResultLabels {
   const rt = (resultType || "").toLowerCase().trim();
 
+  // Specific, known Meta objective strings — checked before the broader
+  // regex buckets below so a distinct objective doesn't collapse into a
+  // generic bucket label: "Leads (form)" must stay "LEADS (FORM)" (not the
+  // generic "LEADS" the lead|form bucket below would otherwise produce),
+  // and "Website subscriptions" is its own objective, not a generic result.
+  if (/leads?\s*\(\s*form\s*\)/.test(rt))
+    return { resultLabel: "LEADS (FORM)", costLabel: "COST PER LEAD" };
+
+  if (/subscription/.test(rt))
+    return { resultLabel: "WEBSITE SUBSCRIPTIONS", costLabel: "COST PER SUBSCRIPTION" };
+
   if (/purchase|buy|checkout|transaction|order|sale/.test(rt))
     return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
 

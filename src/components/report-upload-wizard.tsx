@@ -32,6 +32,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [slidesStatus, setSlidesStatus] = useState<SlidesStatus>("idle");
   const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
+  const [slidesError, setSlidesError] = useState<string | null>(null);
 
   async function handleAnalyze() {
     if (!mtdFile) return;
@@ -86,6 +87,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   async function handleGetSlidesLink() {
     if (!reportId) return;
     setSlidesStatus("loading");
+    setSlidesError(null);
 
     // Must open the tab synchronously in this click handler, before the
     // `await` below — otherwise most browsers treat it as a popup and block
@@ -97,7 +99,16 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     if (!res.ok || !json?.url) {
       slidesWindow?.close();
-      setSlidesStatus(json?.error === "google_drive_not_connected" ? "not_connected" : "error");
+      if (json?.error === "google_drive_not_connected") {
+        setSlidesStatus("not_connected");
+      } else {
+        // Surface the real server-side failure (apiErrorResponse always puts
+        // it in `error`) instead of a dead-end generic message — this is
+        // often the only way to see what actually failed on the Drive API
+        // side without separate access to server logs.
+        setSlidesError(json?.error || `Request failed with status ${res.status}.`);
+        setSlidesStatus("error");
+      }
       return;
     }
 
@@ -243,8 +254,8 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
                 )}
 
                 {slidesStatus === "error" && (
-                  <p className="text-sm text-red-400">
-                    Something went wrong creating the Google Slides link. Please try again.
+                  <p className="break-words text-sm text-red-400">
+                    {slidesError || "Something went wrong creating the Google Slides link. Please try again."}
                   </p>
                 )}
               </div>

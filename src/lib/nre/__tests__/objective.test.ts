@@ -31,8 +31,12 @@ describe("getResultLabels", () => {
   it.each([
     ["Purchase", "PURCHASES", "COST PER PURCHASE"],
     ["Website purchases", "PURCHASES", "COST PER PURCHASE"],
-    ["Leads (form)", "LEADS", "COST PER LEAD"],
+    ["Leads (form)", "LEADS (FORM)", "COST PER LEAD"],
+    ["Lead (form)", "LEADS (FORM)", "COST PER LEAD"],
     ["Sign up", "LEADS", "COST PER LEAD"],
+    ["Website subscriptions", "WEBSITE SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
+    ["Website subscription", "WEBSITE SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
+    ["Subscriptions", "WEBSITE SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
     ["Landing page view", "LANDING PAGE VIEWS", "COST PER LPV"],
     ["Link click", "CLICKS", "COST PER CLICK"],
     ["Reach", "REACH", "COST PER 1K REACH"],
@@ -48,19 +52,40 @@ describe("getResultLabels", () => {
   it("purchase takes priority over lead-like words in the same string", () => {
     expect(getResultLabels("Purchase (order confirmation)").resultLabel).toBe("PURCHASES");
   });
+
+  it("keeps 'Leads (form)' distinct from the generic LEADS bucket a bare 'Lead' falls into", () => {
+    expect(getResultLabels("Leads (form)").resultLabel).toBe("LEADS (FORM)");
+    expect(getResultLabels("Lead").resultLabel).toBe("LEADS");
+  });
 });
 
 describe("getResultGroups", () => {
   it("sums count/spend per result label and sorts by count descending", () => {
     const rows: AggRow[] = [
-      row({ result_type: "Leads (form)", results: 10, spend: 500 }),
-      row({ result_type: "Lead", results: 5, spend: 250 }),
+      row({ result_type: "Lead", results: 10, spend: 500 }),
+      row({ result_type: "Sign up", results: 5, spend: 250 }),
       row({ result_type: "Purchase", results: 20, spend: 2000 }),
     ];
     const groups = getResultGroups(rows);
     expect(groups[0]).toMatchObject({ label: "PURCHASES", count: 20 });
     expect(groups[1]).toMatchObject({ label: "LEADS", count: 15 });
     expect(groups[1].avgCpr).toBeCloseTo(750 / 15);
+  });
+
+  it("keeps 'Leads (form)' and 'Website subscriptions' as separate groups, not folded into a generic bucket", () => {
+    const rows: AggRow[] = [
+      row({ result_type: "Leads (form)", results: 12, spend: 600 }),
+      row({ result_type: "Website subscriptions", results: 8, spend: 400 }),
+    ];
+    const groups = getResultGroups(rows);
+    const leads = groups.find((g) => g.label === "LEADS (FORM)");
+    const subs = groups.find((g) => g.label === "WEBSITE SUBSCRIPTIONS");
+    expect(leads).toMatchObject({ label: "LEADS (FORM)", costLabel: "COST PER LEAD", count: 12 });
+    expect(subs).toMatchObject({
+      label: "WEBSITE SUBSCRIPTIONS",
+      costLabel: "COST PER SUBSCRIPTION",
+      count: 8,
+    });
   });
 
   it("multiplies REACH's avgCpr by 1000 when a results count IS present", () => {
