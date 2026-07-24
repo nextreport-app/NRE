@@ -9,6 +9,13 @@ column auto-detection, data-first objective detection, MTD-Daily-CSV
 aggregation, account health scoring, and native PPTX generation from the
 `ADS_TEMPLATE_V2` template.
 
+Upload accepts `.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`, and `.ods` — file type
+is detected from content (magic bytes), not the extension. Delimiter (comma/
+tab/semicolon), text encoding (UTF-8/UTF-16), and BOMs are all auto-detected;
+for Excel workbooks, a sheet named "MTD Daily CSV" (or "Period CSV" for that
+upload slot) is used if present, otherwise the first sheet with data. See
+`src/lib/nre/parse-file.ts`.
+
 ## Local development
 
 ```bash
@@ -16,7 +23,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 119 tests covering the NRE engine, PPTX and AI modules
+npm test                   # 148 tests covering the NRE engine, PPTX and AI modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted

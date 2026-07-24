@@ -6,9 +6,17 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 
 type Status = "idle" | "analyzing" | "invalid" | "preview" | "generating" | "done" | "error";
 
-async function readFileText(file: File | null): Promise<string> {
-  if (!file) return "";
-  return file.text();
+// Sent as real File objects (multipart/form-data), never decoded to text in
+// the browser — .xlsx/.xls are binary and non-UTF-8 text files would be
+// mis-decoded by File.text() (which always assumes UTF-8). The server
+// detects format from file content and decodes/parses appropriately.
+const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
+
+function buildUploadFormData(mtdFile: File, periodFile: File | null): FormData {
+  const formData = new FormData();
+  formData.append("mtdDailyCsv", mtdFile);
+  if (periodFile) formData.append("periodCsv", periodFile);
+  return formData;
 }
 
 export function ReportUploadWizard({ clientId }: { clientId: string }) {
@@ -26,15 +34,9 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setErrors([]);
     setMessage(null);
 
-    const [mtdDailyCsv, periodCsv] = await Promise.all([
-      readFileText(mtdFile),
-      readFileText(periodFile),
-    ]);
-
     const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mtdDailyCsv, periodCsv }),
+      body: buildUploadFormData(mtdFile, periodFile),
     });
     const json = await res.json().catch(() => null);
 
@@ -59,15 +61,9 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setStatus("generating");
     setMessage(null);
 
-    const [mtdDailyCsv, periodCsv] = await Promise.all([
-      readFileText(mtdFile),
-      readFileText(periodFile),
-    ]);
-
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mtdDailyCsv, periodCsv }),
+      body: buildUploadFormData(mtdFile, periodFile),
     });
     const json = await res.json().catch(() => null);
 
@@ -90,11 +86,11 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
           </label>
           <p className="mb-2 text-xs text-slate-500">
             Meta Ads Manager → Reporting → set date range to month-to-date → Time Increment =
-            Daily → Export.
+            Daily → Export. CSV, TSV, TXT, or Excel (.xlsx/.xls) — any delimiter or encoding.
           </p>
           <input
             type="file"
-            accept=".csv"
+            accept={ACCEPTED_FILE_TYPES}
             onChange={(e) => setMtdFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-500"
           />
@@ -110,7 +106,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
           </p>
           <input
             type="file"
-            accept=".csv"
+            accept={ACCEPTED_FILE_TYPES}
             onChange={(e) => setPeriodFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
           />

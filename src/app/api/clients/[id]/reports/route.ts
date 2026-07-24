@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseCsvText } from "@/lib/nre/parse-csv";
+import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildReportData } from "@/lib/nre/report-data";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
@@ -10,6 +10,7 @@ import { renderPptx } from "@/lib/pptx/render";
 import { loadTemplateBuffer } from "@/lib/pptx/templates";
 import { saveReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
+import { fileFromFormData } from "@/lib/http-file";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -26,15 +27,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const body = await req.json().catch(() => null);
-  const mtdDailyCsv = typeof body?.mtdDailyCsv === "string" ? body.mtdDailyCsv : "";
-  const periodCsv = typeof body?.periodCsv === "string" ? body.periodCsv : "";
+  const formData = await req.formData().catch(() => null);
+  const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
+  const periodBuffer = formData ? await fileFromFormData(formData, "periodCsv") : null;
 
-  if (!mtdDailyCsv.trim()) {
+  if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
     return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
   }
 
-  const mtdParsed = parseCsvText(mtdDailyCsv);
+  const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
   if (!validation.valid) {
     return NextResponse.json(
@@ -43,7 +44,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const periodParsed = periodCsv.trim() ? parseCsvText(periodCsv) : null;
+  const periodParsed = periodBuffer && periodBuffer.length > 0 ? parseUploadedFile(periodBuffer, "Period CSV") : null;
   const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
   const data = buildReportData({
