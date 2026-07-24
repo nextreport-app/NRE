@@ -123,6 +123,9 @@ model Report {
   weekEnd   String?
   fileName  String?
   filePath  String?
+  // Cached Drive webViewLink once "Get Google Slides Link" has been used —
+  // avoids creating a duplicate Drive file on every click.
+  slidesUrl String?
 
   // Snapshot of computed metrics for history/preview without re-parsing the pptx
   summaryJson  String? @db.Text
