@@ -204,7 +204,9 @@ describe("buildReportData — multi-campaign integration", () => {
   it("computes the MTD row and derives table header labels from it", () => {
     expect(data.mtdRow).toMatchObject({
       hasData: true,
-      monthLabel: "Jul 13 - Jul 19",
+      // " MTD" suffix marks this as a partial, still-in-progress month,
+      // distinct from the Period row's completed-month date range.
+      monthLabel: "Jul 13 - Jul 19 MTD",
       spend: "₹2,450",
       // Never a summed daily reach total — see the dedicated reach test below.
       reach: "—",
@@ -284,6 +286,9 @@ describe("buildReportData — paused account", () => {
     expect(data.periodRow.hasData).toBe(true);
     expect(data.periodRow.spend).toBe("$500");
     expect(data.periodRow.result1).toBe("10");
+    // Only the MTD row gets the " MTD" suffix — the Period row is a
+    // completed month, not a partial in-progress one.
+    expect(data.periodRow.monthLabel).not.toContain("MTD");
     expect(data.mtdRow.hasData).toBe(false);
     // MTD is empty, so header labels fall back to the period row's groups.
     expect(data.tableHeaderLabels.result1Label).toBe("PURCHASES");

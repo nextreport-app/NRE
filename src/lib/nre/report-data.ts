@@ -184,14 +184,19 @@ function freqLine(freq: number): string {
 
 /**
  * Shared computation for the Period row and the MTD row of the 10-column
- * table. `dailyReach` marks rows that are per-day (the MTD-Daily-CSV split),
- * where a summed reach total is never trustworthy — reach de-dupes people
- * within Meta's reporting window, so summing each day's reach recounts the
- * same person once per day they saw an ad, wildly inflating the total. The
- * Period CSV row isn't daily (it's a single non-daily monthly export), so its
- * reach total is a real value Meta already de-duplicated and is safe to show.
+ * table. `isMtdRow` marks the MTD-Daily-CSV row, which is per-day data, and
+ * drives two things:
+ *   - reach is always shown as "—", never a summed daily total. Reach
+ *     de-dupes people within Meta's own reporting window, so summing each
+ *     day's reach recounts the same person once per day they saw an ad,
+ *     wildly inflating the total. The Period CSV row isn't daily (it's a
+ *     single non-daily monthly export), so its reach total is a real value
+ *     Meta already de-duplicated and is safe to show.
+ *   - the month label gets an " MTD" suffix (e.g. "Jul 1 - Jul 23 MTD") so
+ *     it reads clearly as a partial, still-in-progress month rather than a
+ *     completed one like the Period row's.
  */
-function computeTableRow(rows: MetricRow[], currencySymbol: string, dailyReach: boolean): TableRowData {
+function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: boolean): TableRowData {
   if (!rows || rows.length === 0) {
     return {
       hasData: false,
@@ -241,13 +246,14 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, dailyReach: 
   const g1 = groups[0] || allGroups[0] || { label: "RESULTS", costLabel: "COST PER RESULT", count: 0, avgCpr: 0 };
   const g2 = groups[1] || null;
 
-  const monthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
+  const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
+  const monthLabel = isMtdRow ? `${rawMonthLabel} MTD` : rawMonthLabel;
 
   return {
     hasData: true,
     monthLabel,
     spend: fmtCurrency(totalSpend, currencySymbol),
-    reach: dailyReach ? "—" : fmtNumber(totalReach),
+    reach: isMtdRow ? "—" : fmtNumber(totalReach),
     impressions: fmtNumber(totalImpr),
     ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
     cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
