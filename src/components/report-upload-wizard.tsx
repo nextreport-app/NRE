@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 
 type Status = "idle" | "analyzing" | "invalid" | "preview" | "generating" | "done" | "error";
+type SlidesStatus = "idle" | "loading" | "ready" | "not_connected" | "error";
 
 // Sent as real File objects (multipart/form-data), never decoded to text in
 // the browser — .xlsx/.xls are binary and non-UTF-8 text files would be
@@ -25,8 +27,12 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errors, setErrors] = useState<ValidationIssue[]>([]);
   const [data, setData] = useState<ReportData | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [slidesStatus, setSlidesStatus] = useState<SlidesStatus>("idle");
+  const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
+  const [slidesError, setSlidesError] = useState<string | null>(null);
 
   async function handleAnalyze() {
     if (!mtdFile) return;
@@ -73,8 +79,46 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
       return;
     }
 
+    setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
     setStatus("done");
+  }
+
+  async function handleGetSlidesLink() {
+    if (!reportId) return;
+    setSlidesStatus("loading");
+    setSlidesError(null);
+
+    // Must open the tab synchronously in this click handler, before the
+    // `await` below — otherwise most browsers treat it as a popup and block
+    // it. We point it at the real link once the upload finishes.
+    const slidesWindow = window.open("", "_blank");
+
+    const res = await fetch(`/api/reports/${reportId}/slides`, { method: "POST" });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json?.url) {
+      slidesWindow?.close();
+      if (json?.error === "google_drive_not_connected") {
+        setSlidesStatus("not_connected");
+      } else {
+        // Surface the real server-side failure (apiErrorResponse always puts
+        // it in `error`) instead of a dead-end generic message — this is
+        // often the only way to see what actually failed on the Drive API
+        // side without separate access to server logs.
+        setSlidesError(json?.error || `Request failed with status ${res.status}.`);
+        setSlidesStatus("error");
+      }
+      return;
+    }
+
+    setSlidesUrl(json.url);
+    setSlidesStatus("ready");
+    if (slidesWindow) slidesWindow.location.href = json.url;
+  }
+
+  async function handleConnectGoogleDrive() {
+    await signIn("google", { callbackUrl: window.location.href });
   }
 
   return (
@@ -154,12 +198,67 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             </button>
           ) : (
             downloadUrl && (
-              <a
-                href={downloadUrl}
-                className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-              >
-                Download report (.pptx)
-              </a>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={downloadUrl}
+                    className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                  >
+                    Download PPTX
+                  </a>
+                  <button
+                    onClick={handleGetSlidesLink}
+                    disabled={slidesStatus === "loading"}
+                    className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {slidesStatus === "loading" ? "Creating Google Slides…" : "Get Google Slides Link"}
+                  </button>
+                </div>
+
+                {slidesStatus === "ready" && slidesUrl && (
+                  <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
+                      Shareable Google Slides link — anyone with the link can view
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href={slidesUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-accent hover:underline break-all"
+                      >
+                        {slidesUrl}
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(slidesUrl)}
+                        className="rounded-md border border-navy-border px-3 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                      >
+                        Copy link
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {slidesStatus === "not_connected" && (
+                  <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+                    <p className="mb-2">
+                      Connect Google Drive to create a Google Slides link for this report.
+                    </p>
+                    <button
+                      onClick={handleConnectGoogleDrive}
+                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                    >
+                      Connect Google Drive
+                    </button>
+                  </div>
+                )}
+
+                {slidesStatus === "error" && (
+                  <p className="break-words text-sm text-red-400">
+                    {slidesError || "Something went wrong creating the Google Slides link. Please try again."}
+                  </p>
+                )}
+              </div>
             )
           )}
         </div>

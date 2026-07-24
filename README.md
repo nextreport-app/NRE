@@ -16,6 +16,21 @@ for Excel workbooks, a sheet named "MTD Daily CSV" (or "Period CSV" for that
 upload slot) is used if present, otherwise the first sheet with data. See
 `src/lib/nre/parse-file.ts`.
 
+After a report is generated, users can **Download PPTX** (as before) or
+**Get Google Slides Link**, which uploads the generated file to the user's own
+Google Drive with `mimeType: application/vnd.google-apps.presentation` (Drive
+converts it to an editable Slides file automatically), sets sharing to
+"Anyone with the link can view", and returns that link — opened in a new tab
+and shown inline to copy. This needs the `drive.file` OAuth scope (the app
+can only see/manage files it creates, nothing else in the user's Drive), so
+"Continue with Google" always requests it and always shows the full consent
+screen (`prompt=consent`) — that's deliberate: it's the only way to
+reliably get a refresh token back on every sign-in, which the Slides feature
+needs to call the Drive API outside the login request itself. A user who
+only ever signed up with email/password sees a "Connect Google Drive" prompt
+in place of the link the first time they try it. See `src/lib/google-drive.ts`
+and `src/app/api/reports/[id]/slides/route.ts`.
+
 ## Local development
 
 ```bash
@@ -23,7 +38,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 148 tests covering the NRE engine, PPTX and AI modules
+npm test                   # 155 tests covering the NRE engine, PPTX, AI, and Drive modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted
@@ -39,8 +54,8 @@ works without it.
 |---|---|---|
 | `DATABASE_URL` | Yes | Postgres connection string. If using Supabase, use the **pooled** connection string and append `?pgbouncer=true` (or use the direct connection with `sslmode=require`). |
 | `AUTH_SECRET` | Yes | Random secret for NextAuth session signing. Generate with `openssl rand -base64 32` — do **not** reuse the dev placeholder from `.env.example`. |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Only if using "Continue with Google" | From a Google Cloud Console OAuth client. Add `https://<your-domain>/api/auth/callback/google` as an authorized redirect URI. Leave blank to disable Google login (email/password still works). |
-| `NEXTAUTH_URL` | Recommended | Your production URL, e.g. `https://nre-plum.vercel.app`. |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Only if using "Continue with Google" (required for "Get Google Slides Link") | From a Google Cloud Console OAuth client. In that client's **Authorized redirect URIs**, add `https://<your-domain>/api/auth/callback/google` for **every** domain the app is served on (production domain and any Vercel preview/`.vercel.app` URL still in use) — a domain missing here is the most common cause of Google sign-in failing right after the account picker. In the same Google Cloud project, the **Google Drive API** must also be explicitly enabled (APIs & Services → Enable APIs → "Google Drive API") — an OAuth client alone doesn't turn it on, and every Drive upload call fails with a 403 until it is. Leave the env vars blank to disable Google login entirely (email/password still works; "Get Google Slides Link" will show a "Connect Google Drive" prompt with no way to complete it). |
+| `NEXTAUTH_URL` | Recommended | Your production URL, e.g. `https://nextreport.in`. After changing this (or any env var), **redeploy** — Vercel serverless functions don't pick up updated environment variables until the next deployment. |
 | `BLOB_READ_WRITE_TOKEN` | Yes | **Don't set this by hand on Vercel.** Go to the project's **Storage** tab → **Create Database** → **Blob**, then connect it to this project — Vercel injects the token automatically. Works with the store set to **private** access (the app never generates a public/signed URL — it authenticates server-side with this token on every read). There is no local-disk fallback (Vercel's serverless functions have no writable filesystem), so report generation fails without this in every environment, including local dev — run `vercel env pull .env` after connecting Blob storage to get the same token locally. |
 
 Groq/Gemini API keys are **not** environment variables — each client profile
@@ -56,6 +71,17 @@ first use, and again after any future schema changes:
 ```bash
 DATABASE_URL="<your production URL>" npx prisma migrate deploy
 ```
+
+A forgotten migration is the most common cause of a generic "This page
+couldn't load — A server error occurred" screen: Prisma queries select every
+column on a model by default, so a field that exists in the deployed code's
+schema but not yet in the actual database table (e.g. after pulling a new
+zip) makes the query fail outright. `npx prisma migrate status` (with
+`DATABASE_URL` set to the production database) shows whether any migrations
+are pending. Every page now has an `error.tsx` boundary showing an "Error
+reference" digest instead of Next.js's bare default message — pass that
+digest along when reporting a server error so it can be matched to the exact
+failure in Vercel's function logs.
 
 ### 3. Deploy
 

@@ -183,27 +183,15 @@ function freqLine(freq: number): string {
 }
 
 /**
- * Port of the cprShort()/cprShortLabel() closures shared by fillPeriodSlide_
- * and fillMTDRow_, extended (per product owner) to cover every label
- * getResultLabels() can actually produce — the source only handled
- * LPV/leads/clicks/results, so a PURCHASES- or CONVERSIONS-led account would
- * show its cost column header unabbreviated in the Combined Total table.
+ * Shared computation for the Period row and the MTD row of the 10-column
+ * table. `dailyReach` marks rows that are per-day (the MTD-Daily-CSV split),
+ * where a summed reach total is never trustworthy — reach de-dupes people
+ * within Meta's reporting window, so summing each day's reach recounts the
+ * same person once per day they saw an ad, wildly inflating the total. The
+ * Period CSV row isn't daily (it's a single non-daily monthly export), so its
+ * reach total is a real value Meta already de-duplicated and is safe to show.
  */
-function cprShort(label: string): string {
-  return label
-    .replace("LANDING PAGE VIEWS", "LPV")
-    .replace("FORM LEADS", "CPL")
-    .replace("WEB LEADS", "CPL")
-    .replace("CLICKS", "CPC")
-    .replace("PURCHASES", "CPP")
-    .replace("REACH", "CP1K")
-    .replace("VIDEO VIEWS", "CPV")
-    .replace("CONVERSIONS", "CPA")
-    .replace("RESULTS", "CPR");
-}
-
-/** Shared computation for the Period row and the MTD row of the 10-column table. */
-function computeTableRow(rows: MetricRow[], currencySymbol: string): TableRowData {
+function computeTableRow(rows: MetricRow[], currencySymbol: string, dailyReach: boolean): TableRowData {
   if (!rows || rows.length === 0) {
     return {
       hasData: false,
@@ -218,7 +206,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string): TableRowDat
       result2: "—",
       cpr2: "—",
       g1Label: "RESULTS",
-      g1CprLabel: "CPR",
+      g1CprLabel: "COST PER RESULT",
       g2Label: null,
       g2CprLabel: null,
     };
@@ -250,7 +238,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string): TableRowDat
   const REACH_LABELS = ["REACH", "REACH (TOTAL)"];
   const allGroups = getResultGroups(rows);
   const groups = allGroups.filter((g) => !REACH_LABELS.includes(g.label));
-  const g1 = groups[0] || allGroups[0] || { label: "RESULTS", costLabel: "CPR", count: 0, avgCpr: 0 };
+  const g1 = groups[0] || allGroups[0] || { label: "RESULTS", costLabel: "COST PER RESULT", count: 0, avgCpr: 0 };
   const g2 = groups[1] || null;
 
   const monthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
@@ -259,7 +247,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string): TableRowDat
     hasData: true,
     monthLabel,
     spend: fmtCurrency(totalSpend, currencySymbol),
-    reach: fmtNumber(totalReach),
+    reach: dailyReach ? "—" : fmtNumber(totalReach),
     impressions: fmtNumber(totalImpr),
     ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
     cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
@@ -268,9 +256,12 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string): TableRowDat
     result2: g2 ? fmtNumber(g2.count) : "—",
     cpr2: g2 ? (g2.avgCpr > 0 ? fmtCurrency2dp(g2.avgCpr, currencySymbol) : "—") : "—",
     g1Label: g1.label,
-    g1CprLabel: cprShort(g1.label),
+    // The real costLabel from getResultLabels() (e.g. "COST PER LEAD",
+    // "COST PER SUBSCRIPTION") — the Combined Total table always shows the
+    // actual objective's cost label, never an abbreviation.
+    g1CprLabel: g1.costLabel,
     g2Label: g2 ? g2.label : null,
-    g2CprLabel: g2 ? cprShort(g2.label) : null,
+    g2CprLabel: g2 ? g2.costLabel : null,
   };
 }
 
@@ -346,8 +337,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  const periodRow = computeTableRow((periodRows ?? []) as MetricRow[], currencySymbol);
-  const mtdRow = computeTableRow(mtdRows, currencySymbol);
+  const periodRow = computeTableRow((periodRows ?? []) as MetricRow[], currencySymbol, false);
+  const mtdRow = computeTableRow(mtdRows, currencySymbol, true);
 
   // Table header labels: fillMTDRow_ always runs after fillPeriodSlide_ in the
   // source and both write the same header cells, so MTD's labels win whenever
