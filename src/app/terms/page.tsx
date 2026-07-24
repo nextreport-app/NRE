@@ -8,18 +8,18 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-      <Link href="/" className="text-sm text-indigo-400 hover:underline">
+      <Link href="/" className="text-sm text-accent hover:underline">
         ← Back to NextReport
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold text-white">Terms of Service</h1>
-      <p className="mt-2 text-sm text-slate-500">Effective date: July 24, 2026</p>
+      <p className="mt-2 text-sm text-ink-muted">Effective date: July 24, 2026</p>
 
-      <div className="mt-8 space-y-8 text-sm leading-relaxed text-slate-300">
+      <div className="mt-8 space-y-8 text-sm leading-relaxed text-ink-secondary">
         <p>
           These Terms of Service (&ldquo;Terms&rdquo;) govern your use of NextReport,
           the web application available at{" "}
-          <span className="text-slate-100">nextreport.in</span> (the
+          <span className="text-white">nextreport.in</span> (the
           &ldquo;Service&rdquo;), operated by NextReport (&ldquo;we,&rdquo;
           &ldquo;us,&rdquo; or &ldquo;our&rdquo;). By creating an account or using the
           Service, you agree to these Terms.
@@ -40,7 +40,7 @@ export default function TermsPage() {
             You&apos;re responsible for maintaining the confidentiality of your login
             credentials and for all activity under your account. Notify us immediately
             at{" "}
-            <a href="mailto:hello@nextreport.in" className="text-indigo-400 hover:underline">
+            <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
               hello@nextreport.in
             </a>{" "}
             if you suspect unauthorised use.
@@ -122,7 +122,7 @@ export default function TermsPage() {
           <h2 className="mb-2 text-lg font-medium text-white">11. Contact us</h2>
           <p>
             Questions about these Terms? Email us at{" "}
-            <a href="mailto:hello@nextreport.in" className="text-indigo-400 hover:underline">
+            <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
               hello@nextreport.in
             </a>
             .

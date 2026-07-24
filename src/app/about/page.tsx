@@ -8,13 +8,13 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-      <Link href="/" className="text-sm text-indigo-400 hover:underline">
+      <Link href="/" className="text-sm text-accent hover:underline">
         ← Back to NextReport
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold text-white">About NextReport</h1>
 
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-300">
+      <div className="mt-8 space-y-6 text-sm leading-relaxed text-ink-secondary">
         <p>
           NextReport is an automated ad reporting tool built for digital agencies
           managing Meta Ads and Google Ads accounts. We started NextReport in 2026
@@ -30,12 +30,12 @@ export default function AboutPage() {
           in minutes instead of hours.
         </p>
 
-        <div className="rounded-lg border border-slate-800 p-5">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Get in touch</p>
-          <p className="mt-1 text-slate-300">
+        <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
+          <p className="text-xs uppercase tracking-wide text-ink-muted">Get in touch</p>
+          <p className="mt-1 text-ink-secondary">
             Questions, feedback, or partnership ideas — we&apos;d love to hear from
             you at{" "}
-            <a href="mailto:hello@nextreport.in" className="text-indigo-400 hover:underline">
+            <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
               hello@nextreport.in
             </a>
             .

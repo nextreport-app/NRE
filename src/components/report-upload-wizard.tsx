@@ -79,12 +79,12 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-4 rounded-lg border border-slate-800 p-5">
+      <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-200">
+          <label className="mb-1 block text-sm font-medium text-ink-secondary">
             MTD Daily CSV <span className="text-red-400">*</span>
           </label>
-          <p className="mb-2 text-xs text-slate-500">
+          <p className="mb-2 text-xs text-ink-muted">
             Meta Ads Manager → Reporting → set date range to month-to-date → Time Increment =
             Daily → Export. CSV, TSV, TXT, or Excel (.xlsx/.xls) — any delimiter or encoding.
           </p>
@@ -92,15 +92,15 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             type="file"
             accept={ACCEPTED_FILE_TYPES}
             onChange={(e) => setMtdFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-500"
+            className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-accent-hover"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-200">
+          <label className="mb-1 block text-sm font-medium text-ink-secondary">
             Period CSV — optional
           </label>
-          <p className="mb-2 text-xs text-slate-500">
+          <p className="mb-2 text-xs text-ink-muted">
             Previous full month's data — upload once at the start of the month, don't re-upload
             each week.
           </p>
@@ -108,14 +108,14 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             type="file"
             accept={ACCEPTED_FILE_TYPES}
             onChange={(e) => setPeriodFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
+            className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-navy-border file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:brightness-125"
           />
         </div>
 
         <button
           onClick={handleAnalyze}
           disabled={!mtdFile || status === "analyzing"}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
         >
           {status === "analyzing" ? "Analyzing…" : "Analyze CSV"}
         </button>
@@ -148,7 +148,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             <button
               onClick={handleGenerate}
               disabled={status === "generating"}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {status === "generating" ? "Generating PPTX…" : "Generate & download PPTX"}
             </button>
@@ -179,24 +179,24 @@ function ReportPreview({ data }: { data: ReportData }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-slate-800 p-4">
-        <p className="text-xs uppercase tracking-wide text-slate-500">Cover</p>
+      <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+        <p className="text-xs uppercase tracking-wide text-ink-muted">Cover</p>
         <p className="mt-1 text-white">{data.cover.dateRange}</p>
-        <p className="text-sm text-slate-300">{data.cover.healthBadge}</p>
+        <p className="text-sm text-ink-secondary">{data.cover.healthBadge}</p>
         {data.cover.budgetSummary && (
-          <p className="mt-1 text-xs text-slate-400">{data.cover.budgetSummary}</p>
+          <p className="mt-1 text-xs text-ink-muted">{data.cover.budgetSummary}</p>
         )}
       </div>
 
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
           Campaign summary slides ({data.campaignSlides.length})
         </p>
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
           {data.campaignSlides.map((s) => (
             <li key={s.campaignName} className="flex items-center justify-between px-4 py-2 text-sm">
               <span className="text-white">{s.campaignName}</span>
-              <span className="text-slate-400">
+              <span className="text-ink-muted">
                 {s.metrics.spend} · {s.resultLabel} {s.metrics.results} · {s.metrics.cpr}
               </span>
             </li>
@@ -206,10 +206,10 @@ function ReportPreview({ data }: { data: ReportData }) {
 
       {data.adSetSlides.length > 0 && (
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+          <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
             Ad set slides ({data.adSetSlides.length})
           </p>
-          <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+          <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
             {data.adSetSlides.map((s) => (
               <li
                 key={`${s.campaignName}/${s.adSetName}`}
@@ -218,7 +218,7 @@ function ReportPreview({ data }: { data: ReportData }) {
                 <span className="text-white">
                   {s.campaignName} / {s.adSetName}
                 </span>
-                <span className="text-slate-400">
+                <span className="text-ink-muted">
                   {s.metrics.spend} · {s.resultLabel} {s.metrics.results}
                 </span>
               </li>
@@ -228,12 +228,12 @@ function ReportPreview({ data }: { data: ReportData }) {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-slate-800 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Period ({data.periodRow.monthLabel})</p>
+        <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+          <p className="text-xs uppercase tracking-wide text-ink-muted">Period ({data.periodRow.monthLabel})</p>
           <p className="mt-1 text-sm text-white">{data.periodRow.spend}</p>
         </div>
-        <div className="rounded-lg border border-slate-800 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">MTD ({data.mtdRow.monthLabel})</p>
+        <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+          <p className="text-xs uppercase tracking-wide text-ink-muted">MTD ({data.mtdRow.monthLabel})</p>
           <p className="mt-1 text-sm text-white">{data.mtdRow.spend}</p>
         </div>
       </div>

@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
+/* NextReport is a dark-only app — the theme is fixed, not tied to the
+   visitor's OS light/dark preference. This is the single source of truth
+   for the palette; every page should use these tokens (bg-navy,
+   bg-navy-panel, text-ink, text-ink-secondary, text-ink-muted, bg-accent,
+   border-navy-border, ...) rather than raw Tailwind slate/indigo shades. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d1b2e;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -10,13 +15,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-navy: #0d1b2e;
+  --color-navy-panel: #111f35;
+  --color-navy-border: #1e3a5f;
+  --color-ink: #ffffff;
+  --color-ink-secondary: #e2e8f0;
+  --color-ink-muted: #94a3b8;
+  --color-accent: #4a90d9;
+  --color-accent-hover: #3d7dc0;
+  --color-accent-orange: #f6ad55;
+  --color-accent-orange-hover: #ed8936;
 }
 
 body {

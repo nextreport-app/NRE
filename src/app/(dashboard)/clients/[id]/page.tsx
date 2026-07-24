@@ -49,27 +49,27 @@ export default async function ClientDetailPage({
           <h2 className="text-lg font-medium text-white">Reports</h2>
           <Link
             href={`/clients/${client.id}/reports/new`}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
           >
             Generate report
           </Link>
         </div>
         {reports.length === 0 ? (
-          <p className="text-sm text-slate-400">No reports generated yet.</p>
+          <p className="text-sm text-ink-muted">No reports generated yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+          <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
             {reports.map((r) => (
               <li key={r.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm text-white">
                     {r.weekStart && r.weekEnd ? `${r.weekStart} – ${r.weekEnd}` : r.fileName || r.id}
                   </p>
-                  <p className="text-xs text-slate-500">{r.status}</p>
+                  <p className="text-xs text-ink-muted">{r.status}</p>
                 </div>
                 {r.status === "COMPLETE" && (
                   <a
                     href={`/api/reports/${r.id}/download`}
-                    className="text-sm text-indigo-400 hover:underline"
+                    className="text-sm text-accent hover:underline"
                   >
                     Download
                   </a>

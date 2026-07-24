@@ -45,40 +45,40 @@ export default function SignupPage() {
     <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-4">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold text-white">NextReport</h1>
-        <p className="mt-1 text-sm text-slate-400">Create your agency workspace</p>
+        <p className="mt-1 text-sm text-ink-muted">Create your agency workspace</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Name</label>
+          <label className="mb-1 block text-sm text-ink-secondary">Name</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
             placeholder="Your name"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Email</label>
+          <label className="mb-1 block text-sm text-ink-secondary">Email</label>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
             placeholder="you@agency.com"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Password</label>
+          <label className="mb-1 block text-sm text-ink-secondary">Password</label>
           <input
             type="password"
             required
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
             placeholder="At least 8 characters"
           />
         </div>
@@ -86,28 +86,28 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+          className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
         >
           {loading ? "Creating account…" : "Create account"}
         </button>
       </form>
 
-      <div className="my-4 flex items-center gap-3 text-xs text-slate-500">
-        <div className="h-px flex-1 bg-slate-800" />
+      <div className="my-4 flex items-center gap-3 text-xs text-ink-muted">
+        <div className="h-px flex-1 bg-navy-border" />
         or
-        <div className="h-px flex-1 bg-slate-800" />
+        <div className="h-px flex-1 bg-navy-border" />
       </div>
 
       <button
         onClick={() => signIn("google", { callbackUrl: "/clients" })}
-        className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border"
       >
         Continue with Google
       </button>
 
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-6 text-center text-sm text-ink-muted">
         Already have an account?{" "}
-        <Link href="/login" className="text-indigo-400 hover:underline">
+        <Link href="/login" className="text-accent hover:underline">
           Log in
         </Link>
       </p>

@@ -30,14 +30,14 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
+      <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
         <Providers>{children}</Providers>
-        <footer className="border-t border-slate-900 px-6 py-6 text-center text-xs text-slate-500">
+        <footer className="border-t border-navy-border px-6 py-6 text-center text-xs text-ink-muted">
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <Link href="/about" className="hover:text-slate-300">About</Link>
-            <Link href="/privacy" className="hover:text-slate-300">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-slate-300">Terms of Service</Link>
-            <Link href="/contact" className="hover:text-slate-300">Contact</Link>
+            <Link href="/about" className="hover:text-ink-secondary">About</Link>
+            <Link href="/privacy" className="hover:text-ink-secondary">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-ink-secondary">Terms of Service</Link>
+            <Link href="/contact" className="hover:text-ink-secondary">Contact</Link>
           </nav>
           <p className="mt-2">© 2026 NextReport. All rights reserved.</p>
         </footer>

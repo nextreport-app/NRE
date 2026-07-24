@@ -14,7 +14,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-1 text-xl font-semibold text-white">Generate report</h1>
-      <p className="mb-6 text-sm text-slate-400">{client.accountName}</p>
+      <p className="mb-6 text-sm text-ink-muted">{client.accountName}</p>
       <ReportUploadWizard clientId={client.id} />
     </div>
   );

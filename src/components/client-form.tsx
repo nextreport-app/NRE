@@ -74,23 +74,23 @@ export function ClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="mb-1 block text-sm text-slate-300">Account name</label>
+        <label className="mb-1 block text-sm text-ink-secondary">Account name</label>
         <input
           required
           value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
           placeholder="e.g. Acme Retail — Meta Ads"
-          className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Currency</label>
+          <label className="mb-1 block text-sm text-ink-secondary">Currency</label>
           <select
             value={values.currency}
             onChange={(e) => set("currency", e.target.value as ClientFormValues["currency"])}
-            className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
@@ -100,11 +100,11 @@ export function ClientForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Timezone</label>
+          <label className="mb-1 block text-sm text-ink-secondary">Timezone</label>
           <select
             value={values.timezone}
             onChange={(e) => set("timezone", e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>
@@ -116,7 +116,7 @@ export function ClientForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-slate-300">
+        <label className="mb-1 block text-sm text-ink-secondary">
           Monthly budget ({CURRENCY_SYMBOL[values.currency]}) — optional
         </label>
         <input
@@ -126,19 +126,19 @@ export function ClientForm({
           value={values.monthlyBudget ?? ""}
           onChange={(e) => set("monthlyBudget", e.target.value ? Number(e.target.value) : null)}
           placeholder="e.g. 50000"
-          className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-ink-muted">
           Used to show budget utilisation on the cover slide.
         </p>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-slate-300">Report template</label>
+        <label className="mb-1 block text-sm text-ink-secondary">Report template</label>
         <select
           value={values.template}
           onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
-          className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
         >
           {TEMPLATES.map((t) => (
             <option key={t} value={t}>
@@ -148,13 +148,13 @@ export function ClientForm({
         </select>
       </div>
 
-      <fieldset className="rounded-md border border-slate-800 p-4">
-        <legend className="px-1 text-sm text-slate-300">
+      <fieldset className="rounded-md border border-navy-border bg-navy-panel p-4">
+        <legend className="px-1 text-sm text-ink-secondary">
           AI insight writing (optional — your own API keys)
         </legend>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-muted">
               Groq API key (primary — llama-3.3-70b-versatile)
             </label>
             <input
@@ -162,11 +162,11 @@ export function ClientForm({
               value={values.groqApiKey ?? ""}
               onChange={(e) => set("groqApiKey", e.target.value)}
               placeholder="gsk_..."
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+              className="w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-muted">
               Gemini API key (fallback — gemini-2.5-flash)
             </label>
             <input
@@ -174,7 +174,7 @@ export function ClientForm({
               value={values.geminiApiKey ?? ""}
               onChange={(e) => set("geminiApiKey", e.target.value)}
               placeholder="AIza..."
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+              className="w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
             />
           </div>
         </div>
@@ -185,7 +185,7 @@ export function ClientForm({
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
       >
         {loading ? "Saving…" : clientId ? "Save changes" : "Create client"}
       </button>
