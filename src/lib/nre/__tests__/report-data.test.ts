@@ -6,6 +6,7 @@ import {
   type TableHeaderLabels,
   type TableRowData,
 } from "../report-data";
+import { adSetKey } from "../ad-sets";
 import type { NreRow } from "../columns";
 
 beforeAll(() => {
@@ -235,6 +236,67 @@ describe("buildReportData — multi-campaign integration", () => {
   it("sums daily reach in the MTD row — a known approximation (Meta may recount a person across days), matching what other reporting tools show", () => {
     // prospecting 1000/day + retargeting 800/day + awareness 10000/day, x7 days = 82,600.
     expect(data.mtdRow.reach).toBe("82,600");
+  });
+});
+
+describe("buildReportData — ad set filtering (report upload wizard's Ad Sets step)", () => {
+  // "Shoes - Purchases" has two ad sets (Prospecting, Retargeting); "Brand -
+  // Reach" has one (Awareness) — mirrors the multi-campaign fixture above.
+  it("removes excluded ad-set rows before the NRE engine runs — they never reach aggregation, results, or the chart", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      selectedAdSets: [adSetKey("Shoes - Purchases", "Prospecting"), adSetKey("Brand - Reach", "Awareness")],
+      now: NOW,
+    });
+
+    // Retargeting's rows are gone entirely — not blanked, not zeroed,
+    // absent. Shoes now has only one surviving ad set (Prospecting), so per
+    // the existing "2+ ad sets get their own slide" rule it no longer gets
+    // a dedicated ad-set slide — its campaign summary slide covers it.
+    expect(data.adSetSlides.some((s) => s.adSetName === "Retargeting")).toBe(false);
+    // Shoes' campaign summary only reflects the surviving ad set's numbers
+    // (spend 700, not the combined 1,050 from both ad sets).
+    const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
+    expect(shoes.metrics.spend).toBe("₹700");
+    expect(data.chart!.campaigns.find((c) => c.name === "Shoes - Purchases")!.spend).toBe(700);
+  });
+
+  it("deselecting every ad set in a campaign removes that campaign from the report entirely", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      // Both of Shoes' ad sets excluded; Brand's one ad set stays selected.
+      selectedAdSets: [adSetKey("Brand - Reach", "Awareness")],
+      now: NOW,
+    });
+
+    expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach"]);
+    expect(data.adSetSlides).toEqual([]);
+    expect(data.chart!.campaigns.map((c) => c.name)).toEqual(["Brand - Reach"]);
+    // The account isn't paused overall — Brand - Reach still has real data,
+    // only the fully-deselected campaign disappears.
+    expect(data.isPaused).toBe(false);
+  });
+
+  it("null selectedAdSets (no selection made) behaves exactly like before the feature existed — nothing filtered", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      selectedAdSets: null,
+      now: NOW,
+    });
+    expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach", "Shoes - Purchases"]);
+    expect(data.adSetSlides).toHaveLength(2);
   });
 });
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { dateSelectionSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, selectedAdSetsSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -12,6 +12,11 @@ const bodySchema = z.object({
   // (not the selection itself) that gets persisted.
   campaigns: z.array(z.string()).optional(),
   selectedCampaigns: selectedCampaignsSchema.optional(),
+  // Same pattern one level down: the full ad set composite-key list from
+  // this upload, required alongside selectedAdSets to compute the excluded
+  // set (see Client.lastDeselectedAdSets's schema comment).
+  adSets: z.array(z.string()).optional(),
+  selectedAdSets: selectedAdSetsSchema.optional(),
   dateSelection: dateSelectionSchema.optional(),
 });
 
@@ -38,11 +43,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid selection payload." }, { status: 400 });
     }
 
-    const data: { lastDeselectedCampaigns?: string; lastDateSelection?: string } = {};
+    const data: {
+      lastDeselectedCampaigns?: string;
+      lastDeselectedAdSets?: string;
+      lastDateSelection?: string;
+    } = {};
     if (parsed.data.campaigns && parsed.data.selectedCampaigns) {
       const selected = new Set(parsed.data.selectedCampaigns);
       const deselected = parsed.data.campaigns.filter((name) => !selected.has(name));
       data.lastDeselectedCampaigns = JSON.stringify(deselected);
+    }
+    if (parsed.data.adSets && parsed.data.selectedAdSets) {
+      const selected = new Set(parsed.data.selectedAdSets);
+      const deselected = parsed.data.adSets.filter((key) => !selected.has(key));
+      data.lastDeselectedAdSets = JSON.stringify(deselected);
     }
     if (parsed.data.dateSelection) {
       data.lastDateSelection = JSON.stringify(parsed.data.dateSelection);

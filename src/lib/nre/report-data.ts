@@ -24,6 +24,7 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily } from "./aggregate";
+import { filterRowsByAdSets } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
@@ -179,6 +180,14 @@ export interface BuildReportDataInput {
    * made (e.g. a client that predates the feature) — every campaign passes.
    */
   selectedCampaigns?: string[] | null;
+  /**
+   * Ad set composite keys (see ad-sets.ts's adSetKey) selected in the
+   * wizard's ad-set-selection step, which runs right after campaign
+   * selection. Applied after selectedCampaigns filtering, same
+   * never-reaches-the-engine guarantee. `undefined`/`null` means no
+   * selection was made — every ad set passes.
+   */
+  selectedAdSets?: string[] | null;
   /**
    * Explicit weekly window from the wizard's date-range step — drives the
    * campaign slides, ad-set slides, and MTD chart slide. `undefined` keeps
@@ -360,11 +369,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     mtdDailyRows,
     periodRows,
     selectedCampaigns,
+    selectedAdSets,
     weeklyRange,
     now = new Date(),
   } = input;
 
-  const filteredMtdDailyRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
+  const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
+  const filteredMtdDailyRows = filterRowsByAdSets(campaignFilteredRows, selectedAdSets ?? null);
   const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
