@@ -15,6 +15,7 @@ import { buildBlankSlideXml, ellipse, rectangle, resetShapeIdCounter, textBox } 
 
 const BG_COLOR = "0d1b2e"; // dark navy, per product owner spec
 const LABEL_COLOR = "7ab0cc";
+const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name
 const WHITE = "FFFFFF";
 
 // Keys that never actually occur in getResultLabels()'s output vocabulary
@@ -56,7 +57,7 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
     }),
   );
 
-  const activeCount = chart.campaigns.filter((d) => d.spend > 0).length;
+  const activeCount = chart.activeCampaignCount;
   shapes.push(
     textBox({
       x: 0,
@@ -93,6 +94,20 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
     shapes.push(
       textBox({ x: colX, y: CIRC_Y - 36, w: COL_W, h: 28, text: displayName, sizePt: 14, colorHex: WHITE }),
     );
+    if (d.statusIndicator) {
+      shapes.push(
+        textBox({
+          x: colX,
+          y: CIRC_Y - 8,
+          w: COL_W,
+          h: 14,
+          text: d.statusIndicator,
+          sizePt: 10,
+          bold: true,
+          colorHex: INACTIVE_COLOR,
+        }),
+      );
+    }
 
     const circTopY = CIRC_Y + 18;
     shapes.push(ellipse({ x: circX, y: circTopY, d: CIRCLE_D, fillHex: col }));

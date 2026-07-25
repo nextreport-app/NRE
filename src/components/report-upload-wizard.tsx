@@ -51,10 +51,10 @@ function buildUploadFormData(
   return formData;
 }
 
-/** "2026-07-18" -> "Jul 18". Parsed as UTC so the date can't shift a day off by the viewer's timezone. */
+/** "2026-07-18" -> "July 18" (full month name, matching the PPTX). Parsed as UTC so the date can't shift a day off by the viewer's timezone. */
 function formatIso(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(d);
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" }).format(d);
 }
 
 function formatIsoRange(range: DateRangeIso): string {

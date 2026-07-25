@@ -125,6 +125,32 @@ print(json.dumps({"slideCount": len(p.slides.__iter__.__self__._sldIdLst), "slid
   return JSON.parse(out);
 }
 
+/** Row/column count of the (single) table shape on a given slide, via python-pptx. */
+function inspectTableDimensions(pptxPath: string, slideIndex: number): { rows: number; cols: number } {
+  const script = `
+import sys, json
+from pptx import Presentation
+
+def find_table(shapes):
+    for shape in shapes:
+        if shape.shape_type == 6:
+            found = find_table(shape.shapes)
+            if found is not None:
+                return found
+            continue
+        if shape.has_table:
+            return shape.table
+    return None
+
+p = Presentation(sys.argv[1])
+slide = list(p.slides)[int(sys.argv[2])]
+table = find_table(slide.shapes)
+print(json.dumps({"rows": len(table.rows), "cols": len(table.columns)}))
+`;
+  const out = execFileSync("python3", ["-c", script, pptxPath, String(slideIndex)], { encoding: "utf-8" });
+  return JSON.parse(out);
+}
+
 describe("renderPptx — real template end-to-end", () => {
   it("produces a valid .pptx that python-pptx can open, with the expected slide structure and content", async () => {
     if (!fs.existsSync(TEMPLATE_PATH)) {
@@ -161,11 +187,11 @@ describe("renderPptx — real template end-to-end", () => {
     // harmless no-op against this template too.
     expect(cover).not.toContain("{{"); // no leftover unfilled tags
 
-    expect(campaign1).toContain("Brand - Reach");
+    expect(campaign1).toContain("Brand - Reach (Campaign)");
     expect(campaign1).toContain("₹1,400");
     expect(campaign1).not.toContain("{{");
 
-    expect(campaign2).toContain("Shoes - Purchases");
+    expect(campaign2).toContain("Shoes - Purchases (Campaign)");
     expect(campaign2).toContain("₹1,050");
     expect(campaign2).not.toContain("{{");
 
@@ -183,6 +209,14 @@ describe("renderPptx — real template end-to-end", () => {
     expect(table).toContain("PURCHASES");
     expect(table).not.toContain("{{");
 
+    // This fixture has no Period CSV and only one non-Reach objective
+    // (Purchase) — the Period row and the second result-type columns must
+    // both be structurally removed, not just blanked, verified with an
+    // independent OOXML reader (python-pptx), not our own fill code.
+    const tableDims = inspectTableDimensions(outPath, 6); // slide index 6 = table
+    expect(tableDims.rows).toBe(2); // header + MTD only, Period row hidden
+    expect(tableDims.cols).toBe(8); // second result-type columns hidden
+
     expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
     // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 13pt
@@ -193,6 +227,73 @@ describe("renderPptx — real template end-to-end", () => {
     const aiRunRegex =
       /<a:r><a:rPr[^>]*b="0"[^>]*sz="1300"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>\[AI unavailable/;
     expect(campaignSlideXml).toMatch(aiRunRegex);
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
+  it("keeps the full 3-row x 10-column table when Period data exists and there are two objectives", async () => {
+    const templateBuffer = fs.readFileSync(TEMPLATE_PATH);
+    const leadsRows = buildDailyRows({
+      campaign_name: "Lead Gen",
+      ad_set_name: "Ad Set 1",
+      result_type: "Lead",
+      spend: 100,
+      reach: 2000,
+      impressions: 4000,
+      results: 10,
+      link_clicks: 20,
+      ctr: 1.2,
+      cpc: 2,
+      frequency: 1.5,
+    });
+    const salesRows = buildDailyRows({
+      campaign_name: "Sales",
+      ad_set_name: "Ad Set 1",
+      result_type: "Purchase",
+      spend: 150,
+      reach: 3000,
+      impressions: 6000,
+      results: 8,
+      link_clicks: 25,
+      ctr: 1.4,
+      cpc: 2.5,
+      frequency: 1.8,
+    });
+    const periodRows = [
+      {
+        _raw: {},
+        campaign_name: "Sales",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...leadsRows, ...salesRows],
+      periodRows: periodRows as unknown as NreRow[],
+      now: NOW,
+    });
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
+    const outPath = path.join(os.tmpdir(), `nre-render-full-table-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // Table slide index: cover + 2 campaign slides (no multi-adset campaigns
+    // here, so no ad-set slides) + chart + table + legend = table is index 4.
+    const tableDims = inspectTableDimensions(outPath, 4);
+    expect(tableDims.rows).toBe(3);
+    expect(tableDims.cols).toBe(10);
 
     fs.unlinkSync(outPath);
   }, 30000);

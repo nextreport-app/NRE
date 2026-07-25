@@ -63,7 +63,11 @@ const FALLBACK_AI_COPY: AiCopy = {
  */
 export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: SlideData, ai: AiCopy = FALLBACK_AI_COPY): string {
   const heading =
-    slide.kind === "adset" ? (slide.adSetName ? slide.adSetName + " (Ad Set)" : slide.campaignName) : slide.campaignName;
+    slide.kind === "adset"
+      ? slide.adSetName
+        ? slide.adSetName + " (Ad Set)"
+        : slide.campaignName
+      : slide.campaignName + " (Campaign)";
 
   let xml = fillTags(
     template.xml,
@@ -124,7 +128,10 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
 /**
  * Fills the Combined Total table positionally (see table-slide.ts) rather
  * than by scanning for named {{TAG}} runs — a structure mismatch throws
- * immediately instead of a column silently going missing.
+ * immediately instead of a column silently going missing. Hides the Period
+ * row (index 1) entirely when no Period CSV was uploaded — rather than a
+ * row of dashes — and hides the second result-type columns (8-9) entirely
+ * when the data only has one objective, rather than a blank dashed pair.
  */
 export function buildTableSlideXml(
   template: TemplateSlide,
@@ -133,5 +140,9 @@ export function buildTableSlideXml(
   headers: TableHeaderLabels,
 ): string {
   const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
-  return fillCombinedTotalTable(template.xml, grid);
+  const hasSecondObjective = headers.result2Label !== "—";
+  return fillCombinedTotalTable(template.xml, grid, {
+    hideRowIndexes: periodRow.hasData ? [] : [1],
+    hideColIndexes: hasSecondObjective ? [] : [8, 9],
+  });
 }

@@ -27,6 +27,7 @@ import { splitMtdDaily } from "./aggregate";
 import { filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
+import { campaignStatusIndicator, isActiveDeliveryStatus, type DeliveryStatusIndicator } from "./delivery-status";
 import { getDateRangeShortLabel, formatDateUS } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
@@ -98,6 +99,9 @@ export interface ChartCampaignData {
   avgCtr: number;
   resLabel: string;
   cprLabel: string;
+  isActive: boolean;
+  /** Small on-chart label ("Paused"/"Inactive") shown under the campaign name when not active; null when active or the CSV has no delivery-status data. */
+  statusIndicator: DeliveryStatusIndicator;
 }
 
 export interface ChartSlideData {
@@ -196,7 +200,7 @@ function rowFrequency(row: MetricRow): number {
 
 function freqLine(freq: number): string {
   if (freq <= 0) return "";
-  return "\nFreq: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
+  return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
 /**
@@ -359,6 +363,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
   const isPaused = weeklyRows.length === 0;
+
+  // Whether the CSV actually has delivery-status data anywhere at all — a
+  // file without that column (the common case) falls back to the original
+  // spend-based "active" heuristic instead of every campaign coming back as
+  // inactive just because the status column doesn't exist.
+  const hasDeliveryStatusData = filteredMtdDailyRows.some((r) => (r.delivery_status || "").trim() !== "");
 
   // Global weekly date range across ALL campaigns — used on every slide so
   // reporting periods stay consistent even if one campaign started mid-week.
@@ -633,14 +643,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpr = resLabel === "REACH" ? rawCpr * 1000 : rawCpr;
     }
     totalAllSpend += spend;
-    return { name, spend, results, cpr, avgCtr, resLabel, cprLabel };
+
+    const isActive = hasDeliveryStatusData
+      ? rows.some((r) => isActiveDeliveryStatus(r.delivery_status))
+      : spend > 0;
+    const statusIndicator = hasDeliveryStatusData
+      ? campaignStatusIndicator(rows.map((r) => r.delivery_status))
+      : null;
+
+    return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
 
   const chart: ChartSlideData = {
     periodLabel: "MTD",
     campaigns: chartCampaigns,
     totalAllSpend,
-    activeCampaignCount: chartCampaigns.filter((d) => d.spend > 0).length,
+    activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
   };
 
   return {

@@ -108,7 +108,7 @@ describe("buildReportData — multi-campaign integration", () => {
 
   it("is not paused and computes the global week date range", () => {
     expect(data.isPaused).toBe(false);
-    expect(data.cover.dateRange).toBe("Jul 13 - Jul 19");
+    expect(data.cover.dateRange).toBe("July 13 - July 19");
     expect(data.fileDateRange).toBe("07/13/2026 to 07/19/2026");
   });
 
@@ -142,7 +142,7 @@ describe("buildReportData — multi-campaign integration", () => {
       cpr: "₹50.00",
       cpc: "₹3.50",
     });
-    expect(shoes.dateRangeLine).toBe("Jul 13 - Jul 19\nFreq: 2.5x avg");
+    expect(shoes.dateRangeLine).toBe("July 13 - July 19\nAd Frequency: 2.5x avg");
   });
 
   it("computes cost-per-1K-reach directly from reach for a reach campaign summary with 0 results", () => {
@@ -212,7 +212,7 @@ describe("buildReportData — multi-campaign integration", () => {
       hasData: true,
       // " MTD" suffix marks this as a partial, still-in-progress month,
       // distinct from the Period row's completed-month date range.
-      monthLabel: "Jul 13 - Jul 19 MTD",
+      monthLabel: "July 13 - July 19 MTD",
       spend: "₹2,450",
       // Never a summed daily reach total — see the dedicated reach test below.
       reach: "—",
@@ -554,9 +554,85 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
       weeklyRange: { startIso: "2026-07-15", endIso: "2026-07-17" },
       now: NOW,
     });
-    expect(data.cover.dateRange).toBe("Jul 15 - Jul 17");
+    expect(data.cover.dateRange).toBe("July 15 - July 17");
     // MTD is unaffected by the weekly selection — still every day the fixture
     // has data for (13-19; the fixture doesn't include days 1-12).
-    expect(data.mtdRow.monthLabel).toBe("Jul 13 - Jul 19 MTD");
+    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19 MTD");
+  });
+});
+
+describe("buildReportData — active campaign count from delivery status", () => {
+  function statusRow(campaignName: string, deliveryStatus: string, day: string): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: "Ad Set 1",
+      result_type: "Purchase",
+      delivery_status: deliveryStatus,
+      spend: "100",
+      reach: "1000",
+      impressions: "3000",
+      results: "2",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  it("counts only campaigns with an active-reading delivery status when the CSV has that column", () => {
+    const rows = [
+      ...daysInclusive(13, 19).map((day) => statusRow("Live Campaign", "Active", day)),
+      ...daysInclusive(13, 19).map((day) => statusRow("Paused Campaign", "Campaign paused", day)),
+      ...daysInclusive(13, 19).map((day) => statusRow("Idle Campaign", "Not delivering", day)),
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+
+    expect(data.chart!.activeCampaignCount).toBe(1);
+    const live = data.chart!.campaigns.find((c) => c.name === "Live Campaign")!;
+    const paused = data.chart!.campaigns.find((c) => c.name === "Paused Campaign")!;
+    const idle = data.chart!.campaigns.find((c) => c.name === "Idle Campaign")!;
+    expect(live.isActive).toBe(true);
+    expect(live.statusIndicator).toBeNull();
+    expect(paused.isActive).toBe(false);
+    expect(paused.statusIndicator).toBe("Paused");
+    expect(idle.isActive).toBe(false);
+    expect(idle.statusIndicator).toBe("Inactive");
+  });
+
+  it("falls back to the spend-based heuristic when the CSV has no delivery-status column at all", () => {
+    // No delivery_status field on any row — must not count everything as
+    // inactive just because the column doesn't exist in this CSV.
+    const rows = buildDailyRows({
+      campaign_name: "No Status Column",
+      ad_set_name: "Ad Set 1",
+      result_type: "Purchase",
+      spend: 100,
+      reach: 1000,
+      impressions: 3000,
+      results: 2,
+      link_clicks: 10,
+      ctr: 1.5,
+      cpc: 3,
+      frequency: 2,
+    });
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    expect(data.chart!.activeCampaignCount).toBe(1);
+    expect(data.chart!.campaigns[0].isActive).toBe(true);
+    expect(data.chart!.campaigns[0].statusIndicator).toBeNull();
   });
 });

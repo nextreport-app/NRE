@@ -36,12 +36,15 @@ export interface AggRow {
   frequency: number;
   date_start: string;
   date_end: string;
+  /** Raw text, e.g. "Active"/"Not delivering"/"Paused" — see delivery-status.ts. Empty when the CSV has no delivery-status column, or no row for this group had one set. */
+  delivery_status: string;
 }
 
 interface GroupAcc {
   campaign_name: string;
   ad_set_name: string;
   result_type: string;
+  delivery_status: string;
   spend: number;
   reach: number;
   impressions: number;
@@ -69,6 +72,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         campaign_name: row.campaign_name || "",
         ad_set_name: row.ad_set_name || "",
         result_type: "",
+        delivery_status: "",
         spend: 0,
         reach: 0,
         impressions: 0,
@@ -85,6 +89,9 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
 
     if (row.result_type && row.result_type.trim()) {
       g.result_type = row.result_type.trim();
+    }
+    if (row.delivery_status && row.delivery_status.trim()) {
+      g.delivery_status = row.delivery_status.trim();
     }
     g.spend += parseCellNum(row.spend);
     g.reach += parseCellNum(row.reach);
@@ -148,6 +155,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       campaign_name: g.campaign_name,
       ad_set_name: g.ad_set_name,
       result_type: actualResultType,
+      delivery_status: g.delivery_status,
       spend: g.spend,
       reach: g.reach,
       impressions: g.impressions,

@@ -54,7 +54,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 232 tests covering the NRE engine, PPTX, AI, and Drive modules
+npm test                   # 259 tests covering the NRE engine, PPTX, AI, and Drive modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted

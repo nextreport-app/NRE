@@ -76,13 +76,14 @@ export function getMonthLabel(rawValue: unknown, timezone: string): string {
 }
 
 const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ] as const;
 
 /**
  * "June 1-30" / "July 1-9" (same month) or "June 28 - July 4" (cross-month).
- * Always shows the full range, even within the same day.
+ * Always shows the full range, even within the same day. Full month names
+ * throughout (not "Jul"/"Jun") — used on every slide that shows a date range.
  */
 export function getDateRangeShortLabel(rawStart: unknown, rawEnd: unknown): string {
   const s = parseDate(rawStart);

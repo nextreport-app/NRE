@@ -53,15 +53,15 @@ describe("formatDateUS", () => {
 
 describe("getDateRangeShortLabel", () => {
   it("shows a single date when start === end", () => {
-    expect(getDateRangeShortLabel("13-07-2026", "13-07-2026")).toBe("Jul 13");
+    expect(getDateRangeShortLabel("13-07-2026", "13-07-2026")).toBe("July 13");
   });
 
   it("shows a same-month range", () => {
-    expect(getDateRangeShortLabel("13-07-2026", "19-07-2026")).toBe("Jul 13 - Jul 19");
+    expect(getDateRangeShortLabel("13-07-2026", "19-07-2026")).toBe("July 13 - July 19");
   });
 
   it("shows a cross-month range", () => {
-    expect(getDateRangeShortLabel("28-06-2026", "04-07-2026")).toBe("Jun 28 - Jul 4");
+    expect(getDateRangeShortLabel("28-06-2026", "04-07-2026")).toBe("June 28 - July 4");
   });
 
   it("returns N/A when start is unparseable", () => {

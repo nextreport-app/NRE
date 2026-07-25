@@ -21,6 +21,11 @@ export const NRE_METRIC_KEYS = [
   "frequency",
   "date_start",
   "date_end",
+  // Not part of the ported Apps Script — added for the MTD chart slide's
+  // active-campaign count (product owner, from testing against real
+  // accounts). Genuinely optional: a CSV without this column falls back to
+  // the original spend-based "active" heuristic, see report-data.ts.
+  "delivery_status",
 ] as const;
 
 export type NreMetricKey = (typeof NRE_METRIC_KEYS)[number];
@@ -40,6 +45,7 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   frequency: ["frequency", "ad frequency", "avg. frequency"],
   date_start: ["reporting starts", "date start", "start date", "from date"],
   date_end: ["reporting ends", "date end", "end date", "to date"],
+  delivery_status: ["delivery status", "effective status", "ad set delivery", "campaign delivery"],
 };
 
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;

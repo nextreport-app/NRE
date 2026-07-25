@@ -9,12 +9,13 @@ function cellXml(placeholder: string, sizePt = 1400): string {
 }
 
 /** A minimal but structurally realistic 3x10 table, one placeholder cell per position. */
-function buildFixtureTable(rows = EXPECTED_ROWS, cols = EXPECTED_COLS): string {
+function buildFixtureTable(rows = EXPECTED_ROWS, cols = EXPECTED_COLS, colWidth = 100000): string {
   const trs = Array.from({ length: rows }, (_, r) => {
     const tcs = Array.from({ length: cols }, (_, c) => cellXml(`R${r}C${c}`)).join("");
     return `<a:tr h="200000">${tcs}</a:tr>`;
   }).join("");
-  return `<p:sp><a:tbl><a:tblGrid/>${trs}</a:tbl></p:sp>`;
+  const gridCols = Array.from({ length: cols }, () => `<a:gridCol w="${colWidth}"/>`).join("");
+  return `<p:sp><a:tbl><a:tblGrid>${gridCols}</a:tblGrid>${trs}</a:tbl></p:sp>`;
 }
 
 function grid3x10(fill: (r: number, c: number) => string): string[][] {
@@ -101,5 +102,71 @@ describe("fillCombinedTotalTable", () => {
     const out = fillCombinedTotalTable(xml, grid3x10(() => "x"));
     expect(out).toContain("<p:sldBefore/>");
     expect(out).toContain("<p:sldAfter/>");
+  });
+
+  describe("hideRowIndexes / hideColIndexes", () => {
+    it("removes the requested row entirely (e.g. the Period row) while keeping the others filled", () => {
+      const xml = buildFixtureTable();
+      const grid = grid3x10((r, c) => `V${r}-${c}`);
+      const out = fillCombinedTotalTable(xml, grid, { hideRowIndexes: [1] });
+
+      const rowCount = (out.match(/<a:tr /g) || []).length;
+      expect(rowCount).toBe(2);
+      // Row 1 (Period) is gone; rows 0 (header) and 2 (MTD) survive.
+      expect(out).not.toContain("<a:t>V1-0</a:t>");
+      expect(out).toContain("<a:t>V0-0</a:t>");
+      expect(out).toContain("<a:t>V2-0</a:t>");
+    });
+
+    it("removes the requested columns from every row and from <a:tblGrid>", () => {
+      const xml = buildFixtureTable();
+      const grid = grid3x10((r, c) => `V${r}-${c}`);
+      const out = fillCombinedTotalTable(xml, grid, { hideColIndexes: [8, 9] });
+
+      // Every row now has 8 cells, not 10.
+      const rows = out.split("<a:tr ");
+      for (const row of rows.slice(1)) {
+        expect((row.match(/<a:tc>/g) || []).length).toBe(8);
+      }
+      // Columns 8-9's content is gone from every row.
+      for (let r = 0; r < EXPECTED_ROWS; r++) {
+        expect(out).not.toContain(`<a:t>V${r}-8</a:t>`);
+        expect(out).not.toContain(`<a:t>V${r}-9</a:t>`);
+      }
+      // Only 8 <a:gridCol> entries remain.
+      expect((out.match(/<a:gridCol /g) || []).length).toBe(8);
+    });
+
+    it("redistributes the removed columns' width evenly across the remaining columns", () => {
+      const xml = buildFixtureTable(EXPECTED_ROWS, EXPECTED_COLS, 100000); // 10 cols x 100000 = 1,000,000 total
+      const grid = grid3x10(() => "x");
+      const out = fillCombinedTotalTable(xml, grid, { hideColIndexes: [8, 9] });
+      // 1,000,000 spread across the remaining 8 columns = 125,000 each.
+      const widths = [...out.matchAll(/<a:gridCol w="(\d+)"\/>/g)].map((m) => Number(m[1]));
+      expect(widths).toEqual(Array(8).fill(125000));
+    });
+
+    it("applies both row and column hiding together", () => {
+      const xml = buildFixtureTable();
+      const grid = grid3x10((r, c) => `V${r}-${c}`);
+      const out = fillCombinedTotalTable(xml, grid, { hideRowIndexes: [1], hideColIndexes: [8, 9] });
+
+      expect((out.match(/<a:tr /g) || []).length).toBe(2);
+      const rows = out.split("<a:tr ");
+      for (const row of rows.slice(1)) {
+        expect((row.match(/<a:tc>/g) || []).length).toBe(8);
+      }
+      expect(out).toContain("<a:t>V0-0</a:t>"); // header survives
+      expect(out).toContain("<a:t>V2-0</a:t>"); // MTD survives
+      expect(out).not.toContain("<a:t>V1-0</a:t>"); // Period row gone
+    });
+
+    it("leaves the table fully intact (3x10) when no hiding is requested", () => {
+      const xml = buildFixtureTable();
+      const grid = grid3x10(() => "x");
+      const out = fillCombinedTotalTable(xml, grid);
+      expect((out.match(/<a:tr /g) || []).length).toBe(3);
+      expect((out.match(/<a:gridCol /g) || []).length).toBe(10);
+    });
   });
 });

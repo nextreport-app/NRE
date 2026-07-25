@@ -7,6 +7,7 @@ function row(overrides: Partial<AggRow> = {}): AggRow {
     campaign_name: "Campaign A",
     ad_set_name: "Ad Set 1",
     result_type: "Leads (form)",
+    delivery_status: "",
     spend: 1000,
     reach: 5000,
     impressions: 10000,
