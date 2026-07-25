@@ -27,7 +27,7 @@ import { splitMtdDaily } from "./aggregate";
 import { filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
-import { campaignStatusIndicator, isActiveDeliveryStatus, type DeliveryStatusIndicator } from "./delivery-status";
+import { campaignStatusIndicator, deliveryStatusIndicator, isActiveDeliveryStatus, type DeliveryStatusIndicator } from "./delivery-status";
 import { getDateRangeShortLabel, formatDateUS } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
@@ -75,6 +75,8 @@ export interface CampaignSlideData {
   dateRangeLine: string;
   avgFreq: number;
   ai: AiContext;
+  /** Small "Paused"/"Inactive" tag next to the campaign name; null when active or the CSV has no delivery-status data. */
+  statusIndicator: DeliveryStatusIndicator;
 }
 
 export interface AdSetSlideData {
@@ -87,6 +89,8 @@ export interface AdSetSlideData {
   dateRangeLine: string;
   rowFreq: number;
   ai: AiContext;
+  /** Small "Paused"/"Inactive" tag next to the ad set name; null when active or the CSV has no delivery-status data. */
+  statusIndicator: DeliveryStatusIndicator;
 }
 
 export type SlideData = CampaignSlideData | AdSetSlideData;
@@ -519,6 +523,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     const totalResults = campRows.reduce((sum, r) => sum + parseCellNum(r.results), 0);
 
+    const statusIndicator = hasDeliveryStatusData
+      ? campaignStatusIndicator(campRows.map((r) => r.delivery_status))
+      : null;
+
     const metrics: SlideMetrics = {
       spend: fmtCurrency(totalSpend, currencySymbol),
       reach: fmtNumber(totalReach),
@@ -537,6 +545,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
+      statusIndicator,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
         spend: metrics.spend,
@@ -564,6 +573,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplay(row, currencySymbol);
     const rowFreq = rowFrequency(row);
+    const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
     const rowSpend = parseCellNum(row.spend);
     const rowReach = parseCellNum(row.reach);
@@ -590,6 +600,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
+      statusIndicator,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         spend: fmtCurrency(row.spend, currencySymbol),

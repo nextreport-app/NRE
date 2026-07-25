@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeXmlText, forceRunStyle, replaceTagRun } from "../ooxml";
+import { escapeXmlText, forceRunStyle, replaceTagRun, replaceTagRunWithSuffix } from "../ooxml";
 
 const SAMPLE_RUN =
   '<a:r><a:rPr b="1" i="0" lang="en-US" sz="2000" u="none"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:latin typeface="Poppins"/></a:rPr><a:t>{{METRIC_SPEND}}</a:t></a:r>';
@@ -61,6 +61,50 @@ describe("replaceTagRun", () => {
     const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
     const { xml: out } = replaceTagRun(xml, "{{METRIC_SPEND}}", "A & B");
     expect(out).toContain("A &amp; B");
+  });
+
+  it("replaces an existing solidFill with a color override", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
+    const { xml: out } = replaceTagRun(xml, "{{METRIC_SPEND}}", "text", { color: "fbbf24" });
+    expect(out).toContain('<a:srgbClr val="fbbf24"/>');
+    expect(out).not.toContain('<a:schemeClr val="lt1"/>');
+  });
+});
+
+describe("replaceTagRunWithSuffix", () => {
+  it("appends a differently-styled suffix run right after the tag's own run", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
+    const { xml: out, replaced } = replaceTagRunWithSuffix(
+      xml,
+      "{{METRIC_SPEND}}",
+      "Shoes - Purchases (Campaign)",
+      "  (Inactive)",
+      { sizePt: 18 },
+      { sizePt: 12, bold: true, color: "fbbf24" },
+    );
+    expect(replaced).toBe(true);
+    expect(out).toContain("<a:t>Shoes - Purchases (Campaign)</a:t>");
+    expect(out).toContain("<a:t>  (Inactive)</a:t>");
+    // Name run and suffix run are two distinct <a:r> elements, suffix after the name.
+    const nameIdx = out.indexOf("Shoes - Purchases (Campaign)");
+    const suffixIdx = out.indexOf("(Inactive)");
+    expect(suffixIdx).toBeGreaterThan(nameIdx);
+    // Suffix run carries its own style, distinct from the name run's.
+    expect(out).toContain('<a:srgbClr val="fbbf24"/>');
+    expect(out).toContain('sz="1800"'); // name
+    expect(out).toContain('sz="1200"'); // suffix
+  });
+
+  it("adds no suffix run at all when suffix is null (active campaign — no badge)", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
+    const { xml: out } = replaceTagRunWithSuffix(xml, "{{METRIC_SPEND}}", "Shoes - Purchases (Campaign)", null, { sizePt: 18 });
+    expect((out.match(/<a:r>/g) || []).length).toBe(1);
+    expect(out).not.toContain("Inactive");
+  });
+
+  it("reports replaced: false when the tag isn't present", () => {
+    const { replaced } = replaceTagRunWithSuffix("<a:p>no tags</a:p>", "{{MISSING}}", "x", "(Inactive)");
+    expect(replaced).toBe(false);
   });
 });
 

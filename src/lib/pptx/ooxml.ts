@@ -20,6 +20,8 @@ export interface StyleOverride {
   sizePt?: number;
   /** Forces <a:latin>/<a:ea>/<a:cs> typeface — e.g. AI-written text boxes must render in Poppins regardless of the template placeholder's own font. */
   fontFamily?: string;
+  /** Forces the run's text fill to this hex RGB (no "#"), replacing whatever <a:solidFill> it had (scheme or RGB). */
+  color?: string;
 }
 
 function applyStyleOverride(rPrBlock: string, override: StyleOverride | undefined): string {
@@ -38,6 +40,17 @@ function applyStyleOverride(rPrBlock: string, override: StyleOverride | undefine
       const re = new RegExp(`<${tag} typeface="[^"]*"`, "g");
       const replacement = `<${tag} typeface="${override.fontFamily}"`;
       block = re.test(block) ? block.replace(re, replacement) : block;
+    }
+  }
+  if (override.color !== undefined) {
+    const fillRe = /<a:solidFill>[\s\S]*?<\/a:solidFill>/;
+    const replacement = `<a:solidFill><a:srgbClr val="${override.color}"/></a:solidFill>`;
+    if (fillRe.test(block)) {
+      block = block.replace(fillRe, replacement);
+    } else if (/<a:rPr[^>]*\/>/.test(block)) {
+      block = block.replace(/<a:rPr([^>]*)\/>/, `<a:rPr$1>${replacement}</a:rPr>`);
+    } else {
+      block = block.replace(/(<a:rPr[^>]*>)/, `$1${replacement}`);
     }
   }
   return block;
@@ -72,6 +85,41 @@ export function replaceTagRun(
   const runs = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
 
   return { xml: xml.slice(0, match.index) + runs + xml.slice(match.index + match[0].length), replaced: true };
+}
+
+/**
+ * Like replaceTagRun, but also inserts a second run directly after the
+ * tag's own run, in the same paragraph — e.g. a small "(Inactive)" badge
+ * next to a campaign/ad-set name that must render in a different
+ * color/size than the name itself. `suffix` is skipped entirely (no run
+ * added) when null/empty, so the active case renders exactly like a plain
+ * replaceTagRun call.
+ */
+export function replaceTagRunWithSuffix(
+  xml: string,
+  tag: string,
+  value: string,
+  suffix: string | null | undefined,
+  styleOverride?: StyleOverride,
+  suffixStyleOverride?: StyleOverride,
+): { xml: string; replaced: boolean } {
+  const escapedTag = escapeRegExp(tag);
+  const runRegex = new RegExp(`<a:r>((?:(?!</a:r>)[\\s\\S])*?)<a:t>${escapedTag}</a:t></a:r>`);
+  const match = runRegex.exec(xml);
+  if (!match) return { xml, replaced: false };
+
+  const rPrBlock = applyStyleOverride(match[1] ?? "", styleOverride);
+  const lines = String(value).split("\n");
+  const mainRuns = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
+
+  const suffixRun = suffix
+    ? `<a:r>${applyStyleOverride(match[1] ?? "", suffixStyleOverride)}<a:t>${escapeXmlText(suffix)}</a:t></a:r>`
+    : "";
+
+  return {
+    xml: xml.slice(0, match.index) + mainRuns + suffixRun + xml.slice(match.index + match[0].length),
+    replaced: true,
+  };
 }
 
 /**

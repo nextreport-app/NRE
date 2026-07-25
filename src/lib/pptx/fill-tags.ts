@@ -6,7 +6,7 @@
  */
 
 import { buildCombinedTotalTableGrid, type CoverData, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
-import { forceRunStyle, replaceTagRun, type StyleOverride } from "./ooxml";
+import { forceRunStyle, replaceTagRun, replaceTagRunWithSuffix, type StyleOverride } from "./ooxml";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 
@@ -37,6 +37,9 @@ const FALLBACK_AI_COPY: AiCopy = {
   summary: "[AI unavailable — check API keys]",
   insights: "[AI unavailable — check API keys]",
 };
+
+/** Same amber used for the MTD chart's "Paused"/"Inactive" indicator — one consistent color for "not active" across the whole deck. */
+const INACTIVE_TAG_COLOR = "fbbf24";
 
 /**
  * Campaign-summary and ad-set slides share the same template clone.
@@ -69,10 +72,14 @@ export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: Sli
         : slide.campaignName
       : slide.campaignName + " (Campaign)";
 
+  // Small "Paused"/"Inactive" badge right after the name — null (no badge
+  // at all) for active campaigns/ad sets and whenever the CSV has no
+  // delivery-status column to judge it from.
+  const statusSuffix = slide.statusIndicator ? `  (${slide.statusIndicator})` : null;
+
   let xml = fillTags(
     template.xml,
     {
-      CAMPAIGN_NAME: heading,
       RESULT_LABEL: slide.resultLabel,
       COST_LABEL: slide.costLabel,
       METRIC_SPEND: slide.metrics.spend,
@@ -87,11 +94,11 @@ export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: Sli
       KEY_INSIGHTS: ai.insights,
     },
     {
-      CAMPAIGN_NAME: { sizePt: 18 },
       CAMPAIGN_SUMMARY: { bold: false, sizePt: 13, fontFamily: "Poppins" },
       KEY_INSIGHTS: { bold: false, sizePt: 13, fontFamily: "Poppins" },
     },
   );
+  xml = replaceTagRunWithSuffix(xml, "{{CAMPAIGN_NAME}}", heading, statusSuffix, { sizePt: 18 }, { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR }).xml;
   xml = forceRunStyle(xml, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });
   return xml;
 }
