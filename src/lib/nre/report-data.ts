@@ -210,16 +210,18 @@ function freqLine(freq: number): string {
 /**
  * Shared computation for the Period row and the MTD row of the 10-column
  * table. `isMtdRow` marks the MTD-Daily-CSV row, which is per-day data, and
- * drives two things:
- *   - reach is always shown as "—", never a summed daily total. Reach
- *     de-dupes people within Meta's own reporting window, so summing each
- *     day's reach recounts the same person once per day they saw an ad,
- *     wildly inflating the total. The Period CSV row isn't daily (it's a
- *     single non-daily monthly export), so its reach total is a real value
- *     Meta already de-duplicated and is safe to show.
- *   - the month label gets an " MTD" suffix (e.g. "Jul 1 - Jul 23 MTD") so
- *     it reads clearly as a partial, still-in-progress month rather than a
- *     completed one like the Period row's.
+ * drives the month label getting an " MTD" suffix (e.g. "Jul 1 - Jul 23
+ * MTD") so it reads clearly as a partial, still-in-progress month rather
+ * than a completed one like the Period row's.
+ *
+ * Reach is a straight sum of every row's reach value for both rows, even
+ * though for the MTD row that's summing per-day numbers and Meta re-counts
+ * the same person on each day they saw an ad — a deliberate, known
+ * approximation (product decision, not an oversight): every other reporting
+ * tool agencies/clients use does the same, and a dash here reads as "no
+ * data" rather than "this number is approximate," which was actively
+ * confusing. Only Reach gets this treatment; CTR/CPC stay true averages, not
+ * sums, since those aren't meaningful summed.
  */
 function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: boolean): TableRowData {
   if (!rows || rows.length === 0) {
@@ -278,7 +280,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
     hasData: true,
     monthLabel,
     spend: fmtCurrency(totalSpend, currencySymbol),
-    reach: isMtdRow ? "—" : fmtNumber(totalReach),
+    reach: fmtNumber(totalReach),
     impressions: fmtNumber(totalImpr),
     ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
     cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",

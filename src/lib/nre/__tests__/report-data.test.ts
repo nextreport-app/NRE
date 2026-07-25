@@ -214,8 +214,8 @@ describe("buildReportData — multi-campaign integration", () => {
       // distinct from the Period row's completed-month date range.
       monthLabel: "July 13 - July 19 MTD",
       spend: "₹2,450",
-      // Never a summed daily reach total — see the dedicated reach test below.
-      reach: "—",
+      // A straight sum of the daily rows' reach — see the dedicated reach test below.
+      reach: "82,600",
       impressions: "140,000",
       ctr: "1.60%",
       cpc: "₹3.50",
@@ -232,12 +232,9 @@ describe("buildReportData — multi-campaign integration", () => {
     });
   });
 
-  it("never sums daily reach in the MTD row — reach de-dupes people, so summing per-day totals wildly overcounts", () => {
-    // Regression test for the exact scenario reported: daily CSV reach summed
-    // to 90,779 while the account's actual (Meta-deduplicated) reach was
-    // 46,266 — any positive summed total would be wrong, so the MTD row must
-    // always show "—" for reach regardless of what the daily rows total to.
-    expect(data.mtdRow.reach).toBe("—");
+  it("sums daily reach in the MTD row — a known approximation (Meta may recount a person across days), matching what other reporting tools show", () => {
+    // prospecting 1000/day + retargeting 800/day + awareness 10000/day, x7 days = 82,600.
+    expect(data.mtdRow.reach).toBe("82,600");
   });
 });
 
@@ -374,8 +371,9 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
     });
   });
 
-  it("never sums daily reach in the MTD row for this scenario either", () => {
-    expect(data.mtdRow.reach).toBe("—");
+  it("sums daily reach in the MTD row for this scenario too", () => {
+    // leadsForm 4000/day + websiteSubs 3000/day, x7 days = 49,000.
+    expect(data.mtdRow.reach).toBe("49,000");
   });
 });
 
@@ -426,14 +424,16 @@ describe("buildCombinedTotalTableGrid", () => {
     ]);
   });
 
-  // Rule 2: reach column (index 2).
-  it("column 2 (Reach): shows the real value for the Period row, always '—' for the MTD row", () => {
+  // Rule 2: reach column (index 2) — the grid builder just carries whatever
+  // computeTableRow gave it straight through; both rows now get a real
+  // summed number (see computeTableRow's own reach tests for the sum logic).
+  it("column 2 (Reach): carries the Period and MTD row's own reach values through unchanged", () => {
     const periodRow = tableRow({ reach: "46,266" });
-    const mtdRow = tableRow({ reach: "—" }); // computeTableRow already forces this — grid just carries it through
+    const mtdRow = tableRow({ reach: "90,779" });
     const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
     expect(grid[0][2]).toBe("Reach"); // header never disappears
-    expect(grid[1][2]).toBe("46,266"); // Period row: real number
-    expect(grid[2][2]).toBe("—"); // MTD row: always a dash
+    expect(grid[1][2]).toBe("46,266"); // Period row
+    expect(grid[2][2]).toBe("90,779"); // MTD row
   });
 
   // Rule 3: dynamic result columns (indexes 6-9) show real objective names.
