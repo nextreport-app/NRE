@@ -7,6 +7,8 @@ import { buildReportData } from "@/lib/nre/report-data";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { dateSelectionSchema, parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -44,6 +46,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
+  const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+
+  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+  if (!dateResolution.ok) {
+    return NextResponse.json(
+      { valid: false, errors: [{ field: "dateSelection", message: dateResolution.error || "Invalid date selection." }], warnings: [] },
+      { status: 200 },
+    );
+  }
+
   const periodParsed = periodBuffer && periodBuffer.length > 0 ? parseUploadedFile(periodBuffer, "Period CSV") : null;
 
   const data = buildReportData({
@@ -53,6 +66,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     monthlyBudget: client.monthlyBudget,
     mtdDailyRows: mtdParsed.rows,
     periodRows: periodParsed?.rows,
+    selectedCampaigns: selectedCampaigns ?? null,
+    weeklyRange: dateResolution.weeklyRange,
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

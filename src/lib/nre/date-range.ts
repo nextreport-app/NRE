@@ -1,0 +1,132 @@
+/**
+ * NRE v1 — date-range computation for the report upload wizard's date-range
+ * step. Everything here is pure and works off already-parsed CSV rows; the
+ * PPTX/aggregation layer (aggregate.ts's splitMtdDaily) consumes the same
+ * "effective yesterday" definition so the wizard's displayed date options
+ * and what actually gets aggregated can never drift apart.
+ */
+
+import { parseDate, type ParsedDate } from "./dates";
+import { getRowDate, type NreRow } from "./columns";
+
+export function toIsoDate(d: ParsedDate): string {
+  return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+}
+
+function tsOf(d: ParsedDate): number {
+  return Date.UTC(d.year, d.month - 1, d.day);
+}
+
+function dateFromTs(ts: number): ParsedDate {
+  const d = new Date(ts);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+function addDays(d: ParsedDate, days: number): ParsedDate {
+  return dateFromTs(tsOf(d) + days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * The last day of data to actually use: the latest date present in the
+ * rows, capped at real yesterday (today's data is always incomplete, and a
+ * CSV exported a few days ago shouldn't pretend to have data it doesn't).
+ * This is the single definition of "yesterday" shared by every date-range
+ * helper below and by aggregate.ts's splitMtdDaily.
+ */
+export function computeEffectiveYesterday(rows: NreRow[], now: Date = new Date()): ParsedDate | null {
+  let latestTs: number | null = null;
+  rows.forEach((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return;
+    const ts = tsOf(d);
+    if (latestTs === null || ts > latestTs) latestTs = ts;
+  });
+  if (latestTs === null) return null;
+
+  const todayStartTs = new Date(now.toISOString().split("T")[0] + "T00:00:00Z").getTime();
+  const yesterdayTs = todayStartTs - 24 * 60 * 60 * 1000;
+  return dateFromTs(Math.min(latestTs, yesterdayTs));
+}
+
+export interface DateRangeIso {
+  startIso: string;
+  endIso: string;
+}
+
+export interface WeeklyRangeOptions {
+  last7: DateRangeIso;
+  prev7: DateRangeIso;
+}
+
+/** "Last 7 days ending yesterday" and the 7 days immediately before that, as actual dates. */
+export function computeWeeklyRangeOptions(rows: NreRow[], now: Date = new Date()): WeeklyRangeOptions | null {
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const last7Start = addDays(yesterday, -6);
+  const prev7End = addDays(last7Start, -1);
+  const prev7Start = addDays(prev7End, -6);
+  return {
+    last7: { startIso: toIsoDate(last7Start), endIso: toIsoDate(yesterday) },
+    prev7: { startIso: toIsoDate(prev7Start), endIso: toIsoDate(prev7End) },
+  };
+}
+
+/** Always day 1 of the reporting month (the month "yesterday" falls in) through yesterday. */
+export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const monthStart: ParsedDate = { year: yesterday.year, month: yesterday.month, day: 1 };
+  return { startIso: toIsoDate(monthStart), endIso: toIsoDate(yesterday) };
+}
+
+export interface CsvDateBounds {
+  minIso: string;
+  maxIso: string;
+}
+
+/** The actual min/max dates present anywhere in the uploaded CSV — bounds the custom date pickers. */
+export function computeCsvDateBounds(rows: NreRow[]): CsvDateBounds | null {
+  let minTs: number | null = null;
+  let maxTs: number | null = null;
+  rows.forEach((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return;
+    const ts = tsOf(d);
+    if (minTs === null || ts < minTs) minTs = ts;
+    if (maxTs === null || ts > maxTs) maxTs = ts;
+  });
+  if (minTs === null || maxTs === null) return null;
+  return { minIso: toIsoDate(dateFromTs(minTs)), maxIso: toIsoDate(dateFromTs(maxTs)) };
+}
+
+export interface CustomRangeValidation {
+  valid: boolean;
+  error?: string;
+  spanDays?: number;
+}
+
+/** Validates a user-picked custom weekly range against what's actually in the CSV. */
+export function validateCustomWeeklyRange(
+  startIso: string,
+  endIso: string,
+  bounds: CsvDateBounds,
+): CustomRangeValidation {
+  const startTs = Date.parse(startIso + "T00:00:00Z");
+  const endTs = Date.parse(endIso + "T00:00:00Z");
+  if (Number.isNaN(startTs) || Number.isNaN(endTs)) {
+    return { valid: false, error: "Invalid date." };
+  }
+  if (startTs > endTs) {
+    return { valid: false, error: "Start date must be before end date." };
+  }
+  const minTs = Date.parse(bounds.minIso + "T00:00:00Z");
+  const maxTs = Date.parse(bounds.maxIso + "T00:00:00Z");
+  if (startTs < minTs || endTs > maxTs) {
+    return {
+      valid: false,
+      error: `The uploaded CSV only has data from ${bounds.minIso} to ${bounds.maxIso}. Choose dates within that range.`,
+    };
+  }
+  const spanDays = Math.round((endTs - startTs) / (24 * 60 * 60 * 1000)) + 1;
+  return { valid: true, spanDays };
+}

@@ -19,6 +19,7 @@ import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
 import { getResultLabels } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
+import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
 
 export interface AggRow {
   campaign_name: string;
@@ -167,28 +168,31 @@ export interface SplitMtdDailyResult {
   mtdRows: AggRow[];
 }
 
+export interface SplitMtdDailyOptions {
+  /**
+   * Explicit weekly window (inclusive, "YYYY-MM-DD"), from the report
+   * upload wizard's date-range step — overrides the default "7 days ending
+   * yesterday" auto-computation. Never affects MTD, which always covers the
+   * full reporting month regardless of the weekly selection.
+   */
+  weeklyRange?: DateRangeIso;
+}
+
 /**
  * Port of splitMTDDaily_(). `now` is injectable for testing; defaults to the
  * real clock, matching the Apps Script's use of the server's UTC date.
  */
-export function splitMtdDaily(rows: NreRow[], now: Date = new Date()): SplitMtdDailyResult | null {
+export function splitMtdDaily(
+  rows: NreRow[],
+  now: Date = new Date(),
+  options: SplitMtdDailyOptions = {},
+): SplitMtdDailyResult | null {
   if (rows.length === 0) return null;
 
-  let latestTs: number | null = null;
-  rows.forEach((row) => {
-    const d = parseDate(getRowDate(row));
-    if (!d) return;
-    const ts = Date.UTC(d.year, d.month - 1, d.day);
-    if (latestTs === null || ts > latestTs) latestTs = ts;
-  });
-  if (latestTs === null) return null;
-
   // ALWAYS cap at YESTERDAY — today's data is incomplete (day still running).
-  const todayStartTs = new Date(now.toISOString().split("T")[0] + "T00:00:00Z").getTime();
-  const yesterdayTs = todayStartTs - 24 * 60 * 60 * 1000;
-  if (latestTs > yesterdayTs) {
-    latestTs = yesterdayTs;
-  }
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const yesterdayTs = Date.UTC(yesterday.year, yesterday.month - 1, yesterday.day);
 
   const validRows = rows.filter((row) => {
     const d = parseDate(getRowDate(row));
@@ -198,17 +202,31 @@ export function splitMtdDaily(rows: NreRow[], now: Date = new Date()): SplitMtdD
   });
   if (validRows.length === 0) return null;
 
-  const weekStartTs = latestTs - 6 * 24 * 60 * 60 * 1000; // 7 days ending yesterday
+  const weekEndTs = options.weeklyRange ? Date.parse(options.weeklyRange.endIso + "T00:00:00Z") : yesterdayTs;
+  const weekStartTs = options.weeklyRange
+    ? Date.parse(options.weeklyRange.startIso + "T00:00:00Z")
+    : yesterdayTs - 6 * 24 * 60 * 60 * 1000; // default: 7 days ending yesterday
 
   const weeklyRaw = validRows.filter((row) => {
     const d = parseDate(getRowDate(row));
     if (!d) return false;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
-    return ts >= weekStartTs && ts <= (latestTs as number);
+    return ts >= weekStartTs && ts <= weekEndTs;
   });
-
   const weeklyRows = aggregateRows(weeklyRaw);
-  const mtdRows = aggregateRows(validRows); // MTD = all valid days up to and including yesterday
+
+  // MTD = day 1 of the reporting month through yesterday — explicitly
+  // bounded (not just "every valid row in the file") so it always matches
+  // exactly what the wizard's "MTD period: ..." confirmation shows,
+  // regardless of the weekly selection above.
+  const monthStartTs = Date.UTC(yesterday.year, yesterday.month - 1, 1);
+  const mtdRaw = validRows.filter((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return false;
+    const ts = Date.UTC(d.year, d.month - 1, d.day);
+    return ts >= monthStartTs && ts <= yesterdayTs;
+  });
+  const mtdRows = aggregateRows(mtdRaw);
 
   return { weeklyRows, mtdRows };
 }

@@ -162,4 +162,64 @@ describe("splitMtdDaily", () => {
     const mtdSpend = result!.mtdRows.reduce((s, r) => s + r.spend, 0);
     expect(mtdSpend).toBe(5);
   });
+
+  it("MTD is bounded to day 1 of the month through yesterday, even if the CSV has earlier rows", () => {
+    // A CSV that (unusually) includes a few trailing days from the previous
+    // month must not have them bleed into MTD — MTD is always exactly the
+    // reporting month, not "every valid row in the file".
+    const rows: NreRow[] = [
+      dailyRow({ day: "29-06-2026", spend: "999" }), // previous month — must be excluded from MTD
+      dailyRow({ day: "30-06-2026", spend: "999" }), // previous month — must be excluded from MTD
+      dailyRow({ day: "01-07-2026", spend: "10" }),
+      dailyRow({ day: "19-07-2026", spend: "20" }),
+    ];
+    const result = splitMtdDaily(rows, now);
+    expect(result).not.toBeNull();
+    expect(result!.mtdRows[0].date_start).toBe("01-07-2026");
+    const mtdSpend = result!.mtdRows.reduce((s, r) => s + r.spend, 0);
+    expect(mtdSpend).toBe(30);
+  });
+
+  it("uses an explicit weeklyRange instead of the default trailing-7-days window when given", () => {
+    const rows: NreRow[] = [];
+    for (let day = 1; day <= 19; day++) {
+      rows.push(dailyRow({ day: `${String(day).padStart(2, "0")}-07-2026`, spend: "1" }));
+    }
+    const result = splitMtdDaily(rows, now, {
+      weeklyRange: { startIso: "2026-07-05", endIso: "2026-07-11" },
+    });
+    expect(result).not.toBeNull();
+    expect(result!.weeklyRows[0].date_start).toBe("05-07-2026");
+    expect(result!.weeklyRows[0].date_end).toBe("11-07-2026");
+    const weeklySpend = result!.weeklyRows.reduce((s, r) => s + r.spend, 0);
+    expect(weeklySpend).toBe(7); // 7 days at spend "1" each
+  });
+
+  it("an explicit weeklyRange never affects MTD, which still covers the full month", () => {
+    const rows: NreRow[] = [];
+    for (let day = 1; day <= 19; day++) {
+      rows.push(dailyRow({ day: `${String(day).padStart(2, "0")}-07-2026`, spend: "1" }));
+    }
+    const result = splitMtdDaily(rows, now, {
+      weeklyRange: { startIso: "2026-07-05", endIso: "2026-07-11" },
+    });
+    expect(result).not.toBeNull();
+    expect(result!.mtdRows[0].date_start).toBe("01-07-2026");
+    expect(result!.mtdRows[0].date_end).toBe("19-07-2026");
+    const mtdSpend = result!.mtdRows.reduce((s, r) => s + r.spend, 0);
+    expect(mtdSpend).toBe(19);
+  });
+
+  it("supports a weeklyRange that lands in a 'previous 7 days' window before the default one", () => {
+    const rows: NreRow[] = [];
+    for (let day = 1; day <= 19; day++) {
+      rows.push(dailyRow({ day: `${String(day).padStart(2, "0")}-07-2026`, spend: "1" }));
+    }
+    // Default last7 would be 13-19 July; "previous 7 days" is 6-12 July.
+    const result = splitMtdDaily(rows, now, {
+      weeklyRange: { startIso: "2026-07-06", endIso: "2026-07-12" },
+    });
+    expect(result!.weeklyRows[0].date_start).toBe("06-07-2026");
+    expect(result!.weeklyRows[0].date_end).toBe("12-07-2026");
+  });
 });

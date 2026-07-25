@@ -481,3 +481,82 @@ describe("buildCombinedTotalTableGrid", () => {
     expect(grid[1]).toEqual(["M", "S", "R", "I", "C1", "C2", "R1", "CP1", "R2", "CP2"]);
   });
 });
+
+describe("buildReportData — campaign selection and weekly-range wizard steps", () => {
+  const shoes = buildDailyRows({
+    campaign_name: "Shoes - Purchases",
+    ad_set_name: "Prospecting",
+    result_type: "Purchase",
+    spend: 100,
+    reach: 1000,
+    impressions: 3000,
+    results: 2,
+    link_clicks: 50,
+    ctr: 1.5,
+    cpc: 3,
+    frequency: 2,
+  });
+  const boots = buildDailyRows({
+    campaign_name: "Boots - Leads",
+    ad_set_name: "Prospecting",
+    result_type: "Lead",
+    spend: 60,
+    reach: 500,
+    impressions: 1500,
+    results: 5,
+    link_clicks: 20,
+    ctr: 1.0,
+    cpc: 2,
+    frequency: 1.5,
+  });
+  const rows = [...shoes, ...boots];
+
+  it("excludes an unselected campaign's rows entirely — not just from display", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      selectedCampaigns: ["Shoes - Purchases"],
+      now: NOW,
+    });
+    const names = data.campaignSlides.map((s) => s.campaignName);
+    expect(names).toContain("Shoes - Purchases");
+    expect(names).not.toContain("Boots - Leads");
+    // Not just hidden from slides — Boots' spend must not leak into any total.
+    expect(data.mtdRow.spend).toBe("₹700"); // 100/day * 7 days, Boots' 60/day*7=420 excluded
+  });
+
+  it("includes every campaign when selectedCampaigns is omitted", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    const names = data.campaignSlides.map((s) => s.campaignName);
+    expect(names).toEqual(["Boots - Leads", "Shoes - Purchases"]);
+  });
+
+  it("uses an explicit weeklyRange for the campaign/chart slides' date window", () => {
+    // buildDailyRows only generates 13-19 July, so pick a sub-range within
+    // that to prove the override is actually applied (a range with zero
+    // matching rows would just look "paused" and wouldn't prove anything).
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      weeklyRange: { startIso: "2026-07-15", endIso: "2026-07-17" },
+      now: NOW,
+    });
+    expect(data.cover.dateRange).toBe("Jul 15 - Jul 17");
+    // MTD is unaffected by the weekly selection — still every day the fixture
+    // has data for (13-19; the fixture doesn't include days 1-12).
+    expect(data.mtdRow.monthLabel).toBe("Jul 13 - Jul 19 MTD");
+  });
+});

@@ -1,0 +1,118 @@
+import { describe, expect, it } from "vitest";
+import {
+  computeCsvDateBounds,
+  computeEffectiveYesterday,
+  computeMtdRangeIso,
+  computeWeeklyRangeOptions,
+  toIsoDate,
+  validateCustomWeeklyRange,
+} from "../date-range";
+import type { NreRow } from "../columns";
+
+function dailyRow(day: string): NreRow {
+  return { _raw: { Day: day }, campaign_name: "Shoes" };
+}
+
+function daysInclusive(startIso: string, endIso: string): NreRow[] {
+  const rows: NreRow[] = [];
+  const start = new Date(startIso + "T00:00:00Z");
+  const end = new Date(endIso + "T00:00:00Z");
+  for (let ts = start.getTime(); ts <= end.getTime(); ts += 24 * 60 * 60 * 1000) {
+    const d = new Date(ts);
+    const day = `${String(d.getUTCDate()).padStart(2, "0")}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${d.getUTCFullYear()}`;
+    rows.push(dailyRow(day));
+  }
+  return rows;
+}
+
+describe("computeEffectiveYesterday", () => {
+  it("is the latest CSV date when it's already before real yesterday", () => {
+    const rows = daysInclusive("2026-07-01", "2026-07-20");
+    const now = new Date("2026-07-25T12:00:00Z"); // real yesterday = Jul 24
+    const yesterday = computeEffectiveYesterday(rows, now);
+    expect(toIsoDate(yesterday!)).toBe("2026-07-20");
+  });
+
+  it("caps at real yesterday even if the CSV somehow has more recent (or today's) rows", () => {
+    const rows = daysInclusive("2026-07-01", "2026-07-25"); // includes "today" and beyond
+    const now = new Date("2026-07-25T12:00:00Z"); // real yesterday = Jul 24
+    const yesterday = computeEffectiveYesterday(rows, now);
+    expect(toIsoDate(yesterday!)).toBe("2026-07-24");
+  });
+
+  it("returns null when no row has a parseable date", () => {
+    expect(computeEffectiveYesterday([{ _raw: {} }], new Date("2026-07-25T12:00:00Z"))).toBeNull();
+  });
+});
+
+describe("computeWeeklyRangeOptions", () => {
+  it("computes last7 (ending yesterday) and prev7 (the 7 days before that)", () => {
+    const rows = daysInclusive("2026-07-01", "2026-07-24");
+    const now = new Date("2026-07-25T12:00:00Z"); // yesterday = Jul 24
+    const options = computeWeeklyRangeOptions(rows, now)!;
+    expect(options.last7).toEqual({ startIso: "2026-07-18", endIso: "2026-07-24" });
+    expect(options.prev7).toEqual({ startIso: "2026-07-11", endIso: "2026-07-17" });
+  });
+
+  it("handles a last7/prev7 window that crosses a month boundary", () => {
+    const rows = daysInclusive("2026-06-20", "2026-07-03");
+    const now = new Date("2026-07-04T12:00:00Z"); // yesterday = Jul 3
+    const options = computeWeeklyRangeOptions(rows, now)!;
+    expect(options.last7).toEqual({ startIso: "2026-06-27", endIso: "2026-07-03" });
+    expect(options.prev7).toEqual({ startIso: "2026-06-20", endIso: "2026-06-26" });
+  });
+});
+
+describe("computeMtdRangeIso", () => {
+  it("always starts on day 1 of the reporting month, regardless of the CSV's earliest row", () => {
+    const rows = daysInclusive("2026-07-05", "2026-07-23"); // CSV starts mid-month
+    const now = new Date("2026-07-24T12:00:00Z"); // yesterday = Jul 23
+    expect(computeMtdRangeIso(rows, now)).toEqual({ startIso: "2026-07-01", endIso: "2026-07-23" });
+  });
+});
+
+describe("computeCsvDateBounds", () => {
+  it("returns the actual min/max dates in the file, unaffected by 'yesterday' capping", () => {
+    const rows = daysInclusive("2026-07-01", "2026-07-24");
+    expect(computeCsvDateBounds(rows)).toEqual({ minIso: "2026-07-01", maxIso: "2026-07-24" });
+  });
+
+  it("returns null when there are no parseable dates", () => {
+    expect(computeCsvDateBounds([{ _raw: {} }])).toBeNull();
+  });
+});
+
+describe("validateCustomWeeklyRange", () => {
+  const bounds = { minIso: "2026-07-01", maxIso: "2026-07-24" };
+
+  it("accepts a range fully within the CSV's bounds and reports its span", () => {
+    const result = validateCustomWeeklyRange("2026-07-10", "2026-07-16", bounds);
+    expect(result).toEqual({ valid: true, spanDays: 7 });
+  });
+
+  it("rejects a range that starts before the CSV's earliest date", () => {
+    const result = validateCustomWeeklyRange("2026-06-25", "2026-07-01", bounds);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("2026-07-01 to 2026-07-24");
+  });
+
+  it("rejects a range that ends after the CSV's latest date", () => {
+    const result = validateCustomWeeklyRange("2026-07-20", "2026-07-30", bounds);
+    expect(result.valid).toBe(false);
+  });
+
+  it("rejects a range where start is after end", () => {
+    const result = validateCustomWeeklyRange("2026-07-16", "2026-07-10", bounds);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/before/i);
+  });
+
+  it("still validates (and reports a >7 span) for a custom range longer than a week", () => {
+    // The >7-day warning is a soft UI confirmation, not a hard rejection —
+    // this function just needs to report the true span so the caller can
+    // decide whether to show it.
+    const result = validateCustomWeeklyRange("2026-07-01", "2026-07-15", bounds);
+    expect(result.valid).toBe(true);
+    expect(result.spanDays).toBe(15);
+  });
+});

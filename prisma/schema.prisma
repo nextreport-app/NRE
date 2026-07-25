@@ -105,6 +105,20 @@ model Client {
   groqApiKey   String?
   geminiApiKey String?
 
+  // Report upload wizard preferences — remembered per client so the next
+  // upload pre-selects the same campaigns / date-range mode. Both are JSON
+  // text (matching Report.summaryJson's existing convention) rather than a
+  // native Json column, since Prisma's Json type isn't used anywhere else
+  // in this schema.
+  // lastDeselectedCampaigns: JSON string[] of EXCLUDED campaign names — not
+  // the selected ones. Storing the exclusion set (rather than the selection
+  // itself) is what lets a brand-new campaign in a later upload default to
+  // selected: it's simply absent from this list, same as any other campaign
+  // the user never excluded.
+  lastDeselectedCampaigns String? @db.Text
+  // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
+  lastDateSelection       String? @db.Text
+
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports Report[]
 

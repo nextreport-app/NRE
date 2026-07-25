@@ -31,6 +31,22 @@ only ever signed up with email/password sees a "Connect Google Drive" prompt
 in place of the link the first time they try it. See `src/lib/google-drive.ts`
 and `src/app/api/reports/[id]/slides/route.ts`.
 
+The report upload wizard is a 5-step flow: **Upload → Campaigns → Dates →
+Preview → Generate**. After the CSV validates, step 2 lists every campaign
+found and lets the user exclude any before it reaches the NRE engine at all
+(`src/lib/nre/campaigns.ts`); step 3 picks the weekly window that drives the
+campaign/ad-set/chart slides — "last 7 days ending yesterday" (default),
+"previous 7 days", or a custom range validated against the CSV's own date
+bounds, with a soft confirmation if it's over 7 days. MTD is never affected
+by that choice — it's always the full reporting month through yesterday,
+computed and shown automatically (`src/lib/nre/date-range.ts`,
+`resolve-date-selection.ts`). Both choices are saved per client and pre-fill
+the next upload. The campaign preference is stored as the *excluded* set
+(`Client.lastDeselectedCampaigns`), not the selected one — a campaign the
+user explicitly unchecked stays unchecked next time, but a brand new
+campaign that didn't exist in any previous upload defaults to selected,
+the same as every other campaign the user never excluded.
+
 ## Local development
 
 ```bash
@@ -38,7 +54,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 155 tests covering the NRE engine, PPTX, AI, and Drive modules
+npm test                   # 232 tests covering the NRE engine, PPTX, AI, and Drive modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted

@@ -11,6 +11,8 @@ import { loadTemplateBuffer } from "@/lib/pptx/templates";
 import { saveReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { dateSelectionSchema, parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -44,6 +46,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
+  const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+
+  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+  if (!dateResolution.ok) {
+    return NextResponse.json({ error: dateResolution.error || "Invalid date selection." }, { status: 400 });
+  }
+
   const periodParsed = periodBuffer && periodBuffer.length > 0 ? parseUploadedFile(periodBuffer, "Period CSV") : null;
   const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
@@ -54,6 +64,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     monthlyBudget: client.monthlyBudget,
     mtdDailyRows: mtdParsed.rows,
     periodRows: periodParsed?.rows,
+    selectedCampaigns: selectedCampaigns ?? null,
+    weeklyRange: dateResolution.weeklyRange,
   });
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")

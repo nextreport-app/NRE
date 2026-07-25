@@ -24,7 +24,9 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily } from "./aggregate";
+import { filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
+import type { DateRangeIso } from "./date-range";
 import { getDateRangeShortLabel, formatDateUS } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
@@ -161,6 +163,21 @@ export interface BuildReportDataInput {
   mtdDailyRows: NreRow[];
   /** Raw column-mapped rows from the optional "Period CSV" upload (previous full month). */
   periodRows?: NreRow[];
+  /**
+   * Campaign names selected in the report upload wizard's campaign-selection
+   * step. Filtered out of mtdDailyRows before any aggregation or date
+   * splitting — an excluded campaign never reaches the NRE engine, not just
+   * hidden from the final report. `undefined`/`null` means no selection was
+   * made (e.g. a client that predates the feature) — every campaign passes.
+   */
+  selectedCampaigns?: string[] | null;
+  /**
+   * Explicit weekly window from the wizard's date-range step — drives the
+   * campaign slides, ad-set slides, and MTD chart slide. `undefined` keeps
+   * the default "7 days ending yesterday" auto-computation. Never affects
+   * MTD, which always covers the full reporting month regardless.
+   */
+  weeklyRange?: DateRangeIso;
   now?: Date;
 }
 
@@ -325,9 +342,20 @@ export function buildCombinedTotalTableGrid(
 // ─────────────────────────── Main entry point ──────────────────────────────
 
 export function buildReportData(input: BuildReportDataInput): ReportData {
-  const { accountName, currencySymbol, timezone, monthlyBudget, mtdDailyRows, periodRows, now = new Date() } = input;
+  const {
+    accountName,
+    currencySymbol,
+    timezone,
+    monthlyBudget,
+    mtdDailyRows,
+    periodRows,
+    selectedCampaigns,
+    weeklyRange,
+    now = new Date(),
+  } = input;
 
-  const split = splitMtdDaily(mtdDailyRows, now);
+  const filteredMtdDailyRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
+  const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
   const isPaused = weeklyRows.length === 0;
