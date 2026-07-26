@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import { isLogoValidationError, processLogoUpload } from "@/lib/logo-processing";
+import { contentTypeForLogoFormat, detectLogoFormat, isLogoValidationError, processLogoUpload } from "@/lib/logo-processing";
 import { deleteLogoFile, readLogoFile, saveClientLogo } from "@/lib/storage";
 
 async function getOwnedClient(userId: string, id: string) {
@@ -24,8 +24,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!client.logoUrl) return NextResponse.json({ error: "No logo set." }, { status: 404 });
 
     const buffer = await readLogoFile(client.logoUrl);
+    const format = detectLogoFormat(buffer);
     return new NextResponse(new Uint8Array(buffer), {
-      headers: { "Content-Type": "image/png", "Cache-Control": "private, max-age=60" },
+      headers: {
+        "Content-Type": format ? contentTypeForLogoFormat(format) : "application/octet-stream",
+        "Cache-Control": "private, max-age=60",
+      },
     });
   } catch (err) {
     return apiErrorResponse(err, "clients:logo:get");
@@ -41,22 +45,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const formData = await req.formData().catch(() => null);
-  const file = formData?.get("logo");
   const buffer = formData ? await fileFromFormData(formData, "logo") : null;
-  if (!buffer || buffer.length === 0 || !(file instanceof File)) {
+  if (!buffer || buffer.length === 0) {
     return NextResponse.json({ error: "No logo file provided." }, { status: 400 });
   }
 
-  const processed = await processLogoUpload(buffer, file.type);
+  const processed = processLogoUpload(buffer);
   if (isLogoValidationError(processed)) {
     return NextResponse.json({ error: processed.error }, { status: 400 });
   }
 
   try {
-    // saveClientLogo writes to a fixed per-client key (addRandomSuffix:
-    // false) — a re-upload overwrites the previous logo in place, so
-    // there's no separate old-blob delete step needed here.
-    const logoUrl = await saveClientLogo(client.id, processed.buffer);
+    const logoUrl = await saveClientLogo(client.id, processed.buffer, processed.format);
     await prisma.client.update({ where: { id: client.id }, data: { logoUrl } });
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -20,6 +20,7 @@
  */
 
 import { put, del, get } from "@vercel/blob";
+import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } from "./logo-processing";
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
   const blob = await put(`reports/${reportId}.pptx`, buffer, {
@@ -43,28 +44,37 @@ export async function deleteReportFile(url: string): Promise<void> {
 }
 
 // ─────────────────────────── Logos (client + agency) ───────────────────────
-// Same private-store pattern as report files above. Logos are always
-// normalized to PNG before reaching this module (see logo-processing.ts),
-// so both save helpers use a fixed .png key — a re-upload overwrites the
-// previous logo at the same path (addRandomSuffix: false) rather than
-// accumulating orphaned blobs.
+// Same private-store pattern as report files above. Logos are stored
+// UNMODIFIED in their original uploaded format (see logo-processing.ts for
+// why — no server-side re-encoding), so the blob key's extension varies
+// per upload. A re-upload in a different format lands at a different key
+// (addRandomSuffix: false keeps each format's key stable/idempotent) — the
+// other 3 possible-format keys are deleted best-effort so switching formats
+// doesn't accumulate an orphaned blob under the old extension.
 
-export async function saveClientLogo(clientId: string, buffer: Buffer): Promise<string> {
-  const blob = await put(`logos/client-${clientId}.png`, buffer, {
+const LOGO_FORMATS: LogoFormat[] = ["png", "jpeg", "webp", "svg"];
+
+async function saveLogo(keyPrefix: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+  const ext = extensionForLogoFormat(format);
+  const blob = await put(`${keyPrefix}.${ext}`, buffer, {
     access: "private",
     addRandomSuffix: false,
-    contentType: "image/png",
+    contentType: contentTypeForLogoFormat(format),
   });
+  await Promise.all(
+    LOGO_FORMATS.filter((f) => f !== format).map((f) =>
+      deleteLogoFile(`${keyPrefix}.${extensionForLogoFormat(f)}`).catch(() => {}),
+    ),
+  );
   return blob.url;
 }
 
-export async function saveAgencyLogo(userId: string, buffer: Buffer): Promise<string> {
-  const blob = await put(`logos/agency-${userId}.png`, buffer, {
-    access: "private",
-    addRandomSuffix: false,
-    contentType: "image/png",
-  });
-  return blob.url;
+export async function saveClientLogo(clientId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+  return saveLogo(`logos/client-${clientId}`, buffer, format);
+}
+
+export async function saveAgencyLogo(userId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+  return saveLogo(`logos/agency-${userId}`, buffer, format);
 }
 
 export async function readLogoFile(url: string): Promise<Buffer> {

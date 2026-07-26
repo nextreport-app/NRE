@@ -43,6 +43,10 @@ export interface ImageAsset {
   bytes: Uint8Array;
   widthPx: number;
   heightPx: number;
+  /** File extension without a dot (e.g. "png", "jpg", "webp", "svg") — determines the embedded media part's file name and, via ensureContentTypeDefault, its package-level content type declaration. */
+  extension: string;
+  /** MIME type for the [Content_Types].xml Default entry — see ensureContentTypeDefault. */
+  contentType: string;
 }
 
 export interface ImageBoxPlacement {
@@ -105,17 +109,33 @@ export function embedImageInSlide(
   slide: TemplateSlide,
   image: ImageAsset,
   box: ImageBoxPlacement,
-  opts: { mediaFileName: string; shapeName: string },
+  opts: { baseName: string; shapeName: string },
 ): EmbeddedImageResult {
   const { cx, cy } = fitContainEmu(image.widthPx, image.heightPx, box.maxCxEmu, box.maxCyEmu);
   const x = box.corner === "bottom-right" ? SLIDE_WIDTH_EMU - box.marginXEmu - cx : box.marginXEmu;
   const y = SLIDE_HEIGHT_EMU - box.marginYEmu - cy;
 
+  const mediaFileName = `${opts.baseName}.${image.extension}`;
   const relId = nextRelId(slide.rels);
-  const rels = addImageRelationship(slide.rels, relId, opts.mediaFileName);
+  const rels = addImageRelationship(slide.rels, relId, mediaFileName);
   const shapeId = nextShapeId(slide.xml);
   const shapeXml = buildPictureShapeXml({ id: shapeId, name: opts.shapeName, relId, x, y, cx, cy });
   const xml = insertShapeBeforeSpTreeClose(slide.xml, shapeXml);
 
-  return { slide: { xml, rels }, mediaPath: `ppt/media/${opts.mediaFileName}`, mediaBytes: image.bytes };
+  return { slide: { xml, rels }, mediaPath: `ppt/media/${mediaFileName}`, mediaBytes: image.bytes };
+}
+
+/**
+ * Ensures `[Content_Types].xml` declares a Default content type for
+ * `extension` — templates/dark.pptx only ships a Default for "png" (the
+ * only format it originally needed), so a JPEG/WebP/SVG logo embed needs
+ * its own Default added at render time or PowerPoint/LibreOffice won't
+ * know how to interpret that media part. No-ops if already present (e.g.
+ * "png", or the same non-PNG format used for both the client and agency
+ * logo in one render).
+ */
+export function ensureContentTypeDefault(contentTypesXml: string, extension: string, contentType: string): string {
+  if (new RegExp(`Extension="${extension}"`).test(contentTypesXml)) return contentTypesXml;
+  const entry = `<Default ContentType="${contentType}" Extension="${extension}"/>`;
+  return contentTypesXml.replace("</Types>", `${entry}</Types>`);
 }

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
@@ -14,6 +13,7 @@ import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
   dateSelectionSchema,
   parseJsonFormField,
@@ -22,13 +22,21 @@ import {
   selectedCampaignsSchema,
 } from "@/lib/validators/report-wizard";
 
-/** Downloads a stored logo and reads its pixel dimensions — logos are always pre-normalized to PNG at upload time (see logo-processing.ts), so this never needs to re-encode anything. */
+/** Downloads a stored logo and reads its pixel dimensions + format back from its own bytes — see logo-processing.ts for why this is a header-only read, never a decode. */
 async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
   if (!url) return null;
   const bytes = await readLogoFile(url);
-  const metadata = await sharp(bytes).metadata();
-  if (!metadata.width || !metadata.height) return null;
-  return { bytes, widthPx: metadata.width, heightPx: metadata.height };
+  const format = detectLogoFormat(bytes);
+  if (!format) return null;
+  const dimensions = readLogoDimensions(bytes, format);
+  if (!dimensions) return null;
+  return {
+    bytes,
+    widthPx: dimensions.width,
+    heightPx: dimensions.height,
+    extension: extensionForLogoFormat(format),
+    contentType: contentTypeForLogoFormat(format),
+  };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

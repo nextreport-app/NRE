@@ -24,6 +24,8 @@ describe("fitContainEmu", () => {
   });
 });
 
+const PNG_ASSET = { extension: "png", contentType: "image/png" } as const;
+
 const BLANK_SLIDE: TemplateSlide = {
   xml: '<p:sld xmlns:p="p" xmlns:a="a" xmlns:r="r"><p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/></p:spTree></p:cSld></p:sld>',
   rels:
@@ -34,9 +36,9 @@ describe("embedImageInSlide", () => {
   it("adds a <p:pic> shape, a new relationship, and returns the media file to write", () => {
     const result = embedImageInSlide(
       BLANK_SLIDE,
-      { bytes: new Uint8Array([1, 2, 3]), widthPx: 200, heightPx: 100 },
+      { bytes: new Uint8Array([1, 2, 3]), widthPx: 200, heightPx: 100, extension: "png", contentType: "image/png" },
       { corner: "bottom-right", marginXEmu: 100000, marginYEmu: 100000, maxCxEmu: 120 * 9525, maxCyEmu: 60 * 9525 },
-      { mediaFileName: "test-logo.png", shapeName: "Test Logo" },
+      { baseName: "test-logo", shapeName: "Test Logo" },
     );
 
     expect(result.slide.xml).toContain("<p:pic>");
@@ -58,9 +60,9 @@ describe("embedImageInSlide", () => {
   it("positions bottom-right: right/bottom edges inset by the margins, top-left free", () => {
     const result = embedImageInSlide(
       BLANK_SLIDE,
-      { bytes: new Uint8Array(), widthPx: 120, heightPx: 60 }, // exact box aspect ratio, no scaling needed
+      { bytes: new Uint8Array(), widthPx: 120, heightPx: 60, ...PNG_ASSET }, // exact box aspect ratio, no scaling needed
       { corner: "bottom-right", marginXEmu: 300000, marginYEmu: 300000, maxCxEmu: 120 * 9525, maxCyEmu: 60 * 9525 },
-      { mediaFileName: "logo.png", shapeName: "Logo" },
+      { baseName: "logo", shapeName: "Logo" },
     );
     const cx = 120 * 9525;
     const cy = 60 * 9525;
@@ -73,9 +75,9 @@ describe("embedImageInSlide", () => {
   it("positions bottom-left: x is exactly marginXEmu regardless of marginYEmu", () => {
     const result = embedImageInSlide(
       BLANK_SLIDE,
-      { bytes: new Uint8Array(), widthPx: 80, heightPx: 40 },
+      { bytes: new Uint8Array(), widthPx: 80, heightPx: 40, ...PNG_ASSET },
       { corner: "bottom-left", marginXEmu: 200000, marginYEmu: 1836365, maxCxEmu: 80 * 9525, maxCyEmu: 40 * 9525 },
-      { mediaFileName: "logo.png", shapeName: "Logo" },
+      { baseName: "logo", shapeName: "Logo" },
     );
     expect(result.slide.xml).toContain('<a:off x="200000"');
   });
@@ -90,9 +92,9 @@ describe("embedImageInSlide", () => {
     };
     const result = embedImageInSlide(
       slideWithShape,
-      { bytes: new Uint8Array(), widthPx: 10, heightPx: 10 },
+      { bytes: new Uint8Array(), widthPx: 10, heightPx: 10, ...PNG_ASSET },
       { corner: "bottom-left", marginXEmu: 0, marginYEmu: 0, maxCxEmu: 1000, maxCyEmu: 1000 },
-      { mediaFileName: "logo.png", shapeName: "Logo" },
+      { baseName: "logo", shapeName: "Logo" },
     );
     expect(result.slide.xml).toContain('<p:cNvPr id="43" name="Logo"');
   });

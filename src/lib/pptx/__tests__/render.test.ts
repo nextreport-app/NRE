@@ -4,8 +4,15 @@ import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { renderPptx } from "../render";
+import type { ImageAsset } from "../embed-image";
 import { buildReportData } from "../../nre/report-data";
 import type { NreRow } from "../../nre/columns";
+import {
+  contentTypeForLogoFormat,
+  extensionForLogoFormat,
+  isLogoValidationError,
+  processLogoUpload,
+} from "../../logo-processing";
 import JSZip from "jszip";
 
 beforeAll(() => {
@@ -330,12 +337,23 @@ describe("renderPptx — client/agency logo branding (real production template)"
   // placement math this suite is regression-testing.
   const DARK_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 
-  async function makeLogo(width: number, height: number): Promise<{ bytes: Uint8Array; widthPx: number; heightPx: number }> {
-    const sharp = (await import("sharp")).default;
-    const bytes = await sharp({ create: { width, height, channels: 4, background: { r: 255, g: 120, b: 0, alpha: 1 } } })
-      .png()
-      .toBuffer();
-    return { bytes, widthPx: width, heightPx: height };
+  // Real fixture files (not sharp-generated — see logo-processing.ts's file
+  // header for why sharp is gone from this codebase entirely), run through
+  // the actual production validation path so these tests also cover format
+  // detection and the Content_Types.xml Default-entry handling for a
+  // non-PNG (WebP) logo.
+  const FIXTURES_DIR = path.resolve(__dirname, "../../__tests__/fixtures");
+  function loadLogoAsset(fileName: string): ImageAsset {
+    const buffer = fs.readFileSync(path.join(FIXTURES_DIR, fileName));
+    const processed = processLogoUpload(buffer);
+    if (isLogoValidationError(processed)) throw new Error(processed.error);
+    return {
+      bytes: processed.buffer,
+      widthPx: processed.widthPx,
+      heightPx: processed.heightPx,
+      extension: extensionForLogoFormat(processed.format),
+      contentType: contentTypeForLogoFormat(processed.format),
+    };
   }
 
   function buildFixtureData() {
@@ -363,12 +381,12 @@ describe("renderPptx — client/agency logo branding (real production template)"
 
   it("renders with a client logo only — media added to the cover, no agency footer anywhere", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const clientLogo = await makeLogo(300, 150);
+    const clientLogo = loadLogoAsset("logo.png");
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
     const zip = await JSZip.loadAsync(buffer);
 
     expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
-    expect(zip.file("ppt/media/agency-footer-logo.png")).toBeNull();
+    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/agency-footer-logo"))).toBe(false);
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain('name="Client Logo"');
@@ -378,7 +396,7 @@ describe("renderPptx — client/agency logo branding (real production template)"
 
   it("renders with an agency name + logo only — Prepared By line + footer logo on every slide, no client logo", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const agencyLogo = await makeLogo(150, 150);
+    const agencyLogo = loadLogoAsset("logo.webp"); // non-PNG, on purpose — exercises the Content_Types.xml Default-entry path
     const buffer = await renderPptx({
       templateBuffer,
       data: buildFixtureData(),
@@ -389,8 +407,12 @@ describe("renderPptx — client/agency logo branding (real production template)"
     });
     const zip = await JSZip.loadAsync(buffer);
 
-    expect(zip.file("ppt/media/agency-footer-logo.png")).not.toBeNull();
-    expect(zip.file("ppt/media/client-logo.png")).toBeNull();
+    expect(zip.file("ppt/media/agency-footer-logo.webp")).not.toBeNull();
+    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/client-logo"))).toBe(false);
+
+    const contentTypesXml = await zip.file("[Content_Types].xml")!.async("string");
+    expect(contentTypesXml).toContain('Extension="webp"');
+    expect(contentTypesXml).toContain('ContentType="image/webp"');
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain("Prepared by Bright Path Marketing");
@@ -411,8 +433,8 @@ describe("renderPptx — client/agency logo branding (real production template)"
 
   it("renders with both a client logo and agency branding together, without error", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const clientLogo = await makeLogo(300, 150);
-    const agencyLogo = await makeLogo(150, 150);
+    const clientLogo = loadLogoAsset("logo.png");
+    const agencyLogo = loadLogoAsset("logo.jpg");
     const buffer = await renderPptx({
       templateBuffer,
       data: buildFixtureData(),
@@ -424,7 +446,7 @@ describe("renderPptx — client/agency logo branding (real production template)"
     const zip = await JSZip.loadAsync(buffer);
 
     expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
-    expect(zip.file("ppt/media/agency-footer-logo.png")).not.toBeNull();
+    expect(zip.file("ppt/media/agency-footer-logo.jpg")).not.toBeNull();
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain('name="Client Logo"');

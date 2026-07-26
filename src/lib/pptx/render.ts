@@ -13,7 +13,7 @@
 import type { ReportData } from "../nre/report-data";
 import { buildChartSlideXml } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, type AiCopy } from "./fill-tags";
-import { embedImageInSlide, SLIDE_HEIGHT_EMU, type ImageAsset } from "./embed-image";
+import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset } from "./embed-image";
 import { assemblePptx, loadTemplate, type LoadedTemplate, type SlideToInsert } from "./package";
 
 const CHART_SLIDE_RELS =
@@ -52,9 +52,9 @@ export interface RenderPptxInput {
   reportTitle?: string | null;
   /** Agency name from account settings — drives the cover slide's "Prepared by ..." line when set. */
   agencyName?: string | null;
-  /** Client's uploaded logo (already resized/normalized to PNG — see logo-processing.ts). Rendered bottom-right on the cover slide only. Absent: no change to the cover slide. */
+  /** Client's uploaded logo, stored in its original format (see logo-processing.ts). Rendered bottom-right on the cover slide only. Absent: no change to the cover slide. */
   clientLogo?: ImageAsset | null;
-  /** Agency's uploaded logo, same normalization. Rendered bottom-left in the footer of every slide. Absent: no change anywhere. */
+  /** Agency's uploaded logo, same handling. Rendered bottom-left in the footer of every slide. Absent: no change anywhere. */
   agencyLogo?: ImageAsset | null;
 }
 
@@ -72,7 +72,7 @@ function embedAgencyFooterLogo(template: LoadedTemplate, agencyLogo: ImageAsset)
   for (const part of TEMPLATE_PARTS) {
     const box = part === "cover" ? COVER_AGENCY_LOGO_BOX : AGENCY_LOGO_BOX;
     const embedded = embedImageInSlide(template[part], agencyLogo, box, {
-      mediaFileName: "agency-footer-logo.png",
+      baseName: "agency-footer-logo",
       shapeName: "Agency Logo",
     });
     template[part] = embedded.slide;
@@ -88,9 +88,17 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const { templateBuffer, data, currencySymbol, aiCopyBySlideKey, reportTitle, agencyName, clientLogo, agencyLogo } = input;
   const template = await loadTemplate(templateBuffer);
 
+  // Logos are stored in whatever format they were uploaded in (see
+  // logo-processing.ts) — templates/dark.pptx only declares a package-level
+  // Default content type for "png", so a non-PNG logo needs its own Default
+  // added here or the embedded media part has no declared MIME type.
+  for (const image of [clientLogo, agencyLogo]) {
+    if (image) template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, image.extension, image.contentType);
+  }
+
   if (clientLogo) {
     const embedded = embedImageInSlide(template.cover, clientLogo, CLIENT_LOGO_BOX, {
-      mediaFileName: "client-logo.png",
+      baseName: "client-logo",
       shapeName: "Client Logo",
     });
     template.cover = embedded.slide;
@@ -127,7 +135,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       // own single embed call here instead.
       if (agencyLogo) {
         const embedded = embedImageInSlide({ xml: chartXml, rels: chartRels }, agencyLogo, AGENCY_LOGO_BOX, {
-          mediaFileName: "agency-footer-logo.png",
+          baseName: "agency-footer-logo",
           shapeName: "Agency Logo",
         });
         chartXml = embedded.slide.xml;
