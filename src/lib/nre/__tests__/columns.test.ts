@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRowDate, readRowsWithAutoMap, type NreRow } from "../columns";
+import { buildColumnMap, getRowDate, readRowsWithAutoMap, type NreRow } from "../columns";
 
 describe("getRowDate", () => {
   it("prefers an exact 'Day' header over decoy date-ish columns (regression)", () => {
@@ -37,5 +37,32 @@ describe("getRowDate", () => {
   it("falls back to date_start only when no Day/Date column exists at all", () => {
     const row: NreRow = { _raw: { "Reporting starts": "01-07-26" }, date_start: "01-07-26" };
     expect(getRowDate(row)).toBe("01-07-26");
+  });
+});
+
+describe("buildColumnMap — spend detection (regression)", () => {
+  // Real-account bug: "cost" as a spend keyword matched "Cost per Result"
+  // before the real "Amount Spent" column whenever the former appeared
+  // earlier in the file — silently zeroing spend, since per-result cost
+  // columns are blank until a campaign has results.
+  it("maps spend to 'Amount Spent', never a 'Cost per ...' column, regardless of column order", () => {
+    expect(buildColumnMap(["Cost per Result", "Amount Spent"]).spend).toBe("Amount Spent");
+    expect(buildColumnMap(["Cost per Click", "Cost per Lead", "Amount Spent"]).spend).toBe("Amount Spent");
+  });
+
+  it("never maps any 'Cost per ...' column to spend, even when spend is entirely absent", () => {
+    const map = buildColumnMap(["Cost per Result", "Cost per Click", "Cost per Lead"]);
+    expect(map.spend).toBeUndefined();
+  });
+
+  it("still recognizes 'Spend', 'Total spend', and 'Spent' as spend columns", () => {
+    expect(buildColumnMap(["Spend"]).spend).toBe("Spend");
+    expect(buildColumnMap(["Total spend"]).spend).toBe("Total spend");
+    expect(buildColumnMap(["Amount Spent (USD)"]).spend).toBe("Amount Spent (USD)");
+  });
+
+  it("keeps 'Cost per Result' etc. correctly mapped to cpr, unaffected by the spend keyword change", () => {
+    expect(buildColumnMap(["Cost per Result"]).cpr).toBe("Cost per Result");
+    expect(buildColumnMap(["Cost per Click"]).cpc).toBe("Cost per Click");
   });
 });

@@ -47,7 +47,12 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   ad_set_name: ["ad set name", "adset name", "ad group name", "ad group"],
   result_type: ["result type", "objective", "conversion type"],
   results: ["results", "conversions", "leads", "clicks total"],
-  spend: ["amount spent", "spend", "cost", "spent"],
+  // "cost" was removed deliberately (product owner, real-account bug
+  // report): it's a substring of "Cost per Result"/"Cost per Click"/"Cost
+  // per Lead"/etc, so a per-result cost column appearing earlier in the
+  // file than the real spend column would silently win and zero out spend
+  // (those columns are blank until a campaign has results).
+  spend: ["amount spent", "spend", "total spend", "spent"],
   reach: ["reach"],
   impressions: ["impressions"],
   ctr: ["ctr", "click-through rate", "click through rate"],
