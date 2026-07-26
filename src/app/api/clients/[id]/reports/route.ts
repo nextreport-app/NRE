@@ -126,10 +126,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
       generateInsights(data, { groqApiKey: client.groqApiKey, geminiApiKey: client.geminiApiKey }),
-      prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true, agencyLogoUrl: true } }),
+      prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
       loadLogoAsset(client.logoUrl),
     ]);
-    const agencyLogo = await loadLogoAsset(user?.agencyLogoUrl);
 
     const templateBuffer = await loadTemplateBuffer(client.template);
     const pptxBuffer = await renderPptx({
@@ -140,7 +139,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reportTitle,
       agencyName: user?.agencyName,
       clientLogo,
-      agencyLogo,
     });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);

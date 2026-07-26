@@ -9,7 +9,7 @@ export default async function AccountSettingsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { agencyName: true, agencyLogoUrl: true },
+    select: { agencyName: true },
   });
 
   return (
@@ -20,7 +20,7 @@ export default async function AccountSettingsPage() {
       </p>
       <section>
         <h2 className="mb-3 text-lg font-medium text-white">Agency branding</h2>
-        <AccountSettingsForm initialAgencyName={user?.agencyName ?? null} hasAgencyLogo={!!user?.agencyLogoUrl} />
+        <AccountSettingsForm initialAgencyName={user?.agencyName ?? null} />
       </section>
     </div>
   );

@@ -331,9 +331,9 @@ describe("renderPptx — real template end-to-end", () => {
   }, 30000);
 });
 
-describe("renderPptx — client/agency logo branding (real production template)", () => {
+describe("renderPptx — client logo + agency name branding (real production template)", () => {
   // Uses templates/dark.pptx directly (not the reference/ fixture above) —
-  // it's the one with the {{REPORT_TITLE}} tag and the actual footer-logo
+  // it's the one with the {{REPORT_TITLE}} tag and the actual client-logo
   // placement math this suite is regression-testing.
   const DARK_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 
@@ -341,7 +341,7 @@ describe("renderPptx — client/agency logo branding (real production template)"
   // header for why sharp is gone from this codebase entirely), run through
   // the actual production validation path so these tests also cover format
   // detection and the Content_Types.xml Default-entry handling for a
-  // non-PNG (WebP) logo.
+  // non-PNG logo.
   const FIXTURES_DIR = path.resolve(__dirname, "../../__tests__/fixtures");
   function loadLogoAsset(fileName: string): ImageAsset {
     const buffer = fs.readFileSync(path.join(FIXTURES_DIR, fileName));
@@ -367,90 +367,85 @@ describe("renderPptx — client/agency logo branding (real production template)"
     });
   }
 
-  it("renders with no branding exactly as before — no media, no Prepared By, default title", async () => {
+  // The template itself ships with ~18-20 static media files (metric-card
+  // icons etc.) baked in at design time, so "media exists in the zip" isn't
+  // a useful signal on its own — these tests check specifically for the
+  // dynamically-added client-logo part (and the since-removed agency-logo
+  // part's absence), not the total media count.
+  function addedMediaFiles(zip: JSZip): string[] {
+    return Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/client-logo") || f.startsWith("ppt/media/agency"));
+  }
+
+  it("renders with no branding exactly as before — no added media, no Prepared By, default title", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
     const zip = await JSZip.loadAsync(buffer);
 
-    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/client-logo") || f.startsWith("ppt/media/agency-footer-logo"))).toBe(false);
+    expect(addedMediaFiles(zip)).toEqual([]);
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain("WEEKLY PERFORMANCE REPORT");
     expect(coverXml).not.toContain("Prepared by");
     expect(coverXml).not.toContain("{{");
   });
 
-  it("renders with a client logo only — media added to the cover, no agency footer anywhere", async () => {
+  it("renders with a client logo only — media added to the cover, nowhere else", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const clientLogo = loadLogoAsset("logo.png");
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
     const zip = await JSZip.loadAsync(buffer);
 
     expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
-    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/agency-footer-logo"))).toBe(false);
+    expect(addedMediaFiles(zip)).toEqual(["ppt/media/client-logo.png"]);
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain('name="Client Logo"');
     const campaignXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
     expect(campaignXml).not.toContain('name="Client Logo"');
+    expect(campaignXml).not.toContain('name="Agency Logo"');
   });
 
-  it("renders with an agency name + logo only — Prepared By line + footer logo on every slide, no client logo", async () => {
+  it("renders 'Prepared by <agency name>' as plain text — no logo, no added media at all — when only agency name is set", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const agencyLogo = loadLogoAsset("logo.webp"); // non-PNG, on purpose — exercises the Content_Types.xml Default-entry path
     const buffer = await renderPptx({
       templateBuffer,
       data: buildFixtureData(),
       currencySymbol: "₹",
       agencyName: "Bright Path Marketing",
-      agencyLogo,
       reportTitle: "Q3 Performance Review",
     });
     const zip = await JSZip.loadAsync(buffer);
 
-    expect(zip.file("ppt/media/agency-footer-logo.webp")).not.toBeNull();
-    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/client-logo"))).toBe(false);
-
-    const contentTypesXml = await zip.file("[Content_Types].xml")!.async("string");
-    expect(contentTypesXml).toContain('Extension="webp"');
-    expect(contentTypesXml).toContain('ContentType="image/webp"');
+    // No agency logo feature exists anymore — never any added media, on any slide.
+    expect(addedMediaFiles(zip)).toEqual([]);
+    const allSlideFiles = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
+    for (const f of allSlideFiles) {
+      const xml = await zip.file(f)!.async("string");
+      expect(xml).not.toContain('name="Agency Logo"');
+    }
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain("Prepared by Bright Path Marketing");
     expect(coverXml).toContain("Q3 PERFORMANCE REVIEW");
-    expect(coverXml).toContain('name="Agency Logo"');
-
-    // Footer logo must be baked into every distinct template part — cover,
-    // campaign/ad-set template, table, and legend — not just the cover.
-    const allSlideFiles = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
-    let agencyLogoCount = 0;
-    for (const f of allSlideFiles) {
-      const xml = await zip.file(f)!.async("string");
-      if (xml.includes('name="Agency Logo"')) agencyLogoCount++;
-    }
-    // Cover + campaign + ad-set slides (share one template clone) + chart + table + legend
-    expect(agencyLogoCount).toBe(allSlideFiles.length);
+    expect(coverXml).not.toContain("{{");
   });
 
-  it("renders with both a client logo and agency branding together, without error", async () => {
+  it("renders both a client logo and an agency name together, without error", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const clientLogo = loadLogoAsset("logo.png");
-    const agencyLogo = loadLogoAsset("logo.jpg");
     const buffer = await renderPptx({
       templateBuffer,
       data: buildFixtureData(),
       currencySymbol: "₹",
       agencyName: "Bright Path Marketing",
-      agencyLogo,
       clientLogo,
     });
     const zip = await JSZip.loadAsync(buffer);
 
     expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
-    expect(zip.file("ppt/media/agency-footer-logo.jpg")).not.toBeNull();
+    expect(addedMediaFiles(zip)).toEqual(["ppt/media/client-logo.png"]);
 
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(coverXml).toContain('name="Client Logo"');
-    expect(coverXml).toContain('name="Agency Logo"');
     expect(coverXml).toContain("Prepared by Bright Path Marketing");
     expect(coverXml).not.toContain("{{");
   });
@@ -479,7 +474,7 @@ describe("renderPptx — client/agency logo branding (real production template)"
   const EMU_PER_INCH = 914400;
   const MIN_GAP_EMU = 0.15 * EMU_PER_INCH; // the product spec's explicit minimum
 
-  describe("client logo — new position/size (left, above Presented To)", () => {
+  describe("client logo — position/size (left, above Presented To)", () => {
     it("caps a wide (landscape) logo's display size at 180x90px", async () => {
       const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
       const clientLogo = loadLogoAsset("logo.png"); // 300x150, 2:1 — width-bound at the 180x90 (2:1) box
@@ -542,56 +537,6 @@ describe("renderPptx — client/agency logo branding (real production template)"
 
       expect(bottom(logoBox)).toBeLessThanOrEqual(presentedToBox.y);
       expect(presentedToBox.y - bottom(logoBox)).toBeGreaterThanOrEqual(MIN_GAP_EMU);
-    });
-  });
-
-  describe("agency footer logo — new size, and cover-specific stacking", () => {
-    it("caps the footer logo's display size at 120x50px on a non-cover slide", async () => {
-      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-      const agencyLogo = loadLogoAsset("logo.png"); // 2:1, width-bound at the 120x50 (2.4:1) box... actually height-bound; either way must not exceed the caps
-      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", agencyLogo });
-      const zip = await JSZip.loadAsync(buffer);
-      const campaignXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
-
-      const box = shapeBox(campaignXml, 'name="Agency Logo"');
-      expect(box.cx).toBeLessThanOrEqual(120 * 9525);
-      expect(box.cy).toBeLessThanOrEqual(50 * 9525);
-      expect(box.cx === 120 * 9525 || box.cy === 50 * 9525).toBe(true); // actually touches one of the two caps
-    });
-
-    it("on the cover with no client logo, sits directly above PRESENTED_TO with the minimum gap", async () => {
-      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-      const agencyLogo = loadLogoAsset("logo.jpg");
-      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", agencyLogo });
-      const zip = await JSZip.loadAsync(buffer);
-      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
-
-      const agencyBox = shapeBox(coverXml, 'name="Agency Logo"');
-      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
-      expect(bottom(agencyBox)).toBeLessThanOrEqual(presentedToBox.y);
-    });
-
-    it("on the cover with a client logo ALSO present, stacks above the client logo's band without overlapping it", async () => {
-      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-      const clientLogo = loadLogoAsset("logo.png");
-      const agencyLogo = loadLogoAsset("logo.jpg");
-      const buffer = await renderPptx({
-        templateBuffer,
-        data: buildFixtureData(),
-        currencySymbol: "₹",
-        clientLogo,
-        agencyLogo,
-      });
-      const zip = await JSZip.loadAsync(buffer);
-      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
-
-      const clientBox = shapeBox(coverXml, 'name="Client Logo"');
-      const agencyBox = shapeBox(coverXml, 'name="Agency Logo"');
-      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
-
-      // Bottom-to-top stacking order: PRESENTED_TO, then client logo, then agency logo — none overlapping.
-      expect(bottom(clientBox)).toBeLessThanOrEqual(presentedToBox.y);
-      expect(bottom(agencyBox)).toBeLessThanOrEqual(clientBox.y);
     });
   });
 });

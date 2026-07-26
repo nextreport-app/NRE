@@ -11,9 +11,9 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { agencyName: true, agencyLogoUrl: true },
+      select: { agencyName: true },
     });
-    return NextResponse.json({ agencyName: user?.agencyName ?? null, hasAgencyLogo: !!user?.agencyLogoUrl });
+    return NextResponse.json({ agencyName: user?.agencyName ?? null });
   } catch (err) {
     return apiErrorResponse(err, "account:get");
   }

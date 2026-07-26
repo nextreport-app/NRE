@@ -1,6 +1,6 @@
 /**
- * Server-side logo upload validation — shared by the client-logo and
- * agency-logo upload routes.
+ * Server-side logo upload validation — used by the client-logo upload
+ * route (agency logos were removed as a feature; see render.ts).
  *
  * Deliberately does NOT resize, re-encode, or otherwise process the image:
  * an earlier version used sharp for this, but sharp's prebuilt native
@@ -8,9 +8,8 @@
  * WASM fallback (wasm-vips) requires SharedArrayBuffer, which that runtime
  * blocks outright ("ArrayBuffer: SharedArrayBuffer is not allowed").
  * Logos are already small (2MB cap) and only ever displayed small (max
- * 180x90px client / 120x50px agency footer — see render.ts), so server-side
- * resizing was
- * never load-bearing — the PPTX embedding layer (embed-image.ts) already
+ * 180x90px — see render.ts), so server-side resizing was never load-bearing
+ * — the PPTX embedding layer (embed-image.ts) already
  * does its own "contain" fit against the uploaded pixel dimensions, at
  * whatever resolution the file actually is.
  *

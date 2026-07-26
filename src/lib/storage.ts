@@ -43,7 +43,7 @@ export async function deleteReportFile(url: string): Promise<void> {
   await del(url).catch(() => {});
 }
 
-// ─────────────────────────── Logos (client + agency) ───────────────────────
+// ─────────────────────────── Client logo ────────────────────────────────
 // Same private-store pattern as report files above. Logos are stored
 // UNMODIFIED in their original uploaded format (see logo-processing.ts for
 // why — no server-side re-encoding), so the blob key's extension varies
@@ -54,7 +54,8 @@ export async function deleteReportFile(url: string): Promise<void> {
 
 const LOGO_FORMATS: LogoFormat[] = ["png", "jpeg", "webp", "svg"];
 
-async function saveLogo(keyPrefix: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+export async function saveClientLogo(clientId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+  const keyPrefix = `logos/client-${clientId}`;
   const ext = extensionForLogoFormat(format);
   const blob = await put(`${keyPrefix}.${ext}`, buffer, {
     access: "private",
@@ -67,14 +68,6 @@ async function saveLogo(keyPrefix: string, buffer: Buffer, format: LogoFormat): 
     ),
   );
   return blob.url;
-}
-
-export async function saveClientLogo(clientId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
-  return saveLogo(`logos/client-${clientId}`, buffer, format);
-}
-
-export async function saveAgencyLogo(userId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
-  return saveLogo(`logos/agency-${userId}`, buffer, format);
 }
 
 export async function readLogoFile(url: string): Promise<Buffer> {
