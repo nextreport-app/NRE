@@ -129,6 +129,24 @@ export default function DownloadGuidePage() {
         </section>
 
         <section>
+          <h2 className="mb-4 text-lg font-medium text-white">Required columns for accurate objective detection</h2>
+          <ul className="list-inside list-disc space-y-2 text-sm leading-relaxed text-ink-secondary">
+            <li>For Website Lead campaigns: include the Website leads column</li>
+            <li>For Instant Form campaigns: include the Meta leads column</li>
+            <li>For Purchase/Sales campaigns: include the Purchases column and Purchase ROAS column</li>
+            <li>For Landing Page View campaigns: include the Landing page views column</li>
+            <li>For Reach campaigns: include the Reach column and set Result type to Reach</li>
+            <li>For Video campaigns: include the Video plays or ThruPlays column</li>
+          </ul>
+          <div className="mt-4">
+            <TipBox title="Always include">
+              Result type, Results, Cost per result — these three columns are the most reliable way for
+              NextReport to detect your campaign objective automatically.
+            </TipBox>
+          </div>
+        </section>
+
+        <section>
           <h2 className="mb-4 text-lg font-medium text-white">Tips for Best Results</h2>
           <ul className="list-inside list-disc space-y-2 text-sm leading-relaxed text-ink-secondary">
             <li>

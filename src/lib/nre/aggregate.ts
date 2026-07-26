@@ -11,13 +11,14 @@
  *    result_type — Meta leaves result_type empty on zero-result days, which
  *    would otherwise split one ad set into two groups.
  *  - "Today" (server UTC date) is always excluded — its data is incomplete.
- *  - The Reach-as-proxy / no-result-type-but-has-clicks corrections below are
- *    the actual live data-first objective detection used in production.
+ *  - The objective correction below is the actual live 4-step detection
+ *    used in production — see objective.ts's OBJECTIVE_CATALOG doc comment
+ *    for the full priority chain this implements.
  */
 
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
-import { detectObjectiveFromColumns, getResultLabels } from "./objective";
+import { canonicalResultTypeText, detectObjectiveFromColumns, getResultLabels } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
 
@@ -38,6 +39,14 @@ export interface AggRow {
   date_end: string;
   /** Raw text, e.g. "Active"/"Not delivering"/"Paused" — see delivery-status.ts. Empty when the CSV has no delivery-status column, or no row for this group had one set. */
   delivery_status: string;
+  /**
+   * False when the objective was only resolved via Step 3 (data values) or
+   * Step 4 (generic fallback) of the priority chain — i.e. neither the
+   * result_type column nor a recognized column name gave a confident
+   * answer. Drives the "objective auto-detected" warning on the upload
+   * preview step (see report-data.ts).
+   */
+  objectiveConfident: boolean;
 }
 
 interface GroupAcc {
@@ -50,6 +59,11 @@ interface GroupAcc {
   impressions: number;
   results: number;
   link_clicks: number;
+  purchases: number;
+  website_leads: number;
+  meta_leads: number;
+  leads: number;
+  landing_page_views: number;
   ctrs: number[];
   cpcs: number[];
   freqs: number[];
@@ -87,6 +101,11 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         impressions: 0,
         results: 0,
         link_clicks: 0,
+        purchases: 0,
+        website_leads: 0,
+        meta_leads: 0,
+        leads: 0,
+        landing_page_views: 0,
         ctrs: [],
         cpcs: [],
         freqs: [],
@@ -107,6 +126,11 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     g.impressions += parseCellNum(row.impressions);
     g.results += parseCellNum(row.results);
     g.link_clicks += parseCellNum(row.link_clicks || "0");
+    g.purchases += parseCellNum(row.purchases);
+    g.website_leads += parseCellNum(row.website_leads);
+    g.meta_leads += parseCellNum(row.meta_leads);
+    g.leads += parseCellNum(row.leads);
+    g.landing_page_views += parseCellNum(row.landing_page_views);
 
     const ctr = parseCellNum(row.ctr);
     const freq = parseCellNum(row.frequency);
@@ -129,50 +153,79 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     // than spend/link_clicks, which is 0 when the link_clicks column is empty).
     const cpc = g.cpcs.length > 0 ? average(g.cpcs) : g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
 
-    const { resultLabel } = getResultLabels(g.result_type);
-    let cpr: number;
-    if (resultLabel === "REACH") {
-      cpr = g.reach > 0 ? (g.spend * 1000) / g.reach : 0;
-    } else {
-      cpr = g.results > 0 ? g.spend / g.results : 0;
-    }
-
-    // Objective correction when result_type text alone (priority 1) isn't
-    // enough — full priority order:
-    //   1. result_type text itself, if non-empty (getResultLabels above).
+    // 4-step objective priority chain (see objective.ts's OBJECTIVE_CATALOG
+    // doc comment for the full rationale):
+    //   1. result_type text itself, if non-empty.
     //   2. Column presence — which objective-specific columns the CSV
-    //      actually includes, regardless of their values (columnObjective,
-    //      computed once from the file's headers, above).
-    //   3. Data values — which columns happen to be non-zero, as a last-
-    //      resort fallback only (Purchases > Leads > LPV > Link Clicks > Reach).
-    //   4. Generic RESULTS/COST PER RESULT (the untouched default below).
+    //      headers actually include (columnObjective, computed once above),
+    //      regardless of their values.
+    //   3. Data values — which specific metrics are non-zero, in priority
+    //      order (Purchases > Website leads > Meta leads > Leads > Landing
+    //      page views > Link clicks > Reach). Only reached when neither
+    //      Step 1 nor Step 2 resolved anything.
+    //   4. Generic RESULTS/COST PER RESULT.
+    const { resultLabel: step1Label } = getResultLabels(g.result_type);
+
     let actualResultType = g.result_type;
     let actualResults = g.results;
-    let actualCpr = cpr;
+    let actualCpr: number;
+    let objectiveConfident: boolean;
 
-    if (
-      resultLabel === "REACH" &&
-      g.link_clicks > 0 &&
-      Math.abs(g.results - g.reach) <= Math.max(g.reach * 0.03, 5)
-    ) {
-      // Reach count ≈ result count → Reach used as a proxy for a Traffic campaign.
-      actualResultType = "Link click";
-      actualResults = g.link_clicks;
-      actualCpr = g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
-    } else if (resultLabel === "RESULTS" && columnObjective) {
-      // Priority 2: no result_type text, but a specific objective column
-      // exists in the CSV — trust that over which columns merely have
-      // non-zero data (Meta always tracks link clicks regardless of
-      // objective, so "link clicks > 0" alone is a weak signal). Keep the
+    if (step1Label !== "RESULTS") {
+      // Step 1 resolved it (a recognized objective, or an unrecognized-but-
+      // present result_type kept as its own text) — trust result_type text
+      // as-is, no correction needed.
+      actualCpr = step1Label === "REACH" ? (g.reach > 0 ? (g.spend * 1000) / g.reach : 0) : g.results > 0 ? g.spend / g.results : 0;
+      objectiveConfident = true;
+    } else if (columnObjective) {
+      // Step 2: no result_type text, but a specific objective column exists
+      // in the CSV — trust that over which columns merely have non-zero
+      // data (Meta always tracks link clicks regardless of objective, so
+      // "link clicks > 0" alone is a weak signal). Keep the
       // already-correctly-mapped results/cpr (0/— for a brand new campaign
       // with no results yet) — only the label changes here.
-      actualResultType = columnObjective.resultLabel;
-    } else if (resultLabel === "RESULTS" && g.link_clicks > 0 && g.results === 0) {
-      // Priority 3 (last resort): no result type set, no recognized
-      // objective column present either, but link clicks exist → Traffic.
-      actualResultType = "Link click";
+      actualResultType = canonicalResultTypeText(columnObjective.resultLabel);
+      actualCpr = g.results > 0 ? g.spend / g.results : 0;
+      objectiveConfident = true;
+    } else if (g.purchases > 0) {
+      actualResultType = canonicalResultTypeText("PURCHASES");
+      actualResults = g.purchases;
+      actualCpr = g.spend / g.purchases;
+      objectiveConfident = false;
+    } else if (g.website_leads > 0) {
+      actualResultType = canonicalResultTypeText("WEBSITE LEADS");
+      actualResults = g.website_leads;
+      actualCpr = g.spend / g.website_leads;
+      objectiveConfident = false;
+    } else if (g.meta_leads > 0) {
+      actualResultType = canonicalResultTypeText("META FORM LEADS");
+      actualResults = g.meta_leads;
+      actualCpr = g.spend / g.meta_leads;
+      objectiveConfident = false;
+    } else if (g.leads > 0) {
+      actualResultType = canonicalResultTypeText("LEADS");
+      actualResults = g.leads;
+      actualCpr = g.spend / g.leads;
+      objectiveConfident = false;
+    } else if (g.landing_page_views > 0) {
+      actualResultType = canonicalResultTypeText("LANDING PAGE VIEWS");
+      actualResults = g.landing_page_views;
+      actualCpr = g.spend / g.landing_page_views;
+      objectiveConfident = false;
+    } else if (g.link_clicks > 0 && g.reach !== g.results) {
+      actualResultType = canonicalResultTypeText("LINK CLICKS");
       actualResults = g.link_clicks;
-      actualCpr = g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
+      actualCpr = g.spend / g.link_clicks;
+      objectiveConfident = false;
+    } else if (g.reach > 0) {
+      actualResultType = canonicalResultTypeText("REACH");
+      actualResults = 0;
+      actualCpr = (g.spend * 1000) / g.reach;
+      objectiveConfident = false;
+    } else {
+      // Step 4: generic fallback — nothing to go on at all.
+      actualCpr = g.results > 0 ? g.spend / g.results : 0;
+      objectiveConfident = false;
     }
 
     return {
@@ -180,6 +233,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       ad_set_name: g.ad_set_name,
       result_type: actualResultType,
       delivery_status: g.delivery_status,
+      objectiveConfident,
       spend: g.spend,
       reach: g.reach,
       impressions: g.impressions,

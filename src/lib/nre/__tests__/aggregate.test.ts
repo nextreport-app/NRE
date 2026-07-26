@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aggregateRows, splitMtdDaily } from "../aggregate";
+import { getResultLabels } from "../objective";
 import type { NreRow } from "../columns";
 
 function dailyRow(overrides: Partial<Record<string, string>> & { day: string }): NreRow {
@@ -64,50 +65,53 @@ describe("aggregateRows", () => {
     expect(aggregateRows(rows)[0].cpc).toBeCloseTo(5);
   });
 
-  it("applies the Reach-as-proxy correction (results ≈ reach, link clicks present → Link click)", () => {
+  it("trusts an explicit 'Reach' result_type as Step 1 (priority 1) — no longer overridden by link-click proximity heuristics", () => {
+    // Step 1 (result_type text) is the top of the priority chain and, once
+    // matched, is trusted outright — the old "reach ≈ results, so it's
+    // really Traffic" heuristic was a Step-3-era guess that the new
+    // column-presence/data-value chain (Steps 2-4) replaces; it no longer
+    // applies when Step 1 already resolved the objective.
     const rows: NreRow[] = [
       dailyRow({
         day: "01-07-2026",
         result_type: "Reach",
         reach: "1000",
-        results: "990", // within 3% of reach
-        link_clicks: "500",
-        spend: "250",
-      }),
-    ];
-    const [g] = aggregateRows(rows);
-    expect(g.result_type).toBe("Link click");
-    expect(g.results).toBe(500); // now = link_clicks
-    expect(g.cpr).toBeCloseTo(250 / 500);
-  });
-
-  it("does NOT apply the Reach-as-proxy correction when results diverge from reach", () => {
-    const rows: NreRow[] = [
-      dailyRow({
-        day: "01-07-2026",
-        result_type: "Reach",
-        reach: "1000",
-        results: "50", // far from reach
+        results: "990", // previously "close enough to reach" to trigger the old override
         link_clicks: "500",
         spend: "250",
       }),
     ];
     const [g] = aggregateRows(rows);
     expect(g.result_type).toBe("Reach");
-    expect(g.results).toBe(50);
+    expect(g.results).toBe(990);
   });
 
-  it("infers Link click when no result_type is set but link clicks exist and results are 0", () => {
+  it("infers LINK CLICKS (Step 3, data values) when no result_type/objective column exists, link clicks are non-zero, and reach differs from results", () => {
     const rows: NreRow[] = [
-      dailyRow({ day: "01-07-2026", result_type: "", results: "0", link_clicks: "300", spend: "150" }),
+      dailyRow({
+        day: "01-07-2026",
+        result_type: "",
+        results: "0",
+        reach: "1200", // non-zero and different from results — Meta always tracks reach
+        link_clicks: "300",
+        spend: "150",
+      }),
     ];
     const [g] = aggregateRows(rows);
-    expect(g.result_type).toBe("Link click");
+    expect(getResultLabels(g.result_type).resultLabel).toBe("LINK CLICKS");
     expect(g.results).toBe(300);
     expect(g.cpr).toBeCloseTo(0.5);
   });
 
-  it("computes REACH cpr as cost-per-1K-reach when there is no correction to apply", () => {
+  it("does NOT infer LINK CLICKS when reach equals results (both genuinely zero — no signal at all, falls to generic RESULTS)", () => {
+    const rows: NreRow[] = [
+      dailyRow({ day: "01-07-2026", result_type: "", results: "0", reach: "0", link_clicks: "300", spend: "150" }),
+    ];
+    const [g] = aggregateRows(rows);
+    expect(getResultLabels(g.result_type).resultLabel).toBe("RESULTS");
+  });
+
+  it("computes REACH cpr as cost-per-1K-reach", () => {
     const rows: NreRow[] = [
       dailyRow({ day: "01-07-2026", result_type: "Reach", reach: "1000", results: "0", spend: "50" }),
     ];
@@ -169,18 +173,19 @@ describe("aggregateRows", () => {
     it("detects WEBSITE LEADS for a brand new campaign with zero results — a Website leads column exists, even with no link clicks at all", () => {
       const rows: NreRow[] = [csvRow({ day: "18-07-2026", websiteLeads: "0", linkClicks: "0" })];
       const [g] = aggregateRows(rows);
-      expect(g.result_type).toBe("WEBSITE LEADS");
+      expect(getResultLabels(g.result_type).resultLabel).toBe("WEBSITE LEADS");
       expect(g.results).toBe(0); // zero results shown as 0, not hidden/miscounted
+      expect(g.objectiveConfident).toBe(true); // Step 2 (column presence) is a confident signal
     });
 
     it("detects PURCHASES for a brand new campaign with zero results — a Purchases column exists", () => {
       const rows: NreRow[] = [csvRow({ day: "18-07-2026", purchases: "0", linkClicks: "0" })];
       const [g] = aggregateRows(rows);
-      expect(g.result_type).toBe("PURCHASES");
+      expect(getResultLabels(g.result_type).resultLabel).toBe("PURCHASES");
       expect(g.results).toBe(0);
     });
 
-    it("still detects WEBSITE LEADS, not CLICKS, when link clicks are non-zero — column presence beats data values", () => {
+    it("still detects WEBSITE LEADS, not LINK CLICKS, when link clicks are non-zero — column presence beats data values", () => {
       // The exact reported scenario: result_type empty, Website leads column
       // present but 0 so far, Link clicks non-zero (Meta always tracks
       // clicks regardless of objective) — must not fall through to Traffic.
@@ -189,24 +194,23 @@ describe("aggregateRows", () => {
         csvRow({ day: "19-07-2026", websiteLeads: "0", linkClicks: "10" }),
       ];
       const [g] = aggregateRows(rows);
-      expect(g.result_type).toBe("WEBSITE LEADS");
+      expect(getResultLabels(g.result_type).resultLabel).toBe("WEBSITE LEADS");
       expect(g.results).toBe(0);
       expect(g.link_clicks).toBe(20); // link clicks still tracked, just not used as the objective
       expect(g.cpr).toBe(0); // no results yet → cost-per-result not computable
     });
 
-    it("falls back to the old data-value-based Link click detection when no objective column is present at all", () => {
+    it("falls back to Step 3's data-value Link Clicks detection when no objective column is present at all", () => {
       // Regression guard: a genuine Traffic campaign (no recognizable
-      // objective column, just link clicks) must keep working exactly as
-      // before this fix.
+      // objective column, just link clicks and reach) must keep working.
       const rows: NreRow[] = [
         {
-          _raw: { Day: "18-07-2026", "Campaign name": "Traffic Campaign", "Link clicks": "300" },
+          _raw: { Day: "18-07-2026", "Campaign name": "Traffic Campaign", "Link clicks": "300", Reach: "1200" },
           campaign_name: "Traffic Campaign",
           ad_set_name: "Ad Set 1",
           result_type: "",
           spend: "150",
-          reach: "0",
+          reach: "1200",
           impressions: "0",
           results: "0",
           link_clicks: "300",
@@ -218,8 +222,9 @@ describe("aggregateRows", () => {
         },
       ];
       const [g] = aggregateRows(rows);
-      expect(g.result_type).toBe("Link click");
+      expect(getResultLabels(g.result_type).resultLabel).toBe("LINK CLICKS");
       expect(g.results).toBe(300);
+      expect(g.objectiveConfident).toBe(false); // Step 3 (data values) is not a confident signal
     });
   });
 });

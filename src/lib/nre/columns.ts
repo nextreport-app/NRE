@@ -26,6 +26,18 @@ export const NRE_METRIC_KEYS = [
   // accounts). Genuinely optional: a CSV without this column falls back to
   // the original spend-based "active" heuristic, see report-data.ts.
   "delivery_status",
+  // Objective-specific result columns — not part of the ported Apps Script.
+  // Read only by aggregate.ts's Step 3 data-value objective fallback (see
+  // objective.ts): each is genuinely optional, and only consulted when
+  // neither result_type text nor a recognized column NAME (Step 2) resolved
+  // the objective. Distinct from the generic `results` field above, which
+  // stays as the primary displayed count regardless of which of these (if
+  // any) also matched.
+  "purchases",
+  "website_leads",
+  "meta_leads",
+  "leads",
+  "landing_page_views",
 ] as const;
 
 export type NreMetricKey = (typeof NRE_METRIC_KEYS)[number];
@@ -46,6 +58,11 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   date_start: ["reporting starts", "date start", "start date", "from date"],
   date_end: ["reporting ends", "date end", "end date", "to date"],
   delivery_status: ["delivery status", "effective status", "ad set delivery", "campaign delivery"],
+  purchases: ["purchases"],
+  website_leads: ["website lead"],
+  meta_leads: ["meta lead"],
+  leads: ["leads"],
+  landing_page_views: ["landing page view", "lpv"],
 };
 
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;

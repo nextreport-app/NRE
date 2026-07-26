@@ -300,6 +300,75 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
   });
 });
 
+describe("buildReportData — objectiveWarnings (upload preview's 'objective auto-detected' warning)", () => {
+  it("flags a campaign whose objective could only be resolved via the low-confidence data-value fallback", () => {
+    // Empty result_type, no recognizable objective column in the fixture's
+    // _raw (only "Day" — see buildDailyRows), reach non-zero and different
+    // from results, link clicks present → Step 3's LINK CLICKS fallback.
+    const rows = buildDailyRows({
+      campaign_name: "Mystery Campaign",
+      ad_set_name: "Ad Set 1",
+      result_type: "",
+      spend: 100,
+      reach: 1000,
+      impressions: 3000,
+      results: 0,
+      link_clicks: 50,
+      ctr: 1.5,
+      cpc: 3,
+      frequency: 2,
+    });
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    expect(data.objectiveWarnings).toEqual([
+      { campaignName: "Mystery Campaign", detectedLabel: "LINK CLICKS" },
+    ]);
+  });
+
+  it("does not flag a campaign whose objective came from result_type text (Step 1 — confident)", () => {
+    const rows = buildDailyRows({
+      campaign_name: "Shoes - Purchases",
+      ad_set_name: "Ad Set 1",
+      result_type: "Purchase",
+      spend: 100,
+      reach: 1000,
+      impressions: 3000,
+      results: 5,
+      link_clicks: 50,
+      ctr: 1.5,
+      cpc: 3,
+      frequency: 2,
+    });
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    expect(data.objectiveWarnings).toEqual([]);
+  });
+
+  it("is empty for a paused account", () => {
+    const data = buildReportData({
+      accountName: "Idle Co",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      mtdDailyRows: [],
+      now: NOW,
+    });
+    expect(data.objectiveWarnings).toEqual([]);
+  });
+});
+
 describe("buildReportData — paused account", () => {
   it("returns isPaused with a paused message and no slides", () => {
     const data = buildReportData({
@@ -404,21 +473,21 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
 
   it("shows the real objective name (not a generic bucket) on each campaign's summary slide", () => {
     const leadSlide = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
-    expect(leadSlide.resultLabel).toBe("LEADS (FORM)");
+    expect(leadSlide.resultLabel).toBe("META FORM LEADS");
     expect(leadSlide.costLabel).toBe("COST PER LEAD");
 
     const subsSlide = data.campaignSlides.find((s) => s.campaignName === "Subscriptions")!;
-    expect(subsSlide.resultLabel).toBe("WEBSITE SUBSCRIPTIONS");
+    expect(subsSlide.resultLabel).toBe("SUBSCRIPTIONS");
     expect(subsSlide.costLabel).toBe("COST PER SUBSCRIPTION");
   });
 
   it("shows the real objective name on the MTD chart slide, never the generic word RESULTS", () => {
     const leadChart = data.chart!.campaigns.find((c) => c.name === "Lead Gen")!;
-    expect(leadChart.resLabel).toBe("LEADS (FORM)");
+    expect(leadChart.resLabel).toBe("META FORM LEADS");
     expect(leadChart.cprLabel).toBe("COST PER LEAD");
 
     const subsChart = data.chart!.campaigns.find((c) => c.name === "Subscriptions")!;
-    expect(subsChart.resLabel).toBe("WEBSITE SUBSCRIPTIONS");
+    expect(subsChart.resLabel).toBe("SUBSCRIPTIONS");
     expect(subsChart.cprLabel).toBe("COST PER SUBSCRIPTION");
   });
 
@@ -426,9 +495,9 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
     // Leads (form) has more results (42) than Website subscriptions (35), so
     // it's group 1 (columns 7-8) and subscriptions is group 2 (columns 9-10).
     expect(data.tableHeaderLabels).toEqual({
-      result1Label: "LEADS (FORM)",
+      result1Label: "META FORM LEADS",
       cpr1Label: "COST PER LEAD",
-      result2Label: "WEBSITE SUBSCRIPTIONS",
+      result2Label: "SUBSCRIPTIONS",
       cpr2Label: "COST PER SUBSCRIPTION",
     });
   });

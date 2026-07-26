@@ -1032,6 +1032,27 @@ function ReportPreview({ data }: { data: ReportData }) {
 
   return (
     <div className="space-y-5">
+      {data.objectiveWarnings.length > 0 && (
+        <div className="space-y-2">
+          {data.objectiveWarnings.map((w) => (
+            <div
+              key={w.campaignName}
+              className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200"
+            >
+              <p>
+                <span className="font-medium">{w.campaignName}:</span> Objective auto-detected as{" "}
+                {w.detectedLabel}. If this is incorrect, make sure your CSV includes the relevant result
+                column — for example Website leads, Meta leads, Purchases, Landing page views etc. See our{" "}
+                <Link href="/help/download" className="underline hover:text-amber-100">
+                  Download Guide
+                </Link>{" "}
+                for the recommended columns to include.
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
         <p className="text-xs uppercase tracking-wide text-ink-muted">Cover</p>
         <p className="mt-1 text-white">{data.cover.dateRange}</p>

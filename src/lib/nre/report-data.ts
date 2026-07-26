@@ -150,6 +150,19 @@ export interface CoverData {
   budgetSummary: string;
 }
 
+/**
+ * Flagged when a campaign's objective was only resolved via Step 3 (data
+ * values) or Step 4 (generic fallback) of the priority chain — i.e. neither
+ * the CSV's result_type column nor a recognized objective-specific column
+ * name gave a confident answer, so the detection is a best-effort guess.
+ * Drives the amber "Objective auto-detected as ..." warning on the upload
+ * wizard's preview step.
+ */
+export interface ObjectiveWarning {
+  campaignName: string;
+  detectedLabel: string;
+}
+
 export interface ReportData {
   isPaused: boolean;
   cover: CoverData;
@@ -161,6 +174,7 @@ export interface ReportData {
   mtdRow: TableRowData;
   tableHeaderLabels: TableHeaderLabels;
   fileDateRange: string;
+  objectiveWarnings: ObjectiveWarning[];
 }
 
 export interface BuildReportDataInput {
@@ -481,6 +495,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       mtdRow,
       tableHeaderLabels,
       fileDateRange,
+      objectiveWarnings: [],
     };
   }
 
@@ -502,6 +517,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const campaignNames = Object.keys(campaignGroups).sort();
 
   // ── Phase A1: campaign summary slides ────────────────────────────────
+  // Collected alongside the slides below — see ObjectiveWarning's doc
+  // comment for what "low confidence" means and why it's surfaced here.
+  const objectiveWarnings: ObjectiveWarning[] = [];
+
   const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
     const campRows = campaignGroups[campaignName];
 
@@ -522,6 +541,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
     const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplay(campRows, currencySymbol);
+    if (campRows.some((r) => !r.objectiveConfident)) {
+      objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
+    }
 
     let totalFreq = 0;
     let freqRows = 0;
@@ -696,5 +718,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     mtdRow,
     tableHeaderLabels,
     fileDateRange,
+    objectiveWarnings,
   };
 }

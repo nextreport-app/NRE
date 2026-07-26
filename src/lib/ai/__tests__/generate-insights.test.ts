@@ -65,6 +65,7 @@ function makeReportData(): ReportData {
     mtdRow: { hasData: false, monthLabel: "—", spend: "—", reach: "—", impressions: "—", ctr: "—", cpc: "—", result1: "0", cpr1: "—", result2: "—", cpr2: "—", g1Label: "RESULTS", g1CprLabel: "CPR", g2Label: null, g2CprLabel: null },
     tableHeaderLabels: { result1Label: "RESULTS", cpr1Label: "CPR", result2Label: "—", cpr2Label: "—" },
     fileDateRange: "07/13/2026 to 07/19/2026",
+    objectiveWarnings: [],
   };
 }
 
