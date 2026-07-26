@@ -6,7 +6,15 @@
  */
 
 import { buildCombinedTotalTableGrid, type CoverData, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
-import { forceRunStyle, replaceTagRun, replaceTagRunWithSuffix, type StyleOverride } from "./ooxml";
+import {
+  cloneShapeAsTag,
+  forceRunStyle,
+  insertShapeBeforeSpTreeClose,
+  replaceTagRun,
+  replaceTagRunWithSuffix,
+  setShapeOffsetY,
+  type StyleOverride,
+} from "./ooxml";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
@@ -30,16 +38,53 @@ function fillTags(xml: string, values: Record<string, string>, styleOverrides: R
   return out;
 }
 
-export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData): string {
+export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
+
+// PRESENTED_TO badge and ACCOUNT_NAME's own y offsets in the template
+// (ppt/slides/slide1.xml) — shifted up by this much, together, only when a
+// "Prepared by ..." line needs to be inserted between ACCOUNT_NAME and
+// REPORT_DATE. Chosen so the new line gets the same ~33000 EMU gap on both
+// sides that ACCOUNT_NAME and REPORT_DATE already have between each other
+// (see the empirical cover-slide spacing fix) — when no agency name is set,
+// neither shape is touched and the cover renders pixel-identical to today.
+const PRESENTED_TO_Y = 5061635;
+const ACCOUNT_NAME_Y = 5533973;
+const ACCOUNT_NAME_HEIGHT_EMU = 400000;
+const COVER_ROW_GAP_EMU = 32999; // the template's own existing ACCOUNT_NAME-to-REPORT_DATE gap
+const PREPARED_BY_SHIFT_UP_EMU = 310000;
+const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_HEIGHT_EMU + COVER_ROW_GAP_EMU;
+
+export interface CoverSlideOptions {
+  /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
+  reportTitle?: string | null;
+  /** Agency name from account settings — when set, adds a "Prepared by ..." line below the account name; when absent, the cover renders exactly as it does without this feature. */
+  agencyName?: string | null;
+}
+
+export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, options: CoverSlideOptions = {}): string {
   const accountNameSizePt = fitFontSizePt(cover.accountName, ACCOUNT_NAME_MAX_WIDTH_PT, ACCOUNT_NAME_CANDIDATE_SIZES_PT);
+  const agencyName = options.agencyName?.trim();
+
+  let xml = template.xml;
+  if (agencyName) {
+    const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
+    xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
+    xml = setShapeOffsetY(xml, "{{ACCOUNT_NAME}}", ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU);
+    xml = insertShapeBeforeSpTreeClose(xml, preparedByShape);
+  }
+
+  const reportTitle = (options.reportTitle?.trim() || DEFAULT_REPORT_TITLE).toUpperCase();
+
   return fillTags(
-    template.xml,
+    xml,
     {
       ACCOUNT_NAME: cover.accountName,
+      REPORT_TITLE: reportTitle,
       REPORT_DATE: cover.reportDate,
       DATE_RANGE: cover.dateRange,
       ACCOUNT_HEALTH_BADGE: cover.healthBadge,
       BUDGET_SUMMARY: cover.budgetSummary,
+      ...(agencyName ? { PREPARED_BY: `Prepared by ${agencyName}` } : {}),
     },
     {
       ACCOUNT_NAME: { sizePt: accountNameSizePt },

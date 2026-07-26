@@ -22,12 +22,18 @@ export type ClientFormValues = {
 
 const CURRENCY_SYMBOL = CURRENCY_SYMBOLS;
 
+const ACCEPTED_LOGO_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
 export function ClientForm({
   clientId,
   initial,
+  hasLogo = false,
 }: {
   clientId?: string;
   initial?: Partial<ClientFormValues>;
+  /** Whether this client already has a logo uploaded — drives the initial preview/remove-button state on edit. Irrelevant on create (no clientId yet). */
+  hasLogo?: boolean;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<ClientFormValues>({
@@ -42,8 +48,43 @@ export function ClientForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Logo: staged separately from the JSON client fields above and uploaded
+  // via a second request after the client is saved (see handleSubmit) —
+  // POST /api/clients doesn't have a client id to attach a logo to until
+  // the client itself has been created.
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
   function set<K extends keyof ClientFormValues>(key: K, value: ClientFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setLogoError(null);
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError("Logo file must be 2MB or smaller.");
+      e.target.value = "";
+      return;
+    }
+    setLogoFile(file);
+    setRemoveLogo(false);
+    setLogoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function handleRemoveLogo() {
+    setLogoFile(null);
+    setLogoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setRemoveLogo(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,14 +101,31 @@ export function ClientForm({
       body: JSON.stringify(values),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
 
     if (!res.ok) {
+      setLoading(false);
       setError(data.error || "Something went wrong.");
       return;
     }
 
-    router.push(`/clients/${data.client.id}`);
+    const savedClientId: string = data.client.id;
+
+    if (logoFile) {
+      const logoFormData = new FormData();
+      logoFormData.append("logo", logoFile);
+      const logoRes = await fetch(`/api/clients/${savedClientId}/logo`, { method: "POST", body: logoFormData });
+      if (!logoRes.ok) {
+        const logoData = await logoRes.json().catch(() => ({}));
+        setLoading(false);
+        setError(logoData.error || "Client saved, but the logo upload failed.");
+        return;
+      }
+    } else if (removeLogo) {
+      await fetch(`/api/clients/${savedClientId}/logo`, { method: "DELETE" });
+    }
+
+    setLoading(false);
+    router.push(`/clients/${savedClientId}`);
     router.refresh();
   }
 
@@ -82,6 +140,40 @@ export function ClientForm({
           placeholder="e.g. Acme Retail — Meta Ads"
           className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
         />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-ink-secondary">Client logo — optional</label>
+        <div className="flex items-center gap-3">
+          {logoPreviewUrl ? (
+            <img src={logoPreviewUrl} alt="Logo preview" className="h-12 w-24 rounded border border-navy-border bg-navy object-contain" />
+          ) : hasLogo && !removeLogo ? (
+            <img
+              src={`/api/clients/${clientId}/logo`}
+              alt="Current logo"
+              className="h-12 w-24 rounded border border-navy-border bg-navy object-contain"
+            />
+          ) : null}
+          <input
+            type="file"
+            accept={ACCEPTED_LOGO_TYPES}
+            onChange={handleLogoChange}
+            className="flex-1 text-sm text-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-navy-border file:px-3 file:py-2 file:text-sm file:text-white hover:file:bg-navy-panel"
+          />
+          {((hasLogo && !removeLogo) || logoFile) && (
+            <button
+              type="button"
+              onClick={handleRemoveLogo}
+              className="rounded-md border border-navy-border px-3 py-2 text-sm text-ink-secondary hover:bg-navy-border"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {logoError && <p className="mt-1 text-sm text-red-400">{logoError}</p>}
+        <p className="mt-1 text-xs text-ink-muted">
+          PNG, JPG, WebP, or SVG, up to 2MB. Shown bottom-right on the report cover slide.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

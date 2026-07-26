@@ -34,6 +34,11 @@ interface DateSelection {
   customEnd?: string;
 }
 
+// Matches fill-tags.ts's DEFAULT_REPORT_TITLE — kept as a separate constant
+// here rather than imported, since that module pulls in the whole PPTX
+// generation stack (JSZip etc.) which has no business in the client bundle.
+const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
+
 // Sent as real File objects (multipart/form-data), never decoded to text in
 // the browser — .xlsx/.xls are binary and non-UTF-8 text files would be
 // mis-decoded by File.text() (which always assumes UTF-8). The server
@@ -97,6 +102,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [previewErrors, setPreviewErrors] = useState<ValidationIssue[]>([]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
+  const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
 
   // Step 6 — Generate
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -373,6 +379,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
         selectedCampaigns: Array.from(selectedCampaigns),
         selectedAdSets: selectedAdSetsForRequest(),
         dateSelection: currentDateSelection(),
+        reportTitle: reportTitle.trim() || DEFAULT_REPORT_TITLE,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -840,6 +847,20 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             Generating report for {selectedCampaigns.size} campaign{selectedCampaigns.size === 1 ? "" : "s"}
             {weeklyRangeIso && <> — Week: {formatIsoRange(weeklyRangeIso)}</>}
             {mtdRange && <> — MTD: {formatIsoRange(mtdRange)}</>}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-ink-secondary">Report title</label>
+            <input
+              value={reportTitle}
+              onChange={(e) => setReportTitle(e.target.value)}
+              placeholder={DEFAULT_REPORT_TITLE}
+              maxLength={100}
+              className="w-full max-w-md rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+            />
+            <p className="mt-1 text-xs text-ink-muted">
+              Shown on the cover slide in place of &quot;{DEFAULT_REPORT_TITLE}&quot; — e.g. &quot;Monthly Campaign Summary&quot; or &quot;Q3 Performance Review&quot;.
+            </p>
           </div>
 
           <div className="flex gap-3">

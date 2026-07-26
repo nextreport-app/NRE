@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, beforeAll } from "vitest";
-import { buildCoverSlideXml, buildCampaignOrAdSetSlideXml } from "../fill-tags";
+import { buildCoverSlideXml, buildCampaignOrAdSetSlideXml, DEFAULT_REPORT_TITLE } from "../fill-tags";
 import { loadTemplate, type LoadedTemplate } from "../package";
 import type { CoverData, CampaignSlideData } from "../../nre/report-data";
 
@@ -77,6 +77,57 @@ describe("buildCoverSlideXml — account name auto-shrink (regression)", () => {
     const longName = "Alonzo Carr (Tailored Fiduciary Services)";
     const xml = buildCoverSlideXml(template.cover, { ...BASE_COVER, accountName: longName });
     expect(sizeOfRunContaining(xml, longName)).toBe(16);
+  });
+});
+
+describe("buildCoverSlideXml — report title", () => {
+  it("falls back to DEFAULT_REPORT_TITLE, upper-cased, when no title is given", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    expect(xml).toContain(`<a:t>${DEFAULT_REPORT_TITLE.toUpperCase()}</a:t>`);
+  });
+
+  it("falls back to DEFAULT_REPORT_TITLE when given a blank/whitespace title", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { reportTitle: "   " });
+    expect(xml).toContain(`<a:t>${DEFAULT_REPORT_TITLE.toUpperCase()}</a:t>`);
+  });
+
+  it("renders a custom title, upper-cased to match the template's all-caps styling", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { reportTitle: "Q3 Performance Review" });
+    expect(xml).toContain("<a:t>Q3 PERFORMANCE REVIEW</a:t>");
+    expect(xml).not.toContain(DEFAULT_REPORT_TITLE.toUpperCase());
+  });
+});
+
+describe("buildCoverSlideXml — Prepared By line", () => {
+  it("adds no PREPARED_BY text and doesn't move PRESENTED_TO/ACCOUNT_NAME when no agency name is set", () => {
+    const withoutAgency = buildCoverSlideXml(template.cover, BASE_COVER);
+    const baseline = buildCoverSlideXml(template.cover, BASE_COVER, {});
+    // No agencyName in either call — cover renders pixel-identical either way.
+    expect(withoutAgency).toBe(baseline);
+    expect(withoutAgency).not.toContain("Prepared by");
+  });
+
+  it("adds a 'Prepared by <agency>' line when an agency name is set", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "Bright Path Marketing" });
+    expect(xml).toContain("<a:t>Prepared by Bright Path Marketing</a:t>");
+  });
+
+  it("shifts PRESENTED_TO and ACCOUNT_NAME up when an agency name is set, so the new line doesn't overlap them", () => {
+    const withoutAgency = buildCoverSlideXml(template.cover, BASE_COVER);
+    const withAgency = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "Bright Path Marketing" });
+
+    const presentedToY = (xml: string) => {
+      const idx = xml.indexOf("PRESENTED TO");
+      const spStart = xml.lastIndexOf("<p:sp>", idx);
+      return Number(/<a:off x="\d+" y="(\d+)"/.exec(xml.slice(spStart, idx))![1]);
+    };
+    expect(presentedToY(withAgency)).toBeLessThan(presentedToY(withoutAgency));
+  });
+
+  it("ignores a blank/whitespace-only agency name the same as no agency name", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "   " });
+    expect(xml).not.toContain("Prepared by");
+    expect(xml).not.toContain("{{PREPARED_BY}}");
   });
 });
 

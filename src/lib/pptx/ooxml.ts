@@ -142,3 +142,57 @@ export function forceRunStyle(xml: string, literalText: string, styleOverride: S
 export function ptToEmu(pt: number): number {
   return Math.round(pt * 12700);
 }
+
+/**
+ * Rewrites the y offset of the `<p:sp>` shape whose text contains
+ * `locatorText` (a literal substring — a static heading or a {{TAG}}
+ * placeholder). No-op if the locator isn't found. Used to reposition
+ * existing cover-slide shapes at render time when an optional extra line
+ * (e.g. "Prepared by ...") needs to be inserted above them — shapes are
+ * independently, absolutely positioned in PPTX, so nothing else moves on
+ * its own.
+ */
+export function setShapeOffsetY(xml: string, locatorText: string, y: number): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  const sp = xml.slice(start, end);
+  const newSp = sp.replace(/(<a:off x="\d+" y=")\d+(")/, `$1${y}$2`);
+  return xml.slice(0, start) + newSp + xml.slice(end);
+}
+
+/**
+ * Clones the `<p:sp>` shape whose sole text run is `sourceTag` (a
+ * {{TAG}} placeholder), retargets that run to `newTag`, repositions it to
+ * a new y offset, and assigns it a fresh shape id so it doesn't collide
+ * with the source shape's id. Returns just the new shape's XML — it is NOT
+ * inserted into the document; pass it to `insertShapeBeforeSpTreeClose`.
+ * Reuses the source shape's exact styling rather than duplicating run-
+ * property XML by hand, for a conditionally-present line that should look
+ * like a natural sibling of an existing one (e.g. cloning REPORT_DATE's
+ * small muted-text styling for a "Prepared by ..." line).
+ */
+export function cloneShapeAsTag(xml: string, sourceTag: string, newTag: string, y: number): string {
+  const idx = xml.indexOf(sourceTag);
+  if (idx === -1) throw new Error(`cloneShapeAsTag: tag not found: ${sourceTag}`);
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  let sp = xml.slice(start, end);
+
+  const existingIds = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map((m) => Number(m[1]));
+  const newId = (existingIds.length ? Math.max(...existingIds) : 0) + 1;
+  sp = sp.replace(/(<p:cNvPr id=")\d+(")/, `$1${newId}$2`);
+  sp = sp.replace(/(<a:off x="\d+" y=")\d+(")/, `$1${y}$2`);
+  sp = sp.replace(sourceTag, newTag);
+
+  return sp;
+}
+
+/** Inserts `shapeXml` (a full `<p:sp>...</p:sp>` or `<p:pic>...</p:pic>` block) as the last shape in the slide's shape tree. */
+export function insertShapeBeforeSpTreeClose(xml: string, shapeXml: string): string {
+  const marker = "</p:spTree>";
+  const idx = xml.lastIndexOf(marker);
+  if (idx === -1) throw new Error("insertShapeBeforeSpTreeClose: no </p:spTree> found");
+  return xml.slice(0, idx) + shapeXml + xml.slice(idx);
+}

@@ -41,3 +41,40 @@ export async function readReportFile(url: string): Promise<Buffer> {
 export async function deleteReportFile(url: string): Promise<void> {
   await del(url).catch(() => {});
 }
+
+// ─────────────────────────── Logos (client + agency) ───────────────────────
+// Same private-store pattern as report files above. Logos are always
+// normalized to PNG before reaching this module (see logo-processing.ts),
+// so both save helpers use a fixed .png key — a re-upload overwrites the
+// previous logo at the same path (addRandomSuffix: false) rather than
+// accumulating orphaned blobs.
+
+export async function saveClientLogo(clientId: string, buffer: Buffer): Promise<string> {
+  const blob = await put(`logos/client-${clientId}.png`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "image/png",
+  });
+  return blob.url;
+}
+
+export async function saveAgencyLogo(userId: string, buffer: Buffer): Promise<string> {
+  const blob = await put(`logos/agency-${userId}.png`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "image/png",
+  });
+  return blob.url;
+}
+
+export async function readLogoFile(url: string): Promise<Buffer> {
+  const result = await get(url, { access: "private" });
+  if (!result || result.statusCode !== 200) {
+    throw new Error("Logo file not found in storage.");
+  }
+  return Buffer.from(await new Response(result.stream).arrayBuffer());
+}
+
+export async function deleteLogoFile(url: string): Promise<void> {
+  await del(url).catch(() => {});
+}

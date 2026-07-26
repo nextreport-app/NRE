@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
@@ -7,17 +8,28 @@ import { buildReportData } from "@/lib/nre/report-data";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderPptx } from "@/lib/pptx/render";
+import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBuffer } from "@/lib/pptx/templates";
-import { saveReportFile } from "@/lib/storage";
+import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import {
   dateSelectionSchema,
   parseJsonFormField,
+  reportTitleSchema,
   selectedAdSetsSchema,
   selectedCampaignsSchema,
 } from "@/lib/validators/report-wizard";
+
+/** Downloads a stored logo and reads its pixel dimensions — logos are always pre-normalized to PNG at upload time (see logo-processing.ts), so this never needs to re-encode anything. */
+async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
+  if (!url) return null;
+  const bytes = await readLogoFile(url);
+  const metadata = await sharp(bytes).metadata();
+  if (!metadata.width || !metadata.height) return null;
+  return { bytes, widthPx: metadata.width, heightPx: metadata.height };
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -54,6 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {
@@ -103,13 +116,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const aiCopyBySlideKey = await generateInsights(data, {
-      groqApiKey: client.groqApiKey,
-      geminiApiKey: client.geminiApiKey,
-    });
+    const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
+      generateInsights(data, { groqApiKey: client.groqApiKey, geminiApiKey: client.geminiApiKey }),
+      prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true, agencyLogoUrl: true } }),
+      loadLogoAsset(client.logoUrl),
+    ]);
+    const agencyLogo = await loadLogoAsset(user?.agencyLogoUrl);
 
     const templateBuffer = await loadTemplateBuffer(client.template);
-    const pptxBuffer = await renderPptx({ templateBuffer, data, currencySymbol, aiCopyBySlideKey });
+    const pptxBuffer = await renderPptx({
+      templateBuffer,
+      data,
+      currencySymbol,
+      aiCopyBySlideKey,
+      reportTitle,
+      agencyName: user?.agencyName,
+      clientLogo,
+      agencyLogo,
+    });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);
 

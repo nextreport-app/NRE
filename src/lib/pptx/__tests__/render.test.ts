@@ -323,3 +323,113 @@ describe("renderPptx — real template end-to-end", () => {
     fs.unlinkSync(outPath);
   }, 30000);
 });
+
+describe("renderPptx — client/agency logo branding (real production template)", () => {
+  // Uses templates/dark.pptx directly (not the reference/ fixture above) —
+  // it's the one with the {{REPORT_TITLE}} tag and the actual footer-logo
+  // placement math this suite is regression-testing.
+  const DARK_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
+
+  async function makeLogo(width: number, height: number): Promise<{ bytes: Uint8Array; widthPx: number; heightPx: number }> {
+    const sharp = (await import("sharp")).default;
+    const bytes = await sharp({ create: { width, height, channels: 4, background: { r: 255, g: 120, b: 0, alpha: 1 } } })
+      .png()
+      .toBuffer();
+    return { bytes, widthPx: width, heightPx: height };
+  }
+
+  function buildFixtureData() {
+    return buildReportData({
+      accountName: "Acme Inc",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 50000,
+      mtdDailyRows: [...prospecting, ...retargeting],
+      now: NOW,
+    });
+  }
+
+  it("renders with no branding exactly as before — no media, no Prepared By, default title", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
+    const zip = await JSZip.loadAsync(buffer);
+
+    expect(Object.keys(zip.files).some((f) => f.startsWith("ppt/media/client-logo") || f.startsWith("ppt/media/agency-footer-logo"))).toBe(false);
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(coverXml).toContain("WEEKLY PERFORMANCE REPORT");
+    expect(coverXml).not.toContain("Prepared by");
+    expect(coverXml).not.toContain("{{");
+  });
+
+  it("renders with a client logo only — media added to the cover, no agency footer anywhere", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const clientLogo = await makeLogo(300, 150);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+    const zip = await JSZip.loadAsync(buffer);
+
+    expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
+    expect(zip.file("ppt/media/agency-footer-logo.png")).toBeNull();
+
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(coverXml).toContain('name="Client Logo"');
+    const campaignXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
+    expect(campaignXml).not.toContain('name="Client Logo"');
+  });
+
+  it("renders with an agency name + logo only — Prepared By line + footer logo on every slide, no client logo", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const agencyLogo = await makeLogo(150, 150);
+    const buffer = await renderPptx({
+      templateBuffer,
+      data: buildFixtureData(),
+      currencySymbol: "₹",
+      agencyName: "Bright Path Marketing",
+      agencyLogo,
+      reportTitle: "Q3 Performance Review",
+    });
+    const zip = await JSZip.loadAsync(buffer);
+
+    expect(zip.file("ppt/media/agency-footer-logo.png")).not.toBeNull();
+    expect(zip.file("ppt/media/client-logo.png")).toBeNull();
+
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(coverXml).toContain("Prepared by Bright Path Marketing");
+    expect(coverXml).toContain("Q3 PERFORMANCE REVIEW");
+    expect(coverXml).toContain('name="Agency Logo"');
+
+    // Footer logo must be baked into every distinct template part — cover,
+    // campaign/ad-set template, table, and legend — not just the cover.
+    const allSlideFiles = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
+    let agencyLogoCount = 0;
+    for (const f of allSlideFiles) {
+      const xml = await zip.file(f)!.async("string");
+      if (xml.includes('name="Agency Logo"')) agencyLogoCount++;
+    }
+    // Cover + campaign + ad-set slides (share one template clone) + chart + table + legend
+    expect(agencyLogoCount).toBe(allSlideFiles.length);
+  });
+
+  it("renders with both a client logo and agency branding together, without error", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const clientLogo = await makeLogo(300, 150);
+    const agencyLogo = await makeLogo(150, 150);
+    const buffer = await renderPptx({
+      templateBuffer,
+      data: buildFixtureData(),
+      currencySymbol: "₹",
+      agencyName: "Bright Path Marketing",
+      agencyLogo,
+      clientLogo,
+    });
+    const zip = await JSZip.loadAsync(buffer);
+
+    expect(zip.file("ppt/media/client-logo.png")).not.toBeNull();
+    expect(zip.file("ppt/media/agency-footer-logo.png")).not.toBeNull();
+
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(coverXml).toContain('name="Client Logo"');
+    expect(coverXml).toContain('name="Agency Logo"');
+    expect(coverXml).toContain("Prepared by Bright Path Marketing");
+    expect(coverXml).not.toContain("{{");
+  });
+});

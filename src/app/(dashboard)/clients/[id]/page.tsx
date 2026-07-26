@@ -41,6 +41,7 @@ export default async function ClientDetailPage({
             groqApiKey: client.groqApiKey,
             geminiApiKey: client.geminiApiKey,
           }}
+          hasLogo={!!client.logoUrl}
         />
       </div>
 
