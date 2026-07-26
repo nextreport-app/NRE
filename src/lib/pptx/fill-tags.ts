@@ -9,6 +9,18 @@ import { buildCombinedTotalTableGrid, type CoverData, type SlideData, type Table
 import { forceRunStyle, replaceTagRun, replaceTagRunWithSuffix, type StyleOverride } from "./ooxml";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
+import { emuToPt, fitFontSizePt } from "./text-fit";
+
+// ACCOUNT_NAME shape (ppt/slides/slide1.xml, cover template): cx="5300000"
+// lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
+// change in templates/dark.pptx.
+const ACCOUNT_NAME_MAX_WIDTH_PT = emuToPt(5300000);
+const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [28, 24, 20, 18, 16];
+
+// CAMPAIGN_NAME shape (ppt/slides/slide2.xml, campaign/ad-set template):
+// cx="11433300" lIns="91425" rIns="91425" — keep in sync with the template.
+const CAMPAIGN_NAME_MAX_WIDTH_PT = emuToPt(11433300 - 91425 * 2);
+const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [18, 16, 14, 12];
 
 function fillTags(xml: string, values: Record<string, string>, styleOverrides: Record<string, StyleOverride> = {}): string {
   let out = xml;
@@ -19,13 +31,20 @@ function fillTags(xml: string, values: Record<string, string>, styleOverrides: R
 }
 
 export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData): string {
-  return fillTags(template.xml, {
-    ACCOUNT_NAME: cover.accountName,
-    REPORT_DATE: cover.reportDate,
-    DATE_RANGE: cover.dateRange,
-    ACCOUNT_HEALTH_BADGE: cover.healthBadge,
-    BUDGET_SUMMARY: cover.budgetSummary,
-  });
+  const accountNameSizePt = fitFontSizePt(cover.accountName, ACCOUNT_NAME_MAX_WIDTH_PT, ACCOUNT_NAME_CANDIDATE_SIZES_PT);
+  return fillTags(
+    template.xml,
+    {
+      ACCOUNT_NAME: cover.accountName,
+      REPORT_DATE: cover.reportDate,
+      DATE_RANGE: cover.dateRange,
+      ACCOUNT_HEALTH_BADGE: cover.healthBadge,
+      BUDGET_SUMMARY: cover.budgetSummary,
+    },
+    {
+      ACCOUNT_NAME: { sizePt: accountNameSizePt },
+    },
+  );
 }
 
 export interface AiCopy {
@@ -55,8 +74,9 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  *     (shrinkTitle_'s 14-20pt length-based sizing computes something, but
  *     restoreHeadingFonts_ runs afterward and unconditionally resets every
  *     non-title heading paragraph to 18pt — so 18pt is the only value that
- *     ever actually ships) — force 18pt directly, skip the superseded
- *     length-based calculation entirely.
+ *     ever actually shipped) — 18pt is kept as the ceiling here too, via
+ *     CAMPAIGN_NAME_CANDIDATE_SIZES_PT, auto-shrinking below it only when a
+ *     long campaign/ad-set name would otherwise wrap (see text-fit.ts).
  *   - CAMPAIGN_SUMMARY/KEY_INSIGHTS are stored bold 12pt in the template;
  *     fixProseFormatting_ is the LAST pass in the pipeline and always forces
  *     13pt non-bold — force that directly.
@@ -98,7 +118,15 @@ export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: Sli
       KEY_INSIGHTS: { bold: false, sizePt: 13, fontFamily: "Poppins" },
     },
   );
-  xml = replaceTagRunWithSuffix(xml, "{{CAMPAIGN_NAME}}", heading, statusSuffix, { sizePt: 18 }, { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR }).xml;
+  const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
+  xml = replaceTagRunWithSuffix(
+    xml,
+    "{{CAMPAIGN_NAME}}",
+    heading,
+    statusSuffix,
+    { sizePt: campaignNameSizePt },
+    { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR },
+  ).xml;
   xml = forceRunStyle(xml, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });
   return xml;
 }
