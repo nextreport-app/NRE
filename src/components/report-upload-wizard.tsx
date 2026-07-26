@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
@@ -280,9 +281,20 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     });
   }
 
+  // `undefined` (not `[]`) when the CSV has no ad-set data at all — an empty
+  // array means "deliberately nothing selected" downstream and would filter
+  // every row out, when what we actually want is "no ad-set filtering was
+  // possible, don't filter by it at all" (report generates at campaign
+  // level only, per the Ad Sets step's own warning for this case).
+  function selectedAdSetsForRequest(): string[] | undefined {
+    return adSetGroups.length === 0 ? undefined : Array.from(selectedAdSets);
+  }
+
   async function handleAdSetsContinue() {
-    const allAdSetKeys = adSetGroups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name)));
-    await saveSelection({ adSets: allAdSetKeys, selectedAdSets: Array.from(selectedAdSets) });
+    if (adSetGroups.length > 0) {
+      const allAdSetKeys = adSetGroups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name)));
+      await saveSelection({ adSets: allAdSetKeys, selectedAdSets: Array.from(selectedAdSets) });
+    }
     setStep(4);
   }
 
@@ -326,7 +338,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
       method: "POST",
       body: buildUploadFormData(mtdFile, periodFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
+        selectedAdSets: selectedAdSetsForRequest(),
         dateSelection,
       }),
     });
@@ -359,7 +371,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
       method: "POST",
       body: buildUploadFormData(mtdFile, periodFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
+        selectedAdSets: selectedAdSetsForRequest(),
         dateSelection: currentDateSelection(),
       }),
     });
@@ -452,13 +464,18 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             />
           </div>
 
-          <button
-            onClick={handleAnalyze}
-            disabled={!mtdFile || analyzeStatus === "loading"}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-          >
-            {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleAnalyze}
+              disabled={!mtdFile || analyzeStatus === "loading"}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+            >
+              {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
+            </button>
+            <Link href="/help/download" className="text-sm text-accent hover:underline">
+              Not sure how to download? See our guide
+            </Link>
+          </div>
 
           {analyzeStatus === "invalid" && (
             <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
@@ -542,83 +559,112 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
       {step === 3 && (
         <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-medium text-ink-secondary">Select ad sets to include</h3>
-              <p className="text-xs text-ink-muted">
-                {totalSelectedVisibleAdSets} of {totalVisibleAdSets} ad sets selected
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-medium text-ink-secondary">Select ad sets to include</h3>
+            <InfoTooltip text="Ad set names must be included in your CSV for ad set level filtering. Download from Ad Reporting section for best results." />
+          </div>
+
+          {adSetGroups.length === 0 ? (
+            <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+              <p className="mb-2 font-medium">No ad set names found in your CSV.</p>
+              <p className="mb-2">
+                This usually happens when downloading from the Meta Ads Manager Campaigns screen without
+                including the Ad Set Name column.
+              </p>
+              <p className="mb-1">You can either:</p>
+              <ul className="mb-2 list-inside list-disc space-y-1">
+                <li>
+                  Re-download your CSV from the Ad Reporting section (recommended) which includes Ad Set
+                  Name automatically
+                </li>
+                <li>Or re-download from the Campaigns screen and make sure Ad Set Name is added to your column preset</li>
+              </ul>
+              <p>
+                See our{" "}
+                <Link href="/help/download" className="underline hover:text-amber-100">
+                  Download Guide
+                </Link>{" "}
+                for step by step instructions.
               </p>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={selectAllAdSets}
-                className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
-              >
-                Select All
-              </button>
-              <button
-                onClick={deselectAllAdSets}
-                className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
-              >
-                Deselect All
-              </button>
-            </div>
-          </div>
-
-          {visibleAdSetGroups.length === 0 && (
-            <p className="rounded-lg border border-navy-border p-4 text-sm text-ink-muted">
-              No ad sets found for the selected campaigns.
-            </p>
-          )}
-
-          <div className="space-y-4">
-            {visibleAdSetGroups.map((group, groupIdx) => (
-              <div key={group.campaignName} className="rounded-lg border border-navy-border">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy-border bg-navy px-4 py-2">
-                  <span className="text-sm font-medium text-ink-secondary">
-                    {group.campaignName} <span className="text-ink-muted">(Campaign)</span>
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => selectAllForCampaign(group.campaignName)}
-                      className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      onClick={() => deselectAllForCampaign(group.campaignName)}
-                      className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
-                    >
-                      Deselect All
-                    </button>
-                  </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-ink-muted">
+                  {totalSelectedVisibleAdSets} of {totalVisibleAdSets} ad sets selected
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={selectAllAdSets}
+                    className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={deselectAllAdSets}
+                    className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                  >
+                    Deselect All
+                  </button>
                 </div>
-                <ul className="divide-y divide-navy-border">
-                  {group.adSetNames.map((adSetName, adSetIdx) => {
-                    const key = adSetKey(group.campaignName, adSetName);
-                    // A DOM id can't safely hold adSetKey's raw composite
-                    // string (it embeds a NUL separator) — index-based is
-                    // simple, unique, and stable across this list's render.
-                    const inputId = `adset-${groupIdx}-${adSetIdx}`;
-                    return (
-                      <li key={key} className="flex items-center gap-3 px-4 py-2.5 pl-8">
-                        <input
-                          type="checkbox"
-                          id={inputId}
-                          checked={selectedAdSets.has(key)}
-                          onChange={() => toggleAdSet(group.campaignName, adSetName)}
-                          className="h-4 w-4 accent-accent"
-                        />
-                        <label htmlFor={inputId} className="cursor-pointer text-sm text-white">
-                          {adSetName}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
               </div>
-            ))}
-          </div>
+
+              {visibleAdSetGroups.length === 0 && (
+                <p className="rounded-lg border border-navy-border p-4 text-sm text-ink-muted">
+                  No ad sets found for the selected campaigns.
+                </p>
+              )}
+
+              <div className="space-y-4">
+                {visibleAdSetGroups.map((group, groupIdx) => (
+                  <div key={group.campaignName} className="rounded-lg border border-navy-border">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy-border bg-navy px-4 py-2">
+                      <span className="text-sm font-medium text-ink-secondary">
+                        {group.campaignName} <span className="text-ink-muted">(Campaign)</span>
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => selectAllForCampaign(group.campaignName)}
+                          className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          onClick={() => deselectAllForCampaign(group.campaignName)}
+                          className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                        >
+                          Deselect All
+                        </button>
+                      </div>
+                    </div>
+                    <ul className="divide-y divide-navy-border">
+                      {group.adSetNames.map((adSetName, adSetIdx) => {
+                        const key = adSetKey(group.campaignName, adSetName);
+                        // A DOM id can't safely hold adSetKey's raw composite
+                        // string (it embeds a NUL separator) — index-based is
+                        // simple, unique, and stable across this list's render.
+                        const inputId = `adset-${groupIdx}-${adSetIdx}`;
+                        return (
+                          <li key={key} className="flex items-center gap-3 px-4 py-2.5 pl-8">
+                            <input
+                              type="checkbox"
+                              id={inputId}
+                              checked={selectedAdSets.has(key)}
+                              onChange={() => toggleAdSet(group.campaignName, adSetName)}
+                              className="h-4 w-4 accent-accent"
+                            />
+                            <label htmlFor={inputId} className="cursor-pointer text-sm text-white">
+                              {adSetName}
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3">
             <button
@@ -629,7 +675,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
             </button>
             <button
               onClick={handleAdSetsContinue}
-              disabled={totalSelectedVisibleAdSets === 0}
+              disabled={adSetGroups.length > 0 && totalSelectedVisibleAdSets === 0}
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
             >
               Continue
@@ -901,6 +947,20 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Small "(i)" badge with a native tooltip on hover/focus — no extra dependency needed for a single static hint. */
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span
+      tabIndex={0}
+      title={text}
+      aria-label={text}
+      className="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-ink-muted text-[10px] leading-none text-ink-muted hover:border-accent hover:text-accent"
+    >
+      i
+    </span>
   );
 }
 
