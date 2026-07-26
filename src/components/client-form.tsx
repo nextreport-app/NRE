@@ -57,6 +57,12 @@ export function ClientForm({
   const [removeLogo, setRemoveLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
 
+  // A newly-selected file's local preview takes priority; otherwise, on
+  // edit, fall back to the already-saved logo (via the proxy route — Blob
+  // storage here is private, see /api/clients/[id]/logo's GET handler).
+  // Neither present (new client, no file chosen yet) — no preview at all.
+  const logoPreviewSrc = logoPreviewUrl ?? (hasLogo && !removeLogo && clientId ? `/api/clients/${clientId}/logo` : null);
+
   function set<K extends keyof ClientFormValues>(key: K, value: ClientFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
@@ -145,15 +151,6 @@ export function ClientForm({
       <div>
         <label className="mb-1 block text-sm text-ink-secondary">Client logo — optional</label>
         <div className="flex items-center gap-3">
-          {logoPreviewUrl ? (
-            <img src={logoPreviewUrl} alt="Logo preview" className="h-12 w-24 rounded border border-navy-border bg-navy object-contain" />
-          ) : hasLogo && !removeLogo ? (
-            <img
-              src={`/api/clients/${clientId}/logo`}
-              alt="Current logo"
-              className="h-12 w-24 rounded border border-navy-border bg-navy object-contain"
-            />
-          ) : null}
           <input
             type="file"
             accept={ACCEPTED_LOGO_TYPES}
@@ -170,9 +167,16 @@ export function ClientForm({
             </button>
           )}
         </div>
+        {logoPreviewSrc && (
+          <img
+            src={logoPreviewSrc}
+            alt="Logo preview"
+            className="mt-2 h-[60px] w-[120px] rounded border border-navy-border bg-navy object-contain"
+          />
+        )}
         {logoError && <p className="mt-1 text-sm text-red-400">{logoError}</p>}
         <p className="mt-1 text-xs text-ink-muted">
-          PNG, JPG, WebP, or SVG, up to 2MB. Shown bottom-right on the report cover slide.
+          Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB.
         </p>
       </div>
 

@@ -24,6 +24,12 @@ export function AccountSettingsForm({
   const [removeLogo, setRemoveLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
 
+  // A newly-selected file's local preview takes priority; otherwise fall
+  // back to the already-saved logo (via the proxy route — Blob storage
+  // here is private, see /api/account/agency-logo's GET handler). Neither
+  // present — no preview at all.
+  const logoPreviewSrc = logoPreviewUrl ?? (hasAgencyLogo && !removeLogo ? "/api/account/agency-logo" : null);
+
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     setLogoError(null);
     const file = e.target.files?.[0] ?? null;
@@ -108,11 +114,6 @@ export function AccountSettingsForm({
       <div>
         <label className="mb-1 block text-sm text-ink-secondary">Agency logo — optional</label>
         <div className="flex items-center gap-3">
-          {logoPreviewUrl ? (
-            <img src={logoPreviewUrl} alt="Logo preview" className="h-10 w-20 rounded border border-navy-border bg-navy object-contain" />
-          ) : hasAgencyLogo && !removeLogo ? (
-            <img src="/api/account/agency-logo" alt="Current logo" className="h-10 w-20 rounded border border-navy-border bg-navy object-contain" />
-          ) : null}
           <input
             type="file"
             accept={ACCEPTED_LOGO_TYPES}
@@ -129,9 +130,16 @@ export function AccountSettingsForm({
             </button>
           )}
         </div>
+        {logoPreviewSrc && (
+          <img
+            src={logoPreviewSrc}
+            alt="Logo preview"
+            className="mt-2 h-[60px] w-[120px] rounded border border-navy-border bg-navy object-contain"
+          />
+        )}
         {logoError && <p className="mt-1 text-sm text-red-400">{logoError}</p>}
         <p className="mt-1 text-xs text-ink-muted">
-          PNG, JPG, WebP, or SVG, up to 2MB. Shown small in the footer of every report slide.
+          Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB. Appears in the footer of every generated slide.
         </p>
       </div>
 
