@@ -36,6 +36,15 @@ export function getResultLabels(resultType: string | null | undefined): ResultLa
   if (/leads?\s*\(\s*form\s*\)/.test(rt))
     return { resultLabel: "LEADS (FORM)", costLabel: "COST PER LEAD" };
 
+  // Checked before the generic lead|form bucket further below, same
+  // reasoning as "Leads (form)" above — a distinct, named lead objective
+  // must keep its own label rather than collapsing into generic "LEADS".
+  if (/website\s*leads?/.test(rt))
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+
+  if (/meta\s*leads?/.test(rt))
+    return { resultLabel: "META LEADS", costLabel: "COST PER META LEAD" };
+
   if (/quote request/.test(rt))
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE REQUEST" };
 
@@ -93,6 +102,41 @@ export function getResultLabels(resultType: string | null | undefined): ResultLa
     return { resultLabel: cleaned, costLabel: `COST PER ${cleaned}` };
   }
   return { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+}
+
+/**
+ * Column-presence objective detection — priority 2, above data-value-based
+ * fallbacks (see aggregate.ts's DATA-FIRST correction) but below explicit
+ * result_type text (priority 1, getResultLabels above).
+ *
+ * Real-account bug: a brand new "Website Leads" campaign with zero leads so
+ * far has an empty result_type and a zero-valued "Website leads" column —
+ * but Meta always populates "Link clicks" regardless of objective, so a
+ * value-based fallback wrongly detects Clicks/Traffic. An agency only
+ * includes an objective-specific column (Website leads, Purchases, ...) in
+ * their export when that's their actual campaign objective, so the column
+ * merely EXISTING — regardless of whether it has any values yet — is a far
+ * more reliable signal than which columns happen to be non-zero.
+ *
+ * Checked most-specific-first, same reasoning as getResultLabels: "Website
+ * leads"/"Meta leads" must be checked before the generic "lead" substring
+ * would otherwise catch them.
+ */
+export function detectObjectiveFromColumns(headers: (string | null | undefined)[]): ResultLabels | null {
+  const normalized = headers.map((h) => (h || "").toLowerCase().trim());
+  const has = (substr: string) => normalized.some((h) => h.includes(substr));
+
+  if (has("website lead")) return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  if (has("meta lead")) return { resultLabel: "META LEADS", costLabel: "COST PER META LEAD" };
+  if (has("lead")) return { resultLabel: "LEADS", costLabel: "COST PER LEAD" };
+  // "Purchase ROAS" contains "purchase" too, so a single check covers both.
+  if (has("purchase")) return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  // The "AND Website leads column does NOT exist" half of this rule is
+  // automatically satisfied by reaching this point — that check already
+  // returned above if a Website leads column exists.
+  if (has("landing page view")) return { resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" };
+  if (has("video play") || has("thruplay")) return { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIEW" };
+  return null;
 }
 
 export interface ResultGroup {

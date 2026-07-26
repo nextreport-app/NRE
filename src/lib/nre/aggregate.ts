@@ -17,7 +17,7 @@
 
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
-import { getResultLabels } from "./objective";
+import { detectObjectiveFromColumns, getResultLabels } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
 
@@ -64,6 +64,15 @@ function average(values: number[]): number {
 /** Port of the aggregate() closure inside splitMTDDaily_. */
 export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
   const groups: Record<string, GroupAcc> = {};
+
+  // Column-presence objective signal (priority 2 — see objective.ts's
+  // detectObjectiveFromColumns) computed once from the file's own headers,
+  // not per-row: which columns exist is a property of the upload itself,
+  // identical for every row/group in it. Every row's _raw carries every
+  // header key regardless of value (see columns.ts's readRowsWithAutoMap),
+  // so the first row's keys are the full header list.
+  const rawHeaders = rowsToAgg.length > 0 ? Object.keys(rowsToAgg[0]._raw || {}) : [];
+  const columnObjective = detectObjectiveFromColumns(rawHeaders);
 
   rowsToAgg.forEach((row) => {
     const key = [row.campaign_name, row.ad_set_name].join("|||");
@@ -128,9 +137,15 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       cpr = g.results > 0 ? g.spend / g.results : 0;
     }
 
-    // DATA-FIRST objective correction — never trust result_type alone.
-    // Priority: Purchases > Leads > LPV > Link Clicks > Reach.
-    // (Meta sometimes exports "Reach" as result_type for Traffic campaigns.)
+    // Objective correction when result_type text alone (priority 1) isn't
+    // enough — full priority order:
+    //   1. result_type text itself, if non-empty (getResultLabels above).
+    //   2. Column presence — which objective-specific columns the CSV
+    //      actually includes, regardless of their values (columnObjective,
+    //      computed once from the file's headers, above).
+    //   3. Data values — which columns happen to be non-zero, as a last-
+    //      resort fallback only (Purchases > Leads > LPV > Link Clicks > Reach).
+    //   4. Generic RESULTS/COST PER RESULT (the untouched default below).
     let actualResultType = g.result_type;
     let actualResults = g.results;
     let actualCpr = cpr;
@@ -144,8 +159,17 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       actualResultType = "Link click";
       actualResults = g.link_clicks;
       actualCpr = g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
+    } else if (resultLabel === "RESULTS" && columnObjective) {
+      // Priority 2: no result_type text, but a specific objective column
+      // exists in the CSV — trust that over which columns merely have
+      // non-zero data (Meta always tracks link clicks regardless of
+      // objective, so "link clicks > 0" alone is a weak signal). Keep the
+      // already-correctly-mapped results/cpr (0/— for a brand new campaign
+      // with no results yet) — only the label changes here.
+      actualResultType = columnObjective.resultLabel;
     } else if (resultLabel === "RESULTS" && g.link_clicks > 0 && g.results === 0) {
-      // No result type set but link clicks exist → Traffic.
+      // Priority 3 (last resort): no result type set, no recognized
+      // objective column present either, but link clicks exist → Traffic.
       actualResultType = "Link click";
       actualResults = g.link_clicks;
       actualCpr = g.link_clicks > 0 ? g.spend / g.link_clicks : 0;

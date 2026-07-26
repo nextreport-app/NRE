@@ -115,6 +115,113 @@ describe("aggregateRows", () => {
     expect(g.result_type).toBe("Reach");
     expect(g.cpr).toBeCloseTo(50); // (50 * 1000) / 1000
   });
+
+  describe("column-presence objective detection (priority 2, above data-value fallbacks)", () => {
+    /**
+     * Builds a row the way a real parsed CSV would: every header present as
+     * a _raw key regardless of value (see columns.ts's readRowsWithAutoMap),
+     * so detectObjectiveFromColumns can see which columns the agency's
+     * export actually included.
+     */
+    function csvRow(overrides: {
+      day: string;
+      linkClicks?: string;
+      websiteLeads?: string;
+      purchases?: string;
+      spend?: string;
+    }): NreRow {
+      const { day, linkClicks = "0", websiteLeads, purchases, spend = "150" } = overrides;
+      const raw: Record<string, string> = {
+        Day: day,
+        "Campaign name": "New Leads Campaign",
+        "Ad set name": "Ad Set 1",
+        "Result type": "",
+        "Link clicks": linkClicks,
+        "Landing page views": "0",
+        "Amount spent": spend,
+      };
+      if (websiteLeads !== undefined) raw["Website leads"] = websiteLeads;
+      if (purchases !== undefined) raw["Purchases"] = purchases;
+
+      // results binds to whichever objective-specific column exists, same
+      // as buildColumnMap would (both "Website leads" and "Purchases" carry
+      // the count for their own objective).
+      const resultsValue = websiteLeads ?? purchases ?? "0";
+
+      return {
+        _raw: raw,
+        campaign_name: "New Leads Campaign",
+        ad_set_name: "Ad Set 1",
+        result_type: "",
+        spend,
+        reach: "0",
+        impressions: "0",
+        results: resultsValue,
+        link_clicks: linkClicks,
+        ctr: "0",
+        cpc: "0",
+        frequency: "0",
+        date_start: day,
+        date_end: day,
+      };
+    }
+
+    it("detects WEBSITE LEADS for a brand new campaign with zero results — a Website leads column exists, even with no link clicks at all", () => {
+      const rows: NreRow[] = [csvRow({ day: "18-07-2026", websiteLeads: "0", linkClicks: "0" })];
+      const [g] = aggregateRows(rows);
+      expect(g.result_type).toBe("WEBSITE LEADS");
+      expect(g.results).toBe(0); // zero results shown as 0, not hidden/miscounted
+    });
+
+    it("detects PURCHASES for a brand new campaign with zero results — a Purchases column exists", () => {
+      const rows: NreRow[] = [csvRow({ day: "18-07-2026", purchases: "0", linkClicks: "0" })];
+      const [g] = aggregateRows(rows);
+      expect(g.result_type).toBe("PURCHASES");
+      expect(g.results).toBe(0);
+    });
+
+    it("still detects WEBSITE LEADS, not CLICKS, when link clicks are non-zero — column presence beats data values", () => {
+      // The exact reported scenario: result_type empty, Website leads column
+      // present but 0 so far, Link clicks non-zero (Meta always tracks
+      // clicks regardless of objective) — must not fall through to Traffic.
+      const rows: NreRow[] = [
+        csvRow({ day: "18-07-2026", websiteLeads: "0", linkClicks: "10" }),
+        csvRow({ day: "19-07-2026", websiteLeads: "0", linkClicks: "10" }),
+      ];
+      const [g] = aggregateRows(rows);
+      expect(g.result_type).toBe("WEBSITE LEADS");
+      expect(g.results).toBe(0);
+      expect(g.link_clicks).toBe(20); // link clicks still tracked, just not used as the objective
+      expect(g.cpr).toBe(0); // no results yet → cost-per-result not computable
+    });
+
+    it("falls back to the old data-value-based Link click detection when no objective column is present at all", () => {
+      // Regression guard: a genuine Traffic campaign (no recognizable
+      // objective column, just link clicks) must keep working exactly as
+      // before this fix.
+      const rows: NreRow[] = [
+        {
+          _raw: { Day: "18-07-2026", "Campaign name": "Traffic Campaign", "Link clicks": "300" },
+          campaign_name: "Traffic Campaign",
+          ad_set_name: "Ad Set 1",
+          result_type: "",
+          spend: "150",
+          reach: "0",
+          impressions: "0",
+          results: "0",
+          link_clicks: "300",
+          ctr: "0",
+          cpc: "0",
+          frequency: "0",
+          date_start: "18-07-2026",
+          date_end: "18-07-2026",
+        },
+      ];
+      const [g] = aggregateRows(rows);
+      expect(g.result_type).toBe("Link click");
+      expect(g.results).toBe(300);
+    });
+  });
 });
 
 describe("splitMtdDaily", () => {

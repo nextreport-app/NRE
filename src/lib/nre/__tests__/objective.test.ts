@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  detectObjectiveFromColumns,
   getGroupedResultDisplay,
   getResultGroups,
   getResultLabels,
@@ -56,9 +57,19 @@ describe("getResultLabels", () => {
     ["Start trial", "TRIALS", "COST PER TRIAL"],
     ["Donate", "DONATIONS", "COST PER DONATION"],
     ["Donations", "DONATIONS", "COST PER DONATION"],
+    ["Website lead", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
+    ["Website leads", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
+    ["Meta lead", "META LEADS", "COST PER META LEAD"],
+    ["Meta leads", "META LEADS", "COST PER META LEAD"],
     ["", "RESULTS", "COST PER RESULT"],
   ])("classifies %s as %s / %s", (input, resultLabel, costLabel) => {
     expect(getResultLabels(input)).toEqual({ resultLabel, costLabel });
+  });
+
+  it("keeps 'Website leads'/'Meta leads' distinct from the generic LEADS bucket a bare 'Lead' falls into", () => {
+    expect(getResultLabels("Website leads").resultLabel).toBe("WEBSITE LEADS");
+    expect(getResultLabels("Meta leads").resultLabel).toBe("META LEADS");
+    expect(getResultLabels("Lead").resultLabel).toBe("LEADS");
   });
 
   it("purchase takes priority over lead-like words in the same string", () => {
@@ -90,6 +101,75 @@ describe("getResultLabels", () => {
     expect(getResultLabels("")).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
     expect(getResultLabels(null)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
     expect(getResultLabels(undefined)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
+  });
+});
+
+describe("detectObjectiveFromColumns", () => {
+  it("detects WEBSITE LEADS when a 'Website leads' header exists, regardless of case", () => {
+    expect(
+      detectObjectiveFromColumns(["Campaign name", "Website Leads", "Link clicks"]),
+    ).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+  });
+
+  it("detects META LEADS when a 'Meta leads' header exists", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Meta leads"])).toEqual({
+      resultLabel: "META LEADS",
+      costLabel: "COST PER META LEAD",
+    });
+  });
+
+  it("detects PURCHASES when a 'Purchases' header exists", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Purchases"])).toEqual({
+      resultLabel: "PURCHASES",
+      costLabel: "COST PER PURCHASE",
+    });
+  });
+
+  it("detects PURCHASES when only a 'Purchase ROAS' header exists", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Purchase ROAS"])).toEqual({
+      resultLabel: "PURCHASES",
+      costLabel: "COST PER PURCHASE",
+    });
+  });
+
+  it("detects LANDING PAGE VIEWS only when there's no Website leads column", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Landing page views"])).toEqual({
+      resultLabel: "LANDING PAGE VIEWS",
+      costLabel: "COST PER LPV",
+    });
+    // Website leads takes priority when both are present.
+    expect(
+      detectObjectiveFromColumns(["Campaign name", "Landing page views", "Website leads"]),
+    ).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+  });
+
+  it("detects VIDEO VIEWS from 'Video plays' or 'ThruPlays'", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Video plays"])).toEqual({
+      resultLabel: "VIDEO VIEWS",
+      costLabel: "COST PER VIEW",
+    });
+    expect(detectObjectiveFromColumns(["Campaign name", "ThruPlays"])).toEqual({
+      resultLabel: "VIDEO VIEWS",
+      costLabel: "COST PER VIEW",
+    });
+  });
+
+  it("prioritizes Website leads over Meta leads over generic Leads when several are present", () => {
+    expect(
+      detectObjectiveFromColumns(["Leads", "Meta leads", "Website leads"]),
+    ).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    expect(detectObjectiveFromColumns(["Leads", "Meta leads"])).toEqual({
+      resultLabel: "META LEADS",
+      costLabel: "COST PER META LEAD",
+    });
+  });
+
+  it("returns null when no recognized objective column exists — Link clicks alone is not a signal", () => {
+    expect(detectObjectiveFromColumns(["Campaign name", "Link clicks", "Impressions"])).toBeNull();
+  });
+
+  it("returns null for an empty header list", () => {
+    expect(detectObjectiveFromColumns([])).toBeNull();
   });
 });
 
