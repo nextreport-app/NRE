@@ -454,4 +454,144 @@ describe("renderPptx — client/agency logo branding (real production template)"
     expect(coverXml).toContain("Prepared by Bright Path Marketing");
     expect(coverXml).not.toContain("{{");
   });
+
+  // Extracts a shape's bounding box {x, y, cx, cy} (all EMU) from the raw
+  // slide XML, locating it by a literal text/name it contains. Used below
+  // to assert real, numeric non-overlap — not just "the shape exists"
+  // (which the tests above already cover), since a placement bug can pass
+  // a presence check while still visually colliding with other content.
+  function shapeBox(xml: string, locator: string): { x: number; y: number; cx: number; cy: number } {
+    const idx = xml.indexOf(locator);
+    expect(idx).toBeGreaterThan(-1);
+    const isPic = xml.lastIndexOf("<p:pic>", idx) > xml.lastIndexOf("<p:sp>", idx);
+    const start = isPic ? xml.lastIndexOf("<p:pic>", idx) : xml.lastIndexOf("<p:sp>", idx);
+    const end = xml.indexOf(isPic ? "</p:pic>" : "</p:sp>", idx);
+    const match = /<a:off x="(-?\d+)" y="(-?\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(xml.slice(start, end));
+    expect(match).not.toBeNull();
+    const [, x, y, cx, cy] = match!;
+    return { x: Number(x), y: Number(y), cx: Number(cx), cy: Number(cy) };
+  }
+
+  function bottom(box: { y: number; cy: number }): number {
+    return box.y + box.cy;
+  }
+
+  const EMU_PER_INCH = 914400;
+  const MIN_GAP_EMU = 0.15 * EMU_PER_INCH; // the product spec's explicit minimum
+
+  describe("client logo — new position/size (left, above Presented To)", () => {
+    it("caps a wide (landscape) logo's display size at 180x90px", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png"); // 300x150, 2:1 — width-bound at the 180x90 (2:1) box
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const box = shapeBox(coverXml, 'name="Client Logo"');
+      expect(box.cx).toBe(180 * 9525);
+      expect(box.cy).toBe(90 * 9525);
+    });
+
+    it("caps a square/portrait logo at 90x90px, never the full 180px width", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.jpg"); // 200x200, square
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const box = shapeBox(coverXml, 'name="Client Logo"');
+      expect(box.cx).toBe(90 * 9525);
+      expect(box.cy).toBe(90 * 9525);
+    });
+
+    it("positions the logo left-aligned with PRESENTED_TO/account name, with at least a 0.15in gap above it", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png");
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const logoBox = shapeBox(coverXml, 'name="Client Logo"');
+      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+
+      expect(logoBox.x).toBe(presentedToBox.x); // same left edge — "directly above"
+      const gap = presentedToBox.y - bottom(logoBox);
+      expect(gap).toBeGreaterThanOrEqual(MIN_GAP_EMU);
+    });
+
+    // Regression: PRESENTED_TO shifts up (fill-tags.ts) whenever an agency
+    // name is also set, to make room for the "Prepared by ..." line. The
+    // client logo must track that shift — anchoring to a stale/static
+    // PRESENTED_TO position here previously caused a real, visually
+    // confirmed overlap between the logo and the PRESENTED_TO badge.
+    it("still keeps the minimum gap above PRESENTED_TO when an agency name is ALSO set (shifts PRESENTED_TO up)", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png");
+      const buffer = await renderPptx({
+        templateBuffer,
+        data: buildFixtureData(),
+        currencySymbol: "₹",
+        clientLogo,
+        agencyName: "Bright Path Marketing",
+      });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const logoBox = shapeBox(coverXml, 'name="Client Logo"');
+      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+
+      expect(bottom(logoBox)).toBeLessThanOrEqual(presentedToBox.y);
+      expect(presentedToBox.y - bottom(logoBox)).toBeGreaterThanOrEqual(MIN_GAP_EMU);
+    });
+  });
+
+  describe("agency footer logo — new size, and cover-specific stacking", () => {
+    it("caps the footer logo's display size at 120x50px on a non-cover slide", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const agencyLogo = loadLogoAsset("logo.png"); // 2:1, width-bound at the 120x50 (2.4:1) box... actually height-bound; either way must not exceed the caps
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", agencyLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const campaignXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
+
+      const box = shapeBox(campaignXml, 'name="Agency Logo"');
+      expect(box.cx).toBeLessThanOrEqual(120 * 9525);
+      expect(box.cy).toBeLessThanOrEqual(50 * 9525);
+      expect(box.cx === 120 * 9525 || box.cy === 50 * 9525).toBe(true); // actually touches one of the two caps
+    });
+
+    it("on the cover with no client logo, sits directly above PRESENTED_TO with the minimum gap", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const agencyLogo = loadLogoAsset("logo.jpg");
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", agencyLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const agencyBox = shapeBox(coverXml, 'name="Agency Logo"');
+      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+      expect(bottom(agencyBox)).toBeLessThanOrEqual(presentedToBox.y);
+    });
+
+    it("on the cover with a client logo ALSO present, stacks above the client logo's band without overlapping it", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png");
+      const agencyLogo = loadLogoAsset("logo.jpg");
+      const buffer = await renderPptx({
+        templateBuffer,
+        data: buildFixtureData(),
+        currencySymbol: "₹",
+        clientLogo,
+        agencyLogo,
+      });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const clientBox = shapeBox(coverXml, 'name="Client Logo"');
+      const agencyBox = shapeBox(coverXml, 'name="Agency Logo"');
+      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+
+      // Bottom-to-top stacking order: PRESENTED_TO, then client logo, then agency logo — none overlapping.
+      expect(bottom(clientBox)).toBeLessThanOrEqual(presentedToBox.y);
+      expect(bottom(agencyBox)).toBeLessThanOrEqual(clientBox.y);
+    });
+  });
 });

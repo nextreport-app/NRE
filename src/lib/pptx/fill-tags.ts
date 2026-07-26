@@ -54,6 +54,18 @@ const COVER_ROW_GAP_EMU = 32999; // the template's own existing ACCOUNT_NAME-to-
 const PREPARED_BY_SHIFT_UP_EMU = 310000;
 const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_HEIGHT_EMU + COVER_ROW_GAP_EMU;
 
+/**
+ * PRESENTED_TO's actual top y at render time — shifted up when an agency
+ * name is present (see buildCoverSlideXml above). Exported so other
+ * cover-slide placement logic that needs to anchor to this shape (e.g.
+ * render.ts's client/agency logo positioning, which sits directly above
+ * it) reads the real, current position instead of duplicating — and
+ * risking drifting out of sync with — this shift logic.
+ */
+export function presentedToTopY(hasAgencyName: boolean): number {
+  return hasAgencyName ? PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU : PRESENTED_TO_Y;
+}
+
 export interface CoverSlideOptions {
   /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
   reportTitle?: string | null;

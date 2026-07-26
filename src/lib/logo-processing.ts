@@ -8,7 +8,8 @@
  * WASM fallback (wasm-vips) requires SharedArrayBuffer, which that runtime
  * blocks outright ("ArrayBuffer: SharedArrayBuffer is not allowed").
  * Logos are already small (2MB cap) and only ever displayed small (max
- * 120x60px client / 80x40px agency footer), so server-side resizing was
+ * 180x90px client / 120x50px agency footer — see render.ts), so server-side
+ * resizing was
  * never load-bearing — the PPTX embedding layer (embed-image.ts) already
  * does its own "contain" fit against the uploaded pixel dimensions, at
  * whatever resolution the file actually is.
