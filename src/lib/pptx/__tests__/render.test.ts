@@ -539,4 +539,138 @@ describe("renderPptx — client logo + agency name branding (real production tem
       expect(presentedToBox.y - bottom(logoBox)).toBeGreaterThanOrEqual(MIN_GAP_EMU);
     });
   });
+
+  describe("client logo — rounded corners + subtle border", () => {
+    it("clips the logo to a roundRect with an 8-10% corner radius", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png");
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const idx = coverXml.indexOf('name="Client Logo"');
+      const shapeXml = coverXml.slice(idx, coverXml.indexOf("</p:pic>", idx));
+      const adjMatch = /<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val (\d+)"\/>/.exec(shapeXml);
+      expect(adjMatch).not.toBeNull();
+      const adjFraction = Number(adjMatch![1]) / 100000;
+      expect(adjFraction).toBeGreaterThanOrEqual(0.08);
+      expect(adjFraction).toBeLessThanOrEqual(0.1);
+    });
+
+    it("adds a thin, mostly-opaque white border", async () => {
+      const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+      const clientLogo = loadLogoAsset("logo.png");
+      const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹", clientLogo });
+      const zip = await JSZip.loadAsync(buffer);
+      const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+      const idx = coverXml.indexOf('name="Client Logo"');
+      const shapeXml = coverXml.slice(idx, coverXml.indexOf("</p:pic>", idx));
+      expect(shapeXml).toContain('<a:ln w="12700">'); // 1pt
+      expect(shapeXml).toContain('<a:srgbClr val="FFFFFF">');
+      expect(shapeXml).toContain('<a:alpha val="80000"/>'); // 80% opaque = "20% transparent"
+    });
+  });
+});
+
+describe("cover slide — health badge / budget summary in the bottom-right", () => {
+  const DARK_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
+
+  function buildFixtureData() {
+    return buildReportData({
+      accountName: "Acme Inc",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 50000,
+      mtdDailyRows: [...prospecting, ...retargeting],
+      now: NOW,
+    });
+  }
+
+  function shapeBox(xml: string, locator: string): { x: number; y: number; cx: number; cy: number } {
+    const idx = xml.indexOf(locator);
+    expect(idx).toBeGreaterThan(-1);
+    const start = xml.lastIndexOf("<p:sp>", idx);
+    const end = xml.indexOf("</p:sp>", idx);
+    const match = /<a:off x="(-?\d+)" y="(-?\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(xml.slice(start, end));
+    expect(match).not.toBeNull();
+    const [, x, y, cx, cy] = match!;
+    return { x: Number(x), y: Number(y), cx: Number(cx), cy: Number(cy) };
+  }
+
+  const SLIDE_WIDTH_EMU = 12192000;
+  const SLIDE_HEIGHT_EMU = 6858000;
+
+  it("right-aligns both lines and keeps them in the right half of the slide, fully within bounds", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
+    const zip = await JSZip.loadAsync(buffer);
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+    const idx = coverXml.indexOf("Campaigns On Track");
+    const spStart = coverXml.lastIndexOf("<p:sp>", idx);
+    expect(coverXml.slice(spStart, idx)).toContain('algn="r"');
+
+    const badgeBox = shapeBox(coverXml, "Campaigns On Track");
+    const budgetBox = shapeBox(coverXml, "Monthly Budget");
+
+    // Box center sits in the right half (the box itself is wide enough to
+    // hold long content — see the fit test below — so its left edge alone
+    // isn't a meaningful "which side" signal; algn="r" is what actually
+    // pins the visible text to the right edge). Box never extends past the
+    // slide edge.
+    const badgeCenter = badgeBox.x + badgeBox.cx / 2;
+    const budgetCenter = budgetBox.x + budgetBox.cx / 2;
+    expect(badgeCenter).toBeGreaterThan(SLIDE_WIDTH_EMU / 2);
+    expect(budgetCenter).toBeGreaterThan(SLIDE_WIDTH_EMU / 2);
+    expect(badgeBox.x + badgeBox.cx).toBeLessThanOrEqual(SLIDE_WIDTH_EMU);
+    expect(budgetBox.x + budgetBox.cx).toBeLessThanOrEqual(SLIDE_WIDTH_EMU);
+
+    // Fully within the slide's vertical bounds too.
+    expect(badgeBox.y + badgeBox.cy).toBeLessThanOrEqual(SLIDE_HEIGHT_EMU);
+    expect(budgetBox.y + budgetBox.cy).toBeLessThanOrEqual(SLIDE_HEIGHT_EMU);
+
+    // Budget line sits below the health badge line, not overlapping it.
+    expect(budgetBox.y).toBeGreaterThanOrEqual(badgeBox.y + badgeBox.cy);
+  });
+
+  it("keeps client identity (PRESENTED TO, account name) on the left, unaffected by the move", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
+    const zip = await JSZip.loadAsync(buffer);
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+    const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+    const nameBox = shapeBox(coverXml, "Acme Inc");
+    expect(presentedToBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);
+    expect(nameBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);
+  });
+
+  // A shape's declared <a:ext cx/cy> doesn't by itself guarantee the text
+  // inside it won't visually wrap — wrap="square" text boxes here have no
+  // clipping, so wrapped text just renders past the declared height. This
+  // was a real bug during development: at an earlier, narrower box width,
+  // this exact worst-case pair wrapped and the budget line's second line
+  // was clipped off the bottom of the slide in an actual LibreOffice
+  // render (screenshotted and visually confirmed, both broken and fixed).
+  //
+  // text-fit.ts's estimateTextWidthPt() is deliberately NOT reused here —
+  // it's calibrated for Poppins (the account/campaign name font), and
+  // these two lines render in Arial at a different size; applying a
+  // mismatched font's calibration would produce a meaningless number, not
+  // a stronger check. Instead this pins the box's own width to the exact
+  // value already verified empirically, so a future accidental narrowing
+  // fails loudly here instead of silently reintroducing the clipping bug.
+  it("keeps the empirically-verified box width that fits the ticket's worst-case content on one line", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
+    const zip = await JSZip.loadAsync(buffer);
+    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+    const badgeBox = shapeBox(coverXml, "Campaigns On Track");
+    const budgetBox = shapeBox(coverXml, "Monthly Budget");
+    const MIN_VERIFIED_CX_EMU = 6000000;
+    expect(badgeBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);
+    expect(budgetBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);
+  });
 });

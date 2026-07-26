@@ -98,4 +98,37 @@ describe("embedImageInSlide", () => {
     );
     expect(result.slide.xml).toContain('<p:cNvPr id="43" name="Logo"');
   });
+
+  it("defaults to square corners and no border when no style is given", () => {
+    const result = embedImageInSlide(
+      BLANK_SLIDE,
+      { bytes: new Uint8Array(), widthPx: 100, heightPx: 100, ...PNG_ASSET },
+      { corner: "bottom-left", marginXEmu: 0, marginYEmu: 0, maxCxEmu: 1000, maxCyEmu: 1000 },
+      { baseName: "logo", shapeName: "Logo" },
+    );
+    expect(result.slide.xml).toContain('<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>');
+    expect(result.slide.xml).toContain("<a:ln><a:noFill/></a:ln>");
+  });
+
+  it("applies rounded corners as a roundRect with the requested adj fraction", () => {
+    const result = embedImageInSlide(
+      BLANK_SLIDE,
+      { bytes: new Uint8Array(), widthPx: 100, heightPx: 100, ...PNG_ASSET },
+      { corner: "bottom-left", marginXEmu: 0, marginYEmu: 0, maxCxEmu: 1000, maxCyEmu: 1000 },
+      { baseName: "logo", shapeName: "Logo", style: { cornerRadiusFraction: 0.09 } },
+    );
+    // 0.09 * 100000 = 9000, OOXML's own adj-value convention for roundRect.
+    expect(result.slide.xml).toContain('<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 9000"/></a:avLst></a:prstGeom>');
+  });
+
+  it("applies a border with the requested width, color, and opacity", () => {
+    const result = embedImageInSlide(
+      BLANK_SLIDE,
+      { bytes: new Uint8Array(), widthPx: 100, heightPx: 100, ...PNG_ASSET },
+      { corner: "bottom-left", marginXEmu: 0, marginYEmu: 0, maxCxEmu: 1000, maxCyEmu: 1000 },
+      { baseName: "logo", shapeName: "Logo", style: { border: { widthPt: 1, colorHex: "FFFFFF", opacityPercent: 80 } } },
+    );
+    // 1pt = 12700 EMU; 80% opacity = alpha val 80000 (OOXML's 1/1000-percent units).
+    expect(result.slide.xml).toContain('<a:ln w="12700"><a:solidFill><a:srgbClr val="FFFFFF"><a:alpha val="80000"/></a:srgbClr></a:solidFill></a:ln>');
+  });
 });

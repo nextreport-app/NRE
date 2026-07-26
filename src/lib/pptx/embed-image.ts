@@ -65,6 +65,18 @@ export interface EmbeddedImageResult {
   mediaBytes: Uint8Array;
 }
 
+export interface ImageFrameStyle {
+  /** Corner radius as a fraction of the shape's smaller dimension (0-0.5), matching OOXML's own roundRect "adj" convention. E.g. 0.09 = 9% — a subtle, noticeable rounding. Omit for square corners. */
+  cornerRadiusFraction?: number;
+  /** Optional thin outline around the image — e.g. a soft white line to lift a logo off a dark background. */
+  border?: {
+    widthPt: number;
+    colorHex: string;
+    /** 0-100; e.g. 80 = 80% opaque ("20% transparent"). */
+    opacityPercent: number;
+  };
+}
+
 function nextRelId(relsXml: string): string {
   const ids = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((m) => Number(m[1]));
   return `rId${(ids.length ? Math.max(...ids) : 0) + 1}`;
@@ -88,13 +100,25 @@ function buildPictureShapeXml(params: {
   y: number;
   cx: number;
   cy: number;
+  style?: ImageFrameStyle;
 }): string {
-  const { id, name, relId, x, y, cx, cy } = params;
+  const { id, name, relId, x, y, cx, cy, style } = params;
+
+  const adj = style?.cornerRadiusFraction ? Math.round(style.cornerRadiusFraction * 100000) : 0;
+  const geom = adj > 0
+    ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${adj}"/></a:avLst></a:prstGeom>`
+    : `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`;
+
+  const border = style?.border;
+  const line = border
+    ? `<a:ln w="${Math.round(border.widthPt * 12700)}"><a:solidFill><a:srgbClr val="${border.colorHex}"><a:alpha val="${Math.round(border.opacityPercent * 1000)}"/></a:srgbClr></a:solidFill></a:ln>`
+    : `<a:ln><a:noFill/></a:ln>`;
+
   return (
     `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="${name}"/><p:cNvPicPr preferRelativeResize="0"/><p:nvPr/></p:nvPicPr>` +
     `<p:blipFill rotWithShape="1"><a:blip r:embed="${relId}"/><a:stretch/></p:blipFill>` +
     `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
-    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr></p:pic>`
+    `${geom}<a:noFill/>${line}</p:spPr></p:pic>`
   );
 }
 
@@ -109,7 +133,7 @@ export function embedImageInSlide(
   slide: TemplateSlide,
   image: ImageAsset,
   box: ImageBoxPlacement,
-  opts: { baseName: string; shapeName: string },
+  opts: { baseName: string; shapeName: string; style?: ImageFrameStyle },
 ): EmbeddedImageResult {
   const { cx, cy } = fitContainEmu(image.widthPx, image.heightPx, box.maxCxEmu, box.maxCyEmu);
   const x = box.corner === "bottom-right" ? SLIDE_WIDTH_EMU - box.marginXEmu - cx : box.marginXEmu;
@@ -119,7 +143,7 @@ export function embedImageInSlide(
   const relId = nextRelId(slide.rels);
   const rels = addImageRelationship(slide.rels, relId, mediaFileName);
   const shapeId = nextShapeId(slide.xml);
-  const shapeXml = buildPictureShapeXml({ id: shapeId, name: opts.shapeName, relId, x, y, cx, cy });
+  const shapeXml = buildPictureShapeXml({ id: shapeId, name: opts.shapeName, relId, x, y, cx, cy, style: opts.style });
   const xml = insertShapeBeforeSpTreeClose(slide.xml, shapeXml);
 
   return { slide: { xml, rels }, mediaPath: `ppt/media/${mediaFileName}`, mediaBytes: image.bytes };

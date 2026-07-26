@@ -13,7 +13,7 @@
 import type { ReportData } from "../nre/report-data";
 import { buildChartSlideXml } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
-import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset } from "./embed-image";
+import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 
 const CHART_SLIDE_RELS =
@@ -37,6 +37,16 @@ const CLIENT_LOGO_MAX_CX_EMU = 180 * 9525;
 const CLIENT_LOGO_MAX_CY_EMU = 90 * 9525;
 const CLIENT_LOGO_X_EMU = 506630;
 const CLIENT_LOGO_GAP_EMU = 150000; // >= the requested 0.15in (137160 EMU) minimum gap to PRESENTED_TO
+
+// Subtle rounded corners + a faint white outline so the logo reads as
+// intentionally framed rather than a flat image pasted onto the dark
+// background. ~9% corner radius is within the requested 8-10% range; a
+// 1pt 80%-opaque ("20% transparent") white border is deliberately faint —
+// just enough to lift the edge, not a highlighted box.
+const CLIENT_LOGO_STYLE: ImageFrameStyle = {
+  cornerRadiusFraction: 0.09,
+  border: { widthPt: 1, colorHex: "FFFFFF", opacityPercent: 80 },
+};
 
 function clientLogoBox(hasAgencyName: boolean) {
   const bottomY = presentedToTopY(hasAgencyName) - CLIENT_LOGO_GAP_EMU;
@@ -84,6 +94,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
       baseName: "client-logo",
       shapeName: "Client Logo",
+      style: CLIENT_LOGO_STYLE,
     });
     template.cover = embedded.slide;
     template.staticFiles.set(embedded.mediaPath, embedded.mediaBytes);
