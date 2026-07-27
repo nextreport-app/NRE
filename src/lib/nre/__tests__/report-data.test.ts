@@ -178,6 +178,18 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(retargetingSlide.metrics.results).toBe("7");
   });
 
+  it("carries the raw numeric spend through ai.spendNum, alongside the formatted display string — generate-insights.ts's zero-spend check needs a number, not '₹1,050'", () => {
+    const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
+    expect(shoes.ai.spendNum).toBe(1050);
+    const brand = data.campaignSlides.find((s) => s.campaignName === "Brand - Reach")!;
+    expect(brand.ai.spendNum).toBe(1400);
+
+    const prospectingSlide = data.adSetSlides.find((s) => s.adSetName === "Prospecting")!;
+    expect(prospectingSlide.ai.spendNum).toBe(700);
+    const retargetingSlide2 = data.adSetSlides.find((s) => s.adSetName === "Retargeting")!;
+    expect(retargetingSlide2.ai.spendNum).toBe(350);
+  });
+
   it("computes the account health score and badge", () => {
     // results>0 (25) + avgCtr 1.6 in [1.0,2.0) (13) + avgFreq 2.17 in [2.0,2.5) (17) + cost-neutral (12) = 67
     expect(data.cover.healthScore).toBe(67);

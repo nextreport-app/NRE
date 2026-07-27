@@ -65,6 +65,8 @@ export interface AiContext {
   freq: number;
   resultsNum: number;
   hasResults: boolean;
+  /** Raw spend for this slide (same value `spend` formats for display) — drives generate-insights.ts's zero-spend/paused-campaign check, which needs a number, not a currency-formatted string. */
+  spendNum: number;
 }
 
 export interface CampaignSlideData {
@@ -604,6 +606,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: avgFreq,
         resultsNum: totalResults,
         hasResults: totalResults > 0,
+        spendNum: totalSpend,
       },
     };
   });
@@ -659,6 +662,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: rowFreq,
         resultsNum: parseCellNum(row.results),
         hasResults: parseCellNum(row.results) > 0,
+        spendNum: rowSpend,
       },
     });
   });

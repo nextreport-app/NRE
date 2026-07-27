@@ -52,6 +52,7 @@ function makeCampaignSlide(campaignName: string): CampaignSlideData {
       freq: 3,
       resultsNum: 2,
       hasResults: true,
+      spendNum: 100,
     },
     statusIndicator: null,
   };

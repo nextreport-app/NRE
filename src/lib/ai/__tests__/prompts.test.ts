@@ -16,6 +16,7 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
     freq: 2.5,
     resultsNum: 21,
     hasResults: true,
+    spendNum: 1050,
     ...overrides,
   };
 }
