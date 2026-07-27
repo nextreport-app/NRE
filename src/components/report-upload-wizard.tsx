@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { GoogleDriveFolderPicker, type DriveFolder } from "./google-drive-folder-picker";
@@ -27,20 +26,11 @@ const STEP_LABELS: Record<Step, string> = {
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
-type SlidesStatus = "idle" | "loading" | "ready" | "not_connected" | "error";
 type DateMode = "last7" | "prev7" | "custom";
-// Mirrors the shape the generate route's own driveAutoSave response field
-// takes (see /api/clients/[id]/reports/route.ts) — null when Google Drive
-// auto-save is off for this account. "deferred" is Drive Destination Option
-// 4 ("ask") with no per-client override: the server didn't save anywhere,
-// and this screen shows a folder picker so the user can choose per report
-// (see handleSaveToDriveFolder below).
-type DriveAutoSaveResult =
-  | { status: "success"; url: string }
-  | { status: "error"; message: string }
-  | { status: "deferred" }
-  | null;
-type DeferredSaveStatus = "idle" | "picking" | "saving" | "error";
+// Drives the download screen's "Save to Google Drive" button: "idle" (not
+// saved yet, or dismissed the picker) -> "picking" (folder browser open) ->
+// "saving" (upload + share in flight) -> "success" (link ready) or "error".
+type DriveSaveStatus = "idle" | "picking" | "saving" | "success" | "error";
 
 interface DateRangeIso {
   startIso: string;
@@ -88,8 +78,34 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
-export function ReportUploadWizard({ clientId }: { clientId: string }) {
+function buildWhatsAppShareUrl(reportUrl: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
+}
+
+function buildEmailShareUrl(reportUrl: string): string {
+  const subject = encodeURIComponent("Your Weekly Performance Report");
+  const body = encodeURIComponent(`Please find your report here: ${reportUrl}`);
+  return `mailto:?subject=${subject}&body=${body}`;
+}
+
+export function ReportUploadWizard({
+  clientId,
+  hasGoogleDriveConnected,
+  initialLastDriveFolderId,
+  initialLastDriveFolderName,
+}: {
+  clientId: string;
+  /** Whether the account has a Google Drive account connected — gates showing the "Save to Google Drive" button on the download screen at all. */
+  hasGoogleDriveConnected: boolean;
+  /** Client.lastDriveFolderId/lastDriveFolderName — the folder this client's reports were last saved to, if any. Pre-navigates the folder picker into it as a convenience. */
+  initialLastDriveFolderId: string | null;
+  initialLastDriveFolderName: string | null;
+}) {
   const [step, setStep] = useState<Step>(1);
+  const lastDriveFolder: DriveFolder | null =
+    initialLastDriveFolderId && initialLastDriveFolderName
+      ? { id: initialLastDriveFolderId, name: initialLastDriveFolderName }
+      : null;
 
   // Step 1 — Upload
   const [mtdFile, setMtdFile] = useState<File | null>(null);
@@ -133,20 +149,13 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  // Set from the generate response's own driveAutoSave field — null means
-  // the account settings toggle is off (the manual "Get Google Slides
-  // Link" button below still works exactly as before); non-null means the
-  // server already attempted an auto-save and either succeeded or failed.
-  const [driveAutoSave, setDriveAutoSave] = useState<DriveAutoSaveResult>(null);
-  const [slidesStatus, setSlidesStatus] = useState<SlidesStatus>("idle");
-  const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
-  const [slidesError, setSlidesError] = useState<string | null>(null);
-  // "deferred" driveAutoSave (Drive Destination "ask" mode) — folder picker
-  // shown on this same screen; once the user picks, POST to save-to-drive
-  // and fold the result into driveAutoSave itself so the success/error UI
-  // below is shared with the eager auto-save path.
-  const [deferredSaveStatus, setDeferredSaveStatus] = useState<DeferredSaveStatus>("idle");
-  const [deferredSaveError, setDeferredSaveError] = useState<string | null>(null);
+  // "Save to Google Drive" — an explicit, per-report action the user takes
+  // right here on the download screen (see handleSaveToDrive below), not
+  // anything the generate request itself touches.
+  const [driveSaveStatus, setDriveSaveStatus] = useState<DriveSaveStatus>("idle");
+  const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
+  const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   function currentDateSelection(): DateSelection {
     if (dateMode === "custom") return { mode: "custom", customStart, customEnd };
@@ -314,12 +323,10 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setGenerateMessage(null);
     setReportId(null);
     setDownloadUrl(null);
-    setDriveAutoSave(null);
-    setSlidesStatus("idle");
-    setSlidesUrl(null);
-    setSlidesError(null);
-    setDeferredSaveStatus("idle");
-    setDeferredSaveError(null);
+    setDriveSaveStatus("idle");
+    setDriveSaveUrl(null);
+    setDriveSaveError(null);
+    setCopied(false);
     setStep(4);
   }
 
@@ -328,8 +335,10 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     if (!mtdFile) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
-    setDeferredSaveStatus("idle");
-    setDeferredSaveError(null);
+    setDriveSaveStatus("idle");
+    setDriveSaveUrl(null);
+    setDriveSaveError(null);
+    setCopied(false);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -349,65 +358,36 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
-    setDriveAutoSave(json.driveAutoSave ?? null);
     setGenerateStatus("done");
   }
 
-  async function handleGetSlidesLink() {
+  async function handleSaveToDrive(folder: DriveFolder) {
     if (!reportId) return;
-    setSlidesStatus("loading");
-    setSlidesError(null);
-
-    // Must open the tab synchronously in this click handler, before the
-    // `await` below — otherwise most browsers treat it as a popup and block
-    // it. We point it at the real link once the upload finishes.
-    const slidesWindow = window.open("", "_blank");
-
-    const res = await fetch(`/api/reports/${reportId}/slides`, { method: "POST" });
-    const json = await res.json().catch(() => null);
-
-    if (!res.ok || !json?.url) {
-      slidesWindow?.close();
-      if (json?.error === "google_drive_not_connected") {
-        setSlidesStatus("not_connected");
-      } else {
-        setSlidesError(json?.error || `Request failed with status ${res.status}.`);
-        setSlidesStatus("error");
-      }
-      return;
-    }
-
-    setSlidesUrl(json.url);
-    setSlidesStatus("ready");
-    if (slidesWindow) slidesWindow.location.href = json.url;
-  }
-
-  async function handleConnectGoogleDrive() {
-    await signIn("google", { callbackUrl: window.location.href });
-  }
-
-  async function handleSaveToDriveFolder(folder: DriveFolder) {
-    if (!reportId) return;
-    setDeferredSaveStatus("saving");
-    setDeferredSaveError(null);
+    setDriveSaveStatus("saving");
+    setDriveSaveError(null);
 
     const res = await fetch(`/api/reports/${reportId}/save-to-drive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folderId: folder.id }),
+      body: JSON.stringify({ folderId: folder.id, folderName: folder.name }),
     });
     const json = await res.json().catch(() => null);
 
     if (!res.ok || !json?.url) {
-      setDeferredSaveStatus("error");
-      setDeferredSaveError(json?.error || `Request failed with status ${res.status}.`);
+      setDriveSaveStatus("error");
+      setDriveSaveError(json?.error || `Request failed with status ${res.status}.`);
       return;
     }
 
-    setDeferredSaveStatus("idle");
-    // Fold into the same success shape the eager auto-save path uses, so
-    // the link + Copy Link UI below is shared rather than duplicated.
-    setDriveAutoSave({ status: "success", url: json.url });
+    setDriveSaveUrl(json.url);
+    setDriveSaveStatus("success");
+  }
+
+  async function handleCopyLink() {
+    if (!driveSaveUrl) return;
+    await navigator.clipboard.writeText(driveSaveUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const spanDays = customSpanDays();
@@ -779,136 +759,85 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
           {generateStatus === "done" && downloadUrl && (
             <div className="space-y-3">
-              {/* Auto-save (account settings toggle) already ran server-side
-                  during generation — no separate button/click needed here,
-                  just show what happened. driveAutoSave is null when the
-                  toggle is off, in which case the manual "Get Google Slides
-                  Link" flow below behaves exactly as it always has. */}
-              {driveAutoSave?.status === "success" && (
-                <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-emerald-300">
-                    Saved to Google Drive — anyone with the link can view
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <a
-                      href={driveAutoSave.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-accent hover:underline break-all"
-                    >
-                      {driveAutoSave.url}
-                    </a>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(driveAutoSave.url)}
-                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {driveAutoSave?.status === "error" && (
-                <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
-                  Google Drive auto-save failed: {driveAutoSave.message}
-                </div>
-              )}
-
-              {/* Drive Destination "ask" mode, no per-client override — the
-                  server didn't save anywhere; let the user pick a folder for
-                  this specific report right here. */}
-              {driveAutoSave?.status === "deferred" && (
-                <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-                  <p className="mb-3 text-sm text-ink-secondary">
-                    Choose a Google Drive folder to save this report to.
-                  </p>
-                  {deferredSaveStatus === "picking" ? (
-                    <GoogleDriveFolderPicker
-                      onSelect={(folder) => {
-                        setDeferredSaveStatus("idle");
-                        void handleSaveToDriveFolder(folder);
-                      }}
-                      onCancel={() => setDeferredSaveStatus("idle")}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setDeferredSaveStatus("picking")}
-                      disabled={deferredSaveStatus === "saving"}
-                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                    >
-                      {deferredSaveStatus === "saving" ? "Saving to Drive…" : "Choose Folder"}
-                    </button>
-                  )}
-                  {deferredSaveStatus === "error" && deferredSaveError && (
-                    <p className="mt-2 text-xs text-red-400">{deferredSaveError}</p>
-                  )}
-                </div>
-              )}
-
               <div className="flex flex-wrap gap-3">
                 <a
                   href={downloadUrl}
-                  className={
-                    driveAutoSave?.status === "success"
-                      ? "inline-block rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
-                      : "inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-                  }
+                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
                 >
                   Download PPTX
                 </a>
-                {driveAutoSave === null && (
+                {hasGoogleDriveConnected && driveSaveStatus !== "success" && driveSaveStatus !== "picking" && (
                   <button
-                    onClick={handleGetSlidesLink}
-                    disabled={slidesStatus === "loading"}
+                    onClick={() => setDriveSaveStatus("picking")}
+                    disabled={driveSaveStatus === "saving"}
                     className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
                   >
-                    {slidesStatus === "loading" ? "Creating Google Slides…" : "Get Google Slides Link"}
+                    {driveSaveStatus === "saving"
+                      ? "Saving to Drive…"
+                      : driveSaveStatus === "error"
+                        ? "Try Again"
+                        : "Save to Google Drive"}
                   </button>
                 )}
               </div>
 
-              {driveAutoSave === null && slidesStatus === "ready" && slidesUrl && (
-                <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
-                    Shareable Google Slides link — anyone with the link can view
+              {driveSaveStatus === "picking" && (
+                <GoogleDriveFolderPicker
+                  initialFolder={lastDriveFolder}
+                  onSelect={(folder) => void handleSaveToDrive(folder)}
+                  onCancel={() => setDriveSaveStatus("idle")}
+                />
+              )}
+
+              {driveSaveStatus === "error" && driveSaveError && (
+                <p className="text-sm text-red-400">{driveSaveError}</p>
+              )}
+
+              {driveSaveStatus === "success" && driveSaveUrl && (
+                <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-emerald-300">
+                    Saved to Google Drive ✓
                   </p>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={driveSaveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-3 block break-all text-sm text-accent hover:underline"
+                  >
+                    {driveSaveUrl}
+                  </a>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleCopyLink}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                    >
+                      <CopyIcon />
+                      {copied ? "Copied!" : "Copy Link"}
+                    </button>
                     <a
-                      href={slidesUrl}
+                      href={buildWhatsAppShareUrl(driveSaveUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-accent hover:underline break-all"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-navy-border bg-navy px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
                     >
-                      {slidesUrl}
+                      <WhatsAppIcon />
+                      WhatsApp
                     </a>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(slidesUrl)}
-                      className="rounded-md border border-navy-border px-3 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                    <a
+                      href={buildEmailShareUrl(driveSaveUrl)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-navy-border bg-navy px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
                     >
-                      Copy link
-                    </button>
+                      <MailIcon />
+                      Email
+                    </a>
                   </div>
-                </div>
-              )}
-
-              {driveAutoSave === null && slidesStatus === "not_connected" && (
-                <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
-                  <p className="mb-2">
-                    Connect Google Drive to create a Google Slides link for this report.
-                  </p>
                   <button
-                    onClick={handleConnectGoogleDrive}
-                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                    onClick={() => setDriveSaveStatus("picking")}
+                    className="mt-3 text-xs text-ink-muted hover:underline"
                   >
-                    Connect Google Drive
+                    Save to a different folder
                   </button>
                 </div>
-              )}
-
-              {driveAutoSave === null && slidesStatus === "error" && (
-                <p className="break-words text-sm text-red-400">
-                  {slidesError || "Something went wrong creating the Google Slides link. Please try again."}
-                </p>
               )}
             </div>
           )}
@@ -948,6 +877,35 @@ function Spinner() {
     <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
+}
+
+// Small inline icons for the Drive share row (Copy Link / WhatsApp / Email)
+// — no icon library dependency for three glyphs.
+function CopyIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M12 3a9 9 0 00-7.75 13.5L3 21l4.65-1.22A9 9 0 1012 3z" />
+      <path d="M8.5 8.5c0 4 3 7 7 7 .8 0 1-.7 1-1.2v-1c0-.3-.2-.5-.5-.6l-1.7-.5c-.3 0-.5 0-.6.3l-.4.7c-1.3-.6-2.3-1.6-2.9-2.9l.7-.4c.2-.1.3-.4.2-.6l-.5-1.7c0-.3-.3-.5-.6-.5h-1c-.5 0-1.2.2-1.2 1z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
     </svg>
   );
 }

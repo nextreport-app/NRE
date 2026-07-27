@@ -8,10 +8,9 @@ export interface DriveFolder {
 }
 
 /**
- * Shared folder-tree browser for every "Choose Folder" entry point in the
- * app (account settings' Option 2, the client profile page's Option 3, and
- * the download screen's "ask" mode picker) — all backed by the same
- * /api/google-drive/folders endpoint and the same connected Drive account.
+ * Folder-tree browser backing the download screen's "Save to Google Drive"
+ * button (report-upload-wizard.tsx) — fetches from /api/google-drive/folders
+ * using the connected Drive account.
  *
  * Navigation model matches Drive's own "Move to folder" picker: clicking a
  * row in the list navigates INTO that folder (making it the new current
@@ -23,11 +22,16 @@ export interface DriveFolder {
 export function GoogleDriveFolderPicker({
   onSelect,
   onCancel,
+  initialFolder,
 }: {
   onSelect: (folder: DriveFolder) => void;
   onCancel: () => void;
+  /** The client's last-used Drive folder (Client.lastDriveFolderId/Name), if any — pre-navigates the picker into it as a convenience so confirming a repeat save is a single click. The user can still navigate elsewhere. */
+  initialFolder?: DriveFolder | null;
 }) {
-  const [path, setPath] = useState<DriveFolder[]>([{ id: "root", name: "My Drive" }]);
+  const [path, setPath] = useState<DriveFolder[]>(
+    initialFolder ? [{ id: "root", name: "My Drive" }, initialFolder] : [{ id: "root", name: "My Drive" }],
+  );
   const [folders, setFolders] = useState<DriveFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

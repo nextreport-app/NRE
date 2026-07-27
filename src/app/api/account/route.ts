@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { accountSettingsSchema, DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from "@/lib/validators/account";
-import { normalizeDriveMode } from "@/lib/google-drive";
+import { accountSettingsSchema } from "@/lib/validators/account";
 import { apiErrorResponse } from "@/lib/api-error";
 
 export async function GET() {
@@ -12,23 +11,11 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: {
-        agencyName: true,
-        googleDriveEnabled: true,
-        googleDriveFolderName: true,
-        googleDriveMode: true,
-        googleDriveRootFolderId: true,
-        googleDriveRootFolderName: true,
-        googleConnectedEmail: true,
-      },
+      select: { agencyName: true, googleDriveEnabled: true, googleConnectedEmail: true },
     });
     return NextResponse.json({
       agencyName: user?.agencyName ?? null,
       googleDriveEnabled: user?.googleDriveEnabled ?? false,
-      googleDriveFolderName: user?.googleDriveFolderName ?? DEFAULT_GOOGLE_DRIVE_FOLDER_NAME,
-      googleDriveMode: normalizeDriveMode(user?.googleDriveMode),
-      googleDriveRootFolderId: user?.googleDriveRootFolderId ?? null,
-      googleDriveRootFolderName: user?.googleDriveRootFolderName ?? null,
       googleConnectedEmail: user?.googleConnectedEmail ?? null,
     });
   } catch (err) {
@@ -46,25 +33,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  // Partial update — this endpoint is shared by several independently-
-  // saving account settings sections (agency branding, Google Drive
-  // auto-save toggle, Drive Destination mode), so a field genuinely absent
-  // from the request must be left untouched rather than overwritten with a
-  // schema default.
-  const data: {
-    agencyName?: string | null;
-    googleDriveEnabled?: boolean;
-    googleDriveFolderName?: string;
-    googleDriveMode?: string;
-    googleDriveRootFolderId?: string | null;
-    googleDriveRootFolderName?: string | null;
-  } = {};
+  // Partial update — a field genuinely absent from the request must be left
+  // untouched rather than overwritten with a schema default.
+  const data: { agencyName?: string | null } = {};
   if (parsed.data.agencyName !== undefined) data.agencyName = parsed.data.agencyName;
-  if (parsed.data.googleDriveEnabled !== undefined) data.googleDriveEnabled = parsed.data.googleDriveEnabled;
-  if (parsed.data.googleDriveFolderName !== undefined) data.googleDriveFolderName = parsed.data.googleDriveFolderName;
-  if (parsed.data.googleDriveMode !== undefined) data.googleDriveMode = parsed.data.googleDriveMode;
-  if (parsed.data.googleDriveRootFolderId !== undefined) data.googleDriveRootFolderId = parsed.data.googleDriveRootFolderId;
-  if (parsed.data.googleDriveRootFolderName !== undefined) data.googleDriveRootFolderName = parsed.data.googleDriveRootFolderName;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ ok: true });

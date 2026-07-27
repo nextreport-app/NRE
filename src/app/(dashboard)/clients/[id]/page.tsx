@@ -17,14 +17,11 @@ export default async function ClientDetailPage({
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
-  const [reports, user] = await Promise.all([
-    prisma.report.findMany({
-      where: { clientId: client.id },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { googleRefreshToken: true } }),
-  ]);
+  const reports = await prisma.report.findMany({
+    where: { clientId: client.id },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
 
   return (
     <div className="mx-auto max-w-xl space-y-10">
@@ -41,11 +38,8 @@ export default async function ClientDetailPage({
             timezone: client.timezone,
             monthlyBudget: client.monthlyBudget,
             template: client.template,
-            googleDriveFolderId: client.googleDriveFolderId,
-            googleDriveFolderName: client.googleDriveFolderName,
           }}
           hasLogo={!!client.logoUrl}
-          hasGoogleDriveConnected={!!user?.googleRefreshToken}
         />
       </div>
 

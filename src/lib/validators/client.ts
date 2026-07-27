@@ -38,24 +38,6 @@ export const clientSchema = z.object({
     .optional()
     .transform((v) => (typeof v === "number" && !Number.isNaN(v) ? v : null)),
   template: z.enum(TEMPLATES),
-  // Drive Destination Option 3 (per-client folder override) — set together
-  // via the client profile page's folder picker, or both left null to fall
-  // back to the account-level Drive Destination setting. Unlike account
-  // settings' PATCH, ClientForm always submits its whole `values` object in
-  // one go (see client-form.tsx), so these don't need the
-  // undefined-vs-null partial-update distinction agencyName's schema uses.
-  googleDriveFolderId: z
-    .string()
-    .trim()
-    .nullable()
-    .optional()
-    .transform((v) => v || null),
-  googleDriveFolderName: z
-    .string()
-    .trim()
-    .nullable()
-    .optional()
-    .transform((v) => v || null),
 });
 
 export type ClientInput = z.infer<typeof clientSchema>;

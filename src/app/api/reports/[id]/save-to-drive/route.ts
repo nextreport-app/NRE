@@ -8,15 +8,16 @@ import { saveReportToDriveFolder } from "@/lib/google-drive";
 
 const bodySchema = z.object({
   folderId: z.string().trim().min(1),
+  folderName: z.string().trim().min(1),
 });
 
 /**
- * The "ask" Drive Destination mode's post-hoc save: report generation
- * already deferred picking a folder (see the generate route's
- * driveAutoSave "deferred" status), so this is called once the user picks
- * one via the download screen's folder browser. Uses the SAME connected
- * Drive account (User.googleRefreshToken) as auto-save — this is not the
- * old NextAuth-linked-account "Get Google Slides Link" flow.
+ * The download screen's "Save to Google Drive" button: uploads the
+ * already-generated report into the folder the user picked via the folder
+ * browser, converts it to Google Slides, and shares it. Also remembers the
+ * chosen folder on the client (Client.lastDriveFolderId/lastDriveFolderName)
+ * so the picker pre-selects it as a convenience next time a report is saved
+ * for this same client.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -56,7 +57,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       pptxBuffer,
     });
 
-    await prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } });
+    await Promise.all([
+      prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } }),
+      prisma.client.update({
+        where: { id: report.client.id },
+        data: { lastDriveFolderId: parsed.data.folderId, lastDriveFolderName: parsed.data.folderName },
+      }),
+    ]);
     return NextResponse.json({ url: webViewLink });
   } catch (err) {
     return apiErrorResponse(err, "reports:save-to-drive");

@@ -8,14 +8,22 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   const session = await auth();
   if (!session?.user) notFound();
 
-  const client = await prisma.client.findUnique({ where: { id } });
+  const [client, user] = await Promise.all([
+    prisma.client.findUnique({ where: { id } }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { googleRefreshToken: true } }),
+  ]);
   if (!client || client.userId !== session.user.id) notFound();
 
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-1 text-xl font-semibold text-white">Generate report</h1>
       <p className="mb-6 text-sm text-ink-muted">{client.accountName}</p>
-      <ReportUploadWizard clientId={client.id} />
+      <ReportUploadWizard
+        clientId={client.id}
+        hasGoogleDriveConnected={!!user?.googleRefreshToken}
+        initialLastDriveFolderId={client.lastDriveFolderId}
+        initialLastDriveFolderName={client.lastDriveFolderName}
+      />
     </div>
   );
 }

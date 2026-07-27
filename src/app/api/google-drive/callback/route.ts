@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     // guarantee a refresh_token on every connect — if it's still somehow
     // missing, there's no way to call the Drive API later outside this
     // request, so treat it as a failed connection rather than silently
-    // storing a connection that can never actually auto-save anything.
+    // storing a connection that can never actually save anything.
     if (!tokens.refresh_token) {
       return clearStateCookie(redirectToAccount(req, "?google_drive_error=no_refresh_token"));
     }
@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
+        googleDriveEnabled: true,
         googleAccessToken: tokens.access_token,
         googleRefreshToken: tokens.refresh_token,
         googleConnectedEmail: email,
