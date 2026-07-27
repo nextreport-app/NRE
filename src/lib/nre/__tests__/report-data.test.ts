@@ -298,6 +298,92 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach", "Shoes - Purchases"]);
     expect(data.adSetSlides).toHaveLength(2);
   });
+
+  // Regression: the Period CSV (previous full month, optional second
+  // upload) fed straight into the table slide's "Period" row without ever
+  // going through filterRowsByCampaigns/filterRowsByAdSets — a deselected
+  // ad set's spend still reached the report via that row even though the
+  // MTD row correctly excluded it.
+  it("also applies ad-set/campaign selection to the Period CSV, not just the MTD Daily CSV", () => {
+    const periodRows = [
+      {
+        _raw: {},
+        campaign_name: "Shoes - Purchases",
+        ad_set_name: "Prospecting",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Shoes - Purchases",
+        ad_set_name: "Retargeting",
+        result_type: "Purchase",
+        spend: "300",
+        reach: "1000",
+        impressions: "2000",
+        results: "5",
+        ctr: "1.5",
+        cpc: "2",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      // Only Prospecting selected — Retargeting's $300 must vanish from the
+      // Period row exactly as it already does from the MTD row.
+      selectedAdSets: [adSetKey("Shoes - Purchases", "Prospecting"), adSetKey("Brand - Reach", "Awareness")],
+      now: NOW,
+    });
+
+    expect(data.periodRow.spend).toBe("$500");
+    expect(data.periodRow.result1).toBe("10");
+  });
+
+  it("deselecting an entire campaign also removes its Period CSV rows", () => {
+    const periodRows = [
+      {
+        _raw: {},
+        campaign_name: "Brand - Reach",
+        ad_set_name: "Awareness",
+        result_type: "Reach",
+        spend: "900",
+        reach: "5000",
+        impressions: "8000",
+        results: "0",
+        ctr: "0.5",
+        cpc: "0",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      selectedCampaigns: ["Shoes - Purchases"], // Brand - Reach excluded entirely
+      now: NOW,
+    });
+
+    expect(data.periodRow.hasData).toBe(false);
+  });
 });
 
 describe("buildReportData — objectiveWarnings (upload preview's 'objective auto-detected' warning)", () => {

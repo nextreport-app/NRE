@@ -391,6 +391,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
   const filteredMtdDailyRows = filterRowsByAdSets(campaignFilteredRows, selectedAdSets ?? null);
   const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
+
+  // The optional Period CSV (previous full month) feeds the table slide's
+  // separate "Period" row — it must go through the exact same
+  // campaign/ad-set selection as the MTD Daily CSV, or a deselected ad set
+  // still reaches the report via this second row even though the MTD row
+  // correctly excludes it.
+  const filteredPeriodRows = filterRowsByAdSets(
+    filterRowsByCampaigns(periodRows ?? [], selectedCampaigns ?? null),
+    selectedAdSets ?? null,
+  );
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
   const isPaused = weeklyRows.length === 0;
@@ -463,7 +473,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  const periodRow = computeTableRow((periodRows ?? []) as MetricRow[], currencySymbol, false);
+  const periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false);
   const mtdRow = computeTableRow(mtdRows, currencySymbol, true);
 
   // Table header labels: fillMTDRow_ always runs after fillPeriodSlide_ in the
