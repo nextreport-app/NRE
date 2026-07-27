@@ -28,6 +28,10 @@ type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 type SlidesStatus = "idle" | "loading" | "ready" | "not_connected" | "error";
 type DateMode = "last7" | "prev7" | "custom";
+// Mirrors the shape the generate route's own driveAutoSave response field
+// takes (see /api/clients/[id]/reports/route.ts) — null when Google Drive
+// auto-save is off for this account.
+type DriveAutoSaveResult = { status: "success"; url: string } | { status: "error"; message: string } | null;
 
 interface DateRangeIso {
   startIso: string;
@@ -120,6 +124,11 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  // Set from the generate response's own driveAutoSave field — null means
+  // the account settings toggle is off (the manual "Get Google Slides
+  // Link" button below still works exactly as before); non-null means the
+  // server already attempted an auto-save and either succeeded or failed.
+  const [driveAutoSave, setDriveAutoSave] = useState<DriveAutoSaveResult>(null);
   const [slidesStatus, setSlidesStatus] = useState<SlidesStatus>("idle");
   const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
   const [slidesError, setSlidesError] = useState<string | null>(null);
@@ -290,6 +299,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setGenerateMessage(null);
     setReportId(null);
     setDownloadUrl(null);
+    setDriveAutoSave(null);
     setSlidesStatus("idle");
     setSlidesUrl(null);
     setSlidesError(null);
@@ -320,6 +330,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
+    setDriveAutoSave(json.driveAutoSave ?? null);
     setGenerateStatus("done");
   }
 
@@ -725,23 +736,64 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
           {generateStatus === "done" && downloadUrl && (
             <div className="space-y-3">
+              {/* Auto-save (account settings toggle) already ran server-side
+                  during generation — no separate button/click needed here,
+                  just show what happened. driveAutoSave is null when the
+                  toggle is off, in which case the manual "Get Google Slides
+                  Link" flow below behaves exactly as it always has. */}
+              {driveAutoSave?.status === "success" && (
+                <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-emerald-300">
+                    Saved to Google Drive — anyone with the link can view
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href={driveAutoSave.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-accent hover:underline break-all"
+                    >
+                      {driveAutoSave.url}
+                    </a>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(driveAutoSave.url)}
+                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {driveAutoSave?.status === "error" && (
+                <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+                  Google Drive auto-save failed: {driveAutoSave.message}
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-3">
                 <a
                   href={downloadUrl}
-                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                  className={
+                    driveAutoSave?.status === "success"
+                      ? "inline-block rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+                      : "inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                  }
                 >
                   Download PPTX
                 </a>
-                <button
-                  onClick={handleGetSlidesLink}
-                  disabled={slidesStatus === "loading"}
-                  className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {slidesStatus === "loading" ? "Creating Google Slides…" : "Get Google Slides Link"}
-                </button>
+                {driveAutoSave === null && (
+                  <button
+                    onClick={handleGetSlidesLink}
+                    disabled={slidesStatus === "loading"}
+                    className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {slidesStatus === "loading" ? "Creating Google Slides…" : "Get Google Slides Link"}
+                  </button>
+                )}
               </div>
 
-              {slidesStatus === "ready" && slidesUrl && (
+              {driveAutoSave === null && slidesStatus === "ready" && slidesUrl && (
                 <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
                   <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
                     Shareable Google Slides link — anyone with the link can view
@@ -765,7 +817,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
                 </div>
               )}
 
-              {slidesStatus === "not_connected" && (
+              {driveAutoSave === null && slidesStatus === "not_connected" && (
                 <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
                   <p className="mb-2">
                     Connect Google Drive to create a Google Slides link for this report.
@@ -779,7 +831,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
                 </div>
               )}
 
-              {slidesStatus === "error" && (
+              {driveAutoSave === null && slidesStatus === "error" && (
                 <p className="break-words text-sm text-red-400">
                   {slidesError || "Something went wrong creating the Google Slides link. Please try again."}
                 </p>

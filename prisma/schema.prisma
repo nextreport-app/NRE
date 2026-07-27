@@ -30,6 +30,33 @@ model User {
   agencyName    String?
   agencyLogoUrl String?
 
+  // Google Drive auto-save (account settings) — deliberately independent of
+  // both the Credentials/Google sign-in above AND the NextAuth Account row
+  // Google sign-in creates: a user can log into NextReport with email/
+  // password (or a Google account) and still connect a COMPLETELY DIFFERENT
+  // Google account here for Drive uploads (see the connect flow's own
+  // explanatory copy in the account settings UI). That's why these are
+  // their own columns rather than reusing Account.refresh_token/
+  // access_token — this is a second, separate OAuth grant, obtained via
+  // /api/google-drive/connect + /api/google-drive/callback (NOT NextAuth's
+  // own Google provider), always re-requesting `prompt=consent
+  // select_account` so the account chooser appears every time and a fresh
+  // refresh_token comes back.
+  googleDriveEnabled    Boolean @default(false)
+  googleDriveFolderName String @default("NextReport Reports")
+  // googleAccessToken is best-effort/informational only — every Drive call
+  // (lib/google-drive.ts's autoSaveReportToDrive) mints a fresh access token
+  // from googleRefreshToken right before use rather than trusting this
+  // column's freshness, so there's no separate "is it expired yet" column
+  // to maintain.
+  googleAccessToken  String? @db.Text
+  googleRefreshToken String? @db.Text
+  // The connected Google account's own email — shown back to the user
+  // ("Connected: name@example.com") specifically so they can confirm they
+  // picked the Drive account they meant to, since it doesn't have to match
+  // their NextReport login email at all.
+  googleConnectedEmail String?
+
   accounts Account[]
   sessions Session[]
   clients  Client[]

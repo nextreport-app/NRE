@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  autoSaveReportToDrive,
+  buildGoogleDriveConnectUrl,
+  exchangeGoogleAuthCode,
+  fetchGoogleAccountEmail,
+  findOrCreateDriveFolder,
   GOOGLE_DRIVE_SCOPE,
   getFreshGoogleAccessToken,
   shareFilePublicly,
@@ -66,8 +71,23 @@ describe("uploadPptxAsGoogleSlides", () => {
     const bodyText = bodyBuffer.toString("utf-8");
     expect(bodyText).toContain('"mimeType":"application/vnd.google-apps.presentation"');
     expect(bodyText).toContain('"name":"My Report"');
+    expect(bodyText).not.toContain('"parents"'); // no parentId given — uploads to Drive root, unchanged from before auto-save existed
     expect(bodyText).toContain("application/vnd.openxmlformats-officedocument.presentationml.presentation");
     expect(bodyBuffer.includes(pptxBuffer)).toBe(true);
+  });
+
+  it("places the file inside a folder when parentId is given", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "file-123", webViewLink: "https://docs.google.com/presentation/d/file-123/edit" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await uploadPptxAsGoogleSlides("access-token", Buffer.from("x"), "My Report", "folder-abc");
+
+    const [, init] = fetchMock.mock.calls[0];
+    const bodyText = Buffer.from(init.body as Uint8Array).toString("utf-8");
+    expect(bodyText).toContain('"parents":["folder-abc"]');
   });
 
   it("throws with the response status and body on failure", async () => {
@@ -76,6 +96,177 @@ describe("uploadPptxAsGoogleSlides", () => {
       vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => "insufficient scope" }),
     );
     await expect(uploadPptxAsGoogleSlides("token", Buffer.from("x"), "name")).rejects.toThrow(/403/);
+  });
+});
+
+describe("buildGoogleDriveConnectUrl", () => {
+  it("requests offline access, forces the account picker, and carries the state through", () => {
+    const url = new URL(buildGoogleDriveConnectUrl("https://app.example.com/api/google-drive/callback", "nonce-123"));
+    expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    expect(url.searchParams.get("redirect_uri")).toBe("https://app.example.com/api/google-drive/callback");
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.get("access_type")).toBe("offline");
+    expect(url.searchParams.get("prompt")).toBe("consent select_account");
+    expect(url.searchParams.get("state")).toBe("nonce-123");
+    expect(url.searchParams.get("scope")).toContain(GOOGLE_DRIVE_SCOPE);
+    expect(url.searchParams.get("scope")).toContain("email");
+  });
+});
+
+describe("exchangeGoogleAuthCode", () => {
+  it("exchanges an authorization code for tokens via the Google token endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: "a", refresh_token: "r", expires_in: 3600, scope: "x", token_type: "Bearer" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const tokens = await exchangeGoogleAuthCode("auth-code", "https://app.example.com/callback");
+    expect(tokens.access_token).toBe("a");
+    expect(tokens.refresh_token).toBe("r");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://oauth2.googleapis.com/token");
+    const body = new URLSearchParams(init.body);
+    expect(body.get("code")).toBe("auth-code");
+    expect(body.get("redirect_uri")).toBe("https://app.example.com/callback");
+    expect(body.get("grant_type")).toBe("authorization_code");
+  });
+
+  it("throws with the response status and body when the exchange fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400, text: async () => "invalid_grant" }));
+    await expect(exchangeGoogleAuthCode("bad", "https://x/callback")).rejects.toThrow(/400/);
+  });
+});
+
+describe("fetchGoogleAccountEmail", () => {
+  it("returns the connected account's email", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ email: "user@example.com" }) }));
+    expect(await fetchGoogleAccountEmail("token")).toBe("user@example.com");
+  });
+
+  it("returns null instead of throwing when the userinfo call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401 }));
+    expect(await fetchGoogleAccountEmail("bad-token")).toBeNull();
+  });
+});
+
+describe("findOrCreateDriveFolder", () => {
+  it("returns the existing folder's id without creating a duplicate when a search match is found", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ files: [{ id: "existing-folder" }] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const id = await findOrCreateDriveFolder("token", "NextReport Reports");
+    expect(id).toBe("existing-folder");
+    expect(fetchMock).toHaveBeenCalledTimes(1); // search only, no create call
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(url)).toContain("'root' in parents");
+    expect(decodeURIComponent(url)).toContain("name='NextReport Reports'");
+  });
+
+  it("creates the folder under the given parent when no match is found", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: [] }) }) // search: nothing found
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "new-folder" }) }); // create
+    vi.stubGlobal("fetch", fetchMock);
+
+    const id = await findOrCreateDriveFolder("token", "Acme Inc", "root-folder-id");
+    expect(id).toBe("new-folder");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [searchUrl] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(searchUrl)).toContain("'root-folder-id' in parents");
+
+    const [, createInit] = fetchMock.mock.calls[1];
+    const createBody = JSON.parse(createInit.body);
+    expect(createBody).toEqual({
+      name: "Acme Inc",
+      mimeType: "application/vnd.google-apps.folder",
+      parents: ["root-folder-id"],
+    });
+  });
+
+  it("escapes single quotes in the folder name so the Drive query stays valid", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ files: [{ id: "x" }] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await findOrCreateDriveFolder("token", "O'Brien Roofing");
+    const [url] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(url)).toContain("name='O\\'Brien Roofing'");
+  });
+
+  it("throws with the response status and body when the search itself fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "server error" }));
+    await expect(findOrCreateDriveFolder("token", "X")).rejects.toThrow(/500/);
+  });
+});
+
+describe("autoSaveReportToDrive", () => {
+  it("refreshes the token, builds [Root] -> [Client] folders, uploads inside the client folder, and shares it", async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (url: string, init?: { method?: string; headers?: Record<string, string> }) => {
+      calls.push(url);
+      if (url === "https://oauth2.googleapis.com/token") {
+        return { ok: true, json: async () => ({ access_token: "fresh-access-token" }) };
+      }
+      if (url.includes("/files?q=") && decodeURIComponent(url).includes("'root' in parents")) {
+        return { ok: true, json: async () => ({ files: [{ id: "root-folder-id" }] }) }; // root folder already exists
+      }
+      if (url.includes("/files?q=") && decodeURIComponent(url).includes("'root-folder-id' in parents")) {
+        return { ok: true, json: async () => ({ files: [] }) }; // client folder doesn't exist yet
+      }
+      if (url.includes("/files?fields=id") && init?.method === "POST") {
+        return { ok: true, json: async () => ({ id: "client-folder-id" }) }; // create client folder
+      }
+      if (url.includes("uploadType=multipart")) {
+        return { ok: true, json: async () => ({ id: "file-id", webViewLink: "https://docs.google.com/presentation/d/file-id/edit" }) };
+      }
+      if (url.includes("/permissions")) {
+        return { ok: true, text: async () => "" };
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "refresh-token",
+      rootFolderName: "NextReport Reports",
+      clientName: "Acme Inc",
+      fileName: "Meta Ads Report - Jul 13 to Jul 19",
+      pptxBuffer: Buffer.from("fake pptx"),
+    });
+
+    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/file-id/edit");
+
+    // Every call after the token refresh uses the freshly-minted access token.
+    const uploadCall = fetchMock.mock.calls.find(([url]) => url.includes("uploadType=multipart"))!;
+    expect(uploadCall[1]!.headers!.Authorization).toBe("Bearer fresh-access-token");
+    const shareCall = fetchMock.mock.calls.find(([url]) => url.includes("/permissions"))!;
+    expect(shareCall[1]!.headers!.Authorization).toBe("Bearer fresh-access-token");
+  });
+
+  it("falls back to a constructed presentation URL when Drive doesn't return a webViewLink", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
+        if (url.includes("/files?q=")) return { ok: true, json: async () => ({ files: [{ id: "folder" }] }) };
+        if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "file-id" }) }; // no webViewLink
+        if (url.includes("/permissions")) return { ok: true, text: async () => "" };
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "r",
+      rootFolderName: "NextReport Reports",
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/file-id/edit");
   });
 });
 

@@ -14,6 +14,7 @@ import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { autoSaveReportToDrive } from "@/lib/google-drive";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
   dateSelectionSchema,
@@ -124,7 +125,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
       generateInsights(data, aiKeysFromEnv()),
-      prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          agencyName: true,
+          googleDriveEnabled: true,
+          googleDriveFolderName: true,
+          googleRefreshToken: true,
+        },
+      }),
       loadLogoAsset(client.logoUrl),
     ]);
 
@@ -146,7 +155,43 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: { status: "COMPLETE", filePath },
     });
 
-    return NextResponse.json({ ok: true, reportId: report.id });
+    // Auto-save is best-effort and never fails the request: the PPTX is
+    // already generated and downloadable regardless of what happens here.
+    // `driveAutoSave` stays null when the feature is off entirely, so the
+    // wizard's download screen can tell "disabled" apart from "attempted
+    // and failed" and render the right one of its three states.
+    let driveAutoSave: { status: "success"; url: string } | { status: "error"; message: string } | null = null;
+    if (user?.googleDriveEnabled) {
+      if (!user.googleRefreshToken) {
+        driveAutoSave = {
+          status: "error",
+          message: "Google Drive auto-save is enabled, but no Google account is connected. Connect one in Account Settings.",
+        };
+      } else {
+        try {
+          const { webViewLink } = await autoSaveReportToDrive({
+            refreshToken: user.googleRefreshToken,
+            rootFolderName: user.googleDriveFolderName,
+            clientName: client.accountName,
+            fileName: fileName.replace(/\.pptx$/i, ""),
+            pptxBuffer,
+          });
+          driveAutoSave = { status: "success", url: webViewLink };
+          // Same cache field the manual "Get Google Slides Link" button
+          // uses — keeps the two features from ever creating two separate
+          // Drive files for the same report.
+          await prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } });
+        } catch (err) {
+          console.error("[api:reports:generate] Google Drive auto-save failed:", err);
+          driveAutoSave = {
+            status: "error",
+            message: err instanceof Error ? err.message : "Google Drive upload failed.",
+          };
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true, reportId: report.id, driveAutoSave });
   } catch (err) {
     console.error("[api:reports:generate] failed:", err);
     const message = err instanceof Error ? err.message : "Report generation failed.";
