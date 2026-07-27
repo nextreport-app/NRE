@@ -4,16 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames } from "@/lib/nre/campaigns";
-import { extractAdSetGroups, resolveDefaultSelectedAdSets } from "@/lib/nre/ad-sets";
 import { computeCsvDateBounds, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import {
-  dateSelectionSchema,
-  deselectedAdSetsSchema,
-  deselectedCampaignsSchema,
-  type DateSelection,
-} from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, deselectedCampaignsSchema, type DateSelection } from "@/lib/validators/report-wizard";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
@@ -65,19 +59,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const deselectedSet = new Set(deselected);
     const selectedCampaigns = campaigns.filter((name) => !deselectedSet.has(name));
 
-    // Same "select everything except what was explicitly excluded last
-    // time" logic, one level down: grouped by campaign for the wizard's Ad
-    // Sets step, keyed by the composite adSetKey so a brand new ad set (or
-    // one in a same-named ad set in a different campaign) defaults to
-    // selected correctly.
-    const adSetGroups = extractAdSetGroups(mtdParsed.rows);
-    let deselectedAdSets: string[] = [];
-    if (client.lastDeselectedAdSets) {
-      const parsed = deselectedAdSetsSchema.safeParse(JSON.parse(client.lastDeselectedAdSets));
-      if (parsed.success) deselectedAdSets = parsed.data;
-    }
-    const selectedAdSets = resolveDefaultSelectedAdSets(adSetGroups, deselectedAdSets);
-
     let dateSelection: DateSelection = DEFAULT_DATE_SELECTION;
     if (client.lastDateSelection) {
       const parsed = dateSelectionSchema.safeParse(JSON.parse(client.lastDateSelection));
@@ -94,8 +75,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       warnings: validation.warnings,
       campaigns,
       selectedCampaigns,
-      adSetGroups,
-      selectedAdSets,
       dateBounds,
       weeklyOptions,
       mtdRange,

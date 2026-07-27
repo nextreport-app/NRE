@@ -5,16 +5,19 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
-import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+// Ad-set-level filtering was removed from the wizard (product decision: it
+// produced MTD totals that no longer matched real account spend, which
+// misled clients). The underlying filter logic still lives in
+// lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
+// just never called from here — so it can come back without re-deriving it.
+type Step = 1 | 2 | 3 | 4 | 5;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
-  3: "Ad Sets",
-  4: "Dates",
-  5: "Preview",
-  6: "Generate",
+  3: "Dates",
+  4: "Preview",
+  5: "Generate",
 };
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
@@ -83,11 +86,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
-  // Step 3 — Ad Sets (populated by /analyze), keyed by adSetKey(campaign, adSet)
-  const [adSetGroups, setAdSetGroups] = useState<AdSetGroup[]>([]);
-  const [selectedAdSets, setSelectedAdSets] = useState<Set<string>>(new Set());
-
-  // Step 4 — Dates (populated by /analyze)
+  // Step 3 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
   const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
@@ -97,14 +96,14 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [longRangeConfirmed, setLongRangeConfirmed] = useState(false);
 
-  // Step 5 — Preview
+  // Step 4 — Preview
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
   const [previewErrors, setPreviewErrors] = useState<ValidationIssue[]>([]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
 
-  // Step 6 — Generate
+  // Step 5 — Generate
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -137,8 +136,6 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   async function saveSelection(payload: {
     campaigns?: string[];
     selectedCampaigns?: string[];
-    adSets?: string[];
-    selectedAdSets?: string[];
     dateSelection?: DateSelection;
   }) {
     try {
@@ -178,8 +175,6 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     setCampaigns(json.campaigns || []);
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
-    setAdSetGroups(json.adSetGroups || []);
-    setSelectedAdSets(new Set<string>(json.selectedAdSets || []));
     setDateBounds(json.dateBounds || null);
     setWeeklyOptions(json.weeklyOptions || null);
     setMtdRange(json.mtdRange || null);
@@ -207,104 +202,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setStep(3);
   }
 
-  // ── Step 3: Ad Sets ─────────────────────────────────────────────────────
-  // Only ad sets belonging to a currently-selected campaign are shown —
-  // deselecting a campaign back in step 2 hides its ad-set group here
-  // without losing whatever ad-set choices were made for it (they reappear
-  // if the campaign gets re-selected).
-  const visibleAdSetGroups = adSetGroups.filter((g) => selectedCampaigns.has(g.campaignName));
-  const totalVisibleAdSets = visibleAdSetGroups.reduce((sum, g) => sum + g.adSetNames.length, 0);
-  const totalSelectedVisibleAdSets = visibleAdSetGroups.reduce(
-    (sum, g) => sum + g.adSetNames.filter((name) => selectedAdSets.has(adSetKey(g.campaignName, name))).length,
-    0,
-  );
-
-  function toggleAdSet(campaignName: string, adSetName: string) {
-    const key = adSetKey(campaignName, adSetName);
-    const next = new Set(selectedAdSets);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setSelectedAdSets(next);
-
-    // Cascade: a campaign with zero selected ad sets is dropped from the
-    // report entirely (and its checkbox reflects that back in step 2); one
-    // with at least one re-checked ad set is restored.
-    const group = adSetGroups.find((g) => g.campaignName === campaignName);
-    const anySelected = group ? group.adSetNames.some((name) => next.has(adSetKey(campaignName, name))) : false;
-    setSelectedCampaigns((prev) => {
-      const nextCampaigns = new Set(prev);
-      if (anySelected) nextCampaigns.add(campaignName);
-      else nextCampaigns.delete(campaignName);
-      return nextCampaigns;
-    });
-  }
-
-  function selectAllAdSets() {
-    setSelectedAdSets((prev) => {
-      const next = new Set(prev);
-      for (const g of visibleAdSetGroups) for (const name of g.adSetNames) next.add(adSetKey(g.campaignName, name));
-      return next;
-    });
-  }
-
-  function deselectAllAdSets() {
-    setSelectedAdSets((prev) => {
-      const next = new Set(prev);
-      for (const g of visibleAdSetGroups) for (const name of g.adSetNames) next.delete(adSetKey(g.campaignName, name));
-      return next;
-    });
-    // Every visible campaign now has zero selected ad sets — drop them all.
-    setSelectedCampaigns((prev) => {
-      const next = new Set(prev);
-      for (const g of visibleAdSetGroups) next.delete(g.campaignName);
-      return next;
-    });
-  }
-
-  function selectAllForCampaign(campaignName: string) {
-    const group = adSetGroups.find((g) => g.campaignName === campaignName);
-    if (!group) return;
-    setSelectedAdSets((prev) => {
-      const next = new Set(prev);
-      for (const name of group.adSetNames) next.add(adSetKey(campaignName, name));
-      return next;
-    });
-    setSelectedCampaigns((prev) => new Set(prev).add(campaignName));
-  }
-
-  function deselectAllForCampaign(campaignName: string) {
-    const group = adSetGroups.find((g) => g.campaignName === campaignName);
-    if (!group) return;
-    setSelectedAdSets((prev) => {
-      const next = new Set(prev);
-      for (const name of group.adSetNames) next.delete(adSetKey(campaignName, name));
-      return next;
-    });
-    setSelectedCampaigns((prev) => {
-      const next = new Set(prev);
-      next.delete(campaignName);
-      return next;
-    });
-  }
-
-  // `undefined` (not `[]`) when the CSV has no ad-set data at all — an empty
-  // array means "deliberately nothing selected" downstream and would filter
-  // every row out, when what we actually want is "no ad-set filtering was
-  // possible, don't filter by it at all" (report generates at campaign
-  // level only, per the Ad Sets step's own warning for this case).
-  function selectedAdSetsForRequest(): string[] | undefined {
-    return adSetGroups.length === 0 ? undefined : Array.from(selectedAdSets);
-  }
-
-  async function handleAdSetsContinue() {
-    if (adSetGroups.length > 0) {
-      const allAdSetKeys = adSetGroups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name)));
-      await saveSelection({ adSets: allAdSetKeys, selectedAdSets: Array.from(selectedAdSets) });
-    }
-    setStep(4);
-  }
-
-  // ── Step 4: Dates ───────────────────────────────────────────────────────
+  // ── Step 3: Dates ───────────────────────────────────────────────────────
   function validateCustomRange(): boolean {
     if (dateMode !== "custom") return true;
     if (!customStart || !customEnd) {
@@ -344,7 +242,6 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
       method: "POST",
       body: buildUploadFormData(mtdFile, periodFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: selectedAdSetsForRequest(),
         dateSelection,
       }),
     });
@@ -363,21 +260,20 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     setData(json.data);
     setPreviewStatus("idle");
-    setStep(5);
+    setStep(4);
   }
 
-  // ── Step 5 -> 6: Generate ───────────────────────────────────────────────
+  // ── Step 4 -> 5: Generate ───────────────────────────────────────────────
   async function handleGenerate() {
     if (!mtdFile) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
-    setStep(6);
+    setStep(5);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, periodFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: selectedAdSetsForRequest(),
         dateSelection: currentDateSelection(),
         reportTitle: reportTitle.trim() || DEFAULT_REPORT_TITLE,
       }),
@@ -566,133 +462,6 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
       {step === 3 && (
         <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-sm font-medium text-ink-secondary">Select ad sets to include</h3>
-            <InfoTooltip text="Ad set names must be included in your CSV for ad set level filtering. Download from Ad Reporting section for best results." />
-          </div>
-
-          {adSetGroups.length === 0 ? (
-            <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
-              <p className="mb-2 font-medium">No ad set names found in your CSV.</p>
-              <p className="mb-2">
-                This usually happens when downloading from the Meta Ads Manager Campaigns screen without
-                including the Ad Set Name column.
-              </p>
-              <p className="mb-1">You can either:</p>
-              <ul className="mb-2 list-inside list-disc space-y-1">
-                <li>
-                  Re-download your CSV from the Ad Reporting section (recommended) which includes Ad Set
-                  Name automatically
-                </li>
-                <li>Or re-download from the Campaigns screen and make sure Ad Set Name is added to your column preset</li>
-              </ul>
-              <p>
-                See our{" "}
-                <Link href="/help/download" className="underline hover:text-amber-100">
-                  Download Guide
-                </Link>{" "}
-                for step by step instructions.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-ink-muted">
-                  {totalSelectedVisibleAdSets} of {totalVisibleAdSets} ad sets selected
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={selectAllAdSets}
-                    className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={deselectAllAdSets}
-                    className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
-                  >
-                    Deselect All
-                  </button>
-                </div>
-              </div>
-
-              {visibleAdSetGroups.length === 0 && (
-                <p className="rounded-lg border border-navy-border p-4 text-sm text-ink-muted">
-                  No ad sets found for the selected campaigns.
-                </p>
-              )}
-
-              <div className="space-y-4">
-                {visibleAdSetGroups.map((group, groupIdx) => (
-                  <div key={group.campaignName} className="rounded-lg border border-navy-border">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy-border bg-navy px-4 py-2">
-                      <span className="text-sm font-medium text-ink-secondary">
-                        {group.campaignName} <span className="text-ink-muted">(Campaign)</span>
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => selectAllForCampaign(group.campaignName)}
-                          className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          onClick={() => deselectAllForCampaign(group.campaignName)}
-                          className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
-                        >
-                          Deselect All
-                        </button>
-                      </div>
-                    </div>
-                    <ul className="divide-y divide-navy-border">
-                      {group.adSetNames.map((adSetName, adSetIdx) => {
-                        const key = adSetKey(group.campaignName, adSetName);
-                        // A DOM id can't safely hold adSetKey's raw composite
-                        // string (it embeds a NUL separator) — index-based is
-                        // simple, unique, and stable across this list's render.
-                        const inputId = `adset-${groupIdx}-${adSetIdx}`;
-                        return (
-                          <li key={key} className="flex items-center gap-3 px-4 py-2.5 pl-8">
-                            <input
-                              type="checkbox"
-                              id={inputId}
-                              checked={selectedAdSets.has(key)}
-                              onChange={() => toggleAdSet(group.campaignName, adSetName)}
-                              className="h-4 w-4 accent-accent"
-                            />
-                            <label htmlFor={inputId} className="cursor-pointer text-sm text-white">
-                              {adSetName}
-                            </label>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(2)}
-              className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleAdSetsContinue}
-              disabled={adSetGroups.length > 0 && totalSelectedVisibleAdSets === 0}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
           <h3 className="text-sm font-medium text-ink-secondary">Reporting period</h3>
 
           <div className="space-y-2">
@@ -819,7 +588,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
             >
               Back
@@ -839,7 +608,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      {step === 5 && data && (
+      {step === 4 && data && (
         <div className="space-y-6">
           <ReportPreview data={data} />
 
@@ -865,7 +634,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(4)}
+              onClick={() => setStep(3)}
               className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
             >
               Back
@@ -880,7 +649,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      {step === 6 && (
+      {step === 5 && (
         <div className="space-y-4">
           {generateStatus === "loading" && (
             <div className="rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
@@ -894,7 +663,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
                 {generateMessage}
               </div>
               <button
-                onClick={() => setStep(5)}
+                onClick={() => setStep(4)}
                 className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
               >
                 Back
@@ -971,22 +740,8 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   );
 }
 
-/** Small "(i)" badge with a native tooltip on hover/focus — no extra dependency needed for a single static hint. */
-function InfoTooltip({ text }: { text: string }) {
-  return (
-    <span
-      tabIndex={0}
-      title={text}
-      aria-label={text}
-      className="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-ink-muted text-[10px] leading-none text-ink-muted hover:border-accent hover:text-accent"
-    >
-      i
-    </span>
-  );
-}
-
 function StepIndicator({ step }: { step: Step }) {
-  const steps: Step[] = [1, 2, 3, 4, 5, 6];
+  const steps: Step[] = [1, 2, 3, 4, 5];
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       {steps.map((s, i) => (

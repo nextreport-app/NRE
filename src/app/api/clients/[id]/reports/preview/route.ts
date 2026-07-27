@@ -8,12 +8,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import {
-  dateSelectionSchema,
-  parseJsonFormField,
-  selectedAdSetsSchema,
-  selectedCampaignsSchema,
-} from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -52,7 +47,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-  const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
@@ -73,7 +67,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     mtdDailyRows: mtdParsed.rows,
     periodRows: periodParsed?.rows,
     selectedCampaigns: selectedCampaigns ?? null,
-    selectedAdSets: selectedAdSets ?? null,
     weeklyRange: dateResolution.weeklyRange,
   });
 
