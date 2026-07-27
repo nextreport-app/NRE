@@ -11,13 +11,16 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 // misled clients). The underlying filter logic still lives in
 // lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
 // just never called from here — so it can come back without re-deriving it.
-type Step = 1 | 2 | 3 | 4 | 5;
+// Preview + Generate are one screen (see the step === 4 block below) — the
+// action row at the bottom swaps between "Generate" button, a loading
+// spinner, the download/slides links, or an error + Try Again, all without
+// navigating away, so the step indicator only ever needs to count 4 steps.
+type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
   3: "Dates",
   4: "Preview",
-  5: "Generate",
 };
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
@@ -112,7 +115,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [data, setData] = useState<ReportData | null>(null);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
 
-  // Step 5 — Generate
+  // Step 4 — Generate (same screen as Preview above, see the step === 4 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -279,15 +282,25 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
     setData(json.data);
     setPreviewStatus("idle");
+    // A fresh preview means a fresh Preview screen — clear out any
+    // generate/slides state left over from a previous attempt so returning
+    // here (e.g. after changing the date range) never shows a stale error,
+    // download link, or Google Slides link from before.
+    setGenerateStatus("idle");
+    setGenerateMessage(null);
+    setReportId(null);
+    setDownloadUrl(null);
+    setSlidesStatus("idle");
+    setSlidesUrl(null);
+    setSlidesError(null);
     setStep(4);
   }
 
-  // ── Step 4 -> 5: Generate ───────────────────────────────────────────────
+  // ── Step 4: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
-    setStep(5);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -653,35 +666,38 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
               onChange={(e) => setReportTitle(e.target.value)}
               placeholder={DEFAULT_REPORT_TITLE}
               maxLength={100}
-              className="w-full max-w-md rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+              disabled={generateStatus === "loading" || generateStatus === "done"}
+              className="w-full max-w-md rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent disabled:opacity-60"
             />
             <p className="mt-1 text-xs text-ink-muted">
               Shown on the cover slide in place of &quot;{DEFAULT_REPORT_TITLE}&quot; — e.g. &quot;Monthly Campaign Summary&quot; or &quot;Q3 Performance Review&quot;.
             </p>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(3)}
-              className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleGenerate}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-            >
-              Generate & download PPTX
-            </button>
-          </div>
-        </div>
-      )}
+          {/* Same screen throughout: only this action row changes as
+              generateStatus moves idle -> loading -> done/error, so there's
+              no navigation between "getting ready" and "here's your file". */}
+          {generateStatus === "idle" && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(3)}
+                className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleGenerate}
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+              >
+                Generate & download PPTX
+              </button>
+            </div>
+          )}
 
-      {step === 5 && (
-        <div className="space-y-4">
           {generateStatus === "loading" && (
-            <div className="rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
-              Generating PPTX…
+            <div className="flex items-center gap-3 rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
+              <Spinner />
+              Generating your report…
             </div>
           )}
 
@@ -690,12 +706,20 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
               <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-sm text-red-300">
                 {generateMessage}
               </div>
-              <button
-                onClick={() => setStep(4)}
-                className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
-              >
-                Back
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(3)}
+                  className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+                >
+                  Try Again
+                </button>
+              </div>
             </div>
           )}
 
@@ -769,7 +793,7 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 }
 
 function StepIndicator({ step }: { step: Step }) {
-  const steps: Step[] = [1, 2, 3, 4, 5];
+  const steps: Step[] = [1, 2, 3, 4];
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       {steps.map((s, i) => (
@@ -789,6 +813,16 @@ function StepIndicator({ step }: { step: Step }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Small inline spinner for the Preview screen's "Generating your report…" state — no extra dependency needed for one spinning icon. */
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }
 
