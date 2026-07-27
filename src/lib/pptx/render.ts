@@ -11,13 +11,24 @@
  */
 
 import type { ReportData } from "../nre/report-data";
-import { buildChartSlideXml } from "./chart-slide";
+import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 
-const CHART_SLIDE_RELS =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/></Relationships>';
+// The chart slide is built from scratch (no template slide part behind it),
+// so unlike the cover/campaign/table slides it needs its own explicit rels:
+// a slideLayout (for valid placeholder inheritance) plus the copied
+// background picture's image relationship, registered under the same rId
+// chart-slide.ts's own <p:pic> embeds via (CHART_BG_REL_ID).
+function buildChartSlideRels(backgroundMediaTarget: string): string {
+  return (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>' +
+    `<Relationship Id="${CHART_BG_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${backgroundMediaTarget}"/>` +
+    "</Relationships>"
+  );
+}
 
 // Client logo: cover slide only, LEFT-aligned directly above the
 // "PRESENTED TO" label/client-name column — max 180x90px, aspect-preserved.
@@ -122,7 +133,10 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai), rels: template.campaign.rels });
     }
     if (data.chart) {
-      slides.push({ xml: buildChartSlideXml(data.chart, currencySymbol), rels: CHART_SLIDE_RELS });
+      slides.push({
+        xml: buildChartSlideXml(data.chart, currencySymbol, template.background),
+        rels: buildChartSlideRels(template.background.mediaTarget),
+      });
     }
   }
 

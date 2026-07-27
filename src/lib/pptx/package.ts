@@ -27,6 +27,41 @@ export interface LoadedTemplate {
   presentationRelsXml: string;
   /** Every zip entry that isn't a slide/notesSlide/presentation part — carried through unchanged. */
   staticFiles: Map<string, Uint8Array>;
+  /** The template's full-slide decorative background picture (grid pattern + gradient), as drawn once on slideMaster1.xml and inherited by every template slide. From-scratch slides (the chart slide) don't go through that inheritance chain, so they need this to draw the same picture themselves — see chart-slide.ts. */
+  background: TemplateBackgroundImage;
+}
+
+export interface TemplateBackgroundImage {
+  /** The master's own <a:blip r:embed="..."> element (with any children, e.g. alphaModFix) — embed id gets rewritten to whichever rId the copy is registered under. */
+  blipXml: string;
+  /** The master's <a:srcRect .../> crop, or "" if it doesn't crop the source image. */
+  srcRectXml: string;
+  offX: number;
+  offY: number;
+  extCx: number;
+  extCy: number;
+  /** Relationship Target as written in the master's own rels (e.g. "../media/image17.png") — identical relative form works unchanged from a slide's rels, since both live one directory below ppt/ alongside ppt/media/. */
+  mediaTarget: string;
+}
+
+function extractMasterBackgroundImage(masterXml: string, masterRelsXml: string): TemplateBackgroundImage {
+  const pic = masterXml.match(/<p:pic>[\s\S]*?<\/p:pic>/)?.[0];
+  const blipXml = pic?.match(/<a:blip[\s\S]*?<\/a:blip>/)?.[0];
+  const relId = blipXml?.match(/r:embed="(rId\d+)"/)?.[1];
+  const xfrm = pic?.match(/<a:off x="(-?\d+)" y="(-?\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/);
+  const target = relId && new RegExp(`<Relationship Id="${relId}"[^>]*Target="([^"]+)"`).exec(masterRelsXml)?.[1];
+  if (!pic || !blipXml || !relId || !xfrm || !target) {
+    throw new Error("Could not extract the template's background image from slideMaster1.xml");
+  }
+  return {
+    blipXml,
+    srcRectXml: pic.match(/<a:srcRect[^>]*\/>/)?.[0] ?? "",
+    offX: Number(xfrm[1]),
+    offY: Number(xfrm[2]),
+    extCx: Number(xfrm[3]),
+    extCy: Number(xfrm[4]),
+    mediaTarget: target,
+  };
 }
 
 const REBUILT_PATH_PREFIXES = ["ppt/slides/", "ppt/notesSlides/"];
@@ -86,6 +121,11 @@ export async function loadTemplate(buffer: Buffer): Promise<LoadedTemplate> {
   const table = find((t) => t.includes("CAMPAIGN OVERVIEW"), "period/MTD table");
   const legend = find((t) => t.includes("METRIC ABBREVIATION"), "legend");
 
+  const background = extractMasterBackgroundImage(
+    await readText(zip, "ppt/slideMasters/slideMaster1.xml"),
+    await readText(zip, "ppt/slideMasters/_rels/slideMaster1.xml.rels"),
+  );
+
   const staticFiles = new Map<string, Uint8Array>();
   const entries = Object.values(zip.files);
   for (const entry of entries) {
@@ -96,7 +136,7 @@ export async function loadTemplate(buffer: Buffer): Promise<LoadedTemplate> {
     staticFiles.set(path, await entry.async("uint8array"));
   }
 
-  return { cover, campaign, table, legend, contentTypesXml, presentationXml, presentationRelsXml, staticFiles };
+  return { cover, campaign, table, legend, contentTypesXml, presentationXml, presentationRelsXml, staticFiles, background };
 }
 
 export interface SlideToInsert {

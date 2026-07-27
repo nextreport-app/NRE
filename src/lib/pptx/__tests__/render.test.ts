@@ -388,6 +388,49 @@ describe("renderPptx — client logo + agency name branding (real production tem
     expect(coverXml).not.toContain("{{");
   });
 
+  it("MTD chart slide: copies the template's own decorative background (grid + gradient) instead of a plain fill", async () => {
+    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
+    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
+    const zip = await JSZip.loadAsync(buffer);
+
+    // The template's grid/gradient background isn't on any individual slide
+    // — it's a full-slide picture baked into slideMaster1.xml and inherited
+    // by every template slide. That's the source of truth for what the
+    // chart slide (built from scratch, with no master/layout inheritance of
+    // its own) needs to replicate.
+    const masterXml = await zip.file("ppt/slideMasters/slideMaster1.xml")!.async("string");
+    const masterRelsXml = await zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels")!.async("string");
+    const masterRelId = masterXml.match(/<p:pic>[\s\S]*?<a:blip r:embed="(rId\d+)"/)?.[1];
+    expect(masterRelId).toBeDefined();
+    const masterTarget = new RegExp(`Id="${masterRelId}"[^>]*Target="([^"]+)"`).exec(masterRelsXml)?.[1];
+    expect(masterTarget).toBeDefined();
+    const backgroundMediaFile = masterTarget!.split("/").pop();
+
+    // Find the chart slide by content, since its position in the deck shifts with the fixture data.
+    const slideFiles = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
+    let chartSlidePath: string | undefined;
+    let chartXml = "";
+    for (const f of slideFiles) {
+      const xml = await zip.file(f)!.async("string");
+      if (xml.includes("CAMPAIGN PERFORMANCE")) {
+        chartSlidePath = f;
+        chartXml = xml;
+        break;
+      }
+    }
+    expect(chartSlidePath).toBeDefined();
+
+    const chartRelsPath = chartSlidePath!.replace(/slide(\d+)\.xml$/, "_rels/slide$1.xml.rels");
+    const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
+    expect(chartRelsXml).toContain(`Target="../media/${backgroundMediaFile}"`);
+
+    // Full-slide-sized <p:pic>, matching the master's own coverage, drawn first (behind all chart content).
+    expect(chartXml).toContain('<a:ext cx="12192001" cy="6858000"/>');
+    const picIdx = chartXml.indexOf("<p:pic>");
+    expect(picIdx).toBeGreaterThan(-1);
+    expect(chartXml.indexOf("<p:sp>")).toBeGreaterThan(picIdx);
+  });
+
   it("renders with a client logo only — media added to the cover, nowhere else", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const clientLogo = loadLogoAsset("logo.png");

@@ -59,6 +59,29 @@ export function ellipse(opts: EllipseOptions): string {
   );
 }
 
+export interface BackgroundImageOptions {
+  relId: string;
+  blipXml: string;
+  srcRectXml: string;
+  /** Already in EMU (copied verbatim from the template's own master), unlike the other builders here which take points. */
+  offX: number;
+  offY: number;
+  extCx: number;
+  extCy: number;
+}
+
+/** Full-slide background <p:pic>, replicating a picture that already exists elsewhere in the template (see package.ts's TemplateBackgroundImage) onto a from-scratch slide that has no slideMaster/slideLayout inheritance of its own. */
+export function backgroundImage(opts: BackgroundImageOptions): string {
+  const id = nextShapeId();
+  const blip = opts.blipXml.replace(/r:embed="rId\d+"/, `r:embed="${opts.relId}"`);
+  return (
+    `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="Background"/><p:cNvPicPr preferRelativeResize="0"/><p:nvPr/></p:nvPicPr>` +
+    `<p:blipFill rotWithShape="1">${blip}${opts.srcRectXml}<a:stretch/></p:blipFill>` +
+    `<p:spPr><a:xfrm><a:off x="${opts.offX}" y="${opts.offY}"/><a:ext cx="${opts.extCx}" cy="${opts.extCy}"/></a:xfrm>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr></p:pic>`
+  );
+}
+
 export interface TextBoxOptions {
   x: number;
   y: number;

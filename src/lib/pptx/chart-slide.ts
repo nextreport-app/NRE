@@ -11,9 +11,18 @@
 
 import { fmtNumber } from "../nre/format";
 import type { ChartSlideData } from "../nre/report-data";
-import { buildBlankSlideXml, ellipse, rectangle, resetShapeIdCounter, textBox } from "./shapes";
+import type { TemplateBackgroundImage } from "./package";
+import { backgroundImage, buildBlankSlideXml, ellipse, rectangle, resetShapeIdCounter, textBox } from "./shapes";
 
-const BG_COLOR = "0d1b2e"; // dark navy, per product owner spec
+/** Relationship id the chart slide's own generated rels (see render.ts) registers the copied background picture under. */
+export const CHART_BG_REL_ID = "rId2";
+
+// Dark navy — matches the template's own background picture closely enough
+// that painting it over a small area (the donut "hole") reads as a flat
+// content surface rather than a visible patch, the same way the template's
+// own metric cards sit on solid fills over that background rather than
+// showing the grid/gradient through them.
+const BG_COLOR = "0d1b2e";
 const LABEL_COLOR = "7ab0cc";
 const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name
 const WHITE = "FFFFFF";
@@ -36,14 +45,14 @@ function cprShortForChart(label: string): string {
   return label.replace("COST PER 1K ", "CP 1K ");
 }
 
-export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string): string {
+export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string, background: TemplateBackgroundImage): string {
   resetShapeIdCounter();
 
   const W = 960;
   const H = 540;
   const shapes: string[] = [];
 
-  shapes.push(rectangle({ x: 0, y: 0, w: W, h: H, fillHex: BG_COLOR }));
+  shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
   shapes.push(
     textBox({
       x: 0,
