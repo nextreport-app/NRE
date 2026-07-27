@@ -78,6 +78,11 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
+/** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
+function isNoDataRowsError(e: ValidationIssue): boolean {
+  return e.field === "rows";
+}
+
 function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
@@ -447,15 +452,22 @@ export function ReportUploadWizard({
           </div>
 
           {analyzeStatus === "invalid" && (
-            <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
-              <p className="mb-2 text-sm font-medium text-red-300">
-                This CSV can&apos;t be used to generate a report yet:
-              </p>
-              <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
-                {analyzeErrors.map((e, i) => (
-                  <li key={i}>{e.message}</li>
-                ))}
-              </ul>
+            <div className="space-y-3">
+              {analyzeErrors.filter(isNoDataRowsError).map((e, i) => (
+                <NoDataRowsWarning key={i} message={e.message} />
+              ))}
+              {analyzeErrors.some((e) => !isNoDataRowsError(e)) && (
+                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
+                  <p className="mb-2 text-sm font-medium text-red-300">
+                    This CSV can&apos;t be used to generate a report yet:
+                  </p>
+                  <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
+                    {analyzeErrors.filter((e) => !isNoDataRowsError(e)).map((e, i) => (
+                      <li key={i}>{e.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
           {analyzeStatus === "error" && analyzeMessage && (
@@ -646,13 +658,20 @@ export function ReportUploadWizard({
           </div>
 
           {previewStatus === "invalid" && (
-            <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
-              <p className="mb-2 text-sm font-medium text-red-300">Can&apos;t build a preview yet:</p>
-              <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
-                {previewErrors.map((e, i) => (
-                  <li key={i}>{e.message}</li>
-                ))}
-              </ul>
+            <div className="space-y-3">
+              {previewErrors.filter(isNoDataRowsError).map((e, i) => (
+                <NoDataRowsWarning key={i} message={e.message} />
+              ))}
+              {previewErrors.some((e) => !isNoDataRowsError(e)) && (
+                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
+                  <p className="mb-2 text-sm font-medium text-red-300">Can&apos;t build a preview yet:</p>
+                  <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
+                    {previewErrors.filter((e) => !isNoDataRowsError(e)).map((e, i) => (
+                      <li key={i}>{e.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
           {previewStatus === "error" && previewMessage && (
@@ -907,6 +926,47 @@ function MailIcon() {
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" />
     </svg>
+  );
+}
+
+/**
+ * Renders NO_DATA_ROWS_MESSAGE's paragraph / bulleted-causes / numbered-steps
+ * structure as real list markup instead of a wall of text — the message is
+ * plain text with blank-line-separated blocks so it also reads fine
+ * anywhere else it might surface (API responses, logs), and this is the one
+ * place that turns it into proper `<ul>`/`<ol>` elements.
+ */
+function NoDataRowsWarning({ message }: { message: string }) {
+  const blocks = message.split("\n\n").map((block) => block.split("\n").filter((line) => line.trim() !== ""));
+
+  return (
+    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+      {blocks.map((lines, i) => {
+        if (lines.every((l) => l.startsWith("• "))) {
+          return (
+            <ul key={i} className="list-inside list-disc space-y-1">
+              {lines.map((l, j) => (
+                <li key={j}>{l.replace(/^•\s*/, "")}</li>
+              ))}
+            </ul>
+          );
+        }
+        if (lines.every((l) => /^\d+\.\s/.test(l))) {
+          return (
+            <ol key={i} className="list-inside list-decimal space-y-1">
+              {lines.map((l, j) => (
+                <li key={j}>{l.replace(/^\d+\.\s*/, "")}</li>
+              ))}
+            </ol>
+          );
+        }
+        return (
+          <p key={i} className="font-medium text-amber-100">
+            {lines.join(" ")}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

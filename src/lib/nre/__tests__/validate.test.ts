@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateMtdDailyCsv } from "../validate";
+import { NO_DATA_ROWS_MESSAGE, validateMtdDailyCsv } from "../validate";
 import { readRowsWithAutoMap } from "../columns";
 
 const NOW = new Date("2026-07-20T12:00:00Z");
@@ -83,11 +83,30 @@ describe("validateMtdDailyCsv", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("fails on an empty CSV", () => {
+  it("fails with the same actionable message when rows exist but none have both a campaign name and a resolvable date", () => {
+    const { colMap, rows } = parse(
+      ["Campaign name", "Day", "Amount spent (USD)", "Results"],
+      [
+        ["", "19-07-2026", "100", "5"], // has a date, but no campaign name
+        ["Real Campaign", "", "50", "2"], // has a campaign name, but no date
+      ],
+    );
+    const result = validateMtdDailyCsv(colMap, rows, NOW);
+    expect(result.valid).toBe(false);
+    const rowsError = result.errors.find((e) => e.field === "rows");
+    expect(rowsError).toBeDefined();
+    expect(rowsError!.message).toBe(NO_DATA_ROWS_MESSAGE);
+  });
+
+  it("fails on an empty CSV with a clear, actionable explanation of likely causes", () => {
     const { colMap, rows } = parse(["Campaign name", "Day", "Amount spent (USD)", "Results"], []);
     const result = validateMtdDailyCsv(colMap, rows, NOW);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.field === "rows")).toBe(true);
+    const rowsError = result.errors.find((e) => e.field === "rows");
+    expect(rowsError).toBeDefined();
+    expect(rowsError!.message).toBe(NO_DATA_ROWS_MESSAGE);
+    expect(rowsError!.message).toContain("Your CSV contains no campaign data");
+    expect(rowsError!.message).toContain("Check Meta Ads Manager");
   });
 
   it("passes a real-shaped Meta export: ISO 'Day' column plus constant 'Reporting starts/ends' noise (regression)", () => {

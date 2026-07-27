@@ -28,6 +28,26 @@ const MAX_RANGE_DAYS = 90;
 const FUTURE_GRACE_DAYS = 1; // small allowance for timezone edge effects at the CSV's export boundary
 
 /**
+ * Shown whenever the CSV has no usable data rows at all — either the file
+ * is genuinely empty below the header, or every row is missing a campaign
+ * name/date (see the two "rows"-field pushes below). Structured as a
+ * paragraph, a bulleted list of likely causes, then a numbered action list
+ * — the wizard renders this one specially (an amber warning box, not the
+ * generic red error list) because "here's what probably happened and what
+ * to do about it" is a real, actionable step for the user, not just a
+ * malformed-file error.
+ */
+export const NO_DATA_ROWS_MESSAGE =
+  "Your CSV contains no campaign data. This usually happens when:\n\n" +
+  "• Campaigns had zero delivery during the selected date range\n" +
+  "• The wrong date range was selected when downloading\n" +
+  "• Campaigns were not active during this period\n\n" +
+  "What to do:\n\n" +
+  "1. Check Meta Ads Manager to confirm your campaigns were active during this period\n" +
+  "2. Try downloading the CSV again with the correct date range\n" +
+  "3. If campaigns were truly inactive for the entire period, no report can be generated as there is no data to show";
+
+/**
  * `headers` is the raw, as-parsed header row (from parseCsvText). It isn't
  * used for any pass/fail decision — only to build a diagnostic message when
  * column detection fails, since "no Campaign name column found" is useless
@@ -91,7 +111,7 @@ export function validateMtdDailyCsv(
   }
 
   if (rows.length === 0) {
-    errors.push({ field: "rows", message: "No data rows found in the uploaded CSV." });
+    errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
     return { valid: false, errors, warnings };
   }
 
@@ -110,7 +130,7 @@ export function validateMtdDailyCsv(
 
   const usableRows = nonEmptyCampaignRows.filter((r) => !!getRowDate(r));
   if (nonEmptyCampaignRows.length > 0 && usableRows.length === 0) {
-    errors.push({ field: "rows", message: "No data rows found in the uploaded CSV." });
+    errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
   }
 
   // Date range sanity — skip if we already know there's no usable date column.
