@@ -8,8 +8,8 @@ import { z } from "zod";
 const bodySchema = z.object({
   // The full campaign list from this upload, required alongside
   // selectedCampaigns so the excluded set can be computed — see the schema
-  // comment on Client.lastDeselectedCampaigns for why it's the excluded set
-  // (not the selection itself) that gets persisted.
+  // comment on Client.lastDeselectedCampaigns for why both the full list
+  // and the excluded subset (not just the selection itself) get persisted.
   campaigns: z.array(z.string()).optional(),
   selectedCampaigns: selectedCampaignsSchema.optional(),
   dateSelection: dateSelectionSchema.optional(),
@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (parsed.data.campaigns && parsed.data.selectedCampaigns) {
       const selected = new Set(parsed.data.selectedCampaigns);
       const deselected = parsed.data.campaigns.filter((name) => !selected.has(name));
-      data.lastDeselectedCampaigns = JSON.stringify(deselected);
+      data.lastDeselectedCampaigns = JSON.stringify({ campaigns: parsed.data.campaigns, deselected });
     }
     if (parsed.data.dateSelection) {
       data.lastDateSelection = JSON.stringify(parsed.data.dateSelection);

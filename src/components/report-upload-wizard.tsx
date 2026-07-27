@@ -82,9 +82,18 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
 
-  // Step 2 — Campaigns (populated by /analyze)
+  // Step 2 — Campaigns (populated by /analyze). This step is shown, skipped
+  // silently, or skipped with an inline confirmation banner on the Dates
+  // step instead — see handleAnalyze and lib/nre/campaigns.ts's
+  // resolveCampaignSelection, which the /analyze route calls to decide.
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
+  // True only when /analyze resolved a "confirm" step mode — a returning
+  // upload, no new campaigns, reusing last time's saved selection. Reset
+  // once the user actually walks through the full Campaigns step (via the
+  // banner's "Change?" link or manually), so the banner never shows a
+  // choice they just made themselves.
+  const [campaignSelectionRemembered, setCampaignSelectionRemembered] = useState(false);
 
   // Step 3 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -184,7 +193,14 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setCustomEnd(savedSelection.customEnd || "");
     setLongRangeConfirmed(false);
     setAnalyzeStatus("idle");
-    setStep(2);
+
+    // "choose" (first upload for this client, or a genuinely new campaign
+    // appeared) is the only case that needs the full Campaigns step — a
+    // single campaign or a returning, unchanged selection go straight to
+    // Dates, with "confirm" showing a brief reuse notice there instead.
+    const campaignStepMode: "skip" | "confirm" | "choose" = json.campaignStepMode || "choose";
+    setCampaignSelectionRemembered(campaignStepMode === "confirm");
+    setStep(campaignStepMode === "choose" ? 2 : 3);
   }
 
   // ── Step 2: Campaigns ───────────────────────────────────────────────────
@@ -199,6 +215,9 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
+    // They just reviewed (or changed) the selection themselves — the "same
+    // as last time" banner has nothing left to add on the Dates step.
+    setCampaignSelectionRemembered(false);
     setStep(3);
   }
 
@@ -463,6 +482,15 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
       {step === 3 && (
         <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
           <h3 className="text-sm font-medium text-ink-secondary">Reporting period</h3>
+
+          {campaignSelectionRemembered && (
+            <p className="rounded-md border border-navy-border bg-navy px-3 py-2 text-xs text-ink-secondary">
+              Using same campaign selection as last time ({selectedCampaigns.size} of {campaigns.length} campaigns).{" "}
+              <button onClick={() => setStep(2)} className="text-accent hover:underline">
+                Change?
+              </button>
+            </p>
+          )}
 
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-ink-muted">Weekly period</p>

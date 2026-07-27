@@ -3,11 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { extractCampaignNames } from "@/lib/nre/campaigns";
+import { extractCampaignNames, resolveCampaignSelection, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { computeCsvDateBounds, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import { dateSelectionSchema, deselectedCampaignsSchema, type DateSelection } from "@/lib/validators/report-wizard";
+import { campaignSelectionMemorySchema, dateSelectionSchema, type DateSelection } from "@/lib/validators/report-wizard";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
@@ -48,16 +48,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const campaigns = extractCampaignNames(mtdParsed.rows);
 
-    let deselected: string[] = [];
+    let campaignMemory: CampaignSelectionMemory | null = null;
     if (client.lastDeselectedCampaigns) {
-      const parsed = deselectedCampaignsSchema.safeParse(JSON.parse(client.lastDeselectedCampaigns));
-      if (parsed.success) deselected = parsed.data;
+      const parsed = campaignSelectionMemorySchema.safeParse(JSON.parse(client.lastDeselectedCampaigns));
+      if (parsed.success) campaignMemory = parsed.data;
     }
-    // Select everything except what was explicitly excluded last time — a
-    // brand new campaign in this file, never seen before, defaults to
-    // selected the same as any other campaign the user never excluded.
-    const deselectedSet = new Set(deselected);
-    const selectedCampaigns = campaigns.filter((name) => !deselectedSet.has(name));
+    const { selectedCampaigns, stepMode: campaignStepMode } = resolveCampaignSelection(campaigns, campaignMemory);
 
     let dateSelection: DateSelection = DEFAULT_DATE_SELECTION;
     if (client.lastDateSelection) {
@@ -75,6 +71,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       warnings: validation.warnings,
       campaigns,
       selectedCampaigns,
+      campaignStepMode,
       dateBounds,
       weeklyOptions,
       mtdRange,
