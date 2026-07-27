@@ -16,8 +16,6 @@ export type ClientFormValues = {
   timezone: string;
   monthlyBudget: number | null;
   template: (typeof TEMPLATES)[number];
-  groqApiKey: string | null;
-  geminiApiKey: string | null;
 };
 
 const CURRENCY_SYMBOL = CURRENCY_SYMBOLS;
@@ -42,8 +40,6 @@ export function ClientForm({
     timezone: initial?.timezone ?? "Asia/Kolkata",
     monthlyBudget: initial?.monthlyBudget ?? null,
     template: initial?.template ?? "DARK",
-    groqApiKey: initial?.groqApiKey ?? "",
-    geminiApiKey: initial?.geminiApiKey ?? "",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -243,38 +239,6 @@ export function ClientForm({
           ))}
         </select>
       </div>
-
-      <fieldset className="rounded-md border border-navy-border bg-navy-panel p-4">
-        <legend className="px-1 text-sm text-ink-secondary">
-          AI insight writing (optional — your own API keys)
-        </legend>
-        <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-sm text-ink-muted">
-              Groq API key (primary — llama-3.3-70b-versatile)
-            </label>
-            <input
-              type="password"
-              value={values.groqApiKey ?? ""}
-              onChange={(e) => set("groqApiKey", e.target.value)}
-              placeholder="gsk_..."
-              className="w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-ink-muted">
-              Gemini API key (fallback — gemini-2.5-flash)
-            </label>
-            <input
-              type="password"
-              value={values.geminiApiKey ?? ""}
-              onChange={(e) => set("geminiApiKey", e.target.value)}
-              placeholder="AIza..."
-              className="w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            />
-          </div>
-        </div>
-      </fieldset>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 

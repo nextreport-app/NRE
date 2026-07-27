@@ -116,10 +116,6 @@ model Client {
   // without this feature — no placeholder box.
   logoUrl String?
 
-  // User-supplied AI API keys (v1: user provides their own keys)
-  groqApiKey   String?
-  geminiApiKey String?
-
   // Report upload wizard preferences — remembered per client so the next
   // upload pre-selects the same campaigns / date-range mode. Both are JSON
   // text (matching Report.summaryJson's existing convention) rather than a

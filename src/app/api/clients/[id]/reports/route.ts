@@ -5,6 +5,7 @@ import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildReportData } from "@/lib/nre/report-data";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
+import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderPptx } from "@/lib/pptx/render";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
@@ -122,7 +123,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      generateInsights(data, { groqApiKey: client.groqApiKey, geminiApiKey: client.geminiApiKey }),
+      generateInsights(data, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
       loadLogoAsset(client.logoUrl),
     ]);

@@ -38,8 +38,6 @@ export default async function ClientDetailPage({
             timezone: client.timezone,
             monthlyBudget: client.monthlyBudget,
             template: client.template,
-            groqApiKey: client.groqApiKey,
-            geminiApiKey: client.geminiApiKey,
           }}
           hasLogo={!!client.logoUrl}
         />

@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { AI_UNAVAILABLE_TEXT, callAI, callGemini, callGroq } from "../client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AI_UNAVAILABLE_TEXT, aiKeysFromEnv, callAI, callGemini, callGroq } from "../client";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -85,5 +85,37 @@ describe("callAI", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: async () => ({ error: { message: "down" } }) }));
     const result = await callAI("prompt", { groqApiKey: "g", geminiApiKey: "gm" });
     expect(result).toBe(AI_UNAVAILABLE_TEXT);
+  });
+});
+
+describe("aiKeysFromEnv", () => {
+  const originalGroq = process.env.GROQ_API_KEY;
+  const originalGemini = process.env.GEMINI_API_KEY;
+
+  beforeEach(() => {
+    delete process.env.GROQ_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+  });
+
+  afterEach(() => {
+    if (originalGroq === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = originalGroq;
+    if (originalGemini === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalGemini;
+  });
+
+  it("reads both keys from the platform env vars, not per-client config", () => {
+    process.env.GROQ_API_KEY = "env-groq-key";
+    process.env.GEMINI_API_KEY = "env-gemini-key";
+    expect(aiKeysFromEnv()).toEqual({ groqApiKey: "env-groq-key", geminiApiKey: "env-gemini-key" });
+  });
+
+  it("returns null (not undefined/empty-string) for whichever key isn't set", () => {
+    process.env.GROQ_API_KEY = "env-groq-key";
+    expect(aiKeysFromEnv()).toEqual({ groqApiKey: "env-groq-key", geminiApiKey: null });
+  });
+
+  it("returns both null when neither env var is configured", () => {
+    expect(aiKeysFromEnv()).toEqual({ groqApiKey: null, geminiApiKey: null });
   });
 });

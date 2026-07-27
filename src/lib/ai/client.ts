@@ -45,6 +45,14 @@ export interface AiKeys {
   geminiApiKey?: string | null;
 }
 
+/** Platform-level provider keys, configured once (e.g. in Vercel's project env vars) — not per client. */
+export function aiKeysFromEnv(): AiKeys {
+  return {
+    groqApiKey: process.env.GROQ_API_KEY || null,
+    geminiApiKey: process.env.GEMINI_API_KEY || null,
+  };
+}
+
 export async function callAI(prompt: string, keys: AiKeys): Promise<string> {
   if (keys.groqApiKey) {
     try {

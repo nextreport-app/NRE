@@ -38,8 +38,6 @@ export const clientSchema = z.object({
     .optional()
     .transform((v) => (typeof v === "number" && !Number.isNaN(v) ? v : null)),
   template: z.enum(TEMPLATES),
-  groqApiKey: z.string().trim().optional().transform((v) => (v ? v : null)),
-  geminiApiKey: z.string().trim().optional().transform((v) => (v ? v : null)),
 });
 
 export type ClientInput = z.infer<typeof clientSchema>;
