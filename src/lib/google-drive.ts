@@ -1,14 +1,22 @@
 /**
  * Minimal Google Drive REST client — no `googleapis` dependency, just the
- * OAuth code exchange + token refresh + folder listing + multipart upload +
- * sharing calls this app's one Drive feature needs, over plain fetch: the
- * download screen's "Save to Google Drive" button (report-upload-wizard.tsx),
- * which uploads the just-generated report into a folder the user picks via
- * the folder browser, converts it to Google Slides, and shares it. It uses a
+ * OAuth code exchange + token refresh + multipart upload + sharing calls
+ * this app's one Drive feature needs, over plain fetch: the download
+ * screen's "Save to Google Drive" button (report-upload-wizard.tsx), which
+ * uploads the just-generated report into a folder the user pastes a Drive
+ * link for, converts it to Google Slides, and shares it. It uses a
  * SEPARATE, dedicated OAuth connection (see /api/google-drive/connect +
  * /callback) — a deliberately different Google account than the one used to
  * log into NextReport is allowed here, so its tokens live on User.google*
  * columns, not NextAuth's own Account table.
+ *
+ * Deliberately drive.file only, not drive.readonly or the broad "drive"
+ * scope: the user pastes the destination folder's link themselves (see
+ * extractDriveFolderIdFromLink in lib/drive-link.ts), so this app never
+ * needs to LIST or BROWSE the user's existing Drive contents — only create
+ * a new file with that folder as its parent, which drive.file permits for
+ * any folder the authenticated user has edit access to, not just folders
+ * this app created itself.
  */
 
 import { randomUUID } from "node:crypto";
@@ -28,7 +36,6 @@ const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const PPTX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const GOOGLE_SLIDES_MIME_TYPE = "application/vnd.google-apps.presentation";
-const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
 /** Exchanges a stored refresh_token for a short-lived access_token. */
 export async function getFreshGoogleAccessToken(refreshToken: string): Promise<string> {
@@ -121,8 +128,11 @@ function buildMultipartBody(metadata: object, fileBuffer: Buffer, boundary: stri
 /**
  * Uploads a .pptx buffer to Drive with mimeType set to the Google Slides
  * type — Drive converts it automatically on upload, no separate conversion
- * step needed. `parentId` places it inside the folder the user picked
- * (see saveReportToDriveFolder) instead of Drive's root.
+ * step needed. `parentId` places it inside the folder the user pasted a
+ * link for (see saveReportToDriveFolder) instead of Drive's root.
+ * `supportsAllDrives` is always sent — harmless for a normal My Drive
+ * folder, but required by the Drive API to create a file inside a folder
+ * that lives in a Shared Drive, which a pasted link can still point to.
  */
 export async function uploadPptxAsGoogleSlides(
   accessToken: string,
@@ -138,23 +148,26 @@ export async function uploadPptxAsGoogleSlides(
   if (parentId) metadata.parents = [parentId];
   const body = buildMultipartBody(metadata, pptxBuffer, boundary);
 
-  const res = await fetch(`${GOOGLE_DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,webViewLink`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`,
+  const res = await fetch(
+    `${GOOGLE_DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body: new Uint8Array(body),
     },
-    body: new Uint8Array(body),
-  });
+  );
   if (!res.ok) {
     throw new Error(`Failed to upload file to Google Drive (${res.status}): ${await res.text()}`);
   }
   return res.json();
 }
 
-/** Sets the file to "Anyone with the link can view". */
+/** Sets the file to "Anyone with the link can view". `supportsAllDrives` — see uploadPptxAsGoogleSlides. */
 export async function shareFilePublicly(accessToken: string, fileId: string): Promise<void> {
-  const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}/${fileId}/permissions`, {
+  const res = await fetch(`${GOOGLE_DRIVE_FILES_URL}/${fileId}/permissions?supportsAllDrives=true`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -167,34 +180,27 @@ export async function shareFilePublicly(accessToken: string, fileId: string): Pr
   }
 }
 
-// Drive's query language treats \ and ' as needing escaping inside a
-// quoted string literal (e.g. a client named "O'Brien Roofing") — otherwise
-// a literal apostrophe in a folder name would break the `name='...'` clause.
-function escapeDriveQueryValue(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-}
-
 /**
- * Lists the immediate subfolders of `parentId` (Drive's root if omitted) —
- * the folder browser's one data source (see google-drive-folder-picker.tsx).
- * Deliberately shallow (one level per call): the browser UI fetches a fresh
- * level only as the user navigates into it, rather than walking the whole
- * tree up front.
+ * Best-effort display name for a pasted folder id — purely cosmetic (used
+ * for the "Saving to: [name]" line), so failures here are swallowed rather
+ * than thrown. Under drive.file scope, a `files.get` on a folder the app
+ * never created often 404s even when the folder is perfectly writable
+ * (create-with-parent is allowed for any folder the user can edit; reading
+ * metadata for a folder the app never touched is more restricted) — when
+ * that happens, the caller falls back to showing the raw folder id instead.
  */
-export async function listDriveFolders(
-  accessToken: string,
-  parentId?: string,
-): Promise<{ id: string; name: string }[]> {
-  const parentClause = parentId && parentId !== "root" ? `'${escapeDriveQueryValue(parentId)}'` : "'root'";
-  const q = `mimeType='${GOOGLE_DRIVE_FOLDER_MIME_TYPE}' and ${parentClause} in parents and trashed=false`;
-  const url = `${GOOGLE_DRIVE_FILES_URL}?q=${encodeURIComponent(q)}&fields=files(id,name)&orderBy=name&spaces=drive&pageSize=1000`;
-
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) {
-    throw new Error(`Failed to list Google Drive folders (${res.status}): ${await res.text()}`);
+export async function getDriveFolderName(accessToken: string, folderId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${GOOGLE_DRIVE_FILES_URL}/${encodeURIComponent(folderId)}?fields=name&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { name?: string };
+    return data.name ?? null;
+  } catch {
+    return null;
   }
-  const data = (await res.json()) as { files: { id: string; name: string }[] };
-  return data.files;
 }
 
 async function uploadAndShareInFolder(
@@ -209,17 +215,24 @@ async function uploadAndShareInFolder(
 }
 
 /**
- * Uploads a report into an ALREADY-CHOSEN folder (no resolution logic) —
- * used once the user has picked a folder via the download screen's folder
- * browser (see /api/reports/[id]/save-to-drive), and reusable anywhere else
- * a caller already has a concrete folder id in hand.
+ * Uploads a report into a folder the user identified by pasting a Drive
+ * link (see /api/reports/[id]/save-to-drive) — no folder resolution logic,
+ * `folderId` is already the extracted id. `folderName` is a best-effort
+ * display label (see getDriveFolderName) — null when it couldn't be
+ * resolved, in which case the caller shows the folder id itself instead.
+ * A genuinely bad/inaccessible folderId surfaces here as a thrown error
+ * from the upload call, not from the (non-throwing) name lookup.
  */
 export async function saveReportToDriveFolder(params: {
   refreshToken: string;
   folderId: string;
   fileName: string;
   pptxBuffer: Buffer;
-}): Promise<{ webViewLink: string }> {
+}): Promise<{ webViewLink: string; folderName: string | null }> {
   const accessToken = await getFreshGoogleAccessToken(params.refreshToken);
-  return uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId);
+  const [uploadResult, folderName] = await Promise.all([
+    uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId),
+    getDriveFolderName(accessToken, params.folderId),
+  ]);
+  return { webViewLink: uploadResult.webViewLink, folderName };
 }

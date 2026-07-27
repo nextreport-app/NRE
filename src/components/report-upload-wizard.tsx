@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
-import { GoogleDriveFolderPicker, type DriveFolder } from "./google-drive-folder-picker";
+import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -27,10 +27,17 @@ type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 type DateMode = "last7" | "prev7" | "custom";
-// Drives the download screen's "Save to Google Drive" button: "idle" (not
-// saved yet, or dismissed the picker) -> "picking" (folder browser open) ->
-// "saving" (upload + share in flight) -> "success" (link ready) or "error".
-type DriveSaveStatus = "idle" | "picking" | "saving" | "success" | "error";
+// Drives the download screen's "Save to Google Drive" flow: "idle" (a
+// remembered folder exists, ready to save to it with one click) -> "editing"
+// (the paste-a-link input is shown, either because there's no remembered
+// folder yet or the user clicked "Change") -> "saving" (upload + share in
+// flight) -> "success" (link ready) or "error".
+type DriveSaveStatus = "idle" | "editing" | "saving" | "success" | "error";
+
+interface RememberedDriveFolder {
+  id: string;
+  name: string;
+}
 
 interface DateRangeIso {
   startIso: string;
@@ -107,7 +114,7 @@ export function ReportUploadWizard({
   initialLastDriveFolderName: string | null;
 }) {
   const [step, setStep] = useState<Step>(1);
-  const lastDriveFolder: DriveFolder | null =
+  const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
       ? { id: initialLastDriveFolderId, name: initialLastDriveFolderName }
       : null;
@@ -156,8 +163,16 @@ export function ReportUploadWizard({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   // "Save to Google Drive" — an explicit, per-report action the user takes
   // right here on the download screen (see handleSaveToDrive below), not
-  // anything the generate request itself touches.
-  const [driveSaveStatus, setDriveSaveStatus] = useState<DriveSaveStatus>("idle");
+  // anything the generate request itself touches. rememberedFolder mirrors
+  // Client.lastDriveFolderId/Name — seeded from the server, then kept in
+  // sync locally after every successful save so "Saving to: X ✓" updates
+  // immediately without a page reload.
+  const [rememberedFolder, setRememberedFolder] = useState<RememberedDriveFolder | null>(initialRememberedFolder);
+  const [driveSaveStatus, setDriveSaveStatus] = useState<DriveSaveStatus>(
+    initialRememberedFolder ? "idle" : "editing",
+  );
+  const [driveFolderLinkInput, setDriveFolderLinkInput] = useState("");
+  const [driveLinkFormatError, setDriveLinkFormatError] = useState<string | null>(null);
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -328,7 +343,9 @@ export function ReportUploadWizard({
     setGenerateMessage(null);
     setReportId(null);
     setDownloadUrl(null);
-    setDriveSaveStatus("idle");
+    setDriveSaveStatus(rememberedFolder ? "idle" : "editing");
+    setDriveFolderLinkInput("");
+    setDriveLinkFormatError(null);
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
@@ -340,7 +357,9 @@ export function ReportUploadWizard({
     if (!mtdFile) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
-    setDriveSaveStatus("idle");
+    setDriveSaveStatus(rememberedFolder ? "idle" : "editing");
+    setDriveFolderLinkInput("");
+    setDriveLinkFormatError(null);
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
@@ -366,7 +385,7 @@ export function ReportUploadWizard({
     setGenerateStatus("done");
   }
 
-  async function handleSaveToDrive(folder: DriveFolder) {
+  async function handleSaveToDrive(folderId: string) {
     if (!reportId) return;
     setDriveSaveStatus("saving");
     setDriveSaveError(null);
@@ -374,18 +393,33 @@ export function ReportUploadWizard({
     const res = await fetch(`/api/reports/${reportId}/save-to-drive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folderId: folder.id, folderName: folder.name }),
+      body: JSON.stringify({ folderId }),
     });
     const json = await res.json().catch(() => null);
 
     if (!res.ok || !json?.url) {
       setDriveSaveStatus("error");
-      setDriveSaveError(json?.error || `Request failed with status ${res.status}.`);
+      setDriveSaveError(json?.message || json?.error || `Request failed with status ${res.status}.`);
       return;
     }
 
     setDriveSaveUrl(json.url);
+    setRememberedFolder({ id: folderId, name: json.folderName || folderId });
+    setDriveFolderLinkInput("");
     setDriveSaveStatus("success");
+  }
+
+  /** "Save to this folder" in the paste-a-link input — extracts and validates the id client-side first, so an obviously-wrong paste never even hits the network. */
+  function handleSaveToFolderLink() {
+    const folderId = extractDriveFolderIdFromLink(driveFolderLinkInput);
+    if (!folderId) {
+      setDriveLinkFormatError(
+        "That doesn't look like a Google Drive folder link. Paste a link like https://drive.google.com/drive/folders/1ABC123xyz",
+      );
+      return;
+    }
+    setDriveLinkFormatError(null);
+    void handleSaveToDrive(folderId);
   }
 
   async function handleCopyLink() {
@@ -785,27 +819,85 @@ export function ReportUploadWizard({
                 >
                   Download PPTX
                 </a>
-                {hasGoogleDriveConnected && driveSaveStatus !== "success" && driveSaveStatus !== "picking" && (
-                  <button
-                    onClick={() => setDriveSaveStatus("picking")}
-                    disabled={driveSaveStatus === "saving"}
-                    className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                  >
-                    {driveSaveStatus === "saving"
-                      ? "Saving to Drive…"
-                      : driveSaveStatus === "error"
-                        ? "Try Again"
-                        : "Save to Google Drive"}
-                  </button>
-                )}
+                {hasGoogleDriveConnected &&
+                  driveSaveStatus !== "editing" &&
+                  driveSaveStatus !== "success" &&
+                  rememberedFolder && (
+                    <button
+                      onClick={() => void handleSaveToDrive(rememberedFolder.id)}
+                      disabled={driveSaveStatus === "saving"}
+                      className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      {driveSaveStatus === "saving"
+                        ? "Saving to Drive…"
+                        : driveSaveStatus === "error"
+                          ? "Try Again"
+                          : "Save to Google Drive"}
+                    </button>
+                  )}
               </div>
 
-              {driveSaveStatus === "picking" && (
-                <GoogleDriveFolderPicker
-                  initialFolder={lastDriveFolder}
-                  onSelect={(folder) => void handleSaveToDrive(folder)}
-                  onCancel={() => setDriveSaveStatus("idle")}
-                />
+              {hasGoogleDriveConnected && driveSaveStatus !== "editing" && driveSaveStatus !== "success" && rememberedFolder && (
+                <p className="text-xs text-ink-secondary">
+                  Saving to: <span className="text-white">{rememberedFolder.name}</span>{" "}
+                  <span className="text-emerald-400" aria-hidden="true">✓</span>{" "}
+                  <button
+                    type="button"
+                    onClick={() => setDriveSaveStatus("editing")}
+                    className="text-accent hover:underline"
+                  >
+                    Change
+                  </button>
+                </p>
+              )}
+
+              {hasGoogleDriveConnected && driveSaveStatus === "editing" && (
+                <div className="space-y-2 rounded-lg border border-navy-border bg-navy-panel p-4">
+                  <label className="block text-sm text-ink-secondary">Paste your Google Drive folder link:</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="text"
+                      value={driveFolderLinkInput}
+                      onChange={(e) => {
+                        setDriveFolderLinkInput(e.target.value);
+                        setDriveLinkFormatError(null);
+                      }}
+                      placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
+                      className="min-w-[240px] flex-1 rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                    />
+                    <button
+                      onClick={handleSaveToFolderLink}
+                      disabled={!driveFolderLinkInput.trim()}
+                      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      Save to this folder
+                    </button>
+                    {rememberedFolder && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDriveSaveStatus("idle");
+                          setDriveFolderLinkInput("");
+                          setDriveLinkFormatError(null);
+                        }}
+                        className="rounded-md border border-navy-border px-3 py-2 text-xs text-ink-secondary hover:bg-navy-border"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-muted">
+                    Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it here
+                  </p>
+                  {driveLinkFormatError && <p className="text-xs text-red-400">{driveLinkFormatError}</p>}
+                </div>
+              )}
+
+              {driveSaveStatus === "saving" && (
+                <div className="flex items-center gap-3 text-sm text-ink-secondary">
+                  <Spinner />
+                  Saving to Google Drive…
+                </div>
               )}
 
               {driveSaveStatus === "error" && driveSaveError && (
@@ -851,7 +943,10 @@ export function ReportUploadWizard({
                     </a>
                   </div>
                   <button
-                    onClick={() => setDriveSaveStatus("picking")}
+                    onClick={() => {
+                      setDriveSaveStatus("editing");
+                      setDriveSaveUrl(null);
+                    }}
                     className="mt-3 text-xs text-ink-muted hover:underline"
                   >
                     Save to a different folder
