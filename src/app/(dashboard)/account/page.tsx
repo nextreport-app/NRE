@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountSettingsForm } from "@/components/account-settings-form";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
 import { DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from "@/lib/validators/account";
+import { normalizeDriveMode } from "@/lib/google-drive";
 
 export default async function AccountSettingsPage({
   searchParams,
@@ -20,6 +21,9 @@ export default async function AccountSettingsPage({
         agencyName: true,
         googleDriveEnabled: true,
         googleDriveFolderName: true,
+        googleDriveMode: true,
+        googleDriveRootFolderId: true,
+        googleDriveRootFolderName: true,
         googleConnectedEmail: true,
       },
     }),
@@ -41,6 +45,9 @@ export default async function AccountSettingsPage({
         <GoogleDriveSettings
           initialEnabled={user?.googleDriveEnabled ?? false}
           initialFolderName={user?.googleDriveFolderName ?? DEFAULT_GOOGLE_DRIVE_FOLDER_NAME}
+          initialMode={normalizeDriveMode(user?.googleDriveMode)}
+          initialRootFolderId={user?.googleDriveRootFolderId ?? null}
+          initialRootFolderName={user?.googleDriveRootFolderName ?? null}
           initialConnectedEmail={user?.googleConnectedEmail ?? null}
           justConnected={google_drive_connected === "1"}
           connectError={google_drive_error ?? null}

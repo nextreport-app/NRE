@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
+import { GoogleDriveFolderPicker, type DriveFolder } from "./google-drive-folder-picker";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -30,8 +31,16 @@ type SlidesStatus = "idle" | "loading" | "ready" | "not_connected" | "error";
 type DateMode = "last7" | "prev7" | "custom";
 // Mirrors the shape the generate route's own driveAutoSave response field
 // takes (see /api/clients/[id]/reports/route.ts) — null when Google Drive
-// auto-save is off for this account.
-type DriveAutoSaveResult = { status: "success"; url: string } | { status: "error"; message: string } | null;
+// auto-save is off for this account. "deferred" is Drive Destination Option
+// 4 ("ask") with no per-client override: the server didn't save anywhere,
+// and this screen shows a folder picker so the user can choose per report
+// (see handleSaveToDriveFolder below).
+type DriveAutoSaveResult =
+  | { status: "success"; url: string }
+  | { status: "error"; message: string }
+  | { status: "deferred" }
+  | null;
+type DeferredSaveStatus = "idle" | "picking" | "saving" | "error";
 
 interface DateRangeIso {
   startIso: string;
@@ -132,6 +141,12 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
   const [slidesStatus, setSlidesStatus] = useState<SlidesStatus>("idle");
   const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
   const [slidesError, setSlidesError] = useState<string | null>(null);
+  // "deferred" driveAutoSave (Drive Destination "ask" mode) — folder picker
+  // shown on this same screen; once the user picks, POST to save-to-drive
+  // and fold the result into driveAutoSave itself so the success/error UI
+  // below is shared with the eager auto-save path.
+  const [deferredSaveStatus, setDeferredSaveStatus] = useState<DeferredSaveStatus>("idle");
+  const [deferredSaveError, setDeferredSaveError] = useState<string | null>(null);
 
   function currentDateSelection(): DateSelection {
     if (dateMode === "custom") return { mode: "custom", customStart, customEnd };
@@ -303,6 +318,8 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     setSlidesStatus("idle");
     setSlidesUrl(null);
     setSlidesError(null);
+    setDeferredSaveStatus("idle");
+    setDeferredSaveError(null);
     setStep(4);
   }
 
@@ -311,6 +328,8 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
     if (!mtdFile) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
+    setDeferredSaveStatus("idle");
+    setDeferredSaveError(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -365,6 +384,30 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
 
   async function handleConnectGoogleDrive() {
     await signIn("google", { callbackUrl: window.location.href });
+  }
+
+  async function handleSaveToDriveFolder(folder: DriveFolder) {
+    if (!reportId) return;
+    setDeferredSaveStatus("saving");
+    setDeferredSaveError(null);
+
+    const res = await fetch(`/api/reports/${reportId}/save-to-drive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId: folder.id }),
+    });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json?.url) {
+      setDeferredSaveStatus("error");
+      setDeferredSaveError(json?.error || `Request failed with status ${res.status}.`);
+      return;
+    }
+
+    setDeferredSaveStatus("idle");
+    // Fold into the same success shape the eager auto-save path uses, so
+    // the link + Copy Link UI below is shared rather than duplicated.
+    setDriveAutoSave({ status: "success", url: json.url });
   }
 
   const spanDays = customSpanDays();
@@ -768,6 +811,37 @@ export function ReportUploadWizard({ clientId }: { clientId: string }) {
               {driveAutoSave?.status === "error" && (
                 <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
                   Google Drive auto-save failed: {driveAutoSave.message}
+                </div>
+              )}
+
+              {/* Drive Destination "ask" mode, no per-client override — the
+                  server didn't save anywhere; let the user pick a folder for
+                  this specific report right here. */}
+              {driveAutoSave?.status === "deferred" && (
+                <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+                  <p className="mb-3 text-sm text-ink-secondary">
+                    Choose a Google Drive folder to save this report to.
+                  </p>
+                  {deferredSaveStatus === "picking" ? (
+                    <GoogleDriveFolderPicker
+                      onSelect={(folder) => {
+                        setDeferredSaveStatus("idle");
+                        void handleSaveToDriveFolder(folder);
+                      }}
+                      onCancel={() => setDeferredSaveStatus("idle")}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setDeferredSaveStatus("picking")}
+                      disabled={deferredSaveStatus === "saving"}
+                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      {deferredSaveStatus === "saving" ? "Saving to Drive…" : "Choose Folder"}
+                    </button>
+                  )}
+                  {deferredSaveStatus === "error" && deferredSaveError && (
+                    <p className="mt-2 text-xs text-red-400">{deferredSaveError}</p>
+                  )}
                 </div>
               )}
 

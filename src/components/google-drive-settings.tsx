@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { GoogleDriveMode } from "@/lib/google-drive";
+import { GoogleDriveFolderPicker, type DriveFolder } from "./google-drive-folder-picker";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Google sign-in was cancelled — Drive was not connected.",
@@ -11,15 +13,29 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   connection_failed: "Something went wrong connecting to Google Drive. Please try again.",
 };
 
+interface AccountSettingsPatch {
+  googleDriveEnabled?: boolean;
+  googleDriveFolderName?: string;
+  googleDriveMode?: GoogleDriveMode;
+  googleDriveRootFolderId?: string | null;
+  googleDriveRootFolderName?: string | null;
+}
+
 export function GoogleDriveSettings({
   initialEnabled,
   initialFolderName,
+  initialMode,
+  initialRootFolderId,
+  initialRootFolderName,
   initialConnectedEmail,
   justConnected,
   connectError,
 }: {
   initialEnabled: boolean;
   initialFolderName: string;
+  initialMode: GoogleDriveMode;
+  initialRootFolderId: string | null;
+  initialRootFolderName: string | null;
   initialConnectedEmail: string | null;
   /** True immediately after a successful OAuth round trip (query param on this exact page load, not client state) — a fresh page load, so no stale-props risk. */
   justConnected: boolean;
@@ -29,6 +45,10 @@ export function GoogleDriveSettings({
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [folderName, setFolderName] = useState(initialFolderName);
+  const [mode, setMode] = useState<GoogleDriveMode>(initialMode);
+  const [rootFolderId, setRootFolderId] = useState(initialRootFolderId);
+  const [rootFolderName, setRootFolderName] = useState(initialRootFolderName);
+  const [showRootFolderPicker, setShowRootFolderPicker] = useState(false);
   const [connectedEmail, setConnectedEmail] = useState(initialConnectedEmail);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -45,7 +65,7 @@ export function GoogleDriveSettings({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function saveSettings(patch: { googleDriveEnabled?: boolean; googleDriveFolderName?: string }): Promise<boolean> {
+  async function saveSettings(patch: AccountSettingsPatch): Promise<boolean> {
     setSaving(true);
     setSaveError(null);
     const res = await fetch("/api/account", {
@@ -78,6 +98,21 @@ export function GoogleDriveSettings({
     await saveSettings({ googleDriveFolderName: trimmed });
   }
 
+  async function handleModeChange(nextMode: GoogleDriveMode) {
+    const prevMode = mode;
+    setMode(nextMode);
+    setShowRootFolderPicker(false);
+    const ok = await saveSettings({ googleDriveMode: nextMode });
+    if (!ok) setMode(prevMode);
+  }
+
+  async function handleRootFolderSelect(folder: DriveFolder) {
+    setShowRootFolderPicker(false);
+    setRootFolderId(folder.id);
+    setRootFolderName(folder.name);
+    await saveSettings({ googleDriveRootFolderId: folder.id, googleDriveRootFolderName: folder.name });
+  }
+
   async function handleDisconnect() {
     setDisconnecting(true);
     await fetch("/api/google-drive/disconnect", { method: "POST" }).catch(() => {});
@@ -104,21 +139,6 @@ export function GoogleDriveSettings({
 
       {enabled && (
         <div className="space-y-4 border-t border-navy-border pt-4">
-          <div>
-            <label className="mb-1 block text-sm text-ink-secondary">Google Drive folder name</label>
-            <input
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-              onBlur={handleFolderNameBlur}
-              placeholder="NextReport Reports"
-              maxLength={200}
-              className="w-full max-w-sm rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            />
-            <p className="mt-1 text-xs text-ink-muted">
-              Reports are saved as {folderName.trim() || "NextReport Reports"} → [Client Name] → [Report filename].
-            </p>
-          </div>
-
           {connectedEmail ? (
             <div className="rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
               <p className="text-sm text-emerald-300">
@@ -146,6 +166,120 @@ export function GoogleDriveSettings({
               >
                 Connect Google Drive
               </a>
+            </div>
+          )}
+
+          {connectedEmail && (
+            <div className="space-y-3 border-t border-navy-border pt-4">
+              <h3 className="text-sm font-medium text-white">Drive Destination</h3>
+              <p className="text-xs text-ink-muted">Where reports get saved in Google Drive.</p>
+
+              <div className="space-y-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-navy-border p-3 hover:bg-navy-border/40">
+                  <input
+                    type="radio"
+                    name="googleDriveMode"
+                    checked={mode === "auto"}
+                    onChange={() => handleModeChange("auto")}
+                    className="mt-0.5 h-4 w-4 accent-accent"
+                  />
+                  <div className="flex-1">
+                    <span className="block text-sm text-white">Let NextReport create and manage folders automatically</span>
+                    <span className="block text-xs text-ink-muted">
+                      Creates the folder below at the root of your Drive, with one subfolder per client. Default for
+                      new users.
+                    </span>
+                    {mode === "auto" && (
+                      <div className="mt-2 max-w-sm">
+                        <input
+                          value={folderName}
+                          onChange={(e) => setFolderName(e.target.value)}
+                          onBlur={handleFolderNameBlur}
+                          placeholder="NextReport Reports"
+                          maxLength={200}
+                          className="w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                        />
+                        <p className="mt-1 text-xs text-ink-muted">
+                          {folderName.trim() || "NextReport Reports"} → [Client Name] → [Report filename]
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </label>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-navy-border p-3 hover:bg-navy-border/40">
+                  <input
+                    type="radio"
+                    name="googleDriveMode"
+                    checked={mode === "root-folder"}
+                    onChange={() => handleModeChange("root-folder")}
+                    className="mt-0.5 h-4 w-4 accent-accent"
+                  />
+                  <div className="flex-1">
+                    <span className="block text-sm text-white">Select an existing root folder</span>
+                    <span className="block text-xs text-ink-muted">
+                      NextReport creates a subfolder per client inside the folder you choose — e.g. &quot;Meta Ads
+                      Department&quot;.
+                    </span>
+                    {mode === "root-folder" && (
+                      <div className="mt-2 space-y-2">
+                        {rootFolderId ? (
+                          <p className="text-xs text-ink-secondary">
+                            Selected: <span className="text-white">{rootFolderName}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-amber-300">No folder selected yet.</p>
+                        )}
+                        {showRootFolderPicker ? (
+                          <GoogleDriveFolderPicker
+                            onSelect={handleRootFolderSelect}
+                            onCancel={() => setShowRootFolderPicker(false)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowRootFolderPicker(true)}
+                            className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                          >
+                            {rootFolderId ? "Change Folder" : "Choose Folder"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </label>
+
+                {/* Not a selectable radio — this option's state lives per-client
+                    (Client.googleDriveFolderId, set on each client's profile
+                    page), not as an account-wide value, so there's nothing
+                    here to persist or highlight as "selected." A per-client
+                    override still applies no matter which real mode above is
+                    chosen. */}
+                <div className="rounded-md border border-navy-border p-3">
+                  <span className="block text-sm text-white">Select an existing folder per client</span>
+                  <span className="block text-xs text-ink-muted">
+                    Set this individually on each client&apos;s profile page (Drive Folder field) — it overrides
+                    whichever option is selected here, for that client only. Nothing to configure account-wide.
+                  </span>
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-navy-border p-3 hover:bg-navy-border/40">
+                  <input
+                    type="radio"
+                    name="googleDriveMode"
+                    checked={mode === "ask"}
+                    onChange={() => handleModeChange("ask")}
+                    className="mt-0.5 h-4 w-4 accent-accent"
+                  />
+                  <div className="flex-1">
+                    <span className="block text-sm text-white">Always ask at report generation time</span>
+                    <span className="block text-xs text-ink-muted">
+                      Choose a folder for each report individually on the download screen. No default folder is
+                      saved.
+                    </span>
+                  </div>
+                </label>
+              </div>
             </div>
           )}
         </div>

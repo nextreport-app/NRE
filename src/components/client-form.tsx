@@ -9,6 +9,7 @@ import {
   TIMEZONES,
 } from "@/lib/validators/client";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
+import { GoogleDriveFolderPicker } from "./google-drive-folder-picker";
 
 export type ClientFormValues = {
   accountName: string;
@@ -16,6 +17,9 @@ export type ClientFormValues = {
   timezone: string;
   monthlyBudget: number | null;
   template: (typeof TEMPLATES)[number];
+  /** Drive Destination Option 3 — this exact folder overrides the account-level setting for this client only. Both null means "no override." */
+  googleDriveFolderId: string | null;
+  googleDriveFolderName: string | null;
 };
 
 const CURRENCY_SYMBOL = CURRENCY_SYMBOLS;
@@ -27,11 +31,14 @@ export function ClientForm({
   clientId,
   initial,
   hasLogo = false,
+  hasGoogleDriveConnected = false,
 }: {
   clientId?: string;
   initial?: Partial<ClientFormValues>;
   /** Whether this client already has a logo uploaded — drives the initial preview/remove-button state on edit. Irrelevant on create (no clientId yet). */
   hasLogo?: boolean;
+  /** Whether the current user has a Google Drive account connected (account settings) — the per-client Drive Folder field only makes sense (and only has folders to browse) once that's true. */
+  hasGoogleDriveConnected?: boolean;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<ClientFormValues>({
@@ -40,7 +47,10 @@ export function ClientForm({
     timezone: initial?.timezone ?? "Asia/Kolkata",
     monthlyBudget: initial?.monthlyBudget ?? null,
     template: initial?.template ?? "DARK",
+    googleDriveFolderId: initial?.googleDriveFolderId ?? null,
+    googleDriveFolderName: initial?.googleDriveFolderName ?? null,
   });
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -238,6 +248,64 @@ export function ClientForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-ink-secondary">Google Drive folder — optional</label>
+        {hasGoogleDriveConnected ? (
+          <div className="space-y-2">
+            {values.googleDriveFolderId ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm text-white">{values.googleDriveFolderName}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowFolderPicker(true)}
+                  className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("googleDriveFolderId", null);
+                    set("googleDriveFolderName", null);
+                  }}
+                  className="rounded-md border border-navy-border px-2 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : (
+              !showFolderPicker && (
+                <button
+                  type="button"
+                  onClick={() => setShowFolderPicker(true)}
+                  className="rounded-md border border-navy-border px-3 py-1.5 text-sm text-ink-secondary hover:bg-navy-border"
+                >
+                  Choose Folder
+                </button>
+              )
+            )}
+            {showFolderPicker && (
+              <GoogleDriveFolderPicker
+                onSelect={(folder) => {
+                  set("googleDriveFolderId", folder.id);
+                  set("googleDriveFolderName", folder.name);
+                  setShowFolderPicker(false);
+                }}
+                onCancel={() => setShowFolderPicker(false)}
+              />
+            )}
+            <p className="text-xs text-ink-muted">
+              If set, every report generated for this client is saved here in Google Drive, overriding the account-wide
+              Drive Destination setting (Account Settings).
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-ink-muted">
+            Connect Google Drive in Account Settings to set a specific folder for this client.
+          </p>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

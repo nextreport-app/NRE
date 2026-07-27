@@ -14,7 +14,7 @@ import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import { autoSaveReportToDrive } from "@/lib/google-drive";
+import { autoSaveReportToDrive, normalizeDriveMode, type AutoSaveResult } from "@/lib/google-drive";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
   dateSelectionSchema,
@@ -131,6 +131,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           agencyName: true,
           googleDriveEnabled: true,
           googleDriveFolderName: true,
+          googleDriveMode: true,
+          googleDriveRootFolderId: true,
           googleRefreshToken: true,
         },
       }),
@@ -159,35 +161,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // already generated and downloadable regardless of what happens here.
     // `driveAutoSave` stays null when the feature is off entirely, so the
     // wizard's download screen can tell "disabled" apart from "attempted
-    // and failed" and render the right one of its three states.
-    let driveAutoSave: { status: "success"; url: string } | { status: "error"; message: string } | null = null;
+    // and failed" apart from "deferred to a folder picker" and render the
+    // right one of its four states.
+    let driveAutoSave: AutoSaveResult | null = null;
     if (user?.googleDriveEnabled) {
-      if (!user.googleRefreshToken) {
-        driveAutoSave = {
-          status: "error",
-          message: "Google Drive auto-save is enabled, but no Google account is connected. Connect one in Account Settings.",
-        };
-      } else {
-        try {
-          const { webViewLink } = await autoSaveReportToDrive({
-            refreshToken: user.googleRefreshToken,
-            rootFolderName: user.googleDriveFolderName,
-            clientName: client.accountName,
-            fileName: fileName.replace(/\.pptx$/i, ""),
-            pptxBuffer,
-          });
-          driveAutoSave = { status: "success", url: webViewLink };
-          // Same cache field the manual "Get Google Slides Link" button
-          // uses — keeps the two features from ever creating two separate
-          // Drive files for the same report.
-          await prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } });
-        } catch (err) {
-          console.error("[api:reports:generate] Google Drive auto-save failed:", err);
-          driveAutoSave = {
-            status: "error",
-            message: err instanceof Error ? err.message : "Google Drive upload failed.",
-          };
-        }
+      driveAutoSave = await autoSaveReportToDrive({
+        refreshToken: user.googleRefreshToken,
+        mode: normalizeDriveMode(user.googleDriveMode),
+        autoRootFolderName: user.googleDriveFolderName,
+        rootFolderId: user.googleDriveRootFolderId,
+        clientOverrideFolderId: client.googleDriveFolderId,
+        clientName: client.accountName,
+        fileName: fileName.replace(/\.pptx$/i, ""),
+        pptxBuffer,
+      });
+      if (driveAutoSave.status === "success") {
+        // Same cache field the manual "Get Google Slides Link" button
+        // uses — keeps the two features from ever creating two separate
+        // Drive files for the same report.
+        await prisma.report.update({ where: { id: report.id }, data: { slidesUrl: driveAutoSave.url } });
+      } else if (driveAutoSave.status === "error") {
+        console.error("[api:reports:generate] Google Drive auto-save failed:", driveAutoSave.message);
       }
     }
 

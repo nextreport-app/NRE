@@ -7,6 +7,9 @@ import {
   findOrCreateDriveFolder,
   GOOGLE_DRIVE_SCOPE,
   getFreshGoogleAccessToken,
+  listDriveFolders,
+  normalizeDriveMode,
+  saveReportToDriveFolder,
   shareFilePublicly,
   uploadPptxAsGoogleSlides,
 } from "../google-drive";
@@ -203,11 +206,85 @@ describe("findOrCreateDriveFolder", () => {
   });
 });
 
+describe("listDriveFolders", () => {
+  it("lists Drive-root subfolders when no parentId is given", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ files: [{ id: "a", name: "Alpha" }, { id: "b", name: "Beta" }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const folders = await listDriveFolders("token");
+    expect(folders).toEqual([{ id: "a", name: "Alpha" }, { id: "b", name: "Beta" }]);
+    const [url] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(url)).toContain("'root' in parents");
+  });
+
+  it("treats the literal 'root' parentId the same as omitting it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ files: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await listDriveFolders("token", "root");
+    const [url] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(url)).toContain("'root' in parents");
+  });
+
+  it("lists subfolders under a given parent id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ files: [{ id: "c", name: "Gamma" }] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const folders = await listDriveFolders("token", "parent-123");
+    expect(folders).toEqual([{ id: "c", name: "Gamma" }]);
+    const [url] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(url)).toContain("'parent-123' in parents");
+  });
+
+  it("throws with the response status and body on failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => "forbidden" }));
+    await expect(listDriveFolders("token")).rejects.toThrow(/403/);
+  });
+});
+
+describe("saveReportToDriveFolder", () => {
+  it("refreshes the token and uploads straight into the given folder, no resolution", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "fresh-token" }) };
+      if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "f", webViewLink: "https://docs.google.com/presentation/d/f/edit" }) };
+      if (url.includes("/permissions")) return { ok: true, text: async () => "" };
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await saveReportToDriveFolder({
+      refreshToken: "r",
+      folderId: "chosen-folder",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/f/edit");
+
+    const uploadCall = fetchMock.mock.calls.find(([url]) => url.includes("uploadType=multipart"))!;
+    const body = Buffer.from(uploadCall[1].body as Uint8Array).toString("utf-8");
+    expect(body).toContain('"parents":["chosen-folder"]');
+  });
+});
+
+describe("normalizeDriveMode", () => {
+  it("passes through each valid mode unchanged", () => {
+    expect(normalizeDriveMode("auto")).toBe("auto");
+    expect(normalizeDriveMode("root-folder")).toBe("root-folder");
+    expect(normalizeDriveMode("ask")).toBe("ask");
+  });
+
+  it("falls back to 'auto' for null, undefined, or an unrecognized value", () => {
+    expect(normalizeDriveMode(null)).toBe("auto");
+    expect(normalizeDriveMode(undefined)).toBe("auto");
+    expect(normalizeDriveMode("something-else")).toBe("auto");
+    expect(normalizeDriveMode("")).toBe("auto");
+  });
+});
+
 describe("autoSaveReportToDrive", () => {
-  it("refreshes the token, builds [Root] -> [Client] folders, uploads inside the client folder, and shares it", async () => {
-    const calls: string[] = [];
+  function stubDriveApiFlow() {
     const fetchMock = vi.fn(async (url: string, init?: { method?: string; headers?: Record<string, string> }) => {
-      calls.push(url);
       if (url === "https://oauth2.googleapis.com/token") {
         return { ok: true, json: async () => ({ access_token: "fresh-access-token" }) };
       }
@@ -216,6 +293,9 @@ describe("autoSaveReportToDrive", () => {
       }
       if (url.includes("/files?q=") && decodeURIComponent(url).includes("'root-folder-id' in parents")) {
         return { ok: true, json: async () => ({ files: [] }) }; // client folder doesn't exist yet
+      }
+      if (url.includes("/files?q=") && decodeURIComponent(url).includes("'picked-root-id' in parents")) {
+        return { ok: true, json: async () => ({ files: [{ id: "client-folder-under-picked-root" }] }) };
       }
       if (url.includes("/files?fields=id") && init?.method === "POST") {
         return { ok: true, json: async () => ({ id: "client-folder-id" }) }; // create client folder
@@ -229,22 +309,159 @@ describe("autoSaveReportToDrive", () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("'auto' mode: refreshes the token, builds [Root] -> [Client] folders, uploads inside the client folder, and shares it", async () => {
+    const fetchMock = stubDriveApiFlow();
 
     const result = await autoSaveReportToDrive({
       refreshToken: "refresh-token",
-      rootFolderName: "NextReport Reports",
+      mode: "auto",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: null,
       clientName: "Acme Inc",
       fileName: "Meta Ads Report - Jul 13 to Jul 19",
       pptxBuffer: Buffer.from("fake pptx"),
     });
 
-    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/file-id/edit");
+    expect(result).toEqual({ status: "success", url: "https://docs.google.com/presentation/d/file-id/edit" });
 
     // Every call after the token refresh uses the freshly-minted access token.
     const uploadCall = fetchMock.mock.calls.find(([url]) => url.includes("uploadType=multipart"))!;
     expect(uploadCall[1]!.headers!.Authorization).toBe("Bearer fresh-access-token");
     const shareCall = fetchMock.mock.calls.find(([url]) => url.includes("/permissions"))!;
     expect(shareCall[1]!.headers!.Authorization).toBe("Bearer fresh-access-token");
+  });
+
+  it("'root-folder' mode: skips finding/creating the root (already known) and only resolves the client subfolder under it", async () => {
+    const fetchMock = stubDriveApiFlow();
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "refresh-token",
+      mode: "root-folder",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: "picked-root-id",
+      clientOverrideFolderId: null,
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+
+    expect(result).toEqual({ status: "success", url: "https://docs.google.com/presentation/d/file-id/edit" });
+    // Never looked up/created a root named after autoRootFolderName — the picked root is used directly.
+    expect(fetchMock.mock.calls.some(([url]) => decodeURIComponent(url).includes("name='NextReport Reports'"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => decodeURIComponent(url).includes("'picked-root-id' in parents"))).toBe(true);
+  });
+
+  it("a per-client override folder wins over the account mode entirely — no root/client subfolder resolution at all", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
+      if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "f", webViewLink: "https://docs.google.com/presentation/d/f/edit" }) };
+      if (url.includes("/permissions")) return { ok: true, text: async () => "" };
+      throw new Error(`Unexpected fetch (should skip all folder lookups for a client override): ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "r",
+      mode: "auto", // irrelevant — override takes priority
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: "client-specific-folder",
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+
+    expect(result).toEqual({ status: "success", url: "https://docs.google.com/presentation/d/f/edit" });
+    const uploadCall = fetchMock.mock.calls.find(([url]) => url.includes("uploadType=multipart"))!;
+    const body = Buffer.from(uploadCall[1].body as Uint8Array).toString("utf-8");
+    expect(body).toContain('"parents":["client-specific-folder"]');
+  });
+
+  it("'ask' mode with no client override defers instead of uploading anywhere", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "r",
+      mode: "ask",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: null,
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+
+    expect(result).toEqual({ status: "deferred" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a client override still applies even in 'ask' mode — deferring is only for when there's truly nothing to resolve", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
+      if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "f", webViewLink: "https://docs.google.com/presentation/d/f/edit" }) };
+      if (url.includes("/permissions")) return { ok: true, text: async () => "" };
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "r",
+      mode: "ask",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: "client-specific-folder",
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+    expect(result.status).toBe("success");
+  });
+
+  it("returns a 'not connected' error, not a thrown exception, when there's no refresh token — regardless of mode", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: null,
+      mode: "auto",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: null,
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+    expect(result.status).toBe("error");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns an 'error' result (not a thrown exception) when a Drive call fails partway through", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
+        if (url.includes("/files?q=")) return { ok: false, status: 500, text: async () => "server error" };
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    const result = await autoSaveReportToDrive({
+      refreshToken: "r",
+      mode: "auto",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: null,
+      clientName: "Acme Inc",
+      fileName: "Report",
+      pptxBuffer: Buffer.from("x"),
+    });
+    expect(result.status).toBe("error");
+    if (result.status === "error") expect(result.message).toMatch(/500/);
   });
 
   it("falls back to a constructed presentation URL when Drive doesn't return a webViewLink", async () => {
@@ -261,12 +478,15 @@ describe("autoSaveReportToDrive", () => {
 
     const result = await autoSaveReportToDrive({
       refreshToken: "r",
-      rootFolderName: "NextReport Reports",
+      mode: "auto",
+      autoRootFolderName: "NextReport Reports",
+      rootFolderId: null,
+      clientOverrideFolderId: null,
       clientName: "Acme Inc",
       fileName: "Report",
       pptxBuffer: Buffer.from("x"),
     });
-    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/file-id/edit");
+    expect(result).toEqual({ status: "success", url: "https://docs.google.com/presentation/d/file-id/edit" });
   });
 });
 

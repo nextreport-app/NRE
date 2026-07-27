@@ -43,6 +43,10 @@ model User {
   // select_account` so the account chooser appears every time and a fresh
   // refresh_token comes back.
   googleDriveEnabled    Boolean @default(false)
+  // Auto root folder name for googleDriveMode "auto" (Option 1) — the
+  // folder NextReport creates and manages itself. Independent of
+  // googleDriveMode: kept even when a different mode is selected, so
+  // switching back to "auto" later doesn't lose a customized name.
   googleDriveFolderName String @default("NextReport Reports")
   // googleAccessToken is best-effort/informational only — every Drive call
   // (lib/google-drive.ts's autoSaveReportToDrive) mints a fresh access token
@@ -56,6 +60,32 @@ model User {
   // picked the Drive account they meant to, since it doesn't have to match
   // their NextReport login email at all.
   googleConnectedEmail String?
+
+  // Drive Destination (account settings) — which of the 4 folder-selection
+  // options drives report auto-save when there's no per-client override
+  // (Client.googleDriveFolderId always wins over all of this, see
+  // lib/google-drive.ts's autoSaveReportToDrive):
+  //  - "auto": Option 1 — NextReport creates/manages googleDriveFolderName
+  //    at Drive's root, with one subfolder per client underneath it.
+  //  - "root-folder": Option 2 — reports go under the user-selected
+  //    googleDriveRootFolderId, with one subfolder per client underneath
+  //    it (that subfolder is still created/found automatically; only the
+  //    root itself is user-chosen).
+  //  - "ask": Option 4 — no folder is pre-resolved at all; report
+  //    generation returns a "deferred" driveAutoSave status and the
+  //    wizard's download screen shows a folder picker per report.
+  // (Option 3, the per-client override, isn't a mode of its own — it's
+  // Client.googleDriveFolderId taking priority over whatever mode says. The
+  // account settings UI shows it as a 4th, non-selectable card pointing at
+  // the client profile page, not a real value of this column.)
+  googleDriveMode String @default("auto")
+  // The folder id/name the user picked via the Drive folder browser (see
+  // /api/google-drive/folders) for "root-folder" mode. Deliberately NOT
+  // cleared when googleDriveMode is switched to something else — same
+  // non-destructive convention as googleDriveFolderName above, so switching
+  // back to "root-folder" later doesn't require re-picking.
+  googleDriveRootFolderId   String?
+  googleDriveRootFolderName String?
 
   accounts Account[]
   sessions Session[]
@@ -142,6 +172,17 @@ model Client {
   // this client. Absent means the cover slide renders exactly as it does
   // without this feature — no placeholder box.
   logoUrl String?
+
+  // Per-client Google Drive folder override (Drive Destination Option 3,
+  // client profile page) — when set, this exact folder is the upload
+  // target for every report generated for this client, overriding
+  // whatever User.googleDriveMode says entirely (no client subfolder is
+  // created underneath it; the report goes directly inside this folder).
+  // Both null means "no override — use the account-level Drive
+  // Destination setting," same convention as every other optional column
+  // here.
+  googleDriveFolderId   String?
+  googleDriveFolderName String?
 
   // Report upload wizard preferences — remembered per client so the next
   // upload pre-selects the same campaigns / date-range mode. Both are JSON
