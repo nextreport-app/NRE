@@ -95,9 +95,22 @@ export function validateMtdDailyCsv(
     return { valid: false, errors, warnings };
   }
 
+  // A row is usable once it has a campaign name and a resolvable date — that
+  // alone is enough to place it on the right slide, in the right week. Every
+  // metric column (spend, results, reach, ...) is deliberately NOT required
+  // to be non-empty here: a campaign that's paused, just launched, or spent
+  // $0 in the selected period legitimately has blank/zero metrics for every
+  // row, and the engine already renders that correctly (zero-value metric
+  // cards, the "Campaigns Paused" cover/summary text) — this validator's
+  // only job is to reject a CSV it genuinely can't place on a slide at all.
   const nonEmptyCampaignRows = rows.filter((r) => (r.campaign_name || "").trim() !== "");
   if (nonEmptyCampaignRows.length === 0) {
     errors.push({ field: "campaign_name", message: "Every row has an empty campaign name." });
+  }
+
+  const usableRows = nonEmptyCampaignRows.filter((r) => !!getRowDate(r));
+  if (nonEmptyCampaignRows.length > 0 && usableRows.length === 0) {
+    errors.push({ field: "rows", message: "No data rows found in the uploaded CSV." });
   }
 
   // Date range sanity — skip if we already know there's no usable date column.

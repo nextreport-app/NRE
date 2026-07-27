@@ -62,6 +62,27 @@ describe("validateMtdDailyCsv", () => {
     expect(result.errors.some((e) => e.field === "date" && e.message.includes("90 days"))).toBe(true);
   });
 
+  it("passes when campaign name and date are populated but every metric column is blank (paused/zero-spend campaign)", () => {
+    const headers = [
+      "Campaign name",
+      "Ad set name",
+      "Day",
+      "Amount spent (USD)",
+      "Reach",
+      "Impressions",
+      "Results",
+      "Result type",
+    ];
+    const rows = Array.from({ length: 7 }, (_, i) => {
+      const day = `${String(i + 1).padStart(2, "0")}-07-2026`;
+      return ["Paused Campaign", "Set A", day, "", "", "", "", ""];
+    });
+    const { colMap, rows: parsedRows } = parse(headers, rows);
+    const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-07-23T12:00:00Z"));
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
   it("fails on an empty CSV", () => {
     const { colMap, rows } = parse(["Campaign name", "Day", "Amount spent (USD)", "Results"], []);
     const result = validateMtdDailyCsv(colMap, rows, NOW);

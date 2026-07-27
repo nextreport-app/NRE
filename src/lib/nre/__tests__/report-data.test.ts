@@ -865,3 +865,56 @@ describe("buildReportData — active campaign count from delivery status", () =>
     expect(data.chart!.campaigns[0].statusIndicator).toBeNull();
   });
 });
+
+describe("buildReportData — campaign with every metric column blank (paused/zero-spend/just launched)", () => {
+  // Campaign name and date are populated (as validate.ts now requires) but
+  // every metric column is an empty string — the validator lets this
+  // through (see validate.test.ts), and the engine must render it as a
+  // normal, zero-valued campaign rather than throwing or treating it as
+  // the "no rows in range" isPaused case (there ARE rows in range here,
+  // they just carry no numbers).
+  const blankRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
+    _raw: { Day: day },
+    campaign_name: "Blank Metrics Campaign",
+    ad_set_name: "Only Ad Set",
+    result_type: "",
+    spend: "",
+    reach: "",
+    impressions: "",
+    results: "",
+    link_clicks: "",
+    ctr: "",
+    cpc: "",
+    frequency: "",
+    date_start: day,
+    date_end: day,
+  }));
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "₹",
+    timezone: "Asia/Kolkata",
+    monthlyBudget: null,
+    mtdDailyRows: blankRows,
+    now: NOW,
+  });
+
+  it("is not paused — the campaign has rows within the reporting period, just zero values", () => {
+    expect(data.isPaused).toBe(false);
+  });
+
+  it("renders a campaign summary slide with every metric at zero, not a thrown error", () => {
+    expect(data.campaignSlides).toHaveLength(1);
+    const slide = data.campaignSlides[0];
+    expect(slide.campaignName).toBe("Blank Metrics Campaign");
+    expect(slide.metrics).toEqual({
+      spend: "₹0",
+      reach: "0",
+      impressions: "0",
+      results: "0",
+      ctr: "—",
+      cpr: "—",
+      cpc: "—",
+    });
+  });
+});
