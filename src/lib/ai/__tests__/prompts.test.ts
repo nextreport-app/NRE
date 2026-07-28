@@ -99,10 +99,27 @@ describe("capSummary", () => {
     expect(capSummary("Short summary.")).toBe("Short summary.");
   });
 
-  it("cuts at the last sentence boundary before 220 chars", () => {
-    const long = "A".repeat(100) + ". " + "B".repeat(100) + ". " + "C".repeat(100) + ".";
+  it("cuts at the last sentence boundary before 400 chars", () => {
+    const long = "A".repeat(150) + ". " + "B".repeat(150) + ". " + "C".repeat(150) + ".";
     const result = capSummary(long);
-    expect(result.length).toBeLessThanOrEqual(221);
+    expect(result.length).toBeLessThanOrEqual(401);
+    expect(result.endsWith(".")).toBe(true);
+  });
+
+  it("does not cut a decimal point (e.g. inside a dollar amount) mistaken for a sentence end", () => {
+    // Regression test for the bug that caused a genuinely complete,
+    // realistic-length AI response to be re-truncated: a naive
+    // lastIndexOf(".", limit) would treat the "." in "$2.50" as a sentence
+    // end. This fixture is long enough to exceed SUMMARY_CHAR_LIMIT and ends
+    // with a decimal value right at the boundary, followed by more real
+    // sentence content — capSummary must not stop at the decimal point.
+    const long =
+      "A".repeat(380) +
+      " reflecting a $2.50 cost per click and a 4.48% click-through rate this week overall. " +
+      "B".repeat(50) +
+      ".";
+    const result = capSummary(long);
+    expect(result).not.toMatch(/\$2\.$/);
     expect(result.endsWith(".")).toBe(true);
   });
 });
@@ -117,10 +134,11 @@ describe("capInsights", () => {
     expect(capInsights("   ")).toBe("Insights not available.");
   });
 
-  it("cuts long text at a sentence boundary before 320 chars", () => {
-    const long = "X".repeat(400) + ".";
+  it("cuts long text at a sentence boundary before 500 chars", () => {
+    const long = "X".repeat(600) + ".";
     const result = capInsights(long);
-    expect(result.length).toBeLessThanOrEqual(321);
+    expect(result.length).toBeLessThanOrEqual(501);
+    expect(result.endsWith(".")).toBe(true);
   });
 });
 

@@ -216,13 +216,16 @@ describe("renderPptx — real template end-to-end", () => {
     expect(table).toContain("PURCHASES");
     expect(table).not.toContain("{{");
 
-    // This fixture has no Period CSV and only one non-Reach objective
-    // (Purchase) — the Period row and the second result-type columns must
-    // both be structurally removed, not just blanked, verified with an
-    // independent OOXML reader (python-pptx), not our own fill code.
+    // This fixture has no Period CSV, so the Period row must be structurally
+    // removed, not just blanked — verified with an independent OOXML reader
+    // (python-pptx), not our own fill code. It has 2 distinct objectives
+    // (Purchases from the Shoes campaign, Reach from the Brand campaign —
+    // Fix 1: Reach now gets its own column pair alongside other objectives
+    // instead of being dropped), which fits the template's native 10-column
+    // width exactly, with nothing hidden or grown.
     const tableDims = inspectTableDimensions(outPath, 6); // slide index 6 = table
     expect(tableDims.rows).toBe(2); // header + MTD only, Period row hidden
-    expect(tableDims.cols).toBe(8); // second result-type columns hidden
+    expect(tableDims.cols).toBe(10); // 6 static + 2 objectives (Purchases, Reach)
 
     expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
@@ -302,6 +305,77 @@ describe("renderPptx — real template end-to-end", () => {
     const tableDims = inspectTableDimensions(outPath, 4);
     expect(tableDims.rows).toBe(3);
     expect(tableDims.cols).toBe(10);
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
+  it("grows the table past its native 10 columns for 3+ simultaneous objectives — Fix 1, no objective dropped, verified with an independent OOXML reader", async () => {
+    const templateBuffer = fs.readFileSync(TEMPLATE_PATH);
+    const clicksRows = buildDailyRows({
+      campaign_name: "Traffic",
+      ad_set_name: "Ad Set 1",
+      result_type: "Link clicks",
+      spend: 80,
+      reach: 1500,
+      impressions: 3500,
+      results: 40,
+      link_clicks: 40,
+      ctr: 2.1,
+      cpc: 2,
+      frequency: 1.4,
+    });
+    const leadsRows = buildDailyRows({
+      campaign_name: "Lead Gen",
+      ad_set_name: "Ad Set 1",
+      result_type: "Meta leads",
+      spend: 100,
+      reach: 2000,
+      impressions: 4000,
+      results: 10,
+      link_clicks: 20,
+      ctr: 1.2,
+      cpc: 2,
+      frequency: 1.5,
+    });
+    const reachRows = buildDailyRows({
+      campaign_name: "Brand",
+      ad_set_name: "Awareness",
+      result_type: "Reach",
+      spend: 200,
+      reach: 10000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.8,
+      cpc: 0,
+      frequency: 1.5,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...clicksRows, ...leadsRows, ...reachRows],
+      now: NOW,
+    });
+    expect(data.tableHeaderLabels.resultColumns).toHaveLength(3);
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
+    const outPath = path.join(os.tmpdir(), `nre-render-3-objective-table-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // Cover + 3 campaign slides (no multi-adset campaigns) + chart + table + legend = table is index 5.
+    const tableDims = inspectTableDimensions(outPath, 5);
+    expect(tableDims.rows).toBe(2); // no Period CSV
+    expect(tableDims.cols).toBe(12); // 6 static + 3 objective pairs
+
+    const { slideTexts } = inspectWithPythonPptx(outPath);
+    const tableText = slideTexts[5];
+    expect(tableText).toContain("LINK CLICKS");
+    expect(tableText).toContain("META FORM LEADS");
+    expect(tableText).toContain("REACH");
+    expect(tableText).not.toContain("{{");
 
     fs.unlinkSync(outPath);
   }, 30000);

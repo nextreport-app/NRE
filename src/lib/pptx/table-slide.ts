@@ -11,20 +11,30 @@
  *
  * This fills the table positionally instead: locate the <a:tbl>, walk its
  * rows and cells by index, and write into exactly the row/column the data
- * layer's 3x10 grid (see report-data.ts's buildCombinedTotalTableGrid) says
- * to. The template's table must always be exactly 3 rows by 10 columns and
- * every cell must have a run to fill — that's validated (and enforced with
- * a thrown error) BEFORE any row/column is hidden, so a shape mismatch
- * fails loudly at generation time instead of quietly dropping a column.
- * Hiding a row/column (see `TableVisibilityOptions`) is a deliberate,
- * data-driven choice applied only after every cell has been correctly
- * filled against the full fixed shape.
+ * layer's grid (see report-data.ts's buildCombinedTotalTableGrid) says to.
+ * The template's table must always be exactly 3 rows by NATIVE_COLS columns
+ * and every cell must have a run to fill — that's validated (and enforced
+ * with a thrown error) BEFORE any row/column is hidden or grown, so a shape
+ * mismatch fails loudly at generation time instead of quietly dropping a
+ * column.
+ *
+ * Column count is otherwise dynamic, not fixed at NATIVE_COLS: when the data
+ * has fewer than 2 objectives, `hideColIndexes` removes the unused result
+ * pair (same as always). When it has 3 or more (Fix 1 — no objective should
+ * ever be dropped, however many are running simultaneously), the table
+ * GROWS past its native width instead: the last result-column pair is
+ * cloned as many extra times as needed, in both <a:tblGrid> and every row,
+ * and every column's width is then rescaled so the table's total width is
+ * unchanged — just spread across more, narrower columns — rather than
+ * overflowing the slide.
  */
 
 import { escapeXmlText } from "./ooxml";
 
 const EXPECTED_ROWS = 3;
-const EXPECTED_COLS = 10;
+/** The template's own physical column count — the grid can ask for more (grown) or fewer (hidden), but this is what's actually baked into templates/dark.pptx. */
+const NATIVE_COLS = 10;
+const STATIC_COLS = 6;
 
 interface Span {
   xml: string;
@@ -65,18 +75,27 @@ function setCellText(cellXml: string, value: string, rowIndex: number, colIndex:
   return cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
 }
 
+/**
+ * Fills only the first `values.length` cells of the row, left to right —
+ * NOT necessarily every cell physically in the row. When the grid is
+ * narrower than the row's current cell count (fewer than 2 objectives, no
+ * growth happened), the untouched trailing cells are exactly the ones
+ * `hideColIndexes` removes right afterward, so their stale placeholder
+ * content never matters. When the grid matches or exceeds the row's native
+ * width (2 objectives, or 3+ after growing), this fills every cell.
+ */
 function fillRow(rowXml: string, values: string[], rowIndex: number): string {
   const cells = findSpans(rowXml, /<a:tc[\s\S]*?<\/a:tc>/g);
-  if (cells.length !== EXPECTED_COLS) {
+  if (values.length > cells.length) {
     throw new Error(
-      `Combined Total table row ${rowIndex} must have ${EXPECTED_COLS} columns in the template, found ${cells.length}.`,
+      `Combined Total table row ${rowIndex} needs ${values.length} columns but only has ${cells.length} at fill time.`,
     );
   }
 
   let out = rowXml;
   // Right-to-left so each cell's stored [start, end) offset is still valid
   // for every earlier (lower-indexed) cell not yet processed.
-  for (let c = EXPECTED_COLS - 1; c >= 0; c--) {
+  for (let c = values.length - 1; c >= 0; c--) {
     const cell = cells[c];
     const filled = setCellText(cell.xml, values[c], rowIndex, c);
     out = out.slice(0, cell.start) + filled + out.slice(cell.end);
@@ -113,26 +132,80 @@ function removeGridColumns(tblGridXml: string, colIndexes: number[]): string {
   return out;
 }
 
+/** Sum of every <a:gridCol>'s width in `tblGridXml`. */
+function totalGridWidth(tblGridXml: string): number {
+  const cols = findSpans(tblGridXml, /<a:gridCol[^/]*\/>/g);
+  return cols.reduce((sum, c) => {
+    const m = /w="(\d+)"/.exec(c.xml);
+    return sum + (m ? parseInt(m[1], 10) : 0);
+  }, 0);
+}
+
+/** Appends `extraPairs` clones of the LAST TWO <a:gridCol> entries (the last result-column pair) to `tblGridXml`. */
+function cloneLastGridColumnPair(tblGridXml: string, extraPairs: number): string {
+  const cols = findSpans(tblGridXml, /<a:gridCol[^/]*\/>/g);
+  const lastPairXml = cols[cols.length - 2].xml + cols[cols.length - 1].xml;
+  const insertAt = cols[cols.length - 1].end;
+  return tblGridXml.slice(0, insertAt) + lastPairXml.repeat(extraPairs) + tblGridXml.slice(insertAt);
+}
+
+/** Appends `extraPairs` clones of the LAST TWO <a:tc> cells (the last result-column pair) to one row, reusing that row's own styling. */
+function cloneLastColumnPairInRow(rowXml: string, extraPairs: number): string {
+  const cells = findSpans(rowXml, /<a:tc[\s\S]*?<\/a:tc>/g);
+  const lastPairXml = cells[cells.length - 2].xml + cells[cells.length - 1].xml;
+  const insertAt = cells[cells.length - 1].end;
+  return rowXml.slice(0, insertAt) + lastPairXml.repeat(extraPairs) + rowXml.slice(insertAt);
+}
+
+/** Rescales every <a:gridCol> width proportionally so the columns' total width equals `targetTotalWidth` — used after growing the table so it doesn't overflow the slide. */
+function rescaleGridColumnsToWidth(tblGridXml: string, targetTotalWidth: number): string {
+  const cols = findSpans(tblGridXml, /<a:gridCol[^/]*\/>/g);
+  const currentTotal = cols.reduce((sum, c) => {
+    const m = /w="(\d+)"/.exec(c.xml);
+    return sum + (m ? parseInt(m[1], 10) : 0);
+  }, 0);
+  if (currentTotal === 0) return tblGridXml;
+  const scale = targetTotalWidth / currentTotal;
+
+  let out = tblGridXml;
+  for (let i = cols.length - 1; i >= 0; i--) {
+    const m = /w="(\d+)"/.exec(cols[i].xml);
+    const w = m ? parseInt(m[1], 10) : 0;
+    const newWidth = Math.max(1, Math.round(w * scale));
+    const replacement = cols[i].xml.replace(/w="\d+"/, `w="${newWidth}"`);
+    out = out.slice(0, cols[i].start) + replacement + out.slice(cols[i].end);
+  }
+  return out;
+}
+
 export interface TableVisibilityOptions {
   /** 0-indexed row(s) to remove entirely after filling — e.g. the Period row when there's no Period CSV data. */
   hideRowIndexes?: number[];
-  /** 0-indexed column(s) to remove entirely after filling, with freed width redistributed across what remains — e.g. the second result-type columns when there's only one objective. */
+  /** 0-indexed column(s) to remove entirely after filling, with freed width redistributed across what remains — e.g. the second result-type columns when there's only one objective. Mutually exclusive with growing (see the file header) — only meaningful when the grid is narrower than NATIVE_COLS. */
   hideColIndexes?: number[];
 }
 
 /**
- * Fills the Combined Total table's exactly-3-rows-by-10-columns grid by
- * position, then optionally hides specific rows/columns. `grid` must be
- * produced by report-data.ts's buildCombinedTotalTableGrid.
+ * Fills the Combined Total table's 3-row grid by position, then optionally
+ * hides specific rows/columns, or grows the table when `grid` is wider than
+ * the template's native column count. `grid` must be produced by
+ * report-data.ts's buildCombinedTotalTableGrid.
  */
 export function fillCombinedTotalTable(
   xml: string,
   grid: string[][],
   options: TableVisibilityOptions = {},
 ): string {
-  if (grid.length !== EXPECTED_ROWS || grid.some((row) => row.length !== EXPECTED_COLS)) {
+  const targetCols = grid[0]?.length ?? 0;
+  const validShape =
+    grid.length === EXPECTED_ROWS &&
+    grid.every((row) => row.length === targetCols) &&
+    targetCols >= STATIC_COLS + 2 &&
+    (targetCols - STATIC_COLS) % 2 === 0;
+  if (!validShape) {
     throw new Error(
-      `Combined Total table grid must be ${EXPECTED_ROWS}x${EXPECTED_COLS} — got ${grid.length} row(s)` +
+      `Combined Total table grid must be ${EXPECTED_ROWS} rows, each with ${STATIC_COLS} + an even number ` +
+        `(2 or more) of result columns — got ${grid.length} row(s)` +
         (grid[0] ? `, ${grid[0].length} column(s) in the first row` : "") +
         ".",
     );
@@ -141,18 +214,53 @@ export function fillCombinedTotalTable(
   const tblMatch = /<a:tbl>[\s\S]*?<\/a:tbl>/.exec(xml);
   if (!tblMatch) throw new Error("Combined Total slide template has no <a:tbl> element to fill.");
 
-  const rows = findSpans(tblMatch[0], /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
-  if (rows.length !== EXPECTED_ROWS) {
+  const nativeRows = findSpans(tblMatch[0], /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
+  if (nativeRows.length !== EXPECTED_ROWS) {
     throw new Error(
-      `Combined Total table must have ${EXPECTED_ROWS} rows in the template, found ${rows.length}.`,
+      `Combined Total table must have ${EXPECTED_ROWS} rows in the template, found ${nativeRows.length}.`,
+    );
+  }
+  const nativeCells = findSpans(nativeRows[0].xml, /<a:tc[\s\S]*?<\/a:tc>/g);
+  if (nativeCells.length !== NATIVE_COLS) {
+    throw new Error(
+      `Combined Total table must have ${NATIVE_COLS} columns in the template, found ${nativeCells.length}.`,
     );
   }
 
-  // Fill every cell first, always against the full fixed 3x10 template shape
-  // — hiding happens only afterward, as a presentation-layer decision.
   let newTbl = tblMatch[0];
+
+  // Grow beyond the template's native column count when 3+ objectives exist
+  // (targetCols > NATIVE_COLS) — clone the last result-column pair as many
+  // extra times as needed, in <a:tblGrid> and every row, then rescale every
+  // column's width so the table's total width is unchanged (Fix 1: no
+  // objective should ever be dropped, however many are running at once).
+  if (targetCols > NATIVE_COLS) {
+    const extraPairs = (targetCols - NATIVE_COLS) / 2;
+    const gridMatch = /<a:tblGrid>[\s\S]*?<\/a:tblGrid>/.exec(newTbl);
+    if (!gridMatch) throw new Error("Combined Total table template has no <a:tblGrid> to grow.");
+    const originalTotalWidth = totalGridWidth(gridMatch[0]);
+    let newGrid = cloneLastGridColumnPair(gridMatch[0], extraPairs);
+    newGrid = rescaleGridColumnsToWidth(newGrid, originalTotalWidth);
+    newTbl = newTbl.slice(0, gridMatch.index) + newGrid + newTbl.slice(gridMatch.index + gridMatch[0].length);
+
+    // Re-locate rows: string offsets shifted after editing <a:tblGrid> above.
+    const rowsToGrow = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
+    let grown = newTbl;
+    for (let r = rowsToGrow.length - 1; r >= 0; r--) {
+      const row = rowsToGrow[r];
+      const grownRow = cloneLastColumnPairInRow(row.xml, extraPairs);
+      grown = grown.slice(0, row.start) + grownRow + grown.slice(row.end);
+    }
+    newTbl = grown;
+  }
+
+  // Fill exactly grid[r].length cells of each row — its full native width
+  // when the grid is 8-10 columns wide (nothing left over), or the grown
+  // width when it's wider. When the grid is narrower than 10 (1 objective),
+  // the untouched trailing native cells are removed next by hideColIndexes.
+  const rowsToFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   for (let r = EXPECTED_ROWS - 1; r >= 0; r--) {
-    const row = rows[r];
+    const row = rowsToFill[r];
     const filled = fillRow(row.xml, grid[r], r);
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }

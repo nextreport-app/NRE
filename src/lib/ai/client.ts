@@ -18,7 +18,12 @@ export async function callGroq(prompt: string, apiKey: string): Promise<string> 
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
-      max_tokens: 500,
+      // Bumped from 500 — the actual truncation bug reported turned out to
+      // be capSummary/capInsights's own 220/320-char safety net miscounting
+      // a decimal point (e.g. the "." in "$2.50") as a sentence end and
+      // re-cutting an already-complete response (see generate-insights.ts's
+      // file header), not this limit. Raised anyway as extra headroom.
+      max_tokens: 800,
       temperature: 0.4,
       messages: [{ role: "user", content: prompt }],
     }),

@@ -105,21 +105,73 @@ export function buildFallbackInsights(ctx: AiContext): string {
   );
 }
 
-/** Port of the 220-char summary cap from writeInsights_ — a safety net in case the AI ignores the prompt's own "under 60 words" instruction, not a target length in itself. */
-export function capSummary(raw: string): string {
-  const summary = raw.trim();
-  if (summary.length <= 220) return summary;
-  const cut = summary.lastIndexOf(".", 220);
-  return cut > 60 ? summary.slice(0, cut + 1) : summary.slice(0, 220).trim() + ".";
+// Real, honest lengths under the current (exact-structure) prompts:
+// buildFallbackSummary's own 2-sentence output — which follows the identical
+// structure the AI is asked to produce, real numbers and all — routinely
+// lands around 300 characters, and buildFallbackInsights' 3-sentence output
+// around 360. The OLD caps here (220 / 320, ported from a much shorter
+// legacy prompt) were re-truncating a perfectly COMPLETE response before it
+// ever reached the slide — the actual cause of a truncation bug reported
+// against this exact prompt structure, not anything upstream (the AI
+// response itself was fine; this safety net was quietly cutting it down
+// again afterward). Raised well past the realistic complete-response length
+// so a normal, instruction-following response never gets touched — this
+// still catches a genuinely runaway response, just no longer a normal one.
+const SUMMARY_CHAR_LIMIT = 400;
+const INSIGHTS_CHAR_LIMIT = 500;
+
+/**
+ * True when `text[index]` is a period that reads as a SENTENCE end — at the
+ * end of the string, or followed by whitespace — rather than a decimal
+ * point inside a number like "$2.50" or "2.00%", which is always followed
+ * immediately by another digit, never whitespace. The previous version of
+ * this cap used a bare `lastIndexOf(".", limit)`, which happily matched the
+ * "." in "2.00%" as if it were a sentence end and cut the response off
+ * right there, mid-value — this is the fix for that.
+ */
+function isSentenceEndingPeriod(text: string, index: number): boolean {
+  if (text[index] !== ".") return false;
+  const next = text[index + 1];
+  return next === undefined || /\s/.test(next);
 }
 
-/** Port of the 320-char insights cap from writeInsights_ — same safety-net role as capSummary, sized for the "under 75 words" insights prompt. */
+function lastSentenceEndAtOrBefore(text: string, limit: number): number {
+  for (let i = Math.min(limit, text.length - 1); i >= 0; i--) {
+    if (isSentenceEndingPeriod(text, i)) return i;
+  }
+  return -1;
+}
+
+/**
+ * Counts sentence-ending periods in `text` (see isSentenceEndingPeriod) —
+ * used by generate-insights.ts's final safety net as "does this actually
+ * read as N complete sentences," not just "does it end with *a* period."
+ * Deliberately the same decimal-point-aware logic as the cut point above,
+ * so a $-amount or percentage never gets miscounted as an extra sentence.
+ */
+export function countSentenceEndings(text: string): number {
+  let count = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (isSentenceEndingPeriod(text, i)) count++;
+  }
+  return count;
+}
+
+/** Safety net in case the AI ignores the prompt's own "under 60 words" instruction, not a target length in itself — see SUMMARY_CHAR_LIMIT's comment for why this is no longer 220. */
+export function capSummary(raw: string): string {
+  const summary = raw.trim();
+  if (summary.length <= SUMMARY_CHAR_LIMIT) return summary;
+  const cut = lastSentenceEndAtOrBefore(summary, SUMMARY_CHAR_LIMIT);
+  return cut > 60 ? summary.slice(0, cut + 1) : summary.slice(0, SUMMARY_CHAR_LIMIT).trim() + ".";
+}
+
+/** Same safety-net role as capSummary, sized for the "under 75 words" insights prompt — see SUMMARY_CHAR_LIMIT's comment. */
 export function capInsights(raw: string): string {
   const stripped = raw.trim().replace(/^[-•*]\s*/, "");
   let insights = stripped;
-  if (stripped.length > 320) {
-    const cut = stripped.lastIndexOf(".", 320);
-    insights = cut > 80 ? stripped.slice(0, cut + 1) : stripped.slice(0, 320).trim() + ".";
+  if (stripped.length > INSIGHTS_CHAR_LIMIT) {
+    const cut = lastSentenceEndAtOrBefore(stripped, INSIGHTS_CHAR_LIMIT);
+    insights = cut > 80 ? stripped.slice(0, cut + 1) : stripped.slice(0, INSIGHTS_CHAR_LIMIT).trim() + ".";
   }
   return insights || "Insights not available.";
 }

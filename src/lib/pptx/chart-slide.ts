@@ -21,25 +21,41 @@ export const CHART_BG_REL_ID = "rId2";
 // that painting it over a small area (the donut "hole") reads as a flat
 // content surface rather than a visible patch, the same way the template's
 // own metric cards sit on solid fills over that background rather than
-// showing the grid/gradient through them.
+// showing the grid/gradient through them. Deliberately not grey: grey is
+// reserved for this inner hole alone (see CAMPAIGN_COLOR_PALETTE below) and
+// must never appear as a ring color, so a real campaign's ring is never
+// mistaken for "no campaign here."
 const BG_COLOR = "0d1b2e";
 const LABEL_COLOR = "7ab0cc";
 const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name
 const WHITE = "FFFFFF";
 
-// Keys that never actually occur in getResultLabels()'s output vocabulary
-// (FORM LEADS/WEB LEADS/LPV/CONV) are kept for source fidelity even though
-// they're unreachable — see objective.ts's getResultLabels for the real set.
-const TYPE_COLOR: Record<string, string> = {
-  LEADS: "f6ad55",
-  "FORM LEADS": "f6ad55",
-  "WEB LEADS": "fc8181",
-  CLICKS: "63b3ed",
-  REACH: "68d391",
-  LPV: "b794f4",
-  CONV: "76e4f7",
-};
-const DEFAULT_COLOR = "a0aec0";
+/**
+ * Fix 3 — campaign ring colors are assigned by INDEX (the order campaigns
+ * appear in the data), not by objective/result label. The previous
+ * objective-keyed lookup (LEADS/CLICKS/REACH/...) silently fell back to a
+ * shared grey for any objective outside that short list — PURCHASES among
+ * them, a very common one — so multiple different campaigns all rendered
+ * the same grey ring with no way to tell them apart. Cycling through 7
+ * fixed colors by index instead means every campaign gets a real color, and
+ * consecutive campaigns are never the same: any two adjacent indexes differ
+ * by 1, and 1 is never a multiple of 7, so `i % 7` and `(i+1) % 7` always
+ * land on different palette entries — true no matter how many campaigns
+ * there are, not just up to 7.
+ */
+const CAMPAIGN_COLOR_PALETTE = [
+  "f6ad55", // orange
+  "63b3ed", // blue
+  "68d391", // green
+  "fc8181", // coral/red
+  "b794f4", // purple
+  "76e4f7", // cyan
+  "f6e05e", // yellow
+];
+
+function campaignRingColor(index: number): string {
+  return CAMPAIGN_COLOR_PALETTE[index % CAMPAIGN_COLOR_PALETTE.length];
+}
 
 function cprShortForChart(label: string): string {
   return label.replace("COST PER 1K ", "CP 1K ");
@@ -94,7 +110,7 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
   const CIRC_Y = 158;
 
   chart.campaigns.forEach((d, ci) => {
-    const col = TYPE_COLOR[d.resLabel] || DEFAULT_COLOR;
+    const col = campaignRingColor(ci);
     const colX = MARGIN + ci * (COL_W + MARGIN);
     const cx = colX + Math.floor(COL_W / 2);
     const circX = cx - Math.floor(CIRCLE_D / 2);
@@ -189,14 +205,14 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
     );
   });
 
-  // Spend proportion bar along the very bottom.
+  // Spend proportion bar along the very bottom — same per-campaign color as
+  // its own donut ring above, so a segment is identifiable at a glance.
   const barY = H - 12;
   let barOffset = 0;
-  chart.campaigns.forEach((d) => {
+  chart.campaigns.forEach((d, ci) => {
     const pct = chart.totalAllSpend > 0 ? d.spend / chart.totalAllSpend : 1 / n;
     const segW = Math.max(Math.round(W * pct), 2);
-    const col = TYPE_COLOR[d.resLabel] || DEFAULT_COLOR;
-    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: 8, fillHex: col }));
+    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: 8, fillHex: campaignRingColor(ci) }));
     barOffset += segW;
   });
 

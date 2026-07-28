@@ -221,6 +221,10 @@ describe("buildReportData — multi-campaign integration", () => {
   });
 
   it("computes the MTD row and derives table header labels from it", () => {
+    // Two distinct objectives across this fixture's 3 campaigns: Purchases
+    // (Shoes campaign) and Reach (Brand campaign) — both get their own
+    // column now (Fix 1: Reach is no longer excluded just because another
+    // objective also exists), Purchases first since it has far more results.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
       // " MTD" suffix marks this as a partial, still-in-progress month,
@@ -232,16 +236,16 @@ describe("buildReportData — multi-campaign integration", () => {
       impressions: "140,000",
       ctr: "1.60%",
       cpc: "₹3.50",
-      result1: "21",
-      cpr1: "₹50.00",
-      result2: "—",
-      cpr2: "—",
+      resultColumns: [
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
+        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹20.00" },
+      ],
     });
     expect(data.tableHeaderLabels).toEqual({
-      result1Label: "PURCHASES",
-      cpr1Label: "COST PER PURCHASE",
-      result2Label: "—",
-      cpr2Label: "—",
+      resultColumns: [
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE" },
+        { label: "REACH", costLabel: "COST PER 1K REACH" },
+      ],
     });
   });
 
@@ -362,7 +366,7 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     });
 
     expect(data.periodRow.spend).toBe("$500");
-    expect(data.periodRow.result1).toBe("10");
+    expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("10");
   });
 
   it("deselecting an entire campaign also removes its Period CSV rows", () => {
@@ -517,13 +521,15 @@ describe("buildReportData — paused account", () => {
     expect(data.isPaused).toBe(true);
     expect(data.periodRow.hasData).toBe(true);
     expect(data.periodRow.spend).toBe("$500");
-    expect(data.periodRow.result1).toBe("10");
+    expect(data.periodRow.resultColumns).toEqual([
+      { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "10", cprValue: "$50.00" },
+    ]);
     // Only the MTD row gets the " MTD" suffix — the Period row is a
     // completed month, not a partial in-progress one.
     expect(data.periodRow.monthLabel).not.toContain("MTD");
     expect(data.mtdRow.hasData).toBe(false);
     // MTD is empty, so header labels fall back to the period row's groups.
-    expect(data.tableHeaderLabels.result1Label).toBe("PURCHASES");
+    expect(data.tableHeaderLabels.resultColumns[0].label).toBe("PURCHASES");
   });
 });
 
@@ -591,12 +597,12 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
 
   it("uses the real objective names as the Combined Total table's column headers", () => {
     // Leads (form) has more results (42) than Website subscriptions (35), so
-    // it's group 1 (columns 7-8) and subscriptions is group 2 (columns 9-10).
+    // it's the first result-column pair and subscriptions is the second.
     expect(data.tableHeaderLabels).toEqual({
-      result1Label: "META FORM LEADS",
-      cpr1Label: "COST PER LEAD",
-      result2Label: "SUBSCRIPTIONS",
-      cpr2Label: "COST PER SUBSCRIPTION",
+      resultColumns: [
+        { label: "META FORM LEADS", costLabel: "COST PER LEAD" },
+        { label: "SUBSCRIPTIONS", costLabel: "COST PER SUBSCRIPTION" },
+      ],
     });
   });
 
@@ -607,6 +613,10 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
 });
 
 describe("buildCombinedTotalTableGrid", () => {
+  function resultCol(label: string, costLabel: string, value = "20", cprValue = "₹50.00") {
+    return { label, costLabel, value, cprValue };
+  }
+
   function tableRow(overrides: Partial<TableRowData> = {}): TableRowData {
     return {
       hasData: true,
@@ -616,98 +626,124 @@ describe("buildCombinedTotalTableGrid", () => {
       impressions: "10,000",
       ctr: "1.50%",
       cpc: "₹2.00",
-      result1: "20",
-      cpr1: "₹50.00",
-      result2: "—",
-      cpr2: "—",
-      g1Label: "RESULTS",
-      g1CprLabel: "COST PER RESULT",
-      g2Label: null,
-      g2CprLabel: null,
+      resultColumns: [resultCol("RESULTS", "COST PER RESULT")],
       ...overrides,
     };
   }
 
-  const headers: TableHeaderLabels = {
-    result1Label: "QUOTE REQUESTS",
-    cpr1Label: "COST PER QUOTE REQUEST",
-    result2Label: "—",
-    cpr2Label: "—",
+  const oneObjectiveHeaders: TableHeaderLabels = {
+    resultColumns: [{ label: "QUOTE REQUESTS", costLabel: "COST PER QUOTE REQUEST" }],
   };
 
-  // Rule 1: the grid is always exactly 3 rows x 10 columns.
-  it("is always exactly 3 rows by 10 columns", () => {
-    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), headers);
+  it("is exactly 3 rows by 8 columns for a single objective (6 static + 1 pair)", () => {
+    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), oneObjectiveHeaders);
     expect(grid).toHaveLength(3);
-    for (const row of grid) expect(row).toHaveLength(10);
+    for (const row of grid) expect(row).toHaveLength(8);
   });
 
-  it("row 0 is the header row: 6 static labels then the 4 dynamic objective labels", () => {
-    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), headers);
-    expect(grid[0]).toEqual([
-      ...COMBINED_TOTAL_STATIC_HEADERS,
-      "QUOTE REQUESTS",
-      "COST PER QUOTE REQUEST",
-      "—",
-      "—",
-    ]);
+  it("row 0 is the header row: 6 static labels then the objective's own label pair", () => {
+    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), oneObjectiveHeaders);
+    expect(grid[0]).toEqual([...COMBINED_TOTAL_STATIC_HEADERS, "QUOTE REQUESTS", "COST PER QUOTE REQUEST"]);
   });
 
-  // Rule 2: reach column (index 2) — the grid builder just carries whatever
+  // Reach column (index 2) — the grid builder just carries whatever
   // computeTableRow gave it straight through; both rows now get a real
   // summed number (see computeTableRow's own reach tests for the sum logic).
   it("column 2 (Reach): carries the Period and MTD row's own reach values through unchanged", () => {
     const periodRow = tableRow({ reach: "46,266" });
     const mtdRow = tableRow({ reach: "90,779" });
-    const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+    const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, oneObjectiveHeaders);
     expect(grid[0][2]).toBe("Reach"); // header never disappears
     expect(grid[1][2]).toBe("46,266"); // Period row
     expect(grid[2][2]).toBe("90,779"); // MTD row
   });
 
-  // Rule 3: dynamic result columns (indexes 6-9) show real objective names.
-  it("columns 6-9: show the actual objective names, never generic 'Results'/'CPR'", () => {
-    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), headers);
+  it("dynamic result columns show the actual objective names, never generic 'Results'/'CPR'", () => {
+    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), oneObjectiveHeaders);
     expect(grid[0][6]).toBe("QUOTE REQUESTS");
     expect(grid[0][7]).toBe("COST PER QUOTE REQUEST");
     expect(grid[0][6]).not.toBe("Results");
     expect(grid[0][7]).not.toBe("CPR");
   });
 
-  it("columns 8-9 show '—' when there's no second objective", () => {
-    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), headers);
-    expect(grid[0][8]).toBe("—");
-    expect(grid[0][9]).toBe("—");
-  });
-
-  it("columns 8-9 show the real second objective's labels when one exists", () => {
+  it("shows the real second objective's labels when a row has two", () => {
     const twoObjectiveHeaders: TableHeaderLabels = {
-      result1Label: "LEADS (FORM)",
-      cpr1Label: "COST PER LEAD",
-      result2Label: "WEBSITE SUBSCRIPTIONS",
-      cpr2Label: "COST PER SUBSCRIPTION",
+      resultColumns: [
+        { label: "LEADS (FORM)", costLabel: "COST PER LEAD" },
+        { label: "WEBSITE SUBSCRIPTIONS", costLabel: "COST PER SUBSCRIPTION" },
+      ],
     };
-    const grid = buildCombinedTotalTableGrid(tableRow(), tableRow(), twoObjectiveHeaders);
+    const row = tableRow({
+      resultColumns: [resultCol("LEADS (FORM)", "COST PER LEAD"), resultCol("WEBSITE SUBSCRIPTIONS", "COST PER SUBSCRIPTION")],
+    });
+    const grid = buildCombinedTotalTableGrid(row, row, twoObjectiveHeaders);
     expect(grid[0][8]).toBe("WEBSITE SUBSCRIPTIONS");
     expect(grid[0][9]).toBe("COST PER SUBSCRIPTION");
   });
 
-  // Rule 5: MTD month label.
+  // Fix 1: no objective should ever be dropped, however many are running.
+  it("grows to 12 columns for 3 objectives and 14 for 4, never dropping one", () => {
+    const threeHeaders: TableHeaderLabels = {
+      resultColumns: [
+        { label: "LINK CLICKS", costLabel: "COST PER CLICK" },
+        { label: "META FORM LEADS", costLabel: "COST PER LEAD" },
+        { label: "REACH", costLabel: "COST PER 1K REACH" },
+      ],
+    };
+    const threeRow = tableRow({
+      resultColumns: [
+        resultCol("LINK CLICKS", "COST PER CLICK"),
+        resultCol("META FORM LEADS", "COST PER LEAD"),
+        resultCol("REACH", "COST PER 1K REACH"),
+      ],
+    });
+    const threeGrid = buildCombinedTotalTableGrid(threeRow, threeRow, threeHeaders);
+    expect(threeGrid[0]).toHaveLength(12);
+    expect(threeGrid[0]).toEqual([...COMBINED_TOTAL_STATIC_HEADERS, "LINK CLICKS", "COST PER CLICK", "META FORM LEADS", "COST PER LEAD", "REACH", "COST PER 1K REACH"]);
+
+    const fourHeaders: TableHeaderLabels = {
+      resultColumns: [...threeHeaders.resultColumns, { label: "APP INSTALLS", costLabel: "COST PER INSTALL" }],
+    };
+    const fourRow = tableRow({
+      resultColumns: [...threeRow.resultColumns, resultCol("APP INSTALLS", "COST PER INSTALL")],
+    });
+    const fourGrid = buildCombinedTotalTableGrid(fourRow, fourRow, fourHeaders);
+    expect(fourGrid[0]).toHaveLength(14);
+    expect(fourGrid[0][12]).toBe("APP INSTALLS");
+  });
+
+  it("aligns each row's data under the right header column by label, not position, when the two rows' objective mixes differ", () => {
+    const headers: TableHeaderLabels = {
+      resultColumns: [
+        { label: "LEADS (FORM)", costLabel: "COST PER LEAD" },
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE" },
+      ],
+    };
+    // Period row only ran Purchases; MTD row only runs Leads — a real
+    // scenario where the objective mix changed between the two periods.
+    const periodRow = tableRow({ resultColumns: [resultCol("PURCHASES", "COST PER PURCHASE", "5", "₹40.00")] });
+    const mtdRow = tableRow({ resultColumns: [resultCol("LEADS (FORM)", "COST PER LEAD", "12", "₹15.00")] });
+    const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+
+    // Period row: Leads column is blank, Purchases column has real data.
+    expect(grid[1]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "—", "—", "5", "₹40.00"]);
+    // MTD row: the reverse.
+    expect(grid[2]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "12", "₹15.00", "—", "—"]);
+  });
+
+  // MTD month label.
   it("row 2 (MTD) column 0 carries the ' MTD'-suffixed month label computeTableRow already produced", () => {
     const periodRow = tableRow({ monthLabel: "Jun 1 - Jun 30" });
     const mtdRow = tableRow({ monthLabel: "Jul 1 - Jul 23 MTD" });
-    const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+    const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, oneObjectiveHeaders);
     expect(grid[1][0]).toBe("Jun 1 - Jun 30");
     expect(grid[2][0]).toBe("Jul 1 - Jul 23 MTD");
   });
 
-  it("row order matches TableRowData's own field order for every column", () => {
-    const periodRow = tableRow({
-      monthLabel: "M", spend: "S", reach: "R", impressions: "I", ctr: "C1", cpc: "C2",
-      result1: "R1", cpr1: "CP1", result2: "R2", cpr2: "CP2",
-    });
-    const grid = buildCombinedTotalTableGrid(periodRow, tableRow(), headers);
-    expect(grid[1]).toEqual(["M", "S", "R", "I", "C1", "C2", "R1", "CP1", "R2", "CP2"]);
+  it("row order matches TableRowData's own field order for every static column", () => {
+    const periodRow = tableRow({ monthLabel: "M", spend: "S", reach: "R", impressions: "I", ctr: "C1", cpc: "C2" });
+    const grid = buildCombinedTotalTableGrid(periodRow, tableRow(), oneObjectiveHeaders);
+    expect(grid[1].slice(0, 6)).toEqual(["M", "S", "R", "I", "C1", "C2"]);
   });
 });
 

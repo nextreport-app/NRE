@@ -127,6 +127,13 @@ export interface ChartSlideData {
   activeCampaignCount: number;
 }
 
+export interface ResultColumnData {
+  label: string;
+  costLabel: string;
+  value: string;
+  cprValue: string;
+}
+
 export interface TableRowData {
   hasData: boolean;
   monthLabel: string;
@@ -135,21 +142,21 @@ export interface TableRowData {
   impressions: string;
   ctr: string;
   cpc: string;
-  result1: string;
-  cpr1: string;
-  result2: string;
-  cpr2: string;
-  g1Label: string;
-  g1CprLabel: string;
-  g2Label: string | null;
-  g2CprLabel: string | null;
+  /**
+   * One entry per distinct objective present in this row's own data, in
+   * getResultGroups' count-desc order — always at least one (a generic
+   * RESULTS/COST PER RESULT placeholder when the row has no rows at all).
+   * Not capped at 2: Fix 1 (product owner spec) requires every objective
+   * running simultaneously to get its own column pair on the Combined
+   * Total table, however many there are — a campaign mix of Link Clicks +
+   * Meta Form Leads + Reach must show all three, not silently drop one.
+   */
+  resultColumns: ResultColumnData[];
 }
 
 export interface TableHeaderLabels {
-  result1Label: string;
-  cpr1Label: string;
-  result2Label: string;
-  cpr2Label: string;
+  /** One {label, costLabel} pair per result-column the Combined Total table needs — the union of every objective present in EITHER the Period or MTD row, since both rows render under one shared header (see buildReportData's tableHeaderLabels computation for why a union, not just one row's own columns). */
+  resultColumns: { label: string; costLabel: string }[];
 }
 
 export interface CoverData {
@@ -267,14 +274,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
       impressions: "—",
       ctr: "—",
       cpc: "—",
-      result1: "0",
-      cpr1: "—",
-      result2: "—",
-      cpr2: "—",
-      g1Label: "RESULTS",
-      g1CprLabel: "COST PER RESULT",
-      g2Label: null,
-      g2CprLabel: null,
+      resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }],
     };
   }
 
@@ -301,11 +301,15 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   const avgCtr = average(ctrs);
   const avgCpc = average(cpcs);
 
-  const REACH_LABELS = ["REACH", "REACH (TOTAL)"];
+  // Every distinct objective present in this row's own data becomes its own
+  // column pair — Reach included: it used to be filtered out here unless it
+  // was the ONLY objective present, on the assumption a fixed 2-column table
+  // couldn't spare room for it alongside real conversion objectives. Now
+  // that the table grows to fit (Fix 1), that exclusion no longer applies —
+  // Reach just naturally sorts last most of the time (Meta doesn't populate
+  // a `results` count for it, so its count is usually 0, same as any other
+  // group with no results yet).
   const allGroups = getResultGroups(rows);
-  const groups = allGroups.filter((g) => !REACH_LABELS.includes(g.label));
-  const g1 = groups[0] || allGroups[0] || { label: "RESULTS", costLabel: "COST PER RESULT", count: 0, avgCpr: 0 };
-  const g2 = groups[1] || null;
 
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthLabel = isMtdRow ? `${rawMonthLabel} MTD` : rawMonthLabel;
@@ -318,34 +322,37 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
     impressions: fmtNumber(totalImpr),
     ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
     cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
-    result1: fmtNumber(g1.count),
-    cpr1: g1.avgCpr > 0 ? fmtCurrency2dp(g1.avgCpr, currencySymbol) : "—",
-    result2: g2 ? fmtNumber(g2.count) : "—",
-    cpr2: g2 ? (g2.avgCpr > 0 ? fmtCurrency2dp(g2.avgCpr, currencySymbol) : "—") : "—",
-    g1Label: g1.label,
-    // The real costLabel from getResultLabels() (e.g. "COST PER LEAD",
-    // "COST PER SUBSCRIPTION") — the Combined Total table always shows the
-    // actual objective's cost label, never an abbreviation.
-    g1CprLabel: g1.costLabel,
-    g2Label: g2 ? g2.label : null,
-    g2CprLabel: g2 ? g2.costLabel : null,
+    resultColumns: allGroups.map((g) => ({
+      label: g.label,
+      // The real costLabel from getResultLabels() (e.g. "COST PER LEAD",
+      // "COST PER SUBSCRIPTION") — the Combined Total table always shows
+      // the actual objective's cost label, never an abbreviation.
+      costLabel: g.costLabel,
+      value: fmtNumber(g.count),
+      cprValue: g.avgCpr > 0 ? fmtCurrency2dp(g.avgCpr, currencySymbol) : "—",
+    })),
   };
 }
 
 /**
- * The Combined Total ("Campaign Overview") slide's table is fixed at exactly
- * 3 rows × 10 columns — this is the single, explicit source of truth for
- * that shape and what goes in each of the 30 cells, consumed positionally
- * by the PPTX render layer (see pptx/table-slide.ts) so a column can never
- * silently disappear: the render layer validates the template's actual
- * table against these same dimensions and throws if they ever drift apart,
- * instead of quietly dropping whatever doesn't line up.
+ * The Combined Total ("Campaign Overview") slide's table is 3 rows × (6 +
+ * 2 per objective) columns — 6 static columns are always the same; this is
+ * the single, explicit source of truth for those and for the grid's overall
+ * shape, consumed positionally by the PPTX render layer (see
+ * pptx/table-slide.ts) so a column can never silently disappear: the render
+ * layer validates the template's actual table against this same shape and
+ * throws if they ever drift apart (or grows/shrinks the table to match —
+ * see table-slide.ts's file header) instead of quietly dropping whatever
+ * doesn't line up.
  *
  * Column order: Month, Ad Spend, Reach, Impressions, CTR (All), CPC (All),
- * then the 4 dynamic result-type columns (result1/cpr1/result2/cpr2) — this
- * is a direct positional mapping of TableRowData's own field order, so
- * adding/reordering a TableRowData field must be a deliberate, visible
- * change here too, not something that happens to line up implicitly.
+ * then one [label, cost label] pair per entry in headers.resultColumns —
+ * however many objectives are running (Fix 1: never capped at 2, so a
+ * Link Clicks + Meta Form Leads + Reach account gets 3 pairs, not 2 with the
+ * third dropped). This is a direct positional mapping of TableRowData's own
+ * field order, so adding/reordering a TableRowData field must be a
+ * deliberate, visible change here too, not something that happens to line
+ * up implicitly.
  */
 export const COMBINED_TOTAL_STATIC_HEADERS = [
   "Month",
@@ -363,23 +370,21 @@ export function buildCombinedTotalTableGrid(
 ): string[][] {
   const headerRow = [
     ...COMBINED_TOTAL_STATIC_HEADERS,
-    headers.result1Label,
-    headers.cpr1Label,
-    headers.result2Label,
-    headers.cpr2Label,
+    ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel]),
   ];
-  const dataRow = (row: TableRowData): string[] => [
-    row.monthLabel,
-    row.spend,
-    row.reach,
-    row.impressions,
-    row.ctr,
-    row.cpc,
-    row.result1,
-    row.cpr1,
-    row.result2,
-    row.cpr2,
-  ];
+  const dataRow = (row: TableRowData): string[] => {
+    // Looked up by objective LABEL, not position: a row's own resultColumns
+    // can be a different subset/order than the shared header (e.g. the
+    // Period row ran a different objective mix than MTD) — "—" for any
+    // header column this particular row has no data for, same as the old
+    // fixed 2-column version did for an unused second objective.
+    const byLabel = new Map(row.resultColumns.map((c) => [c.label, c]));
+    const resultCells = headers.resultColumns.flatMap(({ label }) => {
+      const col = byLabel.get(label);
+      return col ? [col.value, col.cprValue] : ["—", "—"];
+    });
+    return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
+  };
   return [headerRow, dataRow(periodRow), dataRow(mtdRow)];
 }
 
@@ -488,15 +493,24 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const mtdRow = computeTableRow(mtdRows, currencySymbol, true);
 
   // Table header labels: fillMTDRow_ always runs after fillPeriodSlide_ in the
-  // source and both write the same header cells, so MTD's labels win whenever
-  // MTD has data; only fall back to the period row's labels if MTD is empty.
+  // source and both write the same header cells, so MTD's own objectives win
+  // whenever MTD has data; only fall back to the period row's when MTD is
+  // empty. When BOTH rows have real data, though, their objective mixes can
+  // genuinely differ (e.g. Period ran an objective MTD no longer does) — Fix
+  // 1 unions both rows' labels rather than picking one exclusively, so an
+  // objective present in either row always gets a column, never dropped.
   const headerSource = mtdRow.hasData ? mtdRow : periodRow;
-  const tableHeaderLabels: TableHeaderLabels = {
-    result1Label: headerSource.g1Label,
-    cpr1Label: headerSource.g1CprLabel,
-    result2Label: headerSource.g2Label ?? "—",
-    cpr2Label: headerSource.g2CprLabel ?? "—",
-  };
+  const otherSource = headerSource === mtdRow ? periodRow : mtdRow;
+  const seenLabels = new Set<string>();
+  const resultColumnHeaders: { label: string; costLabel: string }[] = [];
+  for (const row of otherSource.hasData ? [headerSource, otherSource] : [headerSource]) {
+    for (const col of row.resultColumns) {
+      if (seenLabels.has(col.label)) continue;
+      seenLabels.add(col.label);
+      resultColumnHeaders.push({ label: col.label, costLabel: col.costLabel });
+    }
+  }
+  const tableHeaderLabels: TableHeaderLabels = { resultColumns: resultColumnHeaders };
 
   // ── Paused case: single message slide, no campaign/ad-set/chart slides ──
   if (isPaused) {

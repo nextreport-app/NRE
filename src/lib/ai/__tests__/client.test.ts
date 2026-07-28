@@ -23,7 +23,7 @@ describe("callGroq", () => {
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.model).toBe("llama-3.3-70b-versatile");
-    expect(body.max_tokens).toBe(500);
+    expect(body.max_tokens).toBe(800);
     expect(body.temperature).toBe(0.4);
   });
 
