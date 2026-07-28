@@ -5,7 +5,7 @@ import { slideAiKey } from "../../pptx/render";
 import type { ReportData } from "../../nre/report-data";
 
 vi.mock("../client", () => ({
-  callAI: vi.fn(async (prompt: string) => `AI:${prompt.slice(0, 10)}`),
+  callAI: vi.fn(async (prompt: string) => `AI:${prompt.slice(0, 10)}.`),
 }));
 
 const PAUSED_SUMMARY_TEXT =
@@ -161,6 +161,92 @@ describe("generateInsights", () => {
       expect(result.get(slideAiKey(data.campaignSlides[0]))!.summary).toBe(PAUSED_SUMMARY_TEXT);
       expect(result.get(slideAiKey(data.adSetSlides[0]))!.summary).toBe(PAUSED_SUMMARY_TEXT);
       expect(vi.mocked(callAI)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("truncated AI response fallback", () => {
+    it("replaces a summary that doesn't end with a period with the deterministic fallback sentence", async () => {
+      vi.mocked(callAI).mockImplementation(async (prompt: string) =>
+        prompt.startsWith("Write a campaign performance summary")
+          ? "The campaign achieved a 4.48% click-through rate and a $2" // truncated mid-CPC
+          : "AI:complete insights.",
+      );
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const data = makeReportData();
+      const result = await generateInsights(data, { groqApiKey: "k" });
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+
+      expect(campaignCopy.summary).toBe(
+        "During Jul 13 - Jul 19, the Campaign A campaign generated 5 LEADS at a $20.00 COST PER LEAD, " +
+          "reaching 1,000 people with 2,000 impressions. The campaign achieved a 1.00% click-through rate " +
+          "and a $2.00 cost per click, reflecting current audience engagement levels.",
+      );
+      expect(campaignCopy.insights).toBe("AI:complete insights.");
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[ai:generate-insights] AI summary truncated for Campaign A — using structured fallback",
+      );
+
+      warnSpy.mockRestore();
+      vi.mocked(callAI).mockImplementation(async (prompt: string) => `AI:${prompt.slice(0, 10)}.`);
+    });
+
+    it("replaces insights that don't end with a period with the deterministic fallback sentence", async () => {
+      vi.mocked(callAI).mockImplementation(async (prompt: string) =>
+        prompt.startsWith("Write the Key Insights") ? "Budget will shift toward top-performing ads while under" : "AI:complete summary.",
+      );
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const data = makeReportData();
+      const result = await generateInsights(data, { groqApiKey: "k" });
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+
+      expect(campaignCopy.summary).toBe("AI:complete summary.");
+      expect(campaignCopy.insights).toBe(
+        "This week Campaign A spent $100 reaching 1,000 people with a 1.00% CTR. With 5 LEADS recorded, " +
+          "the campaign shows developing traction at $20.00 per result. To maximise results, budget will shift " +
+          "toward top-performing ads while underperformers are paused, with fresh creatives and refined targeting " +
+          "planned for the coming week.",
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[ai:generate-insights] AI insights truncated for Campaign A — using structured fallback",
+      );
+
+      warnSpy.mockRestore();
+      vi.mocked(callAI).mockImplementation(async (prompt: string) => `AI:${prompt.slice(0, 10)}.`);
+    });
+
+    it("treats a response ending in trailing whitespace after a period as complete, not truncated", async () => {
+      vi.mocked(callAI).mockImplementation(async () => "A complete sentence.   ");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const data = makeReportData();
+      const result = await generateInsights(data, { groqApiKey: "k" });
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+
+      expect(campaignCopy.summary).toBe("A complete sentence.");
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+      vi.mocked(callAI).mockImplementation(async (prompt: string) => `AI:${prompt.slice(0, 10)}.`);
+    });
+
+    it("does not run the fallback text through capSummary/capInsights (it's already complete, capping could re-truncate it)", async () => {
+      // The fallback sentence for this fixture easily exceeds 220 chars —
+      // if it were run through capSummary it could get cut at a sentence
+      // boundary well before the end, defeating the whole point.
+      vi.mocked(callAI).mockImplementation(async () => "truncated with no period");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const data = makeReportData();
+      const result = await generateInsights(data, { groqApiKey: "k" });
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+
+      expect(campaignCopy.summary.endsWith("audience engagement levels.")).toBe(true);
+      expect(campaignCopy.insights.endsWith("planned for the coming week.")).toBe(true);
+
+      warnSpy.mockRestore();
+      vi.mocked(callAI).mockImplementation(async (prompt: string) => `AI:${prompt.slice(0, 10)}.`);
     });
   });
 });

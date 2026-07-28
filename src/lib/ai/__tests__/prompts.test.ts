@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildInsightPrompt, buildSummaryPrompt, capInsights, capSummary } from "../prompts";
+import {
+  buildFallbackInsights,
+  buildFallbackSummary,
+  buildInsightPrompt,
+  buildSummaryPrompt,
+  capInsights,
+  capSummary,
+} from "../prompts";
 import type { AiContext } from "../../nre/report-data";
 
 function ctx(overrides: Partial<AiContext> = {}): AiContext {
@@ -114,5 +121,54 @@ describe("capInsights", () => {
     const long = "X".repeat(400) + ".";
     const result = capInsights(long);
     expect(result.length).toBeLessThanOrEqual(321);
+  });
+});
+
+describe("buildFallbackSummary", () => {
+  it("builds the exact 2-sentence structure from real data, always ending in a period", () => {
+    const result = buildFallbackSummary(ctx());
+    expect(result).toBe(
+      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign generated 21 PURCHASES at a " +
+        "₹50.00 COST PER PURCHASE, reaching 12,600 people with 45,000 impressions. The campaign achieved a 2.00% " +
+        "click-through rate and a ₹3.50 cost per click, reflecting current audience engagement levels.",
+    );
+    expect(result.endsWith(".")).toBe(true);
+  });
+
+  it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
+    const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
+    expect(result).toContain("achieved a 0.35% click-through rate");
+    expect(result).not.toContain("0.35%%");
+  });
+});
+
+describe("buildFallbackInsights", () => {
+  it("builds the exact 3-part structure from real data, always ending in a period", () => {
+    const result = buildFallbackInsights(ctx());
+    expect(result).toBe(
+      "This week Shoes - Purchases (combined 2 ad sets) spent ₹1,050 reaching 12,600 people with a 2.00% CTR. " +
+        "With 21 PURCHASES recorded, the campaign shows strong traction at ₹50.00 per result. To maximise results, " +
+        "budget will shift toward top-performing ads while underperformers are paused, with fresh creatives and " +
+        "refined targeting planned for the coming week.",
+    );
+    expect(result.endsWith(".")).toBe(true);
+  });
+
+  it.each([
+    [0, "early"],
+    [2, "early"],
+    [3, "developing"],
+    [9, "developing"],
+    [10, "strong"],
+    [50, "strong"],
+  ])("describes %i results as '%s' traction", (resultsNum, expectedWord) => {
+    const result = buildFallbackInsights(ctx({ resultsNum }));
+    expect(result).toContain(`shows ${expectedWord} traction`);
+  });
+
+  it("never double-appends a percent sign", () => {
+    const result = buildFallbackInsights(ctx({ ctr: "0.35%" }));
+    expect(result).toContain("with a 0.35% CTR");
+    expect(result).not.toContain("0.35%%");
   });
 });

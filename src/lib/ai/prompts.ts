@@ -53,6 +53,58 @@ export function buildInsightPrompt(ctx: AiContext): string {
   );
 }
 
+/**
+ * ctx.ctr already carries its own "%" suffix (see report-data.ts's
+ * fmtPercent) — the fallback templates below both write a literal "%"
+ * immediately after the value, so this strips the one already baked into
+ * the string to avoid "4.48%%".
+ */
+function ctrNumberOnly(ctr: string): string {
+  return ctr.endsWith("%") ? ctr.slice(0, -1) : ctr;
+}
+
+/**
+ * Deterministic, always-complete replacement for buildSummaryPrompt's AI
+ * output when that output comes back truncated (see generate-insights.ts's
+ * end-with-a-period check) — built entirely from data already on hand, so
+ * it can never itself be cut off mid-sentence the way an AI response can.
+ */
+export function buildFallbackSummary(ctx: AiContext): string {
+  return (
+    "During " + ctx.dateRange + ", the " + ctx.ctx + " campaign generated " + ctx.results + " " + ctx.resultLabel +
+    " at a " + ctx.cpr + " " + ctx.costLabel + ", reaching " + ctx.reach + " people with " + ctx.impressions +
+    " impressions. The campaign achieved a " + ctrNumberOnly(ctx.ctr) + "% click-through rate and a " + ctx.cpc +
+    " cost per click, reflecting current audience engagement levels."
+  );
+}
+
+// Results-volume wording for buildFallbackInsights — no explicit thresholds
+// were specified for this hardcoded fallback (unlike the numeric rules
+// elsewhere in this app), so these are a reasonable, documented judgment
+// call: "early" mirrors health.ts's own learning-phase results<3 threshold,
+// "strong" is a round double-digit result count, "developing" is everything
+// in between.
+function tractionWord(resultsNum: number): string {
+  if (resultsNum < 3) return "early";
+  if (resultsNum < 10) return "developing";
+  return "strong";
+}
+
+/**
+ * Deterministic, always-complete replacement for buildInsightPrompt's AI
+ * output when that output comes back truncated — same role as
+ * buildFallbackSummary above, for the Key Insights section instead.
+ */
+export function buildFallbackInsights(ctx: AiContext): string {
+  return (
+    "This week " + ctx.ctx + " spent " + ctx.spend + " reaching " + ctx.reach + " people with a " +
+    ctrNumberOnly(ctx.ctr) + "% CTR. With " + ctx.results + " " + ctx.resultLabel + " recorded, the campaign shows " +
+    tractionWord(ctx.resultsNum) + " traction at " + ctx.cpr + " per result. To maximise results, budget will shift " +
+    "toward top-performing ads while underperformers are paused, with fresh creatives and refined targeting planned " +
+    "for the coming week."
+  );
+}
+
 /** Port of the 220-char summary cap from writeInsights_ — a safety net in case the AI ignores the prompt's own "under 60 words" instruction, not a target length in itself. */
 export function capSummary(raw: string): string {
   const summary = raw.trim();

@@ -13,13 +13,31 @@
  * and costs nothing per campaign. This is a per-slide check (product
  * decision), not account-wide: one paused campaign among several active
  * ones only replaces that one slide's copy.
+ *
+ * Separately, a NON-zero-spend slide's AI response can still come back
+ * truncated mid-sentence (e.g. "...achieved a 4.48% click-through rate and
+ * a $2." with the actual CPC value cut off) — raising max_tokens doesn't
+ * reliably fix this (500 was already generous for a 2-3 sentence response,
+ * yet truncation still happened), so instead every response is checked for
+ * a trailing period after the AI call: a response that doesn't end with one
+ * is discarded outright in favor of a deterministic, data-only fallback
+ * sentence (buildFallbackSummary/buildFallbackInsights) that can't itself
+ * be cut off, since it's built from values already on hand rather than
+ * generated token-by-token.
  */
 
 import type { AiContext, ReportData } from "../nre/report-data";
 import type { AiCopy } from "../pptx/fill-tags";
 import { slideAiKey } from "../pptx/render";
 import { callAI, type AiKeys } from "./client";
-import { buildInsightPrompt, buildSummaryPrompt, capInsights, capSummary } from "./prompts";
+import {
+  buildFallbackInsights,
+  buildFallbackSummary,
+  buildInsightPrompt,
+  buildSummaryPrompt,
+  capInsights,
+  capSummary,
+} from "./prompts";
 
 // Sub-cent spend is treated as zero — CSV/currency rounding can leave a
 // fractional cent on an otherwise-inactive campaign, and that's still
@@ -34,6 +52,11 @@ const PAUSED_INSIGHTS_TEXT =
 
 function isZeroSpend(ctx: AiContext): boolean {
   return ctx.spendNum < ZERO_SPEND_THRESHOLD;
+}
+
+/** True when `text` (already trimmed) reads as a complete sentence rather than one cut off mid-word/mid-number. */
+function endsComplete(trimmedText: string): boolean {
+  return trimmedText.endsWith(".");
 }
 
 export async function generateInsights(data: ReportData, keys: AiKeys): Promise<Map<string, AiCopy>> {
@@ -53,10 +76,29 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         callAI(buildSummaryPrompt(slide.ai), keys),
         callAI(buildInsightPrompt(slide.ai), keys),
       ]);
-      results.set(slideAiKey(slide), {
-        summary: capSummary(rawSummary),
-        insights: capInsights(rawInsight),
-      });
+
+      // Trailing whitespace (the AI sometimes appends a stray space after
+      // the last character) would otherwise make a complete response look
+      // truncated to an endsComplete() check — trim before checking.
+      const trimmedSummary = rawSummary.trim();
+      let summary: string;
+      if (endsComplete(trimmedSummary)) {
+        summary = capSummary(trimmedSummary);
+      } else {
+        console.warn(`[ai:generate-insights] AI summary truncated for ${slide.campaignName} — using structured fallback`);
+        summary = buildFallbackSummary(slide.ai);
+      }
+
+      const trimmedInsight = rawInsight.trim();
+      let insights: string;
+      if (endsComplete(trimmedInsight)) {
+        insights = capInsights(trimmedInsight);
+      } else {
+        console.warn(`[ai:generate-insights] AI insights truncated for ${slide.campaignName} — using structured fallback`);
+        insights = buildFallbackInsights(slide.ai);
+      }
+
+      results.set(slideAiKey(slide), { summary, insights });
     }),
   );
 
