@@ -29,6 +29,9 @@ export default function Home() {
           Log in
         </Link>
       </div>
+      <Link href="/pricing" className="mt-4 text-sm text-accent hover:underline">
+        View pricing →
+      </Link>
     </main>
   );
 }

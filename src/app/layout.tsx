@@ -35,6 +35,7 @@ export default function RootLayout({
         <footer className="border-t border-navy-border px-6 py-6 text-center text-xs text-ink-muted">
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             <Link href="/about" className="hover:text-ink-secondary">About</Link>
+            <Link href="/pricing" className="hover:text-ink-secondary">Pricing</Link>
             <Link href="/help/download" className="hover:text-ink-secondary">Download Guide</Link>
             <Link href="/privacy" className="hover:text-ink-secondary">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-ink-secondary">Terms of Service</Link>
