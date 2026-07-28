@@ -136,7 +136,11 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  *     long campaign/ad-set name would otherwise wrap (see text-fit.ts).
  *   - CAMPAIGN_SUMMARY/KEY_INSIGHTS are stored bold 12pt in the template;
  *     fixProseFormatting_ is the LAST pass in the pipeline and always forces
- *     13pt non-bold — force that directly.
+ *     non-bold — force that directly. Bumped from 13pt to 14pt (product
+ *     decision, not a source-parity fix like the others in this list): text
+ *     renders visibly smaller once Google Drive converts the .pptx to
+ *     Slides, so every text size in this function is nudged up 1pt to
+ *     compensate, landing closer to the intended size after that conversion.
  * Every other tag keeps the template's own run styling untouched, which
  * (unlike the Slides API) is guaranteed stable since we never re-parse or
  * re-serialize formatting — reusing the template's rPr verbatim.
@@ -171,8 +175,8 @@ export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: Sli
       KEY_INSIGHTS: ai.insights,
     },
     {
-      CAMPAIGN_SUMMARY: { bold: false, sizePt: 13, fontFamily: "Poppins" },
-      KEY_INSIGHTS: { bold: false, sizePt: 13, fontFamily: "Poppins" },
+      CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+      KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
   const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
@@ -209,8 +213,8 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
     },
     {
       CAMPAIGN_NAME: { sizePt: 18 },
-      CAMPAIGN_SUMMARY: { bold: false, sizePt: 13, fontFamily: "Poppins" },
-      KEY_INSIGHTS: { bold: false, sizePt: 13, fontFamily: "Poppins" },
+      CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+      KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
   xml = forceRunStyle(xml, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });

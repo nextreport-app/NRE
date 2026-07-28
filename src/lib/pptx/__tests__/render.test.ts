@@ -226,13 +226,14 @@ describe("renderPptx — real template end-to-end", () => {
 
     expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
-    // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 13pt
+    // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 14pt
     // non-bold Poppins, overriding the template's own bold 12pt Open Sans
-    // placeholder styling, per the product owner's explicit spec.
+    // placeholder styling — bumped from 13pt to 14pt to compensate for text
+    // rendering smaller once Google Drive converts the .pptx to Slides.
     const zip = await JSZip.loadAsync(buffer);
     const campaignSlideXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
     const aiRunRegex =
-      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1300"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>\[AI unavailable/;
+      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1400"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>\[AI unavailable/;
     expect(campaignSlideXml).toMatch(aiRunRegex);
 
     fs.unlinkSync(outPath);

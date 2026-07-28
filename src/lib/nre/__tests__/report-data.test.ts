@@ -918,3 +918,257 @@ describe("buildReportData — campaign with every metric column blank (paused/ze
     });
   });
 });
+
+describe("buildReportData — Fix 1: campaign status is active if ANY ad set is active", () => {
+  function statusAdSetRow(campaignName: string, adSetName: string, deliveryStatus: string, day: string): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: adSetName,
+      result_type: "Purchase",
+      delivery_status: deliveryStatus,
+      spend: "100",
+      reach: "1000",
+      impressions: "3000",
+      results: "2",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  it("shows no badge on a campaign with one active and one paused ad set — previously always showed Inactive/Paused", () => {
+    const rows = [
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("Mixed Campaign", "Active Ad Set", "Active", day)),
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("Mixed Campaign", "Paused Ad Set", "Campaign paused", day)),
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+
+    const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Mixed Campaign")!;
+    expect(campaignSlide.statusIndicator).toBeNull();
+
+    const chartCampaign = data.chart!.campaigns.find((c) => c.name === "Mixed Campaign")!;
+    expect(chartCampaign.isActive).toBe(true);
+    expect(chartCampaign.statusIndicator).toBeNull();
+
+    // Individual ad-set slides still show their own status correctly.
+    const activeAdSet = data.adSetSlides.find((s) => s.adSetName === "Active Ad Set")!;
+    const pausedAdSet = data.adSetSlides.find((s) => s.adSetName === "Paused Ad Set")!;
+    expect(activeAdSet.statusIndicator).toBeNull();
+    expect(pausedAdSet.statusIndicator).toBe("Paused");
+  });
+
+  it("still shows a badge when every ad set in the campaign is non-active", () => {
+    const rows = [
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("All Paused Campaign", "Ad Set A", "Campaign paused", day)),
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("All Paused Campaign", "Ad Set B", "Not delivering", day)),
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "All Paused Campaign")!;
+    expect(campaignSlide.statusIndicator).toBe("Paused");
+  });
+
+  it("treats archived ad sets as non-active for the campaign roll-up", () => {
+    const rows = [
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("Archived-Only Campaign", "Ad Set A", "Archived", day)),
+      ...daysInclusive(13, 19).map((day) => statusAdSetRow("Archived-Only Campaign", "Ad Set B", "Archived", day)),
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Archived-Only Campaign")!;
+    expect(campaignSlide.statusIndicator).toBe("Inactive");
+  });
+});
+
+describe("buildReportData — Fix 2: campaign has MTD data but zero rows in the weekly window", () => {
+  function rowForDate(campaignName: string, day: string, opts: Partial<NreRow> = {}): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: "Only Ad Set",
+      result_type: "Purchase",
+      spend: "50",
+      reach: "500",
+      impressions: "1000",
+      results: "3",
+      ctr: "1.2",
+      cpc: "2",
+      date_start: day,
+      date_end: day,
+      ...opts,
+    };
+  }
+
+  // "Live Campaign" ran the whole month including this week — keeps the
+  // account-wide isPaused check (zero weekly rows ACROSS EVERY campaign)
+  // from tripping, and doubles as the control: unaffected by this fix.
+  const liveRows = daysInclusive(1, 19).map((day) => rowForDate("Live Campaign", day, { delivery_status: "Active" }));
+  // Stopped entirely before the trailing 13-19 July weekly window, but
+  // still within MTD (July 1 - 19) — the exact bug-report scenario.
+  const stoppedRows = daysInclusive(1, 5).map((day) => rowForDate("Stopped Campaign", day, { delivery_status: "Not delivering" }));
+  // Same, but with no delivery_status column data at all for this campaign.
+  const stoppedLeadRows = daysInclusive(1, 5).map((day) => rowForDate("Stopped Lead Campaign", day, { result_type: "Lead", delivery_status: undefined }));
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "₹",
+    timezone: "Asia/Kolkata",
+    monthlyBudget: null,
+    mtdDailyRows: [...liveRows, ...stoppedRows, ...stoppedLeadRows],
+    now: NOW,
+  });
+
+  it("is not paused overall", () => {
+    expect(data.isPaused).toBe(false);
+  });
+
+  it("still generates a campaign slide for the stopped campaign, with zero weekly metrics", () => {
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign");
+    expect(slide).toBeDefined();
+    expect(slide!.metrics).toEqual({
+      spend: "₹0",
+      reach: "0",
+      impressions: "0",
+      results: "0",
+      ctr: "—",
+      cpr: "—",
+      cpc: "—",
+    });
+    expect(slide!.avgFreq).toBe(0);
+  });
+
+  it("shows the Inactive badge, derived from the campaign's own MTD delivery status", () => {
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign")!;
+    expect(slide.statusIndicator).toBe("Inactive");
+  });
+
+  it("defaults to the Inactive badge even when the CSV has no delivery-status data for that campaign", () => {
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Lead Campaign")!;
+    expect(slide.statusIndicator).toBe("Inactive");
+  });
+
+  it("derives the real objective label from MTD rows instead of a generic RESULTS fallback", () => {
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Lead Campaign")!;
+    expect(slide.resultLabel).toBe("LEADS");
+    expect(slide.costLabel).toBe("COST PER LEAD");
+  });
+
+  it("uses the paused-campaign AI copy path via spendNum: 0 (generate-insights.ts's zero-spend check)", () => {
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign")!;
+    expect(slide.ai.spendNum).toBe(0);
+    expect(slide.ai.hasResults).toBe(false);
+    expect(slide.ai.resultsNum).toBe(0);
+  });
+
+  it("leaves the still-running campaign unaffected", () => {
+    const liveSlide = data.campaignSlides.find((s) => s.campaignName === "Live Campaign")!;
+    expect(liveSlide.metrics.spend).not.toBe("₹0");
+    expect(liveSlide.statusIndicator).toBeNull();
+  });
+});
+
+describe("buildReportData — Fix 3: excludes low-spend and archived ad sets from their own slides", () => {
+  function adSetRow(adSetName: string, spend: number, opts: Partial<NreRow> = {}): NreRow[] {
+    return daysInclusive(13, 19).map((day) => ({
+      _raw: { Day: day },
+      campaign_name: "Multi AdSet Campaign",
+      ad_set_name: adSetName,
+      result_type: "Purchase",
+      spend: String(spend),
+      reach: "100",
+      impressions: "300",
+      results: "1",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+      ...opts,
+    }));
+  }
+
+  const bigSpenderRows = adSetRow("Big Spender", 50); // 7 days x $50 = $350 MTD
+  const tinySpenderRows = adSetRow("Tiny Spender", 0.1); // 7 days x $0.10 = $0.70 MTD — under $1
+  const archivedRows = adSetRow("Archived AdSet", 50, { delivery_status: "Archived" }); // well above $1, but archived
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "₹",
+    timezone: "Asia/Kolkata",
+    monthlyBudget: null,
+    mtdDailyRows: [...bigSpenderRows, ...tinySpenderRows, ...archivedRows],
+    now: NOW,
+  });
+
+  it("gives the normal-spend ad set its own slide", () => {
+    expect(data.adSetSlides.some((s) => s.adSetName === "Big Spender")).toBe(true);
+  });
+
+  it("excludes the ad set whose total MTD spend is under $1, even though it has weekly rows", () => {
+    expect(data.adSetSlides.some((s) => s.adSetName === "Tiny Spender")).toBe(false);
+  });
+
+  it("excludes the archived ad set regardless of its spend", () => {
+    expect(data.adSetSlides.some((s) => s.adSetName === "Archived AdSet")).toBe(false);
+  });
+
+  it("still counts every ad set's spend — including excluded ones — in the campaign summary total", () => {
+    const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Multi AdSet Campaign")!;
+    // 350 (Big Spender) + 0.70 (Tiny Spender) + 350 (Archived) = 700.70 -> rounds to 701
+    expect(campaignSlide.metrics.spend).toBe("₹701");
+  });
+
+  it("still shows the campaign summary slide, with no ad-set slides at all, when every ad set in it is below the threshold", () => {
+    function tinyAdSetRows(campaignName: string, adSetName: string, spend: number): NreRow[] {
+      return daysInclusive(13, 19).map((day) => ({
+        _raw: { Day: day },
+        campaign_name: campaignName,
+        ad_set_name: adSetName,
+        result_type: "Purchase",
+        spend: String(spend),
+        reach: "10",
+        impressions: "30",
+        results: "0",
+        ctr: "0",
+        cpc: "0",
+        date_start: day,
+        date_end: day,
+      }));
+    }
+
+    const tinyOnlyRows = [
+      ...tinyAdSetRows("All Tiny Campaign", "Tiny A", 0.05),
+      ...tinyAdSetRows("All Tiny Campaign", "Tiny B", 0.05),
+    ];
+    const tinyData = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: tinyOnlyRows,
+      now: NOW,
+    });
+    expect(tinyData.campaignSlides.some((s) => s.campaignName === "All Tiny Campaign")).toBe(true);
+    expect(tinyData.adSetSlides.filter((s) => s.campaignName === "All Tiny Campaign")).toHaveLength(0);
+  });
+});

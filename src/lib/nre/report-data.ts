@@ -24,11 +24,17 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily } from "./aggregate";
-import { filterRowsByAdSets } from "./ad-sets";
+import { adSetKey, filterRowsByAdSets } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
-import { campaignStatusIndicator, deliveryStatusIndicator, isActiveDeliveryStatus, type DeliveryStatusIndicator } from "./delivery-status";
+import {
+  campaignStatusIndicator,
+  deliveryStatusIndicator,
+  isActiveDeliveryStatus,
+  isArchivedDeliveryStatus,
+  type DeliveryStatusIndicator,
+} from "./delivery-status";
 import { getDateRangeShortLabel, formatDateUS } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
@@ -524,9 +530,30 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     if (!campaignGroups[name]) campaignGroups[name] = [];
     campaignGroups[name].push(row);
   });
+
+  // MTD-grouped rows, keyed by campaign name and by ad-set — needed for two
+  // fixes below, both requiring the FULL month's data, not just the weekly
+  // window: (1) a campaign whose weekly window has zero rows (it stopped
+  // running mid-month) still gets a campaign slide, built from its MTD rows
+  // instead; (2) an individual ad set slide is only worth generating if the
+  // ad set's TOTAL MTD spend clears the threshold, not just its spend within
+  // the (possibly much smaller) weekly window.
+  const mtdCampaignGroups: Record<string, AggRow[]> = {};
+  const mtdAdSetSpend: Record<string, number> = {};
+  mtdRows.forEach((row) => {
+    const name = String(row.campaign_name || "Unknown Campaign").trim();
+    if (!mtdCampaignGroups[name]) mtdCampaignGroups[name] = [];
+    mtdCampaignGroups[name].push(row);
+    const key = adSetKey(name, String(row.ad_set_name || "").trim());
+    mtdAdSetSpend[key] = (mtdAdSetSpend[key] || 0) + parseCellNum(row.spend);
+  });
+
   // Campaign SUMMARY slide order uses plain default sort (not localeCompare) —
-  // matches Object.keys(campaignGroups).sort() in the source exactly.
-  const campaignNames = Object.keys(campaignGroups).sort();
+  // matches Object.keys(campaignGroups).sort() in the source exactly. Unioned
+  // with MTD-only campaign names (zero weekly rows) so those still get a slide.
+  const campaignNames = Array.from(
+    new Set([...Object.keys(campaignGroups), ...Object.keys(mtdCampaignGroups)]),
+  ).sort();
 
   // ── Phase A1: campaign summary slides ────────────────────────────────
   // Collected alongside the slides below — see ObjectiveWarning's doc
@@ -535,6 +562,57 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
     const campRows = campaignGroups[campaignName];
+
+    // A campaign with MTD data but nothing in the selected weekly window —
+    // it stopped running mid-month rather than never having existed. Still
+    // gets a slide: zero weekly metrics, the Inactive/Paused badge (always
+    // shown here, since by definition it had no activity this week), and
+    // the campaign's real objective label read off its MTD rows so it
+    // doesn't regress to a generic "RESULTS" just because the week is empty.
+    // generate-insights.ts's zero-spend check (spendNum < $0.01) picks up
+    // the already-built paused-campaign AI copy automatically from spendNum: 0.
+    if (!campRows || campRows.length === 0) {
+      const mtdCampRows = mtdCampaignGroups[campaignName] || [];
+      const { resultLabel, costLabel } = getResultLabels(mtdCampRows[0]?.result_type || "");
+      const zeroMetrics: SlideMetrics = {
+        spend: fmtCurrency(0, currencySymbol),
+        reach: fmtNumber(0),
+        impressions: fmtNumber(0),
+        results: "0",
+        ctr: "—",
+        cpr: "—",
+        cpc: "—",
+      };
+      const statusIndicator: DeliveryStatusIndicator = hasDeliveryStatusData
+        ? campaignStatusIndicator(mtdCampRows.map((r) => r.delivery_status)) ?? "Inactive"
+        : "Inactive";
+
+      return {
+        kind: "campaign",
+        campaignName,
+        resultLabel,
+        costLabel,
+        metrics: zeroMetrics,
+        dateRangeLine: globalWeekDateRange,
+        avgFreq: 0,
+        statusIndicator,
+        ai: {
+          ctx: campaignName + " (no activity in the selected weekly period)",
+          spend: zeroMetrics.spend,
+          reach: zeroMetrics.reach,
+          results: "0",
+          cpr: zeroMetrics.cpr,
+          ctr: zeroMetrics.ctr,
+          cpc: zeroMetrics.cpc,
+          resultLabel,
+          costLabel,
+          freq: 0,
+          resultsNum: 0,
+          hasResults: false,
+          spendNum: 0,
+        },
+      };
+    }
 
     let totalSpend = 0;
     let totalReach = 0;
@@ -611,6 +689,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     };
   });
 
+  // An ad set below this total-MTD-spend threshold isn't worth its own
+  // slide — still rolled into the campaign summary's totals above, just not
+  // broken out individually. A flat threshold in the account's own
+  // currency (no FX conversion table anywhere in this app — currency here
+  // is a display symbol only), matching the "$1 or equivalent" spec as
+  // literally as this codebase's single-currency-per-account model allows.
+  const MIN_ADSET_MTD_SPEND_FOR_SLIDE = 1;
+
   // ── Phase A2: individual ad set slides (only campaigns with 2+ ad sets) ─
   const adSetSlides: AdSetSlideData[] = [];
   sortedWeeklyRows.forEach((row) => {
@@ -618,6 +704,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const adSetName = String(row.ad_set_name || "").trim();
     const campAdSetCount = campaignGroups[campaignName]?.length || 0;
     if (campAdSetCount <= 1) return; // single ad set — campaign slide already covers it
+
+    // Archived ad sets never get their own slide regardless of spend — a
+    // more final state than merely paused/inactive, which still can.
+    if (isArchivedDeliveryStatus(row.delivery_status)) return;
+    // Total MTD spend (not just this row's weekly spend) below threshold —
+    // too small to warrant breaking out on its own slide.
+    const mtdSpend = mtdAdSetSpend[adSetKey(campaignName, adSetName)] || 0;
+    if (mtdSpend < MIN_ADSET_MTD_SPEND_FOR_SLIDE) return;
 
     const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplay(row, currencySymbol);
     const rowFreq = rowFrequency(row);
