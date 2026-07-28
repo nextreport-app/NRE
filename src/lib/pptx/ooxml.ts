@@ -17,6 +17,7 @@ export function escapeXmlText(text: string): string {
 
 export interface StyleOverride {
   bold?: boolean;
+  italic?: boolean;
   sizePt?: number;
   /** Forces <a:latin>/<a:ea>/<a:cs> typeface — e.g. AI-written text boxes must render in Poppins regardless of the template placeholder's own font. */
   fontFamily?: string;
@@ -30,6 +31,10 @@ function applyStyleOverride(rPrBlock: string, override: StyleOverride | undefine
   if (override.bold !== undefined) {
     const boldAttr = `b="${override.bold ? "1" : "0"}"`;
     block = /\bb="[01]"/.test(block) ? block.replace(/\bb="[01]"/, boldAttr) : block.replace("<a:rPr", `<a:rPr ${boldAttr}`);
+  }
+  if (override.italic !== undefined) {
+    const italicAttr = `i="${override.italic ? "1" : "0"}"`;
+    block = /\bi="[01]"/.test(block) ? block.replace(/\bi="[01]"/, italicAttr) : block.replace("<a:rPr", `<a:rPr ${italicAttr}`);
   }
   if (override.sizePt !== undefined) {
     const szAttr = `sz="${Math.round(override.sizePt * 100)}"`;

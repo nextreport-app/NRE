@@ -134,6 +134,58 @@ describe("buildCoverSlideXml — Prepared By line", () => {
   });
 });
 
+describe("buildCoverSlideXml — health-score tooltip", () => {
+  const SLIDE_HEIGHT_EMU = 6858000;
+
+  function shapeBox(xml: string, locator: string): { y: number; cy: number } {
+    const idx = xml.indexOf(locator);
+    expect(idx).toBeGreaterThan(-1);
+    const start = xml.lastIndexOf("<p:sp>", idx);
+    const end = xml.indexOf("</p:sp>", idx);
+    const match = /<a:off x="(-?\d+)" y="(-?\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(xml.slice(start, end));
+    expect(match).not.toBeNull();
+    const [, , y, , cy] = match!;
+    return { y: Number(y), cy: Number(cy) };
+  }
+
+  it("appends the ⓘ icon right after the badge text", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    expect(xml).toContain("<a:t>Healthy</a:t>");
+    // The icon is a separate run immediately following the badge's own run,
+    // inside the same paragraph — not appended to the badge string itself.
+    const badgeIdx = xml.indexOf("<a:t>Healthy</a:t>");
+    expect(xml.slice(badgeIdx, badgeIdx + 600)).toContain("<a:t> ⓘ</a:t>");
+  });
+
+  it("renders the fixed tooltip sentence at 9pt, italic, muted grey", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    const tooltipText = "Score reflects delivery health: reach, engagement, frequency and spend efficiency. Conversion targets are detailed in slides below.";
+    expect(xml).toContain(`<a:t>${tooltipText}</a:t>`);
+    const idx = xml.indexOf(`<a:t>${tooltipText}</a:t>`);
+    const runStart = xml.lastIndexOf("<a:r>", idx);
+    const rPr = xml.slice(runStart, idx);
+    expect(rPr).toContain('sz="900"');
+    expect(rPr).toContain('i="1"');
+    expect(rPr).toContain('<a:srgbClr val="999999"/>');
+  });
+
+  it("always renders the tooltip, even with no agency name / budget set (not conditional like Prepared By)", () => {
+    const xml = buildCoverSlideXml(template.cover, { ...BASE_COVER, budgetSummary: "" });
+    expect(xml).toContain("Score reflects delivery health");
+  });
+
+  it("keeps the badge, tooltip, and budget-summary shapes stacked in order, fully within the slide's vertical bounds", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    const badgeBox = shapeBox(xml, "Healthy");
+    const tooltipBox = shapeBox(xml, "Score reflects delivery health");
+    const budgetBox = shapeBox(xml, "$100 spent");
+
+    expect(tooltipBox.y).toBeGreaterThanOrEqual(badgeBox.y + badgeBox.cy);
+    expect(budgetBox.y).toBeGreaterThanOrEqual(tooltipBox.y + tooltipBox.cy);
+    expect(budgetBox.y + budgetBox.cy).toBeLessThanOrEqual(SLIDE_HEIGHT_EMU);
+  });
+});
+
 describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression)", () => {
   it("renders a short campaign name at the maximum 18pt candidate", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));

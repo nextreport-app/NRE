@@ -42,6 +42,14 @@ describe("replaceTagRun", () => {
     expect(out).toContain('sz="1300"');
   });
 
+  it("applies an italic style override, e.g. for the cover slide's health-score tooltip line", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`; // SAMPLE_RUN starts i="0"
+    const { xml: out } = replaceTagRun(xml, "{{METRIC_SPEND}}", "text", { italic: true, sizePt: 9, color: "999999" });
+    expect(out).toContain('i="1"');
+    expect(out).toContain('sz="900"');
+    expect(out).toContain('<a:srgbClr val="999999"/>');
+  });
+
   it("forces the font family, overriding the template's own typeface", () => {
     const openSansRun =
       '<a:r><a:rPr b="1" sz="1200"><a:latin typeface="Open Sans"/><a:ea typeface="Open Sans"/><a:cs typeface="Open Sans"/></a:rPr><a:t>{{CAMPAIGN_SUMMARY}}</a:t></a:r>';

@@ -54,6 +54,43 @@ const COVER_ROW_GAP_EMU = 32999; // the template's own existing ACCOUNT_NAME-to-
 const PREPARED_BY_SHIFT_UP_EMU = 310000;
 const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_HEIGHT_EMU + COVER_ROW_GAP_EMU;
 
+// Health-score tooltip line (ppt/slides/slide1.xml) — always inserted right
+// after ACCOUNT_HEALTH_BADGE, pushing BUDGET_SUMMARY down to make room; same
+// shift-existing-shapes approach as PREPARED_BY above, except unconditional
+// (this line always shows, unlike PREPARED_BY) and three shapes deep instead
+// of two. The badge sits low enough in the template (274,320 + 246,888 =
+// ~520,000 EMU above the 6,858,000 EMU slide bottom) that there isn't room
+// to insert a whole extra line below it without going past the slide edge —
+// so the badge itself also shifts up, and everything below moves with it,
+// rather than only pushing BUDGET_SUMMARY further toward the bottom edge.
+const ACCOUNT_HEALTH_BADGE_Y = 6119872;
+const ACCOUNT_HEALTH_BADGE_HEIGHT_EMU = 274320;
+const BUDGET_SUMMARY_HEIGHT_EMU = 246888;
+const HEALTH_ROW_GAP_EMU = 26000; // the template's own existing badge-to-budget gap
+// Tall enough for the tooltip sentence to wrap to 2 lines at 9pt within the
+// shape's ~6,000,000 EMU width — BUDGET_SUMMARY's own single short line at
+// 12pt only needed 246,888 EMU, not enough room for this longer sentence.
+const HEALTH_TOOLTIP_HEIGHT_EMU = 300000;
+const SLIDE_HEIGHT_EMU = 6858000;
+const HEALTH_BLOCK_MARGIN_EMU = 65000; // comfortable clearance above the slide's bottom edge
+const HEALTH_BLOCK_SHIFT_UP_EMU =
+  ACCOUNT_HEALTH_BADGE_Y +
+  ACCOUNT_HEALTH_BADGE_HEIGHT_EMU +
+  HEALTH_ROW_GAP_EMU +
+  HEALTH_TOOLTIP_HEIGHT_EMU +
+  HEALTH_ROW_GAP_EMU +
+  BUDGET_SUMMARY_HEIGHT_EMU -
+  (SLIDE_HEIGHT_EMU - HEALTH_BLOCK_MARGIN_EMU);
+const ACCOUNT_HEALTH_BADGE_SHIFTED_Y = ACCOUNT_HEALTH_BADGE_Y - HEALTH_BLOCK_SHIFT_UP_EMU;
+const HEALTH_TOOLTIP_Y = ACCOUNT_HEALTH_BADGE_SHIFTED_Y + ACCOUNT_HEALTH_BADGE_HEIGHT_EMU + HEALTH_ROW_GAP_EMU;
+const BUDGET_SUMMARY_SHIFTED_Y = HEALTH_TOOLTIP_Y + HEALTH_TOOLTIP_HEIGHT_EMU + HEALTH_ROW_GAP_EMU;
+
+const HEALTH_BADGE_ICON = " ⓘ";
+const HEALTH_TOOLTIP_TEXT =
+  "Score reflects delivery health: reach, engagement, frequency and spend efficiency. Conversion targets are detailed in slides below.";
+const HEALTH_TOOLTIP_SIZE_PT = 9;
+const HEALTH_TOOLTIP_COLOR = "999999"; // muted grey
+
 /**
  * PRESENTED_TO's actual top y at render time — shifted up when an agency
  * name is present (see buildCoverSlideXml above). Exported so other
@@ -85,23 +122,44 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     xml = insertShapeBeforeSpTreeClose(xml, preparedByShape);
   }
 
+  // Health-score tooltip — always inserted (unlike PREPARED_BY above, which
+  // is conditional), since it explains the badge on every report regardless
+  // of branding options. The whole badge/tooltip/budget block shifts up as
+  // a group (see the constants above for why) and BUDGET_SUMMARY shifts
+  // down relative to the badge to make room for the new line between them;
+  // harmless even when cover.budgetSummary is empty (no monthly budget
+  // set) — it's still just a blank line at a new position, as today.
+  let tooltipShape = cloneShapeAsTag(xml, "{{BUDGET_SUMMARY}}", "{{HEALTH_TOOLTIP}}", HEALTH_TOOLTIP_Y);
+  tooltipShape = tooltipShape.replace(/(<a:ext cx="\d+" cy=")\d+(")/, `$1${HEALTH_TOOLTIP_HEIGHT_EMU}$2`);
+  xml = setShapeOffsetY(xml, "{{ACCOUNT_HEALTH_BADGE}}", ACCOUNT_HEALTH_BADGE_SHIFTED_Y);
+  xml = setShapeOffsetY(xml, "{{BUDGET_SUMMARY}}", BUDGET_SUMMARY_SHIFTED_Y);
+  xml = insertShapeBeforeSpTreeClose(xml, tooltipShape);
+
   const reportTitle = (options.reportTitle?.trim() || DEFAULT_REPORT_TITLE).toUpperCase();
 
-  return fillTags(
+  xml = fillTags(
     xml,
     {
       ACCOUNT_NAME: cover.accountName,
       REPORT_TITLE: reportTitle,
       REPORT_DATE: cover.reportDate,
       DATE_RANGE: cover.dateRange,
-      ACCOUNT_HEALTH_BADGE: cover.healthBadge,
       BUDGET_SUMMARY: cover.budgetSummary,
+      HEALTH_TOOLTIP: HEALTH_TOOLTIP_TEXT,
       ...(agencyName ? { PREPARED_BY: `Prepared by ${agencyName}` } : {}),
     },
     {
       ACCOUNT_NAME: { sizePt: accountNameSizePt },
+      HEALTH_TOOLTIP: { sizePt: HEALTH_TOOLTIP_SIZE_PT, italic: true, color: HEALTH_TOOLTIP_COLOR },
     },
   );
+
+  // Small "ⓘ" icon right after the badge text, pointing at the tooltip line
+  // below it — kept in the badge's own styling (bold, green) rather than a
+  // separate override, since the icon is just a pointer, not new information.
+  xml = replaceTagRunWithSuffix(xml, "{{ACCOUNT_HEALTH_BADGE}}", cover.healthBadge, HEALTH_BADGE_ICON).xml;
+
+  return xml;
 }
 
 export interface AiCopy {
