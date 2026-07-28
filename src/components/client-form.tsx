@@ -6,7 +6,7 @@ import {
   CURRENCIES,
   TEMPLATES,
   TEMPLATE_LABELS,
-  TIMEZONES,
+  TIMEZONE_GROUPS,
 } from "@/lib/validators/client";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 
@@ -198,10 +198,14 @@ export function ClientForm({
             onChange={(e) => set("timezone", e.target.value)}
             className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
           >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
+            {TIMEZONE_GROUPS.map((group) => (
+              <optgroup key={group.region} label={`${group.flag} ${group.region}`}>
+                {group.zones.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>

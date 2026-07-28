@@ -14,6 +14,14 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   AUD: "A$",
   CAD: "C$",
   AED: "AED",
+  NZD: "NZ$",
+  SGD: "S$",
+  MYR: "RM",
+  PHP: "₱",
+  ZAR: "R",
+  BRL: "R$",
+  MXN: "MX$",
+  EUR: "€",
 };
 
 /** Port of parseCellNum_ — strips commas/currency/percent/whitespace, tolerant of junk. */

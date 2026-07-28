@@ -1,6 +1,21 @@
 import { z } from "zod";
 
-export const CURRENCIES = ["INR", "USD", "GBP", "AUD", "CAD", "AED"] as const;
+export const CURRENCIES = [
+  "INR",
+  "USD",
+  "GBP",
+  "AUD",
+  "CAD",
+  "AED",
+  "NZD",
+  "SGD",
+  "MYR",
+  "PHP",
+  "ZAR",
+  "BRL",
+  "MXN",
+  "EUR",
+] as const;
 export const TEMPLATES = [
   "DARK",
   "LIGHT",
@@ -19,15 +34,74 @@ export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
   GRAPHITE: "Near-Black Graphite",
 };
 
-export const TIMEZONES = [
-  "Asia/Kolkata",
-  "America/Chicago",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Australia/Sydney",
-  "Asia/Dubai",
-] as const;
+export interface TimezoneOption {
+  value: string;
+  /** City + local abbreviation, e.g. "New York (EST)" — the region/flag is shown via the enclosing TimezoneGroup, not repeated per option. */
+  label: string;
+}
+
+export interface TimezoneGroup {
+  flag: string;
+  region: string;
+  zones: TimezoneOption[];
+}
+
+/** Grouped by region for the client form's Timezone dropdown (rendered as <optgroup>s) — see client-form.tsx. */
+export const TIMEZONE_GROUPS: TimezoneGroup[] = [
+  { flag: "🇮🇳", region: "India", zones: [{ value: "Asia/Kolkata", label: "Kolkata (IST)" }] },
+  {
+    flag: "🇺🇸",
+    region: "United States",
+    zones: [
+      { value: "America/New_York", label: "New York (EST)" },
+      { value: "America/Chicago", label: "Chicago (CST)" },
+      { value: "America/Denver", label: "Denver (MST)" },
+      { value: "America/Los_Angeles", label: "Los Angeles (PST)" },
+      { value: "America/Phoenix", label: "Phoenix (AZ)" },
+      { value: "America/Anchorage", label: "Anchorage (AKT)" },
+    ],
+  },
+  {
+    flag: "🇨🇦",
+    region: "Canada",
+    zones: [
+      { value: "America/Toronto", label: "Toronto (EST)" },
+      // Calgary has no zone of its own in the IANA tz database — Mountain
+      // Time Alberta (Calgary, Edmonton) is canonically America/Edmonton,
+      // which is what Intl/date libraries actually recognize.
+      { value: "America/Edmonton", label: "Calgary (MST)" },
+      { value: "America/Vancouver", label: "Vancouver (PST)" },
+      { value: "America/Halifax", label: "Halifax (AST)" },
+    ],
+  },
+  { flag: "🇬🇧", region: "United Kingdom", zones: [{ value: "Europe/London", label: "London (GMT/BST)" }] },
+  {
+    flag: "🇦🇺",
+    region: "Australia",
+    zones: [
+      { value: "Australia/Sydney", label: "Sydney (AEST)" },
+      { value: "Australia/Melbourne", label: "Melbourne (AEST)" },
+      { value: "Australia/Perth", label: "Perth (AWST)" },
+    ],
+  },
+  { flag: "🇳🇿", region: "New Zealand", zones: [{ value: "Pacific/Auckland", label: "Auckland (NZST)" }] },
+  { flag: "🇦🇪", region: "UAE", zones: [{ value: "Asia/Dubai", label: "Dubai (GST)" }] },
+  { flag: "🇸🇬", region: "Singapore", zones: [{ value: "Asia/Singapore", label: "Singapore (SGT)" }] },
+  {
+    flag: "🇹🇭",
+    region: "Thailand / Vietnam / Indonesia",
+    zones: [{ value: "Asia/Bangkok", label: "Bangkok (ICT)" }],
+  },
+  { flag: "🇵🇭", region: "Philippines", zones: [{ value: "Asia/Manila", label: "Manila (PHT)" }] },
+  { flag: "🇵🇰", region: "Pakistan", zones: [{ value: "Asia/Karachi", label: "Karachi (PKT)" }] },
+  { flag: "🇧🇩", region: "Bangladesh", zones: [{ value: "Asia/Dhaka", label: "Dhaka (BST)" }] },
+  { flag: "🇿🇦", region: "South Africa", zones: [{ value: "Africa/Johannesburg", label: "Johannesburg (SAST)" }] },
+  { flag: "🇧🇷", region: "Brazil", zones: [{ value: "America/Sao_Paulo", label: "São Paulo (BRT)" }] },
+  { flag: "🇲🇽", region: "Mexico", zones: [{ value: "America/Mexico_City", label: "Mexico City (CST)" }] },
+];
+
+/** Flattened valid timezone values, derived from TIMEZONE_GROUPS — used wherever a flat list is more convenient than the grouped one. */
+export const TIMEZONES = TIMEZONE_GROUPS.flatMap((g) => g.zones.map((z) => z.value));
 
 export const clientSchema = z.object({
   accountName: z.string().trim().min(1, "Account name is required").max(150),

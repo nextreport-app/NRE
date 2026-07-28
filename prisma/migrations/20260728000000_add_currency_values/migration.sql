@@ -1,0 +1,9 @@
+-- AlterEnum
+ALTER TYPE "Currency" ADD VALUE 'NZD';
+ALTER TYPE "Currency" ADD VALUE 'SGD';
+ALTER TYPE "Currency" ADD VALUE 'MYR';
+ALTER TYPE "Currency" ADD VALUE 'PHP';
+ALTER TYPE "Currency" ADD VALUE 'ZAR';
+ALTER TYPE "Currency" ADD VALUE 'BRL';
+ALTER TYPE "Currency" ADD VALUE 'MXN';
+ALTER TYPE "Currency" ADD VALUE 'EUR';

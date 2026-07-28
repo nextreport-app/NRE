@@ -118,6 +118,14 @@ enum Currency {
   AUD
   CAD
   AED
+  NZD
+  SGD
+  MYR
+  PHP
+  ZAR
+  BRL
+  MXN
+  EUR
 }
 
 enum ReportTemplate {
