@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildGoogleDriveConnectUrl,
+  DEFAULT_DRIVE_FOLDER_NAME,
   exchangeGoogleAuthCode,
   fetchGoogleAccountEmail,
-  getDriveFolderName,
   GOOGLE_DRIVE_SCOPE,
   getFreshGoogleAccessToken,
   saveReportToDriveFolder,
@@ -18,6 +18,12 @@ afterEach(() => {
 describe("GOOGLE_DRIVE_SCOPE", () => {
   it("is the narrow drive.file scope, not full Drive access", () => {
     expect(GOOGLE_DRIVE_SCOPE).toBe("https://www.googleapis.com/auth/drive.file");
+  });
+});
+
+describe("DEFAULT_DRIVE_FOLDER_NAME", () => {
+  it("is the display name applied when the user leaves the folder name field blank", () => {
+    expect(DEFAULT_DRIVE_FOLDER_NAME).toBe("Drive Folder");
   });
 });
 
@@ -111,9 +117,12 @@ describe("buildGoogleDriveConnectUrl", () => {
     expect(url.searchParams.get("state")).toBe("nonce-123");
     expect(url.searchParams.get("scope")).toContain(GOOGLE_DRIVE_SCOPE);
     expect(url.searchParams.get("scope")).toContain("email");
-    // Only drive.file — no drive.readonly or broad "drive" scope requested.
-    expect(url.searchParams.get("scope")).not.toContain("drive.readonly");
-    expect(url.searchParams.get("scope")?.split(" ")).not.toContain("https://www.googleapis.com/auth/drive");
+    // Only drive.file — no metadata/readonly or broad "drive" scope requested,
+    // since folder names are typed by the user, not read from the Drive API.
+    const scopes = url.searchParams.get("scope")?.split(" ") ?? [];
+    expect(scopes).not.toContain("https://www.googleapis.com/auth/drive.readonly");
+    expect(scopes).not.toContain("https://www.googleapis.com/auth/drive.metadata.readonly");
+    expect(scopes).not.toContain("https://www.googleapis.com/auth/drive");
   });
 });
 
@@ -155,30 +164,12 @@ describe("fetchGoogleAccountEmail", () => {
   });
 });
 
-describe("getDriveFolderName", () => {
-  it("returns the folder's display name when the metadata lookup succeeds", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ name: "Client Reports" }) }));
-    expect(await getDriveFolderName("token", "folder-1")).toBe("Client Reports");
-  });
-
-  it("returns null (never throws) when the folder id is inaccessible under drive.file scope", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => "not found" }));
-    expect(await getDriveFolderName("token", "unknown-folder")).toBeNull();
-  });
-
-  it("returns null (never throws) on a network failure", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
-    expect(await getDriveFolderName("token", "folder-1")).toBeNull();
-  });
-});
-
 describe("saveReportToDriveFolder", () => {
-  it("refreshes the token, uploads straight into the given folder, and resolves its display name", async () => {
+  it("refreshes the token and uploads straight into the given folder, no folder-name lookup at all", async () => {
     const fetchMock = vi.fn().mockImplementation(async (url: string) => {
       if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "fresh-token" }) };
       if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "f", webViewLink: "https://docs.google.com/presentation/d/f/edit" }) };
       if (url.includes("/permissions")) return { ok: true, text: async () => "" };
-      if (url.includes("/files/chosen-folder")) return { ok: true, json: async () => ({ name: "Client Reports" }) };
       throw new Error(`Unexpected fetch: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -189,8 +180,9 @@ describe("saveReportToDriveFolder", () => {
       fileName: "Report",
       pptxBuffer: Buffer.from("x"),
     });
-    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/f/edit");
-    expect(result.folderName).toBe("Client Reports");
+    expect(result).toEqual({ webViewLink: "https://docs.google.com/presentation/d/f/edit" });
+    // Exactly two Drive calls (upload + share) — no metadata/files.get call for a name.
+    expect(fetchMock).toHaveBeenCalledTimes(3); // token refresh + upload + share
 
     const uploadCall = fetchMock.mock.calls.find(([url]) => url.includes("uploadType=multipart"))!;
     const body = Buffer.from(uploadCall[1].body as Uint8Array).toString("utf-8");
@@ -202,26 +194,6 @@ describe("saveReportToDriveFolder", () => {
     expect(shareCall[1]!.headers!.Authorization).toBe("Bearer fresh-token");
   });
 
-  it("still succeeds, with folderName null, when the display-name lookup fails", async () => {
-    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
-      if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
-      if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "f", webViewLink: "https://docs.google.com/presentation/d/f/edit" }) };
-      if (url.includes("/permissions")) return { ok: true, text: async () => "" };
-      if (url.includes("/files/chosen-folder")) return { ok: false, status: 404, text: async () => "not found" };
-      throw new Error(`Unexpected fetch: ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await saveReportToDriveFolder({
-      refreshToken: "r",
-      folderId: "chosen-folder",
-      fileName: "Report",
-      pptxBuffer: Buffer.from("x"),
-    });
-    expect(result.webViewLink).toBe("https://docs.google.com/presentation/d/f/edit");
-    expect(result.folderName).toBeNull();
-  });
-
   it("falls back to a constructed presentation URL when Drive doesn't return a webViewLink", async () => {
     vi.stubGlobal(
       "fetch",
@@ -229,7 +201,6 @@ describe("saveReportToDriveFolder", () => {
         if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
         if (url.includes("uploadType=multipart")) return { ok: true, json: async () => ({ id: "file-id" }) }; // no webViewLink
         if (url.includes("/permissions")) return { ok: true, text: async () => "" };
-        if (url.includes("/files/chosen-folder")) return { ok: false, status: 404, text: async () => "not found" };
         throw new Error(`Unexpected fetch: ${url}`);
       }),
     );
@@ -249,7 +220,6 @@ describe("saveReportToDriveFolder", () => {
       vi.fn().mockImplementation(async (url: string) => {
         if (url === "https://oauth2.googleapis.com/token") return { ok: true, json: async () => ({ access_token: "t" }) };
         if (url.includes("uploadType=multipart")) return { ok: false, status: 404, text: async () => "not found" };
-        if (url.includes("/files/chosen-folder")) return { ok: false, status: 404, text: async () => "not found" };
         throw new Error(`Unexpected fetch: ${url}`);
       }),
     );

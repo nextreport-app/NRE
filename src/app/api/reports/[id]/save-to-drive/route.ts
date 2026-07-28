@@ -4,10 +4,17 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
-import { saveReportToDriveFolder } from "@/lib/google-drive";
+import { DEFAULT_DRIVE_FOLDER_NAME, saveReportToDriveFolder } from "@/lib/google-drive";
 
 const bodySchema = z.object({
   folderId: z.string().trim().min(1),
+  // Optional and free-typed — see report-upload-wizard.tsx's "Folder name"
+  // field, next to the paste-a-link input. There's no Drive API call to
+  // resolve a real name (drive.file scope can't read metadata for a folder
+  // this app didn't create, and adding a broader scope for that would
+  // require Google's app-verification review) — the user just tells us
+  // what to call it.
+  folderName: z.string().trim().optional(),
 });
 
 const FOLDER_ACCESS_ERROR_MESSAGE =
@@ -57,9 +64,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // inaccessible folder id surfaces as a thrown error here, mapped to one
     // clear message rather than whatever raw text the Drive API returned.
     let webViewLink: string;
-    let folderName: string | null;
     try {
-      ({ webViewLink, folderName } = await saveReportToDriveFolder({
+      ({ webViewLink } = await saveReportToDriveFolder({
         refreshToken: user.googleRefreshToken,
         folderId: parsed.data.folderId,
         fileName,
@@ -70,15 +76,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "folder_access_failed", message: FOLDER_ACCESS_ERROR_MESSAGE }, { status: 400 });
     }
 
-    const resolvedName = folderName ?? parsed.data.folderId;
+    const folderName = parsed.data.folderName || DEFAULT_DRIVE_FOLDER_NAME;
     await Promise.all([
       prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } }),
       prisma.client.update({
         where: { id: report.client.id },
-        data: { lastDriveFolderId: parsed.data.folderId, lastDriveFolderName: resolvedName },
+        data: { lastDriveFolderId: parsed.data.folderId, lastDriveFolderName: folderName },
       }),
     ]);
-    return NextResponse.json({ url: webViewLink, folderName: resolvedName });
+    return NextResponse.json({ url: webViewLink, folderName });
   } catch (err) {
     return apiErrorResponse(err, "reports:save-to-drive");
   }

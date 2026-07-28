@@ -10,13 +10,19 @@
  * log into NextReport is allowed here, so its tokens live on User.google*
  * columns, not NextAuth's own Account table.
  *
- * Deliberately drive.file only, not drive.readonly or the broad "drive"
- * scope: the user pastes the destination folder's link themselves (see
- * extractDriveFolderIdFromLink in lib/drive-link.ts), so this app never
- * needs to LIST or BROWSE the user's existing Drive contents — only create
- * a new file with that folder as its parent, which drive.file permits for
- * any folder the authenticated user has edit access to, not just folders
- * this app created itself.
+ * Deliberately drive.file only, not drive.readonly, drive.metadata.readonly,
+ * or the broad "drive" scope: the user pastes the destination folder's link
+ * themselves (see extractDriveFolderIdFromLink in lib/drive-link.ts), so
+ * this app never needs to LIST/BROWSE or READ ANYTHING about the user's
+ * existing Drive — drive.file alone covers creating a new file with that
+ * folder as its parent, for any folder the authenticated user has edit
+ * access to, not just folders this app created itself. This also means the
+ * app can never read a folder's real NAME (drive.file's per-file access
+ * model 404s on metadata for a folder it didn't create) — rather than add
+ * a scope for that (which would require Google's app-verification review),
+ * the user types the folder's display name themselves alongside the link
+ * (see the paste-a-link input in report-upload-wizard.tsx). Zero extra API
+ * calls, zero extra scope, zero verification requirement.
  */
 
 import { randomUUID } from "node:crypto";
@@ -180,28 +186,8 @@ export async function shareFilePublicly(accessToken: string, fileId: string): Pr
   }
 }
 
-/**
- * Best-effort display name for a pasted folder id — purely cosmetic (used
- * for the "Saving to: [name]" line), so failures here are swallowed rather
- * than thrown. Under drive.file scope, a `files.get` on a folder the app
- * never created often 404s even when the folder is perfectly writable
- * (create-with-parent is allowed for any folder the user can edit; reading
- * metadata for a folder the app never touched is more restricted) — when
- * that happens, the caller falls back to showing the raw folder id instead.
- */
-export async function getDriveFolderName(accessToken: string, folderId: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `${GOOGLE_DRIVE_FILES_URL}/${encodeURIComponent(folderId)}?fields=name&supportsAllDrives=true`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { name?: string };
-    return data.name ?? null;
-  } catch {
-    return null;
-  }
-}
+/** Stored as Client.lastDriveFolderName's display name whenever the user leaves the "Folder name" field blank when pasting a link — see the save-to-drive route, which applies this default server-side. */
+export const DEFAULT_DRIVE_FOLDER_NAME = "Drive Folder";
 
 async function uploadAndShareInFolder(
   accessToken: string,
@@ -217,22 +203,17 @@ async function uploadAndShareInFolder(
 /**
  * Uploads a report into a folder the user identified by pasting a Drive
  * link (see /api/reports/[id]/save-to-drive) — no folder resolution logic,
- * `folderId` is already the extracted id. `folderName` is a best-effort
- * display label (see getDriveFolderName) — null when it couldn't be
- * resolved, in which case the caller shows the folder id itself instead.
- * A genuinely bad/inaccessible folderId surfaces here as a thrown error
- * from the upload call, not from the (non-throwing) name lookup.
+ * `folderId` is already the extracted id. There's no folder-name lookup
+ * here at all (see this file's header) — the caller already has whatever
+ * display name the user typed alongside the link, or the API route's own
+ * DEFAULT_DRIVE_FOLDER_NAME fallback if they left it blank.
  */
 export async function saveReportToDriveFolder(params: {
   refreshToken: string;
   folderId: string;
   fileName: string;
   pptxBuffer: Buffer;
-}): Promise<{ webViewLink: string; folderName: string | null }> {
+}): Promise<{ webViewLink: string }> {
   const accessToken = await getFreshGoogleAccessToken(params.refreshToken);
-  const [uploadResult, folderName] = await Promise.all([
-    uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId),
-    getDriveFolderName(accessToken, params.folderId),
-  ]);
-  return { webViewLink: uploadResult.webViewLink, folderName };
+  return uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId);
 }

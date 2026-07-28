@@ -176,6 +176,11 @@ export function ReportUploadWizard({
   const [driveView, setDriveView] = useState<DriveView>("collapsed");
   const [driveSaving, setDriveSaving] = useState(false);
   const [driveFolderLinkInput, setDriveFolderLinkInput] = useState("");
+  // Free-typed, optional — there's no Drive API call to resolve the
+  // folder's real name (see lib/google-drive.ts's file header for why),
+  // so the user names it themselves. Blank is fine; the server applies
+  // DEFAULT_DRIVE_FOLDER_NAME ("Drive Folder") if they skip it.
+  const [driveFolderNameInput, setDriveFolderNameInput] = useState("");
   const [driveLinkFormatError, setDriveLinkFormatError] = useState<string | null>(null);
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
@@ -350,6 +355,7 @@ export function ReportUploadWizard({
     setDriveView("collapsed");
     setDriveSaving(false);
     setDriveFolderLinkInput("");
+    setDriveFolderNameInput("");
     setDriveLinkFormatError(null);
     setDriveSaveUrl(null);
     setDriveSaveError(null);
@@ -365,6 +371,7 @@ export function ReportUploadWizard({
     setDriveView("collapsed");
     setDriveSaving(false);
     setDriveFolderLinkInput("");
+    setDriveFolderNameInput("");
     setDriveLinkFormatError(null);
     setDriveSaveUrl(null);
     setDriveSaveError(null);
@@ -391,7 +398,7 @@ export function ReportUploadWizard({
     setGenerateStatus("done");
   }
 
-  async function handleSaveToDrive(folderId: string) {
+  async function handleSaveToDrive(folderId: string, folderName?: string) {
     if (!reportId) return;
     setDriveSaving(true);
     setDriveSaveError(null);
@@ -399,7 +406,7 @@ export function ReportUploadWizard({
     const res = await fetch(`/api/reports/${reportId}/save-to-drive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folderId }),
+      body: JSON.stringify({ folderId, folderName }),
     });
     const json = await res.json().catch(() => null);
 
@@ -410,8 +417,12 @@ export function ReportUploadWizard({
     }
 
     setDriveSaveUrl(json.url);
-    setRememberedFolder({ id: folderId, name: json.folderName || folderId });
+    // json.folderName is whatever the user typed, or the server's
+    // DEFAULT_DRIVE_FOLDER_NAME fallback if they left it blank — never a
+    // raw folder id (see the "Folder name" field below).
+    setRememberedFolder({ id: folderId, name: json.folderName });
     setDriveFolderLinkInput("");
+    setDriveFolderNameInput("");
     setDriveSaving(false);
     setDriveView("success");
   }
@@ -419,7 +430,8 @@ export function ReportUploadWizard({
   /** The main "Save to Google Drive" button (collapsed view): one click straight to the remembered folder if there is one, otherwise expands to the paste-a-link input. */
   function handleSaveButtonClick() {
     if (rememberedFolder) {
-      void handleSaveToDrive(rememberedFolder.id);
+      // Already has a name from last time — no need to ask again.
+      void handleSaveToDrive(rememberedFolder.id, rememberedFolder.name);
     } else {
       setDriveSaveError(null);
       setDriveView("editing");
@@ -436,7 +448,7 @@ export function ReportUploadWizard({
       return;
     }
     setDriveLinkFormatError(null);
-    void handleSaveToDrive(folderId);
+    void handleSaveToDrive(folderId, driveFolderNameInput.trim());
   }
 
   async function handleCopyLink() {
@@ -444,6 +456,11 @@ export function ReportUploadWizard({
     await navigator.clipboard.writeText(driveSaveUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile/periodFile and selectedCampaigns are untouched, so clicking Continue on Step 3 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
+  function handleBackToDates() {
+    setStep(3);
   }
 
   const spanDays = customSpanDays();
@@ -829,6 +846,14 @@ export function ReportUploadWizard({
 
           {generateStatus === "done" && downloadUrl && (
             <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleBackToDates}
+                className="text-xs text-ink-muted hover:text-ink-secondary hover:underline"
+              >
+                ← Back to dates
+              </button>
+
               <div className="flex flex-wrap items-start gap-3">
                 <a
                   href={downloadUrl}
@@ -870,9 +895,9 @@ export function ReportUploadWizard({
 
               {/* State 1 (no remembered folder) / "Change" from State 2 — the paste-a-link input, hidden behind the button until clicked. */}
               {hasGoogleDriveConnected && driveView === "editing" && (
-                <div className="space-y-2 rounded-lg border border-navy-border bg-navy-panel p-4">
-                  <label className="block text-sm text-ink-secondary">Paste your Google Drive folder link:</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-3 rounded-lg border border-navy-border bg-navy-panel p-4">
+                  <div>
+                    <label className="block text-sm text-ink-secondary">Folder link:</label>
                     <input
                       type="text"
                       value={driveFolderLinkInput}
@@ -881,8 +906,32 @@ export function ReportUploadWizard({
                         setDriveLinkFormatError(null);
                       }}
                       placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
-                      className="min-w-[240px] flex-1 rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                      className="mt-1 w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
                     />
+                    <p className="mt-1 text-xs text-ink-muted">
+                      Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it
+                      here
+                    </p>
+                    {driveLinkFormatError && <p className="mt-1 text-xs text-red-400">{driveLinkFormatError}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-ink-secondary">
+                      Folder name <span className="text-ink-muted">— optional, but recommended</span>:
+                    </label>
+                    <input
+                      type="text"
+                      value={driveFolderNameInput}
+                      onChange={(e) => setDriveFolderNameInput(e.target.value)}
+                      placeholder="e.g. Reports or Alonzo Carr / Reports"
+                      className="mt-1 w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                    />
+                    <p className="mt-1 text-xs text-ink-muted">
+                      Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={handleSaveToFolderLink}
                       disabled={!driveFolderLinkInput.trim() || driveSaving}
@@ -896,6 +945,7 @@ export function ReportUploadWizard({
                       onClick={() => {
                         setDriveView("collapsed");
                         setDriveFolderLinkInput("");
+                        setDriveFolderNameInput("");
                         setDriveLinkFormatError(null);
                         setDriveSaveError(null);
                       }}
@@ -904,10 +954,6 @@ export function ReportUploadWizard({
                       Cancel
                     </button>
                   </div>
-                  <p className="text-xs text-ink-muted">
-                    Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it here
-                  </p>
-                  {driveLinkFormatError && <p className="text-xs text-red-400">{driveLinkFormatError}</p>}
                 </div>
               )}
 
@@ -963,6 +1009,14 @@ export function ReportUploadWizard({
                   </button>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={handleBackToDates}
+                className="block text-xs text-ink-muted hover:text-ink-secondary hover:underline"
+              >
+                Change dates and regenerate
+              </button>
             </div>
           )}
         </div>
