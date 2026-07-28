@@ -868,11 +868,11 @@ describe("buildReportData — active campaign count from delivery status", () =>
 
 describe("buildReportData — campaign with every metric column blank (paused/zero-spend/just launched)", () => {
   // Campaign name and date are populated (as validate.ts now requires) but
-  // every metric column is an empty string — the validator lets this
-  // through (see validate.test.ts), and the engine must render it as a
-  // normal, zero-valued campaign rather than throwing or treating it as
-  // the "no rows in range" isPaused case (there ARE rows in range here,
-  // they just carry no numbers).
+  // every metric column is an empty string, so weekly spend sums to 0 for
+  // this campaign — it gets no slide at all (zero weekly spend, see the
+  // "Fix 1" describe block below), even though it does have real rows
+  // within the reporting period, which is why isPaused (a different,
+  // account-wide concept — "no rows in range at all") stays false.
   const blankRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
     _raw: { Day: day },
     campaign_name: "Blank Metrics Campaign",
@@ -903,23 +903,13 @@ describe("buildReportData — campaign with every metric column blank (paused/ze
     expect(data.isPaused).toBe(false);
   });
 
-  it("renders a campaign summary slide with every metric at zero, not a thrown error", () => {
-    expect(data.campaignSlides).toHaveLength(1);
-    const slide = data.campaignSlides[0];
-    expect(slide.campaignName).toBe("Blank Metrics Campaign");
-    expect(slide.metrics).toEqual({
-      spend: "₹0",
-      reach: "0",
-      impressions: "0",
-      results: "0",
-      ctr: "—",
-      cpr: "—",
-      cpc: "—",
-    });
+  it("generates no campaign slide at all — zero weekly spend", () => {
+    expect(data.campaignSlides).toHaveLength(0);
+    expect(data.adSetSlides).toHaveLength(0);
   });
 });
 
-describe("buildReportData — Fix 1: campaign status is active if ANY ad set is active", () => {
+describe("buildReportData — campaign status is active if ANY ad set is active", () => {
   function statusAdSetRow(campaignName: string, adSetName: string, deliveryStatus: string, day: string): NreRow {
     return {
       _raw: { Day: day },
@@ -1001,7 +991,7 @@ describe("buildReportData — Fix 1: campaign status is active if ANY ad set is 
   });
 });
 
-describe("buildReportData — Fix 2: campaign has MTD data but zero rows in the weekly window", () => {
+describe("buildReportData — a campaign with zero weekly spend gets no slide, even with real MTD spend", () => {
   function rowForDate(campaignName: string, day: string, opts: Partial<NreRow> = {}): NreRow {
     return {
       _raw: { Day: day },
@@ -1022,20 +1012,18 @@ describe("buildReportData — Fix 2: campaign has MTD data but zero rows in the 
 
   // "Live Campaign" ran the whole month including this week — keeps the
   // account-wide isPaused check (zero weekly rows ACROSS EVERY campaign)
-  // from tripping, and doubles as the control: unaffected by this fix.
+  // from tripping, and doubles as the control: unaffected.
   const liveRows = daysInclusive(1, 19).map((day) => rowForDate("Live Campaign", day, { delivery_status: "Active" }));
-  // Stopped entirely before the trailing 13-19 July weekly window, but
-  // still within MTD (July 1 - 19) — the exact bug-report scenario.
+  // Stopped entirely before the trailing 13-19 July weekly window (zero
+  // weekly spend), but still has real spend earlier in the month (MTD).
   const stoppedRows = daysInclusive(1, 5).map((day) => rowForDate("Stopped Campaign", day, { delivery_status: "Not delivering" }));
-  // Same, but with no delivery_status column data at all for this campaign.
-  const stoppedLeadRows = daysInclusive(1, 5).map((day) => rowForDate("Stopped Lead Campaign", day, { result_type: "Lead", delivery_status: undefined }));
 
   const data = buildReportData({
     accountName: "Test Agency",
     currencySymbol: "₹",
     timezone: "Asia/Kolkata",
     monthlyBudget: null,
-    mtdDailyRows: [...liveRows, ...stoppedRows, ...stoppedLeadRows],
+    mtdDailyRows: [...liveRows, ...stoppedRows],
     now: NOW,
   });
 
@@ -1043,42 +1031,18 @@ describe("buildReportData — Fix 2: campaign has MTD data but zero rows in the 
     expect(data.isPaused).toBe(false);
   });
 
-  it("still generates a campaign slide for the stopped campaign, with zero weekly metrics", () => {
-    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign");
-    expect(slide).toBeDefined();
-    expect(slide!.metrics).toEqual({
-      spend: "₹0",
-      reach: "0",
-      impressions: "0",
-      results: "0",
-      ctr: "—",
-      cpr: "—",
-      cpc: "—",
-    });
-    expect(slide!.avgFreq).toBe(0);
+  it("generates no campaign slide, and no ad-set slides, for the zero-weekly-spend campaign", () => {
+    expect(data.campaignSlides.some((s) => s.campaignName === "Stopped Campaign")).toBe(false);
+    expect(data.adSetSlides.some((s) => s.campaignName === "Stopped Campaign")).toBe(false);
   });
 
-  it("shows the Inactive badge, derived from the campaign's own MTD delivery status", () => {
-    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign")!;
-    expect(slide.statusIndicator).toBe("Inactive");
-  });
-
-  it("defaults to the Inactive badge even when the CSV has no delivery-status data for that campaign", () => {
-    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Lead Campaign")!;
-    expect(slide.statusIndicator).toBe("Inactive");
-  });
-
-  it("derives the real objective label from MTD rows instead of a generic RESULTS fallback", () => {
-    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Lead Campaign")!;
-    expect(slide.resultLabel).toBe("LEADS");
-    expect(slide.costLabel).toBe("COST PER LEAD");
-  });
-
-  it("uses the paused-campaign AI copy path via spendNum: 0 (generate-insights.ts's zero-spend check)", () => {
-    const slide = data.campaignSlides.find((s) => s.campaignName === "Stopped Campaign")!;
-    expect(slide.ai.spendNum).toBe(0);
-    expect(slide.ai.hasResults).toBe(false);
-    expect(slide.ai.resultsNum).toBe(0);
+  it("still counts the stopped campaign's MTD spend in the Combined Total table's MTD row", () => {
+    // 7 days x $50 = $350 MTD for the stopped campaign, on top of whatever
+    // the live campaign contributes — just confirms it isn't filtered out
+    // of mtdRows entirely, only out of the per-campaign slide set.
+    expect(data.mtdRow.hasData).toBe(true);
+    const mtdSpendNum = Number(data.mtdRow.spend.replace(/[^\d.]/g, ""));
+    expect(mtdSpendNum).toBeGreaterThanOrEqual(350);
   });
 
   it("leaves the still-running campaign unaffected", () => {
@@ -1088,7 +1052,7 @@ describe("buildReportData — Fix 2: campaign has MTD data but zero rows in the 
   });
 });
 
-describe("buildReportData — Fix 3: excludes low-spend and archived ad sets from their own slides", () => {
+describe("buildReportData — ad-set slide filtering (MTD spend threshold + archived exclusion)", () => {
   function adSetRow(adSetName: string, spend: number, opts: Partial<NreRow> = {}): NreRow[] {
     return daysInclusive(13, 19).map((day) => ({
       _raw: { Day: day },

@@ -27,10 +27,10 @@ import { buildInsightPrompt, buildSummaryPrompt, capInsights, capSummary } from 
 const ZERO_SPEND_THRESHOLD = 0.01;
 
 const PAUSED_SUMMARY_TEXT =
-  "This campaign was inactive during the reporting period with no spend, reach, or impressions recorded. The campaigns are currently paused pending further instructions. Performance data will resume once campaigns are reactivated.";
+  "This campaign was inactive during the reporting period with no spend, reach, or impressions recorded. The campaign is currently paused pending further instructions.";
 
 const PAUSED_INSIGHTS_TEXT =
-  "Campaigns remained paused this week with no activity recorded. No optimisation actions were taken during this period. Once campaigns are reactivated, we will monitor performance closely and provide a full update in the following week's report.";
+  "The campaign remained inactive this week with no delivery or spend recorded. Once reactivated, budget will be directed toward top-performing creatives while underperformers are paused, with targeting refined to improve overall efficiency.";
 
 function isZeroSpend(ctx: AiContext): boolean {
   return ctx.spendNum < ZERO_SPEND_THRESHOLD;

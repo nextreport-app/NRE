@@ -5,8 +5,10 @@ import type { AiContext } from "../../nre/report-data";
 function ctx(overrides: Partial<AiContext> = {}): AiContext {
   return {
     ctx: "Shoes - Purchases (combined 2 ad sets)",
+    dateRange: "Jul 13 - Jul 19",
     spend: "₹1,050",
     reach: "12,600",
+    impressions: "45,000",
     results: "21",
     cpr: "₹50.00",
     ctr: "2.00%",
@@ -22,49 +24,66 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
 }
 
 describe("buildSummaryPrompt", () => {
-  it("uses the has-results prompt and includes every metric", () => {
+  it("uses the exact fixed structure from the product owner's spec", () => {
     const prompt = buildSummaryPrompt(ctx());
-    expect(prompt).toContain("under 65 words");
-    expect(prompt).toContain("Ad Spend, Reach, PURCHASES count, COST PER PURCHASE, CTR, and CPC");
-    expect(prompt).toContain("Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50");
-    expect(prompt).toContain("Ad frequency: 2.5 impressions per person.");
-    expect(prompt).not.toContain("creative fatigue"); // freq 2.5 is not > 3.5
+    expect(prompt).toContain("Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences following this structure:");
+    expect(prompt).toContain("Sentence 1: During [date range], the [campaign name] campaign generated [results count] [objective label] at a [CPR] [cost label], reaching [reach] people with [impressions] impressions.");
+    expect(prompt).toContain("Sentence 2: The campaign achieved a [CTR]% click-through rate and a [CPC] cost per click, reflecting [positive/neutral/cautious] audience engagement this week.");
+    expect(prompt).toContain("Keep total length under 60 words");
   });
 
-  it("uses the zero-results prompt when hasResults is false", () => {
-    const prompt = buildSummaryPrompt(ctx({ hasResults: false }));
-    expect(prompt).toContain("results are 0");
-    expect(prompt).toContain("EXACTLY 2 short paragraphs");
-    expect(prompt).toContain("Results: 0, Cost per Result: N/A");
-    expect(prompt).toContain('NEVER use "outstanding", "exceptional"');
+  it("substitutes every {token} in the Data line with the slide's real numbers", () => {
+    const prompt = buildSummaryPrompt(ctx());
+    expect(prompt).toContain(
+      "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+    );
   });
 
-  it("mentions creative fatigue above 3.5x frequency", () => {
-    const prompt = buildSummaryPrompt(ctx({ freq: 4.2 }));
-    expect(prompt).toContain("creative fatigue");
+  it("never mentions frequency — dropped from the new fixed structure", () => {
+    const prompt = buildSummaryPrompt(ctx({ freq: 5 }));
+    expect(prompt).not.toContain("frequency");
+    expect(prompt).not.toContain("creative fatigue");
   });
 
-  it("omits the frequency note entirely when freq is 0", () => {
-    const prompt = buildSummaryPrompt(ctx({ freq: 0 }));
-    expect(prompt).not.toContain("Ad frequency");
+  it("produces the identical prompt regardless of hasResults — no separate zero-results branch", () => {
+    const withResults = buildSummaryPrompt(ctx({ hasResults: true }));
+    const withoutResults = buildSummaryPrompt(ctx({ hasResults: false }));
+    expect(withResults).toBe(withoutResults);
   });
 });
 
 describe("buildInsightPrompt", () => {
-  it("includes the source's duplicated opening sentence verbatim", () => {
+  it("uses the exact fixed structure from the product owner's spec", () => {
     const prompt = buildInsightPrompt(ctx());
-    const occurrences = prompt.split("Write the Key Insights & Next Strategy section for a Meta Ads weekly report.").length - 1;
-    expect(occurrences).toBe(2);
+    expect(prompt).toContain("Write the Key Insights and Next Strategy section for a Meta Ads weekly client report. Write exactly 3 sentences following this structure:");
+    expect(prompt).toContain("Sentence 1: One specific insight about what performed well or what the data shows this week — cite a real metric number.");
+    expect(prompt).toContain("Sentence 2: One specific insight about what needs attention or a notable trend — cite a real metric number.");
+    expect(prompt).toContain(
+      "Sentence 3: The recommended next actions — always include: allocating budget toward top-performing ads, pausing underperformers, testing new creatives, and refining targeting or bidding strategy.",
+    );
+    expect(prompt).toContain("Do not start with This week or During this period — vary the opening");
+    expect(prompt).toContain("Keep total length under 75 words");
   });
 
-  it("mentions high frequency as a creative refresh signal above 3.5x", () => {
-    const prompt = buildInsightPrompt(ctx({ freq: 4.0 }));
-    expect(prompt).toContain("creative refresh signal");
+  it("substitutes every {token} in the Data line — no Date or Impressions field here", () => {
+    const prompt = buildInsightPrompt(ctx());
+    expect(prompt).toContain(
+      "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+    );
+    expect(prompt).not.toContain("Date:");
+    expect(prompt).not.toContain("Impressions:");
   });
 
-  it("tells the model not to frame 0 results positively", () => {
-    const prompt = buildInsightPrompt(ctx({ hasResults: false }));
-    expect(prompt).toContain("do not frame this positively");
+  it("never mentions frequency — dropped from the new fixed structure", () => {
+    const prompt = buildInsightPrompt(ctx({ freq: 5 }));
+    expect(prompt).not.toContain("frequency");
+    expect(prompt).not.toContain("creative refresh");
+  });
+
+  it("produces the identical prompt regardless of hasResults — no separate zero-results branch", () => {
+    const withResults = buildInsightPrompt(ctx({ hasResults: true }));
+    const withoutResults = buildInsightPrompt(ctx({ hasResults: false }));
+    expect(withResults).toBe(withoutResults);
   });
 });
 

@@ -41,8 +41,10 @@ function makeCampaignSlide(campaignName: string): CampaignSlideData {
     avgFreq: 3,
     ai: {
       ctx: "context",
+      dateRange: "Jul 13 - Jul 19",
       spend: "$100",
       reach: "1,000",
+      impressions: "3,000",
       results: "2",
       cpr: "$50",
       ctr: "1.5%",

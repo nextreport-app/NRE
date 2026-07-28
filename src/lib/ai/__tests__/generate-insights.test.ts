@@ -9,9 +9,9 @@ vi.mock("../client", () => ({
 }));
 
 const PAUSED_SUMMARY_TEXT =
-  "This campaign was inactive during the reporting period with no spend, reach, or impressions recorded. The campaigns are currently paused pending further instructions. Performance data will resume once campaigns are reactivated.";
+  "This campaign was inactive during the reporting period with no spend, reach, or impressions recorded. The campaign is currently paused pending further instructions.";
 const PAUSED_INSIGHTS_TEXT =
-  "Campaigns remained paused this week with no activity recorded. No optimisation actions were taken during this period. Once campaigns are reactivated, we will monitor performance closely and provide a full update in the following week's report.";
+  "The campaign remained inactive this week with no delivery or spend recorded. Once reactivated, budget will be directed toward top-performing creatives while underperformers are paused, with targeting refined to improve overall efficiency.";
 
 function makeReportData(opts: { campaignSpend?: number; adSetSpend?: number } = {}): ReportData {
   const campaignSpend = opts.campaignSpend ?? 100;
@@ -19,8 +19,10 @@ function makeReportData(opts: { campaignSpend?: number; adSetSpend?: number } = 
 
   const campaignAi = {
     ctx: "Campaign A",
+    dateRange: "Jul 13 - Jul 19",
     spend: "$" + campaignSpend,
     reach: "1,000",
+    impressions: "2,000",
     results: "5",
     cpr: "$20.00",
     ctr: "1.00%",

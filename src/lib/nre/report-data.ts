@@ -60,8 +60,11 @@ export interface SlideMetrics {
 
 export interface AiContext {
   ctx: string;
+  /** The weekly reporting window as a plain human-readable range (e.g. "July 13 - July 19") — the AI prompt's {date_range} field. Unlike the slide's own dateRangeLine, never has the "\nAd Frequency: ..." suffix appended. */
+  dateRange: string;
   spend: string;
   reach: string;
+  impressions: string;
   results: string;
   cpr: string;
   ctr: string;
@@ -531,29 +534,28 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignGroups[name].push(row);
   });
 
-  // MTD-grouped rows, keyed by campaign name and by ad-set — needed for two
-  // fixes below, both requiring the FULL month's data, not just the weekly
-  // window: (1) a campaign whose weekly window has zero rows (it stopped
-  // running mid-month) still gets a campaign slide, built from its MTD rows
-  // instead; (2) an individual ad set slide is only worth generating if the
-  // ad set's TOTAL MTD spend clears the threshold, not just its spend within
-  // the (possibly much smaller) weekly window.
-  const mtdCampaignGroups: Record<string, AggRow[]> = {};
+  // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
+  // is only worth generating if the ad set's TOTAL MTD spend clears the
+  // threshold below, not just its spend within the (possibly much smaller)
+  // weekly window.
   const mtdAdSetSpend: Record<string, number> = {};
   mtdRows.forEach((row) => {
     const name = String(row.campaign_name || "Unknown Campaign").trim();
-    if (!mtdCampaignGroups[name]) mtdCampaignGroups[name] = [];
-    mtdCampaignGroups[name].push(row);
     const key = adSetKey(name, String(row.ad_set_name || "").trim());
     mtdAdSetSpend[key] = (mtdAdSetSpend[key] || 0) + parseCellNum(row.spend);
   });
 
   // Campaign SUMMARY slide order uses plain default sort (not localeCompare) —
-  // matches Object.keys(campaignGroups).sort() in the source exactly. Unioned
-  // with MTD-only campaign names (zero weekly rows) so those still get a slide.
-  const campaignNames = Array.from(
-    new Set([...Object.keys(campaignGroups), ...Object.keys(mtdCampaignGroups)]),
-  ).sort();
+  // matches Object.keys(campaignGroups).sort() in the source exactly. A
+  // campaign with zero total spend in the selected weekly window gets no
+  // slide at all — even if it has rows in the window (all $0) or has real
+  // MTD data from earlier in the month — though it can still show up in the
+  // Combined Total table's MTD row, which sums mtdRows independently of this.
+  const campaignNames = Object.keys(campaignGroups)
+    .filter((name) => campaignGroups[name].reduce((sum, r) => sum + parseCellNum(r.spend), 0) > 0)
+    .sort();
+  // Ad-set slides (Phase A2 below) skip rows for any campaign excluded above.
+  const keptCampaignNames = new Set(campaignNames);
 
   // ── Phase A1: campaign summary slides ────────────────────────────────
   // Collected alongside the slides below — see ObjectiveWarning's doc
@@ -562,57 +564,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
     const campRows = campaignGroups[campaignName];
-
-    // A campaign with MTD data but nothing in the selected weekly window —
-    // it stopped running mid-month rather than never having existed. Still
-    // gets a slide: zero weekly metrics, the Inactive/Paused badge (always
-    // shown here, since by definition it had no activity this week), and
-    // the campaign's real objective label read off its MTD rows so it
-    // doesn't regress to a generic "RESULTS" just because the week is empty.
-    // generate-insights.ts's zero-spend check (spendNum < $0.01) picks up
-    // the already-built paused-campaign AI copy automatically from spendNum: 0.
-    if (!campRows || campRows.length === 0) {
-      const mtdCampRows = mtdCampaignGroups[campaignName] || [];
-      const { resultLabel, costLabel } = getResultLabels(mtdCampRows[0]?.result_type || "");
-      const zeroMetrics: SlideMetrics = {
-        spend: fmtCurrency(0, currencySymbol),
-        reach: fmtNumber(0),
-        impressions: fmtNumber(0),
-        results: "0",
-        ctr: "—",
-        cpr: "—",
-        cpc: "—",
-      };
-      const statusIndicator: DeliveryStatusIndicator = hasDeliveryStatusData
-        ? campaignStatusIndicator(mtdCampRows.map((r) => r.delivery_status)) ?? "Inactive"
-        : "Inactive";
-
-      return {
-        kind: "campaign",
-        campaignName,
-        resultLabel,
-        costLabel,
-        metrics: zeroMetrics,
-        dateRangeLine: globalWeekDateRange,
-        avgFreq: 0,
-        statusIndicator,
-        ai: {
-          ctx: campaignName + " (no activity in the selected weekly period)",
-          spend: zeroMetrics.spend,
-          reach: zeroMetrics.reach,
-          results: "0",
-          cpr: zeroMetrics.cpr,
-          ctr: zeroMetrics.ctr,
-          cpc: zeroMetrics.cpc,
-          resultLabel,
-          costLabel,
-          freq: 0,
-          resultsNum: 0,
-          hasResults: false,
-          spendNum: 0,
-        },
-      };
-    }
 
     let totalSpend = 0;
     let totalReach = 0;
@@ -673,8 +624,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       statusIndicator,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
+        dateRange: globalWeekDateRange,
         spend: metrics.spend,
         reach: metrics.reach,
+        impressions: metrics.impressions,
         results: fmtNumber(totalResults),
         cpr: metrics.cpr, // see file header: reuses the correctly-computed display value
         ctr: metrics.ctr,
@@ -702,6 +655,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   sortedWeeklyRows.forEach((row) => {
     const campaignName = String(row.campaign_name || "Campaign").trim();
     const adSetName = String(row.ad_set_name || "").trim();
+    if (!keptCampaignNames.has(campaignName)) return; // zero weekly spend — no campaign slide, so no ad-set slides either
     const campAdSetCount = campaignGroups[campaignName]?.length || 0;
     if (campAdSetCount <= 1) return; // single ad set — campaign slide already covers it
 
@@ -745,8 +699,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       statusIndicator,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
+        dateRange: globalWeekDateRange,
         spend: fmtCurrency(row.spend, currencySymbol),
         reach: fmtNumber(row.reach),
+        impressions: fmtNumber(row.impressions),
         results: fmtNumber(row.results),
         cpr: fmtCurrency2dp(row.cpr, currencySymbol),
         ctr: fmtPercent(row.ctr),
