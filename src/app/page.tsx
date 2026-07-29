@@ -1,52 +1,21 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { HeroSection } from "@/components/home/hero-section";
+import { HowItWorksSection } from "@/components/home/how-it-works-section";
+import { FeaturesSection } from "@/components/home/features-section";
+import { PainPointSection } from "@/components/home/pain-point-section";
+import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 
 export default async function Home() {
   const session = await auth();
   const loggedIn = !!session?.user;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <p className="mb-3 text-sm font-medium tracking-wide text-accent">
-        NEXTREPORT ENGINE — NRE v1
-      </p>
-      <h1 className="max-w-2xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-        The next report you send will be fast, smooth, and done before you
-        know it.
-      </h1>
-      <p className="mt-5 max-w-xl text-base text-ink-muted">
-        Upload your Meta Ads CSV. NextReport auto-detects every column,
-        recognises the real campaign objective from the data, and generates a
-        fully branded PowerPoint report in minutes.
-      </p>
-      <div className="mt-8 flex gap-3">
-        {loggedIn ? (
-          <Link
-            href="/clients"
-            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Go to Dashboard
-          </Link>
-        ) : (
-          <>
-            <Link
-              href="/signup"
-              className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
-            >
-              Get started
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-md border border-navy-border px-5 py-2.5 text-sm font-medium text-white hover:bg-navy-panel"
-            >
-              Log in
-            </Link>
-          </>
-        )}
-      </div>
-      <Link href="/pricing" className="mt-4 text-sm text-accent hover:underline">
-        View pricing →
-      </Link>
+    <main className="flex-1">
+      <HeroSection loggedIn={loggedIn} />
+      <HowItWorksSection />
+      <FeaturesSection />
+      <PainPointSection />
+      <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
     </main>
   );
 }
