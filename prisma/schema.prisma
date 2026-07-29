@@ -21,6 +21,31 @@ model User {
   // bcrypt hash — null for OAuth-only accounts
   passwordHash  String?
 
+  // Subscription / billing (Razorpay) — drives feature gating across the
+  // app (see lib/subscription.ts's getSubscriptionStatus, the single source
+  // of truth for what "trial"/"starter"/"professional"/"cancelled" allow).
+  // "cancelled" is kept distinct from "trial" so a lapsed subscriber is
+  // paywalled immediately rather than getting a fresh 7-day trial.
+  //
+  // trialEndsAt defaults to 7 days from row creation via a DB-level
+  // computed default (not application code) so every user-creation path
+  // gets a correct trial end date automatically — both the credentials
+  // signup route (api/auth/signup) AND the NextAuth Prisma adapter's own
+  // user creation on first Google sign-in (which never runs our signup
+  // route at all), without duplicating "now + 7 days" in two places that
+  // could drift out of sync.
+  //
+  // razorpayCustomerId/razorpaySubscriptionId are reserved for a future
+  // move to Razorpay's Subscriptions API (real recurring auto-billing).
+  // The current integration (api/payments/create-order + verify) only
+  // uses Razorpay's one-time Orders API — see lib/razorpay.ts's file
+  // header — so neither column is populated by that flow today.
+  planId                 String    @default("trial")
+  trialEndsAt            DateTime  @default(dbgenerated("(now() + interval '7 days')"))
+  subscribedAt           DateTime?
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+
   // Agency branding (account settings) — appears on every report this user
   // generates for any of their clients: agencyName as the cover slide's
   // "Prepared by" line, agencyLogoUrl (Vercel Blob, private access, always
@@ -51,14 +76,14 @@ model User {
   // a report to Drive is an explicit, per-report action from the download
   // screen's "Save to Google Drive" button (see report-upload-wizard.tsx),
   // gated on this flag / googleRefreshToken being present.
-  googleDriveEnabled Boolean @default(false)
+  googleDriveEnabled   Boolean @default(false)
   // googleAccessToken is best-effort/informational only — every Drive call
   // (lib/google-drive.ts's saveReportToDriveFolder) mints a fresh access
   // token from googleRefreshToken right before use rather than trusting
   // this column's freshness, so there's no separate "is it expired yet"
   // column to maintain.
-  googleAccessToken  String? @db.Text
-  googleRefreshToken String? @db.Text
+  googleAccessToken    String? @db.Text
+  googleRefreshToken   String? @db.Text
   // The connected Google account's own email — shown back to the user
   // ("Connected: name@example.com") specifically so they can confirm they
   // picked the Drive account they meant to, since it doesn't have to match
@@ -188,7 +213,7 @@ model Client {
   // removed from the wizard (see report-upload-wizard.tsx's file header) —
   // this column is no longer read or written, kept only so existing rows
   // aren't silently dropped.
-  lastDeselectedAdSets String? @db.Text
+  lastDeselectedAdSets    String? @db.Text
   // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
   lastDateSelection       String? @db.Text
 

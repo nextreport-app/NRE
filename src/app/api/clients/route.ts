@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { clientSchema } from "@/lib/validators/client";
 import { apiErrorResponse } from "@/lib/api-error";
+import { requireClientCapacity } from "@/lib/subscription-guard";
 
 export async function GET() {
   const session = await auth();
@@ -22,6 +23,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const guardResponse = await requireClientCapacity(session.user.id);
+  if (guardResponse) return guardResponse;
 
   const body = await req.json().catch(() => null);
   const parsed = clientSchema.safeParse(body);

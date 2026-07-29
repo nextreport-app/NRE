@@ -12,6 +12,7 @@ import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBuffer } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
@@ -53,6 +54,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!client || client.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const guardResponse = await requireActiveSubscription(session.user.id);
+  if (guardResponse) return guardResponse;
 
   const formData = await req.formData().catch(() => null);
   const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;

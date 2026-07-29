@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReportUploadWizard } from "@/components/report-upload-wizard";
+import { PaywallScreen } from "@/components/paywall-screen";
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,9 +12,25 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
 
   const [client, user] = await Promise.all([
     prisma.client.findUnique({ where: { id } }),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { googleRefreshToken: true } }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, email: true, planId: true, trialEndsAt: true, googleRefreshToken: true },
+    }),
   ]);
   if (!client || client.userId !== session.user.id) notFound();
+  if (!user) notFound();
+
+  const status = getSubscriptionStatus(user);
+
+  if (status.isBlocked) {
+    return (
+      <PaywallScreen
+        message="Your free trial has ended. Choose a plan to generate reports for this client."
+        userEmail={user.email}
+        userName={user.name}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -20,7 +38,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
       <p className="mb-6 text-sm text-ink-muted">{client.accountName}</p>
       <ReportUploadWizard
         clientId={client.id}
-        hasGoogleDriveConnected={!!user?.googleRefreshToken}
+        hasGoogleDriveConnected={!!user.googleRefreshToken}
         initialLastDriveFolderId={client.lastDriveFolderId}
         initialLastDriveFolderName={client.lastDriveFolderName}
       />

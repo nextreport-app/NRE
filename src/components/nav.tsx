@@ -16,6 +16,9 @@ export function Nav() {
           <Link href="/account" className="hover:text-ink-secondary">
             Account
           </Link>
+          <Link href="/billing" className="hover:text-ink-secondary">
+            Billing
+          </Link>
           <Link href="/pricing" className="hover:text-ink-secondary">
             Pricing
           </Link>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { SubscribeButton } from "@/components/subscribe-button";
 
 export const metadata: Metadata = {
   title: "Pricing — NextReport",
@@ -8,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 interface Plan {
+  id: "starter" | "professional";
   name: string;
   priceInr: string;
   priceUsd: string;
@@ -18,6 +21,7 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
+    id: "starter",
     name: "Starter",
     priceInr: "₹999",
     priceUsd: "$12",
@@ -33,6 +37,7 @@ const PLANS: Plan[] = [
     ],
   },
   {
+    id: "professional",
     name: "Professional",
     priceInr: "₹2,499",
     priceUsd: "$29",
@@ -92,7 +97,17 @@ function CheckIcon() {
   );
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({
+  plan,
+  loggedIn,
+  userEmail,
+  userName,
+}: {
+  plan: Plan;
+  loggedIn: boolean;
+  userEmail?: string | null;
+  userName?: string | null;
+}) {
   return (
     <div
       className={`relative flex flex-col rounded-xl border p-8 ${
@@ -125,21 +140,25 @@ function PlanCard({ plan }: { plan: Plan }) {
         ))}
       </ul>
 
-      <Link
-        href="/signup"
-        className={`mt-8 rounded-md px-5 py-2.5 text-center text-sm font-medium ${
+      <SubscribeButton
+        planId={plan.id}
+        loggedIn={loggedIn}
+        userEmail={userEmail}
+        userName={userName}
+        className={`mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
           plan.highlighted
             ? "bg-accent text-white hover:bg-accent-hover"
             : "border border-navy-border text-white hover:bg-navy"
         }`}
-      >
-        Get started
-      </Link>
+      />
     </div>
   );
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
       <Link href="/" className="text-sm text-accent hover:underline">
@@ -155,7 +174,13 @@ export default function PricingPage() {
 
       <div className="mt-12 grid gap-8 sm:grid-cols-2">
         {PLANS.map((plan) => (
-          <PlanCard key={plan.name} plan={plan} />
+          <PlanCard
+            key={plan.name}
+            plan={plan}
+            loggedIn={loggedIn}
+            userEmail={session?.user?.email}
+            userName={session?.user?.name}
+          />
         ))}
       </div>
 
