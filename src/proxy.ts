@@ -8,7 +8,15 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/api/auth");
+  const isPublic =
+    PUBLIC_PATHS.some((p) => pathname === p) ||
+    pathname.startsWith("/api/auth") ||
+    // Razorpay calls this server-to-server with no NextAuth session — it
+    // authenticates itself via its own HMAC webhook signature instead (see
+    // api/payments/webhook/route.ts), not a session cookie. A session-based
+    // 401/redirect here would make every real webhook delivery fail before
+    // that check even runs.
+    pathname === "/api/payments/webhook";
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

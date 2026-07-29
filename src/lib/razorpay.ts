@@ -40,6 +40,14 @@ export function isPlanId(value: unknown): value is PlanId {
   return value === "starter" || value === "professional";
 }
 
+/** Reverse of PLANS: which plan (if any) costs exactly this much — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. INR-only, matching every order this app creates. */
+export function planIdForAmount(amountPaise: number, currency: string): PlanId | null {
+  if (currency !== "INR") return null;
+  if (amountPaise === PLANS.starter.amountPaise) return "starter";
+  if (amountPaise === PLANS.professional.amountPaise) return "professional";
+  return null;
+}
+
 let cachedClient: Razorpay | null = null;
 
 /** Lazily-constructed singleton so importing this module doesn't throw when the two env vars are unset (e.g. in tests) — only calling this does. */
@@ -56,6 +64,18 @@ export function razorpayClient(): Razorpay {
   return cachedClient;
 }
 
+function hmacSha256Hex(data: string, secret: string): string {
+  return crypto.createHmac("sha256", secret).update(data).digest("hex");
+}
+
+/** Constant-time hex-string compare — a plain === on attacker-influenced input invites timing attacks. Mismatched lengths report false rather than throwing (timingSafeEqual throws on a length mismatch, and that IS the "not valid" case both signature checks below want to report as false). */
+function timingSafeHexEqual(expectedHex: string, actualHex: string): boolean {
+  const expectedBuf = Buffer.from(expectedHex, "utf8");
+  const actualBuf = Buffer.from(actualHex, "utf8");
+  if (expectedBuf.length !== actualBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, actualBuf);
+}
+
 /**
  * Verifies a checkout payment against Razorpay's documented signature
  * scheme: HMAC-SHA256 of "{order_id}|{payment_id}" using the account's key
@@ -69,14 +89,19 @@ export function verifyPaymentSignature(
   signature: string,
   keySecret: string,
 ): boolean {
-  const expected = crypto.createHmac("sha256", keySecret).update(`${orderId}|${paymentId}`).digest("hex");
+  return timingSafeHexEqual(hmacSha256Hex(`${orderId}|${paymentId}`, keySecret), signature);
+}
 
-  const expectedBuf = Buffer.from(expected, "utf8");
-  const actualBuf = Buffer.from(signature, "utf8");
-  // Lengths must match before timingSafeEqual — it throws on a length
-  // mismatch rather than returning false, and a mismatched length here is
-  // exactly the "not a valid signature" case we want to report as false.
-  if (expectedBuf.length !== actualBuf.length) return false;
-
-  return crypto.timingSafeEqual(expectedBuf, actualBuf);
+/**
+ * Verifies a Razorpay webhook request against Razorpay's documented
+ * webhook signature scheme: HMAC-SHA256 of the exact raw request body
+ * (not the parsed/re-serialized JSON — whitespace or key order differences
+ * would produce a different digest) using the webhook secret configured
+ * in the Razorpay dashboard, compared against the X-Razorpay-Signature
+ * header. This is a DIFFERENT secret and scheme from verifyPaymentSignature
+ * above: RAZORPAY_WEBHOOK_SECRET, not RAZORPAY_KEY_SECRET, and the raw
+ * body, not "{order_id}|{payment_id}".
+ */
+export function verifyWebhookSignature(rawBody: string, signature: string, webhookSecret: string): boolean {
+  return timingSafeHexEqual(hmacSha256Hex(rawBody, webhookSecret), signature);
 }

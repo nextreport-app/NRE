@@ -59,6 +59,17 @@ generating reports are blocked — `src/lib/subscription.ts` and
 `subscription-guard.ts` are the single source of truth for that gate, both
 in the UI (paywall screen) and re-enforced in the API routes themselves.
 
+A plan can also change server-to-server via `src/app/api/payments/webhook/`
+(Razorpay dashboard → Settings → Webhooks), independent of the browser-side
+Checkout flow — this is the authoritative path if a user's connection drops
+right after paying. It verifies every request against
+`RAZORPAY_WEBHOOK_SECRET` (a third Razorpay secret, separate from the API
+key pair above) before trusting anything in the payload, resolves which
+user a `payment.captured` event belongs to (by `razorpayCustomerId`, then
+by `userId` in the order's notes), and derives the plan from the amount
+actually captured rather than from any client-supplied value. A
+`payment.failed` event is logged only — it never changes a plan.
+
 ## Local development
 
 ```bash
@@ -66,7 +77,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 556 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
+npm test                   # 565 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted
@@ -87,6 +98,7 @@ works without it.
 | `BLOB_READ_WRITE_TOKEN` | Yes | **Don't set this by hand on Vercel.** Go to the project's **Storage** tab → **Create Database** → **Blob**, then connect it to this project — Vercel injects the token automatically. Works with the store set to **private** access (the app never generates a public/signed URL — it authenticates server-side with this token on every read). There is no local-disk fallback (Vercel's serverless functions have no writable filesystem), so report generation fails without this in every environment, including local dev — run `vercel env pull .env` after connecting Blob storage to get the same token locally. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Yes (for subscription billing) | From the Razorpay dashboard (Settings → API Keys). `.env.example` ships this repo's **test mode** key pair (`rzp_test_...`) for local/staging use — generate and switch to a **live mode** key pair before accepting real payments. `RAZORPAY_KEY_SECRET` is read server-side only (`lib/razorpay.ts`, `api/payments/verify`) and must never be duplicated into a `NEXT_PUBLIC_`-prefixed variable. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Yes (for subscription billing) | Same value as `RAZORPAY_KEY_ID` — Razorpay's key ID is a publishable identifier the Checkout script needs client-side, unlike the secret. Set both together (and both to the matching live/test pair) whenever you rotate keys, or Checkout will open under one Razorpay account while orders are created under another. |
+| `RAZORPAY_WEBHOOK_SECRET` | Yes (for subscription billing) | A **separate** secret from the key pair above — shown once when you create the webhook in the Razorpay dashboard (Settings → Webhooks → Add New Webhook, URL `https://<your-domain>/api/payments/webhook`, subscribed to at least `payment.captured` and `payment.failed`). Read server-side only (`api/payments/webhook`); left blank, the endpoint rejects every request with a 500 rather than silently accepting unverified ones. Re-copy and update this if the webhook is ever recreated — Razorpay does not let you view an existing webhook's secret again after dismissing the creation dialog. |
 
 Groq/Gemini API keys are **not** environment variables — each client profile
 in the app has its own key fields (Client page → "AI insight writing"
