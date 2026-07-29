@@ -13,6 +13,9 @@ export function Nav() {
           NextReport
         </Link>
         <div className="flex items-center gap-4 text-sm text-ink-muted">
+          <Link href="/clients" className="font-medium text-ink-secondary hover:text-white">
+            My Clients
+          </Link>
           <Link href="/account" className="hover:text-ink-secondary">
             Account
           </Link>

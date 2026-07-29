@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
       <p className="mb-3 text-sm font-medium tracking-wide text-accent">
@@ -16,18 +20,29 @@ export default function Home() {
         fully branded PowerPoint report in minutes.
       </p>
       <div className="mt-8 flex gap-3">
-        <Link
-          href="/signup"
-          className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
-        >
-          Get started
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-md border border-navy-border px-5 py-2.5 text-sm font-medium text-white hover:bg-navy-panel"
-        >
-          Log in
-        </Link>
+        {loggedIn ? (
+          <Link
+            href="/clients"
+            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
+          >
+            Go to Dashboard
+          </Link>
+        ) : (
+          <>
+            <Link
+              href="/signup"
+              className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
+            >
+              Get started
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-md border border-navy-border px-5 py-2.5 text-sm font-medium text-white hover:bg-navy-panel"
+            >
+              Log in
+            </Link>
+          </>
+        )}
       </div>
       <Link href="/pricing" className="mt-4 text-sm text-accent hover:underline">
         View pricing →

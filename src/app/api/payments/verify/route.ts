@@ -31,7 +31,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  // .trim() for the same reason as lib/razorpay.ts's razorpayClient() —
+  // guards against a trailing newline/space from copy-pasting the secret.
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
   if (!keySecret) {
     return NextResponse.json({ error: "Payments are not configured" }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { describe, expect, it } from "vitest";
-import { isPlanId, PLANS, planIdForAmount, verifyPaymentSignature, verifyWebhookSignature } from "../razorpay";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { isPlanId, PLANS, planIdForAmount, razorpayClient, verifyPaymentSignature, verifyWebhookSignature } from "../razorpay";
 
 describe("PLANS", () => {
   it("prices Starter at ₹999/month in paise", () => {
@@ -115,5 +115,32 @@ describe("planIdForAmount", () => {
 
   it("returns null for a non-INR currency even if the amount matches a plan price numerically", () => {
     expect(planIdForAmount(99_900, "USD")).toBeNull();
+  });
+});
+
+describe("razorpayClient", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("throws a clear, actionable error when either env var is missing", () => {
+    vi.stubEnv("RAZORPAY_KEY_ID", "");
+    vi.stubEnv("RAZORPAY_KEY_SECRET", "");
+    expect(() => razorpayClient()).toThrow(/RAZORPAY_KEY_ID.*RAZORPAY_KEY_SECRET/);
+  });
+
+  // Regression test for a real reported bug: Razorpay's API rejects a
+  // key_id/key_secret pair with 401 "Authentication failed" if either
+  // value has a trailing newline or space — the single most common way
+  // that happens is copy-pasting the value into Vercel's env var UI (or a
+  // local .env file) and picking up a stray newline along with it. The
+  // key itself is otherwise completely correct; only the invisible
+  // whitespace makes Razorpay reject it.
+  it("trims a trailing newline/space from both key_id and key_secret before constructing the client", () => {
+    vi.stubEnv("RAZORPAY_KEY_ID", "rzp_test_ABC123\n");
+    vi.stubEnv("RAZORPAY_KEY_SECRET", "  supersecretvalue \n");
+    const client = razorpayClient() as unknown as { key_id: string; key_secret: string };
+    expect(client.key_id).toBe("rzp_test_ABC123");
+    expect(client.key_secret).toBe("supersecretvalue");
   });
 });

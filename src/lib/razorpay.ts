@@ -54,8 +54,14 @@ let cachedClient: Razorpay | null = null;
 export function razorpayClient(): Razorpay {
   if (cachedClient) return cachedClient;
 
-  const key_id = process.env.RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  // .trim() guards against the single most common cause of Razorpay's API
+  // returning 401 "Authentication failed" with valid-looking keys: a
+  // trailing newline/space left over from copy-pasting the value into
+  // Vercel's env var UI (or a local .env file). A key that's simply wrong
+  // still fails auth exactly the same way after trimming — this only
+  // rescues an otherwise-correct key that picked up invisible whitespace.
+  const key_id = process.env.RAZORPAY_KEY_ID?.trim();
+  const key_secret = process.env.RAZORPAY_KEY_SECRET?.trim();
   if (!key_id || !key_secret) {
     throw new Error("Razorpay is not configured (missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET).");
   }

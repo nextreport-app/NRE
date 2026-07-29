@@ -124,7 +124,9 @@ export function SubscribeButton({
     }
 
     const razorpay = new window.Razorpay({
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "",
+      // .trim() guards against a trailing newline/space from copy-pasting
+      // the value into Vercel's env var UI — see lib/razorpay.ts.
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "",
       amount: orderData.amount,
       currency: orderData.currency,
       name: "NextReport",

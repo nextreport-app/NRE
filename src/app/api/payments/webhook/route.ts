@@ -122,7 +122,9 @@ function handlePaymentFailed(payment: WebhookPaymentEntity): void {
 }
 
 export async function POST(req: Request) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  // .trim() for the same reason as lib/razorpay.ts's razorpayClient() —
+  // guards against a trailing newline/space from copy-pasting the secret.
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET?.trim();
   if (!secret) {
     console.error("[webhook:payments] RAZORPAY_WEBHOOK_SECRET is not configured — rejecting webhook");
     return NextResponse.json({ error: "Webhooks are not configured" }, { status: 500 });
