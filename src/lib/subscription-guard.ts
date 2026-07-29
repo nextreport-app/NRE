@@ -17,7 +17,7 @@ const TRIAL_ENDED_MESSAGE = "Your free trial has ended. Subscribe to continue us
 
 /** Returns a 403 response if this user's trial has expired (or their subscription was cancelled) and they haven't subscribed — null means "allowed, proceed." */
 export async function requireActiveSubscription(userId: string): Promise<NextResponse | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { planId: true, trialEndsAt: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const status = getSubscriptionStatus(user);
@@ -29,7 +29,7 @@ export async function requireActiveSubscription(userId: string): Promise<NextRes
 
 /** Same trial/cancelled check as requireActiveSubscription, plus the Starter plan's 5-client cap. null means "allowed, proceed." */
 export async function requireClientCapacity(userId: string): Promise<NextResponse | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { planId: true, trialEndsAt: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const status = getSubscriptionStatus(user);

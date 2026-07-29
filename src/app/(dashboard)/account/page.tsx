@@ -24,7 +24,7 @@ export default async function AccountSettingsPage({
   const [user, { google_drive_connected, google_drive_error }] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { agencyName: true, googleConnectedEmail: true, planId: true, trialEndsAt: true },
+      select: { email: true, agencyName: true, googleConnectedEmail: true, planId: true, trialEndsAt: true },
     }),
     searchParams,
   ]);
@@ -55,7 +55,10 @@ export default async function AccountSettingsPage({
         <div className="flex items-center justify-between rounded-lg border border-navy-border bg-navy-panel p-5">
           <div>
             <p className="text-xs uppercase tracking-wide text-ink-muted">Current plan</p>
-            <p className="mt-1 text-lg font-medium text-white">{PLAN_LABELS[status.planId]}</p>
+            <p className="mt-1 text-lg font-medium text-white">
+              {PLAN_LABELS[status.planId]}
+              {status.isAdminOverride && <span className="ml-1 text-xs font-normal text-accent">(Admin access)</span>}
+            </p>
           </div>
           <Link
             href="/billing"

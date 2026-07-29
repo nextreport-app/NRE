@@ -7,7 +7,7 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const user = session?.user
-    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { planId: true, trialEndsAt: true } })
+    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, planId: true, trialEndsAt: true } })
     : null;
   const status = user ? getSubscriptionStatus(user) : null;
 

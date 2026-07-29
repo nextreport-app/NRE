@@ -47,7 +47,14 @@ export default async function BillingPage() {
         <p className="text-xs uppercase tracking-wide text-ink-muted">Current plan</p>
         <p className="mt-1 text-2xl font-semibold text-white">{PLAN_LABELS[status.planId]}</p>
 
-        {status.isTrialing && (
+        {status.isAdminOverride && (
+          <p className="mt-2 text-sm text-ink-secondary">
+            Full access granted via admin override (<code className="text-ink-muted">ADMIN_EMAILS</code>) — no
+            subscription needed.
+          </p>
+        )}
+
+        {!status.isAdminOverride && status.isTrialing && (
           <p className="mt-2 text-sm text-ink-secondary">
             {status.isTrialExpired
               ? "Your trial has ended."
@@ -98,7 +105,7 @@ export default async function BillingPage() {
             />
           )}
 
-          {status.isSubscribed && <CancelSubscriptionButton />}
+          {!status.isAdminOverride && status.isSubscribed && <CancelSubscriptionButton />}
         </div>
       </div>
 

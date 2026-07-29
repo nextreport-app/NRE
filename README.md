@@ -88,7 +88,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 587 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
+npm test                   # 594 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted
@@ -110,6 +110,7 @@ works without it.
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Yes (for subscription billing) | From the Razorpay dashboard (Settings → API Keys). `.env.example` ships this repo's **test mode** key pair (`rzp_test_...`) for local/staging use — generate and switch to a **live mode** key pair before accepting real payments. `RAZORPAY_KEY_SECRET` is read server-side only (`lib/razorpay.ts`, `api/payments/verify`) and must never be duplicated into a `NEXT_PUBLIC_`-prefixed variable. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Yes (for subscription billing) | Same value as `RAZORPAY_KEY_ID` — Razorpay's key ID is a publishable identifier the Checkout script needs client-side, unlike the secret. Set both together (and both to the matching live/test pair) whenever you rotate keys, or Checkout will open under one Razorpay account while orders are created under another. |
 | `RAZORPAY_WEBHOOK_SECRET` | Yes (for subscription billing) | A **separate** secret from the key pair above — shown once when you create the webhook in the Razorpay dashboard (Settings → Webhooks → Add New Webhook, URL `https://<your-domain>/api/payments/webhook`, subscribed to at least `payment.captured` and `payment.failed`). Read server-side only (`api/payments/webhook`); left blank, the endpoint rejects every request with a 500 rather than silently accepting unverified ones. Re-copy and update this if the webhook is ever recreated — Razorpay does not let you view an existing webhook's secret again after dismissing the creation dialog. |
+| `ADMIN_EMAILS` | Optional | Comma-separated email addresses (case-insensitive) that always get full Professional access — no trial countdown, no paywall, no client limit — regardless of that account's real `planId`/`trialEndsAt`. For the product owner's own account(s) to use during testing (and beyond) without hand-editing the database. Checked in `lib/subscription.ts`'s `getSubscriptionStatus`, so it can't be bypassed by hitting an API route directly. Leave blank to disable entirely. |
 
 Groq/Gemini API keys are **not** environment variables — each client profile
 in the app has its own key fields (Client page → "AI insight writing"
