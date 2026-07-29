@@ -250,3 +250,26 @@ model Report {
 
   @@index([clientId])
 }
+
+// International (non-INR) pricing waitlist — see /pricing's currency
+// switcher and components/waitlist-form.tsx. Not linked to User: most
+// visitors joining this list are anonymous, pre-signup marketing-page
+// traffic, not logged-in accounts. Standalone rather than a text log
+// specifically because Vercel's serverless functions have no writable
+// filesystem to persist a log file to (same reason report files live in
+// Blob storage, not disk — see storage.ts).
+model WaitlistEntry {
+  id      String  @id @default(cuid())
+  // One row per email — re-submitting the same email (e.g. revisiting the
+  // pricing page) updates planId/country instead of creating a duplicate.
+  email   String  @unique
+  // Which plan they were trying to subscribe to when they joined, if any —
+  // informational only, not enforced against PLANS in lib/razorpay.ts.
+  planId  String?
+  // The detected/selected country code (e.g. "US", "GB") at signup time,
+  // for later segmentation — informational, not validated against a fixed list.
+  country String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

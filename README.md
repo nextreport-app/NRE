@@ -70,6 +70,17 @@ by `userId` in the order's notes), and derives the plan from the amount
 actually captured rather than from any client-supplied value. A
 `payment.failed` event is logged only — it never changes a plan.
 
+`/pricing` detects the visitor's currency client-side (fetching
+`ipapi.co` directly from the browser, so it sees the visitor's real IP,
+not the server's) — India shows INR/Razorpay, everywhere else shows USD
+and, since Stripe isn't wired up yet, a waitlist form instead of a real
+Subscribe button (`src/lib/currency.ts`, `components/currency-pricing.tsx`,
+`components/waitlist-form.tsx`). A manual INR/USD switcher overrides
+detection, and detection failing or timing out defaults to USD. Waitlist
+emails are saved to `WaitlistEntry` via `POST /api/waitlist` (public, no
+auth — most visitors here are anonymous); re-submitting the same email
+updates its plan/country instead of creating a duplicate row.
+
 ## Local development
 
 ```bash
@@ -77,7 +88,7 @@ npm install                # also runs `prisma generate` via postinstall
 cp .env.example .env       # fill in DATABASE_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev     # creates tables in your local Postgres
 npm run dev
-npm test                   # 567 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
+npm test                   # 587 tests covering the NRE engine, PPTX, AI, Drive, and billing modules
 ```
 
 Requires a local PostgreSQL instance (or point `DATABASE_URL` at any hosted

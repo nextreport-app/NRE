@@ -16,7 +16,11 @@ export default auth((req) => {
     // api/payments/webhook/route.ts), not a session cookie. A session-based
     // 401/redirect here would make every real webhook delivery fail before
     // that check even runs.
-    pathname === "/api/payments/webhook";
+    pathname === "/api/payments/webhook" ||
+    // The waitlist is filled out by anonymous visitors on the public
+    // /pricing page (see components/waitlist-form.tsx) — there's no
+    // session to require here, same as /pricing itself being public.
+    pathname === "/api/waitlist";
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

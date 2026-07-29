@@ -1,61 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
-import { SubscribeButton } from "@/components/subscribe-button";
+import { CurrencyPricing } from "@/components/currency-pricing";
 
 export const metadata: Metadata = {
   title: "Pricing — NextReport",
   description:
     "Simple, transparent pricing for NextReport. Starter and Professional plans for agencies of any size, with a 7-day free trial.",
 };
-
-interface Plan {
-  id: "starter" | "professional";
-  name: string;
-  priceInr: string;
-  priceUsd: string;
-  bestFor: string;
-  features: string[];
-  highlighted?: boolean;
-}
-
-const PLANS: Plan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    priceInr: "₹999",
-    priceUsd: "$12",
-    bestFor: "Freelancers and small agencies",
-    features: [
-      "Up to 5 client accounts",
-      "Meta Ads reporting",
-      "Google Ads reporting",
-      "Unlimited report generation",
-      "PPTX and Google Slides export",
-      "AI-written campaign summaries",
-      "Email support",
-    ],
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    priceInr: "₹2,499",
-    priceUsd: "$29",
-    bestFor: "Growing agencies managing multiple clients",
-    highlighted: true,
-    features: [
-      "Unlimited client accounts",
-      "Meta Ads reporting",
-      "Google Ads reporting",
-      "Unlimited report generation",
-      "PPTX and Google Slides export",
-      "AI-written campaign summaries",
-      "Google Drive auto-save",
-      "Priority email support",
-      "Early access to new features",
-    ],
-  },
-];
 
 const FAQS = [
   {
@@ -80,81 +32,6 @@ const FAQS = [
   },
 ];
 
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      className="mt-0.5 h-4 w-4 flex-none text-accent"
-      aria-hidden="true"
-    >
-      <path
-        fillRule="evenodd"
-        d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.42L8.5 12.085l6.79-6.795a1 1 0 011.414 0z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
-
-function PlanCard({
-  plan,
-  loggedIn,
-  userEmail,
-  userName,
-}: {
-  plan: Plan;
-  loggedIn: boolean;
-  userEmail?: string | null;
-  userName?: string | null;
-}) {
-  return (
-    <div
-      className={`relative flex flex-col rounded-xl border p-8 ${
-        plan.highlighted
-          ? "border-accent bg-navy-panel shadow-[0_0_0_1px_rgba(74,144,217,0.4)]"
-          : "border-navy-border bg-navy-panel"
-      }`}
-    >
-      {plan.highlighted && (
-        <span className="absolute -top-3 left-8 rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-          Most Popular
-        </span>
-      )}
-
-      <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-      <p className="mt-1 text-sm text-ink-muted">{plan.bestFor}</p>
-
-      <div className="mt-6 flex items-baseline gap-1">
-        <span className="text-4xl font-semibold text-white">{plan.priceInr}</span>
-        <span className="text-sm text-ink-muted">/month</span>
-      </div>
-      <p className="mt-1 text-xs text-ink-muted">or {plan.priceUsd}/month for international customers</p>
-
-      <ul className="mt-8 space-y-3 text-sm text-ink-secondary">
-        {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
-            <CheckIcon />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-
-      <SubscribeButton
-        planId={plan.id}
-        loggedIn={loggedIn}
-        userEmail={userEmail}
-        userName={userName}
-        className={`mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
-          plan.highlighted
-            ? "bg-accent text-white hover:bg-accent-hover"
-            : "border border-navy-border text-white hover:bg-navy"
-        }`}
-      />
-    </div>
-  );
-}
-
 export default async function PricingPage() {
   const session = await auth();
   const loggedIn = !!session?.user;
@@ -172,22 +49,7 @@ export default async function PricingPage() {
         </p>
       </div>
 
-      <div className="mt-12 grid gap-8 sm:grid-cols-2">
-        {PLANS.map((plan) => (
-          <PlanCard
-            key={plan.name}
-            plan={plan}
-            loggedIn={loggedIn}
-            userEmail={session?.user?.email}
-            userName={session?.user?.name}
-          />
-        ))}
-      </div>
-
-      <p className="mx-auto mt-8 max-w-xl text-center text-xs text-ink-muted">
-        Prices shown in INR for Indian customers and USD for international customers. All plans include
-        a 7-day free trial. Cancel anytime.
-      </p>
+      <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
 
       <div className="mt-20">
         <h2 className="text-center text-2xl font-semibold text-white">Frequently Asked Questions</h2>
