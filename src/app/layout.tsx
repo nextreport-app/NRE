@@ -32,16 +32,22 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
         <Providers>{children}</Providers>
-        <footer className="border-t border-navy-border px-6 py-6 text-center text-xs text-ink-muted">
-          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <Link href="/about" className="hover:text-ink-secondary">About</Link>
-            <Link href="/pricing" className="hover:text-ink-secondary">Pricing</Link>
-            <Link href="/help/download" className="hover:text-ink-secondary">Download Guide</Link>
-            <Link href="/privacy" className="hover:text-ink-secondary">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-ink-secondary">Terms of Service</Link>
-            <Link href="/contact" className="hover:text-ink-secondary">Contact</Link>
-          </nav>
-          <p className="mt-2">© 2026 NextReport. All rights reserved.</p>
+        <footer className="border-t border-navy-border bg-navy px-6 py-6">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+            <span className="text-sm font-semibold text-white">NextReport</span>
+            <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+              <Link href="/" className="hover:text-ink-secondary">Home</Link>
+              <Link href="/pricing" className="hover:text-ink-secondary">Pricing</Link>
+              <Link href="/help/download" className="hover:text-ink-secondary">Help</Link>
+              <Link href="/privacy" className="hover:text-ink-secondary">Privacy</Link>
+              <Link href="/terms" className="hover:text-ink-secondary">Terms</Link>
+              <Link href="/contact" className="hover:text-ink-secondary">Contact</Link>
+            </nav>
+            <span className="text-xs text-ink-muted">© 2026 NextReport. All rights reserved.</span>
+          </div>
+          <p className="mt-3 text-center text-[11px] text-ink-muted">
+            Made for digital agencies. Automate your ad reporting.
+          </p>
         </footer>
       </body>
     </html>
