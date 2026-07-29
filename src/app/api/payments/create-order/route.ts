@@ -4,20 +4,6 @@ import { isPlanId, PLANS, razorpayClient } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request) {
-  // Debug: confirms whether the deployment actually has both Razorpay env
-  // vars set at all — a 401 "Authentication failed" from Razorpay's API
-  // almost always means key_id/key_secret are missing, swapped, from
-  // mismatched test/live modes, or (on Vercel specifically) were added
-  // to the project's env vars without a redeploy since — env var changes
-  // don't reach already-built serverless functions until the next deploy.
-  // This never logs the secret's value, only whether each var is present.
-  console.log(
-    "Razorpay key ID present:",
-    !!process.env.RAZORPAY_KEY_ID,
-    "Secret present:",
-    !!process.env.RAZORPAY_KEY_SECRET,
-  );
-
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
