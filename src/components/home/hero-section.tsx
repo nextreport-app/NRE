@@ -85,7 +85,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
 
           <p className="mt-5 text-lg text-ink-muted">
             Upload your campaign CSV. NextReport reads every column, detects your campaign objective
-            automatically, and generates a fully branded PowerPoint report — in under 3 minutes.
+            automatically, and generates a fully branded PowerPoint report — in under 2 minutes.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

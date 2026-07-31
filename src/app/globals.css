@@ -43,3 +43,11 @@ body {
 body:has(#light-preview-page) .site-footer {
   display: none;
 }
+
+/* Same mechanism as the footer rule above — the floating WhatsApp button
+   (components/whatsapp-button.tsx, rendered from the root layout on every
+   page) is deliberately not shown on the internal /light-preview design
+   preview. */
+body:has(#light-preview-page) .whatsapp-float {
+  display: none;
+}

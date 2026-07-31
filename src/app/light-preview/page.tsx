@@ -28,7 +28,7 @@ const FEATURES = [
   { icon: "🤖", title: "AI-written insights", description: "Campaign summaries and key insights written by AI for every slide." },
   { icon: "☁️", title: "Google Drive sync", description: "Reports save directly to your Drive folder with a shareable link." },
   { icon: "📱", title: "Meta and Google Ads", description: "Full support for both platforms in one tool." },
-  { icon: "⚡", title: "Under 3 minutes", description: "From CSV upload to downloaded report in minutes not hours." },
+  { icon: "⚡", title: "Under 2 minutes", description: "From CSV upload to downloaded report in minutes not hours." },
 ];
 
 const STEPS = [
@@ -69,7 +69,7 @@ export default function LightPreviewPage() {
           <nav className="hidden items-center gap-6 text-sm sm:flex" style={{ color: NAVY }}>
             <span className="cursor-default opacity-80">Home</span>
             <span className="cursor-default opacity-80">Pricing</span>
-            <span className="cursor-default opacity-80">Help</span>
+            <span className="cursor-default opacity-80">Download Guide</span>
             <span className="cursor-default opacity-80">Login</span>
             <span
               className="rounded-md px-4 py-2 text-sm font-semibold text-white"
@@ -99,7 +99,7 @@ export default function LightPreviewPage() {
 
               <p className="mt-5 text-lg" style={{ color: MUTED }}>
                 Upload your campaign CSV. NextReport reads every column, detects your campaign objective
-                automatically, and generates a fully branded PowerPoint report — in under 3 minutes.
+                automatically, and generates a fully branded PowerPoint report — in under 2 minutes.
               </p>
 
               <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
@@ -332,7 +332,7 @@ export default function LightPreviewPage() {
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs" style={{ color: MUTED }}>
             <span>Home</span>
             <span>Pricing</span>
-            <span>Help</span>
+            <span>Download Guide</span>
             <span>Privacy</span>
             <span>Terms</span>
             <span>Contact</span>

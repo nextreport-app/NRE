@@ -307,3 +307,19 @@ model WaitlistEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// /contact form submissions (api/contact/route.ts) — one row per submit, no
+// dedup/upsert (unlike WaitlistEntry's email-keyed upsert above): the same
+// person contacting twice about two different things is two real messages,
+// not an update to the first. Not linked to User for the same reason
+// WaitlistEntry isn't — most visitors submitting this form are anonymous,
+// pre-signup or logged-out traffic, not necessarily an existing account.
+model ContactMessage {
+  id      String @id @default(cuid())
+  name    String
+  email   String
+  subject String
+  message String @db.Text
+
+  createdAt DateTime @default(now())
+}

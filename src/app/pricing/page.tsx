@@ -12,24 +12,16 @@ export const metadata: Metadata = {
 
 const FAQS = [
   {
-    q: "What payment methods do you accept?",
-    a: "We accept all major credit and debit cards, UPI, net banking, and wallets for Indian customers. International customers can pay via credit or debit card.",
+    q: "Is there really no credit card required for the trial?",
+    a: "Correct. Sign up and get 7 days of full access with no payment details required. You only need to subscribe when your trial ends.",
   },
   {
-    q: "Can I change my plan later?",
-    a: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect from the next billing cycle.",
+    q: "What happens when my trial ends?",
+    a: "You will see a prompt to subscribe. If you choose not to subscribe, you will not be able to generate new reports but your account and client data stays safe.",
   },
   {
-    q: "Is there a free trial?",
-    a: "Yes, all new accounts include a 7-day free trial with full access to all features. No credit card required to start.",
-  },
-  {
-    q: "What currencies do you accept?",
-    a: "Indian customers are billed in INR. International customers are billed in USD.",
-  },
-  {
-    q: "Do you offer refunds?",
-    a: "We offer a full refund within 7 days of your first payment if you are not satisfied.",
+    q: "Can I switch plans later?",
+    a: "Yes. You can upgrade or downgrade at any time from your billing page. Changes take effect immediately.",
   },
 ];
 
@@ -51,6 +43,10 @@ export default async function PricingPage() {
             Everything you need to automate your ad reporting. No hidden fees.
           </p>
         </div>
+
+        <p className="mt-8 text-center text-xs text-ink-muted">
+          ✓ 7-day free trial · ✓ No credit card required · ✓ Cancel anytime · ✓ Instant access
+        </p>
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
 

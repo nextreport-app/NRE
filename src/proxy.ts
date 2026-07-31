@@ -34,7 +34,10 @@ export default auth((req) => {
     // directly there too — see components/subscribe-button.tsx), but the
     // route itself is left in place rather than removed outright; still
     // public/no-auth since anonymous visitors are what it was ever for.
-    pathname === "/api/waitlist";
+    pathname === "/api/waitlist" ||
+    // The /contact form (public page) is filled out by anonymous visitors
+    // too — same reasoning as /api/waitlist above.
+    pathname === "/api/contact";
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

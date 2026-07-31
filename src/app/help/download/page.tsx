@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
-  title: "How to Download Your Ad Report — NextReport",
+  title: "Download Guide — NextReport",
 };
 
 function TipBox({ title, children }: { title: string; children: React.ReactNode }) {
@@ -49,7 +49,7 @@ export default async function DownloadGuidePage() {
         ← Back to {loggedIn ? "Dashboard" : "NextReport"}
       </Link>
 
-      <h1 className="mt-6 text-3xl font-semibold text-white">How to Download Your Ad Report</h1>
+      <h1 className="mt-6 text-3xl font-semibold text-white">Download Guide</h1>
       <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
         NextReport works with CSV and Excel files downloaded directly from Meta Ads Manager or Google
         Ads. Follow either method below — both work with NextReport.

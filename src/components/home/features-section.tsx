@@ -26,7 +26,7 @@ const FEATURES = [
   },
   {
     icon: "⚡",
-    title: "Under 3 minutes",
+    title: "Under 2 minutes",
     description: "From CSV upload to downloaded report in minutes not hours.",
   },
 ];
