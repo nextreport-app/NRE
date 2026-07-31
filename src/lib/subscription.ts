@@ -42,11 +42,11 @@ function normalizePlanId(planId: string): PlanId {
   return (KNOWN_PLAN_IDS as readonly string[]).includes(planId) ? (planId as PlanId) : "trial";
 }
 
-// Starter caps client accounts at 5; Professional and an active trial are
+// Starter caps client accounts at 10; Professional and an active trial are
 // unlimited (trial is time-gated instead — see isBlocked). "cancelled"
 // has no meaningful limit of its own since isBlocked already blocks the
 // actions a limit would otherwise apply to.
-const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: 5 };
+const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: 10 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

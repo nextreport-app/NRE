@@ -27,7 +27,7 @@ export async function requireActiveSubscription(userId: string): Promise<NextRes
   return null;
 }
 
-/** Same trial/cancelled check as requireActiveSubscription, plus the Starter plan's 5-client cap. null means "allowed, proceed." */
+/** Same trial/cancelled check as requireActiveSubscription, plus the Starter plan's 10-client cap. null means "allowed, proceed." */
 export async function requireClientCapacity(userId: string): Promise<NextResponse | null> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });

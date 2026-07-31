@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TEMPLATE_LABELS } from "@/lib/validators/client";
+import { ClientList } from "@/components/client-list";
 
 export default async function ClientsPage() {
   const session = await auth();
@@ -37,24 +37,7 @@ export default async function ClientsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
-          {clients.map((client) => (
-            <li key={client.id}>
-              <Link
-                href={`/clients/${client.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-navy-border/60"
-              >
-                <div>
-                  <p className="font-medium text-white">{client.accountName}</p>
-                  <p className="text-xs text-ink-muted">
-                    {client.currency} · {client.timezone} · {TEMPLATE_LABELS[client.template]}
-                  </p>
-                </div>
-                <span className="text-sm text-ink-muted">Manage →</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <ClientList clients={clients} />
       )}
     </div>
   );

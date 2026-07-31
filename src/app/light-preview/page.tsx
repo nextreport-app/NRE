@@ -43,7 +43,7 @@ const PLANS = [
     price: "$12",
     bestFor: "Freelancers and small agencies",
     highlighted: false,
-    features: ["Up to 5 client accounts", "Meta Ads reporting", "Google Ads reporting", "Unlimited report generation", "Email support"],
+    features: ["Up to 10 client accounts", "Meta Ads reporting", "Google Ads reporting", "Unlimited report generation", "Email support"],
   },
   {
     name: "Professional",
@@ -69,7 +69,7 @@ export default function LightPreviewPage() {
           <nav className="hidden items-center gap-6 text-sm sm:flex" style={{ color: NAVY }}>
             <span className="cursor-default opacity-80">Home</span>
             <span className="cursor-default opacity-80">Pricing</span>
-            <span className="cursor-default opacity-80">Download Guide</span>
+            <span className="cursor-default opacity-80">Get Started</span>
             <span className="cursor-default opacity-80">Login</span>
             <span
               className="rounded-md px-4 py-2 text-sm font-semibold text-white"
@@ -332,7 +332,7 @@ export default function LightPreviewPage() {
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs" style={{ color: MUTED }}>
             <span>Home</span>
             <span>Pricing</span>
-            <span>Download Guide</span>
+            <span>Get Started</span>
             <span>Privacy</span>
             <span>Terms</span>
             <span>Contact</span>

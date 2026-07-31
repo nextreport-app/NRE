@@ -31,9 +31,6 @@ export function WhatsAppButton() {
         Chat with us on WhatsApp
       </span>
 
-      {/* Subtle pulsing ring behind the button to draw attention, without animating the button itself (which would make the icon jitter). */}
-      <span className="absolute inset-0 animate-ping rounded-full bg-[#25D366] opacity-75" aria-hidden="true" />
-
       <a
         href={WHATSAPP_URL}
         target="_blank"

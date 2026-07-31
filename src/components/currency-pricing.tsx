@@ -22,7 +22,7 @@ const PLANS: Plan[] = [
     priceUsd: "$12",
     bestFor: "Freelancers and small agencies",
     features: [
-      "Up to 5 client accounts",
+      "Up to 10 client accounts",
       "Unlimited report generation",
       "Meta Ads reporting",
       "Google Ads reporting",
@@ -44,8 +44,8 @@ const PLANS: Plan[] = [
       "Everything in Starter",
       "Priority email support",
       "Early access to new features",
-      "Google Ads advanced reporting (coming soon)",
-      "LinkedIn Ads reporting (coming soon)",
+      "Google Ads advanced reporting",
+      "LinkedIn Ads reporting",
     ],
   },
 ];

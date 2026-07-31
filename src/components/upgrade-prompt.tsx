@@ -1,10 +1,12 @@
 import { SubscribeButton } from "./subscribe-button";
 
-/** Shown instead of the "New client" form once a Starter-plan user has hit the 5-client cap (see lib/subscription.ts's clientLimit). */
+/** Shown instead of the "New client" form once a Starter-plan user has hit their client cap (see lib/subscription.ts's clientLimit). */
 export function UpgradePrompt({
+  clientLimit,
   userEmail,
   userName,
 }: {
+  clientLimit: number;
   userEmail?: string | null;
   userName?: string | null;
 }) {
@@ -12,7 +14,7 @@ export function UpgradePrompt({
     <div className="mx-auto max-w-md rounded-lg border border-navy-border bg-navy-panel p-8 text-center">
       <h1 className="text-xl font-semibold text-white">Client limit reached</h1>
       <p className="mt-2 text-sm text-ink-muted">
-        The Starter plan includes up to 5 client accounts. Upgrade to Professional for unlimited clients.
+        You have reached the {clientLimit} client limit on the Starter plan. Upgrade to Professional for unlimited clients.
       </p>
       <SubscribeButton
         planId="professional"

@@ -42,12 +42,12 @@ describe("getSubscriptionStatus", () => {
     expect(status.isBlocked).toBe(true);
   });
 
-  it("never blocks a starter subscriber, and caps clients at 5", () => {
+  it("never blocks a starter subscriber, and caps clients at 10", () => {
     const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "starter", trialEndsAt: new Date(Date.now() - 30 * DAY) });
     expect(status.isSubscribed).toBe(true);
     expect(status.isTrialing).toBe(false);
     expect(status.isBlocked).toBe(false);
-    expect(status.clientLimit).toBe(5);
+    expect(status.clientLimit).toBe(10);
   });
 
   it("never blocks a professional subscriber, and has no client limit", () => {

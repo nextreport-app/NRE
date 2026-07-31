@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { WhatsAppButton } from "@/components/whatsapp-button";
+import { SocialLinks } from "@/components/social-links";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,13 +52,18 @@ export default function RootLayout({
             <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-ink-muted">
               <Link href="/" className="hover:text-ink-secondary">Home</Link>
               <Link href="/pricing" className="hover:text-ink-secondary">Pricing</Link>
-              <Link href="/help/download" className="hover:text-ink-secondary">Download Guide</Link>
+              <Link href="/help/download" className="hover:text-ink-secondary">Get Started</Link>
               <Link href="/privacy" className="hover:text-ink-secondary">Privacy</Link>
               <Link href="/terms" className="hover:text-ink-secondary">Terms</Link>
               <Link href="/contact" className="hover:text-ink-secondary">Contact</Link>
             </nav>
-            <span className="text-xs text-ink-muted">© 2026 NextReport. All rights reserved.</span>
           </div>
+          <div className="mx-auto mt-4 flex max-w-5xl justify-center sm:justify-start">
+            <SocialLinks />
+          </div>
+          <p className="mt-4 text-center text-xs text-ink-muted sm:text-left">
+            © 2026 NextReport. All rights reserved.
+          </p>
           <p className="mt-3 text-center text-[11px] text-ink-muted">
             Made for digital agencies. Automate your ad reporting.
           </p>
