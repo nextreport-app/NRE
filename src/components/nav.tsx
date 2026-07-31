@@ -29,7 +29,7 @@ export function Nav() {
             Pricing
           </Link>
           <Link href="/help/download" className="hover:text-ink-secondary">
-            Get Started
+            How It Works
           </Link>
           {session?.user?.email && <span>{session.user.email}</span>}
           <button

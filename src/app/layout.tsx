@@ -52,7 +52,7 @@ export default function RootLayout({
             <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-ink-muted">
               <Link href="/" className="hover:text-ink-secondary">Home</Link>
               <Link href="/pricing" className="hover:text-ink-secondary">Pricing</Link>
-              <Link href="/help/download" className="hover:text-ink-secondary">Get Started</Link>
+              <Link href="/help/download" className="hover:text-ink-secondary">How It Works</Link>
               <Link href="/privacy" className="hover:text-ink-secondary">Privacy</Link>
               <Link href="/terms" className="hover:text-ink-secondary">Terms</Link>
               <Link href="/contact" className="hover:text-ink-secondary">Contact</Link>

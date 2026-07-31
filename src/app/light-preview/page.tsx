@@ -69,7 +69,7 @@ export default function LightPreviewPage() {
           <nav className="hidden items-center gap-6 text-sm sm:flex" style={{ color: NAVY }}>
             <span className="cursor-default opacity-80">Home</span>
             <span className="cursor-default opacity-80">Pricing</span>
-            <span className="cursor-default opacity-80">Get Started</span>
+            <span className="cursor-default opacity-80">How It Works</span>
             <span className="cursor-default opacity-80">Login</span>
             <span
               className="rounded-md px-4 py-2 text-sm font-semibold text-white"
@@ -332,7 +332,7 @@ export default function LightPreviewPage() {
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs" style={{ color: MUTED }}>
             <span>Home</span>
             <span>Pricing</span>
-            <span>Get Started</span>
+            <span>How It Works</span>
             <span>Privacy</span>
             <span>Terms</span>
             <span>Contact</span>
