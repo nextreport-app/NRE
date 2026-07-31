@@ -21,6 +21,7 @@ import {
   dateSelectionSchema,
   parseJsonFormField,
   reportTitleSchema,
+  reportTypeSchema,
   selectedCampaignsSchema,
 } from "@/lib/validators/report-wizard";
 
@@ -78,6 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
+  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {
@@ -96,6 +98,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange: dateResolution.weeklyRange,
+    reportType,
   });
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
@@ -109,6 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         clientId: client.id,
         status: "GENERATING",
+        reportType,
         weekStart,
         weekEnd,
         fileName,

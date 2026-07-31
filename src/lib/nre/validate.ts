@@ -10,7 +10,7 @@
  */
 
 import type { ColumnMap, NreRow } from "./columns";
-import { getRowDate } from "./columns";
+import { getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 
 export interface ValidationIssue {
@@ -69,13 +69,15 @@ export function validateMtdDailyCsv(
   if (!colMap.campaign_name) {
     errors.push({
       field: "campaign_name",
-      message: 'No "Campaign name" column found in the CSV.',
+      message:
+        "Your CSV is missing the Campaign Name column which is required. Please ensure Campaign Name is included in your download.",
     });
   }
   if (!colMap.spend) {
     errors.push({
       field: "spend",
-      message: 'No "Amount spent" column found in the CSV.',
+      message:
+        "Your CSV is missing the Amount Spent column. Please add Amount Spent to your column selection in Meta Ads Manager and re-download.",
     });
   }
   const hasDateColumn =
@@ -87,11 +89,25 @@ export function validateMtdDailyCsv(
       field: "date",
       message: 'No date column found (expected a "Day", "Date", or "Reporting starts/ends" column).',
     });
+  } else if (!rows.some(hasRealRowDate)) {
+    // A date column exists (colMap.date_start/date_end matched "Reporting
+    // starts"/"Reporting ends"), but no row has a real per-row "Day"/"Date"
+    // value — every row would fall back to the SAME file-wide start date
+    // (see columns.ts's getRowDate), which is what a weekly- or monthly-
+    // granularity Meta export looks like, not a daily one. Caught here,
+    // before it ever reaches the weekly/MTD splitting logic downstream,
+    // which would otherwise silently produce a garbage or empty report.
+    errors.push({
+      field: "date_granularity",
+      message:
+        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with the Time Increment set to Day before uploading.",
+    });
   }
   if (!colMap.results) {
     errors.push({
       field: "results",
-      message: "No result/conversion metric column found — cannot determine campaign performance.",
+      message:
+        "Your CSV is missing the Result Type column. Without it NextReport cannot detect your campaign objective. Please add Result Type and Results to your columns and re-download. See our Download Guide for the recommended column list.",
     });
   }
 

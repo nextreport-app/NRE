@@ -132,7 +132,8 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
  * "Reporting starts"/"Starts"/"Ends" never equal "day" or "date" outright,
  * so they can never be picked up here even by accident.
  */
-export function getRowDate(row: NreRow): string {
+/** The value of a real per-row "Day"/"Date" column, or null if this row has neither — shared by getRowDate (which additionally falls back to date_start) and hasRealRowDate (which deliberately does NOT). */
+function findRealDayOrDateValue(row: NreRow): string | null {
   const raw = row._raw || {};
   const normalized = Object.entries(raw).map(([header, value]) => [header.trim().toLowerCase(), value] as const);
 
@@ -142,7 +143,24 @@ export function getRowDate(row: NreRow): string {
   const date = normalized.find(([h, v]) => h === "date" && v);
   if (date) return date[1];
 
+  return null;
+}
+
+export function getRowDate(row: NreRow): string {
   // Last-resort fallback for exports with no real per-row date column at
   // all (rare) — matches the source's own fallback to date_start.
-  return row.date_start || "";
+  return findRealDayOrDateValue(row) ?? row.date_start ?? "";
+}
+
+/**
+ * True when `row` has a real per-row "Day"/"Date" column value — as
+ * opposed to only a file-wide "Reporting starts"/"Reporting ends" range
+ * (which getRowDate() falls back to, but which every row shares the same
+ * value for). A CSV where every row's date comes only from that fallback
+ * means the export has no daily granularity at all — see validate.ts's
+ * "weekly or monthly totals instead of daily data" check, which uses this
+ * to catch that before it produces garbage weekly/MTD splits downstream.
+ */
+export function hasRealRowDate(row: NreRow): boolean {
+  return findRealDayOrDateValue(row) !== null;
 }

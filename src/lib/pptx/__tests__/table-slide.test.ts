@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fillCombinedTotalTable } from "../table-slide";
+import { buildTableSlideXml } from "../fill-tags";
+import type { TableHeaderLabels, TableRowData } from "../../nre/report-data";
 
 const EXPECTED_ROWS = 3;
 const NATIVE_COLS = 10;
@@ -230,5 +232,58 @@ describe("fillCombinedTotalTable", () => {
       // Every cell (grown ones included) keeps the fixture's sz="1400" rPr.
       expect((out.match(/sz="1400"/g) || []).length).toBe(EXPECTED_ROWS * 12);
     });
+  });
+});
+
+describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", () => {
+  const headers: TableHeaderLabels = { resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT" }] };
+  const periodRow: TableRowData = {
+    hasData: true,
+    monthLabel: "Jun 2026 PERIOD-LABEL",
+    spend: "₹500",
+    reach: "10,000",
+    impressions: "20,000",
+    ctr: "1.00%",
+    cpc: "₹2.00",
+    resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "5", cprValue: "₹100.00" }],
+  };
+  const mtdRow: TableRowData = {
+    hasData: true,
+    monthLabel: "Jul 1 - Jul 19 MTD-LABEL",
+    spend: "₹900",
+    reach: "18,000",
+    impressions: "36,000",
+    ctr: "1.20%",
+    cpc: "₹2.50",
+    resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "9", cprValue: "₹100.00" }],
+  };
+
+  it("shows both the Period and MTD rows for a Weekly report when Period has data", () => {
+    const xml = buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "WEEKLY");
+    expect(out).toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL");
+  });
+
+  it("hides the Period row for a Monthly report, even though Period has real data", () => {
+    const xml = buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "MONTHLY");
+    expect(out).not.toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL");
+  });
+
+  it("defaults to WEEKLY (both rows shown) when reportType is omitted", () => {
+    const xml = buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers);
+    expect(out).toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL");
+  });
+
+  it("still hides the Period row for a Weekly report when Period genuinely has no data — unaffected by reportType", () => {
+    const xml = buildFixtureTable();
+    const emptyPeriodRow: TableRowData = { ...periodRow, hasData: false, monthLabel: "—" };
+    const out = buildTableSlideXml({ xml, rels: "" }, emptyPeriodRow, mtdRow, headers, "WEEKLY");
+    expect(out).not.toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL");
   });
 });

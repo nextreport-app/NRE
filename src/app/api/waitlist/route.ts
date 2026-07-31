@@ -4,10 +4,11 @@ import { waitlistSchema } from "@/lib/validators/waitlist";
 import { apiErrorResponse } from "@/lib/api-error";
 
 /**
- * International (non-INR) pricing waitlist — /pricing shows this instead
- * of a real Subscribe button for USD visitors, since Stripe isn't wired up
- * yet (see components/waitlist-form.tsx). Deliberately public: most
- * visitors here are anonymous marketing-page traffic, not logged-in
+ * International (non-INR) pricing waitlist. No longer linked from
+ * /pricing — Razorpay's international-card support now handles USD
+ * checkout there directly (see components/subscribe-button.tsx) — but this
+ * route is left in place rather than removed. Deliberately public: most
+ * visitors here would be anonymous marketing-page traffic, not logged-in
  * accounts, so there's no auth() check the way the Razorpay routes have
  * one.
  */

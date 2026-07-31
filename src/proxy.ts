@@ -30,9 +30,10 @@ export default auth((req) => {
     // 401/redirect here would make every real webhook delivery fail before
     // that check even runs.
     pathname === "/api/payments/webhook" ||
-    // The waitlist is filled out by anonymous visitors on the public
-    // /pricing page (see components/waitlist-form.tsx) — there's no
-    // session to require here, same as /pricing itself being public.
+    // No longer linked from /pricing (Razorpay now handles USD checkout
+    // directly there too — see components/subscribe-button.tsx), but the
+    // route itself is left in place rather than removed outright; still
+    // public/no-auth since anonymous visitors are what it was ever for.
     pathname === "/api/waitlist";
 
   if (!req.auth && !isPublic) {

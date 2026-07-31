@@ -1,6 +1,15 @@
 import crypto from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isPlanId, PLANS, planIdForAmount, razorpayClient, verifyPaymentSignature, verifyWebhookSignature } from "../razorpay";
+import {
+  amountForCurrency,
+  isPlanId,
+  isPricingCurrency,
+  PLANS,
+  planIdForAmount,
+  razorpayClient,
+  verifyPaymentSignature,
+  verifyWebhookSignature,
+} from "../razorpay";
 
 describe("PLANS", () => {
   it("prices Starter at ₹999/month in paise", () => {
@@ -9,6 +18,40 @@ describe("PLANS", () => {
 
   it("prices Professional at ₹2,499/month in paise", () => {
     expect(PLANS.professional.amountPaise).toBe(249_900);
+  });
+
+  it("prices Starter at $12/month in cents", () => {
+    expect(PLANS.starter.amountUsdCents).toBe(1_200);
+  });
+
+  it("prices Professional at $29/month in cents", () => {
+    expect(PLANS.professional.amountUsdCents).toBe(2_900);
+  });
+});
+
+describe("isPricingCurrency", () => {
+  it("accepts INR and USD", () => {
+    expect(isPricingCurrency("INR")).toBe(true);
+    expect(isPricingCurrency("USD")).toBe(true);
+  });
+
+  it("rejects anything else", () => {
+    expect(isPricingCurrency("GBP")).toBe(false);
+    expect(isPricingCurrency("")).toBe(false);
+    expect(isPricingCurrency(undefined)).toBe(false);
+    expect(isPricingCurrency(null)).toBe(false);
+  });
+});
+
+describe("amountForCurrency", () => {
+  it("returns the paise amount for INR", () => {
+    expect(amountForCurrency("starter", "INR")).toBe(99_900);
+    expect(amountForCurrency("professional", "INR")).toBe(249_900);
+  });
+
+  it("returns the cents amount for USD", () => {
+    expect(amountForCurrency("starter", "USD")).toBe(1_200);
+    expect(amountForCurrency("professional", "USD")).toBe(2_900);
   });
 });
 
@@ -113,8 +156,21 @@ describe("planIdForAmount", () => {
     expect(planIdForAmount(99_901, "INR")).toBeNull();
   });
 
-  it("returns null for a non-INR currency even if the amount matches a plan price numerically", () => {
+  it("returns null for a non-matching currency even if the amount matches a plan price numerically in the other currency", () => {
     expect(planIdForAmount(99_900, "USD")).toBeNull();
+    expect(planIdForAmount(1_200, "INR")).toBeNull();
+  });
+
+  it("maps $12 in cents, USD, to starter", () => {
+    expect(planIdForAmount(1_200, "USD")).toBe("starter");
+  });
+
+  it("maps $29 in cents, USD, to professional", () => {
+    expect(planIdForAmount(2_900, "USD")).toBe("professional");
+  });
+
+  it("returns null for an unrecognized currency entirely", () => {
+    expect(planIdForAmount(99_900, "GBP")).toBeNull();
   });
 });
 

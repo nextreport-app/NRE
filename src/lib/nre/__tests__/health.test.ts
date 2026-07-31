@@ -48,6 +48,41 @@ describe("calculateAccountHealth", () => {
     expect(health.badge).toContain("On Track");
   });
 
+  describe("Fix 8 — periodLabel (Monthly Report option)", () => {
+    it("defaults to Weekly wording when periodLabel is omitted", () => {
+      const health = calculateAccountHealth([row({ ctr: 3.5, frequency: 1.5 })]);
+      expect(health.badge).toContain("Weekly Performance Score");
+    });
+
+    it("says 'Monthly Performance Score' instead of 'Weekly' for a score-tier badge", () => {
+      const health = calculateAccountHealth([row({ ctr: 3.5, frequency: 1.5 })], "Monthly");
+      expect(health.badge).toContain("Monthly Performance Score");
+      expect(health.badge).not.toContain("Weekly");
+    });
+
+    it("says 'this month' instead of 'this week' for the On Track badge", () => {
+      const rows = [row({ ctr: 0, frequency: 0, reach: 0, impressions: 0 })];
+      const health = calculateAccountHealth(rows, "Monthly");
+      expect(health.badge).toContain("this month");
+      expect(health.badge).not.toContain("this week");
+    });
+
+    it("says 'this month' instead of 'this week' for the active-optimisation badge", () => {
+      // results=3 and spend=200 clear the Learning Phase thresholds (spend>=50,
+      // results>=3), but a middling CPL still lands the total score under 50.
+      const rows = [row({ results: 3, ctr: 0, frequency: 0, reach: 0, impressions: 0, spend: 200 })];
+      const health = calculateAccountHealth(rows, "Monthly");
+      expect(health.score).toBeLessThan(50);
+      expect(health.badge).toContain("this month");
+      expect(health.badge).not.toContain("this week");
+    });
+
+    it("does not change the Learning Phase badge, which never mentions week/month", () => {
+      const health = calculateAccountHealth([row({ spend: 10, results: 1 })], "Monthly");
+      expect(health.badge).toBe("🟡 Campaign in Learning Phase — optimising delivery");
+    });
+  });
+
   it("derives frequency from impressions/reach when the frequency field is 0", () => {
     // freq = impressions/reach = 10000/5000 = 2.0 → falls in the 2.0-2.5 bucket (17pts)
     // results>0 (25) + ctr>=2.0 (20, ctr=2) + freq 2.0-2.5 (17) + cost-neutral (12) = 74

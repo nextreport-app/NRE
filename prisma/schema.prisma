@@ -169,6 +169,17 @@ enum ReportStatus {
   FAILED
 }
 
+// Weekly (default): trailing-7-day slides + MTD chart + a 2-row Combined
+// Total table (Period + MTD). Monthly: no weekly split at all — campaign/
+// ad-set slides, cover title, and the Combined Total table (1 row, MTD
+// only) all use the full month-to-date data instead — see
+// lib/nre/report-data.ts's buildReportData `reportType` param for exactly
+// what changes.
+enum ReportType {
+  WEEKLY
+  MONTHLY
+}
+
 model Client {
   id            String         @id @default(cuid())
   userId        String
@@ -244,9 +255,13 @@ model Client {
 }
 
 model Report {
-  id       String       @id @default(cuid())
-  clientId String
-  status   ReportStatus @default(PENDING)
+  id         String       @id @default(cuid())
+  clientId   String
+  status     ReportStatus @default(PENDING)
+  // Which report the wizard generated — see the ReportType enum's own
+  // comment. Recorded per-report (not read back into anything) purely so
+  // the client's report history can show "Weekly"/"Monthly" per row.
+  reportType ReportType   @default(WEEKLY)
 
   weekStart String?
   weekEnd   String?
@@ -268,10 +283,12 @@ model Report {
   @@index([clientId])
 }
 
-// International (non-INR) pricing waitlist — see /pricing's currency
-// switcher and components/waitlist-form.tsx. Not linked to User: most
-// visitors joining this list are anonymous, pre-signup marketing-page
-// traffic, not logged-in accounts. Standalone rather than a text log
+// International (non-INR) pricing waitlist. No longer linked from
+// /pricing — see api/waitlist/route.ts's own file header — but the model
+// and route are left in place rather than removed. Not linked to User:
+// most visitors joining this list would be anonymous, pre-signup
+// marketing-page traffic, not logged-in accounts. Standalone rather than a
+// text log
 // specifically because Vercel's serverless functions have no writable
 // filesystem to persist a log file to (same reason report files live in
 // Blob storage, not disk — see storage.ts).

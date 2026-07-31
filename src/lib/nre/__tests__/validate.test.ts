@@ -234,4 +234,61 @@ describe("validateMtdDailyCsv", () => {
     expect(diagnostic).toBeDefined();
     expect(diagnostic!.message).toContain("Some Unrelated Column");
   });
+
+  describe("Fix 7 — specific, actionable error messages", () => {
+    it("gives a specific Campaign Name message, not the old generic one", () => {
+      const { colMap, rows } = parse(["Day", "Amount spent (USD)", "Results", "Result type"], [["19-07-2026", "100", "5", "Purchase"]]);
+      const result = validateMtdDailyCsv(colMap, rows, NOW);
+      const err = result.errors.find((e) => e.field === "campaign_name");
+      expect(err?.message).toBe(
+        "Your CSV is missing the Campaign Name column which is required. Please ensure Campaign Name is included in your download.",
+      );
+    });
+
+    it("gives a specific Amount Spent message, not the old generic one", () => {
+      const { colMap, rows } = parse(["Campaign name", "Day", "Results", "Result type"], [["Shoes", "19-07-2026", "5", "Purchase"]]);
+      const result = validateMtdDailyCsv(colMap, rows, NOW);
+      const err = result.errors.find((e) => e.field === "spend");
+      expect(err?.message).toBe(
+        "Your CSV is missing the Amount Spent column. Please add Amount Spent to your column selection in Meta Ads Manager and re-download.",
+      );
+    });
+
+    it("gives a specific Result Type/Results message pointing at the Download Guide", () => {
+      const { colMap, rows } = parse(["Campaign name", "Day", "Amount spent (USD)"], [["Shoes", "19-07-2026", "100"]]);
+      const result = validateMtdDailyCsv(colMap, rows, NOW);
+      const err = result.errors.find((e) => e.field === "results");
+      expect(err?.message).toBe(
+        "Your CSV is missing the Result Type column. Without it NextReport cannot detect your campaign objective. Please add Result Type and Results to your columns and re-download. See our Download Guide for the recommended column list.",
+      );
+    });
+
+    it("flags a CSV with only file-wide Reporting starts/ends (no real per-row Day/Date column) as weekly/monthly totals", () => {
+      // A weekly- or monthly-granularity Meta export: every row shares the
+      // SAME "Reporting starts"/"Reporting ends" pair, with no per-row Day.
+      const headers = ["Campaign name", "Reporting starts", "Reporting ends", "Amount spent (USD)", "Results", "Result type"];
+      const rows = [
+        ["Shoes", "01-07-2026", "31-07-2026", "3000", "50", "Purchase"],
+        ["Boots", "01-07-2026", "31-07-2026", "1500", "20", "Purchase"],
+      ];
+      const { colMap, rows: parsedRows } = parse(headers, rows);
+      const result = validateMtdDailyCsv(colMap, parsedRows, NOW);
+      expect(result.valid).toBe(false);
+      const err = result.errors.find((e) => e.field === "date_granularity");
+      expect(err?.message).toBe(
+        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with the Time Increment set to Day before uploading.",
+      );
+    });
+
+    it("does not flag a real daily export (per-row Day column) as weekly/monthly totals, even alongside Reporting starts/ends", () => {
+      const headers = ["Campaign name", "Day", "Reporting starts", "Reporting ends", "Amount spent (USD)", "Results", "Result type"];
+      const rows = Array.from({ length: 7 }, (_, i) => {
+        const day = `${String(i + 1).padStart(2, "0")}-07-2026`;
+        return ["Shoes", day, "01-07-2026", "07-07-2026", "100", "5", "Purchase"];
+      });
+      const { colMap, rows: parsedRows } = parse(headers, rows);
+      const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-07-23T12:00:00Z"));
+      expect(result.errors.some((e) => e.field === "date_granularity")).toBe(false);
+    });
+  });
 });

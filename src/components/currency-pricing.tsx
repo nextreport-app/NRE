@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
-import { WaitlistForm } from "./waitlist-form";
-import { countryCodeToCurrency, type PricingCurrency } from "@/lib/currency";
+import { countryCodeToCurrency, readCachedCountry, writeCachedCountry, type PricingCurrency } from "@/lib/currency";
 
 interface Plan {
   id: "starter" | "professional";
@@ -89,14 +88,12 @@ function CheckIcon() {
 function PlanCard({
   plan,
   currency,
-  detectedCountry,
   loggedIn,
   userEmail,
   userName,
 }: {
   plan: Plan;
   currency: PricingCurrency;
-  detectedCountry: string | null;
   loggedIn: boolean;
   userEmail?: string | null;
   userName?: string | null;
@@ -141,17 +138,14 @@ function PlanCard({
         ))}
       </ul>
 
-      {currency === "INR" ? (
-        <SubscribeButton
-          planId={plan.id}
-          loggedIn={loggedIn}
-          userEmail={userEmail}
-          userName={userName}
-          className={ctaClassName}
-        />
-      ) : (
-        <WaitlistForm planId={plan.id} country={detectedCountry} className="mt-8" />
-      )}
+      <SubscribeButton
+        planId={plan.id}
+        currency={currency}
+        loggedIn={loggedIn}
+        userEmail={userEmail}
+        userName={userName}
+        className={ctaClassName}
+      />
     </div>
   );
 }
@@ -165,27 +159,41 @@ export function CurrencyPricing({
   userEmail?: string | null;
   userName?: string | null;
 }) {
-  // Defaults to USD per the spec: "safer to show international pricing
-  // as default since Indian users know to look for INR option" — this is
-  // both the initial render AND what's left in place if detection fails
-  // or never resolves.
-  const [currency, setCurrency] = useState<PricingCurrency>("USD");
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+  // Defaults to INR on first paint (not USD): most early users are Indian,
+  // so this is the choice that shows the RIGHT currency with zero lag for
+  // the majority of visitors — international visitors briefly see INR
+  // before the detection below (cached or freshly fetched) switches them
+  // to USD. This is also what's left in place if detection fails entirely.
+  const [currency, setCurrency] = useState<PricingCurrency>("INR");
 
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), IPAPI_TIMEOUT_MS);
 
-    fetch(IPAPI_URL, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`ipapi.co responded ${res.status}`))))
-      .then((data: { country_code?: string }) => {
-        setDetectedCountry(data.country_code ?? null);
-        setCurrency(countryCodeToCurrency(data.country_code));
-      })
+    // A cached country code (see lib/currency.ts, 24h TTL) resolves
+    // immediately and skips the network call altogether — no flash at all
+    // for a repeat visitor, not even the brief one first-time visitors see.
+    // Funneled through the same promise chain as the network path (rather
+    // than calling setCurrency synchronously right here) so there's exactly
+    // one place setCurrency is ever called from this effect.
+    const cached = readCachedCountry();
+    const detectedCountryCode: Promise<string | null> = cached
+      ? Promise.resolve(cached.countryCode)
+      : fetch(IPAPI_URL, { signal: controller.signal })
+          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`ipapi.co responded ${res.status}`))))
+          .then((data: { country_code?: string }) => {
+            const countryCode = data.country_code ?? null;
+            writeCachedCountry(countryCode);
+            return countryCode;
+          });
+
+    detectedCountryCode
+      .then((countryCode) => setCurrency(countryCodeToCurrency(countryCode)))
       .catch(() => {
         // Detection failed, timed out, or was blocked (ad blockers/privacy
-        // extensions commonly block third-party geo-IP calls) — the USD
-        // default above is left standing, exactly as the spec asks.
+        // extensions commonly block third-party geo-IP calls) — the INR
+        // default above is left standing, and nothing is cached (so it's
+        // retried on the next visit rather than "stuck" on a guess).
       })
       .finally(() => clearTimeout(timeout));
 
@@ -203,7 +211,6 @@ export function CurrencyPricing({
             key={plan.name}
             plan={plan}
             currency={currency}
-            detectedCountry={detectedCountry}
             loggedIn={loggedIn}
             userEmail={userEmail}
             userName={userName}

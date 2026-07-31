@@ -64,6 +64,27 @@ function ctrNumberOnly(ctr: string): string {
 }
 
 /**
+ * Deterministic replacement for buildSummaryPrompt's AI output on a slide
+ * that has real spend/delivery but exactly zero results this week (Fix 6).
+ * Never sent through the AI at all — CPR is mathematically undefined at
+ * zero results (see report-data.ts's computeTableRow/objective.ts, which
+ * both render it as "—" precisely when count is 0), and asking the model to
+ * write "generated 0 [X] at a [CPR] cost" with that plugged in verbatim
+ * produced sentences like "generated 0 website leads at a — cost" — the
+ * reported bug. This sidesteps the CPR/count phrasing entirely rather than
+ * prompting the AI to avoid it, since a real, always-complete sentence is
+ * more reliable than trusting the model wends around a dash in a template.
+ */
+export function buildZeroResultsSummary(ctx: AiContext): string {
+  return (
+    "During " + ctx.dateRange + ", the " + ctx.ctx + " campaign recorded no " + ctx.resultLabel +
+    " this week, with " + ctx.spend + " spent reaching " + ctx.reach + " people across " + ctx.impressions +
+    " impressions. The campaign maintained a " + ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
+    " cost per click, with delivery active and results expected as the campaign optimises."
+  );
+}
+
+/**
  * Deterministic, always-complete replacement for buildSummaryPrompt's AI
  * output when that output comes back truncated (see generate-insights.ts's
  * end-with-a-period check) — built entirely from data already on hand, so

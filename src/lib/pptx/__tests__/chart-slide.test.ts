@@ -124,3 +124,56 @@ describe("buildChartSlideXml — Fix 3: per-campaign donut ring colors", () => {
     expect(bars).toEqual(rings);
   });
 });
+
+const EMU_PER_PT = 12700;
+
+/** The ring ellipse's own y offset in points, for the FIRST campaign column (every column shares the same y). */
+function firstRingYPt(xml: string): number {
+  const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
+  const ring = shapes.find((s) => s.includes('<a:prstGeom prst="ellipse">'));
+  const y = /<a:off x="\d+" y="(\d+)"\/>/.exec(ring!)![1];
+  return Math.round(Number(y) / EMU_PER_PT);
+}
+
+describe("buildChartSlideXml — Fix 5: vertical centering", () => {
+  // Mirrors the geometry buildChartSlideXml itself uses for every shape
+  // below/around the donut circle (name label above, results/CPR labels
+  // below) — see chart-slide.ts's own comment for where CIRCLE_D+152
+  // comes from. Used here only to derive an expected CIRC_Y from a ring's
+  // observed y (ring y = CIRC_Y + 18), not to re-implement the centering
+  // math itself.
+  function blockCenterPt(ringYPt: number, circleD: number): number {
+    const circY = ringYPt - 18;
+    const top = circY - 36;
+    const bottom = circY + circleD + 116;
+    return (top + bottom) / 2;
+  }
+
+  // EMU-round-trip (pt -> EMU -> pt) can shift the recovered value by a
+  // point or two — these check "visually centered," not exact-pixel math.
+  const CENTER_PT = 295; // center of [70, 520]
+  const TOLERANCE_PT = 5;
+
+  it("centers the block in the space between the header and the bottom spend bar, for a small campaign count (max circle size)", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A"), campaign("B")]), "$", BACKGROUND);
+    // COL_W = floor((960 - 20*3) / 2) = 450 -> CIRCLE_D capped at 200.
+    expect(Math.abs(blockCenterPt(firstRingYPt(xml), 200) - CENTER_PT)).toBeLessThan(TOLERANCE_PT);
+  });
+
+  it("centers the block for a large campaign count (small circle size) — no longer pinned to the small-count position", () => {
+    const campaigns = Array.from({ length: 7 }, (_, i) => campaign(`Campaign ${i + 1}`));
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    // COL_W = floor((960 - 20*8) / 7) = 108 -> CIRCLE_D = 88.
+    expect(Math.abs(blockCenterPt(firstRingYPt(xml), 88) - CENTER_PT)).toBeLessThan(TOLERANCE_PT);
+  });
+
+  it("moves the circle further down the slide as campaign count grows and circles shrink — the actual reported bug (content pinned near the top for larger decks)", () => {
+    const twoUp = buildChartSlideXml(buildChart([campaign("A"), campaign("B")]), "$", BACKGROUND);
+    const sevenUp = buildChartSlideXml(
+      buildChart(Array.from({ length: 7 }, (_, i) => campaign(`Campaign ${i + 1}`))),
+      "$",
+      BACKGROUND,
+    );
+    expect(firstRingYPt(sevenUp)).toBeGreaterThan(firstRingYPt(twoUp));
+  });
+});

@@ -114,7 +114,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const slides: SlideToInsert[] = [];
 
   slides.push({
-    xml: buildCoverSlideXml(template.cover, data.cover, { reportTitle, agencyName }),
+    xml: buildCoverSlideXml(template.cover, data.cover, { reportTitle, agencyName, reportType: data.reportType }),
     rels: template.cover.rels,
   });
 
@@ -141,7 +141,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   }
 
   slides.push({
-    xml: buildTableSlideXml(template.table, data.periodRow, data.mtdRow, data.tableHeaderLabels),
+    xml: buildTableSlideXml(template.table, data.periodRow, data.mtdRow, data.tableHeaderLabels, data.reportType),
     rels: template.table.rels,
   });
   slides.push({ xml: template.legend.xml, rels: template.legend.rels });

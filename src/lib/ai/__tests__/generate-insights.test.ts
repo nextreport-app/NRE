@@ -25,9 +25,13 @@ const PAUSED_SUMMARY_TEXT =
 const PAUSED_INSIGHTS_TEXT =
   "The campaign remained inactive this week with no delivery or spend recorded. Once reactivated, budget will be directed toward top-performing creatives while underperformers are paused, with targeting refined to improve overall efficiency.";
 
-function makeReportData(opts: { campaignSpend?: number; adSetSpend?: number } = {}): ReportData {
+function makeReportData(
+  opts: { campaignSpend?: number; adSetSpend?: number; campaignResultsNum?: number; resultLabel?: string } = {},
+): ReportData {
   const campaignSpend = opts.campaignSpend ?? 100;
   const adSetSpend = opts.adSetSpend ?? 50;
+  const campaignResultsNum = opts.campaignResultsNum ?? 5;
+  const resultLabel = opts.resultLabel ?? "LEADS";
 
   const campaignAi = {
     ctx: "Campaign A",
@@ -35,15 +39,15 @@ function makeReportData(opts: { campaignSpend?: number; adSetSpend?: number } = 
     spend: "$" + campaignSpend,
     reach: "1,000",
     impressions: "2,000",
-    results: "5",
-    cpr: "$20.00",
+    results: campaignResultsNum > 0 ? String(campaignResultsNum) : "0",
+    cpr: campaignResultsNum > 0 ? "$20.00" : "—",
     ctr: "1.00%",
     cpc: "$2.00",
-    resultLabel: "LEADS",
+    resultLabel,
     costLabel: "COST PER LEAD",
     freq: 2,
-    resultsNum: 5,
-    hasResults: true,
+    resultsNum: campaignResultsNum,
+    hasResults: campaignResultsNum > 0,
     spendNum: campaignSpend,
   };
   const adSetAi = {
@@ -55,6 +59,7 @@ function makeReportData(opts: { campaignSpend?: number; adSetSpend?: number } = 
 
   return {
     isPaused: false,
+    reportType: "WEEKLY",
     cover: {
       accountName: "Test",
       reportDate: "07-20-2026",
@@ -173,6 +178,63 @@ describe("generateInsights", () => {
       expect(result.get(slideAiKey(data.campaignSlides[0]))!.summary).toBe(PAUSED_SUMMARY_TEXT);
       expect(result.get(slideAiKey(data.adSetSlides[0]))!.summary).toBe(PAUSED_SUMMARY_TEXT);
       expect(vi.mocked(callAI)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("zero-results detection (Fix 6)", () => {
+    it("uses the deterministic zero-results summary, not the AI, for a slide with real spend but 0 results", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = makeReportData({ campaignResultsNum: 0 });
+      const result = await generateInsights(data, { groqApiKey: "k" });
+
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+      expect(campaignCopy.summary).toBe(
+        "During Jul 13 - Jul 19, the Campaign A campaign recorded no LEADS this week, with $100 spent " +
+          "reaching 1,000 people across 2,000 impressions. The campaign maintained a 1.00% click-through rate " +
+          "at $2.00 cost per click, with delivery active and results expected as the campaign optimises.",
+      );
+      expect(campaignCopy.summary).not.toContain("—"); // the exact malformed-phrase bug this fix targets
+      // makeReportData's ad-set AI context spreads from the campaign's (only
+      // overriding ctx/spend), so it's zero-results here too — both slides'
+      // summary AI calls are skipped, insights AI calls still happen for
+      // both: 2 calls total, not the usual 4.
+      expect(vi.mocked(callAI)).toHaveBeenCalledTimes(2);
+    });
+
+    it("still calls the AI for the insights text on a zero-results slide", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = makeReportData({ campaignResultsNum: 0 });
+      const result = await generateInsights(data, { groqApiKey: "k" });
+
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+      expect(campaignCopy.insights).toContain("AI:");
+    });
+
+    it("does not treat a REACH-objective slide as zero-results — Reach legitimately has no results count", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = makeReportData({ campaignResultsNum: 0, resultLabel: "REACH" });
+      const result = await generateInsights(data, { groqApiKey: "k" });
+
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+      expect(campaignCopy.summary).toContain("AI:"); // real AI call, not the zero-results template
+    });
+
+    it("zero spend still takes priority over zero results (paused copy wins)", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = makeReportData({ campaignSpend: 0, campaignResultsNum: 0 });
+      const result = await generateInsights(data, { groqApiKey: "k" });
+
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+      expect(campaignCopy.summary).toBe(PAUSED_SUMMARY_TEXT);
+    });
+
+    it("does not skip the AI call when results are real (not zero)", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = makeReportData({ campaignResultsNum: 5 });
+      const result = await generateInsights(data, { groqApiKey: "k" });
+
+      const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
+      expect(campaignCopy.summary).toContain("AI:");
     });
   });
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isPlanId, PLANS, razorpayClient } from "@/lib/razorpay";
+import { amountForCurrency, isPlanId, isPricingCurrency, razorpayClient } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request) {
@@ -12,17 +12,18 @@ export async function POST(req: Request) {
   if (!isPlanId(planId)) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
-
-  const plan = PLANS[planId];
+  // Defaults to INR for older clients that don't send a currency yet —
+  // every current caller (SubscribeButton) always sends one explicitly.
+  const currency = isPricingCurrency(body?.currency) ? body.currency : "INR";
 
   try {
     const order = await razorpayClient().orders.create({
-      amount: plan.amountPaise,
-      currency: "INR",
+      amount: amountForCurrency(planId, currency),
+      currency,
       // Razorpay caps receipt at 40 chars — truncate defensively even
       // though userId (cuid) + planId + timestamp normally fits.
       receipt: `${planId}_${session.user.id}_${Date.now()}`.slice(0, 40),
-      notes: { userId: session.user.id, planId },
+      notes: { userId: session.user.id, planId, currency },
     });
 
     return NextResponse.json({

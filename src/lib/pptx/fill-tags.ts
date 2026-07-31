@@ -5,7 +5,7 @@
  * appearance (see the long comment above buildCampaignOrAdSetSlideXml).
  */
 
-import { buildCombinedTotalTableGrid, type CoverData, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
+import { buildCombinedTotalTableGrid, type CoverData, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
 import {
   cloneShapeAsTag,
   forceRunStyle,
@@ -39,6 +39,7 @@ function fillTags(xml: string, values: Record<string, string>, styleOverrides: R
 }
 
 export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
+const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 
 // PRESENTED_TO badge and ACCOUNT_NAME's own y offsets in the template
 // (ppt/slides/slide1.xml) — shifted up by this much, together, only when a
@@ -67,10 +68,12 @@ export function presentedToTopY(hasAgencyName: boolean): number {
 }
 
 export interface CoverSlideOptions {
-  /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
+  /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE (or DEFAULT_MONTHLY_REPORT_TITLE — see `reportType`) when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
   reportTitle?: string | null;
   /** Agency name from account settings — when set, adds a "Prepared by ..." line below the account name; when absent, the cover renders exactly as it does without this feature. */
   agencyName?: string | null;
+  /** Fix 8 — only affects the DEFAULT title text used when `reportTitle` is blank/absent ("MONTHLY PERFORMANCE REPORT" instead of "WEEKLY PERFORMANCE REPORT"); an explicit reportTitle always wins regardless. Defaults to "WEEKLY". */
+  reportType?: ReportType;
 }
 
 export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, options: CoverSlideOptions = {}): string {
@@ -85,7 +88,8 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     xml = insertShapeBeforeSpTreeClose(xml, preparedByShape);
   }
 
-  const reportTitle = (options.reportTitle?.trim() || DEFAULT_REPORT_TITLE).toUpperCase();
+  const defaultTitle = options.reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE;
+  const reportTitle = (options.reportTitle?.trim() || defaultTitle).toUpperCase();
 
   return fillTags(
     xml,
@@ -237,10 +241,18 @@ export function buildTableSlideXml(
   periodRow: TableRowData,
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
+  reportType: ReportType = "WEEKLY",
 ): string {
   const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+  // Row 1 (Period) is hidden whenever there's nothing to show it (no
+  // Previous Month Data uploaded) — and ALWAYS for a Monthly report,
+  // regardless of whether Previous Month Data exists: "the Combined Total
+  // slide shows only one data row (MTD) with no weekly column distinction"
+  // (Fix 8) — a Monthly report has no separate weekly/period comparison at
+  // all, only the month itself.
+  const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
   return fillCombinedTotalTable(template.xml, grid, {
-    hideRowIndexes: periodRow.hasData ? [] : [1],
+    hideRowIndexes: hidePeriodRow ? [1] : [],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
   });
 }

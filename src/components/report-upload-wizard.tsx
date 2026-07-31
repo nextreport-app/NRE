@@ -55,10 +55,12 @@ interface DateSelection {
   customEnd?: string;
 }
 
-// Matches fill-tags.ts's DEFAULT_REPORT_TITLE — kept as a separate constant
-// here rather than imported, since that module pulls in the whole PPTX
-// generation stack (JSZip etc.) which has no business in the client bundle.
+// Matches fill-tags.ts's DEFAULT_REPORT_TITLE/DEFAULT_MONTHLY_REPORT_TITLE —
+// kept as separate constants here rather than imported, since that module
+// pulls in the whole PPTX generation stack (JSZip etc.) which has no
+// business in the client bundle.
 const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
+const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 
 // Sent as real File objects (multipart/form-data), never decoded to text in
 // the browser — .xlsx/.xls are binary and non-UTF-8 text files would be
@@ -88,6 +90,27 @@ function formatIsoRange(range: DateRangeIso): string {
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
 function isNoDataRowsError(e: ValidationIssue): boolean {
   return e.field === "rows";
+}
+
+// validate.ts's specific, actionable per-column-mistake messages (Fix 7) —
+// each gets its own amber warning box with a Download Guide link, same
+// treatment as isNoDataRowsError above, rather than being lumped into the
+// generic red bullet list below.
+const SPECIFIC_FIELD_ERRORS = new Set(["campaign_name", "spend", "results", "date_granularity"]);
+
+function isSpecificFieldError(e: ValidationIssue): boolean {
+  return SPECIFIC_FIELD_ERRORS.has(e.field);
+}
+
+function SpecificFieldWarning({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+      <p>{message}</p>
+      <Link href="/help/download" className="mt-2 inline-block text-amber-300 underline hover:text-amber-100">
+        See our Download Guide →
+      </Link>
+    </div>
+  );
 }
 
 function buildWhatsAppShareUrl(reportUrl: string): string {
@@ -147,6 +170,12 @@ export function ReportUploadWizard({
   const [customEnd, setCustomEnd] = useState("");
   const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [longRangeConfirmed, setLongRangeConfirmed] = useState(false);
+  // Fix 8 — Report Type selector, top of the Dates step. Monthly hides the
+  // weekly period selector entirely and generates from the full MTD data
+  // only — see handleDatesContinue/handleGenerate, which skip sending a
+  // dateSelection at all when Monthly (buildReportData then has no weekly
+  // window to use, by design — see report-data.ts's primaryRows).
+  const [reportType, setReportType] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
 
   // Step 4 — Preview
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
@@ -154,6 +183,11 @@ export function ReportUploadWizard({
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
+  // False until the user actually types in the Report Title field — while
+  // false, switching Report Type keeps swapping the title's own default
+  // text (Weekly/Monthly Performance Report) to match; once true, their
+  // custom title is left alone regardless of which Report Type is picked.
+  const [reportTitleTouched, setReportTitleTouched] = useState(false);
 
   // Step 4 — Generate (same screen as Preview above, see the step === 4 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -179,6 +213,14 @@ export function ReportUploadWizard({
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  /** Report Type radio's onChange — also swaps the Report Title default text, unless the user has already typed their own. */
+  function handleReportTypeChange(next: "WEEKLY" | "MONTHLY") {
+    setReportType(next);
+    if (!reportTitleTouched) {
+      setReportTitle(next === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE);
+    }
+  }
 
   function currentDateSelection(): DateSelection {
     if (dateMode === "custom") return { mode: "custom", customStart, customEnd };
@@ -302,14 +344,23 @@ export function ReportUploadWizard({
   }
 
   async function handleDatesContinue() {
-    if (!validateCustomRange()) return;
-    const spanDays = customSpanDays();
-    if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
-      return; // the inline "Continue anyway?" prompt handles confirmation
+    // Monthly has no weekly period selector at all — none of the custom-
+    // range validation/confirmation below applies, and no dateSelection is
+    // sent (buildReportData then uses the full MTD data with no weekly
+    // window — see report-data.ts's primaryRows).
+    if (reportType === "WEEKLY") {
+      if (!validateCustomRange()) return;
+      const spanDays = customSpanDays();
+      if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
+        return; // the inline "Continue anyway?" prompt handles confirmation
+      }
     }
 
-    const dateSelection = currentDateSelection();
-    await saveSelection({ dateSelection });
+    const dateSelection = reportType === "WEEKLY" ? currentDateSelection() : undefined;
+    // Only persist a weekly preference when one was actually made — a
+    // Monthly run shouldn't overwrite the client's remembered weekly
+    // date-mode with nothing.
+    if (dateSelection) await saveSelection({ dateSelection });
 
     if (!mtdFile) return;
     setPreviewStatus("loading");
@@ -321,6 +372,7 @@ export function ReportUploadWizard({
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
         dateSelection,
+        reportType,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -375,8 +427,10 @@ export function ReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
-        dateSelection: currentDateSelection(),
-        reportTitle: reportTitle.trim() || DEFAULT_REPORT_TITLE,
+        dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
+        reportTitle:
+          reportTitle.trim() || (reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE),
+        reportType,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -502,13 +556,16 @@ export function ReportUploadWizard({
               {analyzeErrors.filter(isNoDataRowsError).map((e, i) => (
                 <NoDataRowsWarning key={i} message={e.message} />
               ))}
-              {analyzeErrors.some((e) => !isNoDataRowsError(e)) && (
+              {analyzeErrors.filter(isSpecificFieldError).map((e, i) => (
+                <SpecificFieldWarning key={i} message={e.message} />
+              ))}
+              {analyzeErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
                 <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
                   <p className="mb-2 text-sm font-medium text-red-300">
                     This CSV can&apos;t be used to generate a report yet:
                   </p>
                   <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
-                    {analyzeErrors.filter((e) => !isNoDataRowsError(e)).map((e, i) => (
+                    {analyzeErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
                       <li key={i}>{e.message}</li>
                     ))}
                   </ul>
@@ -598,12 +655,30 @@ export function ReportUploadWizard({
           )}
 
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-ink-muted">Weekly period</p>
+            <p className="text-xs uppercase tracking-wide text-ink-muted">Report Type</p>
+            <DateModeOption
+              id="report-type-weekly"
+              checked={reportType === "WEEKLY"}
+              onSelect={() => handleReportTypeChange("WEEKLY")}
+              label="Weekly Performance Report"
+            />
+            <DateModeOption
+              id="report-type-monthly"
+              checked={reportType === "MONTHLY"}
+              onSelect={() => handleReportTypeChange("MONTHLY")}
+              label="Monthly Performance Report"
+              sublabel={mtdRange ? `Uses the full month-to-date data: ${formatIsoRange(mtdRange)}` : undefined}
+            />
+          </div>
 
-            {weeklyOptions && (
-              <DateModeOption
-                id="mode-last7"
-                checked={dateMode === "last7"}
+          {reportType === "WEEKLY" && (
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-ink-muted">Weekly period</p>
+
+              {weeklyOptions && (
+                <DateModeOption
+                  id="mode-last7"
+                  checked={dateMode === "last7"}
                 onSelect={() => {
                   setDateMode("last7");
                   setCustomRangeError(null);
@@ -694,7 +769,8 @@ export function ReportUploadWizard({
                 )}
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           <div>
             <p className="text-xs uppercase tracking-wide text-ink-muted">MTD period</p>
@@ -708,11 +784,14 @@ export function ReportUploadWizard({
               {previewErrors.filter(isNoDataRowsError).map((e, i) => (
                 <NoDataRowsWarning key={i} message={e.message} />
               ))}
-              {previewErrors.some((e) => !isNoDataRowsError(e)) && (
+              {previewErrors.filter(isSpecificFieldError).map((e, i) => (
+                <SpecificFieldWarning key={i} message={e.message} />
+              ))}
+              {previewErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
                 <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
                   <p className="mb-2 text-sm font-medium text-red-300">Can&apos;t build a preview yet:</p>
                   <ul className="list-inside list-disc space-y-1 text-sm text-red-300">
-                    {previewErrors.filter((e) => !isNoDataRowsError(e)).map((e, i) => (
+                    {previewErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
                       <li key={i}>{e.message}</li>
                     ))}
                   </ul>
@@ -737,8 +816,8 @@ export function ReportUploadWizard({
               onClick={handleDatesContinue}
               disabled={
                 previewStatus === "loading" ||
-                (dateMode === "custom" && (!customStart || !customEnd)) ||
-                needsLongRangeConfirm
+                (reportType === "WEEKLY" &&
+                  ((dateMode === "custom" && (!customStart || !customEnd)) || needsLongRangeConfirm))
               }
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
             >
@@ -754,7 +833,7 @@ export function ReportUploadWizard({
 
           <div className="rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
             Generating report for {selectedCampaigns.size} campaign{selectedCampaigns.size === 1 ? "" : "s"}
-            {weeklyRangeIso && <> — Week: {formatIsoRange(weeklyRangeIso)}</>}
+            {reportType === "WEEKLY" && weeklyRangeIso && <> — Week: {formatIsoRange(weeklyRangeIso)}</>}
             {mtdRange && <> — MTD: {formatIsoRange(mtdRange)}</>}
           </div>
 
@@ -762,14 +841,18 @@ export function ReportUploadWizard({
             <label className="mb-1 block text-sm text-ink-secondary">Report title</label>
             <input
               value={reportTitle}
-              onChange={(e) => setReportTitle(e.target.value)}
-              placeholder={DEFAULT_REPORT_TITLE}
+              onChange={(e) => {
+                setReportTitle(e.target.value);
+                setReportTitleTouched(true);
+              }}
+              placeholder={reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE}
               maxLength={100}
               disabled={generateStatus === "loading" || generateStatus === "done"}
               className="w-full max-w-md rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent disabled:opacity-60"
             />
             <p className="mt-1 text-xs text-ink-muted">
-              Shown on the cover slide in place of &quot;{DEFAULT_REPORT_TITLE}&quot; — e.g. &quot;Monthly Campaign Summary&quot; or &quot;Q3 Performance Review&quot;.
+              Shown on the cover slide in place of &quot;
+              {reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE}&quot; — e.g. &quot;Monthly Campaign Summary&quot; or &quot;Q3 Performance Review&quot;.
             </p>
           </div>
 
@@ -1230,11 +1313,17 @@ function ReportPreview({ data }: { data: ReportData }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-          <p className="text-xs uppercase tracking-wide text-ink-muted">Period ({data.periodRow.monthLabel})</p>
-          <p className="mt-1 text-sm text-white">{data.periodRow.spend}</p>
-        </div>
+      {/* A Monthly report's Combined Total slide shows only the MTD row — no
+          separate weekly/period comparison — so the preview mirrors that
+          instead of showing an always-hidden Period card (see fill-tags.ts's
+          buildTableSlideXml). */}
+      <div className={data.reportType === "MONTHLY" ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
+        {data.reportType !== "MONTHLY" && (
+          <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
+            <p className="text-xs uppercase tracking-wide text-ink-muted">Period ({data.periodRow.monthLabel})</p>
+            <p className="mt-1 text-sm text-white">{data.periodRow.spend}</p>
+          </div>
+        )}
         <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
           <p className="text-xs uppercase tracking-wide text-ink-muted">MTD ({data.mtdRow.monthLabel})</p>
           <p className="mt-1 text-sm text-white">{data.mtdRow.spend}</p>

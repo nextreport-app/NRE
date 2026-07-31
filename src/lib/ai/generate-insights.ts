@@ -39,6 +39,20 @@
  *     AI call and the slide — capSummary/capInsights today, anything added
  *     later — can never silently reintroduce truncation without this
  *     catching it and substituting the same safe fallback.
+ *
+ * A THIRD case (Fix 6), independent of the two above: a slide with real
+ * spend/delivery but exactly zero results this week (a lead-gen campaign
+ * that hasn't converted yet, say). CPR is mathematically undefined at zero
+ * results, so it always renders as "—" (see report-data.ts/objective.ts),
+ * and the AI plugging that dash straight into the summary prompt's "at a
+ * [CPR] cost" phrasing produced nonsensical sentences like "generated 0
+ * website leads at a — cost" (the actual reported bug). Handled the same
+ * way as the zero-spend case — a deterministic sentence, no AI call for the
+ * summary — but with its own wording (buildZeroResultsSummary) that never
+ * mentions CPR at all, rather than reusing the paused-campaign copy, since
+ * "no results yet" and "no delivery at all" are different, both-true-ish-
+ * often states that shouldn't read identically to the client. The insights
+ * call is unaffected — it doesn't share the summary prompt's CPR phrasing.
  */
 
 import type { AiContext, ReportData } from "../nre/report-data";
@@ -50,6 +64,7 @@ import {
   buildFallbackSummary,
   buildInsightPrompt,
   buildSummaryPrompt,
+  buildZeroResultsSummary,
   capInsights,
   capSummary,
   countSentenceEndings,
@@ -76,6 +91,21 @@ function isZeroSpend(ctx: AiContext): boolean {
   return ctx.spendNum < ZERO_SPEND_THRESHOLD;
 }
 
+/**
+ * True for a slide with real spend/delivery but zero results this week —
+ * see this file's header for why that needs its own deterministic summary
+ * rather than either the paused-campaign copy or a normal AI call. Reach
+ * objective slides are excluded: `resultsNum` there is legitimately always
+ * 0 (Reach doesn't have a "results" count the way conversions do — see
+ * report-data.ts's ai.resultsNum, summed straight from the CSV's Results
+ * column, which Reach exports typically leave blank/0), so this would
+ * otherwise misfire on every healthy Reach campaign, not just genuinely
+ * zero-converting ones.
+ */
+function isZeroResults(ctx: AiContext): boolean {
+  return ctx.resultsNum === 0 && ctx.resultLabel !== "REACH";
+}
+
 /** True when `text` (already trimmed) reads as a complete sentence rather than one cut off mid-word/mid-number. */
 function endsComplete(trimmedText: string): boolean {
   return trimmedText.endsWith(".");
@@ -96,27 +126,34 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         return;
       }
 
+      const zeroResults = isZeroResults(slide.ai);
+
       const [rawSummary, rawInsight] = await Promise.all([
-        callAI(buildSummaryPrompt(slide.ai), keys),
+        // Never sent to the AI for a zero-results slide — see this file's
+        // header and buildZeroResultsSummary's own doc comment.
+        zeroResults ? Promise.resolve(null) : callAI(buildSummaryPrompt(slide.ai), keys),
         callAI(buildInsightPrompt(slide.ai), keys),
       ]);
 
       // Debug: the exact response the AI returned, BEFORE any period check
       // or capping — printed unconditionally (not just when truncation is
       // suspected) so a "why did this fall back" question can always be
-      // answered from the logs after the fact.
-      console.log(`[ai:generate-insights] Raw AI response for ${name}: ${rawSummary}`);
+      // answered from the logs after the fact. null here means the summary
+      // AI call was skipped outright (zero-results slide, see above).
+      console.log(`[ai:generate-insights] Raw AI response for ${name}: ${zeroResults ? "(skipped — zero results)" : rawSummary}`);
 
-      // Trailing whitespace (the AI sometimes appends a stray space after
-      // the last character) would otherwise make a complete response look
-      // truncated to an endsComplete() check — trim before checking.
-      const trimmedSummary = rawSummary.trim();
       let summary: string;
-      let summaryFallback = !endsComplete(trimmedSummary);
-      if (summaryFallback) {
-        summary = buildFallbackSummary(slide.ai);
+      let summaryFallback: boolean;
+      if (zeroResults) {
+        summary = buildZeroResultsSummary(slide.ai);
+        summaryFallback = false; // deliberate, structured copy — not a truncation recovery
       } else {
-        summary = capSummary(trimmedSummary);
+        // Trailing whitespace (the AI sometimes appends a stray space after
+        // the last character) would otherwise make a complete response look
+        // truncated to an endsComplete() check — trim before checking.
+        const trimmedSummary = rawSummary!.trim();
+        summaryFallback = !endsComplete(trimmedSummary);
+        summary = summaryFallback ? buildFallbackSummary(slide.ai) : capSummary(trimmedSummary);
       }
       console.log(`[ai:generate-insights] Fallback triggered: ${summaryFallback} for ${name}`);
 
@@ -125,6 +162,10 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       // or trimmedSummary above. This is deliberate: those intermediate
       // values already passed their own check once; what matters is whether
       // the FINAL text still reads as a complete 2-sentence summary.
+      // (buildZeroResultsSummary is always 2 real sentences, so this never
+      // actually re-fires for the zeroResults branch above — but it's left
+      // unconditional rather than skipped for that case, so a future edit
+      // to that template can't silently ship a truncated one either.)
       if (countSentenceEndings(summary) < MIN_SUMMARY_SENTENCES) {
         if (!summaryFallback) {
           console.warn(

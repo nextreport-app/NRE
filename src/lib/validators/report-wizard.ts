@@ -34,6 +34,12 @@ export const deselectedAdSetsSchema = z.array(z.string());
 
 export const reportTitleSchema = z.string().trim().min(1).max(100);
 
+// Fix 8 — Monthly Report option. Matches prisma/schema.prisma's ReportType
+// enum. Absent/undefined (an older client, or a request that never sends
+// it) means "WEEKLY" everywhere this is consumed — see
+// buildReportData's own default.
+export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY"]);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

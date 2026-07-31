@@ -66,8 +66,18 @@ const LEARNING_PHASE_MIN_RESULTS = 3;
 const LEARNING_PHASE_SCORE_CAP = 65;
 const LEARNING_PHASE_BADGE = "🟡 Campaign in Learning Phase — optimising delivery";
 
-/** Port of calculateAccountHealth_, extended with the objective-specific rules above. */
-export function calculateAccountHealth(weeklyRows: AggRow[]): AccountHealth {
+/**
+ * Port of calculateAccountHealth_, extended with the objective-specific
+ * rules above. `periodLabel` (Fix 8 — Monthly Report option) only affects
+ * the badge's own wording ("Weekly Performance Score" -> "Monthly
+ * Performance Score", "this week" -> "this month") — none of the scoring
+ * math below changes; `weeklyRows` is exactly the rows the badge describes,
+ * whichever window the caller actually built it from (see report-data.ts's
+ * primaryRows).
+ */
+export function calculateAccountHealth(weeklyRows: AggRow[], periodLabel: "Weekly" | "Monthly" = "Weekly"): AccountHealth {
+  const periodWord = periodLabel === "Weekly" ? "week" : "month";
+
   if (!weeklyRows || weeklyRows.length === 0) {
     return { score: 0, badge: "⚙️ Active Optimization Phase — improvements underway" };
   }
@@ -163,10 +173,10 @@ export function calculateAccountHealth(weeklyRows: AggRow[]): AccountHealth {
   }
 
   let badge: string;
-  if (score >= 80 && totalResults > 5) badge = "🟢 Weekly Performance Score: " + score + "/100 — Excellent";
-  else if (score >= 70 && totalResults > 3) badge = "🟢 Weekly Performance Score: " + score + "/100 — Good";
-  else if (score >= 50) badge = "🟡 Campaigns On Track — performing as expected this week";
-  else badge = "⚙️ Campaigns under active optimisation this week";
+  if (score >= 80 && totalResults > 5) badge = `🟢 ${periodLabel} Performance Score: ` + score + "/100 — Excellent";
+  else if (score >= 70 && totalResults > 3) badge = `🟢 ${periodLabel} Performance Score: ` + score + "/100 — Good";
+  else if (score >= 50) badge = `🟡 Campaigns On Track — performing as expected this ${periodWord}`;
+  else badge = `⚙️ Campaigns under active optimisation this ${periodWord}`;
 
   return { score, badge };
 }

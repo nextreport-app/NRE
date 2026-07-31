@@ -107,7 +107,23 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
   const COL_W = Math.floor((W - MARGIN * (n + 1)) / n);
   const CIRCLE_D = Math.min(COL_W - 20, 200);
   const INNER_D = Math.round(CIRCLE_D * 0.7);
-  const CIRC_Y = 158;
+
+  // Fix 5 — CIRC_Y used to be a fixed 158pt, tuned only for the largest
+  // circle size (CIRCLE_D capped at 200, i.e. n <= 3 campaigns). With more
+  // campaigns, COL_W (and so CIRCLE_D) shrinks but CIRC_Y didn't, so the
+  // whole per-campaign block — name, circle, results, CPR — shrank in place
+  // and left a growing gap at the bottom, reading as "pushed to the top."
+  // Centering it instead: the block spans from CIRC_Y-36 (the name label)
+  // to CIRC_Y+CIRCLE_D+116 (the CPR sub-label's bottom) — see the per-
+  // campaign shapes below for exactly where those offsets come from — so
+  // its total height is CIRCLE_D+152, and CIRC_Y is chosen to center that
+  // in the space between the header ("Total ... Spend" line, ending at
+  // y=68) and the spend-proportion bar at the very bottom (y=H-12=528).
+  const HEADER_BOTTOM = 70;
+  const BOTTOM_LIMIT = 520;
+  const BLOCK_HEIGHT = CIRCLE_D + 152;
+  const availableHeight = BOTTOM_LIMIT - HEADER_BOTTOM;
+  const CIRC_Y = HEADER_BOTTOM + Math.max(0, (availableHeight - BLOCK_HEIGHT) / 2) + 36;
 
   chart.campaigns.forEach((d, ci) => {
     const col = campaignRingColor(ci);

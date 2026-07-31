@@ -9,7 +9,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
-import { dateSelectionSchema, parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, parseJsonFormField, reportTypeSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -48,6 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {
@@ -68,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange: dateResolution.weeklyRange,
+    reportType,
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

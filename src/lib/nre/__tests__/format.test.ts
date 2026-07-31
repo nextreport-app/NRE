@@ -36,6 +36,13 @@ describe("fmtCurrency", () => {
     expect(fmtCurrency(999, "₹")).toBe("₹999");
     expect(fmtCurrency(1000000, "$")).toBe("$1,000,000");
   });
+
+  it("always includes the currency symbol, even at zero — never a bare '0'", () => {
+    expect(fmtCurrency(0, "$")).toBe("$0");
+    expect(fmtCurrency(0, "₹")).toBe("₹0");
+    expect(fmtCurrency("", "$")).toBe("$0");
+    expect(fmtCurrency(undefined, "$")).toBe("$0");
+  });
 });
 
 describe("fmtCurrency2dp", () => {

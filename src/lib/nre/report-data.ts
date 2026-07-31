@@ -181,8 +181,22 @@ export interface ObjectiveWarning {
   detectedLabel: string;
 }
 
+/**
+ * Weekly (default): campaign/ad-set slides + the MTD chart slide are built
+ * from the trailing-7-day (or wizard-selected custom) window, alongside the
+ * always-MTD chart and Combined Total table's 2 rows (Period + MTD).
+ * Monthly: no separate weekly window at all — campaign/ad-set slides use
+ * the full month-to-date data directly (same rows the MTD chart and
+ * Combined Total table's MTD row already use), the cover title says
+ * "MONTHLY PERFORMANCE REPORT", the health score badge says "Monthly" not
+ * "Weekly", and the Combined Total table shows only its MTD row (see
+ * pptx/fill-tags.ts's buildTableSlideXml).
+ */
+export type ReportType = "WEEKLY" | "MONTHLY";
+
 export interface ReportData {
   isPaused: boolean;
+  reportType: ReportType;
   cover: CoverData;
   campaignSlides: CampaignSlideData[];
   adSetSlides: AdSetSlideData[];
@@ -224,9 +238,12 @@ export interface BuildReportDataInput {
    * Explicit weekly window from the wizard's date-range step — drives the
    * campaign slides, ad-set slides, and MTD chart slide. `undefined` keeps
    * the default "7 days ending yesterday" auto-computation. Never affects
-   * MTD, which always covers the full reporting month regardless.
+   * MTD, which always covers the full reporting month regardless. Ignored
+   * entirely when `reportType` is "MONTHLY" (no weekly window at all).
    */
   weeklyRange?: DateRangeIso;
+  /** See the ReportType doc comment above. Defaults to "WEEKLY". */
+  reportType?: ReportType;
   now?: Date;
 }
 
@@ -401,11 +418,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     selectedCampaigns,
     selectedAdSets,
     weeklyRange,
+    reportType = "WEEKLY",
     now = new Date(),
   } = input;
+  const isMonthlyReport = reportType === "MONTHLY";
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
   const filteredMtdDailyRows = filterRowsByAdSets(campaignFilteredRows, selectedAdSets ?? null);
+  // A Monthly report has no weekly window at all — weeklyRange is ignored
+  // (never even resolved by the caller in that case) and splitMtdDaily's
+  // own weekly split is simply never used below (see primaryRows).
   const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
 
   // The optional Previous Month Data (previous full month) feeds the table
@@ -419,7 +441,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   );
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
-  const isPaused = weeklyRows.length === 0;
+  // The rows campaign/ad-set slides, the health score, and the report-wide
+  // date range are all built from — the trailing-7-day (or custom) window
+  // normally, or the full MTD dataset for a Monthly report ("the report
+  // generates using the full MTD data only, no separate weekly period" —
+  // see ReportType's doc comment). mtdRows itself is untouched either way:
+  // the MTD chart slide and Combined Total table's MTD row always use it
+  // directly, regardless of reportType.
+  const primaryRows: AggRow[] = isMonthlyReport ? mtdRows : weeklyRows;
+  const isPaused = primaryRows.length === 0;
 
   // Whether the CSV actually has delivery-status data anywhere at all — a
   // file without that column (the common case) falls back to the original
@@ -427,11 +457,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // inactive just because the status column doesn't exist.
   const hasDeliveryStatusData = filteredMtdDailyRows.some((r) => (r.delivery_status || "").trim() !== "");
 
-  // Global weekly date range across ALL campaigns — used on every slide so
-  // reporting periods stay consistent even if one campaign started mid-week.
+  // Global reporting date range across ALL campaigns — used on every slide
+  // so reporting periods stay consistent even if one campaign started
+  // mid-window. Despite the "week" naming (unchanged so this isn't a
+  // sweeping rename), this is really "primaryRows' own date range" — the
+  // trailing-7-day window normally, or the full MTD span for Monthly.
   let globalWeekStart = "";
   let globalWeekEnd = "";
-  weeklyRows.forEach((r) => {
+  primaryRows.forEach((r) => {
     if (r.date_start && (!globalWeekStart || r.date_start < globalWeekStart)) globalWeekStart = r.date_start;
     if (r.date_end && (!globalWeekEnd || r.date_end > globalWeekEnd)) globalWeekEnd = r.date_end;
   });
@@ -471,7 +504,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       budgetSummary: "",
     };
   } else {
-    const { score, badge } = calculateAccountHealth(weeklyRows);
+    const { score, badge } = calculateAccountHealth(primaryRows, isMonthlyReport ? "Monthly" : "Weekly");
     const mtdSpend = mtdRows.reduce((sum, r) => sum + parseCellNum(r.spend), 0);
     cover = {
       accountName,
@@ -521,6 +554,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     return {
       isPaused: true,
+      reportType,
       cover,
       campaignSlides: [],
       adSetSlides: [],
@@ -535,9 +569,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   }
 
   // ── Campaign grouping ─────────────────────────────────────────────────
-  // weeklyRows is sorted by campaign_name (localeCompare) — this governs
+  // primaryRows is sorted by campaign_name (localeCompare) — this governs
   // ad-set slide append order (Phase A2) and which rows land in which group.
-  const sortedWeeklyRows = [...weeklyRows].sort((a, b) =>
+  const sortedWeeklyRows = [...primaryRows].sort((a, b) =>
     String(a.campaign_name || "").localeCompare(String(b.campaign_name || "")),
   );
 
@@ -787,6 +821,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   return {
     isPaused: false,
+    reportType,
     cover,
     campaignSlides,
     adSetSlides,

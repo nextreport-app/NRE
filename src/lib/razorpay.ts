@@ -19,32 +19,53 @@
 
 import Razorpay from "razorpay";
 import crypto from "node:crypto";
+import type { PricingCurrency } from "@/lib/currency";
 
 export type PlanId = "starter" | "professional";
 
 export interface PlanDefinition {
   name: string;
+  /** INR price, in paise (Razorpay's smallest INR unit). */
   amountPaise: number;
+  /** USD price, in cents (Razorpay's smallest USD unit) — Razorpay's international-card support bills USD orders directly, no FX conversion from the INR price. */
+  amountUsdCents: number;
 }
 
-// ₹999/month and ₹2,499/month, in paise (Razorpay's smallest INR unit) —
-// matches the /pricing page's displayed prices exactly. Keeping the amount
-// here (not trusted from the client) is what stops a tampered frontend
-// request from creating an order for less than the real price.
+// ₹999 / $12 per month (Starter) and ₹2,499 / $29 per month (Professional) —
+// matches the /pricing page's displayed prices exactly in both currencies.
+// Keeping the amount here (not trusted from the client) is what stops a
+// tampered frontend request from creating an order for less than the real
+// price, in either currency.
 export const PLANS: Record<PlanId, PlanDefinition> = {
-  starter: { name: "Starter", amountPaise: 99_900 },
-  professional: { name: "Professional", amountPaise: 249_900 },
+  starter: { name: "Starter", amountPaise: 99_900, amountUsdCents: 1_200 },
+  professional: { name: "Professional", amountPaise: 249_900, amountUsdCents: 2_900 },
 };
 
 export function isPlanId(value: unknown): value is PlanId {
   return value === "starter" || value === "professional";
 }
 
-/** Reverse of PLANS: which plan (if any) costs exactly this much — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. INR-only, matching every order this app creates. */
-export function planIdForAmount(amountPaise: number, currency: string): PlanId | null {
-  if (currency !== "INR") return null;
-  if (amountPaise === PLANS.starter.amountPaise) return "starter";
-  if (amountPaise === PLANS.professional.amountPaise) return "professional";
+export function isPricingCurrency(value: unknown): value is PricingCurrency {
+  return value === "INR" || value === "USD";
+}
+
+/** The real, server-trusted charge amount for a plan in a given currency — see PLANS' file header for why the client never gets to supply this. */
+export function amountForCurrency(planId: PlanId, currency: PricingCurrency): number {
+  return currency === "INR" ? PLANS[planId].amountPaise : PLANS[planId].amountUsdCents;
+}
+
+/** Reverse of PLANS: which plan (if any) costs exactly this much, in this currency — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. */
+export function planIdForAmount(amount: number, currency: string): PlanId | null {
+  if (currency === "INR") {
+    if (amount === PLANS.starter.amountPaise) return "starter";
+    if (amount === PLANS.professional.amountPaise) return "professional";
+    return null;
+  }
+  if (currency === "USD") {
+    if (amount === PLANS.starter.amountUsdCents) return "starter";
+    if (amount === PLANS.professional.amountUsdCents) return "professional";
+    return null;
+  }
   return null;
 }
 

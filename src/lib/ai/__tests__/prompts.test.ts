@@ -4,6 +4,7 @@ import {
   buildFallbackSummary,
   buildInsightPrompt,
   buildSummaryPrompt,
+  buildZeroResultsSummary,
   capInsights,
   capSummary,
 } from "../prompts";
@@ -156,6 +157,31 @@ describe("buildFallbackSummary", () => {
   it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
     const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
     expect(result).toContain("achieved a 0.35% click-through rate");
+    expect(result).not.toContain("0.35%%");
+  });
+});
+
+describe("buildZeroResultsSummary", () => {
+  it("builds the exact 2-sentence structure from real data, always ending in a period", () => {
+    const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, hasResults: false }));
+    expect(result).toBe(
+      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign recorded no PURCHASES this " +
+        "week, with ₹1,050 spent reaching 12,600 people across 45,000 impressions. The campaign maintained a " +
+        "2.00% click-through rate at ₹3.50 cost per click, with delivery active and results expected as the " +
+        "campaign optimises.",
+    );
+    expect(result.endsWith(".")).toBe(true);
+  });
+
+  it("never mentions CPR — the exact malformed-phrase bug this fix targets ('at a — cost')", () => {
+    const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, hasResults: false }));
+    expect(result).not.toContain("—");
+    expect(result).not.toContain("cost per PURCHASES");
+  });
+
+  it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
+    const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, ctr: "0.35%" }));
+    expect(result).toContain("maintained a 0.35% click-through rate");
     expect(result).not.toContain("0.35%%");
   });
 });

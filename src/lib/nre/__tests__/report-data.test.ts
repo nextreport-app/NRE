@@ -1172,3 +1172,173 @@ describe("buildReportData — ad-set slide filtering (MTD spend threshold + arch
     expect(tinyData.adSetSlides.filter((s) => s.campaignName === "All Tiny Campaign")).toHaveLength(0);
   });
 });
+
+// Fix 2/3 regression: an ad set can legitimately spend $0 in the trailing-7-
+// day weekly window while still clearing the MTD spend threshold from
+// earlier in the month — it still gets its own slide (Phase A2 gates on MTD
+// spend, not weekly spend). That slide's spend must still show the currency
+// symbol (fmtCurrency always prepends it, even at "0" — see format.ts) and
+// its DATE_RANGE must still be the real global week range, not a fallback
+// "unavailable" string — both already true of the current implementation,
+// asserted here so neither can silently regress.
+describe("buildReportData — ad-set slide with $0 spend in the weekly window but real earlier-month MTD spend", () => {
+  function dailyRow(campaignName: string, adSetName: string, day: string, spend: number): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: adSetName,
+      result_type: "Purchase",
+      spend: String(spend),
+      reach: "100",
+      impressions: "300",
+      results: "1",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const earlyMonthDays = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"];
+  const weekDays = daysInclusive(13, 19); // the trailing-7-day window for NOW = 2026-07-20
+
+  const rows: NreRow[] = [
+    ...earlyMonthDays.map((day) => dailyRow("Mixed Campaign", "Zero This Week", day, 100)), // $500 MTD, all before the week
+    ...weekDays.map((day) => dailyRow("Mixed Campaign", "Zero This Week", day, 0)), // $0 this week
+    ...weekDays.map((day) => dailyRow("Mixed Campaign", "Active AdSet", day, 50)), // keeps the campaign's weekly total > 0
+  ];
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "₹",
+    timezone: "Asia/Kolkata",
+    monthlyBudget: null,
+    mtdDailyRows: rows,
+    now: NOW,
+  });
+
+  it("still generates a slide for the ad set with $0 weekly spend", () => {
+    expect(data.adSetSlides.some((s) => s.adSetName === "Zero This Week")).toBe(true);
+  });
+
+  it("shows the currency symbol on its $0 spend, not a bare '0'", () => {
+    const slide = data.adSetSlides.find((s) => s.adSetName === "Zero This Week")!;
+    expect(slide.metrics.spend).toBe("₹0");
+  });
+
+  it("uses the real global week date range, not a fallback 'unavailable' string", () => {
+    const slide = data.adSetSlides.find((s) => s.adSetName === "Zero This Week")!;
+    expect(slide.dateRangeLine).not.toContain("unavailable");
+    expect(slide.dateRangeLine.startsWith("July 13")).toBe(true);
+    // Same range every other slide in this report gets — never a per-slide computation of its own.
+    const activeSlide = data.adSetSlides.find((s) => s.adSetName === "Active AdSet")!;
+    expect(slide.dateRangeLine).toBe(activeSlide.dateRangeLine);
+  });
+});
+
+describe("buildReportData — Fix 8: Monthly Report option", () => {
+  function dailyRow(campaignName: string, day: string, spend: number): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: String(spend),
+      reach: "100",
+      impressions: "300",
+      results: "2",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  // Spans July 1-19 — well outside the trailing-7-day window (July 13-19)
+  // that a Weekly report would use — so a Monthly report picking this up
+  // proves it's really using the full MTD range, not silently still the
+  // weekly split.
+  const mtdDays = Array.from({ length: 19 }, (_, i) => `2026-07-${String(i + 1).padStart(2, "0")}`);
+  const rows: NreRow[] = mtdDays.flatMap((day) => dailyRow("Shoes", day, 50));
+
+  function build(reportType?: "WEEKLY" | "MONTHLY") {
+    return buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      reportType,
+      now: NOW,
+    });
+  }
+
+  it("defaults to WEEKLY when reportType is omitted", () => {
+    expect(build().reportType).toBe("WEEKLY");
+  });
+
+  it("echoes reportType back on the returned data", () => {
+    expect(build("MONTHLY").reportType).toBe("MONTHLY");
+  });
+
+  it("uses the full MTD spend for campaign slides, not just the trailing-7-day window", () => {
+    const weekly = build("WEEKLY");
+    const monthly = build("MONTHLY");
+    // Weekly: July 13-19 only = 7 days x ₹50 = ₹350. Monthly: all 19 days x ₹50 = ₹950.
+    expect(weekly.campaignSlides[0].metrics.spend).toBe("₹350");
+    expect(monthly.campaignSlides[0].metrics.spend).toBe("₹950");
+  });
+
+  it("shows the full MTD date range on campaign slides, not the trailing-7-day range", () => {
+    const monthly = build("MONTHLY");
+    expect(monthly.campaignSlides[0].dateRangeLine.startsWith("July 1 - July 19")).toBe(true);
+  });
+
+  it("shows the full MTD date range on the cover, not the trailing-7-day range", () => {
+    const monthly = build("MONTHLY");
+    expect(monthly.cover.dateRange.startsWith("July 1 - July 19")).toBe(true);
+  });
+
+  it("says 'Monthly' in the health score badge instead of 'Weekly'", () => {
+    const monthly = build("MONTHLY");
+    expect(monthly.cover.healthBadge).not.toContain("Weekly");
+  });
+
+  it("still computes the Combined Total table's MTD row from the full MTD data either way — unaffected by reportType", () => {
+    const weekly = build("WEEKLY");
+    const monthly = build("MONTHLY");
+    expect(weekly.mtdRow.spend).toBe(monthly.mtdRow.spend);
+  });
+
+  it("is paused only when there's no data in the relevant window — an explicit weekly gap week for Weekly, vs. the full MTD for Monthly", () => {
+    // Data on both sides of a genuine gap week (July 6-12, e.g. the account
+    // paused mid-month): the wizard explicitly selected that gap week as the
+    // weekly range (a real "previous 7 days" scenario), so Weekly has
+    // nothing to show — but Monthly, using the full MTD span regardless,
+    // still has plenty.
+    const gapRows: NreRow[] = [...["2026-07-01", "2026-07-03"], ...["2026-07-15", "2026-07-19"]].flatMap((day) =>
+      dailyRow("Shoes", day, 50),
+    );
+    const weekly = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: gapRows,
+      reportType: "WEEKLY",
+      weeklyRange: { startIso: "2026-07-06", endIso: "2026-07-12" },
+      now: NOW,
+    });
+    const monthly = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: gapRows,
+      reportType: "MONTHLY",
+      now: NOW,
+    });
+    expect(weekly.isPaused).toBe(true); // nothing in the selected July 6-12 gap week
+    expect(monthly.isPaused).toBe(false); // but real data earlier and later in the month
+  });
+});
