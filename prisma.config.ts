@@ -9,6 +9,14 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrations/introspection (this file) use DIRECT_URL — a non-pooled
+    // connection, since PgBouncer's transaction-mode pooling doesn't
+    // reliably support the advisory locks `prisma migrate` needs. Falls
+    // back to DATABASE_URL when DIRECT_URL isn't set (local dev, or any
+    // environment with only one connection string). The running app never
+    // reads this file at all — src/lib/prisma.ts constructs its own
+    // @prisma/adapter-pg client straight from DATABASE_URL, so runtime
+    // queries always use the pooled connection regardless of this value.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
