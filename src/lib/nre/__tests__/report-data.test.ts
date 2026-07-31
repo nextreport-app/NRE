@@ -215,7 +215,7 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(shoesChart.resLabel).toBe("PURCHASES");
   });
 
-  it("leaves the period row empty when no Period CSV was uploaded", () => {
+  it("leaves the period row empty when no Previous Month Data was uploaded", () => {
     expect(data.periodRow.hasData).toBe(false);
     expect(data.periodRow.monthLabel).toBe("—");
   });
@@ -315,12 +315,12 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.adSetSlides).toHaveLength(2);
   });
 
-  // Regression: the Period CSV (previous full month, optional second
+  // Regression: Previous Month Data (previous full month, optional second
   // upload) fed straight into the table slide's "Period" row without ever
   // going through filterRowsByCampaigns/filterRowsByAdSets — a deselected
   // ad set's spend still reached the report via that row even though the
   // MTD row correctly excluded it.
-  it("also applies ad-set/campaign selection to the Period CSV, not just the MTD Daily CSV", () => {
+  it("also applies ad-set/campaign selection to Previous Month Data, not just the MTD Daily CSV", () => {
     const periodRows = [
       {
         _raw: {},
@@ -369,7 +369,7 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("10");
   });
 
-  it("deselecting an entire campaign also removes its Period CSV rows", () => {
+  it("deselecting an entire campaign also removes its Previous Month Data rows", () => {
     const periodRows = [
       {
         _raw: {},
@@ -490,9 +490,9 @@ describe("buildReportData — paused account", () => {
     expect(data.cover.budgetSummary).toBe("");
   });
 
-  it("still shows real Period CSV data even when the current month is paused", () => {
+  it("still shows real Previous Month Data even when the current month is paused", () => {
     // A paused current month doesn't imply last month (uploaded separately,
-    // once, as the Period CSV) has no data — the source computes the period
+    // once, as Previous Month Data) has no data — the source computes the period
     // row unconditionally, independent of the current month's pause state.
     const periodRows = [
       {

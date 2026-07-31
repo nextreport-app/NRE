@@ -66,14 +66,9 @@ const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 // detects format from file content and decodes/parses appropriately.
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
-function buildUploadFormData(
-  mtdFile: File,
-  periodFile: File | null,
-  extra: Record<string, unknown> = {},
-): FormData {
+function buildUploadFormData(mtdFile: File, extra: Record<string, unknown> = {}): FormData {
   const formData = new FormData();
   formData.append("mtdDailyCsv", mtdFile);
-  if (periodFile) formData.append("periodCsv", periodFile);
   for (const [key, value] of Object.entries(extra)) {
     if (value !== undefined) formData.append(key, JSON.stringify(value));
   }
@@ -126,7 +121,6 @@ export function ReportUploadWizard({
 
   // Step 1 — Upload
   const [mtdFile, setMtdFile] = useState<File | null>(null);
-  const [periodFile, setPeriodFile] = useState<File | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -232,7 +226,7 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, null),
+      body: buildUploadFormData(mtdFile),
     });
     const json = await res.json().catch(() => null);
 
@@ -324,7 +318,7 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, periodFile, {
+      body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
         dateSelection,
       }),
@@ -379,7 +373,7 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, periodFile, {
+      body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
         dateSelection: currentDateSelection(),
         reportTitle: reportTitle.trim() || DEFAULT_REPORT_TITLE,
@@ -458,7 +452,7 @@ export function ReportUploadWizard({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile/periodFile and selectedCampaigns are untouched, so clicking Continue on Step 3 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
+  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 3 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
   function handleBackToDates() {
     setStep(3);
   }
@@ -487,22 +481,6 @@ export function ReportUploadWizard({
               accept={ACCEPTED_FILE_TYPES}
               onChange={(e) => setMtdFile(e.target.files?.[0] ?? null)}
               className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-accent-hover"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-secondary">
-              Period CSV — optional
-            </label>
-            <p className="mb-2 text-xs text-ink-muted">
-              Previous full month&apos;s data — upload once at the start of the month, don&apos;t
-              re-upload each week.
-            </p>
-            <input
-              type="file"
-              accept={ACCEPTED_FILE_TYPES}
-              onChange={(e) => setPeriodFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-navy-border file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:brightness-125"
             />
           </div>
 

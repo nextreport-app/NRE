@@ -216,7 +216,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(table).toContain("PURCHASES");
     expect(table).not.toContain("{{");
 
-    // This fixture has no Period CSV, so the Period row must be structurally
+    // This fixture has no Previous Month Data, so the Period row must be structurally
     // removed, not just blanked — verified with an independent OOXML reader
     // (python-pptx), not our own fill code. It has 2 distinct objectives
     // (Purchases from the Shoes campaign, Reach from the Brand campaign —
@@ -367,7 +367,7 @@ describe("renderPptx — real template end-to-end", () => {
 
     // Cover + 3 campaign slides (no multi-adset campaigns) + chart + table + legend = table is index 5.
     const tableDims = inspectTableDimensions(outPath, 5);
-    expect(tableDims.rows).toBe(2); // no Period CSV
+    expect(tableDims.rows).toBe(2); // no Previous Month Data
     expect(tableDims.cols).toBe(12); // 6 static + 3 objective pairs
 
     const { slideTexts } = inspectWithPythonPptx(outPath);

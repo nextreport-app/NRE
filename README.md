@@ -12,9 +12,9 @@ aggregation, account health scoring, and native PPTX generation from the
 Upload accepts `.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`, and `.ods` — file type
 is detected from content (magic bytes), not the extension. Delimiter (comma/
 tab/semicolon), text encoding (UTF-8/UTF-16), and BOMs are all auto-detected;
-for Excel workbooks, a sheet named "MTD Daily CSV" (or "Period CSV" for that
-upload slot) is used if present, otherwise the first sheet with data. See
-`src/lib/nre/parse-file.ts`.
+for Excel workbooks, a sheet named "MTD Daily CSV" (or "Previous Month Data"
+for that upload slot) is used if present, otherwise the first sheet with
+data. See `src/lib/nre/parse-file.ts`.
 
 After a report is generated, users can **Download PPTX** (as before) or
 **Get Google Slides Link**, which uploads the generated file to the user's own

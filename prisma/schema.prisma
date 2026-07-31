@@ -184,6 +184,23 @@ model Client {
   // without this feature — no placeholder box.
   logoUrl String?
 
+  // Previous Month Data (Vercel Blob, private access, stored in its
+  // original uploaded format — CSV/TSV/Excel, unlike the logo this is
+  // never re-encoded) — uploaded once per month on the client's own page
+  // (components/previous-month-data.tsx), then reused automatically by
+  // every report generated for this client that month as the Combined
+  // Total table's Period row, with no separate per-report upload needed.
+  // Formerly a per-report, non-persisted upload called "Period CSV" (see
+  // report-upload-wizard.tsx's file header) — this column is what actually
+  // persists it. previousMonthDataUpdatedAt is shown as the "uploaded on"
+  // date in that UI; there's no separate filename column — the original
+  // uploaded filename is preserved as the last path segment of the Blob
+  // URL itself (see storage.ts's savePreviousMonthDataFile /
+  // previousMonthDataFileName) rather than a third DB column, since only
+  // these two were asked for.
+  previousMonthDataUrl       String?
+  previousMonthDataUpdatedAt DateTime?
+
   // Last Google Drive folder this client's reports were saved to (download
   // screen's "Save to Google Drive" button, report-upload-wizard.tsx) —
   // purely a convenience default: the folder picker pre-selects this folder

@@ -81,3 +81,62 @@ export async function readLogoFile(url: string): Promise<Buffer> {
 export async function deleteLogoFile(url: string): Promise<void> {
   await del(url).catch(() => {});
 }
+
+// ─────────────────────── Previous Month Data ─────────────────────────────
+// Uploaded once per client (client detail page) and reused automatically
+// for every report generated that month, instead of the old "Period CSV"
+// upload that had to be re-attached to every single report request — see
+// prisma/schema.prisma's Client.previousMonthDataUrl. Stored unmodified in
+// its original uploaded format (CSV/TSV/Excel), same as the logo above,
+// but keyed by the ORIGINAL FILENAME rather than a fixed name: only two
+// new Client columns were added for this feature (previousMonthDataUrl,
+// previousMonthDataUpdatedAt), not a third for the filename, so the name
+// the user actually uploaded is recovered from the Blob URL's own path
+// (previousMonthDataFileName below) rather than stored separately.
+//
+// Because the key includes the filename, and that can change between
+// uploads, a re-upload does NOT automatically overwrite the previous blob
+// the way the logo's fixed-extension keys do — the caller is expected to
+// delete the client's previous previousMonthDataUrl (read before the
+// update) once the new one is saved, or the old file is orphaned in Blob
+// storage indefinitely.
+
+function sanitizeFileNameForBlobKey(fileName: string): string {
+  const base = fileName.split(/[/\\]/).pop() || "file";
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-150);
+  return cleaned || "file";
+}
+
+export async function savePreviousMonthDataFile(
+  clientId: string,
+  buffer: Buffer,
+  originalFileName: string,
+  contentType: string,
+): Promise<string> {
+  const safeName = sanitizeFileNameForBlobKey(originalFileName);
+  const blob = await put(`previous-month-data/${clientId}/${safeName}`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType,
+  });
+  return blob.url;
+}
+
+export async function readPreviousMonthDataFile(url: string): Promise<Buffer> {
+  const result = await get(url, { access: "private" });
+  if (!result || result.statusCode !== 200) {
+    throw new Error("Previous month data file not found in storage.");
+  }
+  return Buffer.from(await new Response(result.stream).arrayBuffer());
+}
+
+export async function deletePreviousMonthDataFile(url: string): Promise<void> {
+  await del(url).catch(() => {});
+}
+
+/** Recovers the originally-uploaded filename from a Previous Month Data Blob URL's own path — see this section's header for why there's no separate filename column to read instead. */
+export function previousMonthDataFileName(url: string): string {
+  const pathname = new URL(url).pathname;
+  const last = pathname.split("/").pop() ?? "file";
+  return decodeURIComponent(last);
+}

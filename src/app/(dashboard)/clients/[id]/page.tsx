@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientForm } from "@/components/client-form";
 import { DeleteClientButton } from "@/components/delete-client-button";
+import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
+import { previousMonthDataFileName } from "@/lib/storage";
 
 export default async function ClientDetailPage({
   params,
@@ -40,6 +42,15 @@ export default async function ClientDetailPage({
             template: client.template,
           }}
           hasLogo={!!client.logoUrl}
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-medium text-white">Previous Month Data</h2>
+        <PreviousMonthDataUpload
+          clientId={client.id}
+          initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
+          initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
         />
       </div>
 

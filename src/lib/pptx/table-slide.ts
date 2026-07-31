@@ -179,7 +179,7 @@ function rescaleGridColumnsToWidth(tblGridXml: string, targetTotalWidth: number)
 }
 
 export interface TableVisibilityOptions {
-  /** 0-indexed row(s) to remove entirely after filling — e.g. the Period row when there's no Period CSV data. */
+  /** 0-indexed row(s) to remove entirely after filling — e.g. the Period row when there's no Previous Month Data. */
   hideRowIndexes?: number[];
   /** 0-indexed column(s) to remove entirely after filling, with freed width redistributed across what remains — e.g. the second result-type columns when there's only one objective. Mutually exclusive with growing (see the file header) — only meaningful when the grid is narrower than NATIVE_COLS. */
   hideColIndexes?: number[];

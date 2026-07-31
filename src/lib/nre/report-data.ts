@@ -202,7 +202,7 @@ export interface BuildReportDataInput {
   monthlyBudget: number | null;
   /** Raw column-mapped rows from the "MTD Daily CSV" upload (required). */
   mtdDailyRows: NreRow[];
-  /** Raw column-mapped rows from the optional "Period CSV" upload (previous full month). */
+  /** Raw column-mapped rows from the client's optional Previous Month Data upload (previous full month) — see lib/nre/previous-month-data.ts. */
   periodRows?: NreRow[];
   /**
    * Campaign names selected in the report upload wizard's campaign-selection
@@ -408,8 +408,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const filteredMtdDailyRows = filterRowsByAdSets(campaignFilteredRows, selectedAdSets ?? null);
   const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
 
-  // The optional Period CSV (previous full month) feeds the table slide's
-  // separate "Period" row — it must go through the exact same
+  // The optional Previous Month Data (previous full month) feeds the table
+  // slide's separate "Period" row — it must go through the exact same
   // campaign/ad-set selection as the MTD Daily CSV, or a deselected ad set
   // still reaches the report via this second row even though the MTD row
   // correctly excludes it.

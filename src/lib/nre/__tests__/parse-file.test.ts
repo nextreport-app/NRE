@@ -89,7 +89,7 @@ describe("parseUploadedFile", () => {
     const buffer = buildWorkbookBuffer({
       "Read me": [["Instructions here"]],
       "MTD Daily CSV": [HEADERS, ROW],
-      "Period CSV": [HEADERS, ["Boots", "01-06-26", "50", "2"]],
+      "Previous Month Data": [HEADERS, ["Boots", "01-06-26", "50", "2"]],
     });
     const { colMap, rows } = parseUploadedFile(buffer, "MTD Daily CSV");
     expect(colMap.campaign_name).toBe("Campaign name");

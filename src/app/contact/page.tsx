@@ -1,37 +1,45 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
   title: "Contact — NextReport",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-      <Link href="/" className="text-sm text-accent hover:underline">
-        ← Back to NextReport
-      </Link>
+    <>
+      <PublicNav loggedIn={loggedIn} />
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
+        <Link href="/" className="text-sm text-accent hover:underline">
+          ← Back to NextReport
+        </Link>
 
-      <h1 className="mt-6 text-3xl font-semibold text-white">Contact</h1>
+        <h1 className="mt-6 text-3xl font-semibold text-white">Contact</h1>
 
-      <div className="mt-8 space-y-4 text-sm leading-relaxed text-ink-secondary">
-        <p>
-          Have a question, feedback, or need help with your NextReport account?
-          We&apos;d like to hear from you.
-        </p>
+        <div className="mt-8 space-y-4 text-sm leading-relaxed text-ink-secondary">
+          <p>
+            Have a question, feedback, or need help with your NextReport account?
+            We&apos;d like to hear from you.
+          </p>
 
-        <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
-          <p className="text-xs uppercase tracking-wide text-ink-muted">Email</p>
-          <a
-            href="mailto:hello@nextreport.in"
-            className="mt-1 block text-lg font-medium text-accent hover:underline"
-          >
-            hello@nextreport.in
-          </a>
+          <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
+            <p className="text-xs uppercase tracking-wide text-ink-muted">Email</p>
+            <a
+              href="mailto:hello@nextreport.in"
+              className="mt-1 block text-lg font-medium text-accent hover:underline"
+            >
+              hello@nextreport.in
+            </a>
+          </div>
+
+          <p className="text-ink-muted">We aim to respond within one business day.</p>
         </div>
-
-        <p className="text-ink-muted">We aim to respond within one business day.</p>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

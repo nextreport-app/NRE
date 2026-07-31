@@ -1,13 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — NextReport",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
+    <>
+      <PublicNav loggedIn={loggedIn} />
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
       <Link href="/" className="text-sm text-accent hover:underline">
         ← Back to NextReport
       </Link>
@@ -124,6 +131,7 @@ export default function PrivacyPage() {
           </p>
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

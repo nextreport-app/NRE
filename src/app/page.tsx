@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { PublicNav } from "@/components/public-nav";
 import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { FeaturesSection } from "@/components/home/features-section";
@@ -10,12 +11,15 @@ export default async function Home() {
   const loggedIn = !!session?.user;
 
   return (
-    <main className="flex-1">
-      <HeroSection loggedIn={loggedIn} />
-      <HowItWorksSection />
-      <FeaturesSection />
-      <PainPointSection />
-      <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
-    </main>
+    <>
+      <PublicNav loggedIn={loggedIn} />
+      <main className="flex-1">
+        <HeroSection loggedIn={loggedIn} />
+        <HowItWorksSection />
+        <FeaturesSection />
+        <PainPointSection />
+        <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
+      </main>
+    </>
   );
 }

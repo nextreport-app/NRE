@@ -1,13 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
   title: "Terms of Service — NextReport",
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
+    <>
+      <PublicNav loggedIn={loggedIn} />
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
       <Link href="/" className="text-sm text-accent hover:underline">
         ← Back to NextReport
       </Link>
@@ -129,6 +136,7 @@ export default function TermsPage() {
           </p>
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

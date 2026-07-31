@@ -15,6 +15,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
   dateSelectionSchema,
@@ -60,7 +61,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const formData = await req.formData().catch(() => null);
   const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
-  const periodBuffer = formData ? await fileFromFormData(formData, "periodCsv") : null;
 
   if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
     return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
@@ -84,7 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: dateResolution.error || "Invalid date selection." }, { status: 400 });
   }
 
-  const periodParsed = periodBuffer && periodBuffer.length > 0 ? parseUploadedFile(periodBuffer, "Period CSV") : null;
+  const periodRows = await loadPreviousMonthDataRows(client);
   const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
   const data = buildReportData({
@@ -93,7 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
     mtdDailyRows: mtdParsed.rows,
-    periodRows: periodParsed?.rows,
+    periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange: dateResolution.weeklyRange,
   });

@@ -225,8 +225,8 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
  * Fills the Combined Total table positionally (see table-slide.ts) rather
  * than by scanning for named {{TAG}} runs — a structure mismatch throws
  * immediately instead of a column silently going missing. Hides the Period
- * row (index 1) entirely when no Period CSV was uploaded — rather than a
- * row of dashes. Column count follows the number of distinct objectives
+ * row (index 1) entirely when no Previous Month Data was uploaded — rather
+ * than a row of dashes. Column count follows the number of distinct objectives
  * (Fix 1): exactly 1 hides the unused second result-type pair (8-9) rather
  * than showing a blank dashed pair; exactly 2 fits the template's native
  * width as-is; 3 or more GROWS the table (see table-slide.ts) instead of

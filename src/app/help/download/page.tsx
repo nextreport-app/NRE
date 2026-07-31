@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
   title: "How to Download Your Ad Report — NextReport",
@@ -35,11 +37,16 @@ function StepList({ steps }: { steps: React.ReactNode[] }) {
   );
 }
 
-export default function DownloadGuidePage() {
+export default async function DownloadGuidePage() {
+  const session = await auth();
+  const loggedIn = !!session?.user;
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-      <Link href="/clients" className="text-sm text-accent hover:underline">
-        ← Back to Dashboard
+    <>
+      <PublicNav loggedIn={loggedIn} />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
+      <Link href={loggedIn ? "/clients" : "/"} className="text-sm text-accent hover:underline">
+        ← Back to {loggedIn ? "Dashboard" : "NextReport"}
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold text-white">How to Download Your Ad Report</h1>
@@ -162,6 +169,7 @@ export default function DownloadGuidePage() {
           </ul>
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
