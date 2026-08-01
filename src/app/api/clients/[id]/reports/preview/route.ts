@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFile } from "@/lib/nre/parse-file";
+import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildReportData } from "@/lib/nre/report-data";
+import { buildGoogleReportData } from "@/lib/nre/google-report-data";
+import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
+import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
-import { dateSelectionSchema, parseJsonFormField, reportTypeSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, parseJsonFormField, platformSchema, reportTypeSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -34,6 +37,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       { valid: false, errors: [{ field: "mtdDailyCsv", message: "MTD Daily CSV is required." }], warnings: [] },
       { status: 200 },
     );
+  }
+
+  const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
+  const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
+  const platform = platformOverride ?? detectPlatform(headers);
+
+  if (platform === "GOOGLE") {
+    const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
+    const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
+    if (!validation.valid) {
+      return NextResponse.json({ valid: false, errors: validation.errors, warnings: validation.warnings }, { status: 200 });
+    }
+
+    const data = buildGoogleReportData({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      monthlyBudget: client.monthlyBudget,
+      mtdDailyRows: rows,
+    });
+
+    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
   }
 
   const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");

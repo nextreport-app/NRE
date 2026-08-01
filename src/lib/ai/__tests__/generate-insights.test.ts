@@ -59,6 +59,7 @@ function makeReportData(
 
   return {
     isPaused: false,
+    platform: "META",
     reportType: "WEEKLY",
     cover: {
       accountName: "Test",
@@ -342,6 +343,21 @@ describe("generateInsights", () => {
 
       warnSpy.mockRestore();
       vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK);
+    });
+  });
+
+  describe("platform: GOOGLE", () => {
+    it("calls callAI with Google Ads-worded prompts, not Meta's, when data.platform is GOOGLE", async () => {
+      vi.mocked(callAI).mockClear();
+      const data = { ...makeReportData(), platform: "GOOGLE" as const };
+      await generateInsights(data, { groqApiKey: "k" });
+
+      const prompts = vi.mocked(callAI).mock.calls.map(([prompt]) => prompt);
+      expect(prompts.length).toBeGreaterThan(0);
+      for (const prompt of prompts) {
+        expect(prompt).toContain("Google Ads");
+        expect(prompt).not.toContain("Meta Ads");
+      }
     });
   });
 });

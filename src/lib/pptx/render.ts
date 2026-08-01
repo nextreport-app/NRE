@@ -82,6 +82,18 @@ export interface RenderPptxInput {
   agencyName?: string | null;
   /** Client's uploaded logo, stored in its original format (see logo-processing.ts). Rendered on the cover slide only, left-aligned directly above the "Presented to" / client-name column. Absent: no change to the cover slide. */
   clientLogo?: ImageAsset | null;
+  /**
+   * True when `templateBuffer` is templates/meta-ads-light.pptx. The static
+   * template slides (cover/campaign/table/legend) get their light colors
+   * for free from that file's own swapped theme.xml — this flag only drives
+   * the two slide builders that draw colors themselves rather than filling
+   * a template shape: the from-scratch chart slide (buildChartSlideXml) and
+   * the Combined Total table's Previous Month row highlight
+   * (buildTableSlideXml), both of which hardcode a dark-template shade that
+   * would otherwise render illegibly (e.g. white-on-white) against the
+   * light template's own light surfaces.
+   */
+  isLightTemplate?: boolean;
 }
 
 export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: string; adSetName?: string }): string {
@@ -89,7 +101,7 @@ export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: st
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, currencySymbol, aiCopyBySlideKey, reportTitle, agencyName, clientLogo } = input;
+  const { templateBuffer, data, currencySymbol, aiCopyBySlideKey, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
 
   const hasAgencyName = !!agencyName?.trim();
@@ -126,6 +138,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         data.pausedMessage ?? "",
         data.cover.dateRange,
         data.reportType,
+        data.platform,
       ),
       rels: template.campaign.rels,
     });
@@ -133,27 +146,35 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     for (const slide of data.campaignSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType),
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
     }
     for (const slide of data.adSetSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType),
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
     }
     if (data.chart) {
       slides.push({
-        xml: buildChartSlideXml(data.chart, currencySymbol, template.background),
+        xml: buildChartSlideXml(data.chart, currencySymbol, template.background, isLightTemplate, data.platform),
         rels: buildChartSlideRels(template.background.mediaTarget),
       });
     }
   }
 
   slides.push({
-    xml: buildTableSlideXml(template.table, data.periodRow, data.mtdRow, data.tableHeaderLabels, data.reportType),
+    xml: buildTableSlideXml(
+      template.table,
+      data.periodRow,
+      data.mtdRow,
+      data.tableHeaderLabels,
+      data.reportType,
+      isLightTemplate,
+      data.platform,
+    ),
     rels: template.table.rels,
   });
   slides.push({ xml: template.legend.xml, rels: template.legend.rels });

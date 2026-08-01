@@ -40,6 +40,12 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // buildReportData's own default.
 export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY"]);
 
+// Matches prisma/schema.prisma's Platform enum. Absent/undefined means the
+// server falls back to auto-detection from the CSV's own headers (see
+// lib/nre/google-columns.ts's detectPlatform) — sent explicitly only when
+// the wizard's user has manually overridden the detected platform.
+export const platformSchema = z.enum(["META", "GOOGLE"]);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

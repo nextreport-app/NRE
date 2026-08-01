@@ -234,3 +234,37 @@ describe("buildCampaignOrAdSetSlideXml / buildPausedSlideXml — Fix 1: reportTy
     expect(xml).toContain("YOUR WEEKLY PERFORMANCE REPORT");
   });
 });
+
+describe("buildCampaignOrAdSetSlideXml — Google Ads metric card retexting", () => {
+  it("keeps Meta's own card labels by default (platform omitted)", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(xml).toContain("AD SPEND");
+    expect(xml).toContain("REACH");
+    expect(xml).toContain("CPC (All)");
+    expect(xml).not.toContain("AVG. CPC (All)");
+  });
+
+  it("retexts AD SPEND/REACH/CPC (All) to Google Ads wording when platform is GOOGLE, leaving IMPRESSIONS untouched", () => {
+    const xml = buildCampaignOrAdSetSlideXml(
+      template.campaign,
+      makeCampaignSlide("Shoes - Search"),
+      undefined,
+      "WEEKLY",
+      "GOOGLE",
+    );
+    expect(xml).toContain("COST");
+    expect(xml).not.toContain(">AD SPEND<");
+    expect(xml).toContain("CLICKS");
+    expect(xml).not.toContain(">REACH<");
+    expect(xml).toContain("AVG. CPC (All)");
+    expect(xml).toContain("IMPRESSIONS");
+  });
+
+  it("uses '(Ad Group)' instead of '(Ad Set)' for a Google Ads ad-set-kind slide", () => {
+    const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Search");
+    const googleAdGroupSlide = { ...rest, kind: "adset" as const, adSetName: "Prospecting", rowFreq: 0 };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, googleAdGroupSlide, undefined, "WEEKLY", "GOOGLE");
+    expect(xml).toContain("Prospecting (Ad Group)");
+    expect(xml).not.toContain("(Ad Set)");
+  });
+});

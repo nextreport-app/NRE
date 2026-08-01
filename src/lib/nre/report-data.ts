@@ -211,8 +211,12 @@ export interface ObjectiveWarning {
  */
 export type ReportType = "WEEKLY" | "MONTHLY";
 
+/** Which ad platform this report's data came from — drives template selection and a handful of label/prompt differences in the render and AI layers. Defaults to "META" everywhere in this file; only google-report-data.ts's buildGoogleReportData ever produces "GOOGLE". */
+export type Platform = "META" | "GOOGLE";
+
 export interface ReportData {
   isPaused: boolean;
+  platform: Platform;
   reportType: ReportType;
   cover: CoverData;
   campaignSlides: CampaignSlideData[];
@@ -614,6 +618,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     return {
       isPaused: true,
+      platform: "META",
       reportType,
       cover,
       campaignSlides: [],
@@ -883,6 +888,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   return {
     isPaused: false,
+    platform: "META",
     reportType,
     cover,
     campaignSlides,

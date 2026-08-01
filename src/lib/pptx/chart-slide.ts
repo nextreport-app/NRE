@@ -25,10 +25,24 @@ export const CHART_BG_REL_ID = "rId2";
 // reserved for this inner hole alone (see CAMPAIGN_COLOR_PALETTE below) and
 // must never appear as a ring color, so a real campaign's ring is never
 // mistaken for "no campaign here."
-const BG_COLOR = "0d1b2e";
-const LABEL_COLOR = "7ab0cc";
-const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name
-const WHITE = "FFFFFF";
+const BG_COLOR_DARK = "0d1b2e";
+const LABEL_COLOR_DARK = "7ab0cc";
+const TEXT_COLOR_DARK = "FFFFFF";
+
+// This slide is built entirely from scratch (see buildBlankSlideXml) rather
+// than filling a static template slide, so unlike the cover/campaign/table
+// slides it gets none of the light-template's colors "for free" from a
+// swapped theme.xml — every text/hole color it draws has to be picked
+// explicitly per template here. The donut hole and the slide's own
+// background both become light in the light template (hole: card
+// background F1F5F9, slide bg: FFFFFF, both set via templates/
+// meta-ads-light.pptx's theme swap) so one dark-navy text color reads fine
+// against both, same as the light template's own metric-card value text.
+const BG_COLOR_LIGHT = "F1F5F9";
+const LABEL_COLOR_LIGHT = "64748B";
+const TEXT_COLOR_LIGHT = "0D1B2E";
+
+const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name, unchanged across templates (same reasoning as the donut ring palette below: a decorative/status accent, not a background-polarity color)
 
 /**
  * Fix 3 — campaign ring colors are assigned by INDEX (the order campaigns
@@ -61,8 +75,19 @@ function cprShortForChart(label: string): string {
   return label.replace("COST PER 1K ", "CP 1K ");
 }
 
-export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string, background: TemplateBackgroundImage): string {
+export function buildChartSlideXml(
+  chart: ChartSlideData,
+  currencySymbol: string,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+  platform: "META" | "GOOGLE" = "META",
+): string {
   resetShapeIdCounter();
+
+  const BG_COLOR = isLightTemplate ? BG_COLOR_LIGHT : BG_COLOR_DARK;
+  const LABEL_COLOR = isLightTemplate ? LABEL_COLOR_LIGHT : LABEL_COLOR_DARK;
+  const WHITE = isLightTemplate ? TEXT_COLOR_LIGHT : TEXT_COLOR_DARK;
+  const spendLabel = platform === "GOOGLE" ? "COST" : "AD SPEND";
 
   const W = 960;
   const H = 540;
@@ -182,7 +207,7 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
       }),
     );
     shapes.push(
-      textBox({ x: textBoxX, y: centerY + 4, w: textBoxW, h: 12, text: "AD SPEND", sizePt: 11, colorHex: LABEL_COLOR }),
+      textBox({ x: textBoxX, y: centerY + 4, w: textBoxW, h: 12, text: spendLabel, sizePt: 11, colorHex: LABEL_COLOR }),
     );
 
     const belowY = circTopY + CIRCLE_D + 10;

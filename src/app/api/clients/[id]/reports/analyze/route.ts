@@ -7,7 +7,10 @@ import { extractCampaignNames, resolveCampaignSelection, type CampaignSelectionM
 import { computeCsvDateBounds, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import { campaignSelectionMemorySchema, dateSelectionSchema, type DateSelection } from "@/lib/validators/report-wizard";
+import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
+import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
+import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
+import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
@@ -16,6 +19,14 @@ const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
  * validates the CSV, lists its campaigns, computes the weekly/MTD date
  * options, and returns the client's saved preferences (if any) so the
  * wizard can pre-select the same campaigns/date mode as last time.
+ *
+ * Platform (Meta vs Google Ads) is auto-detected from the CSV's own
+ * headers (see google-columns.ts's detectPlatform), unless the wizard
+ * passes an explicit `platform` field (the user manually overrode the
+ * badge). Google Ads reports use a deliberately simpler pipeline than
+ * Meta's for this first pass — no campaign-selection or date-range steps,
+ * always the full MTD dataset — so a GOOGLE response skips straight to
+ * `campaignStepMode: "skip"` with the whole file usable immediately.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -37,11 +48,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
+    const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
+    const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
+    const detectedPlatform = detectPlatform(headers);
+    const platform = platformOverride ?? detectedPlatform;
+
+    if (platform === "GOOGLE") {
+      const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
+      const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { valid: false, errors: validation.errors, warnings: validation.warnings, detectedPlatform, platform },
+          { status: 200 },
+        );
+      }
+
+      return NextResponse.json({
+        valid: true,
+        errors: [],
+        warnings: validation.warnings,
+        detectedPlatform,
+        platform,
+        campaigns: [],
+        selectedCampaigns: [],
+        campaignStepMode: "skip",
+        dateBounds: null,
+        weeklyOptions: null,
+        mtdRange: null,
+        dateSelection: DEFAULT_DATE_SELECTION,
+      });
+    }
+
     const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json(
-        { valid: false, errors: validation.errors, warnings: validation.warnings },
+        { valid: false, errors: validation.errors, warnings: validation.warnings, detectedPlatform, platform },
         { status: 200 },
       );
     }
@@ -69,6 +111,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       valid: true,
       errors: [],
       warnings: validation.warnings,
+      detectedPlatform,
+      platform,
       campaigns,
       selectedCampaigns,
       campaignStepMode,

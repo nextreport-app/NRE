@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFile } from "@/lib/nre/parse-file";
+import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { buildReportData } from "@/lib/nre/report-data";
+import { buildReportData, type ReportData } from "@/lib/nre/report-data";
+import { buildGoogleReportData } from "@/lib/nre/google-report-data";
+import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
+import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderPptx } from "@/lib/pptx/render";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
-import { loadTemplateBuffer } from "@/lib/pptx/templates";
+import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -20,10 +23,12 @@ import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, rea
 import {
   dateSelectionSchema,
   parseJsonFormField,
+  platformSchema,
   reportTitleSchema,
   reportTypeSchema,
   selectedCampaignsSchema,
 } from "@/lib/validators/report-wizard";
+import type { Client } from "@/generated/prisma/client";
 
 /** Downloads a stored logo and reads its pixel dimensions + format back from its own bytes — see logo-processing.ts for why this is a header-only read, never a decode. */
 async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
@@ -40,6 +45,62 @@ async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset
     extension: extensionForLogoFormat(format),
     contentType: contentTypeForLogoFormat(format),
   };
+}
+
+/** Meta path: full campaign/ad-set selection + weekly/monthly date-range resolution + Previous Month Data comparison. Returns an error message on invalid input, or the built ReportData. */
+async function buildMetaData(
+  client: Client,
+  mtdDailyBuffer: Buffer,
+  formData: FormData | null,
+): Promise<{ error: string } | { data: ReportData }> {
+  const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+  if (!validation.valid) {
+    return { error: validation.errors.map((e) => e.message).join(" ") };
+  }
+
+  const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
+
+  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+  if (!dateResolution.ok) {
+    return { error: dateResolution.error || "Invalid date selection." };
+  }
+
+  const periodRows = await loadPreviousMonthDataRows(client);
+
+  const data = buildReportData({
+    accountName: client.accountName,
+    currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    timezone: client.timezone,
+    monthlyBudget: client.monthlyBudget,
+    mtdDailyRows: mtdParsed.rows,
+    periodRows,
+    selectedCampaigns: selectedCampaigns ?? null,
+    weeklyRange: dateResolution.weeklyRange,
+    reportType,
+  });
+
+  return { data };
+}
+
+/** Google Ads path — deliberately simpler than Meta's: no campaign selection, no weekly/monthly toggle, no Previous Month Data — always the full MTD dataset (see google-report-data.ts's own file header for why). */
+function buildGoogleData(client: Client, headers: string[], dataRows: string[][]): { error: string } | { data: ReportData } {
+  const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
+  const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
+  if (!validation.valid) {
+    return { error: validation.errors.map((e) => e.message).join(" ") };
+  }
+
+  const data = buildGoogleReportData({
+    accountName: client.accountName,
+    currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    monthlyBudget: client.monthlyBudget,
+    mtdDailyRows: rows,
+  });
+
+  return { data };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -67,44 +128,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
   }
 
-  const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
-  if (!validation.valid) {
-    return NextResponse.json(
-      { error: validation.errors.map((e) => e.message).join(" ") },
-      { status: 400 },
-    );
-  }
-
-  const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
+  const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
+  const platform = platformOverride ?? detectPlatform(headers);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
-  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
 
-  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
-  if (!dateResolution.ok) {
-    return NextResponse.json({ error: dateResolution.error || "Invalid date selection." }, { status: 400 });
+  const result = platform === "GOOGLE" ? buildGoogleData(client, headers, dataRows) : await buildMetaData(client, mtdDailyBuffer, formData);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
-
-  const periodRows = await loadPreviousMonthDataRows(client);
+  const { data } = result;
   const currencySymbol = CURRENCY_SYMBOLS[client.currency];
-
-  const data = buildReportData({
-    accountName: client.accountName,
-    currencySymbol,
-    timezone: client.timezone,
-    monthlyBudget: client.monthlyBudget,
-    mtdDailyRows: mtdParsed.rows,
-    periodRows,
-    selectedCampaigns: selectedCampaigns ?? null,
-    weeklyRange: dateResolution.weeklyRange,
-    reportType,
-  });
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
     : [undefined, undefined];
-  const fileName = "Meta Ads Report - " + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
+  const filePrefix = platform === "GOOGLE" ? "Google Ads Report - " : "Meta Ads Report - ";
+  const fileName = filePrefix + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
 
   let report;
   try {
@@ -112,7 +152,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         clientId: client.id,
         status: "GENERATING",
-        reportType,
+        reportType: data.reportType,
+        platform,
         weekStart,
         weekEnd,
         fileName,
@@ -136,7 +177,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       loadLogoAsset(client.logoUrl),
     ]);
 
-    const templateBuffer = await loadTemplateBuffer(client.template);
+    const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
     const pptxBuffer = await renderPptx({
       templateBuffer,
       data,
@@ -145,6 +186,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reportTitle,
       agencyName: user?.agencyName,
       clientLogo,
+      isLightTemplate: platform === "META" && client.template === "LIGHT",
     });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);

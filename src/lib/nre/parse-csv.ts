@@ -74,8 +74,14 @@ function stripBom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }
 
-/** Parses raw CSV/TSV text (as downloaded from Meta/Google Ads Manager) into auto-mapped rows. */
-export function parseCsvText(csvText: string): ParsedCsv {
+/**
+ * Delimiter-detection + raw split into headers/data rows, shared by
+ * parseCsvText (Meta's column mapping) and google-columns.ts callers
+ * (Google's own mapping) — column-dictionary mapping is deliberately NOT
+ * done here, since platform detection (google-columns.ts's detectPlatform)
+ * needs the raw headers FIRST, before either dictionary is picked.
+ */
+export function parseCsvHeadersAndRows(csvText: string): { headers: string[]; dataRows: string[][] } {
   const cleaned = stripBom(csvText);
   const delimiter = detectDelimiter(cleaned);
 
@@ -85,12 +91,14 @@ export function parseCsvText(csvText: string): ParsedCsv {
   });
 
   const data = result.data;
-  if (!data || data.length === 0) {
-    return { colMap: {}, rows: [], headers: [] };
-  }
+  if (!data || data.length === 0) return { headers: [], dataRows: [] };
+  return { headers: data[0], dataRows: data.slice(1) };
+}
 
-  const headers = data[0];
-  const dataRows = data.slice(1);
+/** Parses raw CSV/TSV text (as downloaded from Meta/Google Ads Manager) into auto-mapped rows. */
+export function parseCsvText(csvText: string): ParsedCsv {
+  const { headers, dataRows } = parseCsvHeadersAndRows(csvText);
+  if (headers.length === 0) return { colMap: {}, rows: [], headers: [] };
   const { colMap, rows } = readRowsWithAutoMap(headers, dataRows);
   return { colMap, rows, headers };
 }

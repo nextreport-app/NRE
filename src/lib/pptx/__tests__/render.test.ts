@@ -998,3 +998,101 @@ describe("cover slide — health badge / budget summary in the bottom-right", ()
     expect(budgetBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);
   });
 });
+
+describe("renderPptx — Light template (templates/meta-ads-light.pptx), against the actual production asset", () => {
+  const LIGHT_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/meta-ads-light.pptx");
+
+  it("renders every slide with dark-navy text instead of the dark template's white, and no leftover white-on-white text", async () => {
+    if (!fs.existsSync(LIGHT_TEMPLATE_PATH)) {
+      throw new Error(`Light template not found at ${LIGHT_TEMPLATE_PATH}`);
+    }
+    const templateBuffer = fs.readFileSync(LIGHT_TEMPLATE_PATH);
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 100000,
+      mtdDailyRows: [...prospecting, ...retargeting, ...awareness],
+      now: NOW,
+    });
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹", isLightTemplate: true });
+    const outPath = path.join(os.tmpdir(), `nre-render-light-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // No raw XML anywhere in the generated deck should still say FFFFFF —
+    // every dark-template white text/fill this pipeline touches (template
+    // tag runs via the swapped theme, plus the from-scratch chart slide and
+    // the table's Previous Month row highlight) must have flipped to a
+    // light-template-appropriate color instead of silently staying white
+    // (which would render invisible against the light template's own white/
+    // light backgrounds) — EXCEPT the Combined Total table's own header row,
+    // which is the one legitimate case of white-on-white-deck text: its
+    // background is deliberately kept dark navy for contrast (spec: "Table
+    // header background"), so its text is deliberately kept white too
+    // (spec: "Table header text") — see patch_table_header_row in the
+    // template generator script.
+    const zip = await JSZip.loadAsync(buffer);
+    const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
+    expect(slidePaths.length).toBeGreaterThan(0);
+    for (const path of slidePaths) {
+      const xml = await zip.file(path)!.async("string");
+      const isTableSlide = xml.includes("CAMPAIGN OVERVIEW");
+      const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
+      expect(whiteCount).toBe(isTableSlide ? 20 : 0);
+    }
+
+    const { slideTexts } = inspectWithPythonPptx(outPath);
+    const [cover, campaign1, , , , chart, table] = slideTexts;
+    expect(cover).toContain("Test Agency");
+    expect(campaign1).not.toContain("{{");
+    expect(chart).toContain("CAMPAIGN PERFORMANCE");
+    expect(table).toContain("CAMPAIGN OVERVIEW");
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
+  it("uses the light-template Previous Month row highlight, not the dark template's near-black shade", async () => {
+    if (!fs.existsSync(LIGHT_TEMPLATE_PATH)) {
+      throw new Error(`Light template not found at ${LIGHT_TEMPLATE_PATH}`);
+    }
+    const templateBuffer = fs.readFileSync(LIGHT_TEMPLATE_PATH);
+
+    const junePeriodRows = [
+      {
+        _raw: {},
+        campaign_name: "Shoes - Purchases",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...prospecting, ...retargeting, ...awareness],
+      periodRows: junePeriodRows as unknown as NreRow[],
+      now: NOW,
+    });
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹", isLightTemplate: true });
+    const outPath = path.join(os.tmpdir(), `nre-render-light-row-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    const { rowFillColors } = inspectTableSlide(outPath, 6);
+    expect(rowFillColors[1]).toBe("E2E8F0");
+    expect(rowFillColors[1]).not.toBe("111F35");
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+});

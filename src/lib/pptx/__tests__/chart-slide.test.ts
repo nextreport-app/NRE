@@ -150,6 +150,46 @@ describe("buildChartSlideXml — Fix 2: Monthly report chart title", () => {
   });
 });
 
+describe("buildChartSlideXml — light template color awareness", () => {
+  it("defaults to the dark-theme title/text and hole colors when isLightTemplate is omitted", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND);
+    expect(xml).toContain('srgbClr val="FFFFFF"');
+    const holes = ellipseFillColors(xml).filter((_, i) => i % 2 === 1);
+    expect(holes).toEqual(["0d1b2e"]);
+  });
+
+  it("uses dark-navy title/text and a light card-colored hole when isLightTemplate is true", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, true);
+    expect(xml).not.toContain('srgbClr val="FFFFFF"');
+    expect(xml).toContain('srgbClr val="0D1B2E"');
+    const holes = ellipseFillColors(xml).filter((_, i) => i % 2 === 1);
+    expect(holes).toEqual(["F1F5F9"]);
+  });
+
+  it("keeps the donut ring palette and the amber inactive-indicator color unchanged between templates", () => {
+    const darkXml = buildChartSlideXml(buildChart([campaign("A", { statusIndicator: "Paused" })]), "$", BACKGROUND, false);
+    const lightXml = buildChartSlideXml(buildChart([campaign("A", { statusIndicator: "Paused" })]), "$", BACKGROUND, true);
+    const darkRings = ellipseFillColors(darkXml).filter((_, i) => i % 2 === 0);
+    const lightRings = ellipseFillColors(lightXml).filter((_, i) => i % 2 === 0);
+    expect(lightRings).toEqual(darkRings);
+    expect(darkXml).toContain('srgbClr val="fbbf24"');
+    expect(lightXml).toContain('srgbClr val="fbbf24"');
+  });
+});
+
+describe("buildChartSlideXml — Google Ads label retexting", () => {
+  it("keeps 'AD SPEND' inside the donut hole by default (platform omitted)", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND);
+    expect(xml).toContain("AD SPEND");
+  });
+
+  it("uses 'COST' instead of 'AD SPEND' inside the donut hole when platform is GOOGLE", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, false, "GOOGLE");
+    expect(xml).toContain("COST");
+    expect(xml).not.toContain("AD SPEND");
+  });
+});
+
 const EMU_PER_PT = 12700;
 
 /** The ring ellipse's own y offset in points, for the FIRST campaign column (every column shares the same y). */

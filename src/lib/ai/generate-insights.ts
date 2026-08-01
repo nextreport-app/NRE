@@ -55,10 +55,11 @@
  * call is unaffected — it doesn't share the summary prompt's CPR phrasing.
  */
 
-import type { AiContext, ReportData } from "../nre/report-data";
+import type { AiContext, Platform, ReportData } from "../nre/report-data";
 import type { AiCopy } from "../pptx/fill-tags";
 import { slideAiKey } from "../pptx/render";
 import { callAI, type AiKeys } from "./client";
+import { buildGoogleAdsInsightPrompt, buildGoogleAdsSummaryPrompt } from "./google-prompts";
 import {
   buildFallbackInsights,
   buildFallbackSummary,
@@ -111,9 +112,17 @@ function endsComplete(trimmedText: string): boolean {
   return trimmedText.endsWith(".");
 }
 
+/** Picks the platform-appropriate prompt-builder pair — see google-prompts.ts's own doc comment for why only the prompt templates themselves (not the surrounding fallback/cap/truncation-safety-net logic below, which is already generic over AiContext) need a Google Ads variant. */
+function promptBuildersFor(platform: Platform): { summary: typeof buildSummaryPrompt; insight: typeof buildInsightPrompt } {
+  return platform === "GOOGLE"
+    ? { summary: buildGoogleAdsSummaryPrompt, insight: buildGoogleAdsInsightPrompt }
+    : { summary: buildSummaryPrompt, insight: buildInsightPrompt };
+}
+
 export async function generateInsights(data: ReportData, keys: AiKeys): Promise<Map<string, AiCopy>> {
   const slides = [...data.campaignSlides, ...data.adSetSlides];
   const results = new Map<string, AiCopy>();
+  const { summary: buildSummaryPromptFor, insight: buildInsightPromptFor } = promptBuildersFor(data.platform);
 
   await Promise.all(
     slides.map(async (slide) => {
@@ -131,8 +140,8 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       const [rawSummary, rawInsight] = await Promise.all([
         // Never sent to the AI for a zero-results slide — see this file's
         // header and buildZeroResultsSummary's own doc comment.
-        zeroResults ? Promise.resolve(null) : callAI(buildSummaryPrompt(slide.ai), keys),
-        callAI(buildInsightPrompt(slide.ai), keys),
+        zeroResults ? Promise.resolve(null) : callAI(buildSummaryPromptFor(slide.ai), keys),
+        callAI(buildInsightPromptFor(slide.ai), keys),
       ]);
 
       // Debug: the exact response the AI returned, BEFORE any period check

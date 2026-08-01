@@ -11,7 +11,7 @@
  */
 
 import * as XLSX from "xlsx";
-import { parseCsvText, type ParsedCsv } from "./parse-csv";
+import { parseCsvHeadersAndRows, parseCsvText, type ParsedCsv } from "./parse-csv";
 
 export type DetectedFileKind = "excel" | "text";
 
@@ -77,18 +77,13 @@ export function pickSheetName(workbook: XLSX.WorkBook, preferredSheetName?: stri
   return withData ?? workbook.SheetNames[0];
 }
 
-function parseExcelBuffer(buffer: Buffer, preferredSheetName?: string): ParsedCsv {
+/** Converts a workbook sheet to the same CSV text every other format is parsed through — see parseUploadedFileHeadersAndRows's own doc comment for why. Returns null if the workbook has no usable sheet. */
+function excelBufferToCsvText(buffer: Buffer, preferredSheetName?: string): string | null {
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetName = pickSheetName(workbook, preferredSheetName);
-  if (!sheetName) return { colMap: {}, rows: [], headers: [] };
-
+  if (!sheetName) return null;
   const sheet = workbook.Sheets[sheetName];
-  // Converting to CSV text (rather than reading cells directly) reuses the
-  // exact same delimiter-agnostic parsing, BOM handling, and column
-  // detection as every other format — one code path for all formats,
-  // instead of a parallel cell-reading implementation to keep in sync.
-  const csvText = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
-  return parseCsvText(csvText);
+  return XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
 }
 
 /**
@@ -101,7 +96,26 @@ export function parseUploadedFile(buffer: Buffer, preferredSheetName?: string): 
 
   const kind = detectFileKind(buffer);
   if (kind === "excel") {
-    return parseExcelBuffer(buffer, preferredSheetName);
+    const csvText = excelBufferToCsvText(buffer, preferredSheetName);
+    return csvText === null ? { colMap: {}, rows: [], headers: [] } : parseCsvText(csvText);
   }
   return parseCsvText(decodeTextBuffer(buffer));
+}
+
+/**
+ * Same format detection/normalization as parseUploadedFile, but stops
+ * before either platform's column-dictionary mapping runs — used by the
+ * analyze route, which needs the raw headers FIRST to decide which
+ * dictionary (Meta's columns.ts or Google's google-columns.ts) even
+ * applies (see google-columns.ts's detectPlatform).
+ */
+export function parseUploadedFileHeadersAndRows(buffer: Buffer, preferredSheetName?: string): { headers: string[]; dataRows: string[][] } {
+  if (buffer.length === 0) return { headers: [], dataRows: [] };
+
+  const kind = detectFileKind(buffer);
+  if (kind === "excel") {
+    const csvText = excelBufferToCsvText(buffer, preferredSheetName);
+    return csvText === null ? { headers: [], dataRows: [] } : parseCsvHeadersAndRows(csvText);
+  }
+  return parseCsvHeadersAndRows(decodeTextBuffer(buffer));
 }

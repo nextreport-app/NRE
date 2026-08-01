@@ -386,5 +386,14 @@ describe("fillCombinedTotalTable — Fix 4: Previous Month row background", () =
     const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
     expect((rows[1].match(/<a:srgbClr val="000000"\/>/g) || []).length).toBe(NATIVE_COLS);
   });
+
+  it("uses the light-template row highlight (E2E8F0) instead of the dark shade when isLightTemplate is true — the dark shade reads as a near-invisible smudge against the light template's own light card background", () => {
+    const xml = buildFixtureTableWithFills();
+    const grid = grid3x10((r, c) => `V${r}-${c}`);
+    const out = fillCombinedTotalTable(xml, grid, { isLightTemplate: true });
+    const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+    expect((rows[1].match(/<a:srgbClr val="E2E8F0"\/>/g) || []).length).toBe(NATIVE_COLS);
+    expect(rows[1]).not.toContain("111F35");
+  });
 });
 

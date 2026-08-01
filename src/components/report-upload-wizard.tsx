@@ -23,7 +23,12 @@ const STEP_LABELS: Record<Step, string> = {
   4: "Preview",
 };
 
-type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
+// "detected" pauses on step 1 after a successful analyze, showing the
+// platform badge + override dropdown + a Continue button — see
+// handleAnalyze/handleContinueAfterDetect — before dispatching into either
+// Meta's multi-step (campaigns/dates) flow or Google Ads' direct-to-preview
+// one, so the user has a chance to fix a wrong auto-detection first.
+type AnalyzeStatus = "idle" | "loading" | "invalid" | "error" | "detected";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 type DateMode = "last7" | "prev7" | "custom";
@@ -176,6 +181,16 @@ export function ReportUploadWizard({
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
+  // Auto-detected from the CSV's own column headers (see
+  // lib/nre/google-columns.ts's detectPlatform) — `platform` starts equal
+  // to it and only diverges if the user picks a different value from the
+  // override dropdown. Both are set together in handleAnalyze and read by
+  // handleContinueAfterDetect once the user confirms/overrides and clicks
+  // Continue.
+  const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | null>(null);
+  const [platform, setPlatform] = useState<"META" | "GOOGLE">("META");
+  const [campaignStepModeResult, setCampaignStepModeResult] = useState<"skip" | "confirm" | "choose">("choose");
+  const [continueStatus, setContinueStatus] = useState<"idle" | "loading">("idle");
 
   // Step 2 — Campaigns (populated by /analyze). This step is shown, skipped
   // silently, or skipped with an inline confirmation banner on the Dates
@@ -306,6 +321,13 @@ export function ReportUploadWizard({
       setAnalyzeMessage("Something went wrong analyzing the CSV. Please try again.");
       return;
     }
+    // Platform is detected even on an invalid CSV (see the analyze route) —
+    // shown alongside the error list so a wrong detection is diagnosable
+    // even when validation also failed for an unrelated reason.
+    const detected: "META" | "GOOGLE" = json.detectedPlatform || "META";
+    setDetectedPlatform(detected);
+    setPlatform(json.platform || detected);
+
     if (!json.valid) {
       setAnalyzeStatus("invalid");
       setAnalyzeErrors(json.errors || []);
@@ -322,15 +344,72 @@ export function ReportUploadWizard({
     setCustomStart(savedSelection.customStart || "");
     setCustomEnd(savedSelection.customEnd || "");
     setLongRangeConfirmed(false);
-    setAnalyzeStatus("idle");
 
     // "choose" (first upload for this client, or a genuinely new campaign
     // appeared) is the only case that needs the full Campaigns step — a
     // single campaign or a returning, unchanged selection go straight to
     // Dates, with "confirm" showing a brief reuse notice there instead.
+    // Only meaningful for Meta — see handleContinueAfterDetect.
     const campaignStepMode: "skip" | "confirm" | "choose" = json.campaignStepMode || "choose";
+    setCampaignStepModeResult(campaignStepMode);
     setCampaignSelectionRemembered(campaignStepMode === "confirm");
-    setStep(campaignStepMode === "choose" ? 2 : 3);
+
+    // Pause on step 1 so the platform badge/override is visible before
+    // dispatching further — see handleContinueAfterDetect.
+    setAnalyzeStatus("detected");
+  }
+
+  // ── Step 1 (post-detect): dispatch into the right flow ──────────────────
+  // Meta keeps its existing multi-step campaigns/dates flow unchanged.
+  // Google Ads skips straight to the preview — no campaign selection, no
+  // weekly/monthly toggle, no Previous Month Data (see google-report-data.ts's
+  // own file header for why this pipeline is deliberately simpler for v1).
+  async function handleContinueAfterDetect() {
+    setAnalyzeStatus("idle");
+    if (platform === "META") {
+      setStep(campaignStepModeResult === "choose" ? 2 : 3);
+      return;
+    }
+
+    if (!mtdFile) return;
+    setContinueStatus("loading");
+    setPreviewStatus("loading");
+    setPreviewErrors([]);
+    setPreviewMessage(null);
+
+    const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
+      method: "POST",
+      body: buildUploadFormData(mtdFile, { platform }),
+    });
+    const json = await res.json().catch(() => null);
+    setContinueStatus("idle");
+
+    if (!res.ok || !json) {
+      setPreviewStatus("error");
+      setPreviewMessage("Something went wrong building the preview. Please try again.");
+      return;
+    }
+    if (!json.valid) {
+      setPreviewStatus("invalid");
+      setPreviewErrors(json.errors || []);
+      return;
+    }
+
+    setData(json.data);
+    setPreviewStatus("idle");
+    setGenerateStatus("idle");
+    setGenerateMessage(null);
+    setReportId(null);
+    setDownloadUrl(null);
+    setDriveView("collapsed");
+    setDriveSaving(false);
+    setDriveFolderLinkInput("");
+    setDriveFolderNameInput("");
+    setDriveLinkFormatError(null);
+    setDriveSaveUrl(null);
+    setDriveSaveError(null);
+    setCopied(false);
+    setStep(4);
   }
 
   // ── Step 2: Campaigns ───────────────────────────────────────────────────
@@ -402,6 +481,7 @@ export function ReportUploadWizard({
         selectedCampaigns: Array.from(selectedCampaigns),
         dateSelection,
         reportType,
+        platform,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -460,6 +540,7 @@ export function ReportUploadWizard({
         reportTitle:
           reportTitle.trim() || (reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE),
         reportType,
+        platform,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -582,6 +663,36 @@ export function ReportUploadWizard({
               Not sure how to download? See our guide
             </Link>
           </div>
+
+          {analyzeStatus === "detected" && (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-navy-border bg-navy px-3 py-2.5">
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  detectedPlatform === "GOOGLE" ? "bg-amber-900/40 text-amber-300" : "bg-blue-900/40 text-blue-300"
+                }`}
+              >
+                {detectedPlatform === "GOOGLE" ? "Google Ads detected" : "Meta Ads detected"}
+              </span>
+              <label className="flex items-center gap-2 text-xs text-ink-secondary">
+                Platform:
+                <select
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value as "META" | "GOOGLE")}
+                  className="rounded-md border border-navy-border bg-navy-panel px-2 py-1 text-xs text-white outline-none focus:border-accent"
+                >
+                  <option value="META">Meta Ads</option>
+                  <option value="GOOGLE">Google Ads</option>
+                </select>
+              </label>
+              <button
+                onClick={handleContinueAfterDetect}
+                disabled={continueStatus === "loading"}
+                className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {continueStatus === "loading" ? "Loading…" : "Continue"}
+              </button>
+            </div>
+          )}
 
           {analyzeStatus === "invalid" && (
             <div className="space-y-3">

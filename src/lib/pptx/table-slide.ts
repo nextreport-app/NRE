@@ -183,6 +183,8 @@ export interface TableVisibilityOptions {
   hideRowIndexes?: number[];
   /** 0-indexed column(s) to remove entirely after filling, with freed width redistributed across what remains — e.g. the second result-type columns when there's only one objective. Mutually exclusive with growing (see the file header) — only meaningful when the grid is narrower than NATIVE_COLS. */
   hideColIndexes?: number[];
+  /** Selects the Previous Month row's highlight fill (see PERIOD_ROW_FILL_HEX below) — the dark-theme shade reads as a near-invisible near-black smudge against the light template's own light card background, so the light template needs its own, lighter shade. Defaults to false (the original dark-template shade), matching every existing caller. */
+  isLightTemplate?: boolean;
 }
 
 /**
@@ -290,7 +292,8 @@ export function fillCombinedTotalTable(
   // actually ends up with, not just its native 10.
   const rowsForFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   if (rowsForFill[1]) {
-    const filledRow = setRowCellFill(rowsForFill[1].xml, PERIOD_ROW_FILL_HEX);
+    const fillHex = options.isLightTemplate ? PERIOD_ROW_FILL_HEX_LIGHT : PERIOD_ROW_FILL_HEX;
+    const filledRow = setRowCellFill(rowsForFill[1].xml, fillHex);
     newTbl = newTbl.slice(0, rowsForFill[1].start) + filledRow + newTbl.slice(rowsForFill[1].end);
   }
 
@@ -305,6 +308,8 @@ export function fillCombinedTotalTable(
 
 /** Previous Month row background (Fix 4) — one shade lighter than the template's own #0d1b2e dark navy, matching the app's own --color-navy-panel token. */
 const PERIOD_ROW_FILL_HEX = "111F35";
+/** Light-template equivalent — one shade darker than the light template's own #f1f5f9 card background, reusing the light template's own spec'd border grey (#e2e8f0) rather than inventing an unspec'd new color. */
+const PERIOD_ROW_FILL_HEX_LIGHT = "E2E8F0";
 
 /**
  * Overrides the background fill of every cell in a row. A cell's <a:tcPr>

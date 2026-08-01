@@ -180,6 +180,18 @@ enum ReportType {
   MONTHLY
 }
 
+// Which ad platform a report's CSV came from — detected automatically from
+// the uploaded file's column headers (see lib/nre/google-columns.ts's
+// detectPlatform), with a manual override available in the upload wizard.
+// Drives template selection (templates/google-ads-dark.pptx vs the client's
+// own DARK/LIGHT/... choice) and which report-data/AI-prompt pipeline runs
+// (lib/nre/google-report-data.ts vs lib/nre/report-data.ts) — see
+// lib/pptx/templates.ts's loadTemplateBufferForPlatform.
+enum Platform {
+  META
+  GOOGLE
+}
+
 model Client {
   id            String         @id @default(cuid())
   userId        String
@@ -262,6 +274,11 @@ model Report {
   // comment. Recorded per-report (not read back into anything) purely so
   // the client's report history can show "Weekly"/"Monthly" per row.
   reportType ReportType   @default(WEEKLY)
+  // Which ad platform this report's CSV came from — see the Platform enum's
+  // own comment. Recorded per-report (auto-detected or manually overridden
+  // in the wizard) so the client's report history can show which platform
+  // each report is for.
+  platform   Platform     @default(META)
 
   weekStart String?
   weekEnd   String?

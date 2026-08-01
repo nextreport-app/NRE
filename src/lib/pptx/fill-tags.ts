@@ -5,7 +5,8 @@
  * appearance (see the long comment above buildCampaignOrAdSetSlideXml).
  */
 
-import { buildCombinedTotalTableGrid, type CoverData, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
+import { buildCombinedTotalTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
+import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
   cloneShapeAsTag,
   forceRunStyle,
@@ -150,16 +151,37 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  * (unlike the Slides API) is guaranteed stable since we never re-parse or
  * re-serialize formatting — reusing the template's rPr verbatim.
  */
+/**
+ * Google Ads metric cards repurpose the same 7 static-text card slots the
+ * Meta template already has (see buildCampaignOrAdSetSlideXml's own doc
+ * comment) rather than a physically different template — "AD SPEND"/
+ * "REACH"/"CPC (All)" are static (non-{{TAG}}) template text that needs
+ * retexting to their Google Ads equivalents; "IMPRESSIONS" and "CTR (All)"
+ * read the same for both platforms and are left untouched. RESULT_LABEL/
+ * COST_LABEL are already dynamic {{TAG}}s (report-data.ts sets them to
+ * "CONVERSIONS"/"COST PER CONVERSION" for Google), so the Conversions/
+ * Cost-per-Conversion cards need no template changes at all.
+ */
+function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
+  if (platform !== "GOOGLE") return xml;
+  let out = replaceLiteralText(xml, "AD SPEND", "COST");
+  out = replaceLiteralText(out, "REACH", "CLICKS");
+  out = replaceLiteralText(out, "CPC (All)", "AVG. CPC (All)");
+  return out;
+}
+
 export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
   slide: SlideData,
   ai: AiCopy = FALLBACK_AI_COPY,
   reportType: ReportType = "WEEKLY",
+  platform: Platform = "META",
 ): string {
+  const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const heading =
     slide.kind === "adset"
       ? slide.adSetName
-        ? slide.adSetName + " (Ad Set)"
+        ? slide.adSetName + adGroupOrSetLabel
         : slide.campaignName
       : slide.campaignName + " (Campaign)";
 
@@ -189,6 +211,7 @@ export function buildCampaignOrAdSetSlideXml(
       KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
+  xml = applyGoogleAdsCardLabels(xml, platform);
   const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
   xml = replaceTagRunWithSuffix(
     xml,
@@ -211,6 +234,7 @@ export function buildPausedSlideXml(
   pausedMessage: string,
   dateRangeFallback: string,
   reportType: ReportType = "WEEKLY",
+  platform: Platform = "META",
 ): string {
   let xml = fillTags(
     template.xml,
@@ -235,6 +259,7 @@ export function buildPausedSlideXml(
       KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
+  xml = applyGoogleAdsCardLabels(xml, platform);
   const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true });
@@ -268,8 +293,17 @@ export function buildTableSlideXml(
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
   reportType: ReportType = "WEEKLY",
+  isLightTemplate = false,
+  platform: Platform = "META",
 ): string {
-  const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+  // Google Ads reports have their own static header words (Cost/Clicks/
+  // Avg. CPC instead of Meta's Ad Spend/Reach/CPC (All)) — see
+  // google-report-data.ts's buildGoogleCombinedTotalTableGrid, which fills
+  // the SAME positional 3-row/N-column grid shape table-slide.ts expects,
+  // just with different header text, so no other table-filling logic here
+  // needs to change.
+  const grid =
+    platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(mtdRow, headers) : buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
   // Row 1 (Period) is hidden whenever there's nothing to show it (no
   // Previous Month Data uploaded) — and ALWAYS for a Monthly report,
   // regardless of whether Previous Month Data exists: "the Combined Total
@@ -281,5 +315,6 @@ export function buildTableSlideXml(
   return fillCombinedTotalTable(template.xml, grid, {
     hideRowIndexes: [...(hidePeriodRow ? [1] : []), ...(hideMtdRow ? [2] : [])],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
+    isLightTemplate,
   });
 }
