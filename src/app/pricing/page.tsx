@@ -12,16 +12,36 @@ export const metadata: Metadata = {
 
 const FAQS = [
   {
-    q: "Is there really no credit card required for the trial?",
-    a: "Correct. Sign up and get 7 days of full access with no payment details required. You only need to subscribe when your trial ends.",
+    q: "Is there really no credit card required for the free trial?",
+    a: "Correct. Sign up and get 7 days of full access with no payment details required. You only need to subscribe when your trial ends and you want to continue.",
   },
   {
     q: "What happens when my trial ends?",
-    a: "You will see a prompt to subscribe. If you choose not to subscribe, you will not be able to generate new reports but your account and client data stays safe.",
+    a: "You will see a prompt to subscribe. If you choose not to subscribe, you will not be able to generate new reports but your account and all your client data stays safe and accessible.",
   },
   {
     q: "Can I switch plans later?",
     a: "Yes. You can upgrade or downgrade at any time from your billing page. Changes take effect immediately.",
+  },
+  {
+    q: "What file formats can I upload?",
+    a: "NextReport accepts CSV, Excel (xlsx, xls), TSV, and TXT files. Download your report from Meta Ads Manager or Google Ads in any of these formats and upload directly — no conversion needed.",
+  },
+  {
+    q: "Do I need to include specific columns in my CSV?",
+    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our Download Guide for the exact steps to download the right format from Meta and Google Ads.",
+  },
+  {
+    q: "How many reports can I generate per month?",
+    a: "Unlimited on both plans. Generate as many reports as you need for as many clients as your plan allows — no per-report charges.",
+  },
+  {
+    q: "What is the difference between Meta Ads and Google Ads reporting?",
+    a: "Both use the same dark navy branded template and AI-written insights. The metrics shown adapt automatically to the platform — Meta shows reach, frequency, leads and link clicks while Google shows clicks, impressions, conversions and quality score.",
+  },
+  {
+    q: "Is my client data secure?",
+    a: "Yes. Your CSV data is processed on our servers and used only to generate your report. We do not store your raw campaign data after the report is generated. All data is transmitted over encrypted HTTPS connections.",
   },
 ];
 

@@ -134,7 +134,7 @@ function MtdChartSlide() {
 
 const COMBINED_ROWS = [
   { month: "June 2026", spend: "$1,840", reach: "89,234", impressions: "198,441", ctr: "2.41%", cpc: "$1.23", leads: "187", cpl: "$9.84" },
-  { month: "July 1 - July 24 MTD", spend: "$366", reach: "—", impressions: "76,732", ctr: "2.93%", cpc: "$1.18", leads: "63", cpl: "$5.81" },
+  { month: "July 1 - July 24 MTD", spend: "$366", reach: "65,858", impressions: "76,732", ctr: "2.93%", cpc: "$1.18", leads: "63", cpl: "$5.81" },
 ];
 
 /** Slide 4 — Campaign Overview Combined Total. */
