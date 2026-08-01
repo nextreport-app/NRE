@@ -15,7 +15,7 @@ import {
   setShapeOffsetY,
   type StyleOverride,
 } from "./ooxml";
-import { fillCombinedTotalTable } from "./table-slide";
+import { fillCombinedTotalTable, insertCombinedTotalNote } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
 
@@ -242,6 +242,7 @@ export function buildTableSlideXml(
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
   reportType: ReportType = "WEEKLY",
+  combinedTotalNote: string | null = null,
 ): string {
   const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
   // Row 1 (Period) is hidden whenever there's nothing to show it (no
@@ -251,8 +252,17 @@ export function buildTableSlideXml(
   // (Fix 8) — a Monthly report has no separate weekly/period comparison at
   // all, only the month itself.
   const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
-  return fillCombinedTotalTable(template.xml, grid, {
+  let xml = fillCombinedTotalTable(template.xml, grid, {
     hideRowIndexes: hidePeriodRow ? [1] : [],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
   });
+  // Fix 3: only ever set by report-data.ts's buildReportData when the
+  // Period row is actually visible, so no extra hidePeriodRow check is
+  // needed here — but the null check itself is what keeps every OTHER
+  // report (different months, Monthly reports, no Previous Month Data)
+  // from growing a note at all.
+  if (combinedTotalNote) {
+    xml = insertCombinedTotalNote(xml, combinedTotalNote);
+  }
+  return xml;
 }

@@ -228,8 +228,10 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(data.mtdRow).toMatchObject({
       hasData: true,
       // " MTD" suffix marks this as a partial, still-in-progress month,
-      // distinct from the Period row's completed-month date range.
-      monthLabel: "July 13 - July 19 MTD",
+      // distinct from the Period row's completed-month date range. Year
+      // included (Fix 2) alongside the Previous Month row's own "Month
+      // Year" label.
+      monthLabel: "July 13 - July 19, 2026 MTD",
       spend: "₹2,450",
       // A straight sum of the daily rows' reach — see the dedicated reach test below.
       reach: "82,600",
@@ -399,6 +401,113 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     });
 
     expect(data.periodRow.hasData).toBe(false);
+  });
+});
+
+describe("buildReportData — Combined Total row labels and same-month note (Fixes 1-3)", () => {
+  const junePeriodRows = [
+    {
+      _raw: {},
+      campaign_name: "Shoes - Purchases",
+      ad_set_name: "Prospecting",
+      result_type: "Purchase",
+      spend: "500",
+      reach: "2000",
+      impressions: "4000",
+      results: "10",
+      ctr: "2",
+      cpc: "3",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    },
+  ];
+
+  const julyPeriodRows = [
+    {
+      _raw: {},
+      campaign_name: "Shoes - Purchases",
+      ad_set_name: "Prospecting",
+      result_type: "Purchase",
+      spend: "500",
+      reach: "2000",
+      impressions: "4000",
+      results: "10",
+      ctr: "2",
+      cpc: "3",
+      date_start: "01-07-2026",
+      date_end: "19-07-2026",
+    },
+  ];
+
+  it("labels the Previous Month row as 'Previous Month — Month Year' (Fix 1), not a raw date range", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: junePeriodRows,
+      now: NOW,
+    });
+    expect(data.periodRow.monthLabel).toBe("Previous Month — June 2026");
+    expect(data.periodRow.monthName).toBe("June");
+  });
+
+  it("no combinedTotalNote when the Previous Month row and MTD row fall in different calendar months", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows, // July 13-19, 2026
+      periodRows: junePeriodRows, // June 2026
+      now: NOW,
+    });
+    expect(data.combinedTotalNote).toBeNull();
+  });
+
+  it("sets the exact combinedTotalNote text when both rows fall in the same calendar month (Fix 3)", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows, // July 13-19, 2026
+      periodRows: julyPeriodRows, // also July 2026
+      now: NOW,
+    });
+    expect(data.periodRow.monthName).toBe("July");
+    expect(data.mtdRow.monthName).toBe("July");
+    expect(data.combinedTotalNote).toBe(
+      "* Previous month shows complete July data. MTD shows July data through last campaign activity.",
+    );
+  });
+
+  it("no combinedTotalNote when there's no Previous Month Data at all, even though the row would otherwise be absent, not same-month", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      now: NOW, // no periodRows passed
+    });
+    expect(data.periodRow.hasData).toBe(false);
+    expect(data.combinedTotalNote).toBeNull();
+  });
+
+  it("no combinedTotalNote on a Monthly report, even in the same-month case — the Period row is hidden entirely there", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: julyPeriodRows,
+      reportType: "MONTHLY",
+      now: NOW,
+    });
+    expect(data.combinedTotalNote).toBeNull();
   });
 });
 
@@ -621,6 +730,7 @@ describe("buildCombinedTotalTableGrid", () => {
     return {
       hasData: true,
       monthLabel: "Jul 1 - Jul 23",
+      monthName: "July",
       spend: "₹1,000",
       reach: "5,000",
       impressions: "10,000",
@@ -822,7 +932,7 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
     expect(data.cover.dateRange).toBe("July 15 - July 17");
     // MTD is unaffected by the weekly selection — still every day the fixture
     // has data for (13-19; the fixture doesn't include days 1-12).
-    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19 MTD");
+    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19, 2026 MTD");
   });
 });
 

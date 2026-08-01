@@ -95,3 +95,15 @@ export function getDateRangeShortLabel(rawStart: unknown, rawEnd: unknown): stri
   if (s.day === e.day && s.month === e.month && s.year === e.year) return sm + " " + s.day;
   return sm + " " + s.day + " - " + em + " " + e.day;
 }
+
+/** "July" — just the calendar month name of a raw date value, no year. Null if unparseable. Deliberately not timezone-aware (unlike getMonthLabel above, which is for "today" in the viewer's timezone): these raw values are already-resolved calendar dates from a CSV, not instants that need zone conversion. */
+export function getMonthName(rawValue: unknown): string | null {
+  const d = parseDate(rawValue);
+  return d ? MONTHS[d.month - 1] : null;
+}
+
+/** "July 2026" — calendar month + year of a raw date value. Null if unparseable. Same non-timezone-aware reasoning as getMonthName. */
+export function getMonthYearLabel(rawValue: unknown): string | null {
+  const d = parseDate(rawValue);
+  return d ? MONTHS[d.month - 1] + " " + d.year : null;
+}

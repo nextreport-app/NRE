@@ -20,6 +20,8 @@ beforeAll(() => {
 });
 
 const TEMPLATE_PATH = path.resolve(__dirname, "../../../../reference/templates/ADS_TEMPLATE_V2.pptx");
+/** The actual production template (templates.ts's loadTemplateBuffer target) — used where the exact shipped file's structure matters, not just an equivalent reference copy. */
+const PRODUCTION_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const NOW = new Date("2026-07-20T12:00:00Z");
 
 function daysInclusive(startDay: number, endDay: number): string[] {
@@ -129,6 +131,49 @@ for slide in p.slides:
 print(json.dumps({"slideCount": len(p.slides.__iter__.__self__._sldIdLst), "slideTexts": texts}))
 `;
   const out = execFileSync("python3", ["-c", script, pptxPath], { encoding: "utf-8" });
+  return JSON.parse(out);
+}
+
+/** Every text-frame shape's text on a slide, plus the table's own cell texts and each row's solid-fill color (if any), via python-pptx. Used to verify Combined Total row labels, the same-month footnote, and the Fix 4 row background independently of our own XML-manipulation code. */
+function inspectTableSlide(
+  pptxPath: string,
+  slideIndex: number,
+): { texts: string[]; rowFillColors: (string | null)[] } {
+  const script = `
+import sys, json
+from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+p = Presentation(sys.argv[1])
+slide = list(p.slides)[int(sys.argv[2])]
+
+texts = []
+table = None
+for shape in slide.shapes:
+    if shape.has_text_frame and shape.text_frame.text.strip():
+        texts.append(shape.text_frame.text)
+    if shape.has_table:
+        table = shape.table
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.text.strip():
+                    texts.append(cell.text)
+
+row_fills = []
+if table is not None:
+    for row in table.rows:
+        cell = row.cells[0]
+        try:
+            if cell.fill.type is not None and cell.fill.fore_color.type is not None:
+                row_fills.append(str(cell.fill.fore_color.rgb))
+            else:
+                row_fills.append(None)
+        except Exception:
+            row_fills.append(None)
+
+print(json.dumps({"texts": texts, "rowFillColors": row_fills}))
+`;
+  const out = execFileSync("python3", ["-c", script, pptxPath, String(slideIndex)], { encoding: "utf-8" });
   return JSON.parse(out);
 }
 
@@ -305,6 +350,74 @@ describe("renderPptx — real template end-to-end", () => {
     const tableDims = inspectTableDimensions(outPath, 4);
     expect(tableDims.rows).toBe(3);
     expect(tableDims.cols).toBe(10);
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
+  it("Fixes 1-4: Combined Total row labels, same-month footnote, and row background — against the actual production template", async () => {
+    if (!fs.existsSync(PRODUCTION_TEMPLATE_PATH)) {
+      throw new Error(`Production template not found at ${PRODUCTION_TEMPLATE_PATH}`);
+    }
+    const templateBuffer = fs.readFileSync(PRODUCTION_TEMPLATE_PATH);
+
+    // Previous Month Data in the SAME calendar month as the MTD Daily CSV
+    // (both July 2026) — the specific scenario Fix 3's footnote exists for
+    // (e.g. a report generated on the 1st of the month, before the new
+    // month's MTD CSV has any real data of its own yet).
+    const julyPeriodRows = [
+      {
+        _raw: {},
+        campaign_name: "Shoes - Purchases",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-07-2026",
+        date_end: "19-07-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...prospecting, ...retargeting, ...awareness],
+      periodRows: julyPeriodRows as unknown as NreRow[],
+      now: NOW,
+    });
+
+    expect(data.periodRow.monthLabel).toBe("Previous Month — July 2026");
+    expect(data.mtdRow.monthLabel).toContain(", 2026 MTD");
+    expect(data.combinedTotalNote).toBe(
+      "* Previous month shows complete July data. MTD shows July data through last campaign activity.",
+    );
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
+    const outPath = path.join(os.tmpdir(), `nre-render-combined-total-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // Cover + 2 campaign slides + 2 ad-set slides + chart + table + legend = 8; table is index 6.
+    const { texts, rowFillColors } = inspectTableSlide(outPath, 6);
+    const allText = texts.join(" | ");
+
+    expect(allText).toContain("Previous Month — July 2026");
+    expect(allText).toContain(", 2026 MTD");
+    expect(allText).toContain("Previous month shows complete July data");
+    expect(allText).not.toContain("{{");
+
+    // Row 0 = header, row 1 = Previous Month, row 2 = MTD — independently
+    // read back via python-pptx's own fill-color API, not our own XML
+    // manipulation code. The Previous Month row's fill must differ from
+    // both the header row's and the MTD row's, and must be the exact
+    // color Fix 4 specifies.
+    expect(rowFillColors).toHaveLength(3);
+    expect(rowFillColors[1]).toBe("111F35");
+    expect(rowFillColors[1]).not.toBe(rowFillColors[0]);
+    expect(rowFillColors[1]).not.toBe(rowFillColors[2]);
 
     fs.unlinkSync(outPath);
   }, 30000);
