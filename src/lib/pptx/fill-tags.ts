@@ -15,7 +15,7 @@ import {
   setShapeOffsetY,
   type StyleOverride,
 } from "./ooxml";
-import { fillCombinedTotalTable, insertCombinedTotalNote } from "./table-slide";
+import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
 
@@ -235,6 +235,16 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
  * than showing a blank dashed pair; exactly 2 fits the template's native
  * width as-is; 3 or more GROWS the table (see table-slide.ts) instead of
  * dropping anything past the second objective.
+ *
+ * Also hides the MTD row (index 2) whenever periodRow.sameMonthAsCurrentMTD
+ * is true — both rows would otherwise show near-identical same-month data
+ * (e.g. a report generated on the 1st, before the new month's MTD Daily
+ * CSV has any real data of its own yet), which read as confusing/redundant
+ * rather than informative. Guarded on `!hidePeriodRow`: a Monthly report
+ * already hides the Period row unconditionally and shows only the MTD row
+ * (Fix 8) — sameMonthAsCurrentMTD can still be true there (it's a pure
+ * data fact, computed independently of reportType), but hiding the MTD row
+ * too in that case would leave zero data rows on the slide.
  */
 export function buildTableSlideXml(
   template: TemplateSlide,
@@ -242,7 +252,6 @@ export function buildTableSlideXml(
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
   reportType: ReportType = "WEEKLY",
-  combinedTotalNote: string | null = null,
 ): string {
   const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
   // Row 1 (Period) is hidden whenever there's nothing to show it (no
@@ -252,17 +261,9 @@ export function buildTableSlideXml(
   // (Fix 8) — a Monthly report has no separate weekly/period comparison at
   // all, only the month itself.
   const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
-  let xml = fillCombinedTotalTable(template.xml, grid, {
-    hideRowIndexes: hidePeriodRow ? [1] : [],
+  const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
+  return fillCombinedTotalTable(template.xml, grid, {
+    hideRowIndexes: [...(hidePeriodRow ? [1] : []), ...(hideMtdRow ? [2] : [])],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
   });
-  // Fix 3: only ever set by report-data.ts's buildReportData when the
-  // Period row is actually visible, so no extra hidePeriodRow check is
-  // needed here — but the null check itself is what keeps every OTHER
-  // report (different months, Monthly reports, no Previous Month Data)
-  // from growing a note at all.
-  if (combinedTotalNote) {
-    xml = insertCombinedTotalNote(xml, combinedTotalNote);
-  }
-  return xml;
 }

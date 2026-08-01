@@ -453,7 +453,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     expect(data.periodRow.monthName).toBe("June");
   });
 
-  it("no combinedTotalNote when the Previous Month row and MTD row fall in different calendar months", () => {
+  it("sameMonthAsCurrentMTD is false when the Previous Month row and MTD row fall in different calendar months", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -463,10 +463,10 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       periodRows: junePeriodRows, // June 2026
       now: NOW,
     });
-    expect(data.combinedTotalNote).toBeNull();
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
   });
 
-  it("sets the exact combinedTotalNote text when both rows fall in the same calendar month (Fix 3)", () => {
+  it("sameMonthAsCurrentMTD is true on the Previous Month row when both rows fall in the same calendar month", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -478,12 +478,12 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     });
     expect(data.periodRow.monthName).toBe("July");
     expect(data.mtdRow.monthName).toBe("July");
-    expect(data.combinedTotalNote).toBe(
-      "* Previous month shows complete July data. MTD shows July data through last campaign activity.",
-    );
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
+    // Meaningless on the MTD row itself — always false there.
+    expect(data.mtdRow.sameMonthAsCurrentMTD).toBe(false);
   });
 
-  it("no combinedTotalNote when there's no Previous Month Data at all, even though the row would otherwise be absent, not same-month", () => {
+  it("sameMonthAsCurrentMTD is false when there's no Previous Month Data at all — not (wrongly) 'same month' via null === null", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -493,10 +493,11 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       now: NOW, // no periodRows passed
     });
     expect(data.periodRow.hasData).toBe(false);
-    expect(data.combinedTotalNote).toBeNull();
+    expect(data.periodRow.monthName).toBeNull();
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
   });
 
-  it("no combinedTotalNote on a Monthly report, even in the same-month case — the Period row is hidden entirely there", () => {
+  it("sameMonthAsCurrentMTD is still computed as true on a Monthly report in the same-month case — it's a pure data fact, independent of reportType (the render layer decides what to do with it)", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -507,7 +508,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       reportType: "MONTHLY",
       now: NOW,
     });
-    expect(data.combinedTotalNote).toBeNull();
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
   });
 });
 
@@ -731,6 +732,7 @@ describe("buildCombinedTotalTableGrid", () => {
       hasData: true,
       monthLabel: "Jul 1 - Jul 23",
       monthName: "July",
+      sameMonthAsCurrentMTD: false,
       spend: "₹1,000",
       reach: "5,000",
       impressions: "10,000",

@@ -141,14 +141,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   }
 
   slides.push({
-    xml: buildTableSlideXml(
-      template.table,
-      data.periodRow,
-      data.mtdRow,
-      data.tableHeaderLabels,
-      data.reportType,
-      data.combinedTotalNote,
-    ),
+    xml: buildTableSlideXml(template.table, data.periodRow, data.mtdRow, data.tableHeaderLabels, data.reportType),
     rels: template.table.rels,
   });
   slides.push({ xml: template.legend.xml, rels: template.legend.rels });

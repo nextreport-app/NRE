@@ -29,7 +29,7 @@
  * overflowing the slide.
  */
 
-import { escapeXmlText, insertShapeBeforeSpTreeClose } from "./ooxml";
+import { escapeXmlText } from "./ooxml";
 
 const EXPECTED_ROWS = 3;
 /** The template's own physical column count — the grid can ask for more (grown) or fewer (hidden), but this is what's actually baked into templates/dark.pptx. */
@@ -335,63 +335,3 @@ function setRowCellFill(rowXml: string, hexColor: string): string {
   return out;
 }
 
-/**
- * Adds the Fix 3 same-month footnote as its own text box, spanning the
- * table's own width but anchored near the BOTTOM of the slide rather than
- * immediately below the table. Empirically necessary, not just a style
- * choice: a <a:tr>'s h="..." attribute is only a nominal/minimum height —
- * PowerPoint and LibreOffice both auto-expand a row taller when its text
- * wraps to multiple lines, which the longer Fix 1/2 labels ("Previous
- * Month — July 2026", "July 13 - July 19, 2026 MTD") readily do at this
- * template's column width. Positioning the note off the table's SUMMED
- * NOMINAL row heights put it well inside the table's actual rendered
- * bounds, overlapping the MTD row — confirmed by rendering a real .pptx
- * through LibreOffice, not just inspecting the XML. Anchoring near the
- * slide's bottom edge instead sidesteps the whole problem: however tall
- * the table actually renders, there's still a large gap between it and
- * the bottom of a mostly-empty slide (title + a 3-row table occupies
- * roughly the top half at most).
- *
- * SLIDE_HEIGHT_EMU is this template's own known, fixed presentation size
- * (12192000 x 6858000 EMU, standard 16:9) — read directly from
- * templates/dark.pptx's presentation.xml, not derived from this
- * function's slide-level xml, which has no access to that presentation-
- * level property. Same "hardcode this specific template's own known
- * geometry" approach the rest of this file already takes (10 native
- * columns, 3 rows, etc.) — safe as long as this is the only production
- * template (see templates.ts).
- */
-export function insertCombinedTotalNote(xml: string, noteText: string): string {
-  const tblMatch = /<a:tbl>[\s\S]*?<\/a:tbl>/.exec(xml);
-  if (!tblMatch) throw new Error("Combined Total slide has no <a:tbl> to anchor the note below.");
-
-  const frames = findSpans(xml, /<p:graphicFrame>[\s\S]*?<\/p:graphicFrame>/g);
-  const frame = frames.find((f) => f.start <= tblMatch.index && tblMatch.index < f.end);
-  if (!frame) throw new Error("Combined Total table has no enclosing <p:graphicFrame> to anchor the note below.");
-  const offMatch = /<a:off x="(-?\d+)" y="(-?\d+)"\/>/.exec(frame.xml);
-  if (!offMatch) throw new Error("Combined Total table's <p:graphicFrame> has no <a:off> to anchor the note below.");
-  const frameX = parseInt(offMatch[1], 10);
-
-  const tableWidth = totalGridWidth(tblMatch[0]);
-
-  const SLIDE_HEIGHT_EMU = 6858000;
-  const BOTTOM_MARGIN_EMU = 250000;
-  const NOTE_HEIGHT_EMU = 400000;
-  const noteY = SLIDE_HEIGHT_EMU - BOTTOM_MARGIN_EMU - NOTE_HEIGHT_EMU;
-
-  // Fresh, non-colliding shape id — same "max existing id + 1" convention
-  // ooxml.ts's cloneShapeAsTag uses for the same reason.
-  const existingIds = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map((m) => Number(m[1]));
-  const newId = (existingIds.length ? Math.max(...existingIds) : 0) + 1;
-
-  const shapeXml =
-    `<p:sp><p:nvSpPr><p:cNvPr id="${newId}" name="Combined Total Note"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
-    `<p:spPr><a:xfrm><a:off x="${frameX}" y="${noteY}"/><a:ext cx="${tableWidth}" cy="${NOTE_HEIGHT_EMU}"/></a:xfrm>` +
-    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>` +
-    `<p:txBody><a:bodyPr anchorCtr="0" anchor="t" bIns="0" lIns="0" rIns="0" tIns="0" wrap="square"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
-    `<a:p><a:pPr indent="0" lvl="0" marL="0" marR="0" rtl="0" algn="l"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:spcBef><a:spcPts val="0"/></a:spcBef><a:spcAft><a:spcPts val="0"/></a:spcAft><a:buNone/></a:pPr>` +
-    `<a:r><a:rPr b="0" i="1" lang="en-US" sz="1000" u="none" cap="none" strike="noStrike"><a:solidFill><a:srgbClr val="94A3B8"/></a:solidFill><a:latin typeface="Poppins"/><a:ea typeface="Poppins"/><a:cs typeface="Poppins"/><a:sym typeface="Poppins"/></a:rPr><a:t>${escapeXmlText(noteText)}</a:t></a:r>` +
-    `</a:p></p:txBody></p:sp>`;
-
-  return insertShapeBeforeSpTreeClose(xml, shapeXml);
-}

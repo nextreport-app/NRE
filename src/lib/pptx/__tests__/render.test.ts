@@ -354,16 +354,78 @@ describe("renderPptx — real template end-to-end", () => {
     fs.unlinkSync(outPath);
   }, 30000);
 
-  it("Fixes 1-4: Combined Total row labels, same-month footnote, and row background — against the actual production template", async () => {
+  it("Fixes 1, 2 & 4: Combined Total row labels and row background — against the actual production template", async () => {
+    if (!fs.existsSync(PRODUCTION_TEMPLATE_PATH)) {
+      throw new Error(`Production template not found at ${PRODUCTION_TEMPLATE_PATH}`);
+    }
+    const templateBuffer = fs.readFileSync(PRODUCTION_TEMPLATE_PATH);
+
+    // Previous Month Data in a DIFFERENT calendar month than the MTD Daily
+    // CSV (June vs July) — the normal case, where both rows show.
+    const junePeriodRows = [
+      {
+        _raw: {},
+        campaign_name: "Shoes - Purchases",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...prospecting, ...retargeting, ...awareness],
+      periodRows: junePeriodRows as unknown as NreRow[],
+      now: NOW,
+    });
+
+    expect(data.periodRow.monthLabel).toBe("Previous Month — June 2026");
+    expect(data.mtdRow.monthLabel).toContain(", 2026 MTD");
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
+    const outPath = path.join(os.tmpdir(), `nre-render-combined-total-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // Cover + 2 campaign slides + 2 ad-set slides + chart + table + legend = 8; table is index 6.
+    const { texts, rowFillColors } = inspectTableSlide(outPath, 6);
+    const allText = texts.join(" | ");
+
+    expect(allText).toContain("Previous Month — June 2026");
+    expect(allText).toContain(", 2026 MTD");
+    expect(allText).not.toContain("{{");
+
+    // Row 0 = header, row 1 = Previous Month, row 2 = MTD — independently
+    // read back via python-pptx's own fill-color API, not our own XML
+    // manipulation code. The Previous Month row's fill must differ from
+    // both the header row's and the MTD row's, and must be the exact
+    // color Fix 4 specifies.
+    expect(rowFillColors).toHaveLength(3);
+    expect(rowFillColors[1]).toBe("111F35");
+    expect(rowFillColors[1]).not.toBe(rowFillColors[0]);
+    expect(rowFillColors[1]).not.toBe(rowFillColors[2]);
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
+  it("hides the MTD row entirely when Previous Month Data and the MTD Daily CSV land in the same calendar month — against the actual production template", async () => {
     if (!fs.existsSync(PRODUCTION_TEMPLATE_PATH)) {
       throw new Error(`Production template not found at ${PRODUCTION_TEMPLATE_PATH}`);
     }
     const templateBuffer = fs.readFileSync(PRODUCTION_TEMPLATE_PATH);
 
     // Previous Month Data in the SAME calendar month as the MTD Daily CSV
-    // (both July 2026) — the specific scenario Fix 3's footnote exists for
-    // (e.g. a report generated on the 1st of the month, before the new
-    // month's MTD CSV has any real data of its own yet).
+    // (both July 2026) — e.g. a report generated on the 1st, before the
+    // new month's MTD Daily CSV has any real data of its own yet.
     const julyPeriodRows = [
       {
         _raw: {},
@@ -391,33 +453,25 @@ describe("renderPptx — real template end-to-end", () => {
     });
 
     expect(data.periodRow.monthLabel).toBe("Previous Month — July 2026");
-    expect(data.mtdRow.monthLabel).toContain(", 2026 MTD");
-    expect(data.combinedTotalNote).toBe(
-      "* Previous month shows complete July data. MTD shows July data through last campaign activity.",
-    );
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
-    const outPath = path.join(os.tmpdir(), `nre-render-combined-total-${Date.now()}.pptx`);
+    const outPath = path.join(os.tmpdir(), `nre-render-same-month-${Date.now()}.pptx`);
     fs.writeFileSync(outPath, buffer);
 
     // Cover + 2 campaign slides + 2 ad-set slides + chart + table + legend = 8; table is index 6.
-    const { texts, rowFillColors } = inspectTableSlide(outPath, 6);
+    const tableDims = inspectTableDimensions(outPath, 6);
+    expect(tableDims.rows).toBe(2); // header + Previous Month only — no MTD row, no footnote row
+    expect(tableDims.cols).toBe(10);
+
+    const { texts } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
-
     expect(allText).toContain("Previous Month — July 2026");
-    expect(allText).toContain(", 2026 MTD");
-    expect(allText).toContain("Previous month shows complete July data");
+    // No leftover MTD-row content (its own distinct spend figure) and no
+    // Fix-3-style footnote (removed — hiding the row replaces it).
+    expect(allText).not.toContain("₹2,450");
+    expect(allText).not.toContain("shows complete");
     expect(allText).not.toContain("{{");
-
-    // Row 0 = header, row 1 = Previous Month, row 2 = MTD — independently
-    // read back via python-pptx's own fill-color API, not our own XML
-    // manipulation code. The Previous Month row's fill must differ from
-    // both the header row's and the MTD row's, and must be the exact
-    // color Fix 4 specifies.
-    expect(rowFillColors).toHaveLength(3);
-    expect(rowFillColors[1]).toBe("111F35");
-    expect(rowFillColors[1]).not.toBe(rowFillColors[0]);
-    expect(rowFillColors[1]).not.toBe(rowFillColors[2]);
 
     fs.unlinkSync(outPath);
   }, 30000);

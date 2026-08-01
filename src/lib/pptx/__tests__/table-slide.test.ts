@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fillCombinedTotalTable, insertCombinedTotalNote } from "../table-slide";
+import { fillCombinedTotalTable } from "../table-slide";
 import { buildTableSlideXml } from "../fill-tags";
 import type { TableHeaderLabels, TableRowData } from "../../nre/report-data";
 
@@ -241,6 +241,7 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
     hasData: true,
     monthLabel: "Jun 2026 PERIOD-LABEL",
     monthName: "June",
+    sameMonthAsCurrentMTD: false,
     spend: "₹500",
     reach: "10,000",
     impressions: "20,000",
@@ -252,6 +253,7 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
     hasData: true,
     monthLabel: "Jul 1 - Jul 19 MTD-LABEL",
     monthName: "July",
+    sameMonthAsCurrentMTD: false,
     spend: "₹900",
     reach: "18,000",
     impressions: "36,000",
@@ -289,26 +291,58 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
     expect(out).toContain("MTD-LABEL");
   });
 
-  it("adds the same-month note (Fix 3) when a combinedTotalNote is passed", () => {
-    // Needs a real <p:graphicFrame>-wrapped table (unlike buildFixtureTable's
-    // simplified <p:sp> wrapper) since insertCombinedTotalNote anchors the
-    // note off the table's actual graphicFrame position.
-    const xml = buildSlideWithGraphicFrameFixture();
-    const out = buildTableSlideXml(
-      { xml, rels: "" },
-      periodRow,
-      mtdRow,
-      headers,
-      "WEEKLY",
-      "* Previous month shows complete July data. MTD shows July data through last campaign activity.",
-    );
-    expect(out).toContain("Previous month shows complete July data");
+});
+
+describe("buildTableSlideXml — same-month: hide the MTD row instead of showing near-duplicate rows", () => {
+  const headers: TableHeaderLabels = { resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT" }] };
+  const periodRow: TableRowData = {
+    hasData: true,
+    monthLabel: "Previous Month — July 2026 PERIOD-LABEL",
+    monthName: "July",
+    sameMonthAsCurrentMTD: true,
+    spend: "₹500",
+    reach: "10,000",
+    impressions: "20,000",
+    ctr: "1.00%",
+    cpc: "₹2.00",
+    resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "5", cprValue: "₹100.00" }],
+  };
+  const mtdRow: TableRowData = {
+    hasData: true,
+    monthLabel: "July 1 - July 19, 2026 MTD-LABEL",
+    monthName: "July",
+    sameMonthAsCurrentMTD: false,
+    spend: "₹900",
+    reach: "18,000",
+    impressions: "36,000",
+    ctr: "1.20%",
+    cpc: "₹2.50",
+    resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "9", cprValue: "₹100.00" }],
+  };
+
+  it("hides the MTD row (not the Period row) on a Weekly report when sameMonthAsCurrentMTD is true — table ends up 2 rows: header + Previous Month", () => {
+    const xml = buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "WEEKLY");
+    expect(out).toContain("PERIOD-LABEL");
+    expect(out).not.toContain("MTD-LABEL");
+    expect((out.match(/<a:tr /g) || []).length).toBe(2);
   });
 
-  it("adds no note when combinedTotalNote is null (different months, Monthly report, or no Previous Month Data)", () => {
+  it("shows both rows as normal when sameMonthAsCurrentMTD is false (the ordinary, different-months case)", () => {
     const xml = buildFixtureTable();
-    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "WEEKLY", null);
-    expect(out).not.toContain("Combined Total Note");
+    const differentMonthRow: TableRowData = { ...periodRow, sameMonthAsCurrentMTD: false };
+    const out = buildTableSlideXml({ xml, rels: "" }, differentMonthRow, mtdRow, headers, "WEEKLY");
+    expect(out).toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL");
+    expect((out.match(/<a:tr /g) || []).length).toBe(3);
+  });
+
+  it("does NOT also hide the MTD row on a Monthly report, even when sameMonthAsCurrentMTD is true — the Period row is already hidden there, so hiding both would leave zero data rows", () => {
+    const xml = buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "MONTHLY");
+    expect(out).not.toContain("PERIOD-LABEL");
+    expect(out).toContain("MTD-LABEL"); // MTD row survives — it's the only row a Monthly report shows
+    expect((out.match(/<a:tr /g) || []).length).toBe(2); // header + MTD
   });
 });
 
@@ -354,74 +388,3 @@ describe("fillCombinedTotalTable — Fix 4: Previous Month row background", () =
   });
 });
 
-/** A minimal but structurally realistic slide: the table wrapped in a real <p:graphicFrame> (with an <a:off>, unlike buildFixtureTable's simplified <p:sp> wrapper), itself inside <p:spTree> — what insertCombinedTotalNote actually needs to anchor the note below the table. */
-function buildSlideWithGraphicFrameFixture(offX = 480029, offY = 1488365, rowH = 648000): string {
-  const trs = Array.from({ length: EXPECTED_ROWS }, (_, r) => {
-    const tcs = Array.from({ length: NATIVE_COLS }, (_, c) => cellXml(`R${r}C${c}`)).join("");
-    return `<a:tr h="${rowH}">${tcs}</a:tr>`;
-  }).join("");
-  const gridCols = Array.from({ length: NATIVE_COLS }, () => `<a:gridCol w="100000"/>`).join("");
-  const tbl = `<a:tbl><a:tblGrid>${gridCols}</a:tblGrid>${trs}</a:tbl>`;
-  const graphicFrame =
-    `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="1" name="Table"/></p:nvGraphicFramePr>` +
-    `<p:xfrm><a:off x="${offX}" y="${offY}"/><a:ext cx="3000000" cy="3000000"/></p:xfrm>` +
-    `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">${tbl}</a:graphicData></a:graphic></p:graphicFrame>`;
-  return `<p:spTree><p:nvGrpSpPr/>${graphicFrame}</p:spTree>`;
-}
-
-describe("insertCombinedTotalNote (Fix 3)", () => {
-  const noteText = "* Previous month shows complete July data. MTD shows July data through last campaign activity.";
-
-  it("inserts a note textbox containing the given text", () => {
-    const xml = buildSlideWithGraphicFrameFixture();
-    const out = insertCombinedTotalNote(xml, noteText);
-    expect(out).toContain("Previous month shows complete July data");
-  });
-
-  it("positions the note near the bottom of the slide, aligned with the table's left edge — not immediately below the table's nominal height", () => {
-    // Anchoring off the table's declared row heights (h="...") was tried
-    // first and rejected: PowerPoint/LibreOffice both auto-expand a row
-    // taller than its nominal height when text wraps to multiple lines,
-    // which the longer Fix 1/2 labels do — confirmed by actually rendering
-    // a .pptx through LibreOffice, where that approach put the note
-    // overlapping the table. Anchoring near the slide's bottom edge avoids
-    // depending on the table's exact rendered height at all.
-    const offX = 480029;
-    const offY = 1488365;
-    const rowH = 648000;
-    const xml = buildSlideWithGraphicFrameFixture(offX, offY, rowH);
-    const out = insertCombinedTotalNote(xml, noteText);
-    const offMatch = /Combined Total Note"\/><p:cNvSpPr[\s\S]*?<a:off x="(\d+)" y="(\d+)"/.exec(out);
-    expect(offMatch).not.toBeNull();
-    const [, noteX, noteY] = offMatch!;
-    expect(parseInt(noteX, 10)).toBe(offX);
-    // Well past even a generously-expanded table, and short of the
-    // template's known 6858000 EMU slide height.
-    expect(parseInt(noteY, 10)).toBeGreaterThan(offY + rowH * EXPECTED_ROWS);
-    expect(parseInt(noteY, 10)).toBeLessThan(6858000);
-  });
-
-  it("inserts the note as the last shape before </p:spTree>", () => {
-    const xml = buildSlideWithGraphicFrameFixture();
-    const out = insertCombinedTotalNote(xml, noteText);
-    const noteIndex = out.indexOf("Combined Total Note");
-    const closeIndex = out.indexOf("</p:spTree>");
-    expect(noteIndex).toBeGreaterThan(-1);
-    expect(noteIndex).toBeLessThan(closeIndex);
-  });
-
-  it("escapes special XML characters in the note text", () => {
-    const xml = buildSlideWithGraphicFrameFixture();
-    const out = insertCombinedTotalNote(xml, "A & B < C");
-    expect(out).toContain("A &amp; B &lt; C");
-  });
-
-  it("throws when there's no <a:tbl> to anchor the note below", () => {
-    expect(() => insertCombinedTotalNote("<p:spTree></p:spTree>", noteText)).toThrow(/<a:tbl>/);
-  });
-
-  it("throws when the table has no enclosing <p:graphicFrame>", () => {
-    const bareTable = `<p:spTree>${buildFixtureTable()}</p:spTree>`;
-    expect(() => insertCombinedTotalNote(bareTable, noteText)).toThrow(/graphicFrame/);
-  });
-});

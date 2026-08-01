@@ -137,8 +137,19 @@ export interface ResultColumnData {
 export interface TableRowData {
   hasData: boolean;
   monthLabel: string;
-  /** Calendar month name this row's data falls in (e.g. "July"), or null when hasData is false. Computed once here rather than re-parsed out of monthLabel's already-formatted text — used to detect when the Previous Month row and MTD row land in the same calendar month (see buildReportData's combinedTotalNote). */
+  /** Calendar month name this row's data falls in (e.g. "July"), or null when hasData is false. Computed once here rather than re-parsed out of monthLabel's already-formatted text — used to detect when the Previous Month row and MTD row land in the same calendar month. */
   monthName: string | null;
+  /**
+   * Only ever set true on the Previous Month row (always false on the MTD
+   * row itself — it's meaningless there, but both rows share this type).
+   * True when this row's month matches the MTD row's month — e.g. a report
+   * generated on the 1st, before the new month's MTD Daily CSV has any
+   * real data of its own yet. Set by buildReportData once both rows exist
+   * to compare, not computed here in isolation. The render layer
+   * (fill-tags.ts's buildTableSlideXml) hides the MTD row entirely when
+   * this is true, rather than showing two near-identical rows.
+   */
+  sameMonthAsCurrentMTD: boolean;
   spend: string;
   reach: string;
   impressions: string;
@@ -206,17 +217,6 @@ export interface ReportData {
   chart: ChartSlideData | null;
   periodRow: TableRowData;
   mtdRow: TableRowData;
-  /**
-   * Footnote for the Combined Total slide (Fix 3) — non-null only when the
-   * Previous Month row and the MTD row land in the same calendar month
-   * (e.g. both show July when a report is generated on August 1st, before
-   * the MTD Daily CSV has any real August data yet). Correct behavior, but
-   * confusing without an explanation, since a reader would otherwise
-   * expect two different months. Null (no footnote at all) whenever the
-   * months differ, the Previous Month row is hidden (Monthly report, or no
-   * Previous Month Data uploaded), or either row has no data.
-   */
-  combinedTotalNote: string | null;
   tableHeaderLabels: TableHeaderLabels;
   fileDateRange: string;
   objectiveWarnings: ObjectiveWarning[];
@@ -300,6 +300,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
       hasData: false,
       monthLabel: "—",
       monthName: null,
+      sameMonthAsCurrentMTD: false,
       spend: "—",
       reach: "—",
       impressions: "—",
@@ -368,6 +369,11 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
     hasData: true,
     monthLabel,
     monthName,
+    // Set false here unconditionally — buildReportData overrides this on
+    // the Previous Month row specifically, once both rows exist to compare
+    // months against each other (this function only ever sees one row's
+    // own data at a time).
+    sameMonthAsCurrentMTD: false,
     spend: fmtCurrency(totalSpend, currencySymbol),
     reach: fmtNumber(totalReach),
     impressions: fmtNumber(totalImpr),
@@ -556,18 +562,24 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  const periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false);
+  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false);
   const mtdRow = computeTableRow(mtdRows, currencySymbol, true);
 
-  // Fix 3: only relevant when the Previous Month row is actually shown
-  // (hidden entirely for a Monthly report, or when there's no Previous
-  // Month Data at all — see fill-tags.ts's buildTableSlideXml for that
-  // same hidePeriodRow condition) and both rows have real data to compare.
-  const hidePeriodRow = isMonthlyReport || !periodRow.hasData;
-  const combinedTotalNote =
-    !hidePeriodRow && mtdRow.hasData && periodRow.monthName && periodRow.monthName === mtdRow.monthName
-      ? `* Previous month shows complete ${periodRow.monthName} data. MTD shows ${periodRow.monthName} data through last campaign activity.`
-      : null;
+  // sameMonthAsCurrentMTD: both rows have real data AND land in the same
+  // calendar month (e.g. a report generated on the 1st, before the new
+  // month's MTD Daily CSV has any real data of its own yet) — a pure data
+  // fact, computed here since only this function has both rows in scope to
+  // compare. What to DO about it (hide the MTD row entirely, rather than
+  // show two near-identical rows) is a rendering decision left to
+  // fill-tags.ts's buildTableSlideXml, including whether reportType
+  // matters there — not decided here.
+  //
+  // The explicit `!== null` guard matters: hasData false leaves monthName
+  // null on BOTH rows in the no-data case, and null === null would
+  // otherwise wrongly read as "same month".
+  const sameMonth =
+    periodRow.hasData && mtdRow.hasData && periodRow.monthName !== null && periodRow.monthName === mtdRow.monthName;
+  periodRow = { ...periodRow, sameMonthAsCurrentMTD: sameMonth };
 
   // Table header labels: fillMTDRow_ always runs after fillPeriodSlide_ in the
   // source and both write the same header cells, so MTD's own objectives win
@@ -606,7 +618,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       chart: null,
       periodRow,
       mtdRow,
-      combinedTotalNote,
       tableHeaderLabels,
       fileDateRange,
       objectiveWarnings: [],
@@ -874,7 +885,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     chart,
     periodRow,
     mtdRow,
-    combinedTotalNote,
     tableHeaderLabels,
     fileDateRange,
     objectiveWarnings,
