@@ -83,6 +83,35 @@ function formatIso(iso: string): string {
   return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" }).format(d);
 }
 
+/** "August" for any Date, in the viewer's own local time (not UTC — unlike formatIso above, this describes wall-clock "today", not a stored data date). */
+function formatMonthName(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "long" });
+}
+
+/**
+ * Step 1's "what to download" tip — computed fresh from the viewer's local
+ * "today" every render, so it's always correct regardless of when the
+ * wizard is opened. On the 1st of the month there's no usable "this
+ * month's daily data" yet, so the tip points at last month's full range
+ * instead; every other day it points at this month so far. Both branches
+ * end the range at yesterday rather than today, matching the same
+ * "ending yesterday" convention Step 3's weeklyOptions.last7 already uses
+ * elsewhere in this wizard — same-day platform data is often still
+ * settling, so it's deliberately excluded rather than included and later
+ * found to be incomplete.
+ */
+function getUploadDateTip(now: Date = new Date()): string {
+  if (now.getDate() === 1) {
+    const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const lastMonthName = formatMonthName(lastDayOfPrevMonth);
+    return `Tip: Since today is the 1st of the month, download last month's daily data for your weekly report. Set date range to ${lastMonthName} 1 - ${lastMonthName} ${lastDayOfPrevMonth.getDate()} with Time Increment set to Day.`;
+  }
+
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yesterdayLabel = `${formatMonthName(yesterday)} ${yesterday.getDate()}`;
+  return `Tip: Download this month's daily data up to yesterday. Set date range to ${formatMonthName(now)} 1 - ${yesterdayLabel} with Time Increment set to Day, or simply select This Month in Meta Ads Manager.`;
+}
+
 function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
@@ -527,8 +556,11 @@ export function ReportUploadWizard({
               MTD Daily CSV <span className="text-red-400">*</span>
             </label>
             <p className="mb-2 text-xs text-ink-muted">
-              Meta Ads Manager → Reporting → set date range to month-to-date → Time Increment =
-              Daily → Export. CSV, TSV, TXT, or Excel (.xlsx/.xls) — any delimiter or encoding.
+              Meta Ads Manager → Reporting → Time Increment = Day → Export. CSV, TSV, TXT, or Excel
+              (.xlsx/.xls) — any delimiter or encoding.
+            </p>
+            <p className="mb-2 rounded-md border border-navy-border bg-navy px-3 py-2 text-xs text-ink-secondary">
+              {getUploadDateTip()}
             </p>
             <input
               type="file"
