@@ -68,6 +68,15 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
   const H = 540;
   const shapes: string[] = [];
 
+  // A Monthly report covers a full calendar month, so "MTD" (month-to-date)
+  // no longer applies — the title instead names the actual month, e.g.
+  // "July Campaign Performance" (title case, not the all-caps MTD/WEEKLY
+  // wording, matching the requested example literally).
+  const chartTitle =
+    chart.reportType === "MONTHLY" && chart.mtdMonthName
+      ? `${chart.mtdMonthName} Campaign Performance`
+      : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
+
   shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
   shapes.push(
     textBox({
@@ -75,7 +84,7 @@ export function buildChartSlideXml(chart: ChartSlideData, currencySymbol: string
       y: 8,
       w: W,
       h: 34,
-      text: (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE",
+      text: chartTitle,
       sizePt: 28,
       bold: true,
       colorHex: WHITE,

@@ -10,6 +10,7 @@ import {
   cloneShapeAsTag,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
+  replaceLiteralText,
   replaceTagRun,
   replaceTagRunWithSuffix,
   setShapeOffsetY,
@@ -149,7 +150,12 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  * (unlike the Slides API) is guaranteed stable since we never re-parse or
  * re-serialize formatting — reusing the template's rPr verbatim.
  */
-export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: SlideData, ai: AiCopy = FALLBACK_AI_COPY): string {
+export function buildCampaignOrAdSetSlideXml(
+  template: TemplateSlide,
+  slide: SlideData,
+  ai: AiCopy = FALLBACK_AI_COPY,
+  reportType: ReportType = "WEEKLY",
+): string {
   const heading =
     slide.kind === "adset"
       ? slide.adSetName
@@ -192,12 +198,20 @@ export function buildCampaignOrAdSetSlideXml(template: TemplateSlide, slide: Sli
     { sizePt: campaignNameSizePt },
     { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR },
   ).xml;
-  xml = forceRunStyle(xml, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });
+  const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
+  xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
+  xml = forceRunStyle(xml, header, { bold: true });
   return xml;
 }
 
 /** Port of the isPaused branch's dedicated message slide (also a campaign-template clone). */
-export function buildPausedSlideXml(template: TemplateSlide, accountName: string, pausedMessage: string, dateRangeFallback: string): string {
+export function buildPausedSlideXml(
+  template: TemplateSlide,
+  accountName: string,
+  pausedMessage: string,
+  dateRangeFallback: string,
+  reportType: ReportType = "WEEKLY",
+): string {
   let xml = fillTags(
     template.xml,
     {
@@ -221,7 +235,9 @@ export function buildPausedSlideXml(template: TemplateSlide, accountName: string
       KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
-  xml = forceRunStyle(xml, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });
+  const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
+  xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
+  xml = forceRunStyle(xml, header, { bold: true });
   return xml;
 }
 

@@ -144,6 +144,27 @@ export function forceRunStyle(xml: string, literalText: string, styleOverride: S
   return xml.slice(0, match.index) + newRun + xml.slice(match.index + match[0].length);
 }
 
+/**
+ * Replaces the FIRST run whose text matches `literalText` exactly with
+ * `newText`, keeping that run's existing style untouched. For static
+ * (non-{{TAG}}) template text that needs to vary by data — e.g. the "YOUR
+ * WEEKLY PERFORMANCE REPORT" heading, which must read "YOUR MONTHLY
+ * PERFORMANCE REPORT" for a Monthly report. Unlike forceRunStyle (which
+ * only ever restyles a run, never its text), this only ever changes text,
+ * never style — call forceRunStyle afterward, locating by the NEW text, if
+ * the run also needs restyling. No-op (returns xml unchanged) if
+ * literalText isn't found, matching forceRunStyle's own not-found behavior.
+ */
+export function replaceLiteralText(xml: string, literalText: string, newText: string): string {
+  const escaped = escapeRegExp(literalText);
+  const runRegex = new RegExp(`<a:r>((?:(?!</a:r>)[\\s\\S])*?)<a:t>${escaped}</a:t></a:r>`);
+  const match = runRegex.exec(xml);
+  if (!match) return xml;
+  const rPrBlock = match[1] ?? "";
+  const newRun = `<a:r>${rPrBlock}<a:t>${escapeXmlText(newText)}</a:t></a:r>`;
+  return xml.slice(0, match.index) + newRun + xml.slice(match.index + match[0].length);
+}
+
 export function ptToEmu(pt: number): number {
   return Math.round(pt * 12700);
 }

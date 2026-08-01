@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, beforeAll } from "vitest";
-import { buildCoverSlideXml, buildCampaignOrAdSetSlideXml, DEFAULT_REPORT_TITLE } from "../fill-tags";
+import { buildCoverSlideXml, buildCampaignOrAdSetSlideXml, buildPausedSlideXml, DEFAULT_REPORT_TITLE } from "../fill-tags";
 import { loadTemplate, type LoadedTemplate } from "../package";
 import type { CoverData, CampaignSlideData } from "../../nre/report-data";
 
@@ -195,5 +195,42 @@ describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression
     const size = sizeOfRunContaining(xml, heading);
     expect(size).toBeLessThan(18);
     expect([16, 14, 12]).toContain(size);
+  });
+});
+
+describe("buildCampaignOrAdSetSlideXml / buildPausedSlideXml — Fix 1: reportType header", () => {
+  it("defaults to 'YOUR WEEKLY PERFORMANCE REPORT' when reportType is omitted", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(xml).toContain("YOUR WEEKLY PERFORMANCE REPORT");
+    expect(xml).not.toContain("YOUR MONTHLY PERFORMANCE REPORT");
+  });
+
+  it("shows 'YOUR WEEKLY PERFORMANCE REPORT' for reportType WEEKLY", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), undefined, "WEEKLY");
+    expect(xml).toContain("YOUR WEEKLY PERFORMANCE REPORT");
+  });
+
+  it("shows 'YOUR MONTHLY PERFORMANCE REPORT' for reportType MONTHLY", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), undefined, "MONTHLY");
+    expect(xml).toContain("YOUR MONTHLY PERFORMANCE REPORT");
+    expect(xml).not.toContain("YOUR WEEKLY PERFORMANCE REPORT");
+  });
+
+  it("keeps the header bold for a Monthly report, matching the Weekly header's own forced bold styling", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), undefined, "MONTHLY");
+    expect(sizeOfRunContaining(xml, "YOUR MONTHLY PERFORMANCE REPORT")).toBeGreaterThan(0);
+    const idx = xml.indexOf("<a:t>YOUR MONTHLY PERFORMANCE REPORT</a:t>");
+    const runStart = xml.lastIndexOf("<a:r>", idx);
+    expect(xml.slice(runStart, idx)).toMatch(/b="1"/);
+  });
+
+  it("buildPausedSlideXml shows 'YOUR MONTHLY PERFORMANCE REPORT' for reportType MONTHLY", () => {
+    const xml = buildPausedSlideXml(template.campaign, "Acme Inc", "Campaigns paused.", "Jul 13 - Jul 19", "MONTHLY");
+    expect(xml).toContain("YOUR MONTHLY PERFORMANCE REPORT");
+  });
+
+  it("buildPausedSlideXml defaults to 'YOUR WEEKLY PERFORMANCE REPORT'", () => {
+    const xml = buildPausedSlideXml(template.campaign, "Acme Inc", "Campaigns paused.", "Jul 13 - Jul 19");
+    expect(xml).toContain("YOUR WEEKLY PERFORMANCE REPORT");
   });
 });

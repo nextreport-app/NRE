@@ -476,6 +476,45 @@ describe("renderPptx — real template end-to-end", () => {
     fs.unlinkSync(outPath);
   }, 30000);
 
+  it("Monthly report: every slide shows MONTHLY PERFORMANCE REPORT and the chart title names the actual month — against the actual production template", async () => {
+    if (!fs.existsSync(PRODUCTION_TEMPLATE_PATH)) {
+      throw new Error(`Production template not found at ${PRODUCTION_TEMPLATE_PATH}`);
+    }
+    const templateBuffer = fs.readFileSync(PRODUCTION_TEMPLATE_PATH);
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...prospecting, ...retargeting, ...awareness],
+      now: NOW,
+      reportType: "MONTHLY",
+    });
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
+    const outPath = path.join(os.tmpdir(), `nre-render-monthly-header-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    // Cover + 2 campaign slides + 2 ad-set slides + chart + table + legend = 8.
+    const { slideTexts } = inspectWithPythonPptx(outPath);
+    const [cover, campaign1, campaign2, adset1, adset2, chart] = slideTexts;
+
+    expect(cover).toContain("MONTHLY PERFORMANCE REPORT");
+    expect(cover).not.toContain("WEEKLY PERFORMANCE REPORT");
+
+    for (const slide of [campaign1, campaign2, adset1, adset2]) {
+      expect(slide).toContain("YOUR MONTHLY PERFORMANCE REPORT");
+      expect(slide).not.toContain("WEEKLY PERFORMANCE REPORT");
+    }
+
+    // NOW is 2026-07-20, so the MTD start date falls in July.
+    expect(chart).toContain("July Campaign Performance");
+    expect(chart).not.toContain("MTD CAMPAIGN PERFORMANCE");
+
+    fs.unlinkSync(outPath);
+  }, 30000);
+
   it("grows the table past its native 10 columns for 3+ simultaneous objectives — Fix 1, no objective dropped, verified with an independent OOXML reader", async () => {
     const templateBuffer = fs.readFileSync(TEMPLATE_PATH);
     const clicksRows = buildDailyRows({

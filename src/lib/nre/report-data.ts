@@ -125,6 +125,10 @@ export interface ChartSlideData {
   campaigns: ChartCampaignData[];
   totalAllSpend: number;
   activeCampaignCount: number;
+  /** Drives the chart slide's title for Monthly reports — see mtdMonthName. */
+  reportType: ReportType;
+  /** Calendar month name of the MTD data (e.g. "July"), from mtdRow.monthName. For a Monthly report, the chart title reads "[mtdMonthName] Campaign Performance" instead of "MTD CAMPAIGN PERFORMANCE" — MTD ("month-to-date") doesn't apply once the report covers a full month. */
+  mtdMonthName: string | null;
 }
 
 export interface ResultColumnData {
@@ -873,6 +877,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaigns: chartCampaigns,
     totalAllSpend,
     activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
+    reportType,
+    mtdMonthName: mtdRow.monthName,
   };
 
   return {

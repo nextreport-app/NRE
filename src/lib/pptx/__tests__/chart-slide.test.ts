@@ -32,13 +32,21 @@ function campaign(name: string, overrides: Partial<ChartCampaignData> = {}): Cha
   };
 }
 
-function buildChart(campaigns: ChartCampaignData[]): ChartSlideData {
+function buildChart(campaigns: ChartCampaignData[], overrides: Partial<ChartSlideData> = {}): ChartSlideData {
   return {
     periodLabel: "MTD",
     campaigns,
     totalAllSpend: campaigns.reduce((sum, c) => sum + c.spend, 0),
     activeCampaignCount: campaigns.filter((c) => c.isActive).length,
+    reportType: "WEEKLY",
+    mtdMonthName: null,
+    ...overrides,
   };
+}
+
+/** The chart title textbox's own text — the first <a:t> in document order (see backgroundImage()'s own shape ordering: title is the first textBox pushed). */
+function chartTitleText(xml: string): string {
+  return /<a:t>([^<]*)<\/a:t>/.exec(xml)![1];
 }
 
 /** Every <a:srgbClr val="..."> fill color, in document order, belonging to an <a:prstGeom prst="ellipse"> shape (the donut rings + inner holes) — 2 per campaign: [ring, hole, ring, hole, ...]. */
@@ -122,6 +130,23 @@ describe("buildChartSlideXml — Fix 3: per-campaign donut ring colors", () => {
     const rings = ellipseFillColors(xml).filter((_, i) => i % 2 === 0);
     const bars = barSegmentColors(xml);
     expect(bars).toEqual(rings);
+  });
+});
+
+describe("buildChartSlideXml — Fix 2: Monthly report chart title", () => {
+  it("keeps 'MTD CAMPAIGN PERFORMANCE' for a Weekly report", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "WEEKLY", mtdMonthName: "July" }), "$", BACKGROUND);
+    expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
+  });
+
+  it("uses '[Month] Campaign Performance' for a Monthly report", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: "July" }), "$", BACKGROUND);
+    expect(chartTitleText(xml)).toBe("July Campaign Performance");
+  });
+
+  it("falls back to 'MTD CAMPAIGN PERFORMANCE' for a Monthly report with no month name available", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: null }), "$", BACKGROUND);
+    expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
   });
 });
 

@@ -120,17 +120,29 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
 
   if (data.isPaused) {
     slides.push({
-      xml: buildPausedSlideXml(template.campaign, data.cover.accountName, data.pausedMessage ?? "", data.cover.dateRange),
+      xml: buildPausedSlideXml(
+        template.campaign,
+        data.cover.accountName,
+        data.pausedMessage ?? "",
+        data.cover.dateRange,
+        data.reportType,
+      ),
       rels: template.campaign.rels,
     });
   } else {
     for (const slide of data.campaignSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
-      slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai), rels: template.campaign.rels });
+      slides.push({
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType),
+        rels: template.campaign.rels,
+      });
     }
     for (const slide of data.adSetSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
-      slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai), rels: template.campaign.rels });
+      slides.push({
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType),
+        rels: template.campaign.rels,
+      });
     }
     if (data.chart) {
       slides.push({
