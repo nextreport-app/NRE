@@ -82,14 +82,14 @@ export function PreviousMonthDataUpload({
   }
 
   return (
-    <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
-      <div className="mb-3 space-y-2 text-xs text-ink-muted">
+    <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+      <div className="mb-3 space-y-2 text-[13px] text-dash-ink-secondary">
         <p>
           Upload your previous month campaign data at the start of each new month. This populates the
           comparison row in your Combined Total slide.
         </p>
         <p>
-          <span className="font-medium text-ink-secondary">How to download:</span> In Meta Ads Manager,
+          <span className="font-medium text-dash-ink-secondary">How to download:</span> In Meta Ads Manager,
           set the date range to the full previous month (e.g. July 1-31), set Time Increment to Monthly
           (not Day — monthly total only), then export and upload here.
         </p>
@@ -100,16 +100,16 @@ export function PreviousMonthDataUpload({
       </div>
 
       {fileName ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-navy-border bg-navy p-3">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-dash-border bg-dash-bg p-3">
           <div className="min-w-0">
-            <p className="truncate text-sm text-white">{fileName}</p>
-            {updatedAt && <p className="text-xs text-ink-muted">Uploaded {formatUploadDate(updatedAt)}</p>}
+            <p className="truncate text-sm text-dash-ink">{fileName}</p>
+            {updatedAt && <p className="text-[13px] text-dash-ink-secondary">Uploaded {formatUploadDate(updatedAt)}</p>}
           </div>
           <button
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="flex-none rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border disabled:opacity-50"
+            className="flex-none rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
           >
             {deleting ? "Removing…" : "Delete"}
           </button>
@@ -123,13 +123,13 @@ export function PreviousMonthDataUpload({
             accept={ACCEPTED_FILE_TYPES}
             onChange={handleFileChange}
             disabled={uploading}
-            className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-navy-border file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:brightness-125 disabled:opacity-50"
+            className="block w-full text-sm text-dash-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-dash-ink hover:file:brightness-125 disabled:opacity-50"
           />
         </label>
       )}
 
-      {uploading && <p className="mt-2 text-xs text-ink-muted">Uploading…</p>}
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {uploading && <p className="mt-2 text-[13px] text-dash-ink-secondary">Uploading…</p>}
+      {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
     </div>
   );
 }

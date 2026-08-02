@@ -37,7 +37,7 @@ export default async function NewClientPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-semibold text-white">New client</h1>
+      <h1 className="mb-6 text-[24px] font-bold text-dash-ink">New client</h1>
       <ClientForm />
     </div>
   );

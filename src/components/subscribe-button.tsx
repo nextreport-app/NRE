@@ -178,11 +178,11 @@ export function SubscribeButton({
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className={className ?? "rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"}
+        className={className ?? "rounded-md bg-dash-accent px-5 py-2.5 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"}
       >
         {loading ? "Redirecting…" : (label ?? `Subscribe to ${PLAN_NAMES[planId]}`)}
       </button>
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
     </div>
   );
 }

@@ -2,14 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { TEMPLATE_LABELS } from "@/lib/validators/client";
+import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
+import type { Currency } from "@/generated/prisma/enums";
 
 interface ClientListItem {
   id: string;
   accountName: string;
-  currency: string;
+  currency: Currency;
   timezone: string;
-  template: keyof typeof TEMPLATE_LABELS;
+  monthlyBudget: number | null;
+  /** ISO timestamp of the most recent report generated for this client, or null if none yet. */
+  lastReportAt: string | null;
+}
+
+function formatLastReport(iso: string | null): string {
+  if (!iso) return "No reports yet";
+  const date = new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return `Last report: ${date}`;
+}
+
+function formatBudget(currency: Currency, budget: number | null): string {
+  if (budget == null) return "No monthly budget set";
+  return `Monthly budget: ${CURRENCY_SYMBOLS[currency]}${budget.toLocaleString("en-US")}`;
 }
 
 /**
@@ -28,21 +42,21 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
 
   return (
     <div>
-      <div className="relative mb-4">
+      <div className="relative mb-6 max-w-md">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search clients..."
           aria-label="Search clients"
-          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 pr-9 text-sm text-white placeholder:text-ink-muted focus:border-accent focus:outline-none"
+          className="w-full rounded-md border border-dash-border bg-dash-card px-3.5 py-2.5 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent"
         />
         {search && (
           <button
             type="button"
             onClick={() => setSearch("")}
             aria-label="Clear search"
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:text-white"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-dash-ink-secondary hover:text-dash-ink"
           >
             ×
           </button>
@@ -50,28 +64,41 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-navy-border p-10 text-center">
-          <p className="text-ink-muted">No clients found matching your search.</p>
+        <div className="rounded-lg border border-dashed border-dash-border p-10 text-center">
+          <p className="text-[15px] text-dash-ink-secondary">No clients found matching your search.</p>
         </div>
       ) : (
-        <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {filtered.map((client) => (
-            <li key={client.id}>
-              <Link
-                href={`/clients/${client.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-navy-border/60"
-              >
-                <div>
-                  <p className="font-medium text-white">{client.accountName}</p>
-                  <p className="text-xs text-ink-muted">
-                    {client.currency} · {client.timezone} · {TEMPLATE_LABELS[client.template]}
-                  </p>
-                </div>
-                <span className="text-sm text-ink-muted">Manage →</span>
+            <div
+              key={client.id}
+              className="flex flex-col rounded-lg border border-dash-border bg-dash-card p-6 transition-colors hover:border-dash-accent/60"
+            >
+              <Link href={`/clients/${client.id}`} className="block">
+                <h3 className="text-[18px] font-bold text-dash-ink">{client.accountName}</h3>
+                <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                  {client.currency} · {client.timezone}
+                </p>
+                <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatBudget(client.currency, client.monthlyBudget)}</p>
+                <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatLastReport(client.lastReportAt)}</p>
               </Link>
-            </li>
+              <div className="mt-5 flex gap-3">
+                <Link
+                  href={`/clients/${client.id}/reports/new`}
+                  className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
+                >
+                  Generate Report
+                </Link>
+                <Link
+                  href={`/clients/${client.id}/edit`}
+                  className="flex-1 rounded-md border border-dash-secondary px-4 py-2.5 text-center text-[14px] font-semibold text-dash-ink-secondary hover:bg-dash-secondary/20"
+                >
+                  Edit
+                </Link>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

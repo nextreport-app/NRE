@@ -34,8 +34,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-1 text-xl font-semibold text-white">Generate report</h1>
-      <p className="mb-6 text-sm text-ink-muted">{client.accountName}</p>
+      <h1 className="mb-1 text-[24px] font-bold text-dash-ink">Generate report</h1>
+      <p className="mb-6 text-[15px] text-dash-ink-secondary">{client.accountName}</p>
       <ReportUploadWizard
         clientId={client.id}
         hasGoogleDriveConnected={!!user.googleRefreshToken}

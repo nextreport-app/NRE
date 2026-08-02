@@ -613,23 +613,23 @@ export function ReportUploadWizard({
       <StepIndicator step={step} />
 
       {step === 1 && (
-        <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-ink-secondary">
+            <label className="mb-1 block text-sm font-medium text-dash-ink-secondary">
               MTD Daily CSV <span className="text-red-400">*</span>
             </label>
-            <p className="mb-2 text-xs text-ink-muted">
+            <p className="mb-2 text-[13px] text-dash-ink-secondary">
               Meta Ads Manager → Reporting → Time Increment = Day → Export. CSV, TSV, TXT, or Excel
               (.xlsx/.xls) — any delimiter or encoding.
             </p>
-            <p className="mb-2 rounded-md border border-navy-border bg-navy px-3 py-2 text-xs text-ink-secondary">
+            <p className="mb-2 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
               {getUploadDateTip()}
             </p>
             <input
               type="file"
               accept={ACCEPTED_FILE_TYPES}
               onChange={(e) => setMtdFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-accent-hover"
+              className="block w-full text-sm text-dash-ink-secondary file:mr-4 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-dash-ink hover:file:bg-dash-accent-hover"
             />
           </div>
 
@@ -637,30 +637,30 @@ export function ReportUploadWizard({
             <button
               onClick={handleAnalyze}
               disabled={!mtdFile || analyzeStatus === "loading"}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
             </button>
-            <Link href="/help/download" className="text-sm text-accent hover:underline">
+            <Link href="/help/download" className="text-sm text-dash-accent hover:underline">
               Not sure how to download? See our guide
             </Link>
           </div>
 
           {analyzeStatus === "detected" && (
-            <div className="flex flex-wrap items-center gap-3 rounded-md border border-navy-border bg-navy px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-dash-border bg-dash-bg px-3 py-2.5">
               <span
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                className={`rounded-full px-2.5 py-1 text-[13px] font-medium ${
                   detectedPlatform === "GOOGLE" ? "bg-amber-900/40 text-amber-300" : "bg-blue-900/40 text-blue-300"
                 }`}
               >
                 {detectedPlatform === "GOOGLE" ? "Google Ads detected" : "Meta Ads detected"}
               </span>
-              <label className="flex items-center gap-2 text-xs text-ink-secondary">
+              <label className="flex items-center gap-2 text-[13px] text-dash-ink-secondary">
                 Platform:
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value as "META" | "GOOGLE")}
-                  className="rounded-md border border-navy-border bg-navy-panel px-2 py-1 text-xs text-white outline-none focus:border-accent"
+                  className="rounded-md border border-dash-border bg-dash-card px-2 py-1 text-[13px] text-dash-ink outline-none focus:border-dash-accent"
                 >
                   <option value="META">Meta Ads</option>
                   <option value="GOOGLE">Google Ads</option>
@@ -669,7 +669,7 @@ export function ReportUploadWizard({
               <button
                 onClick={handleContinueAfterDetect}
                 disabled={continueStatus === "loading"}
-                className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                className="ml-auto rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
               >
                 {continueStatus === "loading" ? "Loading…" : "Continue"}
               </button>
@@ -707,31 +707,31 @@ export function ReportUploadWizard({
       )}
 
       {step === 2 && (
-        <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-medium text-ink-secondary">Select campaigns to include</h3>
-              <p className="text-xs text-ink-muted">
+              <h3 className="text-sm font-medium text-dash-ink-secondary">Select campaigns to include</h3>
+              <p className="text-[13px] text-dash-ink-secondary">
                 {selectedCampaigns.size} of {campaigns.length} campaigns selected
               </p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedCampaigns(new Set(campaigns))}
-                className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
               >
                 Select All
               </button>
               <button
                 onClick={() => setSelectedCampaigns(new Set())}
-                className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
               >
                 Deselect All
               </button>
             </div>
           </div>
 
-          <ul className="divide-y divide-navy-border rounded-lg border border-navy-border">
+          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
             {campaigns.map((name) => (
               <li key={name} className="flex items-center gap-3 px-4 py-2.5">
                 <input
@@ -741,7 +741,7 @@ export function ReportUploadWizard({
                   onChange={() => toggleCampaign(name)}
                   className="h-4 w-4 accent-accent"
                 />
-                <label htmlFor={`campaign-${name}`} className="cursor-pointer text-sm text-white">
+                <label htmlFor={`campaign-${name}`} className="cursor-pointer text-sm text-dash-ink">
                   {name}
                 </label>
               </li>
@@ -751,14 +751,14 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
-              className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
             <button
               onClick={handleCampaignsContinue}
               disabled={selectedCampaigns.size === 0}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               Continue
             </button>
@@ -767,11 +767,11 @@ export function ReportUploadWizard({
       )}
 
       {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
-          <h3 className="text-sm font-medium text-ink-secondary">Reporting period</h3>
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+          <h3 className="text-sm font-medium text-dash-ink-secondary">Reporting period</h3>
 
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-ink-muted">Report Type</p>
+            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Report Type</p>
             <DateModeOption
               id="report-type-weekly"
               checked={reportType === "WEEKLY"}
@@ -789,7 +789,7 @@ export function ReportUploadWizard({
 
           {reportType === "WEEKLY" && (
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-ink-muted">Weekly period</p>
+              <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Weekly period</p>
 
               {weeklyOptions && (
                 <DateModeOption
@@ -826,10 +826,10 @@ export function ReportUploadWizard({
             />
 
             {dateMode === "custom" && (
-              <div className="ml-7 space-y-3 rounded-md border border-navy-border p-3">
+              <div className="ml-7 space-y-3 rounded-md border border-dash-border p-3">
                 <div className="flex flex-wrap gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-ink-muted">Start date</label>
+                    <label className="mb-1 block text-[13px] text-dash-ink-secondary">Start date</label>
                     <input
                       type="date"
                       value={customStart}
@@ -840,11 +840,11 @@ export function ReportUploadWizard({
                         setLongRangeConfirmed(false);
                         setCustomRangeError(null);
                       }}
-                      className="rounded-md border border-navy-border bg-navy px-2 py-1.5 text-sm text-white outline-none focus:border-accent"
+                      className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-ink-muted">End date</label>
+                    <label className="mb-1 block text-[13px] text-dash-ink-secondary">End date</label>
                     <input
                       type="date"
                       value={customEnd}
@@ -855,28 +855,28 @@ export function ReportUploadWizard({
                         setLongRangeConfirmed(false);
                         setCustomRangeError(null);
                       }}
-                      className="rounded-md border border-navy-border bg-navy px-2 py-1.5 text-sm text-white outline-none focus:border-accent"
+                      className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
                     />
                   </div>
                 </div>
 
-                {customRangeError && <p className="text-xs text-red-400">{customRangeError}</p>}
+                {customRangeError && <p className="text-[13px] text-red-400">{customRangeError}</p>}
 
                 {needsLongRangeConfirm && (
                   <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                    <p className="mb-2 text-xs text-amber-200">
+                    <p className="mb-2 text-[13px] text-amber-200">
                       Weekly reports work best with 7 days or less. Continue anyway?
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setLongRangeConfirmed(true)}
-                        className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover"
+                        className="rounded-md bg-dash-accent px-3 py-1 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                       >
                         Yes
                       </button>
                       <button
                         onClick={() => setCustomEnd("")}
-                        className="rounded-md border border-navy-border px-3 py-1 text-xs text-ink-secondary hover:bg-navy-border"
+                        className="rounded-md border border-dash-border px-3 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
                       >
                         No
                       </button>
@@ -889,8 +889,8 @@ export function ReportUploadWizard({
           )}
 
           <div>
-            <p className="text-xs uppercase tracking-wide text-ink-muted">MTD period</p>
-            <p className="mt-1 text-sm text-white">
+            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">MTD period</p>
+            <p className="mt-1 text-sm text-dash-ink">
               {mtdRange ? `MTD period: ${formatIsoRange(mtdRange)} (auto)` : "MTD period unavailable"}
             </p>
           </div>
@@ -924,7 +924,7 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               onClick={() => setStep(2)}
-              className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
@@ -935,7 +935,7 @@ export function ReportUploadWizard({
                 (reportType === "WEEKLY" &&
                   ((dateMode === "custom" && (!customStart || !customEnd)) || needsLongRangeConfirm))
               }
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+              className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {previewStatus === "loading" ? "Loading preview…" : "Continue"}
             </button>
@@ -947,14 +947,14 @@ export function ReportUploadWizard({
         <div className="space-y-6">
           <ReportPreview data={data} />
 
-          <div className="rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
+          <div className="rounded-lg border border-dash-border bg-dash-card p-4 text-sm text-dash-ink-secondary">
             Generating report for {selectedCampaigns.size} campaign{selectedCampaigns.size === 1 ? "" : "s"}
             {reportType === "WEEKLY" && weeklyRangeIso && <> — Week: {formatIsoRange(weeklyRangeIso)}</>}
             {mtdRange && <> — MTD: {formatIsoRange(mtdRange)}</>}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-ink-secondary">Report title</label>
+            <label className="mb-1 block text-sm text-dash-ink-secondary">Report title</label>
             <input
               value={reportTitle}
               onChange={(e) => {
@@ -964,9 +964,9 @@ export function ReportUploadWizard({
               placeholder={reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE}
               maxLength={100}
               disabled={generateStatus === "loading" || generateStatus === "done"}
-              className="w-full max-w-md rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent disabled:opacity-60"
+              className="w-full max-w-md rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
             />
-            <p className="mt-1 text-xs text-ink-muted">
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">
               Shown on the cover slide in place of &quot;
               {reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE}&quot; — e.g. &quot;Monthly Campaign Summary&quot; or &quot;Q3 Performance Review&quot;.
             </p>
@@ -979,13 +979,13 @@ export function ReportUploadWizard({
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(3)}
-                className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+                className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
               >
                 Back
               </button>
               <button
                 onClick={handleGenerate}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+                className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover"
               >
                 Generate & download PPTX
               </button>
@@ -993,7 +993,7 @@ export function ReportUploadWizard({
           )}
 
           {generateStatus === "loading" && (
-            <div className="flex items-center gap-3 rounded-lg border border-navy-border bg-navy-panel p-4 text-sm text-ink-secondary">
+            <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-sm text-dash-ink-secondary">
               <Spinner />
               Generating your report…
             </div>
@@ -1007,13 +1007,13 @@ export function ReportUploadWizard({
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(3)}
-                  className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy-border"
+                  className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleGenerate}
-                  className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+                  className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover"
                 >
                   Try Again
                 </button>
@@ -1026,7 +1026,7 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleBackToDates}
-                className="text-xs text-ink-muted hover:text-ink-secondary hover:underline"
+                className="text-[13px] text-dash-ink-secondary hover:text-dash-ink-secondary hover:underline"
               >
                 ← Back to dates
               </button>
@@ -1034,7 +1034,7 @@ export function ReportUploadWizard({
               <div className="flex flex-wrap items-start gap-3">
                 <a
                   href={downloadUrl}
-                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-dash-ink hover:bg-emerald-500"
                 >
                   Download PPTX
                 </a>
@@ -1045,22 +1045,22 @@ export function ReportUploadWizard({
                     <button
                       onClick={handleSaveButtonClick}
                       disabled={driveSaving}
-                      className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                     >
                       <DriveIcon />
                       {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
                     </button>
                     {/* State 2: a folder is already remembered for this client. */}
                     {rememberedFolder && (
-                      <p className="mt-1.5 text-xs text-ink-secondary">
-                        Saving to: <span className="text-white">{rememberedFolder.name}</span>{" "}
+                      <p className="mt-1.5 text-[13px] text-dash-ink-secondary">
+                        Saving to: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
                         <button
                           type="button"
                           onClick={() => {
                             setDriveSaveError(null);
                             setDriveView("editing");
                           }}
-                          className="text-accent hover:underline"
+                          className="text-dash-accent hover:underline"
                         >
                           Change
                         </button>
@@ -1072,9 +1072,9 @@ export function ReportUploadWizard({
 
               {/* State 1 (no remembered folder) / "Change" from State 2 — the paste-a-link input, hidden behind the button until clicked. */}
               {hasGoogleDriveConnected && driveView === "editing" && (
-                <div className="space-y-3 rounded-lg border border-navy-border bg-navy-panel p-4">
+                <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
                   <div>
-                    <label className="block text-sm text-ink-secondary">Folder link:</label>
+                    <label className="block text-sm text-dash-ink-secondary">Folder link:</label>
                     <input
                       type="text"
                       value={driveFolderLinkInput}
@@ -1083,27 +1083,27 @@ export function ReportUploadWizard({
                         setDriveLinkFormatError(null);
                       }}
                       placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
-                      className="mt-1 w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
                     />
-                    <p className="mt-1 text-xs text-ink-muted">
+                    <p className="mt-1 text-[13px] text-dash-ink-secondary">
                       Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it
                       here
                     </p>
-                    {driveLinkFormatError && <p className="mt-1 text-xs text-red-400">{driveLinkFormatError}</p>}
+                    {driveLinkFormatError && <p className="mt-1 text-[13px] text-red-400">{driveLinkFormatError}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm text-ink-secondary">
-                      Folder name <span className="text-ink-muted">— optional, but recommended</span>:
+                    <label className="block text-sm text-dash-ink-secondary">
+                      Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
                     </label>
                     <input
                       type="text"
                       value={driveFolderNameInput}
                       onChange={(e) => setDriveFolderNameInput(e.target.value)}
                       placeholder="e.g. Reports or Alonzo Carr / Reports"
-                      className="mt-1 w-full rounded-md border border-navy-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
                     />
-                    <p className="mt-1 text-xs text-ink-muted">
+                    <p className="mt-1 text-[13px] text-dash-ink-secondary">
                       Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
                     </p>
                   </div>
@@ -1112,7 +1112,7 @@ export function ReportUploadWizard({
                     <button
                       onClick={handleSaveToFolderLink}
                       disabled={!driveFolderLinkInput.trim() || driveSaving}
-                      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                      className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                     >
                       {driveSaving ? "Saving…" : "Save to this folder"}
                     </button>
@@ -1126,7 +1126,7 @@ export function ReportUploadWizard({
                         setDriveLinkFormatError(null);
                         setDriveSaveError(null);
                       }}
-                      className="rounded-md border border-navy-border px-3 py-2 text-xs text-ink-secondary hover:bg-navy-border disabled:opacity-50"
+                      className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -1139,21 +1139,21 @@ export function ReportUploadWizard({
               {/* State 3: button/input are both gone, replaced by the shareable link + share row. */}
               {driveView === "success" && driveSaveUrl && (
                 <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-emerald-300">
+                  <p className="mb-2 text-[13px] uppercase tracking-wide text-emerald-300">
                     Saved to Google Drive ✓
                   </p>
                   <a
                     href={driveSaveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mb-3 block break-all text-sm text-accent hover:underline"
+                    className="mb-3 block break-all text-sm text-dash-accent hover:underline"
                   >
                     {driveSaveUrl}
                   </a>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={handleCopyLink}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                     >
                       <CopyIcon />
                       {copied ? "Copied!" : "Copy Link"}
@@ -1162,14 +1162,14 @@ export function ReportUploadWizard({
                       href={buildWhatsAppShareUrl(driveSaveUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-navy-border bg-navy px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
                     >
                       <WhatsAppIcon />
                       WhatsApp
                     </a>
                     <a
                       href={buildEmailShareUrl(driveSaveUrl)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-navy-border bg-navy px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
                     >
                       <MailIcon />
                       Email
@@ -1180,7 +1180,7 @@ export function ReportUploadWizard({
                       setDriveView("editing");
                       setDriveSaveUrl(null);
                     }}
-                    className="mt-3 text-xs text-ink-muted hover:underline"
+                    className="mt-3 text-[13px] text-dash-ink-secondary hover:underline"
                   >
                     Save to a different folder
                   </button>
@@ -1190,7 +1190,7 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleBackToDates}
-                className="block text-xs text-ink-muted hover:text-ink-secondary hover:underline"
+                className="block text-[13px] text-dash-ink-secondary hover:text-dash-ink-secondary hover:underline"
               >
                 Change dates and regenerate
               </button>
@@ -1205,21 +1205,21 @@ export function ReportUploadWizard({
 function StepIndicator({ step }: { step: Step }) {
   const steps: Step[] = [1, 2, 3, 4];
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="flex flex-wrap items-center gap-2 text-[13px]">
       {steps.map((s, i) => (
         <div key={s} className="flex items-center gap-2">
           <span
             className={
               s === step
-                ? "rounded-full bg-accent px-3 py-1 font-medium text-white"
+                ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
                 : s < step
-                  ? "rounded-full border border-accent px-3 py-1 text-accent"
-                  : "rounded-full border border-navy-border px-3 py-1 text-ink-muted"
+                  ? "rounded-full border border-dash-accent px-3 py-1 text-dash-accent"
+                  : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
             }
           >
             {STEP_LABELS[s]}
           </span>
-          {i < steps.length - 1 && <span className="text-ink-muted">→</span>}
+          {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
         </div>
       ))}
     </div>
@@ -1229,7 +1229,7 @@ function StepIndicator({ step }: { step: Step }) {
 /** Small inline spinner for the Preview screen's "Generating your report…" state — no extra dependency needed for one spinning icon. */
 function Spinner() {
   return (
-    <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg className="h-4 w-4 animate-spin text-dash-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
@@ -1332,7 +1332,7 @@ function DateModeOption({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-md border border-navy-border p-3 hover:bg-navy-border/40"
+      className="flex cursor-pointer items-start gap-3 rounded-md border border-dash-border p-3 hover:bg-dash-border/40"
     >
       <input
         type="radio"
@@ -1342,8 +1342,8 @@ function DateModeOption({
         className="mt-0.5 h-4 w-4 accent-accent"
       />
       <span>
-        <span className="block text-sm text-white">{label}</span>
-        {sublabel && <span className="block text-xs text-ink-muted">{sublabel}</span>}
+        <span className="block text-sm text-dash-ink">{label}</span>
+        {sublabel && <span className="block text-[13px] text-dash-ink-secondary">{sublabel}</span>}
       </span>
     </label>
   );
@@ -1381,24 +1381,24 @@ function ReportPreview({ data }: { data: ReportData }) {
         </div>
       )}
 
-      <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-        <p className="text-xs uppercase tracking-wide text-ink-muted">Cover</p>
-        <p className="mt-1 text-white">{data.cover.dateRange}</p>
-        <p className="text-sm text-ink-secondary">{data.cover.healthBadge}</p>
+      <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+        <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Cover</p>
+        <p className="mt-1 text-dash-ink">{data.cover.dateRange}</p>
+        <p className="text-sm text-dash-ink-secondary">{data.cover.healthBadge}</p>
         {data.cover.budgetSummary && (
-          <p className="mt-1 text-xs text-ink-muted">{data.cover.budgetSummary}</p>
+          <p className="mt-1 text-[13px] text-dash-ink-secondary">{data.cover.budgetSummary}</p>
         )}
       </div>
 
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
+        <p className="mb-2 text-[13px] uppercase tracking-wide text-dash-ink-secondary">
           Campaign summary slides ({data.campaignSlides.length})
         </p>
-        <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
+        <ul className="divide-y divide-dash-border rounded-lg border border-dash-border bg-dash-card">
           {data.campaignSlides.map((s) => (
             <li key={s.campaignName} className="flex items-center justify-between px-4 py-2 text-sm">
-              <span className="text-white">{s.campaignName}</span>
-              <span className="text-ink-muted">
+              <span className="text-dash-ink">{s.campaignName}</span>
+              <span className="text-dash-ink-secondary">
                 {s.metrics.spend} · {s.resultLabel} {s.metrics.results} · {s.metrics.cpr}
               </span>
             </li>
@@ -1408,19 +1408,19 @@ function ReportPreview({ data }: { data: ReportData }) {
 
       {data.adSetSlides.length > 0 && (
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wide text-ink-muted">
+          <p className="mb-2 text-[13px] uppercase tracking-wide text-dash-ink-secondary">
             Ad set slides ({data.adSetSlides.length})
           </p>
-          <ul className="divide-y divide-navy-border rounded-lg border border-navy-border bg-navy-panel">
+          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border bg-dash-card">
             {data.adSetSlides.map((s) => (
               <li
                 key={`${s.campaignName}/${s.adSetName}`}
                 className="flex items-center justify-between px-4 py-2 text-sm"
               >
-                <span className="text-white">
+                <span className="text-dash-ink">
                   {s.campaignName} / {s.adSetName}
                 </span>
-                <span className="text-ink-muted">
+                <span className="text-dash-ink-secondary">
                   {s.metrics.spend} · {s.resultLabel} {s.metrics.results}
                 </span>
               </li>
@@ -1435,14 +1435,14 @@ function ReportPreview({ data }: { data: ReportData }) {
           buildTableSlideXml). */}
       <div className={data.reportType === "MONTHLY" ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
         {data.reportType !== "MONTHLY" && (
-          <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-            <p className="text-xs uppercase tracking-wide text-ink-muted">Period ({data.periodRow.monthLabel})</p>
-            <p className="mt-1 text-sm text-white">{data.periodRow.spend}</p>
+          <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Period ({data.periodRow.monthLabel})</p>
+            <p className="mt-1 text-sm text-dash-ink">{data.periodRow.spend}</p>
           </div>
         )}
-        <div className="rounded-lg border border-navy-border bg-navy-panel p-4">
-          <p className="text-xs uppercase tracking-wide text-ink-muted">MTD ({data.mtdRow.monthLabel})</p>
-          <p className="mt-1 text-sm text-white">{data.mtdRow.spend}</p>
+        <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+          <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">MTD ({data.mtdRow.monthLabel})</p>
+          <p className="mt-1 text-sm text-dash-ink">{data.mtdRow.spend}</p>
         </div>
       </div>
     </div>

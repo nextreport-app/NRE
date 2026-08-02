@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CURRENCIES,
+  SELECTABLE_CURRENCIES,
   SELECTABLE_TEMPLATES,
   TEMPLATES,
   TEMPLATE_LABELS,
   TIMEZONE_GROUPS,
 } from "@/lib/validators/client";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
+import { useToast } from "@/components/toast";
 
 export type ClientFormValues = {
   accountName: string;
@@ -35,6 +37,7 @@ export function ClientForm({
   hasLogo?: boolean;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [values, setValues] = useState<ClientFormValues>({
     accountName: initial?.accountName ?? "",
     currency: initial?.currency ?? "INR",
@@ -107,7 +110,9 @@ export function ClientForm({
 
     if (!res.ok) {
       setLoading(false);
-      setError(data.error || "Something went wrong.");
+      const message = data.error || "Something went wrong.";
+      setError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -120,7 +125,9 @@ export function ClientForm({
       if (!logoRes.ok) {
         const logoData = await logoRes.json().catch(() => ({}));
         setLoading(false);
-        setError(logoData.error || "Client saved, but the logo upload failed.");
+        const message = logoData.error || "Client saved, but the logo upload failed.";
+        setError(message);
+        showToast(message, "error");
         return;
       }
     } else if (removeLogo) {
@@ -128,6 +135,7 @@ export function ClientForm({
     }
 
     setLoading(false);
+    showToast(clientId ? "Client updated." : "Client created.");
     router.push(`/clients/${savedClientId}`);
     router.refresh();
   }
@@ -135,30 +143,30 @@ export function ClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="mb-1 block text-sm text-ink-secondary">Account name</label>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Account name</label>
         <input
           required
           value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
           placeholder="e.g. Acme Retail — Meta Ads"
-          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-ink-secondary">Client logo — optional</label>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>
         <div className="flex items-center gap-3">
           <input
             type="file"
             accept={ACCEPTED_LOGO_TYPES}
             onChange={handleLogoChange}
-            className="flex-1 text-sm text-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-navy-border file:px-3 file:py-2 file:text-sm file:text-white hover:file:bg-navy-panel"
+            className="flex-1 text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-2 file:text-sm file:text-dash-ink hover:file:bg-dash-card"
           />
           {((hasLogo && !removeLogo) || logoFile) && (
             <button
               type="button"
               onClick={handleRemoveLogo}
-              className="rounded-md border border-navy-border px-3 py-2 text-sm text-ink-secondary hover:bg-navy-border"
+              className="rounded-md border border-dash-border px-3 py-2 text-sm text-dash-ink-secondary hover:bg-dash-border"
             >
               Remove
             </button>
@@ -168,24 +176,24 @@ export function ClientForm({
           <img
             src={logoPreviewSrc}
             alt="Logo preview"
-            className="mt-2 h-[60px] w-[120px] rounded border border-navy-border bg-navy object-contain"
+            className="mt-2 h-[60px] w-[120px] rounded border border-dash-border bg-dash-bg object-contain"
           />
         )}
-        {logoError && <p className="mt-1 text-sm text-red-400">{logoError}</p>}
-        <p className="mt-1 text-xs text-ink-muted">
+        {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
           Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-1 block text-sm text-ink-secondary">Currency</label>
+          <label className="mb-1 block text-sm text-dash-ink-secondary">Currency</label>
           <select
             value={values.currency}
             onChange={(e) => set("currency", e.target.value as ClientFormValues["currency"])}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
           >
-            {CURRENCIES.map((c) => (
+            {SELECTABLE_CURRENCIES.map((c) => (
               <option key={c} value={c}>
                 {CURRENCY_SYMBOL[c]} {c}
               </option>
@@ -193,11 +201,11 @@ export function ClientForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm text-ink-secondary">Timezone</label>
+          <label className="mb-1 block text-sm text-dash-ink-secondary">Timezone</label>
           <select
             value={values.timezone}
             onChange={(e) => set("timezone", e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
           >
             {TIMEZONE_GROUPS.map((group) => (
               <optgroup key={group.region} label={`${group.flag} ${group.region}`}>
@@ -213,7 +221,7 @@ export function ClientForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-ink-secondary">
+        <label className="mb-1 block text-sm text-dash-ink-secondary">
           Monthly budget ({CURRENCY_SYMBOL[values.currency]}) — optional
         </label>
         <input
@@ -223,19 +231,19 @@ export function ClientForm({
           value={values.monthlyBudget ?? ""}
           onChange={(e) => set("monthlyBudget", e.target.value ? Number(e.target.value) : null)}
           placeholder="e.g. 50000"
-          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
-        <p className="mt-1 text-xs text-ink-muted">
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
           Used to show budget utilisation on the cover slide.
         </p>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-ink-secondary">Report template</label>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
         <select
           value={values.template}
           onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
-          className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         >
           {SELECTABLE_TEMPLATES.map((t) => (
             <option key={t} value={t}>
@@ -245,12 +253,12 @@ export function ClientForm({
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-dash-error">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+        className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
       >
         {loading ? "Saving…" : clientId ? "Save changes" : "Create client"}
       </button>

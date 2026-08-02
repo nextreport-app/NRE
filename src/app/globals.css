@@ -26,6 +26,24 @@
   --color-accent-hover: #3d7dc0;
   --color-accent-orange: #f6ad55;
   --color-accent-orange-hover: #ed8936;
+
+  /* Dashboard (logged-in product) palette — deliberately distinct from the
+     public marketing site's navy tokens above, so the two feel like
+     different surfaces rather than one continuous page. Used ONLY by
+     components rendered inside src/app/(dashboard) (Nav, client
+     list/detail/new, account, billing, the report wizard, ...) — every
+     public-facing page keeps using the tokens above, unchanged. */
+  --color-dash-bg: #0f172a;
+  --color-dash-sidebar: #0d1b2e;
+  --color-dash-card: #1e293b;
+  --color-dash-border: #334155;
+  --color-dash-ink: #f1f5f9;
+  --color-dash-ink-secondary: #94a3b8;
+  --color-dash-accent: #f6ad55;
+  --color-dash-accent-hover: #ed8936;
+  --color-dash-secondary: #1e3a5f;
+  --color-dash-success: #68d391;
+  --color-dash-error: #fc8181;
 }
 
 body {

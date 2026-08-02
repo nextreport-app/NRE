@@ -22,7 +22,7 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
     <button
       onClick={handleDelete}
       disabled={loading}
-      className="rounded-md border border-red-900 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950 disabled:opacity-60"
+      className="rounded-md border border-dash-error/40 px-3 py-1.5 text-sm font-semibold text-dash-error hover:bg-dash-error/10 disabled:opacity-60"
     >
       {loading ? "Deleting…" : "Delete client"}
     </button>

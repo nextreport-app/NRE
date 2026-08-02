@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENCIES, clientSchema, TIMEZONE_GROUPS, TIMEZONES } from "../client";
+import { CURRENCIES, clientSchema, SELECTABLE_CURRENCIES, TIMEZONE_GROUPS, TIMEZONES } from "../client";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 
 describe("CURRENCIES", () => {
@@ -38,6 +38,33 @@ describe("CURRENCIES", () => {
   });
 });
 
+describe("SELECTABLE_CURRENCIES", () => {
+  it("excludes ZAR, BRL, and MXN from the client form's dropdown", () => {
+    expect(SELECTABLE_CURRENCIES).not.toContain("ZAR");
+    expect(SELECTABLE_CURRENCIES).not.toContain("BRL");
+    expect(SELECTABLE_CURRENCIES).not.toContain("MXN");
+  });
+
+  it("keeps every other currency selectable", () => {
+    for (const c of CURRENCIES) {
+      if (c === "ZAR" || c === "BRL" || c === "MXN") continue;
+      expect(SELECTABLE_CURRENCIES).toContain(c);
+    }
+  });
+
+  it("still accepts ZAR/BRL/MXN in the schema — only the UI dropdown is restricted, not the Prisma enum", () => {
+    for (const currency of ["ZAR", "BRL", "MXN"] as const) {
+      const result = clientSchema.safeParse({
+        accountName: "Test Client",
+        currency,
+        timezone: "Asia/Kolkata",
+        template: "DARK",
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+});
+
 describe("clientSchema", () => {
   it.each(CURRENCIES)("accepts %s as a valid currency", (currency) => {
     const result = clientSchema.safeParse({
@@ -73,6 +100,9 @@ describe("TIMEZONE_GROUPS", () => {
     "Asia/Singapore",
     "Asia/Bangkok",
     "Asia/Manila",
+  ];
+
+  const REMOVED_TIMEZONES = [
     "Asia/Karachi",
     "Asia/Dhaka",
     "Africa/Johannesburg",
@@ -83,6 +113,15 @@ describe("TIMEZONE_GROUPS", () => {
   it("includes every newly requested timezone", () => {
     for (const tz of ALL_REQUESTED_TIMEZONES) {
       expect(TIMEZONES).toContain(tz);
+    }
+  });
+
+  it("no longer offers the removed timezones (Pakistan, Bangladesh, South Africa, Brazil, Mexico)", () => {
+    for (const tz of REMOVED_TIMEZONES) {
+      expect(TIMEZONES).not.toContain(tz);
+    }
+    for (const region of ["Pakistan", "Bangladesh", "South Africa", "Brazil", "Mexico"]) {
+      expect(TIMEZONE_GROUPS.some((g) => g.region === region)).toBe(false);
     }
   });
 

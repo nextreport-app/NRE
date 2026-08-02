@@ -19,6 +19,17 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+/** Active (subscribed or admin override) / Trial / Expired — the badge the plan card leads with. */
+function StatusBadge({ label, tone }: { label: string; tone: "success" | "accent" | "error" }) {
+  const toneClasses =
+    tone === "success"
+      ? "bg-dash-success/15 text-dash-success"
+      : tone === "accent"
+        ? "bg-dash-accent/15 text-dash-accent"
+        : "bg-dash-error/15 text-dash-error";
+  return <span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${toneClasses}`}>{label}</span>;
+}
+
 export default async function BillingPage() {
   const session = await auth();
   if (!session?.user) notFound();
@@ -39,23 +50,32 @@ export default async function BillingPage() {
     ? new Date(user.subscribedAt.getTime() + 30 * MS_PER_DAY)
     : null;
 
+  const badge =
+    status.isAdminOverride || status.isSubscribed
+      ? { label: "Active", tone: "success" as const }
+      : status.isTrialing && !status.isTrialExpired
+        ? { label: "Trial", tone: "accent" as const }
+        : { label: "Expired", tone: "error" as const };
+
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-semibold text-white">Billing</h1>
+      <h1 className="mb-6 text-[24px] font-bold text-dash-ink">Billing</h1>
 
-      <div className="rounded-lg border border-navy-border bg-navy-panel p-6">
-        <p className="text-xs uppercase tracking-wide text-ink-muted">Current plan</p>
-        <p className="mt-1 text-2xl font-semibold text-white">{PLAN_LABELS[status.planId]}</p>
+      <div className="rounded-lg border border-dash-border bg-dash-card p-6">
+        <div className="flex items-center gap-3">
+          <p className="text-[24px] font-bold text-dash-ink">{PLAN_LABELS[status.planId]}</p>
+          <StatusBadge label={badge.label} tone={badge.tone} />
+        </div>
 
         {status.isAdminOverride && (
-          <p className="mt-2 text-sm text-ink-secondary">
-            Full access granted via admin override (<code className="text-ink-muted">ADMIN_EMAILS</code>) — no
+          <p className="mt-3 text-[15px] text-dash-ink-secondary">
+            Full access granted via admin override (<code className="text-dash-ink-secondary">ADMIN_EMAILS</code>) — no
             subscription needed.
           </p>
         )}
 
         {!status.isAdminOverride && status.isTrialing && (
-          <p className="mt-2 text-sm text-ink-secondary">
+          <p className="mt-3 text-[15px] text-dash-ink-secondary">
             {status.isTrialExpired
               ? "Your trial has ended."
               : `Trial ends in ${status.trialDaysLeft} day${status.trialDaysLeft === 1 ? "" : "s"}, on ${formatDate(user.trialEndsAt)}.`}
@@ -63,11 +83,11 @@ export default async function BillingPage() {
         )}
 
         {status.isSubscribed && nextBillingDate && (
-          <p className="mt-2 text-sm text-ink-secondary">Next billing date: {formatDate(nextBillingDate)}</p>
+          <p className="mt-3 text-[15px] text-dash-ink-secondary">Next billing date: {formatDate(nextBillingDate)}</p>
         )}
 
         {status.planId === "cancelled" && (
-          <p className="mt-2 text-sm text-ink-secondary">
+          <p className="mt-3 text-[15px] text-dash-ink-secondary">
             Your subscription was cancelled. Resubscribe any time to regain access.
           </p>
         )}
@@ -81,7 +101,7 @@ export default async function BillingPage() {
                 userEmail={user.email}
                 userName={user.name}
                 label="Subscribe to Starter"
-                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+                className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
               />
               <SubscribeButton
                 planId="professional"
@@ -89,7 +109,7 @@ export default async function BillingPage() {
                 userEmail={user.email}
                 userName={user.name}
                 label="Subscribe to Professional"
-                className="rounded-md border border-navy-border px-4 py-2 text-sm font-medium text-white hover:bg-navy"
+                className="rounded-md border border-dash-secondary px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-secondary/20"
               />
             </>
           )}
@@ -101,7 +121,7 @@ export default async function BillingPage() {
               userEmail={user.email}
               userName={user.name}
               label="Upgrade to Professional"
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+              className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
             />
           )}
 
@@ -109,7 +129,7 @@ export default async function BillingPage() {
         </div>
       </div>
 
-      <Link href="/pricing" className="mt-4 inline-block text-sm text-accent hover:underline">
+      <Link href="/pricing" className="mt-4 inline-block text-[14px] text-dash-accent hover:underline">
         View plan details →
       </Link>
     </div>

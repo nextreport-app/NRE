@@ -51,7 +51,7 @@ export function GoogleDriveSettings({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
+    <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
       {connectedEmail ? (
         <div className="rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
           <p className="text-sm text-emerald-300">
@@ -61,21 +61,21 @@ export function GoogleDriveSettings({
             type="button"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="mt-2 rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border disabled:opacity-50"
+            className="mt-2 rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
           >
             {disconnecting ? "Disconnecting…" : "Disconnect"}
           </button>
         </div>
       ) : (
-        <div className="space-y-2 rounded-md border border-navy-border bg-navy p-3">
-          <p className="text-xs text-ink-muted">
+        <div className="space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
+          <p className="text-[13px] text-dash-ink-secondary">
             You can connect any Google account — it does not have to be the same account you use to log into
             NextReport. A Google account picker will appear so you can select whichever Google Drive you want your
             reports saved to.
           </p>
           <a
             href="/api/google-drive/connect"
-            className="inline-block rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+            className="inline-block rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
           >
             Connect Google Drive
           </a>

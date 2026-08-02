@@ -13,6 +13,12 @@ const PLAN_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-4 border-b border-dash-border pb-3 text-[16px] font-semibold text-dash-ink">{children}</h2>
+  );
+}
+
 export default async function AccountSettingsPage({
   searchParams,
 }: {
@@ -34,35 +40,38 @@ export default async function AccountSettingsPage({
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-2 text-xl font-semibold text-white">Account settings</h1>
-      <p className="mb-6 text-sm text-ink-muted">
+      <h1 className="mb-2 text-[24px] font-bold text-dash-ink">Account settings</h1>
+      <p className="mb-8 text-[15px] text-dash-ink-secondary">
         Agency branding shown on every report you generate for any client.
       </p>
+
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-medium text-white">Agency branding</h2>
+        <SectionHeading>Agency Details</SectionHeading>
         <AccountSettingsForm initialAgencyName={user.agencyName} />
       </section>
+
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-medium text-white">Google Drive</h2>
+        <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings
           initialConnectedEmail={user.googleConnectedEmail}
           justConnected={google_drive_connected === "1"}
           connectError={google_drive_error ?? null}
         />
       </section>
+
       <section>
-        <h2 className="mb-3 text-lg font-medium text-white">Billing</h2>
-        <div className="flex items-center justify-between rounded-lg border border-navy-border bg-navy-panel p-5">
+        <SectionHeading>Billing</SectionHeading>
+        <div className="flex items-center justify-between rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
-            <p className="text-xs uppercase tracking-wide text-ink-muted">Current plan</p>
-            <p className="mt-1 text-lg font-medium text-white">
+            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Current plan</p>
+            <p className="mt-1 text-[18px] font-semibold text-dash-ink">
               {PLAN_LABELS[status.planId]}
-              {status.isAdminOverride && <span className="ml-1 text-xs font-normal text-accent">(Admin access)</span>}
+              {status.isAdminOverride && <span className="ml-1 text-[13px] font-normal text-dash-accent">(Admin access)</span>}
             </p>
           </div>
           <Link
             href="/billing"
-            className="rounded-md border border-navy-border px-3 py-1.5 text-xs text-ink-secondary hover:bg-navy-border"
+            className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
           >
             Manage billing →
           </Link>

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// Kept as the full Prisma enum (still required for clientSchema to accept
+// existing rows whose currency is one of the 3 disabled values below — see
+// SELECTABLE_CURRENCIES for what the form's dropdown actually offers — and
+// for CURRENCY_SYMBOLS's Record<Currency, string> to stay exhaustive).
 export const CURRENCIES = [
   "INR",
   "USD",
@@ -16,6 +20,14 @@ export const CURRENCIES = [
   "MXN",
   "EUR",
 ] as const;
+
+// The currencies a client can actually pick going forward — ZAR/BRL/MXN are
+// removed from the UI dropdown but stay in the Prisma enum (and CURRENCIES
+// above) so an existing client row set to one of them doesn't fail
+// validation on unrelated field saves.
+export const SELECTABLE_CURRENCIES = CURRENCIES.filter(
+  (c) => c !== "ZAR" && c !== "BRL" && c !== "MXN",
+);
 // Kept as the full Prisma enum (still required for clientSchema to accept
 // existing rows that have one of the 4 disabled values — see
 // SELECTABLE_TEMPLATES below for what the form's dropdown actually offers).
@@ -104,11 +116,6 @@ export const TIMEZONE_GROUPS: TimezoneGroup[] = [
     zones: [{ value: "Asia/Bangkok", label: "Bangkok (ICT)" }],
   },
   { flag: "🇵🇭", region: "Philippines", zones: [{ value: "Asia/Manila", label: "Manila (PHT)" }] },
-  { flag: "🇵🇰", region: "Pakistan", zones: [{ value: "Asia/Karachi", label: "Karachi (PKT)" }] },
-  { flag: "🇧🇩", region: "Bangladesh", zones: [{ value: "Asia/Dhaka", label: "Dhaka (BST)" }] },
-  { flag: "🇿🇦", region: "South Africa", zones: [{ value: "Africa/Johannesburg", label: "Johannesburg (SAST)" }] },
-  { flag: "🇧🇷", region: "Brazil", zones: [{ value: "America/Sao_Paulo", label: "São Paulo (BRT)" }] },
-  { flag: "🇲🇽", region: "Mexico", zones: [{ value: "America/Mexico_City", label: "Mexico City (CST)" }] },
 ];
 
 /** Flattened valid timezone values, derived from TIMEZONE_GROUPS — used wherever a flat list is more convenient than the grouped one. */
