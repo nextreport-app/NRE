@@ -247,7 +247,7 @@ export function ClientForm({
 
       <div>
         <label className="mb-1 block text-sm text-dash-ink-secondary">
-          Monthly budget ({CURRENCY_SYMBOL[values.currency]}) — optional
+          Monthly Ad Spend Budget ({CURRENCY_SYMBOL[values.currency]}) — optional
         </label>
         <input
           type="number"

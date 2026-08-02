@@ -944,7 +944,7 @@ describe("cover slide — health badge / budget summary in the bottom-right", ()
     expect(coverXml.slice(spStart, idx)).toContain('algn="r"');
 
     const badgeBox = shapeBox(coverXml, "Campaigns On Track");
-    const budgetBox = shapeBox(coverXml, "Monthly Budget");
+    const budgetBox = shapeBox(coverXml, "Monthly Ad Budget");
 
     // Box center sits in the right half (the box itself is wide enough to
     // hold long content — see the fit test below — so its left edge alone
@@ -1000,7 +1000,7 @@ describe("cover slide — health badge / budget summary in the bottom-right", ()
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
     const badgeBox = shapeBox(coverXml, "Campaigns On Track");
-    const budgetBox = shapeBox(coverXml, "Monthly Budget");
+    const budgetBox = shapeBox(coverXml, "Monthly Ad Budget");
     const MIN_VERIFIED_CX_EMU = 6000000;
     expect(badgeBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);
     expect(budgetBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);

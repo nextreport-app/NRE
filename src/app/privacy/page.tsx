@@ -42,7 +42,7 @@ export default async function PrivacyPage() {
             <li>
               <span className="text-white">Client workspace data</span> — the
               client and ad account details you add to organise your reports (account
-              names, currency, timezone, monthly budget).
+              names, currency, timezone, monthly ad spend budget).
             </li>
             <li>
               <span className="text-white">Uploaded report files</span> — the CSV,

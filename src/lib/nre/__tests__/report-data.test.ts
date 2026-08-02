@@ -198,7 +198,7 @@ describe("buildReportData — multi-campaign integration", () => {
 
   it("computes the budget summary line", () => {
     expect(data.cover.budgetSummary).toBe(
-      "Monthly Budget: ₹2,450 of ₹100,000 used (2.5%) — 11 days remaining",
+      "Monthly Ad Budget: ₹2,450 of ₹100,000 used (2.5%) — 11 days remaining",
     );
   });
 

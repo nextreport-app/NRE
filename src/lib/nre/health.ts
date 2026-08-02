@@ -195,7 +195,7 @@ export function budgetSummaryLine(
   const pctUsed = ((mtdSpend / monthlyBudget) * 100).toFixed(1);
 
   return (
-    "Monthly Budget: " +
+    "Monthly Ad Budget: " +
     currencySymbol +
     mtdSpend.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) +
     " of " +

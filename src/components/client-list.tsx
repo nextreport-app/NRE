@@ -22,8 +22,8 @@ function formatLastReport(iso: string | null): string {
 }
 
 function formatBudget(currency: Currency, budget: number | null): string {
-  if (budget == null) return "No monthly budget set";
-  return `Monthly budget: ${CURRENCY_SYMBOLS[currency]}${budget.toLocaleString("en-US")}`;
+  if (budget == null) return "No monthly ad spend budget set";
+  return `Monthly Ad Spend Budget: ${CURRENCY_SYMBOLS[currency]}${budget.toLocaleString("en-US")}`;
 }
 
 /**

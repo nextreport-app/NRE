@@ -258,6 +258,6 @@ describe("budgetSummaryLine", () => {
   it("formats spend/budget/percent/days-remaining", () => {
     const now = new Date(2026, 6, 22); // July 22 2026 (local) — 31 days in July
     const line = budgetSummaryLine(25000, 50000, "₹", now);
-    expect(line).toBe("Monthly Budget: ₹25,000 of ₹50,000 used (50.0%) — 9 days remaining");
+    expect(line).toBe("Monthly Ad Budget: ₹25,000 of ₹50,000 used (50.0%) — 9 days remaining");
   });
 });
