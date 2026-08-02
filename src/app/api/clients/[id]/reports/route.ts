@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { deleteReportFile } from "@/lib/storage";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildReportData, type ReportData } from "@/lib/nre/report-data";
@@ -212,5 +214,45 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.error("[api:reports:generate] failed to record failure status:", updateErr);
     }
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+const bulkDeleteSchema = z.object({ reportIds: z.array(z.string()).min(1) });
+
+/** Bulk-deletes reports for the report-history list's multi-select — scopes the delete to reports that both match a requested id AND belong to this client (which itself must belong to the current user), the same ownership check as the single-report DELETE route just applied to a whole set at once. */
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  let client;
+  try {
+    client = await prisma.client.findUnique({ where: { id } });
+  } catch (err) {
+    return apiErrorResponse(err, "reports:bulk-delete:lookup");
+  }
+  if (!client || client.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = bulkDeleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "reportIds is required." }, { status: 400 });
+  }
+
+  try {
+    const reports = await prisma.report.findMany({
+      where: { id: { in: parsed.data.reportIds }, clientId: client.id },
+      select: { id: true, filePath: true },
+    });
+
+    // Best-effort blob cleanup — same tolerance as the single-report DELETE route.
+    await Promise.all(reports.filter((r) => r.filePath).map((r) => deleteReportFile(r.filePath!)));
+    await prisma.report.deleteMany({ where: { id: { in: reports.map((r) => r.id) } } });
+
+    return NextResponse.json({ ok: true, deletedCount: reports.length });
+  } catch (err) {
+    return apiErrorResponse(err, "reports:bulk-delete");
   }
 }

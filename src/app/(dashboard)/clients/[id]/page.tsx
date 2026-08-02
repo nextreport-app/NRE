@@ -8,12 +8,7 @@ import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 
-const REPORT_HISTORY_DAYS = 30;
-
-/** Kept outside the component body — react-hooks/purity flags Date.now() called directly during render, even in an async Server Component that only ever runs once per request. */
-function daysAgo(days: number): Date {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-}
+const REPORT_HISTORY_LIMIT = 10;
 
 function CardHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 border-b border-dash-border pb-3 text-[16px] font-semibold text-dash-ink">{children}</h2>;
@@ -44,10 +39,10 @@ export default async function ClientDetailPage({
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
-  const since = daysAgo(REPORT_HISTORY_DAYS);
   const reports = await prisma.report.findMany({
-    where: { clientId: client.id, createdAt: { gte: since } },
+    where: { clientId: client.id },
     orderBy: { createdAt: "desc" },
+    take: REPORT_HISTORY_LIMIT,
   });
 
   const reportItems = reports.map((r) => ({
