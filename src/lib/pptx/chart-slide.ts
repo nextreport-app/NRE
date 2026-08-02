@@ -34,13 +34,16 @@ const TEXT_COLOR_DARK = "FFFFFF";
 // slides it gets none of the light-template's colors "for free" from a
 // swapped theme.xml — every text/hole color it draws has to be picked
 // explicitly per template here. The donut hole and the slide's own
-// background both become light in the light template (hole: card
-// background F1F5F9, slide bg: FFFFFF, both set via templates/
-// meta-ads-light.pptx's theme swap) so one dark-navy text color reads fine
-// against both, same as the light template's own metric-card value text.
-const BG_COLOR_LIGHT = "F1F5F9";
+// background both become light in the light template (hole/card background:
+// FFFFFF, slide bg: FDF6EC, both set via templates/meta-ads-light.pptx's
+// theme swap) so one dark-navy text color reads fine against both, same as
+// the light template's own metric-card value text. The chart title alone
+// gets the heading accent color, matching the other 3 slide-title-level
+// headings on the deck's static slides (see gen_light_template.py).
+const BG_COLOR_LIGHT = "FFFFFF";
 const LABEL_COLOR_LIGHT = "64748B";
 const TEXT_COLOR_LIGHT = "0D1B2E";
+const HEADING_COLOR_LIGHT = "C17D0A";
 
 const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name, unchanged across templates (same reasoning as the donut ring palette below: a decorative/status accent, not a background-polarity color)
 
@@ -87,6 +90,7 @@ export function buildChartSlideXml(
   const BG_COLOR = isLightTemplate ? BG_COLOR_LIGHT : BG_COLOR_DARK;
   const LABEL_COLOR = isLightTemplate ? LABEL_COLOR_LIGHT : LABEL_COLOR_DARK;
   const WHITE = isLightTemplate ? TEXT_COLOR_LIGHT : TEXT_COLOR_DARK;
+  const HEADING_COLOR = isLightTemplate ? HEADING_COLOR_LIGHT : TEXT_COLOR_DARK;
   const spendLabel = platform === "GOOGLE" ? "COST" : "AD SPEND";
 
   const W = 960;
@@ -112,7 +116,7 @@ export function buildChartSlideXml(
       text: chartTitle,
       sizePt: 28,
       bold: true,
-      colorHex: WHITE,
+      colorHex: HEADING_COLOR,
     }),
   );
 

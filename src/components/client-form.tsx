@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CURRENCIES,
+  SELECTABLE_TEMPLATES,
   TEMPLATES,
   TEMPLATE_LABELS,
   TIMEZONE_GROUPS,
@@ -236,7 +237,7 @@ export function ClientForm({
           onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
           className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
         >
-          {TEMPLATES.map((t) => (
+          {SELECTABLE_TEMPLATES.map((t) => (
             <option key={t} value={t}>
               {TEMPLATE_LABELS[t]}
             </option>

@@ -1021,26 +1021,31 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const outPath = path.join(os.tmpdir(), `nre-render-light-${Date.now()}.pptx`);
     fs.writeFileSync(outPath, buffer);
 
-    // No raw XML anywhere in the generated deck should still say FFFFFF —
-    // every dark-template white text/fill this pipeline touches (template
-    // tag runs via the swapped theme, plus the from-scratch chart slide and
-    // the table's Previous Month row highlight) must have flipped to a
-    // light-template-appropriate color instead of silently staying white
-    // (which would render invisible against the light template's own white/
-    // light backgrounds) — EXCEPT the Combined Total table's own header row,
-    // which is the one legitimate case of white-on-white-deck text: its
+    // No raw XML anywhere in the generated deck should still say FFFFFF as
+    // TEXT — every dark-template white text this pipeline touches (template
+    // tag runs via the swapped theme, plus the from-scratch chart slide's
+    // title/body text and the table's Previous Month row highlight) must
+    // have flipped to a light-template-appropriate color instead of
+    // silently staying white (which would render invisible against the
+    // light template's own white/light backgrounds), with two legitimate
+    // exceptions: the Combined Total table's own header row, whose
     // background is deliberately kept dark navy for contrast (spec: "Table
     // header background"), so its text is deliberately kept white too
-    // (spec: "Table header text") — see patch_table_header_row in the
-    // template generator script.
+    // (spec: "Table header text" — see patch_table_header_row in the
+    // template generator script); and the chart slide's donut "hole" fill,
+    // one per campaign, which is deliberately white per spec's "Card/shape
+    // backgrounds: #ffffff" (see BG_COLOR_LIGHT in chart-slide.ts).
     const zip = await JSZip.loadAsync(buffer);
     const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
     expect(slidePaths.length).toBeGreaterThan(0);
+    const chartCampaignCount = data.chart?.campaigns.length ?? 0;
     for (const path of slidePaths) {
       const xml = await zip.file(path)!.async("string");
       const isTableSlide = xml.includes("CAMPAIGN OVERVIEW");
+      const isChartSlide = xml.includes("CAMPAIGN PERFORMANCE");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
-      expect(whiteCount).toBe(isTableSlide ? 20 : 0);
+      const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : 0;
+      expect(whiteCount).toBe(expected);
     }
 
     const { slideTexts } = inspectWithPythonPptx(outPath);
@@ -1090,7 +1095,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     fs.writeFileSync(outPath, buffer);
 
     const { rowFillColors } = inspectTableSlide(outPath, 6);
-    expect(rowFillColors[1]).toBe("E2E8F0");
+    expect(rowFillColors[1]).toBe("F0D9B5");
     expect(rowFillColors[1]).not.toBe("111F35");
 
     fs.unlinkSync(outPath);

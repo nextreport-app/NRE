@@ -16,6 +16,9 @@ export const CURRENCIES = [
   "MXN",
   "EUR",
 ] as const;
+// Kept as the full Prisma enum (still required for clientSchema to accept
+// existing rows that have one of the 4 disabled values — see
+// SELECTABLE_TEMPLATES below for what the form's dropdown actually offers).
 export const TEMPLATES = [
   "DARK",
   "LIGHT",
@@ -25,9 +28,17 @@ export const TEMPLATES = [
   "GRAPHITE",
 ] as const;
 
+// The only two templates a client can actually pick going forward — EMERALD/
+// PURPLE/CRIMSON/GRAPHITE never had real template assets (see
+// lib/pptx/templates.ts's TODO comments) and are removed from the UI, but
+// stay in the Prisma enum so an existing client row set to one of them
+// doesn't fail validation; report generation falls back to DARK for those
+// (lib/pptx/templates.ts's TEMPLATE_FILES already maps them there).
+export const SELECTABLE_TEMPLATES = ["DARK", "LIGHT"] as const;
+
 export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
   DARK: "Deep Navy (Dark) — primary, most tested",
-  LIGHT: "Ice Blue-Grey (Light)",
+  LIGHT: "Warm Amber (Light) — premium, warm-tinted",
   EMERALD: "Dark Forest Green (Emerald)",
   PURPLE: "Royal Indigo (Purple)",
   CRIMSON: "Deep Crimson Red (Crimson)",

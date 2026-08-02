@@ -158,12 +158,19 @@ describe("buildChartSlideXml — light template color awareness", () => {
     expect(holes).toEqual(["0d1b2e"]);
   });
 
-  it("uses dark-navy title/text and a light card-colored hole when isLightTemplate is true", () => {
+  it("uses dark-navy body text, an amber heading, and a white card-colored hole when isLightTemplate is true", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, true);
-    expect(xml).not.toContain('srgbClr val="FFFFFF"');
     expect(xml).toContain('srgbClr val="0D1B2E"');
+    expect(xml).toContain('srgbClr val="C17D0A"');
     const holes = ellipseFillColors(xml).filter((_, i) => i % 2 === 1);
-    expect(holes).toEqual(["F1F5F9"]);
+    expect(holes).toEqual(["FFFFFF"]);
+  });
+
+  it("gives only the chart title the heading accent color, not the body text", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, true);
+    expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
+    const titleShape = /<p:sp>(?:(?!<\/p:sp>)[\s\S])*?MTD CAMPAIGN PERFORMANCE[\s\S]*?<\/p:sp>/.exec(xml)![0];
+    expect(titleShape).toContain('srgbClr val="C17D0A"');
   });
 
   it("keeps the donut ring palette and the amber inactive-indicator color unchanged between templates", () => {

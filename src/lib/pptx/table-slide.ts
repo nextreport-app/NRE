@@ -308,8 +308,8 @@ export function fillCombinedTotalTable(
 
 /** Previous Month row background (Fix 4) — one shade lighter than the template's own #0d1b2e dark navy, matching the app's own --color-navy-panel token. */
 const PERIOD_ROW_FILL_HEX = "111F35";
-/** Light-template equivalent — one shade darker than the light template's own #f1f5f9 card background, reusing the light template's own spec'd border grey (#e2e8f0) rather than inventing an unspec'd new color. */
-const PERIOD_ROW_FILL_HEX_LIGHT = "E2E8F0";
+/** Light-template equivalent — reuses the light template's own spec'd card-border color (#f0d9b5) rather than inventing an unspec'd new shade, giving the row a warm tint that's still readable against the white card background. */
+const PERIOD_ROW_FILL_HEX_LIGHT = "F0D9B5";
 
 /**
  * Overrides the background fill of every cell in a row. A cell's <a:tcPr>
