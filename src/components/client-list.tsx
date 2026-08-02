@@ -85,7 +85,7 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
               <div className="mt-5 flex gap-3">
                 <Link
                   href={`/clients/${client.id}/reports/new`}
-                  className="flex-1 rounded-md bg-[#f6ad55] px-4 py-2.5 text-center text-[14px] font-semibold text-[#0d1b2e] hover:bg-[#d4870a] hover:text-white"
+                  className="flex-1 rounded-md bg-[#f6ad55] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#d97706]"
                 >
                   Generate Report
                 </Link>

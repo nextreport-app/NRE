@@ -30,11 +30,28 @@ export function ClientForm({
   clientId,
   initial,
   hasLogo = false,
+  submitLabel,
+  savedMessage,
+  inline = false,
 }: {
   clientId?: string;
   initial?: Partial<ClientFormValues>;
   /** Whether this client already has a logo uploaded — drives the initial preview/remove-button state on edit. Irrelevant on create (no clientId yet). */
   hasLogo?: boolean;
+  /** Overrides the submit button's default text ("Save changes" / "Create client"). */
+  submitLabel?: string;
+  /** Overrides the default toast text shown on a successful save. */
+  savedMessage?: string;
+  /**
+   * True when this form is embedded directly on the page it edits (the
+   * client detail page's Client Settings section) rather than a standalone
+   * create/edit page — a plain boolean rather than an onSaved callback
+   * since this component is rendered from an async Server Component, which
+   * can't pass a function prop across the boundary. Skips the post-save
+   * navigation to /clients/[id] (there's nowhere to go, it's already
+   * there) and refreshes the current route's server data in place instead.
+   */
+  inline?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -135,7 +152,12 @@ export function ClientForm({
     }
 
     setLoading(false);
-    showToast(clientId ? "Client updated." : "Client created.");
+    showToast(savedMessage ?? (clientId ? "Client updated." : "Client created."));
+
+    if (inline) {
+      router.refresh();
+      return;
+    }
     router.push(`/clients/${savedClientId}`);
     router.refresh();
   }
@@ -258,9 +280,9 @@ export function ClientForm({
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+        className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
       >
-        {loading ? "Saving…" : clientId ? "Save changes" : "Create client"}
+        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
       </button>
     </form>
   );

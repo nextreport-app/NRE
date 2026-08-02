@@ -8,7 +8,7 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(false);
 
   async function handleDelete() {
-    if (!confirm("Delete this client and all its report history? This cannot be undone.")) return;
+    if (!confirm("Delete this client and all their reports? This cannot be undone.")) return;
     setLoading(true);
     const res = await fetch(`/api/clients/${clientId}`, { method: "DELETE" });
     setLoading(false);
