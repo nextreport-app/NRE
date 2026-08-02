@@ -41,7 +41,11 @@ const TEXT_COLOR_DARK = "FFFFFF";
 // gets the heading accent color, matching the other 3 slide-title-level
 // headings on the deck's static slides (see gen_light_template.py).
 const BG_COLOR_LIGHT = "FFFFFF";
-const LABEL_COLOR_LIGHT = "64748B";
+// Mid navy, matching the pptx template's own metric-card labels
+// (gen_light_template.py's LABEL_TEXT_COLOR) — readability fix v2: the
+// original muted slate grey (#64748b) was too low-contrast against the
+// warm background per user feedback.
+const LABEL_COLOR_LIGHT = "1E3A5F";
 const TEXT_COLOR_LIGHT = "0D1B2E";
 const HEADING_COLOR_LIGHT = "C17D0A";
 
