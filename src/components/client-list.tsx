@@ -85,13 +85,13 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
               <div className="mt-5 flex gap-3">
                 <Link
                   href={`/clients/${client.id}/reports/new`}
-                  className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
+                  className="flex-1 rounded-md bg-[#d4870a] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#b8730a]"
                 >
                   Generate Report
                 </Link>
                 <Link
                   href={`/clients/${client.id}/edit`}
-                  className="flex-1 rounded-md border border-dash-secondary px-4 py-2.5 text-center text-[14px] font-semibold text-dash-ink-secondary hover:bg-dash-secondary/20"
+                  className="flex-1 rounded-md bg-[#1e3a5f] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#2d4f7c]"
                 >
                   Edit
                 </Link>
