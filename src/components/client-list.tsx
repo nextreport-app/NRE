@@ -74,26 +74,26 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
               key={client.id}
               className="flex flex-col rounded-lg border border-dash-border bg-dash-card p-6 transition-colors hover:border-dash-accent/60"
             >
-              <Link href={`/clients/${client.id}`} className="block">
+              <div>
                 <h3 className="text-[18px] font-bold text-dash-ink">{client.accountName}</h3>
                 <p className="mt-2 text-[13px] text-dash-ink-secondary">
                   {client.currency} · {client.timezone}
                 </p>
                 <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatBudget(client.currency, client.monthlyBudget)}</p>
                 <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatLastReport(client.lastReportAt)}</p>
-              </Link>
+              </div>
               <div className="mt-5 flex gap-3">
                 <Link
                   href={`/clients/${client.id}/reports/new`}
-                  className="flex-1 rounded-md bg-[#d4870a] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#b8730a]"
+                  className="flex-1 rounded-md bg-[#f6ad55] px-4 py-2.5 text-center text-[14px] font-semibold text-[#0d1b2e] hover:bg-[#d4870a] hover:text-white"
                 >
                   Generate Report
                 </Link>
                 <Link
-                  href={`/clients/${client.id}/edit`}
+                  href={`/clients/${client.id}`}
                   className="flex-1 rounded-md bg-[#1e3a5f] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#2d4f7c]"
                 >
-                  Edit
+                  Manage
                 </Link>
               </div>
             </div>
