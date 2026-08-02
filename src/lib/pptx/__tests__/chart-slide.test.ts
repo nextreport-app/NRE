@@ -221,9 +221,13 @@ describe("buildChartSlideXml — Fix 5: vertical centering", () => {
     return (top + bottom) / 2;
   }
 
-  // EMU-round-trip (pt -> EMU -> pt) can shift the recovered value by a
-  // point or two — these check "visually centered," not exact-pixel math.
-  const CENTER_PT = 295; // center of [70, 520]
+  // The per-campaign block's own center happens to land near the slide's
+  // true geometric center once title+subtitle+block+bar are all centered
+  // as one unit (see the "whole content block" describe block below for
+  // the actual top/bottom-margin symmetry check that matters) — this
+  // constant is just where that block-only center falls out, not a design
+  // target in itself.
+  const CENTER_PT = 296;
   const TOLERANCE_PT = 5;
 
   it("centers the block in the space between the header and the bottom spend bar, for a small campaign count (max circle size)", () => {
@@ -247,5 +251,76 @@ describe("buildChartSlideXml — Fix 5: vertical centering", () => {
       BACKGROUND,
     );
     expect(firstRingYPt(sevenUp)).toBeGreaterThan(firstRingYPt(twoUp));
+  });
+});
+
+describe("buildChartSlideXml — whole content block (title through spend bar) is centered, both axes", () => {
+  const SLIDE_H = 540;
+  const SLIDE_W = 960;
+  const BAR_H = 8;
+  const MARGIN_TOLERANCE_PT = 1; // sub-point rounding from the pt->EMU->pt round trip only
+
+  /** Every top-level <p:sp> in document order (background is a <p:pic>, excluded automatically). */
+  function shapesOf(xml: string): string[] {
+    return xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
+  }
+
+  function offPt(shape: string): { xPt: number; yPt: number } {
+    const m = /<a:off x="(-?\d+)" y="(-?\d+)"\/>/.exec(shape)!;
+    return { xPt: Math.round(Number(m[1]) / EMU_PER_PT), yPt: Math.round(Number(m[2]) / EMU_PER_PT) };
+  }
+
+  /** The title is always the first shape pushed. */
+  function titleTopPt(xml: string): number {
+    return offPt(shapesOf(xml)[0]).yPt;
+  }
+
+  /** The spend-proportion bar segments: 8pt-tall rects (101600 EMU), same test signature as barSegmentColors() above. */
+  function barBottomPt(xml: string): number {
+    const bar = shapesOf(xml).find(
+      (s) => s.includes('<a:prstGeom prst="rect">') && s.includes("<a:p/>") && s.includes('cy="101600"'),
+    )!;
+    return offPt(bar).yPt + BAR_H;
+  }
+
+  it("puts an equal empty margin above the title and below the spend bar, for a small campaign count", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A"), campaign("B")]), "$", BACKGROUND);
+    const topMargin = titleTopPt(xml);
+    const bottomMargin = SLIDE_H - barBottomPt(xml);
+    expect(Math.abs(topMargin - bottomMargin)).toBeLessThanOrEqual(MARGIN_TOLERANCE_PT);
+  });
+
+  it("puts an equal empty margin above the title and below the spend bar, for a large campaign count (smaller circles, shorter content block)", () => {
+    const campaigns = Array.from({ length: 7 }, (_, i) => campaign(`Campaign ${i + 1}`));
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    const topMargin = titleTopPt(xml);
+    const bottomMargin = SLIDE_H - barBottomPt(xml);
+    expect(Math.abs(topMargin - bottomMargin)).toBeLessThanOrEqual(MARGIN_TOLERANCE_PT);
+  });
+
+  it("grows the top/bottom margins as campaign count shrinks the content block, instead of leaving the extra space unevenly at the bottom", () => {
+    const twoUp = buildChartSlideXml(buildChart([campaign("A"), campaign("B")]), "$", BACKGROUND);
+    const sevenUp = buildChartSlideXml(
+      buildChart(Array.from({ length: 7 }, (_, i) => campaign(`Campaign ${i + 1}`))),
+      "$",
+      BACKGROUND,
+    );
+    // Fewer/bigger circles (2-up, CIRCLE_D=200) make a taller content block
+    // than more/smaller circles (7-up, CIRCLE_D=88) -> the 2-up case's own
+    // top margin must be smaller (less room to work with, same slide size).
+    expect(titleTopPt(twoUp)).toBeLessThan(titleTopPt(sevenUp));
+  });
+
+  it("centers the row of circles horizontally — equal left/right margins around the first and last columns", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A"), campaign("B"), campaign("C")]), "$", BACKGROUND);
+    // n=3: COL_W = floor((960 - 20*4) / 3) = 293 -> CIRCLE_D capped at 200.
+    const CIRCLE_D = 200;
+    const rings = shapesOf(xml).filter((s) => s.includes('<a:prstGeom prst="ellipse">'));
+    // Every other ellipse is the ring (even indexes); the alternating hole
+    // fills the odd ones (see ellipseFillColors above) — take the rings.
+    const ringOffs = rings.filter((_, i) => i % 2 === 0).map(offPt);
+    const leftMargin = ringOffs[0].xPt; // circle isn't flush with its column edge, but symmetry is what matters
+    const rightMargin = SLIDE_W - (ringOffs[ringOffs.length - 1].xPt + CIRCLE_D);
+    expect(Math.abs(leftMargin - rightMargin)).toBeLessThanOrEqual(MARGIN_TOLERANCE_PT + 2);
   });
 });

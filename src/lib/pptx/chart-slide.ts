@@ -111,65 +111,108 @@ export function buildChartSlideXml(
       : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
 
   shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
-  shapes.push(
-    textBox({
-      x: 0,
-      y: 8,
-      w: W,
-      h: 34,
-      text: chartTitle,
-      sizePt: 28,
-      bold: true,
-      colorHex: HEADING_COLOR,
-    }),
-  );
 
   const activeCount = chart.activeCampaignCount;
-  shapes.push(
-    textBox({
-      x: 0,
-      y: 44,
-      w: W,
-      h: 24,
-      text:
-        `Total ${chart.periodLabel} Spend:  ` +
-        currencySymbol +
-        Math.round(chart.totalAllSpend).toLocaleString("en-US") +
-        `     ·     ${activeCount} Active Campaign${activeCount === 1 ? "" : "s"}`,
-      sizePt: 18,
-      bold: false,
-      colorHex: WHITE,
-    }),
-  );
+  const subtitleText =
+    `Total ${chart.periodLabel} Spend:  ` +
+    currencySymbol +
+    Math.round(chart.totalAllSpend).toLocaleString("en-US") +
+    `     ·     ${activeCount} Active Campaign${activeCount === 1 ? "" : "s"}`;
+
+  const TITLE_H = 34;
+  const GAP_TITLE_SUBTITLE = 2;
+  const SUBTITLE_H = 24;
 
   const n = chart.campaigns.length;
-  if (n === 0) return buildBlankSlideXml(shapes);
+  if (n === 0) {
+    // No per-campaign block or spend bar to include — center just the
+    // title+subtitle as their own (much smaller) content block.
+    const totalContentHeight = TITLE_H + GAP_TITLE_SUBTITLE + SUBTITLE_H;
+    const contentTop = Math.max(0, (H - totalContentHeight) / 2);
+    shapes.push(
+      textBox({ x: 0, y: contentTop, w: W, h: TITLE_H, text: chartTitle, sizePt: 28, bold: true, colorHex: HEADING_COLOR }),
+    );
+    shapes.push(
+      textBox({
+        x: 0,
+        y: contentTop + TITLE_H + GAP_TITLE_SUBTITLE,
+        w: W,
+        h: SUBTITLE_H,
+        text: subtitleText,
+        sizePt: 18,
+        bold: false,
+        colorHex: WHITE,
+      }),
+    );
+    return buildBlankSlideXml(shapes);
+  }
 
   const MARGIN = 20;
   const COL_W = Math.floor((W - MARGIN * (n + 1)) / n);
   const CIRCLE_D = Math.min(COL_W - 20, 200);
   const INNER_D = Math.round(CIRCLE_D * 0.7);
 
-  // Fix 5 — CIRC_Y used to be a fixed 158pt, tuned only for the largest
-  // circle size (CIRCLE_D capped at 200, i.e. n <= 3 campaigns). With more
-  // campaigns, COL_W (and so CIRCLE_D) shrinks but CIRC_Y didn't, so the
-  // whole per-campaign block — name, circle, results, CPR — shrank in place
-  // and left a growing gap at the bottom, reading as "pushed to the top."
-  // Centering it instead: the block spans from CIRC_Y-36 (the name label)
-  // to CIRC_Y+CIRCLE_D+116 (the CPR sub-label's bottom) — see the per-
-  // campaign shapes below for exactly where those offsets come from — so
-  // its total height is CIRCLE_D+152, and CIRC_Y is chosen to center that
-  // in the space between the header ("Total ... Spend" line, ending at
-  // y=68) and the spend-proportion bar at the very bottom (y=H-12=528).
-  const HEADER_BOTTOM = 70;
-  const BOTTOM_LIMIT = 520;
-  const BLOCK_HEIGHT = CIRCLE_D + 152;
-  const availableHeight = BOTTOM_LIMIT - HEADER_BOTTOM;
-  const CIRC_Y = HEADER_BOTTOM + Math.max(0, (availableHeight - BLOCK_HEIGHT) / 2) + 36;
+  // Horizontal centering — COL_W's floor() division can leave a few points
+  // of width unused across n columns; without correction that leftover
+  // always lands on the right (colX starts flush at x=MARGIN), so the row
+  // of circles reads as off-center. rowXOffset distributes it evenly on
+  // both sides instead.
+  const totalRowWidth = MARGIN * (n + 1) + COL_W * n;
+  const rowXOffset = Math.floor((W - totalRowWidth) / 2);
+
+  // Vertical centering (Fix 2 follow-up) — this has been flagged before:
+  // the previous approach (see git blame, "Fix 5") only centered the
+  // per-campaign block within the leftover space between a fixed-position
+  // header (title+subtitle pinned to the top, ending at y=68) and a
+  // fixed-position spend bar (pinned to the bottom, at y=H-12=528). That
+  // under-counts the title/subtitle's own height as part of "the content,"
+  // so the overall composition — title+subtitle+circles+bar all together —
+  // still read as top-heavy: confirmed by rendering through LibreOffice and
+  // measuring the title's y-offset (8pt from the top) against the bar's gap
+  // to the bottom edge (4pt) — nowhere near equal.
+  //
+  // Fixed here by treating the ENTIRE visible block (title, subtitle, the
+  // per-campaign circles/labels, and the spend bar) as one unit, measuring
+  // its total height, and centering that whole unit between the slide's
+  // top and bottom edges — so the empty margin above the title exactly
+  // equals the empty margin below the bar. The per-campaign block's own
+  // height (CIRCLE_D+152, from the name label above the circle to the CPR
+  // sub-label below it — see the per-campaign shapes below for exactly
+  // where those offsets come from) is unchanged from before.
+  const GAP_SUBTITLE_BLOCK = 20;
+  const BLOCK_H = CIRCLE_D + 152;
+  const GAP_BLOCK_BAR = 20;
+  const BAR_H = 8;
+
+  const totalContentHeight =
+    TITLE_H + GAP_TITLE_SUBTITLE + SUBTITLE_H + GAP_SUBTITLE_BLOCK + BLOCK_H + GAP_BLOCK_BAR + BAR_H;
+  const contentTop = Math.max(0, (H - totalContentHeight) / 2);
+
+  const titleY = contentTop;
+  const subtitleY = titleY + TITLE_H + GAP_TITLE_SUBTITLE;
+  const blockTopY = subtitleY + SUBTITLE_H + GAP_SUBTITLE_BLOCK; // matches "CIRC_Y - 36" below (the name label's own top)
+  const CIRC_Y = blockTopY + 36;
+  const barY = blockTopY + BLOCK_H + GAP_BLOCK_BAR;
+
+  shapes.push(
+    textBox({ x: 0, y: titleY, w: W, h: TITLE_H, text: chartTitle, sizePt: 28, bold: true, colorHex: HEADING_COLOR }),
+  );
+  shapes.push(
+    textBox({
+      x: 0,
+      y: subtitleY,
+      w: W,
+      h: SUBTITLE_H,
+      text: subtitleText,
+      sizePt: 18,
+      bold: false,
+      colorHex: WHITE,
+    }),
+  );
 
   chart.campaigns.forEach((d, ci) => {
     const col = campaignRingColor(ci);
-    const colX = MARGIN + ci * (COL_W + MARGIN);
+    const colX = rowXOffset + MARGIN + ci * (COL_W + MARGIN);
     const cx = colX + Math.floor(COL_W / 2);
     const circX = cx - Math.floor(CIRCLE_D / 2);
 
@@ -263,14 +306,15 @@ export function buildChartSlideXml(
     );
   });
 
-  // Spend proportion bar along the very bottom — same per-campaign color as
-  // its own donut ring above, so a segment is identifiable at a glance.
-  const barY = H - 12;
+  // Spend proportion bar — same per-campaign color as its own donut ring
+  // above, so a segment is identifiable at a glance. Its own y (barY) is
+  // now computed above as part of the whole content block's vertical
+  // centering, rather than pinned to the slide's bottom edge.
   let barOffset = 0;
   chart.campaigns.forEach((d, ci) => {
     const pct = chart.totalAllSpend > 0 ? d.spend / chart.totalAllSpend : 1 / n;
     const segW = Math.max(Math.round(W * pct), 2);
-    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: 8, fillHex: campaignRingColor(ci) }));
+    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: BAR_H, fillHex: campaignRingColor(ci) }));
     barOffset += segW;
   });
 

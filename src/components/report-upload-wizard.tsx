@@ -189,21 +189,15 @@ export function ReportUploadWizard({
   // Continue.
   const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | null>(null);
   const [platform, setPlatform] = useState<"META" | "GOOGLE">("META");
-  const [campaignStepModeResult, setCampaignStepModeResult] = useState<"skip" | "confirm" | "choose">("choose");
   const [continueStatus, setContinueStatus] = useState<"idle" | "loading">("idle");
 
-  // Step 2 — Campaigns (populated by /analyze). This step is shown, skipped
-  // silently, or skipped with an inline confirmation banner on the Dates
-  // step instead — see handleAnalyze and lib/nre/campaigns.ts's
-  // resolveCampaignSelection, which the /analyze route calls to decide.
+  // Step 2 — Campaigns (populated by /analyze). Always shown in full for
+  // Meta uploads — see handleAnalyze and lib/nre/campaigns.ts's
+  // resolveCampaignSelection, which the /analyze route calls to decide the
+  // pre-checked default (everything, for a first-ever upload; last time's
+  // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
-  // True only when /analyze resolved a "confirm" step mode — a returning
-  // upload, no new campaigns, reusing last time's saved selection. Reset
-  // once the user actually walks through the full Campaigns step (via the
-  // banner's "Change?" link or manually), so the banner never shows a
-  // choice they just made themselves.
-  const [campaignSelectionRemembered, setCampaignSelectionRemembered] = useState(false);
 
   // Step 3 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -345,15 +339,6 @@ export function ReportUploadWizard({
     setCustomEnd(savedSelection.customEnd || "");
     setLongRangeConfirmed(false);
 
-    // "choose" (first upload for this client, or a genuinely new campaign
-    // appeared) is the only case that needs the full Campaigns step — a
-    // single campaign or a returning, unchanged selection go straight to
-    // Dates, with "confirm" showing a brief reuse notice there instead.
-    // Only meaningful for Meta — see handleContinueAfterDetect.
-    const campaignStepMode: "skip" | "confirm" | "choose" = json.campaignStepMode || "choose";
-    setCampaignStepModeResult(campaignStepMode);
-    setCampaignSelectionRemembered(campaignStepMode === "confirm");
-
     // Pause on step 1 so the platform badge/override is visible before
     // dispatching further — see handleContinueAfterDetect.
     setAnalyzeStatus("detected");
@@ -367,7 +352,7 @@ export function ReportUploadWizard({
   async function handleContinueAfterDetect() {
     setAnalyzeStatus("idle");
     if (platform === "META") {
-      setStep(campaignStepModeResult === "choose" ? 2 : 3);
+      setStep(2);
       return;
     }
 
@@ -424,9 +409,6 @@ export function ReportUploadWizard({
 
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
-    // They just reviewed (or changed) the selection themselves — the "same
-    // as last time" banner has nothing left to add on the Dates step.
-    setCampaignSelectionRemembered(false);
     setStep(3);
   }
 
@@ -787,15 +769,6 @@ export function ReportUploadWizard({
       {step === 3 && (
         <div className="space-y-4 rounded-lg border border-navy-border bg-navy-panel p-5">
           <h3 className="text-sm font-medium text-ink-secondary">Reporting period</h3>
-
-          {campaignSelectionRemembered && (
-            <p className="rounded-md border border-navy-border bg-navy px-3 py-2 text-xs text-ink-secondary">
-              Using same campaign selection as last time ({selectedCampaigns.size} of {campaigns.length} campaigns).{" "}
-              <button onClick={() => setStep(2)} className="text-accent hover:underline">
-                Change?
-              </button>
-            </p>
-          )}
 
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-ink-muted">Report Type</p>

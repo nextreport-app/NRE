@@ -257,6 +257,14 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chart).toContain("Brand - Reach");
     expect(chart).toContain("Shoes - Purchases");
 
+    // reference/templates/ADS_TEMPLATE_V2.pptx (this describe block's own
+    // TEMPLATE_PATH) is a legacy, pre-existing fixture kept for broad
+    // rendering-pipeline sanity checks — it's not the shipped production
+    // asset (see PRODUCTION_TEMPLATE_PATH's own comment above) and doesn't
+    // track every production template edit, so it still has the table
+    // slide's OLD heading text (Fix 3 only renamed templates/dark.pptx and
+    // its two derived templates, all covered by PRODUCTION_TEMPLATE_PATH/
+    // LIGHT_TEMPLATE_PATH tests elsewhere in this file).
     expect(table).toContain("CAMPAIGN OVERVIEW");
     expect(table).toContain("PURCHASES");
     expect(table).not.toContain("{{");
@@ -1041,7 +1049,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const chartCampaignCount = data.chart?.campaigns.length ?? 0;
     for (const path of slidePaths) {
       const xml = await zip.file(path)!.async("string");
-      const isTableSlide = xml.includes("CAMPAIGN OVERVIEW");
+      const isTableSlide = xml.includes("CAMPAIGN PERFORMANCE OVERVIEW");
       const isChartSlide = xml.includes("CAMPAIGN PERFORMANCE");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
       const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : 0;
@@ -1053,7 +1061,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
     expect(chart).toContain("CAMPAIGN PERFORMANCE");
-    expect(table).toContain("CAMPAIGN OVERVIEW");
+    expect(table).toContain("CAMPAIGN PERFORMANCE OVERVIEW");
 
     fs.unlinkSync(outPath);
   }, 30000);

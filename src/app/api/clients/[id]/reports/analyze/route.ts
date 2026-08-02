@@ -25,8 +25,9 @@ const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
  * passes an explicit `platform` field (the user manually overrode the
  * badge). Google Ads reports use a deliberately simpler pipeline than
  * Meta's for this first pass — no campaign-selection or date-range steps,
- * always the full MTD dataset — so a GOOGLE response skips straight to
- * `campaignStepMode: "skip"` with the whole file usable immediately.
+ * always the full MTD dataset — so a GOOGLE response's `campaignStepMode`
+ * is unused by the wizard (it goes straight to the preview regardless);
+ * "choose" is just a harmless placeholder value.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -71,7 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         platform,
         campaigns: [],
         selectedCampaigns: [],
-        campaignStepMode: "skip",
+        campaignStepMode: "choose",
         dateBounds: null,
         weeklyOptions: null,
         mtdRange: null,

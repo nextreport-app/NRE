@@ -40,8 +40,19 @@ export interface CampaignSelectionMemory {
   deselected: string[];
 }
 
-/** Whether the report upload wizard's Campaigns step should be shown in full, skipped with an inline "same as last time" confirmation, or skipped silently. */
-export type CampaignStepMode = "skip" | "confirm" | "choose";
+/**
+ * Whether this is the client's first-ever campaign selection ("choose",
+ * nothing to pre-check) or a "returning" upload with a saved selection to
+ * pre-check — the wizard's Campaigns step is always shown in full either
+ * way (see report-upload-wizard.tsx). There used to be a third "skip"/
+ * "confirm" pair that silently reused a saved selection (for a single-
+ * campaign CSV, or an unchanged returning one) with just a small reuse
+ * banner shown later on the Dates step — removed by product decision:
+ * always showing the real step, even with only one campaign or an
+ * unchanged selection, means the user can always see and correct exactly
+ * what's about to be included before generating the report.
+ */
+export type CampaignStepMode = "choose" | "returning";
 
 export interface ResolvedCampaignSelection {
   selectedCampaigns: string[];
@@ -49,41 +60,21 @@ export interface ResolvedCampaignSelection {
 }
 
 /**
- * Decides whether this upload's Campaigns step needs a real decision from
- * the user, or can be skipped — and if skipped, what the selection defaults
- * to. Three cases, matching the wizard's actual UX:
- *
- *  - A single campaign: nothing to choose between, skip silently — every
- *    campaign is included regardless of any past exclusion (a CSV that's
- *    down to one campaign this week isn't a reason to keep hiding it).
- *  - No saved selection from a previous upload, or a campaign name that
- *    wasn't part of that previous upload's own campaign list: there's a
- *    real decision to make (a first upload, or something genuinely new),
- *    so show the full step. Note this is *not* the same test as "is this
- *    campaign in the excluded list" — a brand-new campaign is, by
- *    definition, absent from both the excluded list and any prior
- *    "campaigns" list, so telling it apart from an old always-included
- *    campaign requires the full previous campaign list, not just the
- *    excluded subset.
- *  - A saved selection exists and every campaign here was already present
- *    last time (none are new): reuse the saved selection (recomputed
- *    against this upload's own campaign list, so a since-removed
- *    exclusion naturally stops mattering) and let the wizard show a brief
- *    confirmation instead of the full step.
+ * Computes the Campaigns step's pre-checked default: everything, for a
+ * first-ever upload with no saved selection ("choose"); otherwise this
+ * upload's campaigns minus whatever was excluded last time ("returning") —
+ * recomputed against this upload's own campaign list, so a since-removed
+ * exclusion naturally stops mattering and a brand-new campaign (absent
+ * from the saved exclusion list, by definition) defaults to checked.
  */
 export function resolveCampaignSelection(
   campaigns: string[],
   memory: CampaignSelectionMemory | null,
 ): ResolvedCampaignSelection {
-  if (campaigns.length <= 1) {
-    return { selectedCampaigns: campaigns, stepMode: "skip" };
-  }
   if (!memory) {
     return { selectedCampaigns: campaigns, stepMode: "choose" };
   }
-  const previouslySeen = new Set(memory.campaigns);
-  const newCampaignAppeared = campaigns.some((name) => !previouslySeen.has(name));
   const deselectedSet = new Set(memory.deselected);
   const selectedCampaigns = campaigns.filter((name) => !deselectedSet.has(name));
-  return { selectedCampaigns, stepMode: newCampaignAppeared ? "choose" : "confirm" };
+  return { selectedCampaigns, stepMode: "returning" };
 }

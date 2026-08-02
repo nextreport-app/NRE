@@ -118,7 +118,13 @@ export async function loadTemplate(buffer: Buffer): Promise<LoadedTemplate> {
 
   const cover = find((t) => t.includes("{{ACCOUNT_NAME}}"), "cover");
   const campaign = find((t) => t.includes("{{METRIC_SPEND}}"), "campaign template");
-  const table = find((t) => t.includes("CAMPAIGN OVERVIEW"), "period/MTD table");
+  // Matches either the current heading ("CAMPAIGN PERFORMANCE OVERVIEW",
+  // Fix 3's rename) or the pre-rename one ("CAMPAIGN OVERVIEW-Combined
+  // Total") — the latter only still exists in the untouched legacy
+  // reference/templates/ADS_TEMPLATE_V2.pptx fixture (kept intentionally
+  // pristine since the repo's first commit, unlike templates/dark.pptx and
+  // its derived templates, which Fix 3 renamed).
+  const table = find((t) => t.includes("CAMPAIGN PERFORMANCE OVERVIEW") || t.includes("CAMPAIGN OVERVIEW"), "period/MTD table");
   const legend = find((t) => t.includes("METRIC ABBREVIATION"), "legend");
 
   const background = extractMasterBackgroundImage(
