@@ -32,6 +32,7 @@ export function ClientForm({
   hasLogo = false,
   submitLabel,
   savedMessage,
+  submitFullWidth = false,
   inline = false,
 }: {
   clientId?: string;
@@ -42,6 +43,8 @@ export function ClientForm({
   submitLabel?: string;
   /** Overrides the default toast text shown on a successful save. */
   savedMessage?: string;
+  /** Stretches the submit button to the card's full width (client detail page's Client Settings card) instead of the default inline-sized button (create-client page). */
+  submitFullWidth?: boolean;
   /**
    * True when this form is embedded directly on the page it edits (the
    * client detail page's Client Settings section) rather than a standalone
@@ -280,7 +283,7 @@ export function ClientForm({
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
       >
         {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
       </button>

@@ -15,12 +15,21 @@ function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function CardHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 border-b border-dash-border pb-3 text-[16px] font-semibold text-dash-ink">{children}</h2>;
 }
 
-function Section({ children }: { children: React.ReactNode }) {
-  return <section className="rounded-lg border border-dash-border bg-dash-card p-6">{children}</section>;
+/** `accent` marks the single most important card on the page (Generate New Report) with an amber left border, per the two-column redesign's visual hierarchy. */
+function Card({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+  return (
+    <section
+      className={
+        "rounded-lg border border-dash-border bg-dash-card p-5" + (accent ? " border-l-4 border-l-dash-accent" : "")
+      }
+    >
+      {children}
+    </section>
+  );
 }
 
 export default async function ClientDetailPage({
@@ -52,66 +61,69 @@ export default async function ClientDetailPage({
   }));
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8">
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-6">
         <Link href="/clients" className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
           ← My Clients
         </Link>
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
       </div>
 
-      <div className="space-y-8">
-        {/* Section 1 — Client Settings */}
-        <Section>
-          <SectionHeading>Client Settings</SectionHeading>
-          <ClientForm
-            clientId={client.id}
-            initial={{
-              accountName: client.accountName,
-              currency: client.currency,
-              timezone: client.timezone,
-              monthlyBudget: client.monthlyBudget,
-              template: client.template,
-            }}
-            hasLogo={!!client.logoUrl}
-            submitLabel="Save Changes"
-            savedMessage="Client settings saved"
-            inline
-          />
-          <div className="mt-6 border-t border-dash-border pt-6">
-            <DeleteClientButton clientId={client.id} />
-          </div>
-        </Section>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
+        {/* Left column — primary action + report history */}
+        <div className="space-y-4">
+          <Card accent>
+            <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
+            <p className="text-[15px] text-dash-ink-secondary">
+              Upload your MTD daily CSV to generate a branded performance report
+            </p>
+            <Link
+              href={`/clients/${client.id}/reports/new`}
+              className="mt-5 block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            >
+              Generate Report
+            </Link>
+          </Card>
 
-        {/* Section 2 — Previous Month Data */}
-        <Section>
-          <SectionHeading>Previous Month Data</SectionHeading>
-          <PreviousMonthDataUpload
-            clientId={client.id}
-            initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
-            initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
-          />
-        </Section>
+          <Card>
+            <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
+            <ReportHistoryList clientId={client.id} initialReports={reportItems} />
+          </Card>
+        </div>
 
-        {/* Section 3 — Generate New Report */}
-        <Section>
-          <SectionHeading>Generate New Report</SectionHeading>
-          <p className="text-[15px] text-dash-ink-secondary">
-            Upload your MTD daily CSV to generate a branded performance report
-          </p>
-          <Link
-            href={`/clients/${client.id}/reports/new`}
-            className="mt-5 inline-block rounded-md bg-dash-accent px-6 py-3 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-          >
-            Generate Report
-          </Link>
-        </Section>
+        {/* Right column — client settings + previous month data */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeading>Client Settings</CardHeading>
+            <ClientForm
+              clientId={client.id}
+              initial={{
+                accountName: client.accountName,
+                currency: client.currency,
+                timezone: client.timezone,
+                monthlyBudget: client.monthlyBudget,
+                template: client.template,
+              }}
+              hasLogo={!!client.logoUrl}
+              submitLabel="Save Changes"
+              savedMessage="Client settings saved"
+              submitFullWidth
+              inline
+            />
+            <div className="mt-4">
+              <DeleteClientButton clientId={client.id} />
+            </div>
+          </Card>
 
-        {/* Section 4 — Recent Downloaded Reports */}
-        <Section>
-          <SectionHeading>Recent Downloaded Reports ({reportItems.length})</SectionHeading>
-          <ReportHistoryList clientId={client.id} initialReports={reportItems} />
-        </Section>
+          <Card>
+            <CardHeading>Previous Month Data</CardHeading>
+            <PreviousMonthDataUpload
+              clientId={client.id}
+              initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
+              initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+            />
+          </Card>
+        </div>
       </div>
     </div>
   );
