@@ -1,7 +1,7 @@
 "use client";
 
 // Placeholder support number — the user said they'll update this manually.
-const WHATSAPP_URL = "https://wa.me/919900000000";
+const WHATSAPP_URL = "https://wa.me/918882578327";
 
 function WhatsAppIcon() {
   return (
