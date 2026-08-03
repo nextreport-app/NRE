@@ -102,6 +102,11 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
+/** Same as formatIsoRange, with the end date's year appended — used for the Month to Date / Full Month Period card, whose range always ends within the current reporting year. */
+function formatIsoRangeWithYear(range: DateRangeIso): string {
+  return `${formatIsoRange(range)}, ${range.endIso.slice(0, 4)}`;
+}
+
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
 function isNoDataRowsError(e: ValidationIssue): boolean {
   return e.field === "rows";
@@ -753,133 +758,148 @@ export function ReportUploadWizard({
       )}
 
       {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+        <div className="space-y-5">
           <h3 className="text-sm font-medium text-dash-ink-secondary">Reporting period</h3>
 
-          <div className="space-y-2">
-            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Report Type</p>
-            <DateModeOption
-              id="report-type-weekly"
-              checked={reportType === "WEEKLY"}
-              onSelect={() => handleReportTypeChange("WEEKLY")}
-              label="Weekly Performance Report"
-            />
-            <DateModeOption
-              id="report-type-monthly"
-              checked={reportType === "MONTHLY"}
-              onSelect={() => handleReportTypeChange("MONTHLY")}
-              label="Monthly Performance Report"
-              sublabel={mtdRange ? `Uses the full month-to-date data: ${formatIsoRange(mtdRange)}` : undefined}
-            />
-          </div>
+          {/* Section 1 — Report Type */}
+          <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+            <h4 className="text-[16px] font-semibold text-white">Report Type</h4>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ReportTypeCard
+                icon="📊"
+                heading="Weekly Performance Report"
+                description="Shows last 7 days performance with month-to-date comparison"
+                selected={reportType === "WEEKLY"}
+                onSelect={() => handleReportTypeChange("WEEKLY")}
+              />
+              <ReportTypeCard
+                icon="📅"
+                heading="Monthly Performance Report"
+                description="Shows full month performance using your complete MTD data"
+                selected={reportType === "MONTHLY"}
+                onSelect={() => handleReportTypeChange("MONTHLY")}
+              />
+            </div>
+          </section>
 
+          <div className="border-t border-dash-border" />
+
+          {/* Section 2 — Date Range (Weekly only) */}
           {reportType === "WEEKLY" && (
-            <div className="space-y-2">
-              <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">Weekly period</p>
+            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+              <h4 className="text-[16px] font-semibold text-white">Select Weekly Period</h4>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {weeklyOptions && (
+                  <WeeklyPeriodOption
+                    selected={dateMode === "last7"}
+                    label="Last 7 days"
+                    sublabel={formatIsoRange(weeklyOptions.last7)}
+                    onSelect={() => {
+                      setDateMode("last7");
+                      setCustomRangeError(null);
+                    }}
+                  />
+                )}
+                {weeklyOptions && (
+                  <WeeklyPeriodOption
+                    selected={dateMode === "prev7"}
+                    label="Previous 7 days"
+                    sublabel={formatIsoRange(weeklyOptions.prev7)}
+                    onSelect={() => {
+                      setDateMode("prev7");
+                      setCustomRangeError(null);
+                    }}
+                  />
+                )}
+                <WeeklyPeriodOption
+                  selected={dateMode === "custom"}
+                  label="Custom range"
+                  sublabel={
+                    dateBounds
+                      ? `CSV covers ${formatIso(dateBounds.minIso)} - ${formatIso(dateBounds.maxIso)}`
+                      : undefined
+                  }
+                  onSelect={() => setDateMode("custom")}
+                />
+              </div>
 
-              {weeklyOptions && (
-                <DateModeOption
-                  id="mode-last7"
-                  checked={dateMode === "last7"}
-                onSelect={() => {
-                  setDateMode("last7");
-                  setCustomRangeError(null);
-                }}
-                label="Last 7 days ending yesterday"
-                sublabel={formatIsoRange(weeklyOptions.last7)}
-              />
-            )}
-            {weeklyOptions && (
-              <DateModeOption
-                id="mode-prev7"
-                checked={dateMode === "prev7"}
-                onSelect={() => {
-                  setDateMode("prev7");
-                  setCustomRangeError(null);
-                }}
-                label="Previous 7 days"
-                sublabel={formatIsoRange(weeklyOptions.prev7)}
-              />
-            )}
-            <DateModeOption
-              id="mode-custom"
-              checked={dateMode === "custom"}
-              onSelect={() => setDateMode("custom")}
-              label="Custom date range"
-              sublabel={
-                dateBounds ? `CSV covers ${formatIso(dateBounds.minIso)} - ${formatIso(dateBounds.maxIso)}` : undefined
-              }
-            />
-
-            {dateMode === "custom" && (
-              <div className="ml-7 space-y-3 rounded-md border border-dash-border p-3">
-                <div className="flex flex-wrap gap-3">
-                  <div>
-                    <label className="mb-1 block text-[13px] text-dash-ink-secondary">Start date</label>
-                    <input
-                      type="date"
-                      value={customStart}
-                      min={dateBounds?.minIso}
-                      max={dateBounds?.maxIso}
-                      onChange={(e) => {
-                        setCustomStart(e.target.value);
-                        setLongRangeConfirmed(false);
-                        setCustomRangeError(null);
-                      }}
-                      className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[13px] text-dash-ink-secondary">End date</label>
-                    <input
-                      type="date"
-                      value={customEnd}
-                      min={dateBounds?.minIso}
-                      max={dateBounds?.maxIso}
-                      onChange={(e) => {
-                        setCustomEnd(e.target.value);
-                        setLongRangeConfirmed(false);
-                        setCustomRangeError(null);
-                      }}
-                      className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                  </div>
-                </div>
-
-                {customRangeError && <p className="text-[13px] text-red-400">{customRangeError}</p>}
-
-                {needsLongRangeConfirm && (
-                  <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                    <p className="mb-2 text-[13px] text-amber-200">
-                      Weekly reports work best with 7 days or less. Continue anyway?
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setLongRangeConfirmed(true)}
-                        className="rounded-md bg-dash-accent px-3 py-1 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => setCustomEnd("")}
-                        className="rounded-md border border-dash-border px-3 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                      >
-                        No
-                      </button>
+              {dateMode === "custom" && (
+                <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
+                  <div className="flex flex-wrap gap-3">
+                    <div>
+                      <label className="mb-1 block text-[13px] text-dash-ink-secondary">Start date</label>
+                      <input
+                        type="date"
+                        value={customStart}
+                        min={dateBounds?.minIso}
+                        max={dateBounds?.maxIso}
+                        onChange={(e) => {
+                          setCustomStart(e.target.value);
+                          setLongRangeConfirmed(false);
+                          setCustomRangeError(null);
+                        }}
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[13px] text-dash-ink-secondary">End date</label>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        min={dateBounds?.minIso}
+                        max={dateBounds?.maxIso}
+                        onChange={(e) => {
+                          setCustomEnd(e.target.value);
+                          setLongRangeConfirmed(false);
+                          setCustomRangeError(null);
+                        }}
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-sm text-dash-ink outline-none focus:border-dash-accent"
+                      />
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-            </div>
+
+                  {customRangeError && <p className="text-[13px] text-red-400">{customRangeError}</p>}
+
+                  {needsLongRangeConfirm && (
+                    <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
+                      <p className="mb-2 text-[13px] text-amber-200">
+                        Weekly reports work best with 7 days or less. Continue anyway?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setLongRangeConfirmed(true)}
+                          className="rounded-md bg-dash-accent px-3 py-1 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setCustomEnd("")}
+                          className="rounded-md border border-dash-border px-3 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
           )}
 
-          <div>
-            <p className="text-[13px] uppercase tracking-wide text-dash-ink-secondary">MTD period</p>
-            <p className="mt-1 text-sm text-dash-ink">
-              {mtdRange ? `MTD period: ${formatIsoRange(mtdRange)} (auto)` : "MTD period unavailable"}
+          {/* Section 3 — Month to Date / Full Month Period */}
+          <section className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
+            <h4 className="text-[16px] font-semibold text-white">
+              {reportType === "MONTHLY" ? "Full Month Period" : "Month to Date Period"}
+            </h4>
+            <p className="mt-3 text-sm text-dash-ink">
+              {mtdRange
+                ? `${formatIsoRangeWithYear(mtdRange)} (auto-detected from your CSV)`
+                : "Month to Date period unavailable"}
             </p>
-          </div>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">
+              This is automatically calculated from your uploaded CSV data.
+            </p>
+          </section>
 
           {previewStatus === "invalid" && (
             <div className="space-y-3">
@@ -1302,36 +1322,66 @@ function NoDataRowsWarning({ message }: { message: string }) {
   );
 }
 
-function DateModeOption({
-  id,
-  checked,
+/** Section 1's two large Report Type cards (Weekly vs Monthly) — plain buttons rather than native radios, since the visual design calls for full selectable cards, not a radio dot + label row. */
+function ReportTypeCard({
+  icon,
+  heading,
+  description,
+  selected,
   onSelect,
-  label,
-  sublabel,
 }: {
-  id: string;
-  checked: boolean;
+  icon: string;
+  heading: string;
+  description: string;
+  selected: boolean;
   onSelect: () => void;
-  label: string;
-  sublabel?: string;
 }) {
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-md border border-dash-border p-3 hover:bg-dash-border/40"
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`rounded-lg border p-4 text-left transition-colors ${
+        selected
+          ? "border-dash-accent bg-dash-accent/10"
+          : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
+      }`}
     >
-      <input
-        type="radio"
-        id={id}
-        checked={checked}
-        onChange={onSelect}
-        className="mt-0.5 h-4 w-4 accent-accent"
-      />
-      <span>
-        <span className="block text-sm text-dash-ink">{label}</span>
-        {sublabel && <span className="block text-[13px] text-dash-ink-secondary">{sublabel}</span>}
+      <span className="text-2xl" aria-hidden="true">
+        {icon}
       </span>
-    </label>
+      <p className="mt-2 text-[15px] font-semibold text-white">{heading}</p>
+      <p className="mt-1 text-[13px] text-dash-ink-secondary">{description}</p>
+    </button>
+  );
+}
+
+/** Section 2's three weekly-period pill options (Last 7 days / Previous 7 days / Custom range) — same button-based selection pattern as ReportTypeCard above, just smaller. */
+function WeeklyPeriodOption({
+  selected,
+  label,
+  sublabel,
+  onSelect,
+}: {
+  selected: boolean;
+  label: string;
+  sublabel?: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`rounded-lg border px-4 py-2.5 text-left transition-colors ${
+        selected
+          ? "border-dash-accent bg-dash-accent/10"
+          : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
+      }`}
+    >
+      <span className="block text-sm font-medium text-white">{label}</span>
+      {sublabel && <span className="mt-0.5 block text-[12px] text-dash-ink-secondary">{sublabel}</span>}
+    </button>
   );
 }
 
