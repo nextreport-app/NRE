@@ -885,19 +885,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
 
-  // globalWeekEnd covers the trailing-7-day (or custom) window for Weekly,
-  // or the full MTD span for Monthly (see globalWeekStart/globalWeekEnd's
-  // own comment above) — either way its year is the right one for this
-  // sub-line, same "end date's year is the current one" convention already
-  // used for the MTD table row above.
+  // The chart is always MTD data (see the "MTD performance chart slide"
+  // comment above) — its sub-line must reflect the MTD period even for
+  // Weekly reports, not the trailing-7-day weekly window used elsewhere on
+  // those slides. mtdRow.monthLabel is already "August 1 - August 2, 2026
+  // MTD" (computeTableRow above); stripping the " MTD" suffix gives exactly
+  // the "[Month] 1 - [Yesterday], [Year]" sub-line the chart needs, reusing
+  // the same date range already computed for the Combined Total table's MTD
+  // row rather than recomputing it here.
   const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
   const periodSubLabel =
     reportType === "MONTHLY"
       ? mtdRow.monthName && periodYear
         ? `Full Month — ${mtdRow.monthName} ${periodYear}`
         : ""
-      : globalWeekDateRange && periodYear
-        ? `${globalWeekDateRange}, ${periodYear}`
+      : mtdRow.hasData
+        ? mtdRow.monthLabel.replace(/ MTD$/, "")
         : "";
 
   const chart: ChartSlideData = {

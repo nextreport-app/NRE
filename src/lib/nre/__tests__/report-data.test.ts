@@ -1422,6 +1422,20 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
     expect(weekly.mtdRow.spend).toBe(monthly.mtdRow.spend);
   });
 
+  it("shows the MTD date range on the chart sub-line for Weekly reports, not the trailing-7-day window", () => {
+    // mtdDays spans July 1-19; the trailing-7-day weekly window is July
+    // 13-19 (see NOW above) — the chart is always MTD data, so its sub-line
+    // must show the full July 1-19 MTD range either way, not the narrower
+    // weekly window.
+    const weekly = build("WEEKLY");
+    expect(weekly.chart?.periodSubLabel).toBe("July 1 - July 19, 2026");
+  });
+
+  it("keeps the 'Full Month' chart sub-line for Monthly reports", () => {
+    const monthly = build("MONTHLY");
+    expect(monthly.chart?.periodSubLabel).toBe("Full Month — July 2026");
+  });
+
   it("is paused only when there's no data in the relevant window — an explicit weekly gap week for Weekly, vs. the full MTD for Monthly", () => {
     // Data on both sides of a genuine gap week (July 6-12, e.g. the account
     // paused mid-month): the wizard explicitly selected that gap week as the
