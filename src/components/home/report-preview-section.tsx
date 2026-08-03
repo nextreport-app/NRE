@@ -137,38 +137,58 @@ const COMBINED_ROWS = [
   { month: "July 1 - July 24 MTD", spend: "$366", reach: "65,858", impressions: "76,732", ctr: "2.93%", cpc: "$1.18", leads: "63", cpl: "$5.81" },
 ];
 
-/** Slide 4 — Campaign Overview Combined Total. */
+/**
+ * Slide 4 — Campaign Overview Combined Total. The widest slide in the
+ * carousel (8-column table) — needs its own mobile handling that the other
+ * 3 slides don't. `min-w-0` on every level from the slide root down to the
+ * table itself is load-bearing: without it, a flex item's default
+ * `min-width: auto` lets a descendant's intrinsic content width (the table)
+ * bubble all the way up and stretch the whole carousel row wider than the
+ * viewport, even though `overflow-x-auto`/`overflow-x-hidden` is set on the
+ * table wrapper — that only clips/scrolls content within a box that's
+ * already sized correctly, it doesn't prevent the box itself from growing.
+ * Below md (768px): 8px table text, tighter cell padding, and the 4
+ * lowest-priority columns (Reach, Impressions, CTR, CPC) hidden entirely
+ * rather than squeezed, so the remaining 4 columns (Month, Ad Spend, Leads,
+ * Cost Per Lead) have room to sit on one line without wrapping.
+ */
 function CombinedTotalSlide() {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden">
       <SlideHeader label="META ADS · MONTHLY PERFORMANCE REPORT" />
       <h3 className="mt-1 text-base font-bold text-white sm:text-xl">Campaign Overview — Combined Total</h3>
 
-      <div className="mt-4 flex-1 overflow-x-auto sm:mt-6">
-        <table className="w-full min-w-[520px] border-collapse text-left text-[10px] sm:text-[11px]">
+      <div className="mt-4 min-w-0 flex-1 overflow-x-hidden sm:mt-6 md:overflow-x-auto">
+        <table className="w-full min-w-0 border-collapse text-left text-[8px] break-words md:min-w-[520px] md:text-[11px]">
           <thead>
             <tr className="border-b border-navy-border" style={{ color: ACCENT }}>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">Month</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">Ad Spend</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">Reach</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">Impressions</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">CTR</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">CPC</th>
-              <th className="py-2 pr-2 font-semibold uppercase tracking-wide">Leads</th>
-              <th className="py-2 font-semibold uppercase tracking-wide">Cost Per Lead</th>
+              <th className="py-1.5 pr-1 font-semibold uppercase tracking-wide md:py-2 md:pr-2">Month</th>
+              <th className="py-1.5 pr-1 font-semibold uppercase tracking-wide whitespace-nowrap md:py-2 md:pr-2">
+                Ad Spend
+              </th>
+              <th className="hidden py-2 pr-2 font-semibold uppercase tracking-wide md:table-cell">Reach</th>
+              <th className="hidden py-2 pr-2 font-semibold uppercase tracking-wide md:table-cell">Impressions</th>
+              <th className="hidden py-2 pr-2 font-semibold uppercase tracking-wide md:table-cell">CTR</th>
+              <th className="hidden py-2 pr-2 font-semibold uppercase tracking-wide md:table-cell">CPC</th>
+              <th className="py-1.5 pr-1 font-semibold uppercase tracking-wide whitespace-nowrap md:py-2 md:pr-2">
+                Leads
+              </th>
+              <th className="py-1.5 font-semibold uppercase tracking-wide whitespace-nowrap md:py-2">
+                Cost Per Lead
+              </th>
             </tr>
           </thead>
           <tbody>
             {COMBINED_ROWS.map((row) => (
               <tr key={row.month} className="border-b border-navy-border/60 text-ink-secondary">
-                <td className="py-2 pr-2 font-medium text-white">{row.month}</td>
-                <td className="py-2 pr-2">{row.spend}</td>
-                <td className="py-2 pr-2">{row.reach}</td>
-                <td className="py-2 pr-2">{row.impressions}</td>
-                <td className="py-2 pr-2">{row.ctr}</td>
-                <td className="py-2 pr-2">{row.cpc}</td>
-                <td className="py-2 pr-2">{row.leads}</td>
-                <td className="py-2">{row.cpl}</td>
+                <td className="break-words py-1.5 pr-1 font-medium text-white md:py-2 md:pr-2">{row.month}</td>
+                <td className="whitespace-nowrap py-1.5 pr-1 md:py-2 md:pr-2">{row.spend}</td>
+                <td className="hidden py-2 pr-2 md:table-cell">{row.reach}</td>
+                <td className="hidden py-2 pr-2 md:table-cell">{row.impressions}</td>
+                <td className="hidden py-2 pr-2 md:table-cell">{row.ctr}</td>
+                <td className="hidden py-2 pr-2 md:table-cell">{row.cpc}</td>
+                <td className="whitespace-nowrap py-1.5 pr-1 md:py-2 md:pr-2">{row.leads}</td>
+                <td className="whitespace-nowrap py-1.5 md:py-2">{row.cpl}</td>
               </tr>
             ))}
           </tbody>
@@ -211,7 +231,7 @@ function SlideCarousel() {
         </button>
 
         <div
-          className="min-h-[420px] w-full rounded-xl border border-navy-border p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:min-h-[380px] sm:p-6"
+          className="min-h-[420px] w-full min-w-0 overflow-x-hidden rounded-xl border border-navy-border p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:min-h-[380px] sm:p-6"
           style={{ background: SLIDE_BG }}
         >
           {SLIDES[index].render()}
