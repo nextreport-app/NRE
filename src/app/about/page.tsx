@@ -36,17 +36,22 @@ const DIFFERENTIATORS = [
   },
 ];
 
-/** Purely decorative — an abstract composition in the brand's navy/amber palette, built entirely from layered CSS shapes rather than a shipped image asset. */
+/**
+ * The founder-story visual — the favicon mark shown large. Points at
+ * favicon-large.png rather than the shipped favicon.png: that file's a
+ * 1048x1048 canvas with the visible mark in a small corner (sized for a
+ * browser tab, not a 200px hero image), so displaying it directly here
+ * would render as a mostly-blank white rounded square with a tiny icon in
+ * the corner. favicon-large.png is the same artwork tightly cropped to
+ * the mark itself — see public/favicon-large.png.
+ */
 function StoryIllustration() {
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-sm" aria-hidden="true">
-      <div className="absolute inset-0 rounded-3xl border border-navy-border bg-navy-panel" />
-      <div className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rotate-6 rounded-2xl bg-accent-orange/15" />
-      <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-6 rounded-2xl border-2 border-accent-orange/60" />
-      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-accent-orange text-2xl font-bold text-navy">
-        N
-      </div>
-    </div>
+    <img
+      src="/favicon-large.png"
+      alt="NextReport"
+      style={{ width: "200px", height: "200px", borderRadius: "24px", display: "block", margin: "0 auto" }}
+    />
   );
 }
 
