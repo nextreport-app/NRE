@@ -26,9 +26,19 @@ export function Nav() {
   return (
     <header className="border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
           <img src="/logo.png" alt="NextReport logo" style={{ height: "32px", width: "32px", display: "block" }} />
-          <span style={{ fontWeight: 700, fontSize: "18px", color: "white", letterSpacing: "-0.3px" }}>NextReport</span>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: "18px",
+              color: "white",
+              letterSpacing: "-0.3px",
+              fontFamily: "var(--font-inter), sans-serif",
+            }}
+          >
+            NextReport
+          </span>
         </Link>
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-dash-ink-secondary sm:gap-x-5">
           {LINKS.map((link) => {

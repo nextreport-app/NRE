@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -13,6 +13,16 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Used for the "NextReport" logo wordmark next to the nav icon (public-nav.tsx,
+// nav.tsx) — weight 700 is the only one needed there, but 400 is included too
+// since a single-weight font causes browsers to synthetically bold/skew any
+// other text that might reference this family.
+const inter = Inter({
+  variable: "--font-inter",
+  weight: ["400", "700"],
   subsets: ["latin"],
 });
 
@@ -35,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
         <Providers>{children}</Providers>

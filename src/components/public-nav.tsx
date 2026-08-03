@@ -23,9 +23,19 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   return (
     <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
           <img src="/logo.png" alt="NextReport logo" style={{ height: "32px", width: "32px", display: "block" }} />
-          <span style={{ fontWeight: 700, fontSize: "18px", color: "white", letterSpacing: "-0.3px" }}>NextReport</span>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: "18px",
+              color: "white",
+              letterSpacing: "-0.3px",
+              fontFamily: "var(--font-inter), sans-serif",
+            }}
+          >
+            NextReport
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm text-ink-secondary md:flex">
