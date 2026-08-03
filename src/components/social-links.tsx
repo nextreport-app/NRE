@@ -53,22 +53,19 @@ const LINKS = [
  */
 export function SocialLinks() {
   return (
-    <div className="mt-4 flex flex-col items-center gap-2 sm:items-start">
-      <span className="text-[11px] uppercase tracking-wide text-ink-muted">Follow us</span>
-      <div className="flex items-center gap-3">
-        {LINKS.map((link) => (
-          <a
-            key={link.name}
-            href={link.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={link.name}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted transition-colors hover:text-white"
-          >
-            {link.icon}
-          </a>
-        ))}
-      </div>
+    <div className="flex items-center gap-3">
+      {LINKS.map((link) => (
+        <a
+          key={link.name}
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={link.name}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted transition-colors hover:text-white"
+        >
+          {link.icon}
+        </a>
+      ))}
     </div>
   );
 }

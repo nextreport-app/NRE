@@ -4,36 +4,124 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 
 export const metadata: Metadata = {
-  title: "Download Guide — NextReport",
+  title: "How to Download Your Ad Report Data — NextReport",
 };
 
-function TipBox({ title, children }: { title: string; children: React.ReactNode }) {
+interface Step {
+  icon: string;
+  title: string;
+  body: string;
+}
+
+const META_STEPS: Step[] = [
+  {
+    icon: "🔑",
+    title: "Open Meta Ads Manager",
+    body: "Go to business.facebook.com/adsmanager and select your ad account.",
+  },
+  {
+    icon: "📋",
+    title: "Go to Campaigns, Ad Sets or Ads tab",
+    body: "Click on the Campaigns tab to see all your campaigns. Make sure all campaigns are visible.",
+  },
+  {
+    icon: "📅",
+    title: "Set your date range",
+    body: "Click the date picker in the top right. Select This Month for MTD data or Custom Range for a specific week. Always use Day as the time increment — not Weekly or Monthly.",
+  },
+  {
+    icon: "⚙️",
+    title: "Select your columns",
+    body: "Click Columns → Customise Columns. Add these columns: Campaign Name, Ad Set Name, Day, Result Type, Results, Cost per Result, Amount Spent, Reach, Impressions, Frequency, Clicks (All), CTR (All), CPC (All), Link Clicks, Cost per Link Click.",
+  },
+  {
+    icon: "⬇️",
+    title: "Export the CSV",
+    body: "Click the Export button (top right) → Export Table Data → CSV. Save the file to your computer.",
+  },
+  {
+    icon: "⬆️",
+    title: "Upload to NextReport",
+    body: "Go to your client in NextReport, click Generate Report, upload the CSV file you just downloaded.",
+  },
+];
+
+const GOOGLE_STEPS: Step[] = [
+  {
+    icon: "🔑",
+    title: "Open Google Ads",
+    body: "Go to ads.google.com and select your account.",
+  },
+  {
+    icon: "📋",
+    title: "Go to Campaigns",
+    body: "Click Campaigns in the left sidebar to see all your campaigns.",
+  },
+  {
+    icon: "📅",
+    title: "Set date range",
+    body: "Click the date range selector in the top right. Choose This month or a custom date range. Make sure segmentation is set to Day.",
+  },
+  {
+    icon: "⬇️",
+    title: "Download the report",
+    body: "Click the Download button (arrow icon) → CSV. Google Ads will export all visible columns.",
+  },
+  {
+    icon: "⬆️",
+    title: "Upload to NextReport",
+    body: "Go to your client in NextReport, click Generate Report, upload the CSV file.",
+  },
+];
+
+const COMMON_ISSUES = [
+  {
+    title: "No data rows found",
+    body: "Make sure you selected Day as the time increment, not Weekly or Monthly. The CSV must have one row per day.",
+  },
+  {
+    title: "Wrong objective detected",
+    body: "Add Result Type and Results columns to your Meta Ads export. These help NextReport identify your campaign goal.",
+  },
+  {
+    title: "Missing metrics",
+    body: "If metric cards show dashes, the required column was not included in your export. Re-download with all recommended columns selected.",
+  },
+];
+
+function SectionHeading({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-blue-900 bg-blue-950/30 p-4 text-sm text-blue-200">
-      <p className="mb-1 font-medium">{title}</p>
-      <p>{children}</p>
+    <h2 className="flex items-center gap-2.5 text-2xl font-semibold text-accent-orange">
+      <span aria-hidden="true">{icon}</span>
+      {children}
+    </h2>
+  );
+}
+
+function StepCard({ number, step }: { number: number; step: Step }) {
+  return (
+    <div className="flex gap-4 rounded-lg border border-navy-border border-l-4 border-l-accent-orange bg-navy-panel p-5">
+      <div
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xl"
+        aria-hidden="true"
+      >
+        {step.icon}
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-accent-orange">Step {number}</p>
+        <h3 className="mt-0.5 text-base font-semibold text-white">{step.title}</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
+      </div>
     </div>
   );
 }
 
-function ImportantBox({ title, children }: { title: string; children: React.ReactNode }) {
+function IssueCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
-      <p className="mb-1 font-medium">{title}</p>
-      <p>{children}</p>
+    <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p>
     </div>
-  );
-}
-
-function StepList({ steps }: { steps: React.ReactNode[] }) {
-  return (
-    <ol className="list-inside list-decimal space-y-2 text-sm leading-relaxed text-ink-secondary">
-      {steps.map((step, i) => (
-        <li key={i} className="pl-1">
-          {step}
-        </li>
-      ))}
-    </ol>
   );
 }
 
@@ -44,131 +132,48 @@ export default async function DownloadGuidePage() {
   return (
     <>
       <PublicNav loggedIn={loggedIn} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-      <Link href={loggedIn ? "/clients" : "/"} className="text-sm text-accent hover:underline">
-        ← Back to {loggedIn ? "Dashboard" : "NextReport"}
-      </Link>
-
-      <h1 className="mt-6 text-3xl font-semibold text-white">Download Guide</h1>
-      <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
-        NextReport works with CSV and Excel files downloaded directly from Meta Ads Manager or Google
-        Ads. Follow either method below — both work with NextReport.
-      </p>
-
-      <div className="mt-10 space-y-12">
-        <section>
-          <h2 className="mb-1 text-lg font-medium text-white">Meta Ads — Method 1 (Recommended): Ad Reporting Section</h2>
-          <p className="mb-4 text-sm text-ink-muted">
-            Recommended because it includes all columns including Ad Set Name automatically.
-          </p>
-          <StepList
-            steps={[
-              "Log in to Meta Ads Manager",
-              "Click the top left menu icon (hamburger menu)",
-              "Select Ad Reporting from the menu",
-              "Click Create Report or open an existing saved report",
-              "Set your date range to This Month",
-              "Set time increment to Day (daily breakdown)",
-              <>
-                Make sure these columns are included: Campaign Name, Ad Set Name, Day, Delivery Status,
-                Reach, Impressions, Frequency, Result Type, Results, Amount Spent, Cost Per Result, CTR
-                (All), CPC (All), Link Clicks, Landing Page Views, Cost Per Landing Page View, Reporting
-                Starts, Reporting Ends
-              </>,
-              "Click Export and select CSV or Excel",
-              "Upload the downloaded file to NextReport",
-            ]}
-          />
-          <div className="mt-4">
-            <TipBox title="Tip">
-              Save your column selection as a preset in Meta so you do not have to reselect columns every
-              time.
-            </TipBox>
+      <main className="flex-1">
+        <section className="bg-navy px-6 py-16 text-center">
+          <div className="mx-auto max-w-2xl">
+            <Link href={loggedIn ? "/clients" : "/"} className="text-sm text-accent hover:underline">
+              ← Back to {loggedIn ? "Dashboard" : "NextReport"}
+            </Link>
+            <h1 className="mt-6 text-3xl font-bold text-white sm:text-4xl">How to Download Your Ad Report Data</h1>
+            <p className="mt-4 text-lg text-ink-muted">
+              Follow these steps to export your campaign data from Meta Ads Manager or Google Ads, then upload it
+              to NextReport.
+            </p>
           </div>
         </section>
 
-        <section>
-          <h2 className="mb-1 text-lg font-medium text-white">Meta Ads — Method 2: Campaigns Screen Download</h2>
-          <p className="mb-4 text-sm text-ink-muted">Works but requires an extra step to include Ad Set Name.</p>
-          <StepList
-            steps={[
-              "Log in to Meta Ads Manager",
-              "You will see your Campaigns list by default",
-              "Click Columns at the top right of the table",
-              "Select Customize Columns",
-              <>
-                Search for and add these columns: Ad Set Name, Day, Delivery Status, Reach, Impressions,
-                Frequency, Result Type, Results, Amount Spent, Cost Per Result, CTR (All), CPC (All),
-                Link Clicks, Landing Page Views
-              </>,
-              "Click Apply and then Save as Preset so you can reuse this next time",
-              "Make sure the breakdown is set to Day (time increment)",
-              "Set your date range to This Month at the top",
-              "Click the Export button and select Export Table Data as CSV or Excel",
-              "Upload the downloaded file to NextReport",
-            ]}
-          />
-          <div className="mt-4">
-            <ImportantBox title="Important">
-              If you skip adding Ad Set Name to your columns, NextReport will not be able to show
-              individual ad set slides or let you filter by ad set.
-            </ImportantBox>
-          </div>
-        </section>
+        <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
+          <section>
+            <SectionHeading icon="📘">Meta Ads Manager</SectionHeading>
+            <div className="mt-6 space-y-4">
+              {META_STEPS.map((step, i) => (
+                <StepCard key={step.title} number={i + 1} step={step} />
+              ))}
+            </div>
+          </section>
 
-        <section>
-          <h2 className="mb-4 text-lg font-medium text-white">Google Ads Download</h2>
-          <StepList
-            steps={[
-              "Log in to Google Ads at ads.google.com",
-              "Click Reports in the top navigation",
-              "Select Predefined Reports then Basic then Campaign",
-              "Set your date range to This Month at the top",
-              "Set the time period to Day using the segment button",
-              <>
-                Click the Columns button and add: Campaign, Campaign type, Clicks, Impressions, CTR, Avg
-                CPC, Cost, Conversions, Cost per conversion, Conversion rate, Search impression share
-              </>,
-              "Click the Download button and select CSV or Excel",
-              "Upload the downloaded file to NextReport",
-            ]}
-          />
-        </section>
+          <section>
+            <SectionHeading icon="🔵">Google Ads</SectionHeading>
+            <div className="mt-6 space-y-4">
+              {GOOGLE_STEPS.map((step, i) => (
+                <StepCard key={step.title} number={i + 1} step={step} />
+              ))}
+            </div>
+          </section>
 
-        <section>
-          <h2 className="mb-4 text-lg font-medium text-white">Required columns for accurate objective detection</h2>
-          <ul className="list-inside list-disc space-y-2 text-sm leading-relaxed text-ink-secondary">
-            <li>For Website Lead campaigns: include the Website leads column</li>
-            <li>For Instant Form campaigns: include the Meta leads column</li>
-            <li>For Purchase/Sales campaigns: include the Purchases column and Purchase ROAS column</li>
-            <li>For Landing Page View campaigns: include the Landing page views column</li>
-            <li>For Reach campaigns: include the Reach column and set Result type to Reach</li>
-            <li>For Video campaigns: include the Video plays or ThruPlays column</li>
-          </ul>
-          <div className="mt-4">
-            <TipBox title="Always include">
-              Result type, Results, Cost per result — these three columns are the most reliable way for
-              NextReport to detect your campaign objective automatically.
-            </TipBox>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-4 text-lg font-medium text-white">Tips for Best Results</h2>
-          <ul className="list-inside list-disc space-y-2 text-sm leading-relaxed text-ink-secondary">
-            <li>
-              Always select This Month as your date range — NextReport automatically calculates the
-              correct weekly and MTD periods
-            </li>
-            <li>
-              Always use Day as the time increment — NextReport needs daily data to split weekly vs MTD
-              automatically
-            </li>
-            <li>Save your column presets in Meta and Google so downloading takes under 2 minutes each time</li>
-            <li>You can upload CSV, Excel (xlsx), TSV, or TXT files — NextReport accepts all formats</li>
-          </ul>
-        </section>
-      </div>
+          <section>
+            <h2 className="text-2xl font-semibold text-white">Common Issues and Fixes</h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {COMMON_ISSUES.map((issue) => (
+                <IssueCard key={issue.title} title={issue.title} body={issue.body} />
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
     </>
   );
