@@ -253,7 +253,10 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    expect(chart).toContain("MTD CAMPAIGN PERFORMANCE");
+    // Title names the actual month + a sub-line with the exact date range,
+    // not the old all-caps "MTD CAMPAIGN PERFORMANCE" jargon — see chart-slide.ts.
+    expect(chart).toContain("July Campaign Performance");
+    expect(chart).toContain("July 13 - July 19, 2026");
     expect(chart).toContain("Brand - Reach");
     expect(chart).toContain("Shoes - Purchases");
 
@@ -701,7 +704,13 @@ describe("renderPptx — client logo + agency name branding (real production tem
     let chartXml = "";
     for (const f of slideFiles) {
       const xml = await zip.file(f)!.async("string");
-      if (xml.includes("CAMPAIGN PERFORMANCE")) {
+      // Case-insensitive: the chart title is now title-case ("July Campaign
+      // Performance") whenever a month name is available, not always the
+      // old all-caps "MTD/WEEKLY CAMPAIGN PERFORMANCE" fallback text — the
+      // chart slide always precedes the table slide in render.ts's fixed
+      // slide order, so matching loosely here can't accidentally pick up
+      // the table slide's own "CAMPAIGN PERFORMANCE OVERVIEW" heading first.
+      if (xml.toLowerCase().includes("campaign performance")) {
         chartSlidePath = f;
         chartXml = xml;
         break;
@@ -1050,7 +1059,10 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     for (const path of slidePaths) {
       const xml = await zip.file(path)!.async("string");
       const isTableSlide = xml.includes("CAMPAIGN PERFORMANCE OVERVIEW");
-      const isChartSlide = xml.includes("CAMPAIGN PERFORMANCE");
+      // Case-insensitive for the same reason as the locator above — isTableSlide
+      // is still checked first in the ternary below, so overlap with the table
+      // slide's own heading here is harmless.
+      const isChartSlide = xml.toLowerCase().includes("campaign performance");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
       const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : 0;
       expect(whiteCount).toBe(expected);
@@ -1060,7 +1072,10 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const [cover, campaign1, , , , chart, table] = slideTexts;
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
-    expect(chart).toContain("CAMPAIGN PERFORMANCE");
+    // Case-insensitive: the title is title-case ("[Month] Campaign
+    // Performance") whenever a month name is available, not always the
+    // all-caps fallback.
+    expect(chart.toLowerCase()).toContain("campaign performance");
     expect(table).toContain("CAMPAIGN PERFORMANCE OVERVIEW");
 
     fs.unlinkSync(outPath);

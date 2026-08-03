@@ -88,34 +88,15 @@ function formatIso(iso: string): string {
   return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" }).format(d);
 }
 
-/** "August" for any Date, in the viewer's own local time (not UTC — unlike formatIso above, this describes wall-clock "today", not a stored data date). */
-function formatMonthName(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "long" });
-}
-
-/**
- * Step 1's "what to download" tip — computed fresh from the viewer's local
- * "today" every render, so it's always correct regardless of when the
- * wizard is opened. On the 1st of the month there's no usable "this
- * month's daily data" yet, so the tip points at last month's full range
- * instead; every other day it points at this month so far. Both branches
- * end the range at yesterday rather than today, matching the same
- * "ending yesterday" convention Step 3's weeklyOptions.last7 already uses
- * elsewhere in this wizard — same-day platform data is often still
- * settling, so it's deliberately excluded rather than included and later
- * found to be incomplete.
- */
-function getUploadDateTip(now: Date = new Date()): string {
-  if (now.getDate() === 1) {
-    const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-    const lastMonthName = formatMonthName(lastDayOfPrevMonth);
-    return `Tip: Since today is the 1st of the month, download last month's daily data for your weekly report. Set date range to ${lastMonthName} 1 - ${lastMonthName} ${lastDayOfPrevMonth.getDate()} with Time Increment set to Day.`;
-  }
-
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const yesterdayLabel = `${formatMonthName(yesterday)} ${yesterday.getDate()}`;
-  return `Tip: Download this month's daily data up to yesterday. Set date range to ${formatMonthName(now)} 1 - ${yesterdayLabel} with Time Increment set to Day, or simply select This Month in Meta Ads Manager.`;
-}
+// Step 1's "what to download" tips — static, not day-of-month-dependent.
+// "This Month" never reliably covers a full 7-day weekly period (it's
+// empty on the 1st and still short of 7 days through the 7th), so "Last
+// 30 Days" is the one setting that always works, every day of the month,
+// for either platform.
+const META_UPLOAD_TIP =
+  "Tip: In Meta Ads Manager, set your date range to Last 30 Days and Time Increment to Day before downloading. This works correctly every day of the month and ensures your weekly report always has complete 7-day data.";
+const GOOGLE_UPLOAD_TIP =
+  "Tip: In Google Ads, set your date range to Last 30 days and segment by Day before downloading.";
 
 function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
@@ -622,9 +603,14 @@ export function ReportUploadWizard({
               Meta Ads Manager → Reporting → Time Increment = Day → Export. CSV, TSV, TXT, or Excel
               (.xlsx/.xls) — any delimiter or encoding.
             </p>
-            <p className="mb-2 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
-              {getUploadDateTip()}
-            </p>
+            <div className="mb-2 space-y-2">
+              <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
+                {META_UPLOAD_TIP}
+              </p>
+              <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
+                {GOOGLE_UPLOAD_TIP}
+              </p>
+            </div>
             <input
               type="file"
               accept={ACCEPTED_FILE_TYPES}

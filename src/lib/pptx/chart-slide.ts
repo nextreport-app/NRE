@@ -101,14 +101,16 @@ export function buildChartSlideXml(
   const H = 540;
   const shapes: string[] = [];
 
-  // A Monthly report covers a full calendar month, so "MTD" (month-to-date)
-  // no longer applies — the title instead names the actual month, e.g.
-  // "July Campaign Performance" (title case, not the all-caps MTD/WEEKLY
-  // wording, matching the requested example literally).
-  const chartTitle =
-    chart.reportType === "MONTHLY" && chart.mtdMonthName
-      ? `${chart.mtdMonthName} Campaign Performance`
-      : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
+  // Whenever the actual month name is known, the title names it directly
+  // ("July Campaign Performance") instead of the all-caps MTD/WEEKLY
+  // jargon — clients don't recognize "MTD," but every client understands a
+  // month name. Applies to both Weekly and Monthly reports now (previously
+  // only Monthly); the all-caps text only remains as a fallback for the
+  // rare case a month name isn't available at all (e.g. a zero-data
+  // report).
+  const chartTitle = chart.mtdMonthName
+    ? `${chart.mtdMonthName} Campaign Performance`
+    : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
 
   shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
 
@@ -123,19 +125,45 @@ export function buildChartSlideXml(
   const GAP_TITLE_SUBTITLE = 2;
   const SUBTITLE_H = 24;
 
+  // The clarifying date-range sub-line ("July 27 - August 2, 2026" / "Full
+  // Month — July 2026") sits directly under the title, above the existing
+  // spend/campaign-count subtitle. Purely additive: when periodSubLabel is
+  // empty (no usable date data), headerExtra is 0 and every y-offset below
+  // reduces to exactly the pre-existing layout, so this doesn't move
+  // anything for a slide that has no sub-line to show.
+  const hasSubLabel = chart.periodSubLabel.length > 0;
+  const SUBLABEL_H = 20;
+  const GAP_SUBLABEL_SUBTITLE = 4;
+  const headerExtra = hasSubLabel ? SUBLABEL_H + GAP_SUBLABEL_SUBTITLE : 0;
+
   const n = chart.campaigns.length;
   if (n === 0) {
     // No per-campaign block or spend bar to include — center just the
     // title+subtitle as their own (much smaller) content block.
-    const totalContentHeight = TITLE_H + GAP_TITLE_SUBTITLE + SUBTITLE_H;
+    const totalContentHeight = TITLE_H + GAP_TITLE_SUBTITLE + headerExtra + SUBTITLE_H;
     const contentTop = Math.max(0, (H - totalContentHeight) / 2);
+    const subLabelY0 = contentTop + TITLE_H + GAP_TITLE_SUBTITLE;
     shapes.push(
       textBox({ x: 0, y: contentTop, w: W, h: TITLE_H, text: chartTitle, sizePt: 28, bold: true, colorHex: HEADING_COLOR }),
     );
+    if (hasSubLabel) {
+      shapes.push(
+        textBox({
+          x: 0,
+          y: subLabelY0,
+          w: W,
+          h: SUBLABEL_H,
+          text: chart.periodSubLabel,
+          sizePt: 16,
+          bold: false,
+          colorHex: LABEL_COLOR,
+        }),
+      );
+    }
     shapes.push(
       textBox({
         x: 0,
-        y: contentTop + TITLE_H + GAP_TITLE_SUBTITLE,
+        y: subLabelY0 + headerExtra,
         w: W,
         h: SUBTITLE_H,
         text: subtitleText,
@@ -185,11 +213,12 @@ export function buildChartSlideXml(
   const BAR_H = 8;
 
   const totalContentHeight =
-    TITLE_H + GAP_TITLE_SUBTITLE + SUBTITLE_H + GAP_SUBTITLE_BLOCK + BLOCK_H + GAP_BLOCK_BAR + BAR_H;
+    TITLE_H + GAP_TITLE_SUBTITLE + headerExtra + SUBTITLE_H + GAP_SUBTITLE_BLOCK + BLOCK_H + GAP_BLOCK_BAR + BAR_H;
   const contentTop = Math.max(0, (H - totalContentHeight) / 2);
 
   const titleY = contentTop;
-  const subtitleY = titleY + TITLE_H + GAP_TITLE_SUBTITLE;
+  const subLabelY = titleY + TITLE_H + GAP_TITLE_SUBTITLE;
+  const subtitleY = subLabelY + headerExtra;
   const blockTopY = subtitleY + SUBTITLE_H + GAP_SUBTITLE_BLOCK; // matches "CIRC_Y - 36" below (the name label's own top)
   const CIRC_Y = blockTopY + 36;
   const barY = blockTopY + BLOCK_H + GAP_BLOCK_BAR;
@@ -197,6 +226,20 @@ export function buildChartSlideXml(
   shapes.push(
     textBox({ x: 0, y: titleY, w: W, h: TITLE_H, text: chartTitle, sizePt: 28, bold: true, colorHex: HEADING_COLOR }),
   );
+  if (hasSubLabel) {
+    shapes.push(
+      textBox({
+        x: 0,
+        y: subLabelY,
+        w: W,
+        h: SUBLABEL_H,
+        text: chart.periodSubLabel,
+        sizePt: 16,
+        bold: false,
+        colorHex: LABEL_COLOR,
+      }),
+    );
+  }
   shapes.push(
     textBox({
       x: 0,

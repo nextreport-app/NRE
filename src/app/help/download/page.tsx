@@ -27,7 +27,7 @@ const META_STEPS: Step[] = [
   {
     icon: "📅",
     title: "Set your date range",
-    body: "Click the date picker in the top right. Select This Month for MTD data or Custom Range for a specific week. Always use Day as the time increment — not Weekly or Monthly.",
+    body: "Click the date picker in the top right. Select Last 30 Days — this works correctly every day of the month and ensures your weekly report always has complete 7-day data. Always use Day as the time increment — not Weekly or Monthly.",
   },
   {
     icon: "⚙️",
@@ -60,7 +60,7 @@ const GOOGLE_STEPS: Step[] = [
   {
     icon: "📅",
     title: "Set date range",
-    body: "Click the date range selector in the top right. Choose This month or a custom date range. Make sure segmentation is set to Day.",
+    body: "Click the date range selector in the top right. Select Last 30 days. Make sure segmentation is set to Day.",
   },
   {
     icon: "⬇️",

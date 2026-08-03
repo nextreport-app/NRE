@@ -125,10 +125,18 @@ export interface ChartSlideData {
   campaigns: ChartCampaignData[];
   totalAllSpend: number;
   activeCampaignCount: number;
-  /** Drives the chart slide's title for Monthly reports — see mtdMonthName. */
+  /** Drives the chart slide's title — see mtdMonthName. */
   reportType: ReportType;
-  /** Calendar month name of the MTD data (e.g. "July"), from mtdRow.monthName. For a Monthly report, the chart title reads "[mtdMonthName] Campaign Performance" instead of "MTD CAMPAIGN PERFORMANCE" — MTD ("month-to-date") doesn't apply once the report covers a full month. */
+  /** Calendar month name of the MTD data (e.g. "July"), from mtdRow.monthName. Whenever available, the chart title reads "[mtdMonthName] Campaign Performance" instead of the all-caps "MTD/WEEKLY CAMPAIGN PERFORMANCE" fallback — "MTD" is jargon clients don't recognize, and the actual month name reads clearly regardless of report type. */
   mtdMonthName: string | null;
+  /**
+   * The clarifying sub-line shown directly under the chart title — the
+   * literal date span for a Weekly report ("July 27 - August 2, 2026"), or
+   * "Full Month — [Month] [Year]" for a Monthly report. Empty string when
+   * there's no usable date data (e.g. a paused/zero-data report) — the chart
+   * slide renders no sub-line at all in that case, rather than a blank gap.
+   */
+  periodSubLabel: string;
 }
 
 export interface ResultColumnData {
@@ -877,6 +885,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
 
+  // globalWeekEnd covers the trailing-7-day (or custom) window for Weekly,
+  // or the full MTD span for Monthly (see globalWeekStart/globalWeekEnd's
+  // own comment above) — either way its year is the right one for this
+  // sub-line, same "end date's year is the current one" convention already
+  // used for the MTD table row above.
+  const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
+  const periodSubLabel =
+    reportType === "MONTHLY"
+      ? mtdRow.monthName && periodYear
+        ? `Full Month — ${mtdRow.monthName} ${periodYear}`
+        : ""
+      : globalWeekDateRange && periodYear
+        ? `${globalWeekDateRange}, ${periodYear}`
+        : "";
+
   const chart: ChartSlideData = {
     periodLabel: "MTD",
     campaigns: chartCampaigns,
@@ -884,6 +907,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
     reportType,
     mtdMonthName: mtdRow.monthName,
+    periodSubLabel,
   };
 
   return {

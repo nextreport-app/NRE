@@ -40,6 +40,7 @@ function buildChart(campaigns: ChartCampaignData[], overrides: Partial<ChartSlid
     activeCampaignCount: campaigns.filter((c) => c.isActive).length,
     reportType: "WEEKLY",
     mtdMonthName: null,
+    periodSubLabel: "",
     ...overrides,
   };
 }
@@ -133,10 +134,10 @@ describe("buildChartSlideXml — Fix 3: per-campaign donut ring colors", () => {
   });
 });
 
-describe("buildChartSlideXml — Fix 2: Monthly report chart title", () => {
-  it("keeps 'MTD CAMPAIGN PERFORMANCE' for a Weekly report", () => {
+describe("buildChartSlideXml — month-name chart title (Weekly and Monthly alike)", () => {
+  it("uses '[Month] Campaign Performance' for a Weekly report when a month name is available", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "WEEKLY", mtdMonthName: "July" }), "$", BACKGROUND);
-    expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
+    expect(chartTitleText(xml)).toBe("July Campaign Performance");
   });
 
   it("uses '[Month] Campaign Performance' for a Monthly report", () => {
@@ -144,9 +145,45 @@ describe("buildChartSlideXml — Fix 2: Monthly report chart title", () => {
     expect(chartTitleText(xml)).toBe("July Campaign Performance");
   });
 
+  it("falls back to 'MTD CAMPAIGN PERFORMANCE' for a Weekly report with no month name available", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "WEEKLY", mtdMonthName: null }), "$", BACKGROUND);
+    expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
+  });
+
   it("falls back to 'MTD CAMPAIGN PERFORMANCE' for a Monthly report with no month name available", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: null }), "$", BACKGROUND);
     expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
+  });
+});
+
+describe("buildChartSlideXml — Fix 2: date-range sub-line under the title", () => {
+  function subLabelText(xml: string): string | null {
+    const matches = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)];
+    return matches[1]?.[1] ?? null; // [0] = title, [1] = sub-line when present
+  }
+
+  it("renders the sub-line directly after the title when periodSubLabel is set", () => {
+    const xml = buildChartSlideXml(
+      buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "July 27 - August 2, 2026" }),
+      "$",
+      BACKGROUND,
+    );
+    expect(subLabelText(xml)).toBe("July 27 - August 2, 2026");
+  });
+
+  it("renders a 'Full Month —' sub-line for a Monthly report", () => {
+    const xml = buildChartSlideXml(
+      buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: "July", periodSubLabel: "Full Month — July 2026" }),
+      "$",
+      BACKGROUND,
+    );
+    expect(subLabelText(xml)).toBe("Full Month — July 2026");
+  });
+
+  it("renders no sub-line at all when periodSubLabel is empty, same as before this fix", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { periodSubLabel: "" }), "$", BACKGROUND);
+    // The 2nd <a:t> is the pre-existing spend/campaign-count subtitle, not a blank sub-line.
+    expect(subLabelText(xml)).toContain("Total MTD Spend");
   });
 });
 
