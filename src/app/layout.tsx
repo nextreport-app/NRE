@@ -31,9 +31,12 @@ export const metadata: Metadata = {
   description:
     "The next report you send will be fast, smooth, and done before you know it.",
   icons: {
-    icon: "/favicon-large.png",
-    shortcut: "/favicon-large.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon-32.png",
+    apple: "/favicon-large.png",
   },
 };
 
