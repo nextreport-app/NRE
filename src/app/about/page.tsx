@@ -94,18 +94,13 @@ export default async function AboutPage() {
                   built for Western markets, priced in dollars, and designed for enterprise teams. None of them
                   understood how Indian agencies actually work.
                 </p>
-                <p>So I built NextReport.</p>
                 <p>
-                  Starting from a small city in Uttar Pradesh, I built a reporting tool that understands Indian
-                  agencies — INR pricing, the platforms Indian clients actually use, and a workflow that fits
-                  how agency teams actually operate. What used to take me 30 minutes to complete 1 report, now
-                  takes under 2 minutes.
+                  So I built NextReport — and today we are helping digital agencies across India save hours
+                  every week on reporting, so they can spend more time on what actually matters: growing their
+                  clients results.
                 </p>
-                <p className="pt-2 font-medium text-white">
-                  — Mohit Sharma, Founder
-                  <br />
-                  Ghaziabad, Uttar Pradesh
-                </p>
+                <p>What used to take hours now takes minutes.</p>
+                <p className="pt-2 font-medium text-white">— Mohit Sharma, Founder, NextReport</p>
               </div>
             </div>
             <StoryIllustration />
