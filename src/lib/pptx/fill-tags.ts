@@ -11,6 +11,8 @@ import {
   cloneShapeAsTag,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
+  removeShapeContaining,
+  removeShapesInRegion,
   replaceLiteralText,
   replaceTagRun,
   replaceTagRunWithSuffix,
@@ -20,6 +22,8 @@ import {
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
+import { buildDynamicCardShapes } from "./dynamic-cards";
+import { resetShapeIdCounter } from "./shapes";
 
 // ACCOUNT_NAME shape (ppt/slides/slide1.xml, cover template): cx="5300000"
 // lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
@@ -170,6 +174,21 @@ function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
   return out;
 }
 
+// The 7 fixed metric-card tags the dynamic path strips (see
+// ooxml.ts's removeShapeContaining) before inserting a generated grid in
+// their place — RESULT_LABEL/COST_LABEL are nested inside the
+// METRIC_RESULTS/METRIC_CPR shapes respectively, so removing those two also
+// removes them; nothing separately targets RESULT_LABEL/COST_LABEL here.
+const FIXED_METRIC_CARD_TAGS = [
+  "{{METRIC_SPEND}}",
+  "{{METRIC_REACH}}",
+  "{{METRIC_IMPRESSIONS}}",
+  "{{METRIC_RESULTS}}",
+  "{{METRIC_CTR}}",
+  "{{METRIC_CPR}}",
+  "{{METRIC_CPC}}",
+];
+
 export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
   slide: SlideData,
@@ -190,28 +209,67 @@ export function buildCampaignOrAdSetSlideXml(
   // delivery-status column to judge it from.
   const statusSuffix = slide.statusIndicator ? `  (${slide.statusIndicator})` : null;
 
-  let xml = fillTags(
-    template.xml,
-    {
-      RESULT_LABEL: slide.resultLabel,
-      COST_LABEL: slide.costLabel,
-      METRIC_SPEND: slide.metrics.spend,
-      METRIC_REACH: slide.metrics.reach,
-      METRIC_IMPRESSIONS: slide.metrics.impressions,
-      METRIC_RESULTS: slide.metrics.results,
-      METRIC_CTR: slide.metrics.ctr,
-      METRIC_CPR: slide.metrics.cpr,
-      METRIC_CPC: slide.metrics.cpc,
-      DATE_RANGE: slide.dateRangeLine,
-      CAMPAIGN_SUMMARY: ai.summary,
-      KEY_INSIGHTS: ai.insights,
-    },
-    {
-      CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
-      KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
-    },
-  );
-  xml = applyGoogleAdsCardLabels(xml, platform);
+  const useDynamicCards = !!slide.dynamicMetrics && slide.dynamicMetrics.length > 0;
+
+  let xml: string;
+  if (useDynamicCards) {
+    // Dynamic metric dictionary path (Metric Preview wizard step) — the
+    // fixed 7-field cards are replaced with a generated grid sized to the
+    // selected metric count. DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS live
+    // in a separate, untouched region of the same template (the AI-copy
+    // column) and still go through the normal tag-fill.
+    xml = fillTags(
+      template.xml,
+      {
+        DATE_RANGE: slide.dateRangeLine,
+        CAMPAIGN_SUMMARY: ai.summary,
+        KEY_INSIGHTS: ai.insights,
+      },
+      {
+        CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+        KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+      },
+    );
+    for (const tag of FIXED_METRIC_CARD_TAGS) xml = removeShapeContaining(xml, tag);
+    // The template also has an untagged decorative "ghost" shape (no
+    // {{TAG}} text at all) sitting in the same region — see
+    // ooxml.ts's removeShapesInRegion doc comment.
+    xml = removeShapesInRegion(xml, { xMaxPt: 511, yMinPt: 95, yMaxPt: 495 });
+
+    // Shape ids only need to be unique within this one slide, but the
+    // module-global counter (shared with chart-slide.ts) starts low — reset
+    // it above whatever ids remain in the template after stripping, or new
+    // cards would collide with the template's own shape ids.
+    const existingIds = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map((m) => Number(m[1]));
+    resetShapeIdCounter((existingIds.length ? Math.max(...existingIds) : 1) + 1);
+
+    const cardShapes = buildDynamicCardShapes(slide.dynamicMetrics!.map((m) => ({ label: m.label, value: m.value })));
+    for (const shape of cardShapes) xml = insertShapeBeforeSpTreeClose(xml, shape);
+  } else {
+    xml = fillTags(
+      template.xml,
+      {
+        RESULT_LABEL: slide.resultLabel,
+        COST_LABEL: slide.costLabel,
+        METRIC_SPEND: slide.metrics.spend,
+        METRIC_REACH: slide.metrics.reach,
+        METRIC_IMPRESSIONS: slide.metrics.impressions,
+        METRIC_RESULTS: slide.metrics.results,
+        METRIC_CTR: slide.metrics.ctr,
+        METRIC_CPR: slide.metrics.cpr,
+        METRIC_CPC: slide.metrics.cpc,
+        DATE_RANGE: slide.dateRangeLine,
+        CAMPAIGN_SUMMARY: ai.summary,
+        KEY_INSIGHTS: ai.insights,
+      },
+      {
+        CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+        KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+      },
+    );
+    xml = applyGoogleAdsCardLabels(xml, platform);
+  }
+
   const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
   xml = replaceTagRunWithSuffix(
     xml,

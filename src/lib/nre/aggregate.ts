@@ -252,6 +252,16 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
 export interface SplitMtdDailyResult {
   weeklyRows: AggRow[];
   mtdRows: AggRow[];
+  /**
+   * The same weekly/MTD row populations as weeklyRows/mtdRows, but before
+   * aggregateRows collapses them and drops each row's `_raw` — additive
+   * passthrough for the dynamic metric dictionary system
+   * (dynamic-metrics.ts), which needs the original CSV column values
+   * aggregateRows never keeps. Nothing else reads these; existing callers
+   * that only destructure weeklyRows/mtdRows are unaffected.
+   */
+  weeklyRawRows: NreRow[];
+  mtdRawRows: NreRow[];
 }
 
 export interface SplitMtdDailyOptions {
@@ -314,5 +324,5 @@ export function splitMtdDaily(
   });
   const mtdRows = aggregateRows(mtdRaw);
 
-  return { weeklyRows, mtdRows };
+  return { weeklyRows, mtdRows, weeklyRawRows: weeklyRaw, mtdRawRows: mtdRaw };
 }

@@ -59,6 +59,42 @@ export function ellipse(opts: EllipseOptions): string {
   );
 }
 
+export interface FlatCardOptions {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fillHex: string;
+  strokeHex: string;
+  strokeWidthPt: number;
+  /** Corner radius in points — converted to OOXML's roundRect "adj" guide (a percentage of the shorter side, 0-50000 scale). */
+  cornerRadiusPt: number;
+}
+
+/**
+ * A simplified flat card for the dynamic metric dictionary system's PPT
+ * cards — roundRect geometry with a solid fill and a thin stroke, no
+ * gradient/icon/shadow (see report-upload-wizard.tsx's Metric Preview step
+ * doc comment for why: replicating the legacy template cards' custGeom icon
+ * badges for an arbitrary card count was judged not worth the risk/effort,
+ * a decision confirmed with the product owner). `rectangle()` above always
+ * emits a plain `rect` with no stroke, so this is a new builder rather than
+ * an extension of it.
+ */
+export function flatCard(opts: FlatCardOptions): string {
+  const id = nextShapeId();
+  const shorterSidePt = Math.min(opts.w, opts.h);
+  const adj = shorterSidePt > 0 ? Math.round((opts.cornerRadiusPt / shorterSidePt) * 100000) : 0;
+  return (
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="MetricCard ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${ptToEmu(opts.x)}" y="${ptToEmu(opts.y)}"/><a:ext cx="${ptToEmu(opts.w)}" cy="${ptToEmu(opts.h)}"/></a:xfrm>` +
+    `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${adj}"/></a:avLst></a:prstGeom>` +
+    `<a:solidFill><a:srgbClr val="${opts.fillHex}"/></a:solidFill>` +
+    `<a:ln w="${ptToEmu(opts.strokeWidthPt)}"><a:solidFill><a:srgbClr val="${opts.strokeHex}"/></a:solidFill></a:ln></p:spPr>` +
+    `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`
+  );
+}
+
 export interface BackgroundImageOptions {
   relId: string;
   blipXml: string;

@@ -268,3 +268,67 @@ describe("buildCampaignOrAdSetSlideXml — Google Ads metric card retexting", ()
     expect(xml).not.toContain("(Ad Set)");
   });
 });
+
+describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", () => {
+  it("uses the fixed 7-field card tags when dynamicMetrics is absent (default makeCampaignSlide fixture)", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Search"));
+    expect(xml).toContain("$100");
+    expect(xml).toContain("1,000");
+    // The template's own static "AD SPEND"/"REACH" card labels are untouched.
+    expect(xml).toContain("AD SPEND");
+    expect(xml).toContain("REACH");
+  });
+
+  it("replaces the fixed cards with a generated grid when dynamicMetrics is present", () => {
+    const slide = {
+      ...makeCampaignSlide("Shoes - Search"),
+      dynamicMetrics: [
+        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521" },
+        { key: "reach", label: "REACH", format: "number" as const, value: "128,400" },
+        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "310,900" },
+        { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, value: "88" },
+      ],
+    };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).toContain("$4,521");
+    expect(xml).toContain("128,400");
+    expect(xml).toContain("WEBSITE LEADS");
+    expect(xml).toContain("88");
+    // The old fixed-card values from the slide's `metrics` field never
+    // render on the dynamic path.
+    expect(xml).not.toContain("$100");
+    expect(xml).not.toContain(">1,000<");
+  });
+
+  it("still fills DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS (the untouched AI-copy column) on the dynamic path", () => {
+    const slide = {
+      ...makeCampaignSlide("Shoes - Search"),
+      dynamicMetrics: [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521" }],
+    };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary: "A real summary.", insights: "Real insights." });
+    expect(xml).toContain("A real summary.");
+    expect(xml).toContain("Real insights.");
+    expect(xml).toContain("Jul 13 - Jul 19");
+  });
+
+  it("produces well-formed XML (balanced shape tags) on the dynamic path", () => {
+    const slide = {
+      ...makeCampaignSlide("Shoes - Search"),
+      dynamicMetrics: [
+        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$1" },
+        { key: "reach", label: "REACH", format: "number" as const, value: "1" },
+        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "1" },
+        { key: "results", label: "RESULTS", format: "number" as const, value: "1" },
+        { key: "ctr", label: "CTR", format: "percentage" as const, value: "1%" },
+        { key: "cpc", label: "CPC", format: "currency" as const, value: "$1" },
+      ],
+    };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    const openSp = (xml.match(/<p:sp>/g) || []).length;
+    const closeSp = (xml.match(/<\/p:sp>/g) || []).length;
+    const openGrp = (xml.match(/<p:grpSp>/g) || []).length;
+    const closeGrp = (xml.match(/<\/p:grpSp>/g) || []).length;
+    expect(openSp).toBe(closeSp);
+    expect(openGrp).toBe(closeGrp);
+  });
+});

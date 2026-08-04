@@ -36,7 +36,7 @@ import {
   type DeliveryStatusIndicator,
 } from "./delivery-status";
 import { getDateRangeShortLabel, formatDateUS, getMonthName, getMonthYearLabel, parseDate } from "./dates";
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
   getGroupedResultDisplay,
@@ -45,6 +45,16 @@ import {
   getSingleRowResultDisplay,
 } from "./objective";
 import type { MetricRow } from "./types";
+import type { SelectedMetric } from "./metric-selector";
+import { aggregateDynamicMetrics } from "./dynamic-metrics";
+
+/** One dynamically-selected metric's resolved display value for a single campaign/ad-set slide — see BuildReportDataInput.selectedMetrics. */
+export interface DynamicMetricValue {
+  key: string;
+  label: string;
+  format: SelectedMetric["format"];
+  value: string;
+}
 
 // ─────────────────────────── Public types ──────────────────────────────────
 
@@ -89,6 +99,15 @@ export interface CampaignSlideData {
   ai: AiContext;
   /** Small "Paused"/"Inactive" tag next to the campaign name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
+  /**
+   * Present only when BuildReportDataInput.selectedMetrics was passed —
+   * the dynamic metric dictionary system's per-metric values for this
+   * slide, in the same order as selectedMetrics (the wizard's chosen card
+   * order). undefined means "use the fixed 7-field `metrics`/RESULT_LABEL/
+   * COST_LABEL card layout", exactly today's behavior — see
+   * pptx/fill-tags.ts's buildCampaignOrAdSetSlideXml.
+   */
+  dynamicMetrics?: DynamicMetricValue[];
 }
 
 export interface AdSetSlideData {
@@ -103,6 +122,8 @@ export interface AdSetSlideData {
   ai: AiContext;
   /** Small "Paused"/"Inactive" tag next to the ad set name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
+  /** See CampaignSlideData.dynamicMetrics. */
+  dynamicMetrics?: DynamicMetricValue[];
 }
 
 export type SlideData = CampaignSlideData | AdSetSlideData;
@@ -273,6 +294,14 @@ export interface BuildReportDataInput {
   weeklyRange?: DateRangeIso;
   /** See the ReportType doc comment above. Defaults to "WEEKLY". */
   reportType?: ReportType;
+  /**
+   * The Metric Preview wizard step's chosen metric set (dynamic metric
+   * dictionary system) — `undefined`/omitted (every existing caller today)
+   * keeps campaign/ad-set slides on the fixed 7-field card layout exactly
+   * as before. When present, drives CampaignSlideData/AdSetSlideData's
+   * `dynamicMetrics`, in this same array's order.
+   */
+  selectedMetrics?: SelectedMetric[];
   now?: Date;
 }
 
@@ -475,6 +504,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     selectedAdSets,
     weeklyRange,
     reportType = "WEEKLY",
+    selectedMetrics,
     now = new Date(),
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
@@ -506,6 +536,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // directly, regardless of reportType.
   const primaryRows: AggRow[] = isMonthlyReport ? mtdRows : weeklyRows;
   const isPaused = primaryRows.length === 0;
+  // Same weekly-vs-MTD choice as primaryRows, but the pre-aggregation raw
+  // rows (still carrying _raw) — dynamic-metrics.ts's only way to read a
+  // dictionary metric's original CSV column, since aggregateRows drops
+  // _raw. Grouped below (campaignRawGroups/adSetRawGroups) the same way
+  // campaignGroups/individual AggRow rows already are for the fixed metrics.
+  const primaryRawRows: NreRow[] = isMonthlyReport ? (split?.mtdRawRows ?? []) : (split?.weeklyRawRows ?? []);
 
   // Whether the CSV actually has delivery-status data anywhere at all — a
   // file without that column (the common case) falls back to the original
@@ -655,6 +691,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignGroups[name].push(row);
   });
 
+  // Raw-row counterparts of campaignGroups (by campaign) and a second
+  // grouping by campaign+ad-set — only built/used when selectedMetrics was
+  // actually passed in, so this costs nothing on the existing fixed-card
+  // path.
+  const campaignRawGroups: Record<string, NreRow[]> = {};
+  const adSetRawGroups: Record<string, NreRow[]> = {};
+  if (selectedMetrics && selectedMetrics.length > 0) {
+    primaryRawRows.forEach((row) => {
+      const name = String(row.campaign_name || "Unknown Campaign").trim();
+      (campaignRawGroups[name] ??= []).push(row);
+      const key = adSetKey(name, String(row.ad_set_name || "").trim());
+      (adSetRawGroups[key] ??= []).push(row);
+    });
+  }
+
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
   // is only worth generating if the ad set's TOTAL MTD spend clears the
   // threshold below, not just its spend within the (possibly much smaller)
@@ -734,6 +785,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
     };
 
+    let dynamicMetrics: DynamicMetricValue[] | undefined;
+    if (selectedMetrics && selectedMetrics.length > 0) {
+      const rawTotals = aggregateDynamicMetrics(campaignRawGroups[campaignName] ?? [], selectedMetrics);
+      dynamicMetrics = selectedMetrics.map((m) => ({
+        key: m.key,
+        label: m.label,
+        format: m.format,
+        value: formatMetricValue(rawTotals[m.key] ?? 0, m.format, currencySymbol),
+      }));
+    }
+
     return {
       kind: "campaign",
       campaignName,
@@ -743,6 +805,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
       statusIndicator,
+      dynamicMetrics,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
         dateRange: globalWeekDateRange,
@@ -808,6 +871,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
+    let dynamicMetrics: DynamicMetricValue[] | undefined;
+    if (selectedMetrics && selectedMetrics.length > 0) {
+      const rawTotals = aggregateDynamicMetrics(adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [], selectedMetrics);
+      dynamicMetrics = selectedMetrics.map((m) => ({
+        key: m.key,
+        label: m.label,
+        format: m.format,
+        value: formatMetricValue(rawTotals[m.key] ?? 0, m.format, currencySymbol),
+      }));
+    }
+
     adSetSlides.push({
       kind: "adset",
       campaignName,
@@ -818,6 +892,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
       statusIndicator,
+      dynamicMetrics,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         dateRange: globalWeekDateRange,

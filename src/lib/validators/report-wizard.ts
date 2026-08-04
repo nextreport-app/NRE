@@ -46,6 +46,23 @@ export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY"]);
 // the wizard's user has manually overridden the detected platform.
 export const platformSchema = z.enum(["META", "GOOGLE"]);
 
+// The Metric Preview wizard step's chosen metric set (dynamic metric
+// dictionary system — see lib/nre/metric-selector.ts's SelectedMetric).
+// Absent/undefined (an older client, or a request that never sends it)
+// means the fixed 7-field card layout — see report-data.ts's
+// BuildReportDataInput.selectedMetrics doc comment. Not persisted anywhere;
+// purely a per-request wizard parameter.
+export const selectedMetricsSchema = z.array(
+  z.object({
+    key: z.string(),
+    label: z.string(),
+    format: z.enum(["currency", "number", "percentage", "duration", "ratio", "text"]),
+    type: z.enum(["primary", "secondary"]),
+    priority: z.number(),
+    csvName: z.string(),
+  }),
+);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

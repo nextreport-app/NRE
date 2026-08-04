@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "../format";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "../format";
 
 describe("parseCellNum", () => {
   it("strips commas, currency symbols, percent signs and whitespace", () => {
@@ -63,5 +63,20 @@ describe("fmtPercent", () => {
   it("formats to 2 decimals with a trailing %", () => {
     expect(fmtPercent(3.456)).toBe("3.46%");
     expect(fmtPercent(0)).toBe("0.00%");
+  });
+});
+
+describe("formatMetricValue", () => {
+  it("comma-groups currency values above 1,000 (unlike bare fmtCurrency2dp)", () => {
+    expect(formatMetricValue(1350, "currency", "$")).toBe("$1,350.00");
+    expect(formatMetricValue(221.69, "currency", "$")).toBe("$221.69");
+  });
+
+  it("dispatches number/percentage/duration/ratio/text to their own formatters", () => {
+    expect(formatMetricValue(8400, "number", "$")).toBe("8,400");
+    expect(formatMetricValue(1.955, "percentage", "$")).toBe("1.96%");
+    expect(formatMetricValue(75, "duration", "$")).toBe("1m 15s");
+    expect(formatMetricValue(2.5, "ratio", "$")).toBe("2.50x");
+    expect(formatMetricValue("Search Campaign", "text", "$")).toBe("Search Campaign");
   });
 });

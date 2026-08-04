@@ -114,3 +114,33 @@ describe("buildGoogleReportData", () => {
     expect(data.campaignSlides[0].metrics.spend).toBe("$50");
   });
 });
+
+describe("buildGoogleReportData — dynamic metric dictionary system (selectedMetrics)", () => {
+  const mtdDailyRows = rows(
+    ["Shoes - Search", "Prospecting", "13-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
+    ["Shoes - Search", "Prospecting", "14-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
+  );
+
+  it("leaves dynamicMetrics undefined when selectedMetrics is omitted", () => {
+    const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
+    expect(data.campaignSlides[0].dynamicMetrics).toBeUndefined();
+  });
+
+  it("populates dynamicMetrics from the Google dictionary's own csvNames, summed across rows", () => {
+    const data = buildGoogleReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      monthlyBudget: null,
+      mtdDailyRows,
+      selectedMetrics: [
+        { key: "cost", label: "COST", format: "currency", type: "primary", priority: 100, csvName: "cost" },
+        { key: "clicks", label: "CLICKS", format: "number", type: "primary", priority: 90, csvName: "clicks" },
+      ],
+    });
+    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
+    expect(dynamicMetrics).toBeDefined();
+    expect(dynamicMetrics!.map((m) => m.key)).toEqual(["cost", "clicks"]);
+    expect(dynamicMetrics![0].value).toBe("$100.00");
+    expect(dynamicMetrics![1].value).toBe("40");
+  });
+});
