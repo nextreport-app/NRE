@@ -60,6 +60,15 @@ export const selectedMetricsSchema = z.array(
     type: z.enum(["primary", "secondary"]),
     priority: z.number(),
     csvName: z.string(),
+    // Per-unit-cost recompute metadata (see dynamic-metrics.ts's
+    // aggregateDynamicMetrics) — MUST be declared here or zod silently
+    // strips it during parsing, which would break Fix 3's cost-per-result-
+    // style aggregation for every real request (this schema is what
+    // actually validates the wizard's selectedMetrics payload over the
+    // wire; direct buildReportData()/selectMetrics() calls in tests don't
+    // go through it, which is why that stripping wouldn't show up there).
+    perUnitOf: z.string().optional(),
+    perUnitScale: z.number().optional(),
   }),
 );
 

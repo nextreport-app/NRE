@@ -20,7 +20,7 @@
  * of these is a real, flagged gap, not a silent one.
  */
 
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { getDateRangeShortLabel, formatDateUS, parseDate } from "./dates";
 import { budgetSummaryLine } from "./health";
 import type { GoogleRow } from "./google-columns";
@@ -31,14 +31,14 @@ import type {
   ChartCampaignData,
   ChartSlideData,
   CoverData,
-  DynamicMetricValue,
   ReportData,
   SlideMetrics,
   TableHeaderLabels,
   TableRowData,
 } from "./report-data";
 import type { SelectedMetric } from "./metric-selector";
-import { aggregateDynamicMetrics } from "./dynamic-metrics";
+import { getAvailableMetrics } from "./metric-selector";
+import { buildDynamicMetricSlides, type DynamicMetricValue } from "./dynamic-metrics";
 
 export const GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"] as const;
 
@@ -56,20 +56,15 @@ export interface BuildGoogleReportDataInput {
   now?: Date;
 }
 
-/** Builds a dynamicMetrics array for one campaign/ad-group's raw rows, in selectedMetrics' own order — or undefined when no selection was made (fixed-card path, unchanged). */
+/** Builds one or more slides' worth of dynamicMetrics for one campaign/ad-group's raw rows — see dynamic-metrics.ts's buildDynamicMetricSlides for the >8-metric splitting/padding rule. Empty array when no selection was made (fixed-card path, unchanged). */
 function buildDynamicMetrics(
   rawRows: GoogleRow[],
   selectedMetrics: SelectedMetric[] | undefined,
+  paddingPool: SelectedMetric[],
   currencySymbol: string,
-): DynamicMetricValue[] | undefined {
-  if (!selectedMetrics || selectedMetrics.length === 0) return undefined;
-  const rawTotals = aggregateDynamicMetrics(rawRows, selectedMetrics);
-  return selectedMetrics.map((m) => ({
-    key: m.key,
-    label: m.label,
-    format: m.format,
-    value: formatMetricValue(rawTotals[m.key] ?? 0, m.format, currencySymbol),
-  }));
+): DynamicMetricValue[][] {
+  if (!selectedMetrics || selectedMetrics.length === 0) return [];
+  return buildDynamicMetricSlides(rawRows, selectedMetrics, paddingPool, "google", currencySymbol);
 }
 
 interface GoogleGroupTotals {
@@ -214,6 +209,14 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
   const campaigns = [...campaignGroups.values()];
   const adGroups = [...adGroupGroups.values()];
 
+  // See report-data.ts's dynamicMetricsPaddingPool — the account's full
+  // detected-metric candidate pool (no objective filter), used only to pad
+  // a campaign/ad-group's final dynamic-card slide up to the 4-card
+  // minimum when selectedMetrics splits across multiple slides.
+  const dynamicMetricsPaddingPool: SelectedMetric[] = wantsDynamicMetrics
+    ? getAvailableMetrics(Object.keys(mtdDailyRows[0]?._raw ?? {}), "google")
+    : [];
+
   let globalStart = "";
   let globalEnd = "";
   campaigns.forEach((g) => {
@@ -269,32 +272,51 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
     };
   }
 
-  const campaignSlides: CampaignSlideData[] = campaigns.map((g) => ({
-    kind: "campaign",
-    campaignName: g.name,
-    resultLabel: RESULT_LABEL,
-    costLabel: COST_LABEL,
-    metrics: buildMetrics(g, currencySymbol),
-    dateRangeLine: dateRangeLabel,
-    avgFreq: 0,
-    ai: buildAiContext(g, `${g.name} (combined ${adGroups.filter((a) => a.name === g.name).length || 1} ad groups)`, dateRangeLabel, currencySymbol),
-    statusIndicator: null,
-    dynamicMetrics: buildDynamicMetrics(campaignRawGroups.get(g.name) ?? [], selectedMetrics, currencySymbol),
-  }));
+  const campaignSlides: CampaignSlideData[] = campaigns.flatMap((g) => {
+    const baseSlide = {
+      kind: "campaign" as const,
+      resultLabel: RESULT_LABEL,
+      costLabel: COST_LABEL,
+      metrics: buildMetrics(g, currencySymbol),
+      dateRangeLine: dateRangeLabel,
+      avgFreq: 0,
+      ai: buildAiContext(g, `${g.name} (combined ${adGroups.filter((a) => a.name === g.name).length || 1} ad groups)`, dateRangeLabel, currencySymbol),
+      statusIndicator: null,
+    };
+    const dynamicMetricsSlides = buildDynamicMetrics(campaignRawGroups.get(g.name) ?? [], selectedMetrics, dynamicMetricsPaddingPool, currencySymbol);
+    if (dynamicMetricsSlides.length <= 1) {
+      return [{ ...baseSlide, campaignName: g.name, dynamicMetrics: dynamicMetricsSlides[0] }];
+    }
+    return dynamicMetricsSlides.map((dynamicMetrics, i) => ({
+      ...baseSlide,
+      campaignName: i === 0 ? g.name : `${g.name} (continued)`,
+      dynamicMetrics,
+    }));
+  });
 
-  const adSetSlides: AdSetSlideData[] = adGroups.map((g) => ({
-    kind: "adset",
-    campaignName: g.name,
-    adSetName: g.adGroupName ?? "",
-    resultLabel: RESULT_LABEL,
-    costLabel: COST_LABEL,
-    metrics: buildMetrics(g, currencySymbol),
-    dateRangeLine: dateRangeLabel,
-    rowFreq: 0,
-    ai: buildAiContext(g, `${g.name} / ${g.adGroupName ?? ""}`, dateRangeLabel, currencySymbol),
-    statusIndicator: null,
-    dynamicMetrics: buildDynamicMetrics(adGroupRawGroups.get(`${g.name} ${g.adGroupName ?? ""}`) ?? [], selectedMetrics, currencySymbol),
-  }));
+  const adSetSlides: AdSetSlideData[] = adGroups.flatMap((g) => {
+    const adSetName = g.adGroupName ?? "";
+    const baseSlide = {
+      kind: "adset" as const,
+      campaignName: g.name,
+      resultLabel: RESULT_LABEL,
+      costLabel: COST_LABEL,
+      metrics: buildMetrics(g, currencySymbol),
+      dateRangeLine: dateRangeLabel,
+      rowFreq: 0,
+      ai: buildAiContext(g, `${g.name} / ${adSetName}`, dateRangeLabel, currencySymbol),
+      statusIndicator: null,
+    };
+    const dynamicMetricsSlides = buildDynamicMetrics(adGroupRawGroups.get(`${g.name} ${adSetName}`) ?? [], selectedMetrics, dynamicMetricsPaddingPool, currencySymbol);
+    if (dynamicMetricsSlides.length <= 1) {
+      return [{ ...baseSlide, adSetName, dynamicMetrics: dynamicMetricsSlides[0] }];
+    }
+    return dynamicMetricsSlides.map((dynamicMetrics, i) => ({
+      ...baseSlide,
+      adSetName: i === 0 ? adSetName : `${adSetName} (continued)`,
+      dynamicMetrics,
+    }));
+  });
 
   const chartCampaigns: ChartCampaignData[] = campaigns.map((g) => ({
     name: g.name,

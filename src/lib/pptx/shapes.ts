@@ -15,7 +15,8 @@ export function resetShapeIdCounter(start = 2): void {
   shapeIdCounter = start;
 }
 
-function nextShapeId(): number {
+/** Exported for dynamic-cards.ts's metric-icon `<p:pic>` shapes, which need the same shared, slide-scoped id sequence every other from-scratch shape here already uses (kept unique via resetShapeIdCounter, called once per slide before any shapes.ts builder runs — see fill-tags.ts). */
+export function nextShapeId(): number {
   shapeIdCounter += 1;
   return shapeIdCounter;
 }

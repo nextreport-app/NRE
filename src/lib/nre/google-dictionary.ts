@@ -27,6 +27,10 @@ export interface GoogleMetricDefinition {
   priority?: number;
   /** One-line legend explanation. Present on primary/secondary entries only. */
   explanation?: string;
+  /** See MetaMetricDefinition.perUnitOf — same "never sum a per-unit cost" fix, Google's own key vocabulary. */
+  perUnitOf?: string;
+  /** See MetaMetricDefinition.perUnitScale. */
+  perUnitScale?: number;
 }
 
 export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
@@ -128,6 +132,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     format: "currency",
     priority: 80,
     explanation: "Average cost per click",
+    perUnitOf: "clicks",
   },
   {
     csvName: "average cpc",
@@ -137,6 +142,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     format: "currency",
     priority: 80,
     explanation: "Average cost per click",
+    perUnitOf: "clicks",
   },
   {
     csvName: "conversions",
@@ -160,6 +166,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["search", "performance_max", "leads"],
     priority: 85,
     explanation: "Average spend per completed conversion",
+    perUnitOf: "conversions",
   },
   {
     csvName: "cost per conversion",
@@ -170,6 +177,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["search", "performance_max", "leads"],
     priority: 85,
     explanation: "Average spend per completed conversion",
+    perUnitOf: "conversions",
   },
   {
     csvName: "conv. rate",
@@ -230,6 +238,9 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["search", "leads"],
     priority: 60,
     explanation: "Your average target cost-per-acquisition bid",
+    // A configured bid target, not something derived from spend/conversions —
+    // averaging the raw values (not summing) is the correct treatment.
+    perUnitOf: "__avg__",
   },
 
   // All conversions
@@ -252,6 +263,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["search", "display", "performance_max", "app"],
     priority: 70,
     explanation: "Average cost per conversion, across all conversion actions",
+    perUnitOf: "all_conversions",
   },
   {
     csvName: "all conv. rate",
@@ -486,6 +498,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["video", "youtube"],
     priority: 85,
     explanation: "Average cost per video view",
+    perUnitOf: "video_views",
   },
   {
     csvName: "video played to 25%",
@@ -558,6 +571,8 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["display", "demand_gen"],
     priority: 75,
     explanation: "Average cost per 1,000 viewable impressions",
+    perUnitOf: "viewable_impr",
+    perUnitScale: 1000,
   },
   {
     csvName: "avg. cpm",
@@ -568,6 +583,8 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["display", "demand_gen", "video"],
     priority: 70,
     explanation: "Average cost per 1,000 impressions",
+    perUnitOf: "impressions",
+    perUnitScale: 1000,
   },
   {
     csvName: "measurable rate",
@@ -650,6 +667,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["demand_gen", "display"],
     priority: 68,
     explanation: "Average cost per engagement",
+    perUnitOf: "engagements",
   },
   {
     csvName: "interactions",
@@ -682,6 +700,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["app"],
     priority: 75,
     explanation: "Average cost per interaction",
+    perUnitOf: "interactions",
   },
 
   // Conversion value metrics
@@ -776,6 +795,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     objectives: ["performance_max", "local"],
     priority: 80,
     explanation: "Average estimated cost per store visit",
+    perUnitOf: "store_visits",
   },
 
   // YouTube-specific

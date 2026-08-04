@@ -92,7 +92,8 @@ function addImageRelationship(relsXml: string, relId: string, mediaFileName: str
   return relsXml.replace("</Relationships>", `${rel}</Relationships>`);
 }
 
-function buildPictureShapeXml(params: {
+/** Exported for dynamic-cards.ts's metric-icon system — builds a plain `<p:pic>` at an arbitrary position/size (no frame/border), referencing a relationship id already registered via registerImageMedia. */
+export function buildPictureShapeXml(params: {
   id: number;
   name: string;
   relId: string;
@@ -120,6 +121,25 @@ function buildPictureShapeXml(params: {
     `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
     `${geom}<a:noFill/>${line}</p:spPr></p:pic>`
   );
+}
+
+/**
+ * Registers a new image relationship + media file in `slide` WITHOUT
+ * inserting any `<p:pic>` shape — for callers that build their own picture
+ * shapes at custom, per-instance positions (dynamic-cards.ts's metric-icon
+ * system: one relationship per distinct icon, but that same icon gets its
+ * own `<p:pic>` at a different x/y on every card that uses it, which
+ * embedImageInSlide's single fixed-corner placement can't express).
+ */
+export function registerImageMedia(
+  slide: TemplateSlide,
+  image: ImageAsset,
+  baseName: string,
+): { slide: TemplateSlide; mediaPath: string; mediaBytes: Uint8Array; relId: string } {
+  const mediaFileName = `${baseName}.${image.extension}`;
+  const relId = nextRelId(slide.rels);
+  const rels = addImageRelationship(slide.rels, relId, mediaFileName);
+  return { slide: { xml: slide.xml, rels }, mediaPath: `ppt/media/${mediaFileName}`, mediaBytes: image.bytes, relId };
 }
 
 /**

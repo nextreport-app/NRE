@@ -283,10 +283,10 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
     const slide = {
       ...makeCampaignSlide("Shoes - Search"),
       dynamicMetrics: [
-        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521" },
-        { key: "reach", label: "REACH", format: "number" as const, value: "128,400" },
-        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "310,900" },
-        { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, value: "88" },
+        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521", type: "primary" as const },
+        { key: "reach", label: "REACH", format: "number" as const, value: "128,400", type: "primary" as const },
+        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "310,900", type: "primary" as const },
+        { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, value: "88", type: "secondary" as const },
       ],
     };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
@@ -303,7 +303,7 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
   it("still fills DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS (the untouched AI-copy column) on the dynamic path", () => {
     const slide = {
       ...makeCampaignSlide("Shoes - Search"),
-      dynamicMetrics: [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521" }],
+      dynamicMetrics: [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521", type: "primary" as const }],
     };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary: "A real summary.", insights: "Real insights." });
     expect(xml).toContain("A real summary.");
@@ -315,12 +315,12 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
     const slide = {
       ...makeCampaignSlide("Shoes - Search"),
       dynamicMetrics: [
-        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$1" },
-        { key: "reach", label: "REACH", format: "number" as const, value: "1" },
-        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "1" },
-        { key: "results", label: "RESULTS", format: "number" as const, value: "1" },
-        { key: "ctr", label: "CTR", format: "percentage" as const, value: "1%" },
-        { key: "cpc", label: "CPC", format: "currency" as const, value: "$1" },
+        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$1", type: "primary" as const },
+        { key: "reach", label: "REACH", format: "number" as const, value: "1", type: "primary" as const },
+        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "1", type: "primary" as const },
+        { key: "results", label: "RESULTS", format: "number" as const, value: "1", type: "primary" as const },
+        { key: "ctr", label: "CTR", format: "percentage" as const, value: "1%", type: "primary" as const },
+        { key: "cpc", label: "CPC", format: "currency" as const, value: "$1", type: "secondary" as const },
       ],
     };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);

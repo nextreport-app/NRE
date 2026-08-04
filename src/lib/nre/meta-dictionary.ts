@@ -40,6 +40,21 @@ export interface MetaMetricDefinition {
   priority?: number;
   /** One-line legend explanation. Present on primary/secondary entries only. */
   explanation?: string;
+  /**
+   * For a per-unit currency metric (a "cost per X" or "CPC/CPM"-style
+   * average) that must NEVER be summed across rows: the `key` of the metric
+   * whose raw values, summed across the same rows, are the denominator —
+   * dynamic-metrics.ts recomputes this entry as
+   * sum(spend) / sum(<perUnitOf column>) instead of summing the metric's own
+   * column. The special value "__avg__" means "average the metric's own
+   * non-zero raw values instead" (for a fixed bid target like Target CPA,
+   * which isn't actually derived from spend/count at all). Omitted for
+   * genuine aggregate currency totals (spend, revenue, conv. value, ...),
+   * which keep the default sum behavior.
+   */
+  perUnitOf?: string;
+  /** Multiplier applied to the perUnitOf division — 1000 for "cost per 1,000 X" metrics (CPM, cost per 1K reached). Defaults to 1. */
+  perUnitScale?: number;
 }
 
 export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
@@ -138,6 +153,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "currency",
     priority: 80,
     explanation: "Average amount spent to achieve each result",
+    perUnitOf: "results",
   },
   {
     csvName: "ctr (all)",
@@ -158,7 +174,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     label: "LINK CLICKS",
     type: "secondary",
     format: "number",
-    objectives: ["traffic", "leads", "sales"],
+    objectives: ["traffic", "leads", "sales", "link_clicks"],
     priority: 70,
     explanation: "Number of clicks on links within your ad",
   },
@@ -168,9 +184,10 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     label: "COST PER CLICK",
     type: "secondary",
     format: "currency",
-    objectives: ["traffic", "leads", "sales"],
+    objectives: ["traffic", "leads", "sales", "link_clicks"],
     priority: 68,
     explanation: "Average cost for each link click",
+    perUnitOf: "link_clicks",
   },
   {
     csvName: "cpc (all)",
@@ -181,6 +198,40 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["traffic"],
     priority: 65,
     explanation: "Average cost per click across all click types",
+    perUnitOf: "clicks_all",
+  },
+  {
+    csvName: "cpc all",
+    key: "cpc_all",
+    label: "CPC (ALL)",
+    type: "secondary",
+    format: "currency",
+    objectives: ["traffic"],
+    priority: 65,
+    explanation: "Average cost per click across all click types",
+    perUnitOf: "clicks_all",
+  },
+  {
+    csvName: "avg. cpc",
+    key: "cpc_all",
+    label: "CPC (ALL)",
+    type: "secondary",
+    format: "currency",
+    objectives: ["traffic"],
+    priority: 65,
+    explanation: "Average cost per click across all click types",
+    perUnitOf: "clicks_all",
+  },
+  {
+    csvName: "average cpc (all)",
+    key: "cpc_all",
+    label: "CPC (ALL)",
+    type: "secondary",
+    format: "currency",
+    objectives: ["traffic"],
+    priority: 65,
+    explanation: "Average cost per click across all click types",
+    perUnitOf: "clicks_all",
   },
 
   // Landing Page Views
@@ -203,6 +254,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["traffic", "leads"],
     priority: 68,
     explanation: "Average cost per landing page view",
+    perUnitOf: "landing_page_views",
   },
 
   // Website Leads
@@ -212,7 +264,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     label: "WEBSITE LEADS",
     type: "secondary",
     format: "number",
-    objectives: ["leads"],
+    objectives: ["leads", "website_leads"],
     priority: 85,
     explanation: "Number of people who submitted a lead form on your website",
   },
@@ -222,9 +274,10 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     label: "COST PER LEAD",
     type: "secondary",
     format: "currency",
-    objectives: ["leads"],
+    objectives: ["leads", "website_leads"],
     priority: 83,
     explanation: "Average amount spent to acquire each lead",
+    perUnitOf: "website_leads",
   },
 
   // Awareness / CPM / Frequency
@@ -247,6 +300,8 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["awareness", "reach"],
     priority: 65,
     explanation: "Average cost per 1,000 impressions",
+    perUnitOf: "impressions",
+    perUnitScale: 1000,
   },
   {
     csvName: "cost per 1,000 meta accounts reached",
@@ -257,6 +312,8 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["awareness", "reach"],
     priority: 55,
     explanation: "Average cost to reach 1,000 people",
+    perUnitOf: "reach",
+    perUnitScale: 1000,
   },
 
   // Video
@@ -401,6 +458,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["messaging", "leads"],
     priority: 80,
     explanation: "Average cost per messaging conversation started",
+    perUnitOf: "messaging_conversations_started",
   },
   {
     csvName: "new messaging contacts",
@@ -421,6 +479,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["messaging"],
     priority: 73,
     explanation: "Average cost per new messaging contact",
+    perUnitOf: "new_messaging_contacts",
   },
   {
     csvName: "messaging contacts",
@@ -441,6 +500,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["messaging"],
     priority: 66,
     explanation: "Average cost per messaging contact",
+    perUnitOf: "messaging_contacts",
   },
   {
     csvName: "messages delivered",
@@ -461,6 +521,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["messaging"],
     priority: 58,
     explanation: "Average cost per message delivered",
+    perUnitOf: "messages_delivered",
   },
   {
     csvName: "messaging subscriptions",
@@ -481,6 +542,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["messaging"],
     priority: 60,
     explanation: "Average cost per messaging subscription",
+    perUnitOf: "messaging_subscriptions",
   },
   {
     csvName: "returning messaging contacts",
@@ -513,6 +575,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement"],
     priority: 75,
     explanation: "Average cost per Page engagement",
+    perUnitOf: "page_engagement",
   },
   {
     csvName: "facebook likes",
@@ -533,6 +596,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement", "awareness"],
     priority: 75,
     explanation: "Average cost per Page like",
+    perUnitOf: "facebook_likes",
   },
   {
     csvName: "instagram follows",
@@ -563,6 +627,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement"],
     priority: 70,
     explanation: "Average cost per post engagement",
+    perUnitOf: "post_engagements",
   },
   {
     csvName: "post reactions",
@@ -633,6 +698,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement"],
     priority: 66,
     explanation: "Average cost per interaction",
+    perUnitOf: "interactions",
   },
 
   // Events
@@ -655,6 +721,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement", "awareness"],
     priority: 73,
     explanation: "Average cost per event response",
+    perUnitOf: "event_responses",
   },
   {
     csvName: "check-ins",
@@ -687,6 +754,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["engagement", "awareness"],
     priority: 66,
     explanation: "Average cost per group join request",
+    perUnitOf: "join_group_requests",
   },
 
   // Shopping / Purchase / ROAS
@@ -823,6 +891,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["app_promotion"],
     priority: 83,
     explanation: "Average cost per app install",
+    perUnitOf: "app_installs",
   },
   {
     csvName: "cost per app install",
@@ -833,6 +902,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["app_promotion"],
     priority: 83,
     explanation: "Average cost per app install",
+    perUnitOf: "app_installs",
   },
   {
     csvName: "app events",
@@ -853,6 +923,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["app_promotion"],
     priority: 76,
     explanation: "Average cost per in-app event",
+    perUnitOf: "app_events",
   },
   {
     csvName: "mobile app purchase roas",
@@ -885,6 +956,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     objectives: ["traffic", "awareness"],
     priority: 70,
     explanation: "Average cost per Instagram profile visit",
+    perUnitOf: "instagram_profile_visits",
   },
 
   // Clicks (all)

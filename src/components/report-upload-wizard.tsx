@@ -6,7 +6,7 @@ import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { getAvailableMetrics, selectMetrics, type SelectedMetric } from "@/lib/nre/metric-selector";
-import { detectGoogleObjectiveKey, detectMetaObjectiveKey } from "@/lib/nre/detect-objective";
+import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -26,8 +26,11 @@ const STEP_LABELS: Record<Step, string> = {
   5: "Preview",
 };
 
-const MIN_SELECTED_METRICS = 4;
-const MAX_SELECTED_METRICS = 8;
+// Soft, non-blocking guidance only (product fix — the hard 4-8 cap was
+// removed: users can select as few or as many metrics as they want, and a
+// campaign whose selection exceeds 8 cards simply spans multiple slides at
+// generation time — see dynamic-metrics.ts's buildDynamicMetricSlides).
+const RECOMMENDED_MIN_METRICS = 4;
 
 // "detected" pauses on step 1 after a successful analyze, showing the
 // platform badge + override dropdown + a Continue button — see
@@ -187,17 +190,28 @@ export function ReportUploadWizard({
   // availableMetrics/selectedMetrics from these once the platform is
   // confirmed).
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  // Meta only — one objective key PER campaign detected server-side (see
+  // the /analyze route's detectCampaignObjectives), not a single account-
+  // wide guess. A mixed-objective account (Reach + Traffic + Lead Gen
+  // campaigns in one CSV) needs every campaign's own objective considered,
+  // or the auto-suggested selection silently favors whichever objective an
+  // account-wide heuristic happened to guess and hides the rest — see
+  // metric-selector.ts's selectMetrics, which now accepts this whole array
+  // and unions every campaign's relevant secondaries into one suggestion.
+  const [detectedObjectives, setDetectedObjectives] = useState<string[]>([]);
 
   // Step 2 — Metrics (dynamic metric dictionary system). availableMetrics is
   // the full detected candidate pool (both included and not-included come
-  // from it); selectedMetrics is the "Included" list, in display order —
-  // that order becomes the PPT card grid's left-to-right/top-to-bottom
-  // order (see dynamic-cards.ts). Pre-selected automatically by
-  // selectMetrics() in handleContinueAfterDetect; the user can add/remove
-  // (4-8 metrics) and reorder from here.
+  // from it); selectedMetrics is the "Included" list, in priority-descending
+  // order — that fixed order becomes the PPT card grid's left-to-right/
+  // top-to-bottom order (see dynamic-cards.ts). No manual reordering: order
+  // is entirely priority-driven. Pre-selected automatically by
+  // selectMetrics() in handleContinueAfterDetect; the user can freely add/
+  // remove metrics from here, with no minimum or maximum — a campaign whose
+  // selection exceeds 8 cards simply spans multiple slides at generation
+  // time instead of forcing a choice here.
   const [availableMetrics, setAvailableMetrics] = useState<SelectedMetric[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
-  const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
 
   // Step 3 — Campaigns (populated by /analyze). Always shown in full for
   // Meta uploads — see handleAnalyze and lib/nre/campaigns.ts's
@@ -337,6 +351,7 @@ export function ReportUploadWizard({
     }
 
     setCsvHeaders(json.headers || []);
+    setDetectedObjectives(json.detectedObjectives || []);
     setCampaigns(json.campaigns || []);
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     setDateBounds(json.dateBounds || null);
@@ -361,43 +376,28 @@ export function ReportUploadWizard({
   function handleContinueAfterDetect() {
     setAnalyzeStatus("idle");
     const platformKey = platform === "GOOGLE" ? "google" : "meta";
-    const objectiveKey =
-      platform === "GOOGLE" ? detectGoogleObjectiveKey(csvHeaders) : detectMetaObjectiveKey(csvHeaders);
-    setAvailableMetrics(getAvailableMetrics(csvHeaders, platformKey, objectiveKey));
-    setSelectedMetrics(selectMetrics(csvHeaders, platformKey, objectiveKey, MAX_SELECTED_METRICS));
-    setMetricsLimitMessage(null);
+    // Google: single account-wide objective (unchanged — Google Ads
+    // accounts don't mix campaign types the way a Meta account testing
+    // Reach + Traffic + Lead Gen together does). Meta: the union of every
+    // campaign's own detected objective (see the /analyze route's
+    // detectCampaignObjectives) — falls back to an empty array (no
+    // objective filter at all, i.e. every detected secondary metric
+    // qualifies) only in the defensive case where the server sent none.
+    const objectiveKeys: string | string[] =
+      platform === "GOOGLE" ? detectGoogleObjectiveKey(csvHeaders) : detectedObjectives;
+    setAvailableMetrics(getAvailableMetrics(csvHeaders, platformKey));
+    setSelectedMetrics(selectMetrics(csvHeaders, platformKey, objectiveKeys));
     setStep(2);
   }
 
   // ── Step 2: Metrics ──────────────────────────────────────────────────────
   function addMetric(metric: SelectedMetric) {
     if (selectedMetrics.some((m) => m.key === metric.key)) return;
-    if (selectedMetrics.length >= MAX_SELECTED_METRICS) {
-      setMetricsLimitMessage("Maximum 8 metrics per slide. Remove one first.");
-      return;
-    }
-    setMetricsLimitMessage(null);
-    setSelectedMetrics((prev) => [...prev, metric]);
+    setSelectedMetrics((prev) => [...prev, metric].sort((a, b) => b.priority - a.priority));
   }
 
   function removeMetric(key: string) {
-    if (selectedMetrics.length <= MIN_SELECTED_METRICS) {
-      setMetricsLimitMessage("Minimum 4 metrics required.");
-      return;
-    }
-    setMetricsLimitMessage(null);
     setSelectedMetrics((prev) => prev.filter((m) => m.key !== key));
-  }
-
-  function moveMetric(key: string, direction: -1 | 1) {
-    setSelectedMetrics((prev) => {
-      const index = prev.findIndex((m) => m.key === key);
-      const target = index + direction;
-      if (index === -1 || target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
   }
 
   // Meta keeps its existing multi-step campaigns/dates flow unchanged.
@@ -775,41 +775,22 @@ export function ReportUploadWizard({
           <div>
             <h3 className="text-sm font-medium text-dash-ink-secondary">Select metrics for your report</h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              We found {availableMetrics.length} performance metric{availableMetrics.length === 1 ? "" : "s"} in
-              your CSV. We&apos;ve pre-selected the {Math.min(availableMetrics.length, MAX_SELECTED_METRICS)} most
-              relevant.
+              We found {availableMetrics.length} performance metric{availableMetrics.length === 1 ? "" : "s"}{" "}
+              in your CSV. We&apos;ve pre-selected {selectedMetrics.length} most relevant to your campaigns —
+              add or remove any of them below. A campaign with more than 8 selected metrics automatically spans
+              multiple slides, so include everything relevant.
             </p>
           </div>
 
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-[13px] font-semibold text-dash-ink">✅ Included in report (reorder with ▲▼)</h4>
-              <span className="text-[13px] text-dash-ink-secondary">
-                {selectedMetrics.length}/{MAX_SELECTED_METRICS} metrics selected
-              </span>
+              <h4 className="text-[13px] font-semibold text-dash-ink">✅ Included in report</h4>
+              <span className="text-[13px] text-dash-ink-secondary">{selectedMetrics.length} metrics selected</span>
             </div>
             <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-              {selectedMetrics.map((m, i) => (
+              {selectedMetrics.map((m) => (
                 <li key={m.key} className="flex items-center gap-3 px-4 py-2.5">
                   <span className="flex-1 text-sm text-dash-ink">{m.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => moveMetric(m.key, -1)}
-                    disabled={i === 0}
-                    aria-label={`Move ${m.label} up`}
-                    className="rounded-md border border-dash-border px-2 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveMetric(m.key, 1)}
-                    disabled={i === selectedMetrics.length - 1}
-                    aria-label={`Move ${m.label} down`}
-                    className="rounded-md border border-dash-border px-2 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    ▼
-                  </button>
                   <button
                     type="button"
                     onClick={() => removeMetric(m.key)}
@@ -842,11 +823,15 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          <p className="text-[13px] text-dash-ink-secondary">Max {MAX_SELECTED_METRICS} metrics per campaign slide.</p>
-
-          {metricsLimitMessage && (
+          {selectedMetrics.length > 0 && selectedMetrics.length < RECOMMENDED_MIN_METRICS && (
             <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
-              {metricsLimitMessage}
+              Only {selectedMetrics.length} metric{selectedMetrics.length === 1 ? "" : "s"} selected — for the
+              clearest report we recommend at least {RECOMMENDED_MIN_METRICS}, but you can continue with fewer.
+            </div>
+          )}
+          {selectedMetrics.length === 0 && (
+            <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
+              Select at least one metric to continue.
             </div>
           )}
 
@@ -859,7 +844,7 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleMetricsContinue}
-              disabled={selectedMetrics.length < MIN_SELECTED_METRICS || continueStatus === "loading"}
+              disabled={selectedMetrics.length === 0 || continueStatus === "loading"}
               className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {continueStatus === "loading" ? "Loading…" : "Continue"}

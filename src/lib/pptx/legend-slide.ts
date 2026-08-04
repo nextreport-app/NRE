@@ -58,24 +58,42 @@ export function buildLegendSlideXml(
 
   const MARGIN = 60;
   const COL_GAP = 40;
-  const cols = n > 4 ? 2 : 1;
-  const colW = cols === 2 ? (W - MARGIN * 2 - COL_GAP) / 2 : W - MARGIN * 2;
+  const contentTop = TITLE_Y + TITLE_H + 20;
+  const BOTTOM_MARGIN = 20;
+  const availableH = H - contentTop - BOTTOM_MARGIN;
+
+  // Fix 2 removed the old 8-metric selection cap, so a report's used-metric
+  // set (and therefore this legend) is no longer bounded at a size the
+  // original fixed 2-column/66pt-row layout was sized for — a 16-entry
+  // legend needed 8 rows per column at that row height and silently ran
+  // ~90pt off the bottom of the slide (caught empirically, not
+  // hypothetically). Column count now grows with entry count, and row
+  // height/font sizes scale down (with a legible floor) so any n fits
+  // within the slide instead of overflowing it.
+  const cols = n > 12 ? 3 : n > 4 ? 2 : 1;
+  const colW = (W - MARGIN * 2 - COL_GAP * (cols - 1)) / cols;
   const rowsPerCol = Math.ceil(n / cols);
 
-  const TERM_H = 18;
-  const GAP_TERM_EXPL = 2;
-  const EXPL_H = 32;
-  const ROW_H = TERM_H + GAP_TERM_EXPL + EXPL_H + 14;
+  const IDEAL_ROW_H = 66;
+  const MIN_ROW_H = 40;
+  const rowH = Math.min(IDEAL_ROW_H, Math.max(MIN_ROW_H, availableH / rowsPerCol));
+  const shrink = rowH / IDEAL_ROW_H;
 
-  const contentTop = TITLE_Y + TITLE_H + 20;
+  const termSizePt = Math.max(10, Math.round(14 * shrink));
+  const explSizePt = Math.max(8, Math.round(11 * shrink));
+  const TERM_H = Math.round(18 * shrink);
+  const GAP_TERM_EXPL = 2;
+  const EXPL_H = rowH - TERM_H - GAP_TERM_EXPL - 4;
 
   entries.forEach((entry, i) => {
     const col = Math.floor(i / rowsPerCol);
     const row = i % rowsPerCol;
     const x = MARGIN + col * (colW + COL_GAP);
-    const y = contentTop + row * ROW_H;
+    const y = contentTop + row * rowH;
 
-    shapes.push(textBox({ x, y, w: colW, h: TERM_H, text: entry.term, sizePt: 14, bold: true, colorHex: TEXT_COLOR }));
+    shapes.push(
+      textBox({ x, y, w: colW, h: TERM_H, text: entry.term, sizePt: termSizePt, bold: true, colorHex: TEXT_COLOR }),
+    );
     shapes.push(
       textBox({
         x,
@@ -83,7 +101,7 @@ export function buildLegendSlideXml(
         w: colW,
         h: EXPL_H,
         text: entry.explanation,
-        sizePt: 11,
+        sizePt: explSizePt,
         colorHex: LABEL_COLOR,
       }),
     );

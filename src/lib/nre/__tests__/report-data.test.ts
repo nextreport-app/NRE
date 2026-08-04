@@ -1539,4 +1539,156 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
     expect(withSelection.campaignSlides[0].metrics).toEqual(withoutSelection.campaignSlides[0].metrics);
     expect(withSelection.campaignSlides[0].resultLabel).toBe(withoutSelection.campaignSlides[0].resultLabel);
   });
+
+  it("computes a perUnitOf currency metric as spend/count instead of summing its own raw column (Fix 3)", () => {
+    // dynamicRow's "Results" fixed field is "2" every day (7 rows), and
+    // spend is 50/day -> sum spend=350, sum results=14 -> cost per result=25.
+    const rowsWithResultsRaw: NreRow[] = daysInclusive(13, 19).map((day) => ({
+      ...dynamicRow(day, 50, 500, 2),
+      _raw: { Day: day, "Amount spent": "50", Reach: "500", "CTR (all)": "2", Results: "2" },
+    }));
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rowsWithResultsRaw,
+      selectedMetrics: [
+        { key: "spend", label: "AD SPEND", format: "currency", type: "primary", priority: 100, csvName: "amount spent" },
+        {
+          key: "cost_per_result",
+          label: "COST PER RESULT",
+          format: "currency",
+          type: "primary",
+          priority: 80,
+          csvName: "cost per result",
+          perUnitOf: "results",
+        },
+      ],
+      now: NOW,
+    });
+    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
+    expect(dynamicMetrics!.find((m) => m.key === "cost_per_result")?.value).toBe("$25.00");
+  });
+
+  it("renders a per-unit-cost metric as an em dash when its denominator is zero, not $0.00 (Fix 3)", () => {
+    const rowsNoResults: NreRow[] = daysInclusive(13, 14).map((day) => ({
+      ...dynamicRow(day, 50, 500, 2),
+      _raw: { Day: day, "Amount spent": "50", Reach: "500", "CTR (all)": "2", Results: "0" },
+    }));
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rowsNoResults,
+      selectedMetrics: [
+        {
+          key: "cost_per_result",
+          label: "COST PER RESULT",
+          format: "currency",
+          type: "primary",
+          priority: 80,
+          csvName: "cost per result",
+          perUnitOf: "results",
+        },
+      ],
+      now: NOW,
+    });
+    expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("—");
+  });
+
+  it("splits a campaign's cards across multiple slides once selectedMetrics exceeds 8, padding a 1-3 remainder up to 4 (Fix 2)", () => {
+    // 10 selected metrics -> slide 1 gets the first 8, slide 2 gets the
+    // remaining 2, padded up to 4 from the account's other detected (but
+    // unselected) metrics.
+    const richRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
+      _raw: {
+        Day: day,
+        "Amount spent": "50",
+        Reach: "500",
+        Impressions: "1000",
+        Results: "2",
+        "CTR (all)": "2",
+        "Cost per result": "25",
+        "Link clicks": "10",
+        "Landing page views": "5",
+        Frequency: "1.5",
+        "CPM (Cost per 1,000 Impressions)": "3",
+        // Detected but NOT among the 10 selected metrics below — the
+        // padding pool candidates for slide 2's under-4 remainder.
+        "Website leads": "1",
+        "CPC (All)": "2",
+      },
+      campaign_name: "Shoes",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: "50",
+      reach: "500",
+      impressions: "1000",
+      results: "2",
+      ctr: "2",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+    const tenMetrics = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
+      { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
+      { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "impressions" },
+      { key: "results", label: "RESULTS", format: "number" as const, type: "primary" as const, priority: 85, csvName: "results" },
+      {
+        key: "cost_per_result",
+        label: "COST PER RESULT",
+        format: "currency" as const,
+        type: "primary" as const,
+        priority: 80,
+        csvName: "cost per result",
+        perUnitOf: "results",
+      },
+      { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, type: "primary" as const, priority: 75, csvName: "ctr (all)" },
+      { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "link clicks" },
+      { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "landing page views" },
+      { key: "frequency", label: "FREQUENCY", format: "ratio" as const, type: "secondary" as const, priority: 60, csvName: "frequency" },
+      { key: "cpm", label: "CPM", format: "currency" as const, type: "secondary" as const, priority: 65, csvName: "cpm (cost per 1,000 impressions)", perUnitOf: "impressions", perUnitScale: 1000 },
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: richRows,
+      selectedMetrics: tenMetrics,
+      now: NOW,
+    });
+    const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
+    expect(slidesForShoes.length).toBe(2);
+    expect(slidesForShoes[0].campaignName).toBe("Shoes");
+    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(8);
+    expect(slidesForShoes[1].campaignName).toBe("Shoes (continued)");
+    // Only 2 metrics remained (frequency, cpm) — padded up to the 4-card minimum.
+    expect(slidesForShoes[1].dynamicMetrics!.length).toBe(4);
+    const slide2Keys = slidesForShoes[1].dynamicMetrics!.map((m) => m.key);
+    expect(slide2Keys).toContain("frequency");
+    expect(slide2Keys).toContain("cpm");
+  });
+
+  it("does not split into multiple slides when selectedMetrics is 8 or fewer", () => {
+    const eightOrFewer = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
+      { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      selectedMetrics: eightOrFewer,
+      now: NOW,
+    });
+    const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
+    expect(slidesForShoes.length).toBe(1);
+    expect(slidesForShoes[0].campaignName).toBe("Shoes");
+  });
 });

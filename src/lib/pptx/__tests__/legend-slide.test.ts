@@ -56,4 +56,24 @@ describe("buildLegendSlideXml", () => {
     expect(darkXml).not.toBe(lightXml);
     expect(lightXml).toContain("C17D0A");
   });
+
+  it("keeps every entry's y offset within the 540pt-tall slide canvas even with many entries (Fix 2 regression — removing the 8-metric cap can produce a much longer legend)", () => {
+    const SLIDE_HEIGHT_PT = 540;
+    const manyEntries = Array.from({ length: 16 }, (_, i) => entry({ term: `METRIC ${i + 1}` }));
+    const xml = buildLegendSlideXml(manyEntries, BACKGROUND);
+    const offsets = [...xml.matchAll(/<a:off x="\d+" y="(\d+)"\/>/g)].map((m) => Number(m[1]) / 12700);
+    for (const yPt of offsets) {
+      expect(yPt).toBeLessThan(SLIDE_HEIGHT_PT);
+    }
+  });
+
+  it("uses 3 columns once entry count exceeds 12", () => {
+    const manyEntries = Array.from({ length: 13 }, (_, i) => entry({ term: `METRIC ${i + 1}` }));
+    const xml = buildLegendSlideXml(manyEntries, BACKGROUND);
+    // 0 is the full-width background/title x offset — the 3 non-zero
+    // values are the 3 entry columns' left edges.
+    const xOffsets = new Set([...xml.matchAll(/<a:off x="(\d+)" y="\d+"\/>/g)].map((m) => Number(m[1])));
+    xOffsets.delete(0);
+    expect(xOffsets.size).toBe(3);
+  });
 });

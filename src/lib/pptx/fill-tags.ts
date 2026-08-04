@@ -24,6 +24,7 @@ import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
 import { buildDynamicCardShapes } from "./dynamic-cards";
 import { resetShapeIdCounter } from "./shapes";
+import type { MetricIconId } from "./metric-icons";
 
 // ACCOUNT_NAME shape (ppt/slides/slide1.xml, cover template): cx="5300000"
 // lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
@@ -195,6 +196,7 @@ export function buildCampaignOrAdSetSlideXml(
   ai: AiCopy = FALLBACK_AI_COPY,
   reportType: ReportType = "WEEKLY",
   platform: Platform = "META",
+  iconRelIds?: Partial<Record<MetricIconId, string>>,
 ): string {
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const heading =
@@ -243,7 +245,17 @@ export function buildCampaignOrAdSetSlideXml(
     const existingIds = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map((m) => Number(m[1]));
     resetShapeIdCounter((existingIds.length ? Math.max(...existingIds) : 1) + 1);
 
-    const cardShapes = buildDynamicCardShapes(slide.dynamicMetrics!.map((m) => ({ label: m.label, value: m.value })));
+    const cardShapes = buildDynamicCardShapes(
+      slide.dynamicMetrics!.map((m) => ({
+        key: m.key,
+        label: m.label,
+        value: m.value,
+        type: m.type,
+        format: m.format,
+        perUnitOf: m.perUnitOf,
+      })),
+      iconRelIds,
+    );
     for (const shape of cardShapes) xml = insertShapeBeforeSpTreeClose(xml, shape);
   } else {
     xml = fillTags(

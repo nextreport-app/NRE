@@ -36,7 +36,7 @@ import {
   type DeliveryStatusIndicator,
 } from "./delivery-status";
 import { getDateRangeShortLabel, formatDateUS, getMonthName, getMonthYearLabel, parseDate } from "./dates";
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
   getGroupedResultDisplay,
@@ -46,15 +46,11 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { SelectedMetric } from "./metric-selector";
-import { aggregateDynamicMetrics } from "./dynamic-metrics";
+import { getAvailableMetrics } from "./metric-selector";
+import { buildDynamicMetricSlides, type DynamicMetricValue } from "./dynamic-metrics";
 
-/** One dynamically-selected metric's resolved display value for a single campaign/ad-set slide — see BuildReportDataInput.selectedMetrics. */
-export interface DynamicMetricValue {
-  key: string;
-  label: string;
-  format: SelectedMetric["format"];
-  value: string;
-}
+/** Re-exported from dynamic-metrics.ts (its canonical home — see buildDynamicMetricSlides) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
+export type { DynamicMetricValue };
 
 // ─────────────────────────── Public types ──────────────────────────────────
 
@@ -697,6 +693,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // path.
   const campaignRawGroups: Record<string, NreRow[]> = {};
   const adSetRawGroups: Record<string, NreRow[]> = {};
+  // The account's full detected-metric candidate pool, no objective filter —
+  // used only to pad a campaign's final dynamic-card slide up to the 4-card
+  // minimum when selectedMetrics splits across multiple slides (see
+  // dynamic-metrics.ts's buildDynamicMetricSlides). Computed once here, not
+  // per campaign, since every campaign shares the same account-wide CSV
+  // columns.
+  let dynamicMetricsPaddingPool: SelectedMetric[] = [];
   if (selectedMetrics && selectedMetrics.length > 0) {
     primaryRawRows.forEach((row) => {
       const name = String(row.campaign_name || "Unknown Campaign").trim();
@@ -704,6 +707,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       const key = adSetKey(name, String(row.ad_set_name || "").trim());
       (adSetRawGroups[key] ??= []).push(row);
     });
+    const detectedColumns = Object.keys(primaryRawRows[0]?._raw ?? {});
+    dynamicMetricsPaddingPool = getAvailableMetrics(detectedColumns, "meta");
   }
 
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
@@ -734,7 +739,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // comment for what "low confidence" means and why it's surfaced here.
   const objectiveWarnings: ObjectiveWarning[] = [];
 
-  const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
+  const campaignSlides: CampaignSlideData[] = campaignNames.flatMap((campaignName) => {
     const campRows = campaignGroups[campaignName];
 
     let totalSpend = 0;
@@ -785,27 +790,25 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
     };
 
-    let dynamicMetrics: DynamicMetricValue[] | undefined;
-    if (selectedMetrics && selectedMetrics.length > 0) {
-      const rawTotals = aggregateDynamicMetrics(campaignRawGroups[campaignName] ?? [], selectedMetrics);
-      dynamicMetrics = selectedMetrics.map((m) => ({
-        key: m.key,
-        label: m.label,
-        format: m.format,
-        value: formatMetricValue(rawTotals[m.key] ?? 0, m.format, currencySymbol),
-      }));
-    }
+    const dynamicMetricsSlides: DynamicMetricValue[][] =
+      selectedMetrics && selectedMetrics.length > 0
+        ? buildDynamicMetricSlides(
+            campaignRawGroups[campaignName] ?? [],
+            selectedMetrics,
+            dynamicMetricsPaddingPool,
+            "meta",
+            currencySymbol,
+          )
+        : [];
 
-    return {
-      kind: "campaign",
-      campaignName,
+    const baseSlide = {
+      kind: "campaign" as const,
       resultLabel,
       costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
       statusIndicator,
-      dynamicMetrics,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
         dateRange: globalWeekDateRange,
@@ -824,6 +827,20 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         spendNum: totalSpend,
       },
     };
+
+    // Fix 2: a campaign whose selectedMetrics exceeds 8 cards renders as
+    // multiple slides — "Campaign Name" for the first, "Campaign Name
+    // (continued)" for every slide after it. Every other field (fixed
+    // metrics, AI copy, date range) is identical across a campaign's own
+    // slides; only campaignName and dynamicMetrics differ.
+    if (dynamicMetricsSlides.length <= 1) {
+      return [{ ...baseSlide, campaignName, dynamicMetrics: dynamicMetricsSlides[0] }];
+    }
+    return dynamicMetricsSlides.map((dynamicMetrics, i) => ({
+      ...baseSlide,
+      campaignName: i === 0 ? campaignName : `${campaignName} (continued)`,
+      dynamicMetrics,
+    }));
   });
 
   // An ad set below this total-MTD-spend threshold isn't worth its own
@@ -871,28 +888,26 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
-    let dynamicMetrics: DynamicMetricValue[] | undefined;
-    if (selectedMetrics && selectedMetrics.length > 0) {
-      const rawTotals = aggregateDynamicMetrics(adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [], selectedMetrics);
-      dynamicMetrics = selectedMetrics.map((m) => ({
-        key: m.key,
-        label: m.label,
-        format: m.format,
-        value: formatMetricValue(rawTotals[m.key] ?? 0, m.format, currencySymbol),
-      }));
-    }
+    const dynamicMetricsSlides: DynamicMetricValue[][] =
+      selectedMetrics && selectedMetrics.length > 0
+        ? buildDynamicMetricSlides(
+            adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
+            selectedMetrics,
+            dynamicMetricsPaddingPool,
+            "meta",
+            currencySymbol,
+          )
+        : [];
 
-    adSetSlides.push({
-      kind: "adset",
+    const baseAdSetSlide = {
+      kind: "adset" as const,
       campaignName,
-      adSetName,
       resultLabel,
       costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
       statusIndicator,
-      dynamicMetrics,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         dateRange: globalWeekDateRange,
@@ -910,7 +925,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         hasResults: parseCellNum(row.results) > 0,
         spendNum: rowSpend,
       },
-    });
+    };
+
+    if (dynamicMetricsSlides.length <= 1) {
+      adSetSlides.push({ ...baseAdSetSlide, adSetName, dynamicMetrics: dynamicMetricsSlides[0] });
+    } else {
+      dynamicMetricsSlides.forEach((dynamicMetrics, i) => {
+        adSetSlides.push({
+          ...baseAdSetSlide,
+          adSetName: i === 0 ? adSetName : `${adSetName} (continued)`,
+          dynamicMetrics,
+        });
+      });
+    }
   });
 
   // ── MTD performance chart slide ──────────────────────────────────────

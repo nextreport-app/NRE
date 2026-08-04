@@ -143,4 +143,52 @@ describe("buildGoogleReportData — dynamic metric dictionary system (selectedMe
     expect(dynamicMetrics![0].value).toBe("$100.00");
     expect(dynamicMetrics![1].value).toBe("40");
   });
+
+  it("computes avg_cpc as sum(cost)/sum(clicks) instead of summing the raw column (Fix 3)", () => {
+    const data = buildGoogleReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      monthlyBudget: null,
+      mtdDailyRows,
+      selectedMetrics: [
+        { key: "avg_cpc", label: "AVG. CPC", format: "currency", type: "primary", priority: 80, csvName: "avg. cpc", perUnitOf: "clicks" },
+      ],
+    });
+    // sum(cost)=100, sum(clicks)=40 -> 2.50 — NOT the raw column's own
+    // per-row 2.50+2.50 summed to 5.00.
+    expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("$2.50");
+  });
+
+  it("splits a campaign's cards across multiple slides once selectedMetrics exceeds 8 (Fix 2)", () => {
+    const nineMetrics = [
+      { key: "cost", label: "COST", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "cost" },
+      { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 95, csvName: "impr." },
+      { key: "clicks", label: "CLICKS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "clicks" },
+      { key: "ctr", label: "CTR", format: "percentage" as const, type: "primary" as const, priority: 85, csvName: "ctr" },
+      { key: "avg_cpc", label: "AVG. CPC", format: "currency" as const, type: "primary" as const, priority: 80, csvName: "avg. cpc", perUnitOf: "clicks" },
+      { key: "conversions", label: "CONVERSIONS", format: "number" as const, type: "primary" as const, priority: 75, csvName: "conversions" },
+      // 6 primaries above + 3 arbitrary secondaries below = 9, over the 8-per-slide cap.
+      { key: "cost_per_conv", label: "COST PER CONV.", format: "currency" as const, type: "secondary" as const, priority: 85, csvName: "cost / conv.", perUnitOf: "conversions" },
+      { key: "conv_rate", label: "CONV. RATE", format: "percentage" as const, type: "secondary" as const, priority: 80, csvName: "conv. rate" },
+      { key: "target_cpa", label: "TARGET CPA", format: "currency" as const, type: "secondary" as const, priority: 60, csvName: "avg. target cpa", perUnitOf: "__avg__" },
+    ];
+    const data = buildGoogleReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      monthlyBudget: null,
+      mtdDailyRows,
+      selectedMetrics: nineMetrics,
+    });
+    const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
+    expect(slidesForShoes.length).toBe(2);
+    expect(slidesForShoes[0].campaignName).toBe("Shoes - Search");
+    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(8);
+    expect(slidesForShoes[1].campaignName).toBe("Shoes - Search (continued)");
+    // Only 1 metric remained — padded up to the 4-card minimum from
+    // whatever other detected columns exist (impr./clicks/ctr/etc. are all
+    // already used, so padding pulls from the account's other detected
+    // columns; at minimum the 1 real remaining metric is present).
+    expect(slidesForShoes[1].dynamicMetrics!.length).toBeGreaterThanOrEqual(1);
+    expect(slidesForShoes[1].dynamicMetrics!.map((m) => m.key)).toContain("target_cpa");
+  });
 });
