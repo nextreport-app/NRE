@@ -23,7 +23,7 @@ export interface RawMetricRow {
   _raw: Record<string, string>;
 }
 
-/** One dynamically-selected metric's resolved display value for a single campaign/ad-set slide — see report-data.ts's BuildReportDataInput.selectedMetrics (canonical home moved here since buildDynamicMetricSlides below is what produces it; report-data.ts re-exports this same type for its existing consumers). `type`/`perUnitOf` are carried through from SelectedMetric so the PPT render layer (dynamic-cards.ts) can pick the right accent color and icon without a second dictionary lookup. */
+/** One dynamically-selected metric's resolved display value for a single campaign/ad-set slide — see report-data.ts's BuildReportDataInput.selectedMetrics (canonical home moved here since buildDynamicMetricCards below is what produces it; report-data.ts re-exports this same type for its existing consumers). `type`/`perUnitOf` are carried through from SelectedMetric so the PPT render layer (dynamic-cards.ts) can pick the right accent color and icon without a second dictionary lookup. */
 export interface DynamicMetricValue {
   key: string;
   label: string;
@@ -135,41 +135,42 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   return result;
 }
 
-const CARDS_PER_SLIDE = 8;
-const MIN_CARDS_ON_LAST_SLIDE = 4;
+/** A campaign/ad-set slide never renders more than this many cards — see buildDynamicMetricCards. */
+export const MAX_CARDS_PER_SLIDE = 12;
 
 /**
- * Converts one campaign/ad-set's raw rows + the user's uncapped
- * selectedMetrics into one or more slides' worth of display-ready
- * DynamicMetricValue arrays (product fix: removing the old 8-metric
- * selection cap meant a campaign could now have more cards than fit on one
- * slide). Chunks selectedMetrics into groups of 8 in priority order —
- * slide 1 gets the first 8, slide 2 the next 8, and so on. If the LAST
- * chunk would render fewer than 4 cards, it's padded up to 4 by pulling
- * the next-highest-priority metrics from `paddingPool` that aren't already
- * selected (so a report never ends on a nearly-empty final slide) —
- * `paddingPool` is the account's full detected-metric candidate pool
- * (see metric-selector.ts's getAvailableMetrics called with no objective
- * filter), computed once by the caller and passed in unchanged for every
- * campaign/ad-set.
+ * Converts one campaign/ad-set's raw rows + the user's selectedMetrics into
+ * that single slide's display-ready DynamicMetricValue array.
+ *
+ * Always exactly one slide, never a "continued" slide, never padded from
+ * metrics the user didn't choose — the old multi-slide-with-padding design
+ * had a real bug (caught empirically): padding pulled candidates from every
+ * detected-but-currently-unselected CSV column, which includes metrics the
+ * user had just explicitly REMOVED in the Metric Preview step (removing a
+ * metric doesn't erase its CSV column, just its membership in
+ * selectedMetrics) — so a removed metric could silently reappear on a
+ * padded continuation slide. Capping at MAX_CARDS_PER_SLIDE and never
+ * padding eliminates that failure mode entirely: a slide only ever shows
+ * exactly what's in selectedMetrics, nothing else.
+ *
+ * `selectedMetrics` is assumed already priority-sorted (metric-selector.ts's
+ * own output order) — slicing to the top 12 is exactly "top 12 by
+ * priority" per the product spec.
  *
  * A NaN aggregated value (see aggregateDynamicMetrics — a per-unit cost
  * metric with a zero denominator) renders as "—", never "$0.00"/"$NaN".
  */
-export function buildDynamicMetricSlides<T extends RawMetricRow>(
+export function buildDynamicMetricCards<T extends RawMetricRow>(
   rawRows: T[],
   selectedMetrics: SelectedMetric[],
-  paddingPool: SelectedMetric[],
   platform: "meta" | "google",
   currencySymbol: string,
-): DynamicMetricValue[][] {
+): DynamicMetricValue[] {
   if (selectedMetrics.length === 0) return [];
+  const capped = selectedMetrics.slice(0, MAX_CARDS_PER_SLIDE);
 
-  const usedKeys = new Set(selectedMetrics.map((m) => m.key));
-  const padCandidates = paddingPool.filter((m) => !usedKeys.has(m.key)).slice(0, MIN_CARDS_ON_LAST_SLIDE);
-
-  const rawTotals = aggregateDynamicMetrics(rawRows, [...selectedMetrics, ...padCandidates], platform);
-  const toValue = (m: SelectedMetric): DynamicMetricValue => {
+  const rawTotals = aggregateDynamicMetrics(rawRows, capped, platform);
+  return capped.map((m) => {
     const raw = rawTotals[m.key];
     return {
       key: m.key,
@@ -179,19 +180,5 @@ export function buildDynamicMetricSlides<T extends RawMetricRow>(
       type: m.type,
       perUnitOf: m.perUnitOf,
     };
-  };
-
-  const chunks: SelectedMetric[][] = [];
-  for (let i = 0; i < selectedMetrics.length; i += CARDS_PER_SLIDE) {
-    chunks.push(selectedMetrics.slice(i, i + CARDS_PER_SLIDE));
-  }
-  if (chunks.length > 1) {
-    const last = chunks[chunks.length - 1];
-    if (last.length < MIN_CARDS_ON_LAST_SLIDE) {
-      const need = MIN_CARDS_ON_LAST_SLIDE - last.length;
-      last.push(...padCandidates.slice(0, need));
-    }
-  }
-
-  return chunks.map((chunk) => chunk.map(toValue));
+  });
 }

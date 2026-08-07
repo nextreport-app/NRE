@@ -114,6 +114,61 @@ export function detectMetaObjectiveKey(headers: string[], majorityResultLabel: s
 }
 
 /**
+ * Fix 2 — maps objective.ts's own proven per-campaign result-label output
+ * (getResultLabels/getResultGroups, which already correctly classifies 35+
+ * distinct Meta objectives via OBJECTIVE_CATALOG — see objective.ts, NOT
+ * modified here) to this module's broader MetaObjectiveKey set, per the
+ * product's literal mapping table. This is now the PRIMARY signal
+ * detectCampaignObjectives uses (below) — detectMetaObjectiveKey's own
+ * column-presence heuristic (Step 2 in that function) is only a fallback
+ * for the rare case a campaign's own result label can't be classified at
+ * all (no majority label, and no reach-based override either).
+ *
+ * A single resultLabel can map to MORE than one key — REACH maps to both
+ * "reach" and "awareness" per the product spec, since a pure Reach
+ * objective's secondary metrics can be tagged either way in the dictionary
+ * and metric-selector.ts's objective filter already treats multiple
+ * detected keys as inclusive-OR (see its `objectiveSet`/`.some()` check),
+ * not "one key wins".
+ */
+const RESULT_LABEL_TO_OBJECTIVE_KEYS: Partial<Record<string, MetaObjectiveKey[]>> = {
+  "WEBSITE LEADS": ["leads"],
+  LEADS: ["leads"],
+  "META FORM LEADS": ["leads"],
+  "APPOINTMENT LEADS": ["leads"],
+  REGISTRATIONS: ["leads"],
+  APPLICATIONS: ["leads"],
+  "MESSAGING LEADS": ["messaging"],
+  "INSTAGRAM DM LEADS": ["messaging"],
+  "WHATSAPP LEADS": ["messaging"],
+  "CALL LEADS": ["calls"],
+  "APP INSTALLS": ["app_promotion"],
+  "APP EVENTS": ["app_promotion"],
+  PURCHASES: ["sales"],
+  SUBSCRIPTIONS: ["sales"],
+  CONVERSIONS: ["sales"],
+  "ADD TO CART": ["sales"],
+  "INITIATE CHECKOUT": ["sales"],
+  "PAYMENT INFO": ["sales"],
+  "CONTENT VIEWS": ["sales", "traffic"],
+  "LINK CLICKS": ["traffic"],
+  "LANDING PAGE VIEWS": ["traffic"],
+  REACH: ["reach", "awareness"],
+  IMPRESSIONS: ["awareness"],
+  "AD RECALL LIFT": ["awareness"],
+  "POST ENGAGEMENTS": ["engagement"],
+  "PAGE LIKES": ["engagement"],
+  FOLLOWERS: ["engagement"],
+  "EVENT RESPONSES": ["engagement"],
+  "VIDEO VIEWS": ["video_views"],
+};
+
+/** Looks up a single objective.ts resultLabel (e.g. "REACH", "WEBSITE LEADS") in the Fix 2 mapping table above. Empty array means objective.ts's own signal wasn't classifiable — caller falls back to detectMetaObjectiveKey's column-presence heuristic. */
+export function mapResultLabelToObjectiveKeys(resultLabel: string): MetaObjectiveKey[] {
+  return RESULT_LABEL_TO_OBJECTIVE_KEYS[resultLabel.toUpperCase()] ?? [];
+}
+
+/**
  * Per-campaign objective detection for a Meta account whose CSV mixes
  * campaigns with genuinely different objectives (e.g. Reach + Traffic +
  * Lead Gen in the same export) — the header-presence fallback above only
@@ -141,6 +196,13 @@ export function detectCampaignObjectives(rows: MetricRow[], headers: string[]): 
 
   const seen = new Set<MetaObjectiveKey>();
   const result: MetaObjectiveKey[] = [];
+  const addKey = (key: MetaObjectiveKey) => {
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(key);
+    }
+  };
+
   for (const campRows of groups.values()) {
     let majorityLabel = getResultGroups(campRows)[0]?.label ?? null;
     // A real Reach-objective campaign typically has a completely blank
@@ -157,10 +219,18 @@ export function detectCampaignObjectives(rows: MetricRow[], headers: string[]): 
       const totalReach = campRows.reduce((sum, r) => sum + parseCellNum(r.reach), 0);
       if (totalResults === 0 && totalReach > 0) majorityLabel = "REACH";
     }
-    const key = detectMetaObjectiveKey(headers, majorityLabel);
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(key);
+
+    // Fix 2 — objective.ts's own resultLabel (Step 1 above) is now the
+    // PRIMARY signal, mapped through the literal product table (which can
+    // yield more than one key, e.g. REACH -> reach + awareness). Only when
+    // that mapping has nothing to say (a genuinely unclassifiable/blank
+    // result_type with no reach data either) does this fall back to
+    // detectMetaObjectiveKey's column-presence heuristic.
+    const mappedKeys = majorityLabel ? mapResultLabelToObjectiveKeys(majorityLabel) : [];
+    if (mappedKeys.length > 0) {
+      mappedKeys.forEach(addKey);
+    } else {
+      addKey(detectMetaObjectiveKey(headers, majorityLabel));
     }
   }
   return result;

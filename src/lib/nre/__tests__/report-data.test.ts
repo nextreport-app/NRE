@@ -1598,10 +1598,7 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
     expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("—");
   });
 
-  it("splits a campaign's cards across multiple slides once selectedMetrics exceeds 8, padding a 1-3 remainder up to 4 (Fix 2)", () => {
-    // 10 selected metrics -> slide 1 gets the first 8, slide 2 gets the
-    // remaining 2, padded up to 4 from the account's other detected (but
-    // unselected) metrics.
+  it("never splits a campaign into a second/continued slide, even with more than 12 selectedMetrics — caps at the top 12 by priority instead (Fix 3)", () => {
     const richRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
       _raw: {
         Day: day,
@@ -1615,8 +1612,6 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
         "Landing page views": "5",
         Frequency: "1.5",
         "CPM (Cost per 1,000 Impressions)": "3",
-        // Detected but NOT among the 10 selected metrics below — the
-        // padding pool candidates for slide 2's under-4 remainder.
         "Website leads": "1",
         "CPC (All)": "2",
       },
@@ -1632,7 +1627,9 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
       date_start: day,
       date_end: day,
     }));
-    const tenMetrics = [
+    // 13 selected metrics, priority-descending — only the top 12 ("cpc",
+    // priority 55, is last and lowest) should ever make it onto the slide.
+    const thirteenMetrics = [
       { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
       { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
       { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "impressions" },
@@ -1648,29 +1645,29 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
       },
       { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, type: "primary" as const, priority: 75, csvName: "ctr (all)" },
       { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "link clicks" },
-      { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "landing page views" },
-      { key: "frequency", label: "FREQUENCY", format: "ratio" as const, type: "secondary" as const, priority: 60, csvName: "frequency" },
-      { key: "cpm", label: "CPM", format: "currency" as const, type: "secondary" as const, priority: 65, csvName: "cpm (cost per 1,000 impressions)", perUnitOf: "impressions", perUnitScale: 1000 },
+      { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" as const, type: "secondary" as const, priority: 69, csvName: "landing page views" },
+      { key: "cpm", label: "CPM", format: "currency" as const, type: "secondary" as const, priority: 68, csvName: "cpm (cost per 1,000 impressions)", perUnitOf: "impressions", perUnitScale: 1000 },
+      { key: "frequency", label: "FREQUENCY", format: "ratio" as const, type: "secondary" as const, priority: 67, csvName: "frequency" },
+      { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, type: "secondary" as const, priority: 66, csvName: "website leads" },
+      { key: "clicks_all", label: "CLICKS (ALL)", format: "number" as const, type: "secondary" as const, priority: 65, csvName: "clicks (all)" },
+      { key: "cpc", label: "CPC (ALL)", format: "currency" as const, type: "secondary" as const, priority: 55, csvName: "cpc (all)" },
     ];
+    expect(thirteenMetrics.length).toBe(13);
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
       mtdDailyRows: richRows,
-      selectedMetrics: tenMetrics,
+      selectedMetrics: thirteenMetrics,
       now: NOW,
     });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
-    expect(slidesForShoes.length).toBe(2);
+    expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes");
-    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(8);
-    expect(slidesForShoes[1].campaignName).toBe("Shoes (continued)");
-    // Only 2 metrics remained (frequency, cpm) — padded up to the 4-card minimum.
-    expect(slidesForShoes[1].dynamicMetrics!.length).toBe(4);
-    const slide2Keys = slidesForShoes[1].dynamicMetrics!.map((m) => m.key);
-    expect(slide2Keys).toContain("frequency");
-    expect(slide2Keys).toContain("cpm");
+    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(12);
+    const keys = slidesForShoes[0].dynamicMetrics!.map((m) => m.key);
+    expect(keys).not.toContain("cpc"); // lowest-priority, 13th metric — dropped, not put on a second slide
   });
 
   it("does not split into multiple slides when selectedMetrics is 8 or fewer", () => {

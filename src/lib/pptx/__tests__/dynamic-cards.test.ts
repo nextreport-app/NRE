@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { buildDynamicCardShapes, DEFAULT_CARD_REGION, type CardMetric } from "../dynamic-cards";
 
 const EMU_PER_PT = 12700;
-// Shapes per card with no iconRelIds supplied (the common test case — no
-// icon <p:pic> gets built without a resolved relationship id): flatCard +
-// accent-bar rectangle + label textbox + value textbox.
+// Shapes per card with no iconRelIds supplied: card background + icon badge
+// circle + label textbox + value textbox (no <p:pic> without a resolved
+// relationship id — see iconBadgeXml's doc comment).
 const SHAPES_PER_CARD_NO_ICON = 4;
 
 function offsetsOf(shapesXml: string[]): { xPt: number; yPt: number }[] {
@@ -37,8 +37,8 @@ describe("buildDynamicCardShapes — grid layout", () => {
     expect(buildDynamicCardShapes([])).toEqual([]);
   });
 
-  it("emits exactly 4 shapes per metric without icon relationships (card + accent bar + label + value)", () => {
-    for (const n of [4, 5, 6, 7, 8]) {
+  it("emits exactly 4 shapes per metric without icon relationships (card + icon badge + label + value)", () => {
+    for (const n of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
       expect(buildDynamicCardShapes(metrics(n)).length).toBe(n * SHAPES_PER_CARD_NO_ICON);
     }
   });
@@ -73,6 +73,22 @@ describe("buildDynamicCardShapes — grid layout", () => {
     expect(distinctY.size).toBe(2);
   });
 
+  it("lays out 10 metrics as 5 columns x 2 rows (Fix 3)", () => {
+    const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(10)));
+    const distinctX = new Set(cardOffsets.map((o) => Math.round(o.xPt)));
+    const distinctY = new Set(cardOffsets.map((o) => Math.round(o.yPt)));
+    expect(distinctX.size).toBe(5);
+    expect(distinctY.size).toBe(2);
+  });
+
+  it("lays out 12 metrics as 6 columns x 2 rows — the maximum, still a single slide (Fix 3)", () => {
+    const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(12)));
+    const distinctX = new Set(cardOffsets.map((o) => Math.round(o.xPt)));
+    const distinctY = new Set(cardOffsets.map((o) => Math.round(o.yPt)));
+    expect(distinctX.size).toBe(6);
+    expect(distinctY.size).toBe(2);
+  });
+
   it("interpolates 5 metrics as 3 columns (row-major: 3 then 2)", () => {
     const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(5)));
     const distinctX = new Set(cardOffsets.map((o) => Math.round(o.xPt)));
@@ -80,7 +96,7 @@ describe("buildDynamicCardShapes — grid layout", () => {
   });
 
   it("keeps every card within the measured template card region", () => {
-    const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(8)));
+    const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(12)));
     for (const o of cardOffsets) {
       expect(o.xPt).toBeGreaterThanOrEqual(DEFAULT_CARD_REGION.x - 1);
       expect(o.xPt).toBeLessThan(DEFAULT_CARD_REGION.x + DEFAULT_CARD_REGION.w);
@@ -105,16 +121,76 @@ describe("buildDynamicCardShapes — grid layout", () => {
     const cardOffsets = cardOffsetsOf(buildDynamicCardShapes(metrics(4)));
     expect(cardOffsets[0].xPt).toBeLessThan(cardOffsets[1].xPt);
   });
+
+  it("never lets the label font size drop below the 8pt floor, even at the 12-card/6-column minimum width (Fix 3)", () => {
+    const longLabelMetrics: CardMetric[] = Array.from({ length: 12 }, (_, i) => ({
+      key: `metric_${i + 1}`,
+      label: "A REALLY VERY EXTREMELY LONG METRIC LABEL TEXT",
+      value: "$1,234,567.89",
+      type: "secondary",
+      format: "currency",
+    }));
+    const shapes = buildDynamicCardShapes(longLabelMetrics);
+    const labelSizes = [...shapes.join("|SPLIT|").matchAll(/Metric Label"[\s\S]*?sz="(\d+)"/g)].map((m) => Number(m[1]) / 100);
+    expect(labelSizes.length).toBeGreaterThan(0);
+    for (const sz of labelSizes) expect(sz).toBeGreaterThanOrEqual(8);
+  });
 });
 
-describe("buildDynamicCardShapes — accent bar color (Fix 4)", () => {
-  it("uses the amber accent color for a primary metric and blue for a secondary one", () => {
-    const shapes = buildDynamicCardShapes([
-      { key: "spend", label: "AD SPEND", value: "$100", type: "primary", format: "currency" },
-      { key: "ctr", label: "CTR", value: "1%", type: "secondary", format: "percentage" },
-    ]);
-    const joined = shapes.join("|SHAPE|").toLowerCase();
-    expect(joined).toContain("f6ad55");
-    expect(joined).toContain("4a90d9");
+describe("buildDynamicCardShapes — real template styling (Fix 1)", () => {
+  it("reuses the template's exact card background fill, roundRect corner radius, and shadow", () => {
+    const shapes = buildDynamicCardShapes(metrics(4));
+    const bg = shapes[0];
+    expect(bg).toContain('<a:schemeClr val="accent5"/>');
+    expect(bg).toContain('fmla="val 12280"');
+    expect(bg).toContain("outerShdw");
+  });
+
+  it("reuses the template's exact icon badge gradient (accent1-4) and its own drop shadow", () => {
+    const shapes = buildDynamicCardShapes(metrics(1), { results: "rId50" });
+    const badge = shapes[1];
+    expect(badge).toContain('<a:schemeClr val="accent1"/>');
+    expect(badge).toContain('<a:schemeClr val="accent2"/>');
+    expect(badge).toContain('<a:schemeClr val="accent3"/>');
+    expect(badge).toContain('<a:schemeClr val="accent4"/>');
+    expect(badge).toContain("gradFill");
+    const pic = shapes[2];
+    expect(pic).toContain("outerShdw");
+    expect(pic).toContain('r:embed="rId50"');
+  });
+
+  it("always gives the icon badge an equal width and height (never a stretched oval, even at the narrowest 6-column width)", () => {
+    const shapes = buildDynamicCardShapes(metrics(12), { results: "rId1" });
+    // Every 5th shape is this card's badge (card, badge, pic, label, value).
+    const badges = shapes.filter((s) => s.includes("Metric Icon Badge"));
+    for (const badge of badges) {
+      const m = badge.match(/<a:ext cx="(\d+)" cy="(\d+)"\/>/);
+      expect(m).not.toBeNull();
+      expect(m![1]).toBe(m![2]);
+    }
+  });
+
+  it("uses the template's own Poppins/Poppins Medium fonts for value and label text", () => {
+    const shapes = buildDynamicCardShapes(metrics(1));
+    const joined = shapes.join("|SPLIT|");
+    expect(joined).toContain('typeface="Poppins Medium"');
+    expect(joined).toContain('typeface="Poppins"');
+  });
+});
+
+describe("buildDynamicCardShapes — icon fallback (Fix 1 step 6: closest available icon for secondaries)", () => {
+  it("omits the <p:pic> (badge circle still renders) when iconRelIds has no entry for the resolved icon", () => {
+    const shapes = buildDynamicCardShapes(metrics(1));
+    expect(shapes.some((s) => s.startsWith("<p:pic>"))).toBe(false);
+    expect(shapes.some((s) => s.includes("Metric Icon Badge"))).toBe(true);
+  });
+
+  it("resolves a secondary metric with no direct icon match to its closest available template icon (via metric-icons.ts's resolveMetricIconId)", () => {
+    const shapes = buildDynamicCardShapes(
+      [{ key: "roas", label: "PURCHASE ROAS", value: "3.2", type: "secondary", format: "ratio" }],
+      { cost: "rId7" },
+    );
+    // format "ratio" with no key override resolves to the "cost" icon id (see resolveMetricIconId) — confirms the fallback path picks a real relationship id, not nothing.
+    expect(shapes.some((s) => s.includes('r:embed="rId7"'))).toBe(true);
   });
 });

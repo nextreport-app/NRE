@@ -46,10 +46,9 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { SelectedMetric } from "./metric-selector";
-import { getAvailableMetrics } from "./metric-selector";
-import { buildDynamicMetricSlides, type DynamicMetricValue } from "./dynamic-metrics";
+import { buildDynamicMetricCards, type DynamicMetricValue } from "./dynamic-metrics";
 
-/** Re-exported from dynamic-metrics.ts (its canonical home — see buildDynamicMetricSlides) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
+/** Re-exported from dynamic-metrics.ts (its canonical home — see buildDynamicMetricCards) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
 export type { DynamicMetricValue };
 
 // ─────────────────────────── Public types ──────────────────────────────────
@@ -693,13 +692,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // path.
   const campaignRawGroups: Record<string, NreRow[]> = {};
   const adSetRawGroups: Record<string, NreRow[]> = {};
-  // The account's full detected-metric candidate pool, no objective filter —
-  // used only to pad a campaign's final dynamic-card slide up to the 4-card
-  // minimum when selectedMetrics splits across multiple slides (see
-  // dynamic-metrics.ts's buildDynamicMetricSlides). Computed once here, not
-  // per campaign, since every campaign shares the same account-wide CSV
-  // columns.
-  let dynamicMetricsPaddingPool: SelectedMetric[] = [];
   if (selectedMetrics && selectedMetrics.length > 0) {
     primaryRawRows.forEach((row) => {
       const name = String(row.campaign_name || "Unknown Campaign").trim();
@@ -707,8 +699,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       const key = adSetKey(name, String(row.ad_set_name || "").trim());
       (adSetRawGroups[key] ??= []).push(row);
     });
-    const detectedColumns = Object.keys(primaryRawRows[0]?._raw ?? {});
-    dynamicMetricsPaddingPool = getAvailableMetrics(detectedColumns, "meta");
   }
 
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
@@ -739,7 +729,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // comment for what "low confidence" means and why it's surfaced here.
   const objectiveWarnings: ObjectiveWarning[] = [];
 
-  const campaignSlides: CampaignSlideData[] = campaignNames.flatMap((campaignName) => {
+  const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
     const campRows = campaignGroups[campaignName];
 
     let totalSpend = 0;
@@ -790,25 +780,25 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
     };
 
-    const dynamicMetricsSlides: DynamicMetricValue[][] =
+    // A campaign always gets exactly one slide, capped at the top 12
+    // selectedMetrics by priority — see dynamic-metrics.ts's
+    // buildDynamicMetricCards for why there's no "continued" slide or
+    // padding logic here anymore.
+    const dynamicMetrics: DynamicMetricValue[] | undefined =
       selectedMetrics && selectedMetrics.length > 0
-        ? buildDynamicMetricSlides(
-            campaignRawGroups[campaignName] ?? [],
-            selectedMetrics,
-            dynamicMetricsPaddingPool,
-            "meta",
-            currencySymbol,
-          )
-        : [];
+        ? buildDynamicMetricCards(campaignRawGroups[campaignName] ?? [], selectedMetrics, "meta", currencySymbol)
+        : undefined;
 
-    const baseSlide = {
+    return {
       kind: "campaign" as const,
+      campaignName,
       resultLabel,
       costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
       statusIndicator,
+      dynamicMetrics,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
         dateRange: globalWeekDateRange,
@@ -827,20 +817,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         spendNum: totalSpend,
       },
     };
-
-    // Fix 2: a campaign whose selectedMetrics exceeds 8 cards renders as
-    // multiple slides — "Campaign Name" for the first, "Campaign Name
-    // (continued)" for every slide after it. Every other field (fixed
-    // metrics, AI copy, date range) is identical across a campaign's own
-    // slides; only campaignName and dynamicMetrics differ.
-    if (dynamicMetricsSlides.length <= 1) {
-      return [{ ...baseSlide, campaignName, dynamicMetrics: dynamicMetricsSlides[0] }];
-    }
-    return dynamicMetricsSlides.map((dynamicMetrics, i) => ({
-      ...baseSlide,
-      campaignName: i === 0 ? campaignName : `${campaignName} (continued)`,
-      dynamicMetrics,
-    }));
   });
 
   // An ad set below this total-MTD-spend threshold isn't worth its own
@@ -888,26 +864,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
-    const dynamicMetricsSlides: DynamicMetricValue[][] =
+    const dynamicMetrics: DynamicMetricValue[] | undefined =
       selectedMetrics && selectedMetrics.length > 0
-        ? buildDynamicMetricSlides(
-            adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
-            selectedMetrics,
-            dynamicMetricsPaddingPool,
-            "meta",
-            currencySymbol,
-          )
-        : [];
+        ? buildDynamicMetricCards(adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [], selectedMetrics, "meta", currencySymbol)
+        : undefined;
 
-    const baseAdSetSlide = {
-      kind: "adset" as const,
+    adSetSlides.push({
+      kind: "adset",
       campaignName,
+      adSetName,
       resultLabel,
       costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
       statusIndicator,
+      dynamicMetrics,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         dateRange: globalWeekDateRange,
@@ -925,19 +897,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         hasResults: parseCellNum(row.results) > 0,
         spendNum: rowSpend,
       },
-    };
-
-    if (dynamicMetricsSlides.length <= 1) {
-      adSetSlides.push({ ...baseAdSetSlide, adSetName, dynamicMetrics: dynamicMetricsSlides[0] });
-    } else {
-      dynamicMetricsSlides.forEach((dynamicMetrics, i) => {
-        adSetSlides.push({
-          ...baseAdSetSlide,
-          adSetName: i === 0 ? adSetName : `${adSetName} (continued)`,
-          dynamicMetrics,
-        });
-      });
-    }
+    });
   });
 
   // ── MTD performance chart slide ──────────────────────────────────────

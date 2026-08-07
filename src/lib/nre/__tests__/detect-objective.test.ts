@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { detectCampaignObjectives, detectGoogleObjectiveKey, detectMetaObjectiveKey } from "../detect-objective";
+import {
+  detectCampaignObjectives,
+  detectGoogleObjectiveKey,
+  detectMetaObjectiveKey,
+  mapResultLabelToObjectiveKeys,
+} from "../detect-objective";
 import type { MetricRow } from "../types";
 
 describe("detectMetaObjectiveKey", () => {
@@ -64,10 +69,10 @@ describe("detectCampaignObjectives — per-campaign detection for mixed-objectiv
     expect(objectives).toContain("traffic");
   });
 
-  it("dedupes when multiple campaigns share the same objective", () => {
+  it("dedupes when multiple campaigns share the same objective (Fix 2: REACH maps to both 'reach' and 'awareness')", () => {
     const rows: MetricRow[] = [row("A", "Reach"), row("B", "Reach")];
     const objectives = detectCampaignObjectives(rows, ["campaign name"]);
-    expect(objectives).toEqual(["reach"]);
+    expect(objectives).toEqual(["reach", "awareness"]);
   });
 
   it("groups rows by campaign_name before classifying, not row-by-row", () => {
@@ -95,10 +100,43 @@ describe("detectCampaignObjectives — per-campaign detection for mixed-objectiv
     expect(objectives).toContain("leads");
   });
 
-  it("classifies a blank-result_type campaign with zero results and real reach as 'reach' (a real Reach campaign's typical shape)", () => {
+  it("classifies a blank-result_type campaign with zero results and real reach as 'reach' + 'awareness' (a real Reach campaign's typical shape, Fix 2)", () => {
     const reachRow: MetricRow = { campaign_name: "Reach Campaign", result_type: "", results: 0, spend: 10, reach: 5000 };
     const objectives = detectCampaignObjectives([reachRow, reachRow], ["campaign name"]);
-    expect(objectives).toEqual(["reach"]);
+    expect(objectives).toEqual(["reach", "awareness"]);
+  });
+});
+
+describe("mapResultLabelToObjectiveKeys (Fix 2 — objective.ts's resultLabel output mapped to metric-selector.ts's broad objective keys)", () => {
+  it("maps the literal product table", () => {
+    expect(mapResultLabelToObjectiveKeys("LEADS")).toEqual(["leads"]);
+    expect(mapResultLabelToObjectiveKeys("WEBSITE LEADS")).toEqual(["leads"]);
+    expect(mapResultLabelToObjectiveKeys("LINK CLICKS")).toEqual(["traffic"]);
+    expect(mapResultLabelToObjectiveKeys("LANDING PAGE VIEWS")).toEqual(["traffic"]);
+    expect(mapResultLabelToObjectiveKeys("REACH")).toEqual(["reach", "awareness"]);
+    expect(mapResultLabelToObjectiveKeys("PURCHASES")).toEqual(["sales"]);
+    expect(mapResultLabelToObjectiveKeys("VIDEO VIEWS")).toEqual(["video_views"]);
+    expect(mapResultLabelToObjectiveKeys("MESSAGING LEADS")).toEqual(["messaging"]);
+    expect(mapResultLabelToObjectiveKeys("APP INSTALLS")).toEqual(["app_promotion"]);
+    expect(mapResultLabelToObjectiveKeys("PAGE LIKES")).toEqual(["engagement"]);
+  });
+
+  it("is case-insensitive and returns an empty array for an unrecognized label", () => {
+    expect(mapResultLabelToObjectiveKeys("reach")).toEqual(["reach", "awareness"]);
+    expect(mapResultLabelToObjectiveKeys("SOME CUSTOM CONVERSION EVENT")).toEqual([]);
+  });
+});
+
+describe("detectCampaignObjectives — Fix 2 regression: objective.ts's own per-campaign result label is used even when it disagrees with account-wide column presence", () => {
+  it("classifies a Purchases campaign as 'sales' via objective.ts's resultLabel, not header presence", () => {
+    const rows: MetricRow[] = [
+      { campaign_name: "Sales Campaign", result_type: "Purchase", results: 5, spend: 100, reach: 1000 },
+    ];
+    // Headers deliberately carry no purchase/ROAS signal at all — the old
+    // Step 2 column-presence fallback would have nothing to go on, but
+    // objective.ts's own per-row result_type ("Purchase") is unambiguous.
+    const objectives = detectCampaignObjectives(rows, ["campaign name", "result type"]);
+    expect(objectives).toEqual(["sales"]);
   });
 });
 
