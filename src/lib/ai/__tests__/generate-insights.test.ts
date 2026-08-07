@@ -100,8 +100,8 @@ function makeReportData(
     ],
     pausedMessage: null,
     chart: null,
-    periodRow: { hasData: false, monthLabel: "—", monthName: null, sameMonthAsCurrentMTD: false, spend: "—", reach: "—", impressions: "—", ctr: "—", cpc: "—", resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }] },
-    mtdRow: { hasData: false, monthLabel: "—", monthName: null, sameMonthAsCurrentMTD: false, spend: "—", reach: "—", impressions: "—", ctr: "—", cpc: "—", resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }] },
+    periodRow: { hasData: false, monthLabel: "—", fullMonthLabel: "—", monthName: null, sameMonthAsCurrentMTD: false, spend: "—", reach: "—", impressions: "—", ctr: "—", cpc: "—", resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }] },
+    mtdRow: { hasData: false, monthLabel: "—", fullMonthLabel: "—", monthName: null, sameMonthAsCurrentMTD: false, spend: "—", reach: "—", impressions: "—", ctr: "—", cpc: "—", resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }] },
     tableHeaderLabels: { resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT" }] },
     fileDateRange: "07/13/2026 to 07/19/2026",
     objectiveWarnings: [],
@@ -254,9 +254,9 @@ describe("generateInsights", () => {
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
       expect(campaignCopy.summary).toBe(
-        "During Jul 13 - Jul 19, the Campaign A campaign generated 5 LEADS at a $20.00 COST PER LEAD, " +
-          "reaching 1,000 people with 2,000 impressions. The campaign achieved a 1.00% click-through rate " +
-          "and a $2.00 cost per click, reflecting current audience engagement levels.",
+        "This campaign generated 5 LEADS at a $20.00 COST PER LEAD, reaching 1,000 people with 2,000 " +
+          "impressions. Performance showed a 1.00% click-through rate at $2.00 cost per click, reflecting " +
+          "current audience engagement levels.",
       );
       expect(campaignCopy.insights).toBe("AI insight sentence one. AI insight sentence two. AI insight sentence three.");
 
@@ -357,8 +357,16 @@ describe("generateInsights", () => {
       const prompts = vi.mocked(callAI).mock.calls.map(([prompt]) => prompt);
       expect(prompts.length).toBeGreaterThan(0);
       for (const prompt of prompts) {
-        expect(prompt).toContain("Google Ads");
+        // Fix 3 dropped the summary prompt's platform-name framing sentence
+        // entirely (it no longer mentions either platform) — the insight
+        // prompt is untouched and still says "Google Ads". Every prompt
+        // must still never say "Meta Ads" regardless.
         expect(prompt).not.toContain("Meta Ads");
+      }
+      const insightPrompts = prompts.filter((p) => p.includes("Key Insights"));
+      expect(insightPrompts.length).toBeGreaterThan(0);
+      for (const prompt of insightPrompts) {
+        expect(prompt).toContain("Google Ads");
       }
     });
   });

@@ -240,6 +240,7 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
   const periodRow: TableRowData = {
     hasData: true,
     monthLabel: "Jun 2026 PERIOD-LABEL",
+    fullMonthLabel: "Jun 2026 PERIOD-LABEL",
     monthName: "June",
     sameMonthAsCurrentMTD: false,
     spend: "₹500",
@@ -252,6 +253,7 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
   const mtdRow: TableRowData = {
     hasData: true,
     monthLabel: "Jul 1 - Jul 19 MTD-LABEL",
+    fullMonthLabel: "Jul 1 - Jul 19 MTD-LABEL",
     monthName: "July",
     sameMonthAsCurrentMTD: false,
     spend: "₹900",
@@ -298,6 +300,7 @@ describe("buildTableSlideXml — same-month: hide the MTD row instead of showing
   const periodRow: TableRowData = {
     hasData: true,
     monthLabel: "Previous Month — July 2026 PERIOD-LABEL",
+    fullMonthLabel: "Previous Month — July 2026 PERIOD-LABEL",
     monthName: "July",
     sameMonthAsCurrentMTD: true,
     spend: "₹500",
@@ -310,6 +313,7 @@ describe("buildTableSlideXml — same-month: hide the MTD row instead of showing
   const mtdRow: TableRowData = {
     hasData: true,
     monthLabel: "July 1 - July 19, 2026 MTD-LABEL",
+    fullMonthLabel: "July 1 - July 19, 2026 MTD-LABEL",
     monthName: "July",
     sameMonthAsCurrentMTD: false,
     spend: "₹900",

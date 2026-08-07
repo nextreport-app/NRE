@@ -11,19 +11,17 @@
 
 import type { AiContext } from "../nre/report-data";
 
-/** Wording per spec: "During [dateRange], the [campaignName] campaign generated [conversions] conversions at a [costPerConv] cost per conversion, with [clicks] clicks from [impressions] impressions. The campaign achieved a [ctr]% click-through rate at [avgCpc] average CPC." */
+/** Fix 3 — same "don't repeat the date/campaign name already on the slide" instruction as prompts.ts's own buildSummaryPrompt, with Google Ads metric wording (conversions/cost per conversion/avg. CPC instead of results/CPR/CPC). */
 export function buildGoogleAdsSummaryPrompt(ctx: AiContext): string {
   return (
-    "Write a campaign performance summary for a Google Ads weekly client report. Write exactly 2 sentences following this structure:\n" +
-    "Sentence 1: During [date range], the [campaign name] campaign generated [conversions] conversions at a [cost per conversion] cost per conversion, with [clicks] clicks from [impressions] impressions.\n" +
-    "Sentence 2: The campaign achieved a [CTR]% click-through rate at [average CPC] average CPC, reflecting [positive/neutral/cautious] audience engagement this week.\n" +
+    "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide. Start directly with what the campaign achieved. For example start with: This campaign generated... or Campaign delivery showed... or Performance this week showed...\n" +
+    "Sentence 1: What the campaign achieved in terms of conversions, clicks and impressions.\n" +
+    "Sentence 2: The CTR and average CPC performance and what it reflects about audience engagement.\n" +
     "Rules:\n" +
-    "- Always use the real numbers provided — never invent or estimate\n" +
-    "- If a metric is zero or unavailable use the word zero or not available\n" +
-    "- Do not add any text before or after the two sentences\n" +
-    "- Do not use bullet points, headers, or line breaks\n" +
-    "- Keep total length under 60 words\n" +
-    "- Sound professional and factual, like a senior account manager\n\n" +
+    "- Never start with During [date] or The [campaign name] campaign\n" +
+    "- Always use real numbers from the data\n" +
+    "- Under 55 words total\n" +
+    "- Professional tone\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Cost: " + ctx.spend + ", Clicks: " + ctx.reach +
     ", Impressions: " + ctx.impressions + ", Conversions: " + ctx.results + ", Cost per conversion: " + ctx.cpr +
     ", CTR: " + ctx.ctr + ", Avg. CPC: " + ctx.cpc

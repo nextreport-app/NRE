@@ -32,12 +32,15 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
 }
 
 describe("buildSummaryPrompt", () => {
-  it("uses the exact fixed structure from the product owner's spec", () => {
+  it("uses the exact fixed structure from the product owner's spec (Fix 3 — no longer opens with the date/campaign name)", () => {
     const prompt = buildSummaryPrompt(ctx());
-    expect(prompt).toContain("Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences following this structure:");
-    expect(prompt).toContain("Sentence 1: During [date range], the [campaign name] campaign generated [results count] [objective label] at a [CPR] [cost label], reaching [reach] people with [impressions] impressions.");
-    expect(prompt).toContain("Sentence 2: The campaign achieved a [CTR]% click-through rate and a [CPC] cost per click, reflecting [positive/neutral/cautious] audience engagement this week.");
-    expect(prompt).toContain("Keep total length under 60 words");
+    expect(prompt).toContain(
+      "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide.",
+    );
+    expect(prompt).toContain("Sentence 1: What the campaign achieved in terms of results, reach and impressions.");
+    expect(prompt).toContain("Sentence 2: The CTR and CPC performance and what it reflects about audience engagement.");
+    expect(prompt).toContain("Never start with During [date] or The [campaign name] campaign");
+    expect(prompt).toContain("Under 55 words total");
   });
 
   it("substitutes every {token} in the Data line with the slide's real numbers", () => {
@@ -144,19 +147,21 @@ describe("capInsights", () => {
 });
 
 describe("buildFallbackSummary", () => {
-  it("builds the exact 2-sentence structure from real data, always ending in a period", () => {
+  it("builds the exact 2-sentence structure from real data, always ending in a period (Fix 3 — no longer opens with the date/campaign name)", () => {
     const result = buildFallbackSummary(ctx());
     expect(result).toBe(
-      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign generated 21 PURCHASES at a " +
-        "₹50.00 COST PER PURCHASE, reaching 12,600 people with 45,000 impressions. The campaign achieved a 2.00% " +
-        "click-through rate and a ₹3.50 cost per click, reflecting current audience engagement levels.",
+      "This campaign generated 21 PURCHASES at a ₹50.00 COST PER PURCHASE, reaching 12,600 people with 45,000 " +
+        "impressions. Performance showed a 2.00% click-through rate at ₹3.50 cost per click, reflecting current " +
+        "audience engagement levels.",
     );
     expect(result.endsWith(".")).toBe(true);
+    expect(result).not.toContain("During");
+    expect(result).not.toContain("Shoes - Purchases");
   });
 
   it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
     const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
-    expect(result).toContain("achieved a 0.35% click-through rate");
+    expect(result).toContain("showed a 0.35% click-through rate");
     expect(result).not.toContain("0.35%%");
   });
 });

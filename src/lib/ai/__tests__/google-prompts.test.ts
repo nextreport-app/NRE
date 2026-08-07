@@ -21,10 +21,15 @@ const ctx: AiContext = {
 };
 
 describe("buildGoogleAdsSummaryPrompt", () => {
-  it("mentions Google Ads, not Meta Ads", () => {
+  it("never mentions Meta Ads (Fix 3 dropped the platform-name framing sentence entirely)", () => {
     const prompt = buildGoogleAdsSummaryPrompt(ctx);
-    expect(prompt).toContain("Google Ads");
     expect(prompt).not.toContain("Meta Ads");
+  });
+
+  it("does not start with the date/campaign name — Fix 3's 'already shown on the slide' instruction", () => {
+    const prompt = buildGoogleAdsSummaryPrompt(ctx);
+    expect(prompt).toContain("Do NOT start with the date range or campaign name — those are already shown on the slide.");
+    expect(prompt).toContain("Never start with During [date] or The [campaign name] campaign");
   });
 
   it("carries the real numbers through as Cost/Clicks/Conversions/Cost per conversion/CTR/Avg. CPC", () => {

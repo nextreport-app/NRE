@@ -847,7 +847,7 @@ export function ReportUploadWizard({
               <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
                 Tip:{" "}
                 {selectedPlatformCard === "META"
-                  ? "Set date range to Last 30 Days and Time Increment to Day"
+                  ? "Set date range to Last 30 Days and Time Increment to Day (Day-Wise Breakdown Sheet)"
                   : "Set date range to Last 30 days and segment by Day"}
               </p>
 
