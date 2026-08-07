@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { buildReportData } from "@/lib/nre/report-data";
+import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
@@ -13,6 +13,7 @@ import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import {
+  comparisonPeriodSchema,
   dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
@@ -77,8 +78,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
+
+  // Comparison reports skip the weekly/monthly date-selection resolution
+  // entirely — they split the same MTD Daily CSV into two independent,
+  // wizard-picked windows (Period A/B) instead, via buildComparisonReportData
+  // (a separate pipeline from buildReportData below — see its own file
+  // header in report-data.ts).
+  if (reportType === "COMPARISON") {
+    const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
+    const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
+    if (!periodA || !periodB) {
+      return NextResponse.json(
+        { valid: false, errors: [{ field: "comparisonPeriod", message: "Both comparison periods are required." }], warnings: [] },
+        { status: 200 },
+      );
+    }
+
+    const data = buildComparisonReportData({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
+      periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+    });
+
+    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isComparison: true, data });
+  }
+
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {

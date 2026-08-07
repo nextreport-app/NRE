@@ -174,10 +174,16 @@ enum ReportStatus {
 // ad-set slides, cover title, and the Combined Total table (1 row, MTD
 // only) all use the full month-to-date data instead — see
 // lib/nre/report-data.ts's buildReportData `reportType` param for exactly
-// what changes.
+// what changes. Comparison: an entirely separate data/render pipeline (see
+// lib/nre/report-data.ts's buildComparisonReportData and
+// lib/pptx/comparison-slides.ts) that splits the same MTD Daily CSV into
+// two wizard-picked date windows (Period A/B) and compares one campaign
+// against itself across both — no weekly/MTD split, health score, ad-set
+// slides, or MTD chart at all.
 enum ReportType {
   WEEKLY
   MONTHLY
+  COMPARISON
 }
 
 // Which ad platform a report's CSV came from — detected automatically from
@@ -272,7 +278,8 @@ model Report {
   status     ReportStatus @default(PENDING)
   // Which report the wizard generated — see the ReportType enum's own
   // comment. Recorded per-report (not read back into anything) purely so
-  // the client's report history can show "Weekly"/"Monthly" per row.
+  // the client's report history can show "Weekly"/"Monthly"/"Comparison"
+  // per row.
   reportType ReportType   @default(WEEKLY)
   // Which ad platform this report's CSV came from — see the Platform enum's
   // own comment. Recorded per-report (auto-detected or manually overridden

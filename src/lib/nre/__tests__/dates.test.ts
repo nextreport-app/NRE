@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDateUS, getDateRangeShortLabel, parseDate } from "../dates";
+import { formatDateUS, getComparisonPeriodLabel, getDateRangeShortLabel, parseDate } from "../dates";
 
 describe("parseDate", () => {
   it("detects Indian DD-MM-YY when the first number > 12", () => {
@@ -66,5 +66,23 @@ describe("getDateRangeShortLabel", () => {
 
   it("returns N/A when start is unparseable", () => {
     expect(getDateRangeShortLabel("", "13-07-2026")).toBe("N/A");
+  });
+});
+
+describe("getComparisonPeriodLabel — Comparison Report's Period A/B labels", () => {
+  it("formats a same-month range with the abbreviated month once and the year", () => {
+    expect(getComparisonPeriodLabel("2026-08-01", "2026-08-06")).toBe("Aug 1 - Aug 6, 2026");
+  });
+
+  it("formats a cross-month range with both abbreviated months", () => {
+    expect(getComparisonPeriodLabel("2026-07-28", "2026-08-03")).toBe("Jul 28 - Aug 3, 2026");
+  });
+
+  it("formats a single-day range without a dash", () => {
+    expect(getComparisonPeriodLabel("2026-08-01", "2026-08-01")).toBe("Aug 1, 2026");
+  });
+
+  it("returns N/A when start is unparseable", () => {
+    expect(getComparisonPeriodLabel("", "2026-08-06")).toBe("N/A");
   });
 });

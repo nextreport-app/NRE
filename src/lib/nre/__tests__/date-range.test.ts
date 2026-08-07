@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCsvDateBounds,
   computeEffectiveYesterday,
+  computeMonthComparisonRangeOptions,
   computeMtdRangeIso,
   computeWeeklyRangeOptions,
   toIsoDate,
@@ -114,5 +115,40 @@ describe("validateCustomWeeklyRange", () => {
     const result = validateCustomWeeklyRange("2026-07-01", "2026-07-15", bounds);
     expect(result.valid).toBe(true);
     expect(result.spanDays).toBe(15);
+  });
+});
+
+describe("computeMonthComparisonRangeOptions — Comparison Report's 'This month vs Last month' preset", () => {
+  it("computes Period A = 1st of this month to yesterday, Period B = same span one month earlier", () => {
+    const rows = daysInclusive("2026-07-01", "2026-08-06");
+    const now = new Date("2026-08-07T12:00:00Z"); // real yesterday = Aug 6
+    const result = computeMonthComparisonRangeOptions(rows, now);
+    expect(result).not.toBeNull();
+    expect(result!.periodA).toEqual({ startIso: "2026-08-01", endIso: "2026-08-06" });
+    expect(result!.periodB).toEqual({ startIso: "2026-07-01", endIso: "2026-07-06" });
+  });
+
+  it("clamps Period B's end date to the shorter previous month instead of overflowing (e.g. Mar 31 -> Feb 28)", () => {
+    const rows = daysInclusive("2026-02-01", "2026-03-31");
+    const now = new Date("2026-04-01T12:00:00Z"); // real yesterday = Mar 31
+    const result = computeMonthComparisonRangeOptions(rows, now);
+    expect(result).not.toBeNull();
+    expect(result!.periodA).toEqual({ startIso: "2026-03-01", endIso: "2026-03-31" });
+    // February 2026 is not a leap year -> 28 days, so Period B clamps to Feb 28 instead of a nonexistent Feb 31.
+    expect(result!.periodB).toEqual({ startIso: "2026-02-01", endIso: "2026-02-28" });
+  });
+
+  it("wraps across a year boundary (January -> December of the previous year)", () => {
+    const rows = daysInclusive("2025-12-01", "2026-01-10");
+    const now = new Date("2026-01-11T12:00:00Z"); // real yesterday = Jan 10
+    const result = computeMonthComparisonRangeOptions(rows, now);
+    expect(result).not.toBeNull();
+    expect(result!.periodA).toEqual({ startIso: "2026-01-01", endIso: "2026-01-10" });
+    expect(result!.periodB).toEqual({ startIso: "2025-12-01", endIso: "2025-12-10" });
+  });
+
+  it("returns null when there's no usable date data at all", () => {
+    const result = computeMonthComparisonRangeOptions([], new Date("2026-08-07T12:00:00Z"));
+    expect(result).toBeNull();
   });
 });

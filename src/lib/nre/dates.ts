@@ -96,6 +96,32 @@ export function getDateRangeShortLabel(rawStart: unknown, rawEnd: unknown): stri
   return sm + " " + s.day + " - " + em + " " + e.day;
 }
 
+const MONTHS_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/**
+ * "Aug 1 - Aug 6, 2026" (abbreviated month, always with year — cross-month
+ * spans read as "Jul 28 - Aug 3, 2026") — used for the comparison report's
+ * Period A/B labels (see report-data.ts's buildComparisonReportData).
+ * Unlike getDateRangeShortLabel (full month names, no year — built for the
+ * existing weekly/monthly slides' own date-range line), a comparison
+ * period label needs the year inline since Period A and B can span
+ * different years, and abbreviated months keep two side-by-side period
+ * labels from running long on the comparison campaign slide.
+ */
+export function getComparisonPeriodLabel(rawStart: unknown, rawEnd: unknown): string {
+  const s = parseDate(rawStart);
+  const e = parseDate(rawEnd);
+  if (!s) return "N/A";
+  const sm = MONTHS_ABBR[s.month - 1];
+  if (!e) return `${sm} ${s.day}, ${s.year}`;
+  const em = MONTHS_ABBR[e.month - 1];
+  if (s.day === e.day && s.month === e.month && s.year === e.year) return `${sm} ${s.day}, ${s.year}`;
+  return `${sm} ${s.day} - ${em} ${e.day}, ${e.year}`;
+}
+
 /** "July" — just the calendar month name of a raw date value, no year. Null if unparseable. Deliberately not timezone-aware (unlike getMonthLabel above, which is for "today" in the viewer's timezone): these raw values are already-resolved calendar dates from a CSV, not instants that need zone conversion. */
 export function getMonthName(rawValue: unknown): string | null {
   const d = parseDate(rawValue);

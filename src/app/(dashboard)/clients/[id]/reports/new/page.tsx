@@ -38,6 +38,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
       <p className="mb-6 text-[15px] text-dash-ink-secondary">{client.accountName}</p>
       <ReportUploadWizard
         clientId={client.id}
+        clientName={client.accountName}
         hasGoogleDriveConnected={!!user.googleRefreshToken}
         initialLastDriveFolderId={client.lastDriveFolderId}
         initialLastDriveFolderName={client.lastDriveFolderName}

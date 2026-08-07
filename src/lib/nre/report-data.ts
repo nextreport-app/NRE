@@ -23,10 +23,10 @@
  */
 
 import type { AggRow } from "./aggregate";
-import { splitMtdDaily } from "./aggregate";
+import { splitMtdDaily, aggregateRows } from "./aggregate";
 import { adSetKey, filterRowsByAdSets } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
-import type { NreRow } from "./columns";
+import { getRowDate, type NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
 import {
   campaignStatusIndicator,
@@ -35,7 +35,7 @@ import {
   isArchivedDeliveryStatus,
   type DeliveryStatusIndicator,
 } from "./delivery-status";
-import { getDateRangeShortLabel, formatDateUS, getMonthName, getMonthYearLabel, parseDate } from "./dates";
+import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, getMonthYearLabel, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
@@ -978,5 +978,241 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     tableHeaderLabels,
     fileDateRange,
     objectiveWarnings,
+  };
+}
+
+// ─────────────────────────── Comparison reports ────────────────────────────
+//
+// A separate, parallel data pipeline from buildReportData above — comparison
+// reports don't have a "weekly vs MTD" split, a health score, ad-set slides,
+// or an MTD chart; they split the same MTD Daily CSV into two arbitrary
+// custom date windows (Period A/B) and compare one campaign against itself
+// across both. Deliberately not threaded through buildReportData's own
+// reportType branches (WEEKLY/MONTHLY) — see comparison-slides.ts, which
+// renders this output with its own from-scratch OOXML slide builders,
+// entirely independent of fill-tags.ts's template-based campaign/ad-set/
+// chart slide rendering.
+
+/** One metric's raw numeric value alongside its already-formatted display string — comparison-slides.ts renders `formatted`; buildComparisonReportData's own % change math (see computeChange) uses `value`. */
+export interface ComparisonMetricValue {
+  value: number;
+  formatted: string;
+}
+
+export interface ComparisonMetricSet {
+  spend: ComparisonMetricValue;
+  reach: ComparisonMetricValue;
+  results: ComparisonMetricValue;
+  cpr: ComparisonMetricValue;
+}
+
+export type ComparisonDirection = "up" | "down" | "flat" | "new";
+
+/**
+ * `percent` is null exactly when Period B's value was 0 (and Period A's
+ * wasn't) — comparison-slides.ts renders that as "NEW" instead of a
+ * percentage, per spec. Both periods at 0 for a metric is treated as "flat"
+ * (0%), not "New" — there's nothing to call new about a metric that stayed
+ * at zero.
+ */
+export interface ComparisonChange {
+  percent: number | null;
+  direction: ComparisonDirection;
+}
+
+export interface ComparisonChanges {
+  spend: ComparisonChange;
+  reach: ComparisonChange;
+  results: ComparisonChange;
+  cpr: ComparisonChange;
+}
+
+export interface ComparisonCampaignData {
+  campaignName: string;
+  /** The campaign's own resultLabel (e.g. "PURCHASES") — Period A's detected objective wins when Period A has any rows for this campaign, since that's the more current/relevant period; falls back to Period B's when Period A is empty (a campaign that ran only in the earlier period). */
+  objective: string;
+  costLabel: string;
+  metricsA: ComparisonMetricSet;
+  metricsB: ComparisonMetricSet;
+  changes: ComparisonChanges;
+}
+
+export interface ComparisonReportData {
+  /** True only when BOTH periods have zero total spend across every campaign — mirrors ReportData.isPaused's "nothing to report" meaning, adapted for two periods instead of one. */
+  isPaused: boolean;
+  accountName: string;
+  reportDate: string;
+  /** e.g. "Aug 1 - Aug 6, 2026" — see dates.ts's getComparisonPeriodLabel. */
+  periodALabel: string;
+  periodBLabel: string;
+  campaigns: ComparisonCampaignData[];
+  totals: {
+    metricsA: ComparisonMetricSet;
+    metricsB: ComparisonMetricSet;
+    changes: ComparisonChanges;
+  };
+}
+
+export interface BuildComparisonReportDataInput {
+  accountName: string;
+  currencySymbol: string;
+  timezone: string;
+  /** Raw column-mapped rows from the "MTD Daily CSV" upload — comparison reports read directly from this, not from splitMtdDaily's weekly/MTD split, since Period A/B are arbitrary wizard-picked windows. */
+  mtdDailyRows: NreRow[];
+  /** See BuildReportDataInput.selectedCampaigns — same semantics. */
+  selectedCampaigns?: string[] | null;
+  periodA: DateRangeIso;
+  periodB: DateRangeIso;
+  now?: Date;
+}
+
+function filterRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
+  const startTs = Date.parse(range.startIso + "T00:00:00Z");
+  const endTs = Date.parse(range.endIso + "T00:00:00Z");
+  return rows.filter((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return false;
+    const ts = Date.UTC(d.year, d.month - 1, d.day);
+    return ts >= startTs && ts <= endTs;
+  });
+}
+
+/** Groups a date-filtered row set into per-campaign AggRow arrays — aggregateRows itself groups by campaign+ad-set (and runs the same 4-step objective-detection/correction chain every other report type relies on); this just re-groups its output by campaign alone, matching buildReportData's own campaignGroups pattern above. */
+function groupAggRowsByCampaign(rows: NreRow[]): Record<string, AggRow[]> {
+  const agg = aggregateRows(rows);
+  const byCampaign: Record<string, AggRow[]> = {};
+  agg.forEach((row) => {
+    const name = (row.campaign_name || "Unknown Campaign").trim();
+    (byCampaign[name] ??= []).push(row);
+  });
+  return byCampaign;
+}
+
+/** Same "prefer a real objective over Reach unless it's the only one running" selection getGroupedResultDisplay uses, but returning the raw numeric count/avgCpr getGroupedResultDisplay only exposes pre-formatted (needed here for the % change math) — null for an empty row set (this campaign didn't run at all in this period). */
+function pickPrimaryGroup(rows: MetricRow[]): { label: string; costLabel: string; count: number; avgCpr: number } | null {
+  if (rows.length === 0) return null;
+  const allGroups = getResultGroups(rows);
+  const nonReach = allGroups.filter((g) => g.label !== "REACH");
+  return nonReach[0] || allGroups[0] || null;
+}
+
+function comparisonMetricSet(spend: number, reach: number, results: number, cpr: number, currencySymbol: string): ComparisonMetricSet {
+  return {
+    spend: { value: spend, formatted: fmtCurrency(spend, currencySymbol) },
+    reach: { value: reach, formatted: fmtNumber(reach) },
+    results: { value: results, formatted: fmtNumber(results) },
+    cpr: { value: cpr, formatted: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—" },
+  };
+}
+
+/** `change = ((A - B) / B) * 100`, with the product spec's two documented special cases: B = 0 (and A != 0) reads "New" (percent: null); both zero reads flat/0%, not "New" (see ComparisonChange's own doc comment). Positive = improvement (green ↑) and negative = decline (red ↓) for every metric uniformly, including COST PER RESULT — a literal reading of the spec, not a domain-aware "lower cost is better" adjustment. */
+function computeChange(a: number, b: number): ComparisonChange {
+  if (b === 0) {
+    if (a === 0) return { percent: 0, direction: "flat" };
+    return { percent: null, direction: "new" };
+  }
+  const percent = ((a - b) / b) * 100;
+  const direction: ComparisonDirection = percent > 0 ? "up" : percent < 0 ? "down" : "flat";
+  return { percent, direction };
+}
+
+function sumField(rows: AggRow[], field: "spend" | "reach"): number {
+  return rows.reduce((sum, r) => sum + (r[field] || 0), 0);
+}
+
+export function buildComparisonReportData(input: BuildComparisonReportDataInput): ComparisonReportData {
+  const { accountName, currencySymbol, timezone, mtdDailyRows, selectedCampaigns, periodA, periodB, now = new Date() } = input;
+
+  const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
+  const rowsA = filterRowsByDateRange(campaignFilteredRows, periodA);
+  const rowsB = filterRowsByDateRange(campaignFilteredRows, periodB);
+
+  const byCampaignA = groupAggRowsByCampaign(rowsA);
+  const byCampaignB = groupAggRowsByCampaign(rowsB);
+
+  const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort();
+
+  const campaigns: ComparisonCampaignData[] = campaignNames.map((campaignName) => {
+    const campRowsA = byCampaignA[campaignName] ?? [];
+    const campRowsB = byCampaignB[campaignName] ?? [];
+
+    const spendA = sumField(campRowsA, "spend");
+    const spendB = sumField(campRowsB, "spend");
+    const reachA = sumField(campRowsA, "reach");
+    const reachB = sumField(campRowsB, "reach");
+
+    const primaryA = pickPrimaryGroup(campRowsA);
+    const primaryB = pickPrimaryGroup(campRowsB);
+    const primary = primaryA ?? primaryB;
+    const objective = primary?.label ?? "RESULTS";
+    const costLabel = primary?.costLabel ?? "COST PER RESULT";
+    const resultsA = primaryA?.count ?? 0;
+    const resultsB = primaryB?.count ?? 0;
+    const cprA = primaryA?.avgCpr ?? 0;
+    const cprB = primaryB?.avgCpr ?? 0;
+
+    return {
+      campaignName,
+      objective,
+      costLabel,
+      metricsA: comparisonMetricSet(spendA, reachA, resultsA, cprA, currencySymbol),
+      metricsB: comparisonMetricSet(spendB, reachB, resultsB, cprB, currencySymbol),
+      changes: {
+        spend: computeChange(spendA, spendB),
+        reach: computeChange(reachA, reachB),
+        results: computeChange(resultsA, resultsB),
+        cpr: computeChange(cprA, cprB),
+      },
+    };
+  });
+
+  let totalSpendA = 0;
+  let totalSpendB = 0;
+  let totalReachA = 0;
+  let totalReachB = 0;
+  let totalResultsA = 0;
+  let totalResultsB = 0;
+  campaigns.forEach((c) => {
+    totalSpendA += c.metricsA.spend.value;
+    totalSpendB += c.metricsB.spend.value;
+    totalReachA += c.metricsA.reach.value;
+    totalReachB += c.metricsB.reach.value;
+    totalResultsA += c.metricsA.results.value;
+    totalResultsB += c.metricsB.results.value;
+  });
+  const totalCprA = totalResultsA > 0 ? totalSpendA / totalResultsA : 0;
+  const totalCprB = totalResultsB > 0 ? totalSpendB / totalResultsB : 0;
+
+  const reportDate = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  })
+    .formatToParts(now)
+    .reduce((acc, part) => {
+      if (part.type === "month") acc.month = part.value;
+      if (part.type === "day") acc.day = part.value;
+      if (part.type === "year") acc.year = part.value;
+      return acc;
+    }, { month: "", day: "", year: "" } as { month: string; day: string; year: string });
+
+  return {
+    isPaused: totalSpendA === 0 && totalSpendB === 0,
+    accountName,
+    reportDate: `${reportDate.month}-${reportDate.day}-${reportDate.year}`,
+    periodALabel: getComparisonPeriodLabel(periodA.startIso, periodA.endIso),
+    periodBLabel: getComparisonPeriodLabel(periodB.startIso, periodB.endIso),
+    campaigns,
+    totals: {
+      metricsA: comparisonMetricSet(totalSpendA, totalReachA, totalResultsA, totalCprA, currencySymbol),
+      metricsB: comparisonMetricSet(totalSpendB, totalReachB, totalResultsB, totalCprB, currencySymbol),
+      changes: {
+        spend: computeChange(totalSpendA, totalSpendB),
+        reach: computeChange(totalReachA, totalReachB),
+        results: computeChange(totalResultsA, totalResultsB),
+        cpr: computeChange(totalCprA, totalCprB),
+      },
+    },
   };
 }

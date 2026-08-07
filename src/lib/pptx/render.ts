@@ -10,7 +10,7 @@
  * message slide, and skips the chart (both match the source).
  */
 
-import type { ReportData } from "../nre/report-data";
+import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
@@ -18,6 +18,7 @@ import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, 
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 import { buildLegendSlideXml, LEGEND_BG_REL_ID, type LegendEntry } from "./legend-slide";
+import { buildComparisonCampaignSlideXml, buildComparisonCoverSlideXml, buildComparisonSummarySlideXml, COMPARISON_BG_REL_ID } from "./comparison-slides";
 
 // The chart slide is built from scratch (no template slide part behind it),
 // so unlike the cover/campaign/table slides it needs its own explicit rels:
@@ -216,6 +217,62 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   } else {
     slides.push({ xml: template.legend.xml, rels: template.legend.rels });
   }
+
+  return assemblePptx(template, slides);
+}
+
+// ─────────────────────────── Comparison reports ────────────────────────────
+//
+// A separate top-level entry point from renderPptx above — comparison
+// reports have their own slide order (Cover → one comparison campaign slide
+// per campaign → summary table; no MTD chart, no ad-set slides, no metric
+// guide slide) and their own from-scratch slide builders (see
+// comparison-slides.ts), so this doesn't branch inside renderPptx/ReportData
+// at all, matching the same "separate, parallel pipeline" split
+// report-data.ts's buildComparisonReportData already establishes on the
+// data side.
+
+/** Same shape as buildChartSlideRels/buildLegendSlideRels above — the comparison campaign/summary slides are also built from scratch, so each needs its own generated rels rather than reusing a template slide's. */
+function buildComparisonSlideRels(backgroundMediaTarget: string): string {
+  return (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>' +
+    `<Relationship Id="${COMPARISON_BG_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${backgroundMediaTarget}"/>` +
+    "</Relationships>"
+  );
+}
+
+export interface RenderComparisonPptxInput {
+  templateBuffer: Buffer;
+  data: ComparisonReportData;
+  /** Optional custom cover-slide title — see fill-tags.ts's DEFAULT_COMPARISON_REPORT_TITLE for the fallback. */
+  reportTitle?: string | null;
+  /** Agency name from account settings — drives the cover slide's "Prepared by ..." line, same as renderPptx. */
+  agencyName?: string | null;
+}
+
+export async function renderComparisonPptx(input: RenderComparisonPptxInput): Promise<Buffer> {
+  const { templateBuffer, data, reportTitle, agencyName } = input;
+  const template = await loadTemplate(templateBuffer);
+
+  const slides: SlideToInsert[] = [];
+
+  slides.push({
+    xml: buildComparisonCoverSlideXml(template.cover, data, { agencyName, reportTitle }),
+    rels: template.cover.rels,
+  });
+
+  for (const campaign of data.campaigns) {
+    slides.push({
+      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background),
+      rels: buildComparisonSlideRels(template.background.mediaTarget),
+    });
+  }
+
+  slides.push({
+    xml: buildComparisonSummarySlideXml(data, template.background),
+    rels: buildComparisonSlideRels(template.background.mediaTarget),
+  });
 
   return assemblePptx(template, slides);
 }

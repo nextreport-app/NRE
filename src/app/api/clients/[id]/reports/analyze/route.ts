@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, resolveCampaignSelection, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
-import { computeCsvDateBounds, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
+import { computeCsvDateBounds, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
@@ -108,6 +108,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const dateBounds = computeCsvDateBounds(mtdParsed.rows);
     const weeklyOptions = computeWeeklyRangeOptions(mtdParsed.rows);
     const mtdRange = computeMtdRangeIso(mtdParsed.rows);
+    // Comparison Report's "This week vs Last week" preset reuses
+    // weeklyOptions.last7/prev7 directly (already exactly Period A/B); "This
+    // month vs Last month" needs its own computation, additive alongside
+    // the existing three.
+    const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows);
 
     return NextResponse.json({
       valid: true,
@@ -122,6 +127,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       dateBounds,
       weeklyOptions,
       mtdRange,
+      monthComparisonOptions,
       dateSelection,
     });
   } catch (err) {

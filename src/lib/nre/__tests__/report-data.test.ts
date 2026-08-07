@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import {
   buildCombinedTotalTableGrid,
+  buildComparisonReportData,
   buildReportData,
   COMBINED_TOTAL_STATIC_HEADERS,
   type TableHeaderLabels,
@@ -1605,5 +1606,157 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes");
     expect(slidesForShoes[0].dynamicMetrics.length).toBe(7);
+  });
+});
+
+describe("buildComparisonReportData", () => {
+  function comparisonDaysInclusive(startIso: string, endIso: string): string[] {
+    const days: string[] = [];
+    const start = new Date(startIso + "T00:00:00Z");
+    const end = new Date(endIso + "T00:00:00Z");
+    for (let ts = start.getTime(); ts <= end.getTime(); ts += 24 * 60 * 60 * 1000) {
+      const d = new Date(ts);
+      days.push(`${String(d.getUTCDate()).padStart(2, "0")}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${d.getUTCFullYear()}`);
+    }
+    return days;
+  }
+
+  function comparisonRows(
+    startIso: string,
+    endIso: string,
+    config: { campaign_name: string; result_type: string; spend: number; reach: number; results: number },
+  ): NreRow[] {
+    return comparisonDaysInclusive(startIso, endIso).map((day) => ({
+      _raw: { Day: day },
+      campaign_name: config.campaign_name,
+      ad_set_name: "Ad Set 1",
+      result_type: config.result_type,
+      spend: String(config.spend),
+      reach: String(config.reach),
+      impressions: String(config.reach * 2),
+      results: String(config.results),
+      link_clicks: "0",
+      ctr: "1",
+      cpc: "1",
+      frequency: "1",
+      date_start: day,
+      date_end: day,
+    }));
+  }
+
+  const PERIOD_A = { startIso: "2026-08-01", endIso: "2026-08-06" };
+  const PERIOD_B = { startIso: "2026-07-01", endIso: "2026-07-06" };
+
+  // Runs in both periods, spend/reach/results doubling from B to A.
+  const shoesA = comparisonRows("2026-08-01", "2026-08-06", {
+    campaign_name: "Shoes - Purchases",
+    result_type: "Purchase",
+    spend: 100,
+    reach: 1000,
+    results: 2,
+  });
+  const shoesB = comparisonRows("2026-07-01", "2026-07-06", {
+    campaign_name: "Shoes - Purchases",
+    result_type: "Purchase",
+    spend: 50,
+    reach: 800,
+    results: 1,
+  });
+  // Only ran in Period A — Period B should read "New" for every metric.
+  const brandNewA = comparisonRows("2026-08-01", "2026-08-06", {
+    campaign_name: "Brand - New",
+    result_type: "Purchase",
+    spend: 40,
+    reach: 500,
+    results: 1,
+  });
+
+  function baseInput() {
+    return {
+      accountName: "Acme Inc",
+      currencySymbol: "$",
+      timezone: "UTC",
+      mtdDailyRows: [...shoesA, ...shoesB, ...brandNewA],
+      periodA: PERIOD_A,
+      periodB: PERIOD_B,
+      now: new Date("2026-08-07T12:00:00Z"),
+    };
+  }
+
+  it("splits rows into Period A/B and aggregates each campaign independently", () => {
+    const result = buildComparisonReportData(baseInput());
+    const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
+
+    // 6 days x 100/day = 600 in Period A, 6 days x 50/day = 300 in Period B.
+    expect(shoes.metricsA.spend.value).toBe(600);
+    expect(shoes.metricsB.spend.value).toBe(300);
+    expect(shoes.metricsA.reach.value).toBe(6000);
+    expect(shoes.metricsB.reach.value).toBe(4800);
+    expect(shoes.metricsA.results.value).toBe(12);
+    expect(shoes.metricsB.results.value).toBe(6);
+  });
+
+  it("computes change = ((A - B) / B) * 100, with up/down/flat directions", () => {
+    const result = buildComparisonReportData(baseInput());
+    const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
+
+    // Spend doubled: (600-300)/300*100 = 100%.
+    expect(shoes.changes.spend.percent).toBeCloseTo(100);
+    expect(shoes.changes.spend.direction).toBe("up");
+
+    // Reach: (6000-4800)/4800*100 = 25%.
+    expect(shoes.changes.reach.percent).toBeCloseTo(25);
+    expect(shoes.changes.reach.direction).toBe("up");
+
+    // Cost per result stayed flat at $50 in both periods -> 0%, "flat".
+    expect(shoes.metricsA.cpr.value).toBeCloseTo(50);
+    expect(shoes.metricsB.cpr.value).toBeCloseTo(50);
+    expect(shoes.changes.cpr.percent).toBeCloseTo(0);
+    expect(shoes.changes.cpr.direction).toBe("flat");
+  });
+
+  it("reports 'New' (null percent, 'new' direction) when Period B's value is 0", () => {
+    const result = buildComparisonReportData(baseInput());
+    const brandNew = result.campaigns.find((c) => c.campaignName === "Brand - New")!;
+
+    expect(brandNew.metricsA.spend.value).toBe(240); // 6 days x 40/day
+    expect(brandNew.metricsB.spend.value).toBe(0);
+    expect(brandNew.changes.spend.percent).toBeNull();
+    expect(brandNew.changes.spend.direction).toBe("new");
+    expect(brandNew.changes.results.direction).toBe("new");
+  });
+
+  it("treats both-periods-zero as flat (0%), not 'New'", () => {
+    const result = buildComparisonReportData({ ...baseInput(), mtdDailyRows: [] });
+    expect(result.totals.changes.spend).toEqual({ percent: 0, direction: "flat" });
+    expect(result.isPaused).toBe(true);
+  });
+
+  it("sums totals across every campaign for both periods", () => {
+    const result = buildComparisonReportData(baseInput());
+    // Shoes (600+240) + Brand New (240 in A only) = 840 in A; 300 in B.
+    expect(result.totals.metricsA.spend.value).toBe(840);
+    expect(result.totals.metricsB.spend.value).toBe(300);
+    expect(result.totals.metricsA.results.value).toBe(18); // 12 + 6
+    expect(result.totals.metricsB.results.value).toBe(6);
+    expect(result.isPaused).toBe(false);
+  });
+
+  it("formats periodALabel/periodBLabel via getComparisonPeriodLabel", () => {
+    const result = buildComparisonReportData(baseInput());
+    expect(result.periodALabel).toBe("Aug 1 - Aug 6, 2026");
+    expect(result.periodBLabel).toBe("Jul 1 - Jul 6, 2026");
+  });
+
+  it("respects selectedCampaigns filtering", () => {
+    const result = buildComparisonReportData({ ...baseInput(), selectedCampaigns: ["Shoes - Purchases"] });
+    expect(result.campaigns.map((c) => c.campaignName)).toEqual(["Shoes - Purchases"]);
+  });
+
+  it("detects the campaign's real objective (not a generic 'RESULTS' fallback)", () => {
+    const result = buildComparisonReportData(baseInput());
+    const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
+    expect(shoes.objective).toBe("PURCHASES");
+    expect(shoes.costLabel).toBe("COST PER PURCHASE");
   });
 });

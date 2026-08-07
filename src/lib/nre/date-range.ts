@@ -71,6 +71,46 @@ export function computeWeeklyRangeOptions(rows: NreRow[], now: Date = new Date()
   };
 }
 
+function daysInMonth(year: number, month: number): number {
+  // Day 0 of "next month" is the last day of `month` itself.
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export interface MonthComparisonRangeOptions {
+  periodA: DateRangeIso;
+  periodB: DateRangeIso;
+}
+
+/**
+ * "This month vs Last month" comparison-report preset (see report-data.ts's
+ * buildComparisonReportData): Period A is day 1 of the reporting month
+ * through yesterday; Period B is the identical day-of-month span exactly
+ * one calendar month earlier (e.g. Aug 1-6 vs Jul 1-6). When yesterday's
+ * day-of-month doesn't exist in the prior month (e.g. yesterday = Mar 31),
+ * Period B's end clamps to that shorter month's own last day (Feb 28/29)
+ * rather than overflowing into March.
+ */
+export function computeMonthComparisonRangeOptions(rows: NreRow[], now: Date = new Date()): MonthComparisonRangeOptions | null {
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const periodAStart: ParsedDate = { year: yesterday.year, month: yesterday.month, day: 1 };
+
+  let prevMonth = yesterday.month - 1;
+  let prevYear = yesterday.year;
+  if (prevMonth < 1) {
+    prevMonth = 12;
+    prevYear -= 1;
+  }
+  const prevMonthLastDay = daysInMonth(prevYear, prevMonth);
+  const periodBEnd: ParsedDate = { year: prevYear, month: prevMonth, day: Math.min(yesterday.day, prevMonthLastDay) };
+  const periodBStart: ParsedDate = { year: prevYear, month: prevMonth, day: 1 };
+
+  return {
+    periodA: { startIso: toIsoDate(periodAStart), endIso: toIsoDate(yesterday) },
+    periodB: { startIso: toIsoDate(periodBStart), endIso: toIsoDate(periodBEnd) },
+  };
+}
+
 /** Always day 1 of the reporting month (the month "yesterday" falls in) through yesterday. */
 export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
   const yesterday = computeEffectiveYesterday(rows, now);

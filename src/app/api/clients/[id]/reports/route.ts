@@ -5,14 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { buildReportData, type ReportData } from "@/lib/nre/report-data";
+import { buildComparisonReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
-import { renderPptx } from "@/lib/pptx/render";
+import { renderComparisonPptx, renderPptx } from "@/lib/pptx/render";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
@@ -23,6 +23,7 @@ import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
+  comparisonPeriodSchema,
   dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
@@ -63,7 +64,13 @@ async function buildMetaData(
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
+  // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
+  // caller (POST below) returns early for reportType "COMPARISON" before
+  // ever reaching here — but reportTypeSchema itself now allows all three
+  // values, so this narrows defensively rather than widening report-data.ts's
+  // own ReportType to match.
+  const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+  const reportType = parsedReportType === "MONTHLY" ? "MONTHLY" : "WEEKLY";
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {
@@ -138,6 +145,95 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
   const platform = platformOverride ?? detectPlatform(headers);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
+  const reportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+
+  // Comparison reports are an entirely separate pipeline (buildComparisonReportData
+  // + renderComparisonPptx — see report-data.ts's own "Comparison reports"
+  // section header) — handled fully here, never reaching buildMetaData/
+  // buildGoogleData/renderPptx below, which stay exactly as they were.
+  if (reportType === "COMPARISON") {
+    const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
+    }
+
+    const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+    const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
+    const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
+    if (!periodA || !periodB) {
+      return NextResponse.json({ error: "Both comparison periods are required." }, { status: 400 });
+    }
+
+    const comparisonData = buildComparisonReportData({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
+      periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+    });
+
+    const fileName = `Comparison Report - ${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}.pptx`.replace(/[\s/]/g, "_");
+
+    let comparisonReport;
+    try {
+      comparisonReport = await prisma.report.create({
+        data: {
+          clientId: client.id,
+          status: "GENERATING",
+          reportType: "COMPARISON",
+          platform: "META",
+          fileName,
+          summaryJson: JSON.stringify({
+            isPaused: comparisonData.isPaused,
+            periodALabel: comparisonData.periodALabel,
+            periodBLabel: comparisonData.periodBLabel,
+            campaignCount: comparisonData.campaigns.length,
+          }),
+        },
+      });
+    } catch (err) {
+      return apiErrorResponse(err, "reports:generate:create-comparison");
+    }
+
+    try {
+      // Comparison covers reuse buildCoverSlideXml (see comparison-slides.ts's
+      // buildComparisonCoverSlideXml) but don't currently place the client
+      // logo — out of scope for this feature, so no loadLogoAsset call here.
+      const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } });
+
+      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const pptxBuffer = await renderComparisonPptx({
+        templateBuffer,
+        data: comparisonData,
+        reportTitle,
+        agencyName: user?.agencyName,
+      });
+
+      const filePath = await saveReportFile(comparisonReport.id, pptxBuffer);
+
+      await prisma.report.update({
+        where: { id: comparisonReport.id },
+        data: { status: "COMPLETE", filePath },
+      });
+
+      return NextResponse.json({ ok: true, reportId: comparisonReport.id });
+    } catch (err) {
+      console.error("[api:reports:generate] comparison report failed:", err);
+      const message = err instanceof Error ? err.message : "Report generation failed.";
+      try {
+        await prisma.report.update({
+          where: { id: comparisonReport.id },
+          data: { status: "FAILED", errorMessage: message },
+        });
+      } catch (updateErr) {
+        console.error("[api:reports:generate] failed to record comparison failure status:", updateErr);
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
 
   const result =
     platform === "GOOGLE"
