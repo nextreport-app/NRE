@@ -283,7 +283,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(tableDims.rows).toBe(2); // header + MTD only, Period row hidden
     expect(tableDims.cols).toBe(10); // 6 static + 2 objectives (Purchases, Reach)
 
-    expect(legend).toContain("METRIC ABBREVIATION GUIDE");
+    expect(legend).toContain("METRIC GUIDE");
 
     // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 14pt
     // non-bold Poppins, overriding the template's own bold 12pt Open Sans

@@ -1469,16 +1469,17 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
   });
 });
 
-describe("buildReportData — dynamic metric dictionary system (selectedMetrics)", () => {
-  // Unlike buildDailyRows above, _raw carries the actual CSV header names a
-  // dynamic metric's csvName looks up — the fixed-field builder never needed
-  // this since aggregateRows only reads the mapped NreMetricKey fields.
-  function dynamicRow(day: string, spend: number, reach: number, ctr: number): NreRow {
+describe("buildReportData — automatic 7-slot metric assignment (Change 2, no wizard input)", () => {
+  // Unlike buildDailyRows above, _raw carries the actual CSV header names
+  // slot-assignment.ts's dictionary lookups key off — the fixed-field
+  // builder never needed this since aggregateRows only reads the mapped
+  // NreMetricKey fields.
+  function dynamicRow(day: string, spend: number, reach: number, ctr: number, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
     return {
-      _raw: { Day: day, "Amount spent": String(spend), Reach: String(reach), "CTR (all)": String(ctr) },
+      _raw: { Day: day, "Amount spent": String(spend), Reach: String(reach), "CTR (all)": String(ctr), ...extraRaw },
       campaign_name: "Shoes",
       ad_set_name: "Set 1",
-      result_type: "Purchase",
+      result_type: resultType,
       spend: String(spend),
       reach: String(reach),
       impressions: "1000",
@@ -1490,195 +1491,97 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
     };
   }
 
-  const rows: NreRow[] = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2));
+  const rows: NreRow[] = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase"));
 
-  function build(selectedMetrics?: Parameters<typeof buildReportData>[0]["selectedMetrics"]) {
-    return buildReportData({
+  it("always populates dynamicMetrics with exactly 7 entries, with no selectedMetrics input at all", () => {
+    const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
       mtdDailyRows: rows,
-      selectedMetrics,
       now: NOW,
     });
-  }
-
-  it("leaves dynamicMetrics undefined on every slide when selectedMetrics is omitted — the fixed-card path stays byte-identical", () => {
-    const data = build(undefined);
-    expect(data.campaignSlides[0].dynamicMetrics).toBeUndefined();
+    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
+    expect(dynamicMetrics).toHaveLength(7);
   });
 
-  it("populates dynamicMetrics, in selectedMetrics' own order, when selectedMetrics is passed", () => {
-    const data = build([
-      { key: "reach", label: "REACH", format: "number", type: "primary", priority: 95, csvName: "reach" },
-      { key: "spend", label: "AD SPEND", format: "currency", type: "primary", priority: 100, csvName: "amount spent" },
-    ]);
-    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics).toBeDefined();
-    expect(dynamicMetrics!.map((m) => m.key)).toEqual(["reach", "spend"]);
+  it("keeps slots 1-3 (Spend/Reach/Impressions) and slot 6 (CTR) fixed regardless of objective", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    const slots = data.campaignSlides[0].dynamicMetrics;
     // 7 days x 50 = 350 spend; 7 days x 500 = 3500 reach (sum, matching the
     // fixed-field pipeline's own spend/reach treatment).
-    expect(dynamicMetrics![1].value).toBe("$350.00");
-    expect(dynamicMetrics![0].value).toBe("3,500");
+    expect(slots[0]).toMatchObject({ key: "spend", label: "AD SPEND", value: "$350" });
+    expect(slots[1]).toMatchObject({ key: "reach", label: "REACH", value: "3,500" });
+    expect(slots[2]).toMatchObject({ key: "impressions", label: "IMPRESSIONS" });
+    expect(slots[5]).toMatchObject({ key: "ctr", label: "CTR (ALL)", value: data.campaignSlides[0].metrics.ctr });
   });
 
-  it("averages a percentage-format dynamic metric instead of summing it", () => {
-    const data = build([
-      { key: "ctr", label: "CTR (ALL)", format: "percentage", type: "primary", priority: 75, csvName: "ctr (all)" },
-    ]);
-    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics![0].value).toBe("2.00%");
-  });
-
-  it("does not change the fixed metrics/resultLabel/costLabel fields either way", () => {
-    const withoutSelection = build(undefined);
-    const withSelection = build([
-      { key: "spend", label: "AD SPEND", format: "currency", type: "primary", priority: 100, csvName: "amount spent" },
-    ]);
-    expect(withSelection.campaignSlides[0].metrics).toEqual(withoutSelection.campaignSlides[0].metrics);
-    expect(withSelection.campaignSlides[0].resultLabel).toBe(withoutSelection.campaignSlides[0].resultLabel);
-  });
-
-  it("computes a perUnitOf currency metric as spend/count instead of summing its own raw column (Fix 3)", () => {
-    // dynamicRow's "Results" fixed field is "2" every day (7 rows), and
-    // spend is 50/day -> sum spend=350, sum results=14 -> cost per result=25.
-    const rowsWithResultsRaw: NreRow[] = daysInclusive(13, 19).map((day) => ({
-      ...dynamicRow(day, 50, 500, 2),
-      _raw: { Day: day, "Amount spent": "50", Reach: "500", "CTR (all)": "2", Results: "2" },
-    }));
+  it("assigns slots 4/5/7 for the PURCHASES objective (Results/Cost per Purchase/ROAS)", () => {
+    const purchaseRows = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase", { "Results roas": "3.5" }));
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
-      mtdDailyRows: rowsWithResultsRaw,
-      selectedMetrics: [
-        { key: "spend", label: "AD SPEND", format: "currency", type: "primary", priority: 100, csvName: "amount spent" },
-        {
-          key: "cost_per_result",
-          label: "COST PER RESULT",
-          format: "currency",
-          type: "primary",
-          priority: 80,
-          csvName: "cost per result",
-          perUnitOf: "results",
-        },
-      ],
+      mtdDailyRows: purchaseRows,
       now: NOW,
     });
-    const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics!.find((m) => m.key === "cost_per_result")?.value).toBe("$25.00");
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3]).toMatchObject({ key: "results", label: "PURCHASES" });
+    expect(slots[4]).toMatchObject({ key: "cost_per_result", label: "COST PER PURCHASE" });
+    expect(slots[6]).toMatchObject({ key: "results_roas", label: "ROAS" });
+    expect(slots[6].value).not.toBe("—");
   });
 
-  it("renders a per-unit-cost metric as an em dash when its denominator is zero, not $0.00 (Fix 3)", () => {
-    const rowsNoResults: NreRow[] = daysInclusive(13, 14).map((day) => ({
-      ...dynamicRow(day, 50, 500, 2),
-      _raw: { Day: day, "Amount spent": "50", Reach: "500", "CTR (all)": "2", Results: "0" },
-    }));
+  it("assigns slots 4/5/7 for the WEBSITE LEADS objective (Results/Cost per Lead/Link Clicks), reading the extra field straight off the raw CSV via the dictionary", () => {
+    const leadsRows = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Website leads", { "Link clicks": "10" }));
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
-      mtdDailyRows: rowsNoResults,
-      selectedMetrics: [
-        {
-          key: "cost_per_result",
-          label: "COST PER RESULT",
-          format: "currency",
-          type: "primary",
-          priority: 80,
-          csvName: "cost per result",
-          perUnitOf: "results",
-        },
-      ],
+      mtdDailyRows: leadsRows,
       now: NOW,
     });
-    expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("—");
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3]).toMatchObject({ key: "results", label: "WEBSITE LEADS" });
+    expect(slots[4]).toMatchObject({ key: "cost_per_result", label: "COST PER WEBSITE LEAD" });
+    expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS", value: "70" }); // 7 days x 10
   });
 
-  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the wizard's 7-slot assignment, in slot order, no capping or padding (Step 7)", () => {
-    const richRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
-      _raw: {
-        Day: day,
-        "Amount spent": "50",
-        Reach: "500",
-        Impressions: "1000",
-        Results: "2",
-        "CTR (all)": "2",
-        "Cost per result": "25",
-        "Link clicks": "10",
-        "Landing page views": "5",
-        "CPM (Cost per 1,000 Impressions)": "3",
-        "Website leads": "1",
-        "CPC (All)": "2",
-      },
-      campaign_name: "Shoes",
-      ad_set_name: "Set 1",
-      result_type: "Purchase",
-      spend: "50",
-      reach: "500",
-      impressions: "1000",
-      results: "2",
-      ctr: "2",
-      cpc: "3",
-      date_start: day,
-      date_end: day,
-    }));
-    // The wizard's own 7-slot assignment (see report-upload-wizard.tsx's
-    // Metric Preview step) — report-data.ts passes this straight through,
-    // in the same order, to every campaign's dynamicMetrics.
-    const sevenSlots = [
-      { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
-      { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
-      { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "impressions" },
-      { key: "results", label: "RESULTS", format: "number" as const, type: "primary" as const, priority: 85, csvName: "results" },
-      {
-        key: "cost_per_result",
-        label: "COST PER RESULT",
-        format: "currency" as const,
-        type: "primary" as const,
-        priority: 80,
-        csvName: "cost per result",
-        perUnitOf: "results",
-      },
-      { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, type: "primary" as const, priority: 75, csvName: "ctr (all)" },
-      { key: "cpc_all", label: "CPC (ALL)", format: "currency" as const, type: "secondary" as const, priority: 65, csvName: "cpc (all)" },
-    ];
-    expect(sevenSlots.length).toBe(7);
+  it("shows a dash (not $0.00) for an extra dictionary field that's zero or absent from the CSV", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
-      mtdDailyRows: richRows,
-      selectedMetrics: sevenSlots,
+      mtdDailyRows: rows, // no "Link clicks"/"Results roas" raw columns at all
       now: NOW,
     });
-    const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
-    expect(slidesForShoes.length).toBe(1);
-    expect(slidesForShoes[0].campaignName).toBe("Shoes");
-    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(7);
-    expect(slidesForShoes[0].dynamicMetrics!.map((m) => m.key)).toEqual(sevenSlots.map((m) => m.key));
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[6].value).toBe("—");
   });
 
-  it("does not split into multiple slides when selectedMetrics is 8 or fewer", () => {
-    const eightOrFewer = [
-      { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
-      { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
-    ];
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 7-slot assignment (Step 7)", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
       mtdDailyRows: rows,
-      selectedMetrics: eightOrFewer,
       now: NOW,
     });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes");
+    expect(slidesForShoes[0].dynamicMetrics.length).toBe(7);
   });
 });

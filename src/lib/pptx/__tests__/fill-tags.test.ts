@@ -57,6 +57,7 @@ function makeCampaignSlide(campaignName: string): CampaignSlideData {
       spendNum: 100,
     },
     statusIndicator: null,
+    dynamicMetrics: [],
   };
 }
 

@@ -348,6 +348,17 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Number of times your video was watched to completion or 15 seconds",
   },
   {
+    csvName: "cost per thruplay",
+    key: "cost_per_thruplay",
+    label: "COST PER VIEW",
+    type: "secondary",
+    format: "currency",
+    objectives: ["video_views"],
+    priority: 74,
+    explanation: "Average cost for each ThruPlay (full or 15-second video view)",
+    perUnitOf: "thruplays",
+  },
+  {
     csvName: "video average play time",
     key: "video_avg_play_time",
     label: "AVG. PLAY TIME",

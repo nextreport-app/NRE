@@ -11,7 +11,6 @@ import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField,
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
-import { detectCampaignObjectives } from "@/lib/nre/detect-objective";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
@@ -92,14 +91,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const campaigns = extractCampaignNames(mtdParsed.rows);
-    // Fix 6: objective detection runs per campaign (not once for the whole
-    // account) — an account mixing Reach + Traffic + Lead Gen campaigns
-    // needs each campaign's own majority result type considered, or a
-    // single account-wide guess silently hides half of them from the
-    // wizard's auto-suggested metric selection (see metric-selector.ts's
-    // selectMetrics, which now accepts this whole array and unions every
-    // campaign's relevant secondaries).
-    const detectedObjectives = detectCampaignObjectives(mtdParsed.rows, mtdParsed.headers);
 
     let campaignMemory: CampaignSelectionMemory | null = null;
     if (client.lastDeselectedCampaigns) {
@@ -125,7 +116,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       detectedPlatform,
       platform,
       headers: mtdParsed.headers,
-      detectedObjectives,
       campaigns,
       selectedCampaigns,
       campaignStepMode,

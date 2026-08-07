@@ -80,6 +80,7 @@ function makeReportData(
         avgFreq: 2,
         statusIndicator: null,
         ai: campaignAi,
+        dynamicMetrics: [],
       },
     ],
     adSetSlides: [
@@ -94,6 +95,7 @@ function makeReportData(
         rowFreq: 2,
         statusIndicator: null,
         ai: adSetAi,
+        dynamicMetrics: [],
       },
     ],
     pausedMessage: null,

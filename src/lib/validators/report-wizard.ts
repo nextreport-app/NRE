@@ -46,32 +46,6 @@ export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY"]);
 // the wizard's user has manually overridden the detected platform.
 export const platformSchema = z.enum(["META", "GOOGLE"]);
 
-// The Metric Preview wizard step's chosen metric set (dynamic metric
-// dictionary system — see lib/nre/metric-selector.ts's SelectedMetric).
-// Absent/undefined (an older client, or a request that never sends it)
-// means the fixed 7-field card layout — see report-data.ts's
-// BuildReportDataInput.selectedMetrics doc comment. Not persisted anywhere;
-// purely a per-request wizard parameter.
-export const selectedMetricsSchema = z.array(
-  z.object({
-    key: z.string(),
-    label: z.string(),
-    format: z.enum(["currency", "number", "percentage", "duration", "ratio", "text"]),
-    type: z.enum(["primary", "secondary"]),
-    priority: z.number(),
-    csvName: z.string(),
-    // Per-unit-cost recompute metadata (see dynamic-metrics.ts's
-    // aggregateDynamicMetrics) — MUST be declared here or zod silently
-    // strips it during parsing, which would break Fix 3's cost-per-result-
-    // style aggregation for every real request (this schema is what
-    // actually validates the wizard's selectedMetrics payload over the
-    // wire; direct buildReportData()/selectMetrics() calls in tests don't
-    // go through it, which is why that stripping wouldn't show up there).
-    perUnitOf: z.string().optional(),
-    perUnitScale: z.number().optional(),
-  }),
-);
-
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

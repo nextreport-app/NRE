@@ -29,7 +29,6 @@ import {
   reportTitleSchema,
   reportTypeSchema,
   selectedCampaignsSchema,
-  selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
 import type { Client } from "@/generated/prisma/client";
 
@@ -65,7 +64,6 @@ async function buildMetaData(
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
-  const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
   if (!dateResolution.ok) {
@@ -84,7 +82,6 @@ async function buildMetaData(
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange: dateResolution.weeklyRange,
     reportType,
-    selectedMetrics,
   });
 
   return { data };
@@ -95,7 +92,6 @@ function buildGoogleData(
   client: Client,
   headers: string[],
   dataRows: string[][],
-  formData: FormData | null,
 ): { error: string } | { data: ReportData } {
   const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
   const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
@@ -103,14 +99,11 @@ function buildGoogleData(
     return { error: validation.errors.map((e) => e.message).join(" ") };
   }
 
-  const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
-
   const data = buildGoogleReportData({
     accountName: client.accountName,
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     monthlyBudget: client.monthlyBudget,
     mtdDailyRows: rows,
-    selectedMetrics,
   });
 
   return { data };
@@ -148,7 +141,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const result =
     platform === "GOOGLE"
-      ? buildGoogleData(client, headers, dataRows, formData)
+      ? buildGoogleData(client, headers, dataRows)
       : await buildMetaData(client, mtdDailyBuffer, formData);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

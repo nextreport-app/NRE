@@ -45,10 +45,10 @@ import {
   getSingleRowResultDisplay,
 } from "./objective";
 import type { MetricRow } from "./types";
-import type { SelectedMetric } from "./metric-selector";
-import { buildDynamicMetricCards, type DynamicMetricValue } from "./dynamic-metrics";
+import type { DynamicMetricValue } from "./dynamic-metrics";
+import { buildMetaSlots } from "./slot-assignment";
 
-/** Re-exported from dynamic-metrics.ts (its canonical home — see buildDynamicMetricCards) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
+/** Re-exported from dynamic-metrics.ts (its canonical home) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
 export type { DynamicMetricValue };
 
 // ─────────────────────────── Public types ──────────────────────────────────
@@ -95,14 +95,13 @@ export interface CampaignSlideData {
   /** Small "Paused"/"Inactive" tag next to the campaign name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
   /**
-   * Present only when BuildReportDataInput.selectedMetrics was passed —
-   * the dynamic metric dictionary system's per-metric values for this
-   * slide, in the same order as selectedMetrics (the wizard's chosen card
-   * order). undefined means "use the fixed 7-field `metrics`/RESULT_LABEL/
-   * COST_LABEL card layout", exactly today's behavior — see
-   * pptx/fill-tags.ts's buildCampaignOrAdSetSlideXml.
+   * The campaign template's 7 fixed card slots, automatically assigned by
+   * the engine (slot-assignment.ts's buildMetaSlots) — no wizard step or
+   * user input involved. Always exactly 7 entries, in physical slot order
+   * 1-7; see pptx/fill-tags.ts's buildCampaignOrAdSetSlideXml, which maps
+   * each entry straight onto the template's corresponding card position.
    */
-  dynamicMetrics?: DynamicMetricValue[];
+  dynamicMetrics: DynamicMetricValue[];
 }
 
 export interface AdSetSlideData {
@@ -118,7 +117,7 @@ export interface AdSetSlideData {
   /** Small "Paused"/"Inactive" tag next to the ad set name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
   /** See CampaignSlideData.dynamicMetrics. */
-  dynamicMetrics?: DynamicMetricValue[];
+  dynamicMetrics: DynamicMetricValue[];
 }
 
 export type SlideData = CampaignSlideData | AdSetSlideData;
@@ -289,14 +288,6 @@ export interface BuildReportDataInput {
   weeklyRange?: DateRangeIso;
   /** See the ReportType doc comment above. Defaults to "WEEKLY". */
   reportType?: ReportType;
-  /**
-   * The Metric Preview wizard step's chosen metric set (dynamic metric
-   * dictionary system) — `undefined`/omitted (every existing caller today)
-   * keeps campaign/ad-set slides on the fixed 7-field card layout exactly
-   * as before. When present, drives CampaignSlideData/AdSetSlideData's
-   * `dynamicMetrics`, in this same array's order.
-   */
-  selectedMetrics?: SelectedMetric[];
   now?: Date;
 }
 
@@ -499,7 +490,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     selectedAdSets,
     weeklyRange,
     reportType = "WEEKLY",
-    selectedMetrics,
     now = new Date(),
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
@@ -687,19 +677,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   });
 
   // Raw-row counterparts of campaignGroups (by campaign) and a second
-  // grouping by campaign+ad-set — only built/used when selectedMetrics was
-  // actually passed in, so this costs nothing on the existing fixed-card
-  // path.
+  // grouping by campaign+ad-set — feeds slot-assignment.ts's buildMetaSlots
+  // for the extra per-objective dictionary lookups (link clicks, landing
+  // page views, etc.) that go beyond the core spend/reach/impressions/ctr/
+  // results/cost-per-result fields already computed above.
   const campaignRawGroups: Record<string, NreRow[]> = {};
   const adSetRawGroups: Record<string, NreRow[]> = {};
-  if (selectedMetrics && selectedMetrics.length > 0) {
-    primaryRawRows.forEach((row) => {
-      const name = String(row.campaign_name || "Unknown Campaign").trim();
-      (campaignRawGroups[name] ??= []).push(row);
-      const key = adSetKey(name, String(row.ad_set_name || "").trim());
-      (adSetRawGroups[key] ??= []).push(row);
-    });
-  }
+  primaryRawRows.forEach((row) => {
+    const name = String(row.campaign_name || "Unknown Campaign").trim();
+    (campaignRawGroups[name] ??= []).push(row);
+    const key = adSetKey(name, String(row.ad_set_name || "").trim());
+    (adSetRawGroups[key] ??= []).push(row);
+  });
 
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
   // is only worth generating if the ad set's TOTAL MTD spend clears the
@@ -780,14 +769,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
     };
 
-    // A campaign always gets exactly one slide, capped at the top 12
-    // selectedMetrics by priority — see dynamic-metrics.ts's
-    // buildDynamicMetricCards for why there's no "continued" slide or
-    // padding logic here anymore.
-    const dynamicMetrics: DynamicMetricValue[] | undefined =
-      selectedMetrics && selectedMetrics.length > 0
-        ? buildDynamicMetricCards(campaignRawGroups[campaignName] ?? [], selectedMetrics, "meta", currencySymbol)
-        : undefined;
+    // The campaign template's 7 fixed card slots, automatically assigned by
+    // objective — see slot-assignment.ts's buildMetaSlots.
+    const dynamicMetrics: DynamicMetricValue[] = buildMetaSlots(
+      { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
+      campaignRawGroups[campaignName] ?? [],
+      currencySymbol,
+    );
 
     return {
       kind: "campaign" as const,
@@ -864,10 +852,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
-    const dynamicMetrics: DynamicMetricValue[] | undefined =
-      selectedMetrics && selectedMetrics.length > 0
-        ? buildDynamicMetricCards(adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [], selectedMetrics, "meta", currencySymbol)
-        : undefined;
+    const dynamicMetrics: DynamicMetricValue[] = buildMetaSlots(
+      { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
+      adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
+      currencySymbol,
+    );
 
     adSetSlides.push({
       kind: "adset",

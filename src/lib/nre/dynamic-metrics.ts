@@ -13,7 +13,7 @@
  * one ad set's rows) — grouping itself isn't this module's concern.
  */
 
-import type { SelectedMetric } from "./metric-selector";
+import type { MetricFormat } from "./meta-dictionary";
 import { formatMetricValue, parseCellNum } from "./format";
 import { META_METRIC_DICTIONARY } from "./meta-dictionary";
 import { GOOGLE_METRIC_DICTIONARY } from "./google-dictionary";
@@ -23,13 +23,21 @@ export interface RawMetricRow {
   _raw: Record<string, string>;
 }
 
-/** One dynamically-selected metric's resolved display value for a single campaign/ad-set slide — see report-data.ts's BuildReportDataInput.selectedMetrics (canonical home moved here since buildDynamicMetricCards below is what produces it; report-data.ts re-exports this same type for its existing consumers). `type`/`perUnitOf` are carried through from SelectedMetric so the PPT render layer (dynamic-cards.ts) can pick the right accent color and icon without a second dictionary lookup. */
+/** The minimal shape aggregateDynamicMetrics needs to read one metric's value(s) off raw CSV rows — a dictionary entry's own key/format/csvName/perUnitOf/perUnitScale, independent of any particular selection mechanism (see slot-assignment.ts, the sole caller now that the wizard's metric-selector.ts is gone). */
+export interface MetricRef {
+  key: string;
+  format: MetricFormat;
+  csvName: string;
+  perUnitOf?: string;
+  perUnitScale?: number;
+}
+
+/** One metric card slot's resolved display value for a single campaign/ad-set slide — see slot-assignment.ts, which builds this per the objective-based slot mapping. `perUnitOf` is carried through so the PPT render layer (fill-tags.ts/metric-icons.ts) can pick the right icon without a second dictionary lookup. */
 export interface DynamicMetricValue {
   key: string;
   label: string;
-  format: SelectedMetric["format"];
+  format: MetricFormat;
   value: string;
-  type: SelectedMetric["type"];
   perUnitOf?: string;
 }
 
@@ -101,7 +109,7 @@ function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, 
  * meaningless for a rate or a per-unit average).
  *
  * Per-unit currency metrics (a "cost per X" / CPC / CPM-style average —
- * see SelectedMetric.perUnitOf) are a further special case: THESE must
+ * see MetricRef.perUnitOf) are a further special case: THESE must
  * never be summed either — summing a per-day "cost per lead" across 30 CSV
  * rows produces a meaningless number. Instead they're recomputed as
  * sum(spend) / sum(<perUnitOf column>) [× perUnitScale] over the same row
@@ -115,7 +123,7 @@ function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, 
  */
 export function aggregateDynamicMetrics<T extends RawMetricRow>(
   rows: T[],
-  metrics: SelectedMetric[],
+  metrics: MetricRef[],
   platform: "meta" | "google",
 ): Record<string, number> {
   const result: Record<string, number> = {};
@@ -182,35 +190,24 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
 }
 
 /**
- * Converts one campaign/ad-set's raw rows + the wizard's 7-slot metric
- * assignment into that single slide's display-ready DynamicMetricValue
- * array, in the SAME slot order it was given — fill-tags.ts maps each
- * entry straight onto the campaign template's corresponding fixed card
- * slot (see its own CARD_SLOT_TAGS), so this never reorders, pads, or caps
- * its input; a campaign always gets exactly one slide with the template's
- * own 7 card positions, whatever metrics were assigned to them.
- *
- * A NaN aggregated value (see aggregateDynamicMetrics — a per-unit cost
- * metric with a zero denominator) renders as "—", never "$0.00"/"$NaN".
+ * Resolves and formats a SINGLE dictionary entry's aggregated value over
+ * `rawRows`, for slot-assignment.ts's per-objective slot-filling (e.g. "how
+ * many landing page views did this campaign get, formatted as a number").
+ * Both a missing/NaN aggregate (see aggregateDynamicMetrics — e.g. a
+ * per-unit cost metric with a zero denominator) AND a genuine raw zero
+ * render as "—" here, per the product spec: "if the value is zero or the
+ * metric was not present in the CSV, show '—'" — a stricter rule than
+ * aggregateDynamicMetrics' own NaN-only convention, deliberately scoped to
+ * just this single-slot-value call site rather than changing that shared
+ * function's behavior for its other (non-slot) callers.
  */
-export function buildDynamicMetricCards<T extends RawMetricRow>(
+export function lookupMetricValue<T extends RawMetricRow>(
   rawRows: T[],
-  selectedMetrics: SelectedMetric[],
+  metric: MetricRef,
   platform: "meta" | "google",
   currencySymbol: string,
-): DynamicMetricValue[] {
-  if (selectedMetrics.length === 0) return [];
-
-  const rawTotals = aggregateDynamicMetrics(rawRows, selectedMetrics, platform);
-  return selectedMetrics.map((m) => {
-    const raw = rawTotals[m.key];
-    return {
-      key: m.key,
-      label: m.label,
-      format: m.format,
-      value: raw === undefined || Number.isNaN(raw) ? "—" : formatMetricValue(raw, m.format, currencySymbol),
-      type: m.type,
-      perUnitOf: m.perUnitOf,
-    };
-  });
+): string {
+  const raw = aggregateDynamicMetrics(rawRows, [metric], platform)[metric.key];
+  if (raw === undefined || Number.isNaN(raw) || raw === 0) return "—";
+  return formatMetricValue(raw, metric.format, currencySymbol);
 }

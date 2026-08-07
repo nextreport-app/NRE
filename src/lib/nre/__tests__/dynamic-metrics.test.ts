@@ -1,19 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { aggregateDynamicMetrics } from "../dynamic-metrics";
-import type { SelectedMetric } from "../metric-selector";
+import { aggregateDynamicMetrics, type MetricRef } from "../dynamic-metrics";
 import type { NreRow } from "../columns";
 
 function row(raw: Record<string, string>): NreRow {
   return { _raw: raw } as NreRow;
 }
 
-function metric(overrides: Partial<SelectedMetric> = {}): SelectedMetric {
+function metric(overrides: Partial<MetricRef> = {}): MetricRef {
   return {
     key: "spend",
-    label: "AD SPEND",
     format: "currency",
-    type: "primary",
-    priority: 100,
     csvName: "amount spent",
     ...overrides,
   };
@@ -63,7 +59,7 @@ describe("aggregateDynamicMetrics", () => {
       row({ "Amount spent": "100", Reach: "1000" }),
       row({ "Amount spent": "200", Reach: "2000" }),
     ];
-    const metrics = [metric(), metric({ key: "reach", label: "REACH", format: "number", csvName: "reach" })];
+    const metrics = [metric(), metric({ key: "reach", format: "number", csvName: "reach" })];
     const result = aggregateDynamicMetrics(rows, metrics, "meta");
     expect(result.spend).toBe(300);
     expect(result.reach).toBe(3000);
@@ -121,12 +117,9 @@ describe("aggregateDynamicMetrics — per-unit cost recompute (Fix 3)", () => {
 
   it("averages the metric's own non-zero raw values for perUnitOf '__avg__' (a fixed bid target, not spend/count)", () => {
     const rows = [row({ "Avg. Target CPA": "5" }), row({ "Avg. Target CPA": "15" }), row({ "Avg. Target CPA": "0" })];
-    const m: SelectedMetric = {
+    const m: MetricRef = {
       key: "target_cpa",
-      label: "TARGET CPA",
       format: "currency",
-      type: "secondary",
-      priority: 60,
       csvName: "avg. target cpa",
       perUnitOf: "__avg__",
     };
@@ -144,21 +137,15 @@ describe("aggregateDynamicMetrics — per-unit cost recompute (Fix 3)", () => {
 });
 
 describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows a dash when spend and clicks are both present (Step 5)", () => {
-  const cpcAll = (): SelectedMetric => ({
+  const cpcAll = (): MetricRef => ({
     key: "cpc_all",
-    label: "CPC (ALL)",
     format: "currency",
-    type: "secondary",
-    priority: 65,
     csvName: "cpc (all)",
     perUnitOf: "clicks_all",
   });
-  const cpcLinkClick = (): SelectedMetric => ({
+  const cpcLinkClick = (): MetricRef => ({
     key: "cpc_link_click",
-    label: "COST PER CLICK",
     format: "currency",
-    type: "secondary",
-    priority: 68,
     csvName: "cpc (cost per link click)",
     perUnitOf: "link_clicks",
   });

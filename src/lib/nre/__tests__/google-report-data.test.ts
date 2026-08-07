@@ -115,72 +115,104 @@ describe("buildGoogleReportData", () => {
   });
 });
 
-describe("buildGoogleReportData — dynamic metric dictionary system (selectedMetrics)", () => {
+describe("buildGoogleReportData — automatic 7-slot metric assignment (Change 2, no wizard input)", () => {
   const mtdDailyRows = rows(
     ["Shoes - Search", "Prospecting", "13-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
     ["Shoes - Search", "Prospecting", "14-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
   );
 
-  it("leaves dynamicMetrics undefined when selectedMetrics is omitted", () => {
+  it("always populates dynamicMetrics with exactly 7 entries, with no selectedMetrics input at all", () => {
     const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
-    expect(data.campaignSlides[0].dynamicMetrics).toBeUndefined();
-  });
-
-  it("populates dynamicMetrics from the Google dictionary's own csvNames, summed across rows", () => {
-    const data = buildGoogleReportData({
-      accountName: "Test Agency",
-      currencySymbol: "$",
-      monthlyBudget: null,
-      mtdDailyRows,
-      selectedMetrics: [
-        { key: "cost", label: "COST", format: "currency", type: "primary", priority: 100, csvName: "cost" },
-        { key: "clicks", label: "CLICKS", format: "number", type: "primary", priority: 90, csvName: "clicks" },
-      ],
-    });
     const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics).toBeDefined();
-    expect(dynamicMetrics!.map((m) => m.key)).toEqual(["cost", "clicks"]);
-    expect(dynamicMetrics![0].value).toBe("$100.00");
-    expect(dynamicMetrics![1].value).toBe("40");
+    expect(dynamicMetrics).toHaveLength(7);
+    expect(dynamicMetrics.map((m) => m.key)).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "conversions",
+      "cost_per_conv",
+      "ctr",
+      "avg_cpc",
+    ]);
   });
 
-  it("computes avg_cpc as sum(cost)/sum(clicks) instead of summing the raw column (Fix 3)", () => {
+  it("defaults slots 4-5 to CONVERSIONS + COST PER CONV. (Search pattern) for a plain Search Ads CSV", () => {
     const data = buildGoogleReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       monthlyBudget: null,
-      mtdDailyRows,
-      selectedMetrics: [
-        { key: "avg_cpc", label: "AVG. CPC", format: "currency", type: "primary", priority: 80, csvName: "avg. cpc", perUnitOf: "clicks" },
-      ],
+      mtdDailyRows: rows(["Shoes - Search", "Prospecting", "13-07-2026", "100", "20", "1000", "2%", "5.00", "4"]),
     });
-    // sum(cost)=100, sum(clicks)=40 -> 2.50 — NOT the raw column's own
-    // per-row 2.50+2.50 summed to 5.00.
-    expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("$2.50");
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3].label).toBe("CONVERSIONS");
+    expect(slots[3].value).toBe("4");
+    expect(slots[4].label).toBe("COST PER CONV.");
+    expect(slots[4].value).toBe("$25.00"); // 100 / 4
   });
 
-  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the wizard's 7-slot assignment, in slot order, no capping or padding (Step 7)", () => {
-    const sevenSlots = [
-      { key: "cost", label: "COST", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "cost" },
-      { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 95, csvName: "impr." },
-      { key: "clicks", label: "CLICKS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "clicks" },
-      { key: "ctr", label: "CTR", format: "percentage" as const, type: "primary" as const, priority: 85, csvName: "ctr" },
-      { key: "avg_cpc", label: "AVG. CPC", format: "currency" as const, type: "primary" as const, priority: 80, csvName: "avg. cpc", perUnitOf: "clicks" },
-      { key: "conversions", label: "CONVERSIONS", format: "number" as const, type: "primary" as const, priority: 75, csvName: "conversions" },
-      { key: "cost_per_conv", label: "COST PER CONV.", format: "currency" as const, type: "secondary" as const, priority: 74, csvName: "cost / conv.", perUnitOf: "conversions" },
-    ];
-    expect(sevenSlots.length).toBe(7);
+  it("keeps slots 1-3 and 6-7 fixed (Spend/Reach/Impressions/CTR/CPC) regardless of objective", () => {
+    const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[0]).toMatchObject({ key: "spend", label: "AD SPEND" });
+    expect(slots[1]).toMatchObject({ key: "reach", label: "REACH" });
+    expect(slots[2]).toMatchObject({ key: "impressions", label: "IMPRESSIONS" });
+    expect(slots[5]).toMatchObject({ key: "ctr", label: "CTR (ALL)" });
+    expect(slots[6]).toMatchObject({ key: "avg_cpc", label: "CPC (ALL)" });
+  });
+
+  it("switches slots 4-5 to CONV. VALUE + ROAS for a Shopping/Performance Max CSV", () => {
+    const shoppingHeaders = ["Campaign", "Ad group", "Day", "Cost", "Clicks", "Impr.", "CTR", "Avg. CPC", "Conversions", "Orders"];
+    const shoppingRows = readGoogleRowsWithAutoMap(shoppingHeaders, [
+      ["Shoes - Shopping", "Prospecting", "13-07-2026", "100", "20", "1000", "2%", "5.00", "4", "3"],
+    ]).rows;
     const data = buildGoogleReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       monthlyBudget: null,
-      mtdDailyRows,
-      selectedMetrics: sevenSlots,
+      mtdDailyRows: shoppingRows,
     });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3].label).toBe("CONV. VALUE");
+    expect(slots[4].label).toBe("ROAS");
+  });
+
+  it("switches slots 4-5 to VIEWABLE IMPR. + VIEWABLE RATE for a Display CSV", () => {
+    const displayHeaders = ["Campaign", "Ad group", "Day", "Cost", "Clicks", "Impr.", "CTR", "Avg. CPC", "Conversions", "Viewable impr.", "Viewable rate"];
+    const displayRows = readGoogleRowsWithAutoMap(displayHeaders, [
+      ["Shoes - Display", "Prospecting", "13-07-2026", "100", "20", "1000", "2%", "5.00", "4", "800", "80%"],
+    ]).rows;
+    const data = buildGoogleReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      monthlyBudget: null,
+      mtdDailyRows: displayRows,
+    });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3].label).toBe("VIEWABLE IMPR.");
+    expect(slots[4].label).toBe("VIEWABLE RATE");
+  });
+
+  it("switches slots 4-5 to VIDEO VIEWS + AVG. CPV for a Video/TrueView CSV", () => {
+    const videoHeaders = ["Campaign", "Ad group", "Day", "Cost", "Clicks", "Impr.", "CTR", "Avg. CPC", "Conversions", "TrueView views", "TrueView avg. CPV"];
+    const videoRows = readGoogleRowsWithAutoMap(videoHeaders, [
+      ["Shoes - Video", "Prospecting", "13-07-2026", "100", "20", "1000", "2%", "5.00", "4", "500", "0.20"],
+    ]).rows;
+    const data = buildGoogleReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      monthlyBudget: null,
+      mtdDailyRows: videoRows,
+    });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3].label).toBe("VIDEO VIEWS");
+    expect(slots[4].label).toBe("AVG. CPV");
+  });
+
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 7-slot assignment (Step 7)", () => {
+    const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes - Search");
-    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(7);
-    expect(slidesForShoes[0].dynamicMetrics!.map((m) => m.key)).toEqual(sevenSlots.map((m) => m.key));
+    expect(slidesForShoes[0].dynamicMetrics.length).toBe(7);
   });
 });

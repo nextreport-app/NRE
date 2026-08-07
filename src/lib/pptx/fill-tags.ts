@@ -177,14 +177,15 @@ function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
 // The campaign template's 7 fixed card slots, in their physical
 // left-to-right/top-to-bottom order (Spend/Reach/Impressions/Results/CTR/
 // Cost per Result/CPC — see ppt/slides/slide2.xml). Which METRIC now fills
-// each physical position is decided upstream (metric-selector.ts's
-// selectMetrics for the default, report-upload-wizard.tsx's Metric Preview
-// step for the user's own slot assignment) and arrives here as
-// slide.dynamicMetrics, already in slot order — this module only ever
-// retargets each slot's own label/value/icon in place, never moves,
-// removes, or adds a shape. RESULT_LABEL/COST_LABEL (the RESULTS/Cost per
-// Result cards' own template tags) are simply overwritten like every other
-// slot's label — there is no separate handling for them here.
+// each physical position is decided upstream, entirely automatically —
+// slot-assignment.ts's buildMetaSlots/buildGoogleSlots map each campaign's
+// own objective onto the 7 slots, with no wizard step or user input at all
+// — and arrives here as slide.dynamicMetrics, already in slot order — this
+// module only ever retargets each slot's own label/value/icon in place,
+// never moves, removes, or adds a shape. RESULT_LABEL/COST_LABEL (the
+// RESULTS/Cost per Result cards' own template tags) are simply overwritten
+// like every other slot's label — there is no separate handling for them
+// here.
 const CARD_SLOT_TAGS = [
   "{{METRIC_SPEND}}",
   "{{METRIC_REACH}}",

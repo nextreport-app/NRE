@@ -5,32 +5,23 @@ import Link from "next/link";
 import type { ReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
-import { getAvailableMetrics, selectMetrics, type SelectedMetric } from "@/lib/nre/metric-selector";
-import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
 // misled clients). The underlying filter logic still lives in
 // lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
 // just never called from here — so it can come back without re-deriving it.
-// Preview + Generate are one screen (see the step === 5 block below) — the
+// Preview + Generate are one screen (see the step === 4 block below) — the
 // action row at the bottom swaps between "Generate" button, a loading
 // spinner, the download/slides links, or an error + Try Again, all without
-// navigating away, so the step indicator only ever needs to count 5 steps.
-type Step = 1 | 2 | 3 | 4 | 5;
+// navigating away, so the step indicator only ever needs to count 4 steps.
+type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
-  2: "Metrics",
-  3: "Campaigns",
-  4: "Dates",
-  5: "Preview",
+  2: "Campaigns",
+  3: "Dates",
+  4: "Preview",
 };
-
-// The campaign template has exactly 7 fixed card positions (see
-// fill-tags.ts's CARD_SLOT_TAGS) — the Metric Preview step always shows
-// exactly this many slot dropdowns, never fewer/more, never an add/remove
-// list (product decision, replacing the old unbounded add/remove UI).
-const METRIC_SLOT_COUNT = 7;
 
 // "detected" pauses on step 1 after a successful analyze, showing the
 // platform badge + override dropdown + a Continue button — see
@@ -185,35 +176,8 @@ export function ReportUploadWizard({
   const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | null>(null);
   const [platform, setPlatform] = useState<"META" | "GOOGLE">("META");
   const [continueStatus, setContinueStatus] = useState<"idle" | "loading">("idle");
-  // Raw CSV column headers from /analyze — the input to the Step 2 metric
-  // selector (see handleContinueAfterDetect, which computes
-  // availableMetrics/selectedMetrics from these once the platform is
-  // confirmed).
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
-  // Meta only — one objective key PER campaign detected server-side (see
-  // the /analyze route's detectCampaignObjectives), not a single account-
-  // wide guess. A mixed-objective account (Reach + Traffic + Lead Gen
-  // campaigns in one CSV) needs every campaign's own objective considered,
-  // or the auto-suggested selection silently favors whichever objective an
-  // account-wide heuristic happened to guess and hides the rest — see
-  // metric-selector.ts's selectMetrics, which now accepts this whole array
-  // and unions every campaign's relevant secondaries into one suggestion.
-  const [detectedObjectives, setDetectedObjectives] = useState<string[]>([]);
 
-  // Step 2 — Metrics (dynamic metric dictionary system). availableMetrics is
-  // the full detected candidate pool (primary/secondary only — see
-  // metric-selector.ts's getAvailableMetrics), used to populate every one
-  // of the 7 slot dropdowns identically; selectedMetrics is the 7-slot
-  // assignment itself, index 0..6 mapping onto the campaign template's own
-  // physical card positions 1..7 (see fill-tags.ts's CARD_SLOT_TAGS) —
-  // whichever metric sits at index i fills slot i+1's label/value/icon,
-  // whatever campaign the slide is for. Defaulted by selectMetrics()'s
-  // priority order in handleContinueAfterDetect; the user can freely
-  // reassign any slot to any available metric from here (setSlotMetric).
-  const [availableMetrics, setAvailableMetrics] = useState<SelectedMetric[]>([]);
-  const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
-
-  // Step 3 — Campaigns (populated by /analyze). Always shown in full for
+  // Step 2 — Campaigns (populated by /analyze). Always shown in full for
   // Meta uploads — see handleAnalyze and lib/nre/campaigns.ts's
   // resolveCampaignSelection, which the /analyze route calls to decide the
   // pre-checked default (everything, for a first-ever upload; last time's
@@ -249,7 +213,7 @@ export function ReportUploadWizard({
   // custom title is left alone regardless of which Report Type is picked.
   const [reportTitleTouched, setReportTitleTouched] = useState(false);
 
-  // Step 5 — Generate (same screen as Preview above, see the step === 5 JSX block)
+  // Step 4 — Generate (same screen as Preview above, see the step === 4 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -350,8 +314,6 @@ export function ReportUploadWizard({
       return;
     }
 
-    setCsvHeaders(json.headers || []);
-    setDetectedObjectives(json.detectedObjectives || []);
     setCampaigns(json.campaigns || []);
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     setDateBounds(json.dateBounds || null);
@@ -368,48 +330,16 @@ export function ReportUploadWizard({
     setAnalyzeStatus("detected");
   }
 
-  // ── Step 1 (post-detect): confirm platform, seed the metric selector ────
-  // Both platforms now land on Step 2 (Metrics) — see handleMetricsContinue
-  // below for where the Meta-vs-Google dispatch actually happens (Meta into
-  // its existing multi-step campaigns/dates flow, Google straight to the
-  // preview, same split as before, just one step later).
-  function handleContinueAfterDetect() {
-    setAnalyzeStatus("idle");
-    const platformKey = platform === "GOOGLE" ? "google" : "meta";
-    // Google: single account-wide objective (unchanged — Google Ads
-    // accounts don't mix campaign types the way a Meta account testing
-    // Reach + Traffic + Lead Gen together does). Meta: the union of every
-    // campaign's own detected objective (see the /analyze route's
-    // detectCampaignObjectives) — falls back to an empty array (no
-    // objective filter at all, i.e. every detected secondary metric
-    // qualifies) only in the defensive case where the server sent none.
-    const objectiveKeys: string | string[] =
-      platform === "GOOGLE" ? detectGoogleObjectiveKey(csvHeaders) : detectedObjectives;
-    const pool = getAvailableMetrics(csvHeaders, platformKey);
-    setAvailableMetrics(pool);
-    setSelectedMetrics(selectMetrics(csvHeaders, platformKey, objectiveKeys).slice(0, METRIC_SLOT_COUNT));
-    setStep(2);
-  }
-
-  // ── Step 2: Metrics ──────────────────────────────────────────────────────
-  /** Reassigns slot `index` (0-6) to the metric with this key, looked up from the full availableMetrics pool. No-op if the key isn't found there. */
-  function setSlotMetric(index: number, key: string) {
-    const metric = availableMetrics.find((m) => m.key === key);
-    if (!metric) return;
-    setSelectedMetrics((prev) => {
-      const next = [...prev];
-      next[index] = metric;
-      return next;
-    });
-  }
-
-  // Meta keeps its existing multi-step campaigns/dates flow unchanged.
-  // Google Ads skips straight to the preview — no campaign selection, no
+  // ── Step 1 (post-detect): confirm platform, dispatch ────────────────────
+  // Meta keeps its existing multi-step campaigns/dates flow. Google Ads
+  // skips straight to the preview — no campaign selection, no
   // weekly/monthly toggle, no Previous Month Data (see google-report-data.ts's
   // own file header for why this pipeline is deliberately simpler for v1).
-  async function handleMetricsContinue() {
+  async function handleContinueAfterDetect() {
+    setAnalyzeStatus("idle");
+
     if (platform === "META") {
-      setStep(3);
+      setStep(2);
       return;
     }
 
@@ -421,7 +351,7 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, selectedMetrics }),
+      body: buildUploadFormData(mtdFile, { platform }),
     });
     const json = await res.json().catch(() => null);
     setContinueStatus("idle");
@@ -451,10 +381,10 @@ export function ReportUploadWizard({
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
-    setStep(5);
+    setStep(4);
   }
 
-  // ── Step 3: Campaigns ───────────────────────────────────────────────────
+  // ── Step 2: Campaigns ───────────────────────────────────────────────────
   function toggleCampaign(name: string) {
     setSelectedCampaigns((prev) => {
       const next = new Set(prev);
@@ -466,10 +396,10 @@ export function ReportUploadWizard({
 
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
-    setStep(4);
+    setStep(3);
   }
 
-  // ── Step 4: Dates ───────────────────────────────────────────────────────
+  // ── Step 3: Dates ───────────────────────────────────────────────────────
   function validateCustomRange(): boolean {
     if (dateMode !== "custom") return true;
     if (!customStart || !customEnd) {
@@ -521,7 +451,6 @@ export function ReportUploadWizard({
         dateSelection,
         reportType,
         platform,
-        selectedMetrics,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -555,10 +484,10 @@ export function ReportUploadWizard({
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
-    setStep(5);
+    setStep(4);
   }
 
-  // ── Step 5: Preview + Generate (one screen) ─────────────────────────────
+  // ── Step 4: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile) return;
     setGenerateStatus("loading");
@@ -581,7 +510,6 @@ export function ReportUploadWizard({
           reportTitle.trim() || (reportType === "MONTHLY" ? DEFAULT_MONTHLY_REPORT_TITLE : DEFAULT_REPORT_TITLE),
         reportType,
         platform,
-        selectedMetrics,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -657,9 +585,9 @@ export function ReportUploadWizard({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 4 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
+  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 3 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
   function handleBackToDates() {
-    setStep(4);
+    setStep(3);
   }
 
   const spanDays = customSpanDays();
@@ -771,65 +699,6 @@ export function ReportUploadWizard({
       )}
 
       {step === 2 && (
-        <div className="space-y-5 rounded-lg border border-dash-border bg-dash-card p-5">
-          <div>
-            <h3 className="text-sm font-medium text-dash-ink-secondary">Choose your 7 metric cards</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Your report template has 7 metric cards per slide. We&apos;ve pre-filled each slot with the most
-              relevant metric from your CSV — use any dropdown to swap a slot for a different metric.
-            </p>
-          </div>
-
-          {availableMetrics.length === 0 ? (
-            <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
-              No performance metrics were detected in this CSV — go back and check the file.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {Array.from({ length: METRIC_SLOT_COUNT }, (_, i) => {
-                const slot = selectedMetrics[i];
-                return (
-                  <label key={i} className="block">
-                    <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-dash-ink-secondary">
-                      Slot {i + 1}
-                    </span>
-                    <select
-                      value={slot?.key ?? ""}
-                      onChange={(e) => setSlotMetric(i, e.target.value)}
-                      className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-                    >
-                      {!slot && <option value="">Select a metric…</option>}
-                      {availableMetrics.map((m) => (
-                        <option key={m.key} value={m.key}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(1)}
-              className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleMetricsContinue}
-              disabled={availableMetrics.length === 0 || continueStatus === "loading"}
-              className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-            >
-              {continueStatus === "loading" ? "Loading…" : "Continue"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -873,7 +742,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(1)}
               className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -889,7 +758,7 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div className="space-y-5">
           <h3 className="text-sm font-medium text-dash-ink-secondary">Reporting period</h3>
 
@@ -1061,7 +930,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -1081,7 +950,7 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 5 && data && (
+      {step === 4 && data && (
         <div className="space-y-6">
           <ReportPreview data={data} />
 
@@ -1116,7 +985,7 @@ export function ReportUploadWizard({
           {generateStatus === "idle" && (
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(4)}
+                onClick={() => setStep(3)}
                 className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
               >
                 Back
@@ -1144,7 +1013,7 @@ export function ReportUploadWizard({
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(3)}
                   className="rounded-md border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-border"
                 >
                   Back
@@ -1341,7 +1210,7 @@ export function ReportUploadWizard({
 }
 
 function StepIndicator({ step }: { step: Step }) {
-  const steps: Step[] = [1, 2, 3, 4, 5];
+  const steps: Step[] = [1, 2, 3, 4];
   return (
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       {steps.map((s, i) => (
