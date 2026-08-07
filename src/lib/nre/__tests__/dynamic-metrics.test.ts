@@ -142,3 +142,70 @@ describe("aggregateDynamicMetrics — per-unit cost recompute (Fix 3)", () => {
     expect(result.cost_per_result).toBe(5);
   });
 });
+
+describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows a dash when spend and clicks are both present (Step 5)", () => {
+  const cpcAll = (): SelectedMetric => ({
+    key: "cpc_all",
+    label: "CPC (ALL)",
+    format: "currency",
+    type: "secondary",
+    priority: 65,
+    csvName: "cpc (all)",
+    perUnitOf: "clicks_all",
+  });
+  const cpcLinkClick = (): SelectedMetric => ({
+    key: "cpc_link_click",
+    label: "COST PER CLICK",
+    format: "currency",
+    type: "secondary",
+    priority: 68,
+    csvName: "cpc (cost per link click)",
+    perUnitOf: "link_clicks",
+  });
+
+  it("reads the CPC value directly off its own 'CPC (all)' column when present and non-zero, without recomputing", () => {
+    // Deliberately no "clicks (all)"/"link clicks"/"clicks" column at all —
+    // the old always-recompute-from-clicks behavior would have produced
+    // NaN ("—") here; reading the real column directly must win instead.
+    const rows = [row({ "Amount spent": "100", "CPC (all)": "2.00" }), row({ "Amount spent": "100", "CPC (all)": "4.00" })];
+    const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
+    expect(result.cpc_all).toBe(3); // average of the two non-zero raw values
+  });
+
+  it("tries 'avg. cpc' when 'cpc (all)' isn't present", () => {
+    const rows = [row({ "Amount spent": "100", "Avg. CPC": "1.50" })];
+    const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
+    expect(result.cpc_all).toBe(1.5);
+  });
+
+  it("tries 'cpc (cost per link click)' and 'average cpc' too, in the documented priority order", () => {
+    const rowsLinkClick = [row({ "Amount spent": "100", "CPC (Cost per Link Click)": "0.75" })];
+    expect(aggregateDynamicMetrics(rowsLinkClick, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.75);
+
+    const rowsAverage = [row({ "Amount spent": "100", "Average CPC": "0.60" })];
+    expect(aggregateDynamicMetrics(rowsAverage, [cpcAll()], "meta").cpc_all).toBe(0.6);
+  });
+
+  it("falls back to spend/clicks when the CPC column is missing, using whichever 'clicks' column variant is present", () => {
+    const rows = [
+      row({ "Amount spent": "50", "Clicks (all)": "20" }),
+      row({ "Amount spent": "50", "Clicks (all)": "5" }),
+    ];
+    const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
+    expect(result.cpc_all).toBe(100 / 25); // total spend / total clicks
+  });
+
+  it("falls back to spend/clicks when the CPC column's own values are all zero", () => {
+    const rows = [
+      row({ "Amount spent": "60", "CPC (all)": "0", "Link clicks": "30" }),
+    ];
+    const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
+    expect(result.cpc_all).toBe(2); // 60 / 30, not "—"
+  });
+
+  it("still shows a dash only when spend or clicks are genuinely both absent", () => {
+    const rows = [row({ "Amount spent": "60" })]; // no CPC column, no clicks column at all
+    const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
+    expect(Number.isNaN(result.cpc_all)).toBe(true);
+  });
+});

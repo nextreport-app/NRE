@@ -159,8 +159,8 @@ describe("buildGoogleReportData — dynamic metric dictionary system (selectedMe
     expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("$2.50");
   });
 
-  it("never splits a campaign into a second/continued slide, even with more than 12 selectedMetrics — caps at the top 12 by priority instead (Fix 3)", () => {
-    const thirteenMetrics = [
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the wizard's 7-slot assignment, in slot order, no capping or padding (Step 7)", () => {
+    const sevenSlots = [
       { key: "cost", label: "COST", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "cost" },
       { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 95, csvName: "impr." },
       { key: "clicks", label: "CLICKS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "clicks" },
@@ -168,26 +168,19 @@ describe("buildGoogleReportData — dynamic metric dictionary system (selectedMe
       { key: "avg_cpc", label: "AVG. CPC", format: "currency" as const, type: "primary" as const, priority: 80, csvName: "avg. cpc", perUnitOf: "clicks" },
       { key: "conversions", label: "CONVERSIONS", format: "number" as const, type: "primary" as const, priority: 75, csvName: "conversions" },
       { key: "cost_per_conv", label: "COST PER CONV.", format: "currency" as const, type: "secondary" as const, priority: 74, csvName: "cost / conv.", perUnitOf: "conversions" },
-      { key: "conv_rate", label: "CONV. RATE", format: "percentage" as const, type: "secondary" as const, priority: 73, csvName: "conv. rate" },
-      { key: "search_impr_share", label: "SEARCH IMPR. SHARE", format: "percentage" as const, type: "secondary" as const, priority: 72, csvName: "search impr. share" },
-      { key: "quality_score", label: "QUALITY SCORE", format: "number" as const, type: "secondary" as const, priority: 71, csvName: "quality score" },
-      { key: "all_conv", label: "ALL CONV.", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "all conv." },
-      { key: "view_through_conv", label: "VIEW-THROUGH CONV.", format: "number" as const, type: "secondary" as const, priority: 65, csvName: "view-through conv." },
-      { key: "target_cpa", label: "TARGET CPA", format: "currency" as const, type: "secondary" as const, priority: 60, csvName: "avg. target cpa", perUnitOf: "__avg__" },
     ];
-    expect(thirteenMetrics.length).toBe(13);
+    expect(sevenSlots.length).toBe(7);
     const data = buildGoogleReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       monthlyBudget: null,
       mtdDailyRows,
-      selectedMetrics: thirteenMetrics,
+      selectedMetrics: sevenSlots,
     });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes - Search");
-    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(12);
-    const keys = slidesForShoes[0].dynamicMetrics!.map((m) => m.key);
-    expect(keys).not.toContain("target_cpa"); // lowest-priority, 13th metric — dropped, not put on a second slide
+    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(7);
+    expect(slidesForShoes[0].dynamicMetrics!.map((m) => m.key)).toEqual(sevenSlots.map((m) => m.key));
   });
 });

@@ -26,11 +26,11 @@ const STEP_LABELS: Record<Step, string> = {
   5: "Preview",
 };
 
-// Soft, non-blocking guidance only (product fix — the hard 4-8 cap was
-// removed: users can select as few or as many metrics as they want, and a
-// campaign whose selection exceeds 8 cards simply spans multiple slides at
-// generation time — see dynamic-metrics.ts's buildDynamicMetricSlides).
-const RECOMMENDED_MIN_METRICS = 4;
+// The campaign template has exactly 7 fixed card positions (see
+// fill-tags.ts's CARD_SLOT_TAGS) — the Metric Preview step always shows
+// exactly this many slot dropdowns, never fewer/more, never an add/remove
+// list (product decision, replacing the old unbounded add/remove UI).
+const METRIC_SLOT_COUNT = 7;
 
 // "detected" pauses on step 1 after a successful analyze, showing the
 // platform badge + override dropdown + a Continue button — see
@@ -201,15 +201,15 @@ export function ReportUploadWizard({
   const [detectedObjectives, setDetectedObjectives] = useState<string[]>([]);
 
   // Step 2 — Metrics (dynamic metric dictionary system). availableMetrics is
-  // the full detected candidate pool (both included and not-included come
-  // from it); selectedMetrics is the "Included" list, in priority-descending
-  // order — that fixed order becomes the PPT card grid's left-to-right/
-  // top-to-bottom order (see dynamic-cards.ts). No manual reordering: order
-  // is entirely priority-driven. Pre-selected automatically by
-  // selectMetrics() in handleContinueAfterDetect; the user can freely add/
-  // remove metrics from here, with no minimum or maximum — a campaign whose
-  // selection exceeds 8 cards simply spans multiple slides at generation
-  // time instead of forcing a choice here.
+  // the full detected candidate pool (primary/secondary only — see
+  // metric-selector.ts's getAvailableMetrics), used to populate every one
+  // of the 7 slot dropdowns identically; selectedMetrics is the 7-slot
+  // assignment itself, index 0..6 mapping onto the campaign template's own
+  // physical card positions 1..7 (see fill-tags.ts's CARD_SLOT_TAGS) —
+  // whichever metric sits at index i fills slot i+1's label/value/icon,
+  // whatever campaign the slide is for. Defaulted by selectMetrics()'s
+  // priority order in handleContinueAfterDetect; the user can freely
+  // reassign any slot to any available metric from here (setSlotMetric).
   const [availableMetrics, setAvailableMetrics] = useState<SelectedMetric[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
 
@@ -385,19 +385,22 @@ export function ReportUploadWizard({
     // qualifies) only in the defensive case where the server sent none.
     const objectiveKeys: string | string[] =
       platform === "GOOGLE" ? detectGoogleObjectiveKey(csvHeaders) : detectedObjectives;
-    setAvailableMetrics(getAvailableMetrics(csvHeaders, platformKey));
-    setSelectedMetrics(selectMetrics(csvHeaders, platformKey, objectiveKeys));
+    const pool = getAvailableMetrics(csvHeaders, platformKey);
+    setAvailableMetrics(pool);
+    setSelectedMetrics(selectMetrics(csvHeaders, platformKey, objectiveKeys).slice(0, METRIC_SLOT_COUNT));
     setStep(2);
   }
 
   // ── Step 2: Metrics ──────────────────────────────────────────────────────
-  function addMetric(metric: SelectedMetric) {
-    if (selectedMetrics.some((m) => m.key === metric.key)) return;
-    setSelectedMetrics((prev) => [...prev, metric].sort((a, b) => b.priority - a.priority));
-  }
-
-  function removeMetric(key: string) {
-    setSelectedMetrics((prev) => prev.filter((m) => m.key !== key));
+  /** Reassigns slot `index` (0-6) to the metric with this key, looked up from the full availableMetrics pool. No-op if the key isn't found there. */
+  function setSlotMetric(index: number, key: string) {
+    const metric = availableMetrics.find((m) => m.key === key);
+    if (!metric) return;
+    setSelectedMetrics((prev) => {
+      const next = [...prev];
+      next[index] = metric;
+      return next;
+    });
   }
 
   // Meta keeps its existing multi-step campaigns/dates flow unchanged.
@@ -663,9 +666,6 @@ export function ReportUploadWizard({
   const needsLongRangeConfirm =
     dateMode === "custom" && spanDays !== null && spanDays > 7 && !customRangeError && !longRangeConfirmed;
   const weeklyRangeIso = currentWeeklyRangeIso();
-  const availableNotIncludedMetrics = availableMetrics.filter(
-    (m) => !selectedMetrics.some((s) => s.key === m.key),
-  );
 
   return (
     <div className="space-y-6">
@@ -773,65 +773,41 @@ export function ReportUploadWizard({
       {step === 2 && (
         <div className="space-y-5 rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
-            <h3 className="text-sm font-medium text-dash-ink-secondary">Select metrics for your report</h3>
+            <h3 className="text-sm font-medium text-dash-ink-secondary">Choose your 7 metric cards</h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              We found {availableMetrics.length} performance metric{availableMetrics.length === 1 ? "" : "s"}{" "}
-              in your CSV. We&apos;ve pre-selected {selectedMetrics.length} most relevant to your campaigns —
-              add or remove any of them below. A campaign with more than 8 selected metrics automatically spans
-              multiple slides, so include everything relevant.
+              Your report template has 7 metric cards per slide. We&apos;ve pre-filled each slot with the most
+              relevant metric from your CSV — use any dropdown to swap a slot for a different metric.
             </p>
           </div>
 
-          <div>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-[13px] font-semibold text-dash-ink">✅ Included in report</h4>
-              <span className="text-[13px] text-dash-ink-secondary">{selectedMetrics.length} metrics selected</span>
+          {availableMetrics.length === 0 ? (
+            <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
+              No performance metrics were detected in this CSV — go back and check the file.
             </div>
-            <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-              {selectedMetrics.map((m) => (
-                <li key={m.key} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="flex-1 text-sm text-dash-ink">{m.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeMetric(m.key)}
-                    className="rounded-md border border-dash-border px-3 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {availableNotIncludedMetrics.length > 0 && (
-            <div>
-              <h4 className="mb-2 text-[13px] font-semibold text-dash-ink">➕ Available but not included</h4>
-              <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-                {availableNotIncludedMetrics.map((m) => (
-                  <li key={m.key} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="flex-1 text-sm text-dash-ink-secondary">{m.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => addMetric(m)}
-                      className="rounded-md border border-dash-border px-3 py-1 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {Array.from({ length: METRIC_SLOT_COUNT }, (_, i) => {
+                const slot = selectedMetrics[i];
+                return (
+                  <label key={i} className="block">
+                    <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-dash-ink-secondary">
+                      Slot {i + 1}
+                    </span>
+                    <select
+                      value={slot?.key ?? ""}
+                      onChange={(e) => setSlotMetric(i, e.target.value)}
+                      className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
                     >
-                      + Add
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {selectedMetrics.length > 0 && selectedMetrics.length < RECOMMENDED_MIN_METRICS && (
-            <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
-              Only {selectedMetrics.length} metric{selectedMetrics.length === 1 ? "" : "s"} selected — for the
-              clearest report we recommend at least {RECOMMENDED_MIN_METRICS}, but you can continue with fewer.
-            </div>
-          )}
-          {selectedMetrics.length === 0 && (
-            <div className="rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-[13px] text-amber-200">
-              Select at least one metric to continue.
+                      {!slot && <option value="">Select a metric…</option>}
+                      {availableMetrics.map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              })}
             </div>
           )}
 
@@ -844,7 +820,7 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleMetricsContinue}
-              disabled={selectedMetrics.length === 0 || continueStatus === "loading"}
+              disabled={availableMetrics.length === 0 || continueStatus === "loading"}
               className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {continueStatus === "loading" ? "Loading…" : "Continue"}

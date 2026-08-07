@@ -77,6 +77,14 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   { csvName: "ad delivery", key: "ad_delivery", type: "metadata" },
   { csvName: "ad set delivery", key: "ad_set_delivery", type: "metadata" },
   { csvName: "campaign delivery", key: "campaign_delivery", type: "metadata" },
+  // Step 6 (product report) — excluded from the Metric Preview step's
+  // slot dropdowns entirely, each for its own reason: Frequency is already
+  // hardcoded to display below the date range on every campaign/ad set
+  // slide (see report-data.ts's freqLine), so offering it as a 7th-slot
+  // option too would just duplicate that line as a redundant card; Result
+  // rate is judged too granular a number for a standalone metric card.
+  { csvName: "frequency", key: "frequency", type: "metadata" },
+  { csvName: "result rate", key: "result_rate", type: "metadata" },
   { csvName: "quality ranking", key: "quality_ranking", type: "never" },
   { csvName: "engagement rate ranking", key: "engagement_rate_ranking", type: "never" },
   { csvName: "conversion rate ranking", key: "conversion_rate_ranking", type: "never" },
@@ -280,17 +288,9 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     perUnitOf: "website_leads",
   },
 
-  // Awareness / CPM / Frequency
-  {
-    csvName: "frequency",
-    key: "frequency",
-    label: "FREQUENCY",
-    type: "secondary",
-    format: "ratio",
-    objectives: ["awareness", "reach", "traffic"],
-    priority: 60,
-    explanation: "Average number of times each person saw your ad",
-  },
+  // Awareness / CPM
+  // (Frequency's own dictionary entry lives up in the METADATA section —
+  // see its comment there for why it's excluded from the metric selector.)
   {
     csvName: "cpm (cost per 1,000 impressions)",
     key: "cpm",
@@ -970,16 +970,8 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     priority: 65,
     explanation: "Total number of clicks on your ad, of any kind",
   },
-  {
-    csvName: "result rate",
-    key: "result_rate",
-    label: "RESULT RATE",
-    type: "secondary",
-    format: "percentage",
-    objectives: [],
-    priority: 45,
-    explanation: "Percentage of people who completed your desired result after seeing your ad",
-  },
+  // (Result rate's own dictionary entry lives up in the METADATA section —
+  // see its comment there for why it's excluded from the metric selector.)
 ];
 
 /** Case-insensitive exact match on csvName — first entry wins on duplicates (none of the dictionary's own entries collide). */

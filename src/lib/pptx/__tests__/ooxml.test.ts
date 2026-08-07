@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { escapeXmlText, forceRunStyle, replaceTagRun, replaceTagRunWithSuffix } from "../ooxml";
+import {
+  escapeXmlText,
+  findCardIconRelId,
+  forceRunStyle,
+  replaceCardIcon,
+  replaceCardLabel,
+  replaceTagRun,
+  replaceTagRunWithSuffix,
+} from "../ooxml";
 
 const SAMPLE_RUN =
   '<a:r><a:rPr b="1" i="0" lang="en-US" sz="2000" u="none"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:latin typeface="Poppins"/></a:rPr><a:t>{{METRIC_SPEND}}</a:t></a:r>';
@@ -123,5 +131,80 @@ describe("forceRunStyle", () => {
     const out = forceRunStyle(`<a:p>${run}</a:p>`, "YOUR WEEKLY PERFORMANCE REPORT", { bold: true });
     expect(out).toContain('b="1"');
     expect(out).toContain("YOUR WEEKLY PERFORMANCE REPORT");
+  });
+});
+
+// Minimal fixtures mirroring templates/dark.pptx's two real card shapes —
+// the "full card" style (Spend/Reach/Impressions/Results: one outer
+// <p:grpSp> wrapping background + icon group + a label/value text-pair
+// sub-group) and the "pair" style (CTR/Cost per Result/CPC: background,
+// icon, and label/value text pair as three separate top-level shapes) —
+// see replaceCardLabel/findCardIconRelId/replaceCardIcon's own doc
+// comments for why both share the one structural fact these rely on: the
+// label `<p:sp>` always immediately precedes the value `<p:sp>` as document
+// siblings, and the icon `<p:pic>` always immediately precedes that pair.
+const FULL_CARD_XML =
+  '<p:grpSp><p:nvGrpSpPr><p:cNvPr id="33" name="Card"/></p:nvGrpSpPr>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="34" name="Bg"/></p:nvSpPr><p:spPr/><p:txBody><a:p/></p:txBody></p:sp>' +
+  '<p:pic><p:blipFill><a:blip r:embed="rId3"/></p:blipFill></p:pic>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="39" name="Label"/></p:nvSpPr><p:txBody><a:p><a:r><a:rPr sz="1150"/><a:t>AD SPEND</a:t></a:r></a:p></p:txBody></p:sp>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="40" name="Value"/></p:nvSpPr><p:txBody><a:p><a:r><a:rPr sz="2100" b="1"/><a:t>{{METRIC_SPEND}}</a:t></a:r></a:p></p:txBody></p:sp>' +
+  "</p:grpSp>";
+
+const PAIR_CARD_XML =
+  '<p:sp><p:nvSpPr><p:cNvPr id="65" name="Bg"/></p:nvSpPr><p:spPr/><p:txBody><a:p/></p:txBody></p:sp>' +
+  '<p:pic><p:blipFill><a:blip r:embed="rId7"/></p:blipFill></p:pic>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="70" name="Label"/></p:nvSpPr><p:txBody><a:p><a:r><a:rPr sz="1150"/><a:t>CTR (All)</a:t></a:r></a:p></p:txBody></p:sp>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="71" name="Value"/></p:nvSpPr><p:txBody><a:p><a:r><a:rPr sz="2100" b="1"/><a:t>{{METRIC_CTR}}</a:t></a:r></a:p></p:txBody></p:sp>';
+
+describe("replaceCardLabel", () => {
+  it("overwrites the label immediately preceding the value tag, preserving that label shape's own run styling (full-card style)", () => {
+    const out = replaceCardLabel(FULL_CARD_XML, "{{METRIC_SPEND}}", "WEBSITE LEADS");
+    expect(out).toContain("<a:t>WEBSITE LEADS</a:t>");
+    expect(out).not.toContain("<a:t>AD SPEND</a:t>");
+    expect(out).toContain('sz="1150"'); // label run's own style untouched
+    expect(out).toContain("{{METRIC_SPEND}}"); // value tag itself untouched — a separate call handles it
+  });
+
+  it("works identically for the pair-card style (3 separate top-level shapes, no enclosing group)", () => {
+    const out = replaceCardLabel(PAIR_CARD_XML, "{{METRIC_CTR}}", "COST PER LEAD");
+    expect(out).toContain("<a:t>COST PER LEAD</a:t>");
+    expect(out).not.toContain("<a:t>CTR (All)</a:t>");
+  });
+
+  it("overwrites an existing {{TAG}} label (e.g. the Results card's own {{RESULT_LABEL}}) the same way as literal text", () => {
+    const xml = FULL_CARD_XML.replace("<a:t>AD SPEND</a:t>", "<a:t>{{RESULT_LABEL}}</a:t>");
+    const out = replaceCardLabel(xml, "{{METRIC_SPEND}}", "PURCHASES");
+    expect(out).toContain("<a:t>PURCHASES</a:t>");
+    expect(out).not.toContain("{{RESULT_LABEL}}");
+  });
+
+  it("no-ops when the value locator text isn't found", () => {
+    expect(replaceCardLabel(FULL_CARD_XML, "{{METRIC_NOPE}}", "X")).toBe(FULL_CARD_XML);
+  });
+});
+
+describe("findCardIconRelId / replaceCardIcon", () => {
+  it("finds the relationship id of the icon immediately preceding the value tag (full-card style)", () => {
+    expect(findCardIconRelId(FULL_CARD_XML, "{{METRIC_SPEND}}")).toBe("rId3");
+  });
+
+  it("finds it for the pair-card style too", () => {
+    expect(findCardIconRelId(PAIR_CARD_XML, "{{METRIC_CTR}}")).toBe("rId7");
+  });
+
+  it("returns null when the value locator text isn't found", () => {
+    expect(findCardIconRelId(FULL_CARD_XML, "{{METRIC_NOPE}}")).toBeNull();
+  });
+
+  it("swaps that same icon's relationship id, leaving everything else untouched", () => {
+    const out = replaceCardIcon(FULL_CARD_XML, "{{METRIC_SPEND}}", "rId9");
+    expect(out).toContain('r:embed="rId9"');
+    expect(out).not.toContain('r:embed="rId3"');
+    expect(out).toContain("<a:t>AD SPEND</a:t>"); // label untouched
+  });
+
+  it("is a no-op when the value locator text isn't found", () => {
+    expect(replaceCardIcon(FULL_CARD_XML, "{{METRIC_NOPE}}", "rId9")).toBe(FULL_CARD_XML);
   });
 });

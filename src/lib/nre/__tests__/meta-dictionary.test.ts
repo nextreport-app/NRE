@@ -74,10 +74,8 @@ describe("Fix 6 — dictionary objective tags", () => {
     );
   });
 
-  it("tags FREQUENCY with 'reach', 'awareness', and 'traffic'", () => {
-    expect(findMetaMetric("frequency")?.objectives).toEqual(
-      expect.arrayContaining(["reach", "awareness", "traffic"]),
-    );
+  it("classifies FREQUENCY as metadata — already shown below the date range on every slide, never a selectable metric card (Step 6)", () => {
+    expect(findMetaMetric("frequency")?.type).toBe("metadata");
   });
 
   it("tags CPM and COST PER 1K REACHED with 'reach' and 'awareness'", () => {

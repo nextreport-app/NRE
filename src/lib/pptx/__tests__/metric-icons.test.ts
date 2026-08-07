@@ -1,21 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { METRIC_ICON_ASSETS, resolveMetricIconId, type MetricIconId } from "../metric-icons";
-
-const ICON_IDS: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc"];
-
-describe("METRIC_ICON_ASSETS", () => {
-  it("has all 7 extracted icons, each a valid base64-encoded PNG", () => {
-    for (const id of ICON_IDS) {
-      const asset = METRIC_ICON_ASSETS[id];
-      expect(asset.id).toBe(id);
-      expect(asset.widthPx).toBe(120);
-      expect(asset.heightPx).toBe(120);
-      const bytes = Buffer.from(asset.base64, "base64");
-      // PNG magic number.
-      expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
-    }
-  });
-});
+import { resolveMetricIconId } from "../metric-icons";
 
 describe("resolveMetricIconId", () => {
   it("maps the well-known primary metrics to their literal template card icon", () => {

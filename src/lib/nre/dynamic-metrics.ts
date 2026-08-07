@@ -55,6 +55,46 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
 }
 
 /**
+ * Fix 5 (product report) — CPC (All)/Cost per Link Click were rendering as
+ * "—" on real accounts even with plenty of spend and clicks in the CSV.
+ * Root cause: the generic perUnitOf branch below always DISCARDS a metric's
+ * own raw column value and recomputes purely from spend/count — but the
+ * denominator ("clicks_all") is only found if the CSV happens to use the
+ * exact column-name variant meta-dictionary.ts already lists for it; a real
+ * account's own "CPC (All)"/"Avg. CPC" column, with perfectly good data,
+ * was being ignored in favor of a spend/0 = NaN recompute whenever the
+ * clicks denominator's own header didn't match.
+ *
+ * These two CPC keys get their own path instead: try reading the value
+ * directly off any of its known column-name variants first (an average of
+ * its own non-zero raw values, same treatment a rate/ratio metric gets) —
+ * only falling back to spend/clicks when that's genuinely missing or zero,
+ * and trying every common "clicks" column name for that fallback too, so a
+ * CPC card only ever shows "—" when spend or clicks are truly both absent.
+ */
+const CPC_METRIC_KEYS = new Set(["cpc_all", "cpc_link_click"]);
+const CPC_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "cpc (cost per link click)", "average cpc"];
+const CPC_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "link clicks", "clicks"];
+
+function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
+  for (const candidate of CPC_VALUE_HEADER_CANDIDATES) {
+    const header = headerMap.get(candidate);
+    if (!header) continue;
+    const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
+    if (nonZero.length > 0) return nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length;
+  }
+
+  for (const candidate of CPC_CLICKS_HEADER_CANDIDATES) {
+    const header = headerMap.get(candidate);
+    if (!header) continue;
+    const totalClicks = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
+    if (totalClicks > 0) return totalSpend / totalClicks;
+  }
+
+  return NaN;
+}
+
+/**
  * Sums currency/number metrics; averages non-zero values for
  * percentage/ratio/duration metrics — the same treatment the existing
  * fixed-field pipeline already gives CTR/CPC (a straight sum would be
@@ -99,6 +139,12 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   let totalSpend: number | null = null;
 
   for (const metric of metrics) {
+    if (CPC_METRIC_KEYS.has(metric.key)) {
+      if (totalSpend === null) totalSpend = sumByKey(spendKey);
+      result[metric.key] = aggregateCpc(rows, headerMap, totalSpend);
+      continue;
+    }
+
     if (metric.format === "currency" && metric.perUnitOf) {
       const actualHeader = headerMap.get(metric.csvName);
       if (metric.perUnitOf === "__avg__") {
@@ -135,27 +181,14 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   return result;
 }
 
-/** A campaign/ad-set slide never renders more than this many cards — see buildDynamicMetricCards. */
-export const MAX_CARDS_PER_SLIDE = 12;
-
 /**
- * Converts one campaign/ad-set's raw rows + the user's selectedMetrics into
- * that single slide's display-ready DynamicMetricValue array.
- *
- * Always exactly one slide, never a "continued" slide, never padded from
- * metrics the user didn't choose — the old multi-slide-with-padding design
- * had a real bug (caught empirically): padding pulled candidates from every
- * detected-but-currently-unselected CSV column, which includes metrics the
- * user had just explicitly REMOVED in the Metric Preview step (removing a
- * metric doesn't erase its CSV column, just its membership in
- * selectedMetrics) — so a removed metric could silently reappear on a
- * padded continuation slide. Capping at MAX_CARDS_PER_SLIDE and never
- * padding eliminates that failure mode entirely: a slide only ever shows
- * exactly what's in selectedMetrics, nothing else.
- *
- * `selectedMetrics` is assumed already priority-sorted (metric-selector.ts's
- * own output order) — slicing to the top 12 is exactly "top 12 by
- * priority" per the product spec.
+ * Converts one campaign/ad-set's raw rows + the wizard's 7-slot metric
+ * assignment into that single slide's display-ready DynamicMetricValue
+ * array, in the SAME slot order it was given — fill-tags.ts maps each
+ * entry straight onto the campaign template's corresponding fixed card
+ * slot (see its own CARD_SLOT_TAGS), so this never reorders, pads, or caps
+ * its input; a campaign always gets exactly one slide with the template's
+ * own 7 card positions, whatever metrics were assigned to them.
  *
  * A NaN aggregated value (see aggregateDynamicMetrics — a per-unit cost
  * metric with a zero denominator) renders as "—", never "$0.00"/"$NaN".
@@ -167,10 +200,9 @@ export function buildDynamicMetricCards<T extends RawMetricRow>(
   currencySymbol: string,
 ): DynamicMetricValue[] {
   if (selectedMetrics.length === 0) return [];
-  const capped = selectedMetrics.slice(0, MAX_CARDS_PER_SLIDE);
 
-  const rawTotals = aggregateDynamicMetrics(rawRows, capped, platform);
-  return capped.map((m) => {
+  const rawTotals = aggregateDynamicMetrics(rawRows, selectedMetrics, platform);
+  return selectedMetrics.map((m) => {
     const raw = rawTotals[m.key];
     return {
       key: m.key,

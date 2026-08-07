@@ -224,134 +224,67 @@ export function insertShapeBeforeSpTreeClose(xml: string, shapeXml: string): str
 }
 
 /**
- * Finds the OUTERMOST `<openTag>...</closeTag>` block (depth-counted, so
- * nested occurrences of the same tag pair don't confuse it) that contains
- * `idx`. Scans left to right — the first candidate open tag whose balanced
- * close comes after `idx` is necessarily the outermost one, since any
- * enclosing ancestor must start at or before it. Returns null if `idx`
- * isn't inside any `<openTag>...</closeTag>` block at all.
+ * Overwrites a template metric card's LABEL text, given the {{TAG}} (or, if
+ * already filled, the literal value text) of that same card's VALUE shape
+ * as a locator — used by fill-tags.ts to make the campaign template's 7
+ * fixed card slots show whichever metric was assigned to that slot, while
+ * leaving every other part of the card (background fill/shadow, icon
+ * badge/gradient, fonts) exactly as the template drew it.
+ *
+ * Every one of the template's 7 card slots — both the "full card" style
+ * (Spend/Reach/Impressions/Results, each a `<p:grpSp>` wrapping background +
+ * icon + a label/value text-pair sub-group) and the "pair" style (CTR/Cost
+ * per Result/CPC, three separate top-level shapes) — puts the label `<p:sp>`
+ * immediately before the value `<p:sp>` as document siblings. That's the one
+ * structural fact this relies on (confirmed by inspecting
+ * templates/dark.pptx's ppt/slides/slide2.xml), so no card-style branching
+ * is needed: walk back from the value shape's own `<p:sp>` to find its
+ * immediately preceding sibling `<p:sp>...</p:sp>` (the label), then replace
+ * that shape's single `<a:t>` run's text, preserving all of its own styling.
+ * No-op (returns xml unchanged) if `valueLocatorText` isn't found.
  */
-function findEnclosingBlock(xml: string, idx: number, openTag: string, closeTag: string): { start: number; end: number } | null {
-  let searchFrom = 0;
-  while (true) {
-    const openIdx = xml.indexOf(openTag, searchFrom);
-    if (openIdx === -1 || openIdx > idx) return null;
+export function replaceCardLabel(xml: string, valueLocatorText: string, newLabelText: string): string {
+  const valueIdx = xml.indexOf(valueLocatorText);
+  if (valueIdx === -1) return xml;
 
-    let depth = 0;
-    let pos = openIdx;
-    let end = -1;
-    while (pos < xml.length) {
-      const nextOpen = xml.indexOf(openTag, pos);
-      const nextClose = xml.indexOf(closeTag, pos);
-      if (nextClose === -1) break;
-      if (nextOpen !== -1 && nextOpen < nextClose) {
-        depth++;
-        pos = nextOpen + openTag.length;
-      } else {
-        depth--;
-        pos = nextClose + closeTag.length;
-        if (depth === 0) {
-          end = pos;
-          break;
-        }
-      }
-    }
+  const valueSpStart = xml.lastIndexOf("<p:sp>", valueIdx);
+  if (valueSpStart === -1) return xml;
 
-    if (end !== -1 && end > idx) return { start: openIdx, end };
-    searchFrom = openIdx + openTag.length;
-  }
+  const labelSpEnd = xml.lastIndexOf("</p:sp>", valueSpStart);
+  if (labelSpEnd === -1) return xml;
+  const labelSpStart = xml.lastIndexOf("<p:sp>", labelSpEnd);
+  if (labelSpStart === -1) return xml;
+
+  const labelBlockEnd = labelSpEnd + "</p:sp>".length;
+  const labelBlock = xml.slice(labelSpStart, labelBlockEnd);
+  const newLabelBlock = labelBlock.replace(/<a:t>[^<]*<\/a:t>/, `<a:t>${escapeXmlText(newLabelText)}</a:t>`);
+
+  return xml.slice(0, labelSpStart) + newLabelBlock + xml.slice(labelBlockEnd);
 }
 
 /**
- * Removes the shape containing `locatorText` (a literal substring, e.g. a
- * {{TAG}} placeholder) entirely — used to strip the campaign template's
- * fixed metric-card shapes before inserting a dynamically-generated
- * replacement grid (see pptx/dynamic-cards.ts). Some template shapes are a
- * single `<p:sp>` (existing cloneShapeAsTag/setShapeOffsetY's assumption);
- * others (the template's roundRect "full cards") are a `<p:grpSp>` wrapping
- * a background shape, an icon group, and label/value text boxes — removing
- * only the innermost `<p:sp>` there would leave the card's background and
- * icon behind, so this always prefers the OUTERMOST enclosing `<p:grpSp>`
- * when there is one, falling back to the enclosing `<p:sp>` otherwise.
- * No-op (returns xml unchanged) if `locatorText` isn't found.
+ * Finds the relationship id of the icon `<p:pic>` belonging to the same
+ * template metric card as `valueLocatorText` (see replaceCardLabel's doc
+ * comment for the card-slot locator convention) — every card slot's own
+ * icon `<p:pic>` sits immediately before that slot's label/value text pair
+ * in document order (both card styles), so the closest preceding
+ * `r:embed="..."` attribute is necessarily this card's own icon. Returns
+ * null if `valueLocatorText` isn't found or no `r:embed` precedes it.
  */
-export function removeShapeContaining(xml: string, locatorText: string): string {
-  const idx = xml.indexOf(locatorText);
+export function findCardIconRelId(xml: string, valueLocatorText: string): string | null {
+  const idx = xml.indexOf(valueLocatorText);
+  if (idx === -1) return null;
+  const matches = [...xml.matchAll(/r:embed="([^"]*)"/g)].filter((m) => m.index! < idx);
+  if (matches.length === 0) return null;
+  return matches[matches.length - 1][1];
+}
+
+/** Swaps the icon relationship id found by findCardIconRelId to `newRelId` — used when the metric assigned to a card slot resolves to a different icon category than that slot's own native template icon. No-op if `valueLocatorText` isn't found or has no preceding `r:embed`. */
+export function replaceCardIcon(xml: string, valueLocatorText: string, newRelId: string): string {
+  const idx = xml.indexOf(valueLocatorText);
   if (idx === -1) return xml;
-
-  const grpBlock = findEnclosingBlock(xml, idx, "<p:grpSp>", "</p:grpSp>");
-  if (grpBlock) return xml.slice(0, grpBlock.start) + xml.slice(grpBlock.end);
-
-  const start = xml.lastIndexOf("<p:sp>", idx);
-  const closeTag = "</p:sp>";
-  const closeIdx = xml.indexOf(closeTag, idx);
-  if (start === -1 || closeIdx === -1) return xml;
-  return xml.slice(0, start) + xml.slice(closeIdx + closeTag.length);
-}
-
-/**
- * Removes every TOP-LEVEL shape (direct child of `<p:spTree>` — `<p:sp>`,
- * `<p:grpSp>`, `<p:pic>`, or `<p:cxnSp>`) whose own `<a:off>` falls inside
- * `region` (in points). For the dynamic metric dictionary system's card
- * grid: removeShapeContaining only finds shapes that contain one of the 7
- * `{{METRIC_*}}` tags, but the campaign template turned out to also have an
- * untagged decorative "ghost" card (background + icon, no text run at all)
- * sitting in that same region — confirmed by rendering templates/dark.pptx
- * and finding a leftover sliver visible through the gap between generated
- * cards. This is a position-based sweep specifically to catch shapes like
- * that, which no locator string can find. Only ever called on the region
- * the fixed cards occupied — callers must keep `xMaxPt` below the AI-copy
- * column's own leftmost shape (measured at x=511.9pt in templates/dark.pptx)
- * or it gets swept up too; CAMPAIGN_NAME sits well above this region
- * (y<95pt) so it's in no danger either way.
- */
-export function removeShapesInRegion(
-  xml: string,
-  region: { xMaxPt: number; yMinPt: number; yMaxPt: number },
-): string {
-  const spTreeStart = xml.indexOf("<p:spTree>");
-  const spTreeCloseTag = "</p:spTree>";
-  const spTreeEnd = xml.lastIndexOf(spTreeCloseTag);
-  if (spTreeStart === -1 || spTreeEnd === -1) return xml;
-
-  const headerEnd = xml.indexOf("</p:grpSpPr>", spTreeStart);
-  if (headerEnd === -1) return xml;
-  let cursor = headerEnd + "</p:grpSpPr>".length;
-
-  const topLevelTags = ["p:sp", "p:grpSp", "p:pic", "p:cxnSp"];
-  const toRemove: { start: number; end: number }[] = [];
-
-  while (cursor < spTreeEnd) {
-    let bestTag: string | null = null;
-    let bestIdx = Infinity;
-    for (const t of topLevelTags) {
-      const openTag = `<${t}>`;
-      const idx = xml.indexOf(openTag, cursor);
-      if (idx !== -1 && idx < bestIdx && idx < spTreeEnd) {
-        bestIdx = idx;
-        bestTag = t;
-      }
-    }
-    if (!bestTag) break;
-
-    const block = findEnclosingBlock(xml, bestIdx, `<${bestTag}>`, `</${bestTag}>`);
-    if (!block) break; // malformed — bail rather than loop forever
-
-    const blockXml = xml.slice(block.start, block.end);
-    const offMatch = blockXml.match(/<a:off x="(\d+)" y="(\d+)"\/>/);
-    if (offMatch) {
-      const xPt = Number(offMatch[1]) / 12700;
-      const yPt = Number(offMatch[2]) / 12700;
-      if (xPt < region.xMaxPt && yPt >= region.yMinPt && yPt <= region.yMaxPt) {
-        toRemove.push(block);
-      }
-    }
-    cursor = block.end;
-  }
-
-  let out = xml;
-  for (const block of toRemove.slice().reverse()) {
-    out = out.slice(0, block.start) + out.slice(block.end);
-  }
-  return out;
+  const matches = [...xml.matchAll(/r:embed="[^"]*"/g)].filter((m) => m.index! < idx);
+  if (matches.length === 0) return xml;
+  const last = matches[matches.length - 1];
+  return xml.slice(0, last.index) + `r:embed="${newRelId}"` + xml.slice(last.index! + last[0].length);
 }

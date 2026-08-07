@@ -269,7 +269,22 @@ describe("buildCampaignOrAdSetSlideXml — Google Ads metric card retexting", ()
   });
 });
 
-describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", () => {
+// A full 7-slot assignment matching the template's own physical slot order
+// (Spend/Reach/Impressions/Results/CTR/Cost per Result/CPC) — the shape
+// every real wizard-driven render sends.
+function sevenSlotMetrics() {
+  return [
+    { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521", type: "primary" as const },
+    { key: "reach", label: "REACH", format: "number" as const, value: "128,400", type: "primary" as const },
+    { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "310,900", type: "primary" as const },
+    { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, value: "88", type: "secondary" as const },
+    { key: "cost_per_lead", label: "COST PER LEAD", format: "currency" as const, value: "$12.50", type: "secondary" as const, perUnitOf: "website_leads" },
+    { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, value: "2.10%", type: "primary" as const },
+    { key: "cpc_all", label: "CPC (ALL)", format: "currency" as const, value: "$0.85", type: "secondary" as const, perUnitOf: "clicks_all" },
+  ];
+}
+
+describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system (7-slot template retext, Step 1-3/7)", () => {
   it("uses the fixed 7-field card tags when dynamicMetrics is absent (default makeCampaignSlide fixture)", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Search"));
     expect(xml).toContain("$100");
@@ -279,32 +294,58 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
     expect(xml).toContain("REACH");
   });
 
-  it("replaces the fixed cards with a generated grid when dynamicMetrics is present", () => {
-    const slide = {
-      ...makeCampaignSlide("Shoes - Search"),
-      dynamicMetrics: [
-        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521", type: "primary" as const },
-        { key: "reach", label: "REACH", format: "number" as const, value: "128,400", type: "primary" as const },
-        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "310,900", type: "primary" as const },
-        { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, value: "88", type: "secondary" as const },
-      ],
-    };
+  it("retexts the template's own 7 fixed card slots in place — no shapes added or removed — when dynamicMetrics is present", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const before = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Search"));
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+
     expect(xml).toContain("$4,521");
     expect(xml).toContain("128,400");
     expect(xml).toContain("WEBSITE LEADS");
     expect(xml).toContain("88");
+    expect(xml).toContain("COST PER LEAD");
+    expect(xml).toContain("$12.50");
     // The old fixed-card values from the slide's `metrics` field never
     // render on the dynamic path.
     expect(xml).not.toContain("$100");
     expect(xml).not.toContain(">1,000<");
+
+    // Same total shape count as the non-dynamic render of the same
+    // template — this path only ever retexts/re-icons existing shapes, it
+    // never inserts or strips any (Step 1: no more from-scratch card
+    // generation, no more removeShapeContaining for cards).
+    const shapeCount = (xml: string) => (xml.match(/<p:sp>/g) || []).length + (xml.match(/<p:grpSp>/g) || []).length + (xml.match(/<p:pic>/g) || []).length;
+    expect(shapeCount(xml)).toBe(shapeCount(before));
+  });
+
+  it("swaps a slot's icon relationship id when the assigned metric's icon category differs from that slot's own native template icon (Step 3)", () => {
+    // Slot 4 (physically the RESULTS card, native icon = "results") is
+    // assigned "impressions" here instead — its icon should end up
+    // pointing at the SAME relationship id slot 3 (the real IMPRESSIONS
+    // card) natively uses, not the RESULTS card's own native icon.
+    const withoutSwap = makeCampaignSlide("Shoes - Search");
+    const baseline = buildCampaignOrAdSetSlideXml(template.campaign, withoutSwap);
+    const impressionsCardIconRelId = [...baseline.matchAll(/r:embed="([^"]+)"/g)].map((m) => m[1])[2]; // 3rd icon = slot 3 = Impressions
+
+    const slots = sevenSlotMetrics();
+    slots[3] = { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "999,000", type: "primary" as const };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, { ...withoutSwap, dynamicMetrics: slots });
+
+    const resultsSlotIconRelId = [...xml.matchAll(/r:embed="([^"]+)"/g)].map((m) => m[1])[3]; // 4th icon = slot 4 = Results (now showing Impressions)
+    expect(resultsSlotIconRelId).toBe(impressionsCardIconRelId);
+  });
+
+  it("keeps a slot's own native icon when the assigned metric already matches that slot's default category", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const baseline = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Search"));
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    // Slot 1 stays "spend" in both — its icon relationship id shouldn't change.
+    const relIdsOf = (x: string) => [...x.matchAll(/r:embed="([^"]+)"/g)].map((m) => m[1]);
+    expect(relIdsOf(xml)[0]).toBe(relIdsOf(baseline)[0]);
   });
 
   it("still fills DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS (the untouched AI-copy column) on the dynamic path", () => {
-    const slide = {
-      ...makeCampaignSlide("Shoes - Search"),
-      dynamicMetrics: [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$4,521", type: "primary" as const }],
-    };
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary: "A real summary.", insights: "Real insights." });
     expect(xml).toContain("A real summary.");
     expect(xml).toContain("Real insights.");
@@ -312,17 +353,7 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
   });
 
   it("produces well-formed XML (balanced shape tags) on the dynamic path", () => {
-    const slide = {
-      ...makeCampaignSlide("Shoes - Search"),
-      dynamicMetrics: [
-        { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$1", type: "primary" as const },
-        { key: "reach", label: "REACH", format: "number" as const, value: "1", type: "primary" as const },
-        { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "1", type: "primary" as const },
-        { key: "results", label: "RESULTS", format: "number" as const, value: "1", type: "primary" as const },
-        { key: "ctr", label: "CTR", format: "percentage" as const, value: "1%", type: "primary" as const },
-        { key: "cpc", label: "CPC", format: "currency" as const, value: "$1", type: "secondary" as const },
-      ],
-    };
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
     const openSp = (xml.match(/<p:sp>/g) || []).length;
     const closeSp = (xml.match(/<\/p:sp>/g) || []).length;
@@ -330,5 +361,12 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system", ()
     const closeGrp = (xml.match(/<\/p:grpSp>/g) || []).length;
     expect(openSp).toBe(closeSp);
     expect(openGrp).toBe(closeGrp);
+  });
+
+  it("fills a shorter-than-7 assignment's remaining slots with a dash rather than leaving a raw {{TAG}} visible (defensive)", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics().slice(0, 3) };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).not.toContain("{{METRIC_");
+    expect(xml).toContain("—");
   });
 });

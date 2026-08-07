@@ -15,10 +15,9 @@ import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
-import { embedImageInSlide, ensureContentTypeDefault, registerImageMedia, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
-import { assemblePptx, loadTemplate, type LoadedTemplate, type SlideToInsert } from "./package";
+import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
+import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 import { buildLegendSlideXml, LEGEND_BG_REL_ID, type LegendEntry } from "./legend-slide";
-import { METRIC_ICON_ASSETS, type MetricIconId } from "./metric-icons";
 
 // The chart slide is built from scratch (no template slide part behind it),
 // so unlike the cover/campaign/table slides it needs its own explicit rels:
@@ -131,34 +130,6 @@ export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: st
   return slide.kind === "campaign" ? `campaign:${slide.campaignName}` : `adset:${slide.campaignName}/${slide.adSetName}`;
 }
 
-/**
- * Registers metric-icons.ts's 7 extracted template icons as new media/
- * relationship entries in `template.campaign` — ONCE per render, not once
- * per card or per slide, since every campaign/ad-set slide in the deck
- * shares one `template.campaign.rels` part verbatim (see the slide-push
- * loop below). Returns the icon-id -> relationship-id map dynamic-cards.ts
- * needs to reference each icon from an arbitrary card position. Mutates
- * and returns the updated `template` in place.
- */
-function embedMetricIcons(template: LoadedTemplate): Partial<Record<MetricIconId, string>> {
-  template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, "png", "image/png");
-  const iconRelIds: Partial<Record<MetricIconId, string>> = {};
-  for (const asset of Object.values(METRIC_ICON_ASSETS)) {
-    const image: ImageAsset = {
-      bytes: Buffer.from(asset.base64, "base64"),
-      widthPx: asset.widthPx,
-      heightPx: asset.heightPx,
-      extension: "png",
-      contentType: "image/png",
-    };
-    const registered = registerImageMedia(template.campaign, image, `metric-icon-${asset.id}`);
-    template.campaign = registered.slide;
-    template.staticFiles.set(registered.mediaPath, registered.mediaBytes);
-    iconRelIds[asset.id] = registered.relId;
-  }
-  return iconRelIds;
-}
-
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const { templateBuffer, data, currencySymbol, aiCopyBySlideKey, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
@@ -189,14 +160,6 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     rels: template.cover.rels,
   });
 
-  // Metric icons (see metric-icons.ts) are registered once, before any
-  // campaign/ad-set slide is built, so every one of those slides' shared
-  // `template.campaign.rels` (pushed below) already carries the
-  // relationships buildDynamicCardShapes' <p:pic> icons reference.
-  const usesDynamicCards =
-    !data.isPaused && [...data.campaignSlides, ...data.adSetSlides].some((s) => (s.dynamicMetrics?.length ?? 0) > 0);
-  const iconRelIds = usesDynamicCards ? embedMetricIcons(template) : undefined;
-
   if (data.isPaused) {
     slides.push({
       xml: buildPausedSlideXml(
@@ -213,14 +176,14 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     for (const slide of data.campaignSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, iconRelIds),
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
     }
     for (const slide of data.adSetSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, iconRelIds),
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
     }

@@ -92,8 +92,8 @@ describe("selectMetrics — general algorithm behavior (uncapped, priority-sorte
       "link clicks",
       "landing page views",
       "cost per landing page view",
-      "frequency",
-      "cpm (cost per 1,000 impressions)",
+      "clicks (all)",
+      "cpc (all)",
     ];
     const selected = selectMetrics(columns, "meta", "traffic");
     expect(selected.length).toBeGreaterThan(8);
@@ -101,13 +101,12 @@ describe("selectMetrics — general algorithm behavior (uncapped, priority-sorte
     expect(keys).toContain("link_clicks");
     expect(keys).toContain("landing_page_views");
     expect(keys).toContain("cost_per_lpv");
-    expect(keys).toContain("frequency"); // frequency is tagged reach+awareness+traffic
+    expect(keys).toContain("clicks_all");
   });
 
-  it("includes REACH, IMPRESSIONS, CPM, COST PER 1K REACHED, and FREQUENCY for a reach objective — not lead/traffic secondaries (Fix 6)", () => {
+  it("includes REACH, IMPRESSIONS, CPM, and COST PER 1K REACHED for a reach objective — not lead/traffic secondaries (Fix 6)", () => {
     const columns = [
       ...META_PRIMARY_COLUMNS,
-      "frequency",
       "cpm (cost per 1,000 impressions)",
       "cost per 1,000 meta accounts reached",
       "website leads",
@@ -119,27 +118,42 @@ describe("selectMetrics — general algorithm behavior (uncapped, priority-sorte
     expect(keys).toContain("impressions");
     expect(keys).toContain("cpm");
     expect(keys).toContain("cost_per_1k_reached");
-    expect(keys).toContain("frequency");
     expect(keys).not.toContain("website_leads");
   });
 
   it("accepts an array of objectives and unions their matching secondaries (multi-campaign account)", () => {
-    const columns = [...META_PRIMARY_COLUMNS, "website leads", "cost per lead", "frequency", "cpm (cost per 1,000 impressions)"];
+    const columns = [...META_PRIMARY_COLUMNS, "website leads", "cost per lead", "cpm (cost per 1,000 impressions)"];
     const selected = selectMetrics(columns, "meta", ["leads", "reach"]);
     const keys = selected.map((m) => m.key);
     expect(keys).toContain("website_leads");
     expect(keys).toContain("cost_per_lead");
-    expect(keys).toContain("frequency");
     expect(keys).toContain("cpm");
   });
 
-  it("ignores dimension/metadata/never-type columns entirely", () => {
-    const columns = [...META_PRIMARY_COLUMNS, "campaign name", "delivery status", "quality ranking"];
+  it("ignores dimension/metadata/never-type columns entirely, including Frequency and Result rate (Step 6)", () => {
+    const columns = [
+      ...META_PRIMARY_COLUMNS,
+      "campaign name",
+      "delivery status",
+      "quality ranking",
+      "frequency",
+      "result rate",
+      "ad delivery",
+      "campaign delivery",
+      "ad set delivery",
+      "result value type",
+    ];
     const selected = selectMetrics(columns, "meta", "traffic");
     const keys = selected.map((m) => m.key);
     expect(keys).not.toContain("campaign_name");
     expect(keys).not.toContain("delivery_status");
     expect(keys).not.toContain("quality_ranking");
+    expect(keys).not.toContain("frequency");
+    expect(keys).not.toContain("result_rate");
+    expect(keys).not.toContain("ad_delivery");
+    expect(keys).not.toContain("campaign_delivery");
+    expect(keys).not.toContain("ad_set_delivery");
+    expect(keys).not.toContain("result_value_type");
   });
 
   it("ignores columns not present in the CSV at all", () => {
@@ -157,12 +171,12 @@ describe("selectMetrics — general algorithm behavior (uncapped, priority-sorte
 });
 
 describe("getAvailableMetrics — the wizard's full candidate pool", () => {
-  it("with no objective argument, returns every matched primary/secondary metric regardless of objective relevance", () => {
+  it("with no objective argument, returns every matched primary/secondary metric regardless of objective relevance — but never Frequency (Step 6)", () => {
     const columns = [...META_PRIMARY_COLUMNS, "website leads", "cost per lead", "frequency"];
     const available = getAvailableMetrics(columns, "meta");
     const keys = available.map((m) => m.key);
     expect(keys).toContain("website_leads"); // leads-only secondary
-    expect(keys).toContain("frequency"); // awareness/reach/traffic-only secondary
+    expect(keys).not.toContain("frequency"); // metadata — already shown below the date range on every slide
   });
 
   it("with an objective argument, filters secondaries the same way selectMetrics does", () => {

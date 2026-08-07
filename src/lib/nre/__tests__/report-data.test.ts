@@ -1598,7 +1598,7 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
     expect(data.campaignSlides[0].dynamicMetrics![0].value).toBe("—");
   });
 
-  it("never splits a campaign into a second/continued slide, even with more than 12 selectedMetrics — caps at the top 12 by priority instead (Fix 3)", () => {
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the wizard's 7-slot assignment, in slot order, no capping or padding (Step 7)", () => {
     const richRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
       _raw: {
         Day: day,
@@ -1610,7 +1610,6 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
         "Cost per result": "25",
         "Link clicks": "10",
         "Landing page views": "5",
-        Frequency: "1.5",
         "CPM (Cost per 1,000 Impressions)": "3",
         "Website leads": "1",
         "CPC (All)": "2",
@@ -1627,9 +1626,10 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
       date_start: day,
       date_end: day,
     }));
-    // 13 selected metrics, priority-descending — only the top 12 ("cpc",
-    // priority 55, is last and lowest) should ever make it onto the slide.
-    const thirteenMetrics = [
+    // The wizard's own 7-slot assignment (see report-upload-wizard.tsx's
+    // Metric Preview step) — report-data.ts passes this straight through,
+    // in the same order, to every campaign's dynamicMetrics.
+    const sevenSlots = [
       { key: "spend", label: "AD SPEND", format: "currency" as const, type: "primary" as const, priority: 100, csvName: "amount spent" },
       { key: "reach", label: "REACH", format: "number" as const, type: "primary" as const, priority: 95, csvName: "reach" },
       { key: "impressions", label: "IMPRESSIONS", format: "number" as const, type: "primary" as const, priority: 90, csvName: "impressions" },
@@ -1644,30 +1644,23 @@ describe("buildReportData — dynamic metric dictionary system (selectedMetrics)
         perUnitOf: "results",
       },
       { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, type: "primary" as const, priority: 75, csvName: "ctr (all)" },
-      { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, type: "secondary" as const, priority: 70, csvName: "link clicks" },
-      { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" as const, type: "secondary" as const, priority: 69, csvName: "landing page views" },
-      { key: "cpm", label: "CPM", format: "currency" as const, type: "secondary" as const, priority: 68, csvName: "cpm (cost per 1,000 impressions)", perUnitOf: "impressions", perUnitScale: 1000 },
-      { key: "frequency", label: "FREQUENCY", format: "ratio" as const, type: "secondary" as const, priority: 67, csvName: "frequency" },
-      { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, type: "secondary" as const, priority: 66, csvName: "website leads" },
-      { key: "clicks_all", label: "CLICKS (ALL)", format: "number" as const, type: "secondary" as const, priority: 65, csvName: "clicks (all)" },
-      { key: "cpc", label: "CPC (ALL)", format: "currency" as const, type: "secondary" as const, priority: 55, csvName: "cpc (all)" },
+      { key: "cpc_all", label: "CPC (ALL)", format: "currency" as const, type: "secondary" as const, priority: 65, csvName: "cpc (all)" },
     ];
-    expect(thirteenMetrics.length).toBe(13);
+    expect(sevenSlots.length).toBe(7);
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
       mtdDailyRows: richRows,
-      selectedMetrics: thirteenMetrics,
+      selectedMetrics: sevenSlots,
       now: NOW,
     });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes");
-    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(12);
-    const keys = slidesForShoes[0].dynamicMetrics!.map((m) => m.key);
-    expect(keys).not.toContain("cpc"); // lowest-priority, 13th metric — dropped, not put on a second slide
+    expect(slidesForShoes[0].dynamicMetrics!.length).toBe(7);
+    expect(slidesForShoes[0].dynamicMetrics!.map((m) => m.key)).toEqual(sevenSlots.map((m) => m.key));
   });
 
   it("does not split into multiple slides when selectedMetrics is 8 or fewer", () => {

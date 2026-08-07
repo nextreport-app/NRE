@@ -9,10 +9,11 @@ import { buildCombinedTotalTableGrid, type CoverData, type Platform, type Report
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
   cloneShapeAsTag,
+  findCardIconRelId,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
-  removeShapeContaining,
-  removeShapesInRegion,
+  replaceCardIcon,
+  replaceCardLabel,
   replaceLiteralText,
   replaceTagRun,
   replaceTagRunWithSuffix,
@@ -22,9 +23,7 @@ import {
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, fitFontSizePt } from "./text-fit";
-import { buildDynamicCardShapes } from "./dynamic-cards";
-import { resetShapeIdCounter } from "./shapes";
-import type { MetricIconId } from "./metric-icons";
+import { resolveMetricIconId, type MetricIconId } from "./metric-icons";
 
 // ACCOUNT_NAME shape (ppt/slides/slide1.xml, cover template): cx="5300000"
 // lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
@@ -175,12 +174,18 @@ function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
   return out;
 }
 
-// The 7 fixed metric-card tags the dynamic path strips (see
-// ooxml.ts's removeShapeContaining) before inserting a generated grid in
-// their place — RESULT_LABEL/COST_LABEL are nested inside the
-// METRIC_RESULTS/METRIC_CPR shapes respectively, so removing those two also
-// removes them; nothing separately targets RESULT_LABEL/COST_LABEL here.
-const FIXED_METRIC_CARD_TAGS = [
+// The campaign template's 7 fixed card slots, in their physical
+// left-to-right/top-to-bottom order (Spend/Reach/Impressions/Results/CTR/
+// Cost per Result/CPC — see ppt/slides/slide2.xml). Which METRIC now fills
+// each physical position is decided upstream (metric-selector.ts's
+// selectMetrics for the default, report-upload-wizard.tsx's Metric Preview
+// step for the user's own slot assignment) and arrives here as
+// slide.dynamicMetrics, already in slot order — this module only ever
+// retargets each slot's own label/value/icon in place, never moves,
+// removes, or adds a shape. RESULT_LABEL/COST_LABEL (the RESULTS/Cost per
+// Result cards' own template tags) are simply overwritten like every other
+// slot's label — there is no separate handling for them here.
+const CARD_SLOT_TAGS = [
   "{{METRIC_SPEND}}",
   "{{METRIC_REACH}}",
   "{{METRIC_IMPRESSIONS}}",
@@ -188,7 +193,14 @@ const FIXED_METRIC_CARD_TAGS = [
   "{{METRIC_CTR}}",
   "{{METRIC_CPR}}",
   "{{METRIC_CPC}}",
-];
+] as const;
+
+// Each slot's own native icon category, in the same order — read once (via
+// findCardIconRelId) to discover that icon's relationship id before any
+// slot's tag text changes, so a slot whose assigned metric maps to a
+// DIFFERENT icon category can borrow another slot's icon relationship
+// instead of leaving its own (now mismatched) template icon in place.
+const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc"];
 
 export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
@@ -196,7 +208,6 @@ export function buildCampaignOrAdSetSlideXml(
   ai: AiCopy = FALLBACK_AI_COPY,
   reportType: ReportType = "WEEKLY",
   platform: Platform = "META",
-  iconRelIds?: Partial<Record<MetricIconId, string>>,
 ): string {
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const heading =
@@ -211,15 +222,19 @@ export function buildCampaignOrAdSetSlideXml(
   // delivery-status column to judge it from.
   const statusSuffix = slide.statusIndicator ? `  (${slide.statusIndicator})` : null;
 
-  const useDynamicCards = !!slide.dynamicMetrics && slide.dynamicMetrics.length > 0;
+  const dynamicSlots = slide.dynamicMetrics;
+  const useDynamicSlots = !!dynamicSlots && dynamicSlots.length > 0;
 
   let xml: string;
-  if (useDynamicCards) {
-    // Dynamic metric dictionary path (Metric Preview wizard step) — the
-    // fixed 7-field cards are replaced with a generated grid sized to the
-    // selected metric count. DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS live
-    // in a separate, untouched region of the same template (the AI-copy
-    // column) and still go through the normal tag-fill.
+  if (useDynamicSlots) {
+    // Metric Preview wizard's 7-slot system — the campaign template's own 7
+    // fixed card shapes are kept completely untouched (same icons,
+    // gradients, shadows, layout); only the label/value/icon each slot
+    // shows changes, driven by dynamicSlots' own slot order. No shapes are
+    // stripped or inserted — this is a pure in-place retext/re-icon of the
+    // template's existing shapes. DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS
+    // live in a separate, untouched region of the same template (the
+    // AI-copy column) and still go through the normal tag-fill.
     xml = fillTags(
       template.xml,
       {
@@ -232,31 +247,30 @@ export function buildCampaignOrAdSetSlideXml(
         KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       },
     );
-    for (const tag of FIXED_METRIC_CARD_TAGS) xml = removeShapeContaining(xml, tag);
-    // The template also has an untagged decorative "ghost" shape (no
-    // {{TAG}} text at all) sitting in the same region — see
-    // ooxml.ts's removeShapesInRegion doc comment.
-    xml = removeShapesInRegion(xml, { xMaxPt: 511, yMinPt: 95, yMaxPt: 495 });
 
-    // Shape ids only need to be unique within this one slide, but the
-    // module-global counter (shared with chart-slide.ts) starts low — reset
-    // it above whatever ids remain in the template after stripping, or new
-    // cards would collide with the template's own shape ids.
-    const existingIds = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map((m) => Number(m[1]));
-    resetShapeIdCounter((existingIds.length ? Math.max(...existingIds) : 1) + 1);
+    // Discover every slot's own native icon relationship id BEFORE any
+    // slot's {{METRIC_*}} tag text is touched — findCardIconRelId locates
+    // it relative to that still-untouched tag.
+    const nativeIconRelIds: Partial<Record<MetricIconId, string>> = {};
+    CARD_SLOT_TAGS.forEach((tag, i) => {
+      const relId = findCardIconRelId(xml, tag);
+      if (relId) nativeIconRelIds[CARD_SLOT_DEFAULT_ICON[i]] = relId;
+    });
 
-    const cardShapes = buildDynamicCardShapes(
-      slide.dynamicMetrics!.map((m) => ({
-        key: m.key,
-        label: m.label,
-        value: m.value,
-        type: m.type,
-        format: m.format,
-        perUnitOf: m.perUnitOf,
-      })),
-      iconRelIds,
-    );
-    for (const shape of cardShapes) xml = insertShapeBeforeSpTreeClose(xml, shape);
+    CARD_SLOT_TAGS.forEach((tag, i) => {
+      const metric = dynamicSlots![i];
+      // Fewer than 7 metrics assigned (a CSV with under 7 classifiable
+      // columns) — leave the slot's own template label as-is and just show
+      // a dash for its value, rather than an unfilled raw {{TAG}}.
+      if (!metric) {
+        xml = replaceTagRun(xml, tag, "—").xml;
+        return;
+      }
+      xml = replaceCardLabel(xml, tag, metric.label);
+      const relId = nativeIconRelIds[resolveMetricIconId(metric)];
+      if (relId) xml = replaceCardIcon(xml, tag, relId);
+      xml = replaceTagRun(xml, tag, metric.value).xml;
+    });
   } else {
     xml = fillTags(
       template.xml,
