@@ -283,7 +283,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(tableDims.rows).toBe(2); // header + MTD only, Period row hidden
     expect(tableDims.cols).toBe(10); // 6 static + 2 objectives (Purchases, Reach)
 
-    expect(legend).toContain("METRIC GUIDE");
+    expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
     // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 14pt
     // non-bold Poppins, overriding the template's own bold 12pt Open Sans
@@ -1044,14 +1044,18 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     // title/body text and the table's Previous Month row highlight) must
     // have flipped to a light-template-appropriate color instead of
     // silently staying white (which would render invisible against the
-    // light template's own white/light backgrounds), with two legitimate
+    // light template's own white/light backgrounds), with three legitimate
     // exceptions: the Combined Total table's own header row, whose
     // background is deliberately kept dark navy for contrast (spec: "Table
     // header background"), so its text is deliberately kept white too
     // (spec: "Table header text" — see patch_table_header_row in the
-    // template generator script); and the chart slide's donut "hole" fill,
-    // one per campaign, which is deliberately white per spec's "Card/shape
-    // backgrounds: #ffffff" (see BG_COLOR_LIGHT in chart-slide.ts).
+    // template generator script); the chart slide's donut "hole" fill, one
+    // per campaign, which is deliberately white per spec's "Card/shape
+    // backgrounds: #ffffff" (see BG_COLOR_LIGHT in chart-slide.ts); and the
+    // Metric Abbreviation Guide legend slide's own cards, which — per Fix
+    // 2's spec — are always a fixed dark navy card with white explanation
+    // text regardless of template (see legend-slide.ts), one white run per
+    // metric entry shown.
     const zip = await JSZip.loadAsync(buffer);
     const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
     expect(slidePaths.length).toBeGreaterThan(0);
@@ -1063,8 +1067,12 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       // is still checked first in the ternary below, so overlap with the table
       // slide's own heading here is harmless.
       const isChartSlide = xml.toLowerCase().includes("campaign performance");
+      const isLegendSlide = xml.includes("METRIC ABBREVIATION GUIDE");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
-      const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : 0;
+      // The legend slide's own white-run count should match its own amber
+      // (term) run count 1:1 — one card, one term, one explanation each.
+      const legendEntryCount = (xml.match(/val="f6ad55"/gi) || []).length;
+      const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : isLegendSlide ? legendEntryCount : 0;
       expect(whiteCount).toBe(expected);
     }
 

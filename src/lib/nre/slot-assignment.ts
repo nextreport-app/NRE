@@ -98,7 +98,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     case "REACH":
     case "UNIQUE REACH":
       slot4 = slot("cpm", "CPM", "currency", v("cpm"));
-      slot5 = slot("cost_per_1k_reached", "COST PER 1K REACHED", "currency", v("cost_per_1k_reached"));
+      slot5 = slot("frequency", "FREQUENCY", "ratio", v("frequency"));
       slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
       break;
 

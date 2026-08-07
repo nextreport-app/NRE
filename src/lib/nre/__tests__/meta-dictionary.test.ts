@@ -74,8 +74,9 @@ describe("Fix 6 — dictionary objective tags", () => {
     );
   });
 
-  it("classifies FREQUENCY as metadata — already shown below the date range on every slide, never a selectable metric card (Step 6)", () => {
-    expect(findMetaMetric("frequency")?.type).toBe("metadata");
+  it("classifies FREQUENCY as a secondary metric used for the REACH objective's slot 5 (see slot-assignment.ts)", () => {
+    expect(findMetaMetric("frequency")?.type).toBe("secondary");
+    expect(findMetaMetric("frequency")?.format).toBe("ratio");
   });
 
   it("tags CPM and COST PER 1K REACHED with 'reach' and 'awareness'", () => {

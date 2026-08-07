@@ -42,6 +42,36 @@ export function rectangle(opts: RectOptions): string {
   );
 }
 
+export interface RoundedCardOptions {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fillHex: string;
+  strokeHex: string;
+  /** Corner radius in points — converted to the roundRect preset's own "adj" guide value (a fraction, in 1/100000ths, of the shape's shorter side), matching how the real template's own card shapes are drawn (see templates/dark.pptx's slide2.xml). */
+  radiusPt: number;
+  strokeWidthPt?: number;
+}
+
+/** A rounded-rectangle card with a solid fill and a thin border — unlike rectangle() (always noFill stroke, square corners), this is for from-scratch card-style shapes (see legend-slide.ts's metric cards) that need to visually match the template's own card styling. */
+export function roundedCard(opts: RoundedCardOptions): string {
+  const id = nextShapeId();
+  const wEmu = ptToEmu(opts.w);
+  const hEmu = ptToEmu(opts.h);
+  const radiusEmu = ptToEmu(opts.radiusPt);
+  const adj = Math.round((radiusEmu / Math.min(wEmu, hEmu)) * 100000);
+  const strokeWidthEmu = ptToEmu(opts.strokeWidthPt ?? 1);
+  return (
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Card ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${ptToEmu(opts.x)}" y="${ptToEmu(opts.y)}"/><a:ext cx="${wEmu}" cy="${hEmu}"/></a:xfrm>` +
+    `<a:prstGeom prst="roundRect"><a:avLst><a:gd fmla="val ${adj}" name="adj"/></a:avLst></a:prstGeom>` +
+    `<a:solidFill><a:srgbClr val="${opts.fillHex}"/></a:solidFill>` +
+    `<a:ln w="${strokeWidthEmu}"><a:solidFill><a:srgbClr val="${opts.strokeHex}"/></a:solidFill></a:ln></p:spPr>` +
+    `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`
+  );
+}
+
 export interface EllipseOptions {
   x: number;
   y: number;

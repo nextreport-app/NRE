@@ -9,6 +9,7 @@ import { buildCombinedTotalTableGrid, type CoverData, type Platform, type Report
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
   cloneShapeAsTag,
+  enforceMinFontSize,
   findCardIconRelId,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
@@ -34,7 +35,10 @@ const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [28, 24, 20, 18, 16];
 // CAMPAIGN_NAME shape (ppt/slides/slide2.xml, campaign/ad-set template):
 // cx="11433300" lIns="91425" rIns="91425" — keep in sync with the template.
 const CAMPAIGN_NAME_MAX_WIDTH_PT = emuToPt(11433300 - 91425 * 2);
-const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [18, 16, 14, 12];
+// Fix 4 (readability pass) — floor raised from 12pt to 16pt: a name long
+// enough to need the smaller candidates now wraps instead of shrinking
+// below the spec's stated minimum heading size.
+const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [18, 16];
 
 function fillTags(xml: string, values: Record<string, string>, styleOverrides: Record<string, StyleOverride> = {}): string {
   let out = xml;
@@ -110,6 +114,17 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     },
     {
       ACCOUNT_NAME: { sizePt: accountNameSizePt },
+      // Fix 3 (readability pass) — the template's own defaults for these
+      // three lines (12pt/11pt/12pt) read too small once Google Drive
+      // converts the .pptx to Slides; bumped to the specified sizes, with
+      // ACCOUNT_HEALTH_BADGE (the "Weekly/Monthly Performance Score" line)
+      // also forced bold so it stands out the way a score line should.
+      // Every other cover-slide line (REPORT_TITLE 20pt, PRESENTED_TO/
+      // PREPARED_BY 12pt, ACCOUNT_NAME 16-28pt) is already at or above the
+      // spec's stated 12pt floor and is left untouched.
+      REPORT_DATE: { sizePt: 14 },
+      ACCOUNT_HEALTH_BADGE: { sizePt: 14, bold: true },
+      BUDGET_SUMMARY: { sizePt: 13 },
     },
   );
 }
@@ -244,6 +259,12 @@ export function buildCampaignOrAdSetSlideXml(
         KEY_INSIGHTS: ai.insights,
       },
       {
+        // Fix 4 (readability pass) — covers both the date-range line and
+        // the "Ad Frequency: ..." line right below it, which share this
+        // same tag run (see report-data.ts's freqLine, joined in with a
+        // literal "\n" — replaceTagRun splits on it but keeps one shared
+        // rPr for every resulting line).
+        DATE_RANGE: { sizePt: 13 },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       },
@@ -290,6 +311,7 @@ export function buildCampaignOrAdSetSlideXml(
         KEY_INSIGHTS: ai.insights,
       },
       {
+        DATE_RANGE: { sizePt: 13 },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       },
@@ -309,7 +331,14 @@ export function buildCampaignOrAdSetSlideXml(
   const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true });
-  return xml;
+  // Fix 4 (readability pass) — floor pass for anything not already covered
+  // above by an explicit sizePt override: catches the template's own
+  // static card labels ("AD SPEND"/"REACH"/"IMPRESSIONS"/"CTR (All)"/
+  // "CPC (All)", plus {{RESULT_LABEL}}/{{COST_LABEL}} once retexted),
+  // stored at 11.5pt in templates/dark.pptx and never routed through a
+  // styleOverride (replaceCardLabel only swaps their text, not their
+  // styling).
+  return enforceMinFontSize(xml, 12);
 }
 
 /** Port of the isPaused branch's dedicated message slide (also a campaign-template clone). */

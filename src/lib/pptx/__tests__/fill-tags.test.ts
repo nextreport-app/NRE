@@ -84,6 +84,35 @@ describe("buildCoverSlideXml — account name auto-shrink (regression)", () => {
   });
 });
 
+describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
+  it("renders the date line at 14pt", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    expect(sizeOfRunContaining(xml, BASE_COVER.reportDate)).toBe(14);
+  });
+
+  it("renders the Performance Score line at 14pt bold", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    const idx = xml.indexOf(`<a:t>${BASE_COVER.healthBadge}</a:t>`);
+    const runStart = xml.lastIndexOf("<a:r>", idx);
+    const rPr = xml.slice(runStart, idx);
+    expect(sizeOfRunContaining(xml, BASE_COVER.healthBadge)).toBe(14);
+    expect(rPr).toContain('b="1"');
+  });
+
+  it("renders the Monthly Ad Budget line at 13pt", () => {
+    const xml = buildCoverSlideXml(template.cover, { ...BASE_COVER, budgetSummary: "Monthly Ad Budget: $5,000" });
+    expect(sizeOfRunContaining(xml, "Monthly Ad Budget: $5,000")).toBe(13);
+  });
+
+  it("never renders any cover-slide text below 12pt", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "Acme Agency" });
+    const sizes = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]) / 100);
+    for (const sz of sizes) {
+      expect(sz).toBeGreaterThanOrEqual(12);
+    }
+  });
+});
+
 describe("buildCoverSlideXml — report title", () => {
   it("falls back to DEFAULT_REPORT_TITLE, upper-cased, when no title is given", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
@@ -188,14 +217,35 @@ describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression
     expect(sizeOfRunContaining(xml, "Shoes - Purchases (Campaign)")).toBe(18);
   });
 
-  it("shrinks a very long campaign name below 18pt so it fits on one line", () => {
+  it("shrinks a very long campaign name below 18pt so it fits on one line, but never below the Fix 4 16pt floor", () => {
     const longCampaignName =
       "Q3 2026 National Brand Awareness and Retargeting Campaign for All Product Lines";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide(longCampaignName));
     const heading = `${longCampaignName} (Campaign)`;
     const size = sizeOfRunContaining(xml, heading);
-    expect(size).toBeLessThan(18);
-    expect([16, 14, 12]).toContain(size);
+    expect(size).toBe(16);
+  });
+});
+
+describe("buildCampaignOrAdSetSlideXml — readability font sizes (Fix 4)", () => {
+  it("renders the date range / Ad Frequency line at 13pt", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(sizeOfRunContaining(xml, "Jul 13 - Jul 19")).toBe(13);
+  });
+
+  it("brings the template's own 11.5pt static card labels up to the 12pt floor", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(sizeOfRunContaining(xml, "AD SPEND")).toBeGreaterThanOrEqual(12);
+    expect(sizeOfRunContaining(xml, "REACH")).toBeGreaterThanOrEqual(12);
+    expect(sizeOfRunContaining(xml, "RESULTS")).toBeGreaterThanOrEqual(12); // {{RESULT_LABEL}}
+  });
+
+  it("never renders any campaign/ad-set slide text below 12pt", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    const sizes = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]) / 100);
+    for (const sz of sizes) {
+      expect(sz).toBeGreaterThanOrEqual(12);
+    }
   });
 });
 

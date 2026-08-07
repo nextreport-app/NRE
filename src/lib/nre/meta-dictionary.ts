@@ -77,13 +77,10 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   { csvName: "ad delivery", key: "ad_delivery", type: "metadata" },
   { csvName: "ad set delivery", key: "ad_set_delivery", type: "metadata" },
   { csvName: "campaign delivery", key: "campaign_delivery", type: "metadata" },
-  // Step 6 (product report) — excluded from the Metric Preview step's
-  // slot dropdowns entirely, each for its own reason: Frequency is already
-  // hardcoded to display below the date range on every campaign/ad set
-  // slide (see report-data.ts's freqLine), so offering it as a 7th-slot
-  // option too would just duplicate that line as a redundant card; Result
-  // rate is judged too granular a number for a standalone metric card.
-  { csvName: "frequency", key: "frequency", type: "metadata" },
+  // Result rate is judged too granular a number for a standalone metric
+  // card, so it stays metadata-only. Frequency's own entry lives down in
+  // the "Awareness / CPM" section below — it's used as the REACH/UNIQUE
+  // REACH objective's slot 5 (see slot-assignment.ts's buildMetaSlots).
   { csvName: "result rate", key: "result_rate", type: "metadata" },
   { csvName: "quality ranking", key: "quality_ranking", type: "never" },
   { csvName: "engagement rate ranking", key: "engagement_rate_ranking", type: "never" },
@@ -289,8 +286,6 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   },
 
   // Awareness / CPM
-  // (Frequency's own dictionary entry lives up in the METADATA section —
-  // see its comment there for why it's excluded from the metric selector.)
   {
     csvName: "cpm (cost per 1,000 impressions)",
     key: "cpm",
@@ -314,6 +309,19 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Average cost to reach 1,000 people",
     perUnitOf: "reach",
     perUnitScale: 1000,
+  },
+  // Used as the REACH/UNIQUE REACH objective's slot 5 (see
+  // slot-assignment.ts's buildMetaSlots) — averaged across rows like CTR,
+  // not summed (a frequency of 6.0 across 3 days isn't 2.0+2.0+2.0).
+  {
+    csvName: "frequency",
+    key: "frequency",
+    label: "FREQUENCY",
+    type: "secondary",
+    format: "ratio",
+    objectives: ["awareness", "reach"],
+    priority: 54,
+    explanation: "Average number of times each person saw your ad",
   },
 
   // Video

@@ -165,6 +165,21 @@ export function replaceLiteralText(xml: string, literalText: string, newText: st
   return xml.slice(0, match.index) + newRun + xml.slice(match.index + match[0].length);
 }
 
+/**
+ * Fix 4 (readability pass) — bumps every `sz="..."` (hundredths of a
+ * point) run size in `xml` up to `minPt` wherever it's currently smaller,
+ * leaving anything already at or above the floor untouched. A blanket,
+ * slide-wide floor rather than a per-tag styleOverride, since the runs
+ * that need it (the campaign template's own static card labels — "AD
+ * SPEND"/"REACH"/etc. — stored at 11.5pt) aren't behind a {{TAG}} that
+ * fillTags/replaceTagRun ever touches; replaceCardLabel only swaps their
+ * text, never their styling.
+ */
+export function enforceMinFontSize(xml: string, minPt: number): string {
+  const minHundredths = minPt * 100;
+  return xml.replace(/sz="(\d+)"/g, (match, sz) => (Number(sz) < minHundredths ? `sz="${minHundredths}"` : match));
+}
+
 export function ptToEmu(pt: number): number {
   return Math.round(pt * 12700);
 }

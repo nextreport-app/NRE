@@ -1557,6 +1557,28 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
     expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS", value: "70" }); // 7 days x 10
   });
 
+  it("assigns slots 4/5/7 for the REACH objective (CPM/Frequency/Link Clicks) — Frequency, not Cost Per 1K Reached", () => {
+    const reachRows = daysInclusive(13, 19).map((day) =>
+      dynamicRow(day, 50, 500, 2, "Reach", {
+        "CPM (Cost per 1,000 Impressions)": "3",
+        Frequency: "1.8",
+        "Link clicks": "10",
+      }),
+    );
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: reachRows,
+      now: NOW,
+    });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[3]).toMatchObject({ key: "cpm", label: "CPM" });
+    expect(slots[4]).toMatchObject({ key: "frequency", label: "FREQUENCY", value: "1.80x" });
+    expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS" });
+  });
+
   it("shows a dash (not $0.00) for an extra dictionary field that's zero or absent from the CSV", () => {
     const data = buildReportData({
       accountName: "Test Agency",
