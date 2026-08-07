@@ -1311,7 +1311,7 @@ export function ReportUploadWizard({
               onClick={() => setSlidesListExpanded((v) => !v)}
               className="text-[13px] font-medium text-dash-ink-secondary hover:text-dash-ink"
             >
-              Show slide list {slidesListExpanded ? "▲" : "▼"}
+              Slides Preview {slidesListExpanded ? "▲" : "▼"}
             </button>
             {slidesListExpanded && (
               <ul className="mt-3 space-y-1 text-[13px] text-dash-ink-secondary">
@@ -1395,7 +1395,7 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleGenerateAnother}
-                className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink-secondary hover:bg-dash-border"
+                className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
               >
                 ← Generate Another Report for {clientName}
               </button>

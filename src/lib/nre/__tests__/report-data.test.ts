@@ -198,8 +198,9 @@ describe("buildReportData — multi-campaign integration", () => {
   });
 
   it("computes the budget summary line", () => {
+    // Fix 6 — whole-number percentage, no decimal place.
     expect(data.cover.budgetSummary).toBe(
-      "Monthly Ad Budget: ₹2,450 of ₹100,000 used (2.5%) — 11 days remaining",
+      "Monthly Ad Budget: ₹2,450 of ₹100,000 used (2%) — 11 days remaining",
     );
   });
 
@@ -228,11 +229,10 @@ describe("buildReportData — multi-campaign integration", () => {
     // objective also exists), Purchases first since it has far more results.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
-      // " MTD" suffix marks this as a partial, still-in-progress month,
-      // distinct from the Period row's completed-month date range. Year
-      // included (Fix 2) alongside the Previous Month row's own "Month
-      // Year" label.
-      monthLabel: "July 13 - July 19, 2026 MTD",
+      // Fix 3 — just the plain date range: no "MTD" suffix, no year (the
+      // chart slide's own sub-line still gets the year, computed
+      // separately — see buildReportData's periodSubLabel).
+      monthLabel: "July 13 - July 19",
       spend: "₹2,450",
       // A straight sum of the daily rows' reach — see the dedicated reach test below.
       reach: "82,600",
@@ -440,7 +440,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     },
   ];
 
-  it("labels the Previous Month row as 'Previous Month — Month Year' (Fix 1), not a raw date range", () => {
+  it("labels the Previous Month row as a compact same-month range (Fix 3), no prefix and no year", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -450,7 +450,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       periodRows: junePeriodRows,
       now: NOW,
     });
-    expect(data.periodRow.monthLabel).toBe("Previous Month — June 2026");
+    expect(data.periodRow.monthLabel).toBe("June 1 - 30");
     expect(data.periodRow.monthName).toBe("June");
   });
 
@@ -935,7 +935,7 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
     expect(data.cover.dateRange).toBe("July 15 - July 17");
     // MTD is unaffected by the weekly selection — still every day the fixture
     // has data for (13-19; the fixture doesn't include days 1-12).
-    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19, 2026 MTD");
+    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19");
   });
 });
 

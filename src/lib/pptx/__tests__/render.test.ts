@@ -399,8 +399,10 @@ describe("renderPptx — real template end-to-end", () => {
       now: NOW,
     });
 
-    expect(data.periodRow.monthLabel).toBe("Previous Month — June 2026");
-    expect(data.mtdRow.monthLabel).toContain(", 2026 MTD");
+    // Fix 3 — plain date ranges only: no "Previous Month — " prefix, no
+    // year, no "MTD" suffix on either row.
+    expect(data.periodRow.monthLabel).toBe("June 1 - 30");
+    expect(data.mtdRow.monthLabel).toBe("July 13 - July 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -411,8 +413,10 @@ describe("renderPptx — real template end-to-end", () => {
     const { texts, rowFillColors } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
 
-    expect(allText).toContain("Previous Month — June 2026");
-    expect(allText).toContain(", 2026 MTD");
+    expect(allText).toContain("June 1 - 30");
+    expect(allText).toContain("July 13 - July 19");
+    expect(allText).not.toContain("Previous Month");
+    expect(allText).not.toContain("MTD");
     expect(allText).not.toContain("{{");
 
     // Row 0 = header, row 1 = Previous Month, row 2 = MTD — independently
@@ -463,7 +467,7 @@ describe("renderPptx — real template end-to-end", () => {
       now: NOW,
     });
 
-    expect(data.periodRow.monthLabel).toBe("Previous Month — July 2026");
+    expect(data.periodRow.monthLabel).toBe("July 1 - 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -477,7 +481,7 @@ describe("renderPptx — real template end-to-end", () => {
 
     const { texts } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
-    expect(allText).toContain("Previous Month — July 2026");
+    expect(allText).toContain("July 1 - 19");
     // No leftover MTD-row content (its own distinct spend figure) and no
     // Fix-3-style footnote (removed — hiding the row replaces it).
     expect(allText).not.toContain("₹2,450");

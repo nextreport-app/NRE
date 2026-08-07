@@ -192,7 +192,9 @@ export function budgetSummaryLine(
 
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = lastDay - now.getDate();
-  const pctUsed = ((mtdSpend / monthlyBudget) * 100).toFixed(1);
+  // Fix 6 — always a whole-number percentage ("20%"), never one decimal
+  // place ("20.6%").
+  const pctUsed = Math.round((mtdSpend / monthlyBudget) * 100);
 
   return (
     "Monthly Ad Budget: " +

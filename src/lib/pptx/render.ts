@@ -17,7 +17,7 @@ import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
-import { buildLegendSlideXml, LEGEND_BG_REL_ID, type LegendEntry } from "./legend-slide";
+import { buildLegendSlideXml, type LegendEntry } from "./legend-slide";
 import { buildComparisonCampaignSlideXml, buildComparisonCoverSlideXml, buildComparisonSummarySlideXml, COMPARISON_BG_REL_ID } from "./comparison-slides";
 
 // The chart slide is built from scratch (no template slide part behind it),
@@ -34,17 +34,7 @@ function buildChartSlideRels(backgroundMediaTarget: string): string {
   );
 }
 
-/** Same shape as buildChartSlideRels above — the dynamic legend slide is also built from scratch, so it needs its own generated rels rather than reusing template.legend.rels. */
-function buildLegendSlideRels(backgroundMediaTarget: string): string {
-  return (
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>' +
-    `<Relationship Id="${LEGEND_BG_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${backgroundMediaTarget}"/>` +
-    "</Relationships>"
-  );
-}
-
-/** Collects every distinct metric key used across a report's dynamicMetrics (the Metric Preview wizard step's selection), in first-seen order, and resolves each to a term + one-line explanation from the platform's own dictionary. Empty when no slide used dynamicMetrics at all — the fixed-card path, where the caller falls back to the original static template.legend.xml. */
+/** Collects every distinct metric key used across a report's dynamicMetrics (the automatic 7-slot assignment — see slot-assignment.ts), in first-seen order, and resolves each to a term + one-line explanation from the platform's own dictionary. Excludes "spend" — Ad Spend is always slot 1 but is a plain currency figure with nothing to abbreviate, matching the Meta template's own legend (which has no such entry); the Google template's legend does explain its own "COST" card, so that slot simply keeps its own default copy instead (see legend-slide.ts's leftover-slot fallback). */
 function collectLegendEntries(data: ReportData): LegendEntry[] {
   const seen = new Set<string>();
   const entries: LegendEntry[] = [];
@@ -52,7 +42,7 @@ function collectLegendEntries(data: ReportData): LegendEntry[] {
 
   for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
     for (const metric of slide.dynamicMetrics ?? []) {
-      if (seen.has(metric.key)) continue;
+      if (metric.key === "spend" || seen.has(metric.key)) continue;
       seen.add(metric.key);
       const dictEntry = findByKey(metric.key);
       entries.push({ term: metric.label, explanation: dictEntry?.explanation ?? metric.label });
@@ -208,15 +198,10 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     ),
     rels: template.table.rels,
   });
-  const legendEntries = collectLegendEntries(data);
-  if (legendEntries.length > 0) {
-    slides.push({
-      xml: buildLegendSlideXml(legendEntries, template.background, isLightTemplate),
-      rels: buildLegendSlideRels(template.background.mediaTarget),
-    });
-  } else {
-    slides.push({ xml: template.legend.xml, rels: template.legend.rels });
-  }
+  slides.push({
+    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data)),
+    rels: template.legend.rels,
+  });
 
   return assemblePptx(template, slides);
 }

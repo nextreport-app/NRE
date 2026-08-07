@@ -275,12 +275,14 @@ export function buildCampaignOrAdSetSlideXml(
         KEY_INSIGHTS: ai.insights,
       },
       {
-        // Fix 4 (readability pass) — covers both the date-range line and
-        // the "Ad Frequency: ..." line right below it, which share this
-        // same tag run (see report-data.ts's freqLine, joined in with a
-        // literal "\n" — replaceTagRun splits on it but keeps one shared
-        // rPr for every resulting line).
-        DATE_RANGE: { sizePt: 13 },
+        // Fix 4 (readability pass), bumped further by Fix 5 (13pt -> still
+        // 13pt, now also bold) — covers both the date-range line and the
+        // "Ad Frequency: ..." line right below it, which share this same
+        // tag run (see report-data.ts's freqLine, joined in with a literal
+        // "\n" — replaceTagRun splits on it but keeps one shared rPr for
+        // every resulting line). OOXML only has a binary bold toggle, not
+        // numeric font weights, so "600/semibold" maps to `bold: true`.
+        DATE_RANGE: { sizePt: 13, bold: true },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       },
@@ -327,7 +329,8 @@ export function buildCampaignOrAdSetSlideXml(
         KEY_INSIGHTS: ai.insights,
       },
       {
-        DATE_RANGE: { sizePt: 13 },
+        // Fix 5 — bumped alongside its dynamic-slots sibling above.
+        DATE_RANGE: { sizePt: 13, bold: true },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       },

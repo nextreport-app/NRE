@@ -183,7 +183,8 @@ describe("buildChartSlideXml — Fix 2: date-range sub-line under the title", ()
   it("renders no sub-line at all when periodSubLabel is empty, same as before this fix", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")], { periodSubLabel: "" }), "$", BACKGROUND);
     // The 2nd <a:t> is the pre-existing spend/campaign-count subtitle, not a blank sub-line.
-    expect(subLabelText(xml)).toContain("Total MTD Spend");
+    // Fix 4 — "MTD" is spelled out, not abbreviated.
+    expect(subLabelText(xml)).toContain("Total Month to Date Spend");
   });
 });
 

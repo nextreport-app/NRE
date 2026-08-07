@@ -1,141 +1,157 @@
 /**
- * Dynamic metric legend slide — built from scratch (same pattern as
- * chart-slide.ts), listing only the metrics that actually appear somewhere
- * in the report's automatically-assigned dynamicMetrics (see
- * slot-assignment.ts's buildMetaSlots/buildGoogleSlots), each as a small
- * card with the metric name and a one-line explanation from the metric
- * dictionary. Replaces the static, fixed 12-entry legend template slide
- * whenever the report has any dynamicMetrics at all — see render.ts, which
- * falls back to the original template.legend.xml unchanged only in the
- * (now unreachable in practice, since dynamicMetrics is always populated)
- * case where it doesn't.
+ * Metric Abbreviation Guide slide — Fix 2 reverts this back to the actual
+ * template legend slide (templates/dark.pptx's ppt/slides/slide4.xml, and
+ * the light/Google-Ads templates' own equivalents), instead of the flat,
+ * from-scratch card grid a previous round introduced. That from-scratch
+ * design didn't match the rest of the deck's look (icons, gradient circles,
+ * card shadows) — this file no longer builds anything from scratch at all.
+ *
+ * The template's legend slide is one big group of 12 fixed card slots (3
+ * columns x 4 rows), each slot itself a small group of 4 shapes: a
+ * background card rect, an icon sub-group (gradient circle + glyph
+ * picture), a title text shape (1 run, e.g. "REACH", or 2 runs, e.g. "CPL "
+ * + "(COST PER LEAD)"), and a description text shape. parseTemplateLegendSlots
+ * below discovers these 12 slots generically by walking the template's own
+ * `<p:sp>` shapes in document order — it doesn't hardcode template text, so
+ * it works unchanged for the light template (identical wording to dark) and
+ * the Google Ads template (its own, different 12 entries — COST, CLICKS,
+ * COST/CONV., etc. — reflecting Google's vocabulary instead of Meta's).
+ *
+ * buildLegendSlideXml then does a pure in-place retext, matching the same
+ * spirit as fill-tags.ts's CARD_SLOT_TAGS retexting of the campaign
+ * template's 7 fixed card slots: no shape is ever moved, cloned, or
+ * removed. A used metric whose label already matches one of the 12 slots
+ * (REACH, IMPRESSIONS, CTR, CPC, CPM, LEADS, CONVERSIONS, etc.) leaves that
+ * slot completely untouched — original wording, description, and icon, all
+ * unchanged. A used metric with no natural match (an objective-specific
+ * label like "PURCHASES" or "ROAS" that the fixed 12 don't cover) borrows
+ * the next still-unclaimed slot's title/description shapes, retexted in
+ * place (same font, size, color, icon — only the words change). Slots that
+ * end up needed by neither path keep showing the template's own original
+ * entry — a reasonable, low-risk fallback given the fixed 12-slot grid
+ * doesn't have room to expand, and "the actual metric" set for a mixed-
+ * objective report often exceeds 12 anyway.
  */
 
-import type { TemplateBackgroundImage } from "./package";
-import { backgroundImage, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
-
-/** Relationship id the legend slide's own generated rels (see render.ts) registers the copied background picture under — mirrors chart-slide.ts's CHART_BG_REL_ID. */
-export const LEGEND_BG_REL_ID = "rId2";
-
-const HEADING_COLOR_DARK = "FFFFFF";
-
-// Card styling — matches the other slides' own dynamic metric card look
-// (see fill-tags.ts's CARD_SLOT_TAGS region: dark navy card, subtle
-// blue-gray border, amber term color) — fixed regardless of which
-// template is active, since the card itself is a deliberately dark card
-// floating on whatever the page background is (the same way the light
-// template's own fixed metric cards are still dark cards on a light page).
-// Its own text (amber term, white explanation) therefore never swaps for
-// the light template either — only the page-level title, which sits
-// directly on the slide background, needs a light-template variant (same
-// convention as chart-slide.ts's own HEADING_COLOR).
-const CARD_FILL = "111f35";
-const CARD_STROKE = "1e3a5f";
-const TERM_COLOR = "f6ad55";
-const TEXT_COLOR = "FFFFFF";
-
-const HEADING_COLOR_LIGHT = "C17D0A";
+import { replaceLiteralText } from "./ooxml";
 
 export interface LegendEntry {
   term: string;
   explanation: string;
 }
 
-const W = 960;
-const H = 540;
-const TITLE_Y = 36;
-const TITLE_H = 36;
-const MARGIN = 48;
-const COLS = 2;
-const COL_GAP = 24;
-const ROW_GAP = 12;
-const CARD_PAD_X = 14;
-const CARD_PAD_Y = 8;
-const TERM_SIZE_PT = 11;
-const EXPL_SIZE_PT = 10;
-const TERM_H = 16;
-const GAP_TERM_EXPL = 4;
-const EXPL_H = 14;
-// Fixed card height built from the fixed font sizes above (padding + term
-// line + gap + explanation line) — text size is never shrunk below the
-// product spec's stated minimum (10pt), so a report with many distinct
-// metrics gets a taller grid (more rows), not smaller text.
-const CARD_H = CARD_PAD_Y * 2 + TERM_H + GAP_TERM_EXPL + EXPL_H;
+interface TemplateLegendSlot {
+  /** The title shape's own literal `<a:t>` run texts, in order — 1 for a single-word term (e.g. "REACH"), 2 for an abbreviation + expansion (e.g. "CPL " + "(COST PER LEAD)"). Used as both the locator and (for run 2) the "blank it out" target when this slot is overwritten. */
+  titleRuns: string[];
+  /** The description shape's own literal text — always a single run in every template inspected. */
+  descText: string;
+  /** Normalized (upper-cased, parenthetical-stripped) strings this slot's own title already represents — a used metric whose own normalized label equals any of these leaves the slot untouched. */
+  matchKeys: string[];
+}
 
-export function buildLegendSlideXml(
-  entries: LegendEntry[],
-  background: TemplateBackgroundImage,
-  isLightTemplate = false,
-): string {
-  resetShapeIdCounter();
+function extractSpBlocks(xml: string): string[] {
+  const blocks: string[] = [];
+  const re = /<p:sp>[\s\S]*?<\/p:sp>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml))) blocks.push(m[0]);
+  return blocks;
+}
 
-  const HEADING_COLOR = isLightTemplate ? HEADING_COLOR_LIGHT : HEADING_COLOR_DARK;
+function extractRunTexts(block: string): string[] {
+  const texts: string[] = [];
+  const re = /<a:t>([^<]*)<\/a:t>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block))) if (m[1]) texts.push(m[1]);
+  return texts;
+}
 
-  const shapes: string[] = [];
-  shapes.push(backgroundImage({ relId: LEGEND_BG_REL_ID, ...background }));
+/** Upper-cases, strips any "(...)" parenthetical, and collapses whitespace — puts both a slot's own term/expansion and an incoming metric's label into the same comparable form (e.g. "CTR (ALL)" and "CTR (CLICK-THROUGH RATE)" both normalize to "CTR"). */
+function normalize(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  shapes.push(
-    textBox({
-      x: 0,
-      y: TITLE_Y,
-      w: W,
-      h: TITLE_H,
-      text: "METRIC ABBREVIATION GUIDE",
-      sizePt: 28,
-      bold: true,
-      colorHex: HEADING_COLOR,
-    }),
-  );
+// A handful of known wording gaps between slot-assignment.ts's own labels
+// and the template's static copy — everything else is expected to line up
+// via normalize() alone (both sides ultimately come from the same "Meta/
+// Google ad metrics" vocabulary).
+const TERM_ALIASES: Record<string, string> = {
+  FREQUENCY: "AD FREQUENCY",
+};
 
-  const n = entries.length;
-  if (n === 0) return buildBlankSlideXml(shapes);
+/**
+ * Walks `templateXml`'s own `<p:sp>` shapes in document order and groups
+ * them into the 12 card slots. The slide's own big heading ("METRIC
+ * ABBREVIATION GUIDE") is always the first shape with any text at all
+ * (every other text-bearing shape belongs to a card) — skipped, then every
+ * remaining pair of text-bearing shapes is (title, description).
+ * Background rects and icon gradient-circle shapes carry no text at all
+ * and are naturally filtered out by the `texts.length > 0` check, so this
+ * needs no knowledge of the group nesting depth.
+ */
+function parseTemplateLegendSlots(templateXml: string): TemplateLegendSlot[] {
+  const textBlocks = extractSpBlocks(templateXml)
+    .map((block) => extractRunTexts(block))
+    .filter((texts) => texts.length > 0);
 
-  const contentTop = TITLE_Y + TITLE_H + 20;
-  const colW = (W - MARGIN * 2 - COL_GAP * (COLS - 1)) / COLS;
-  const rowsPerCol = Math.ceil(n / COLS);
+  const cardBlocks = textBlocks.slice(1); // drop the slide's own heading
+  const slots: TemplateLegendSlot[] = [];
 
-  // Only the vertical gap between cards compresses when a large,
-  // multi-objective report's used-metric set needs more rows than the
-  // slide's default spacing allows — the card's own text sizes and padding
-  // (and therefore its minimum readable height) never shrink.
-  const availableH = H - contentTop - 20;
-  const neededH = rowsPerCol * CARD_H + (rowsPerCol - 1) * ROW_GAP;
-  const rowGap = neededH > availableH ? Math.max(4, (availableH - rowsPerCol * CARD_H) / Math.max(1, rowsPerCol - 1)) : ROW_GAP;
+  for (let i = 0; i + 1 < cardBlocks.length; i += 2) {
+    const titleRuns = cardBlocks[i];
+    const descText = cardBlocks[i + 1].join(" ");
+    const matchKeys = new Set<string>();
+    for (const run of titleRuns) {
+      const norm = normalize(run);
+      if (norm) matchKeys.add(norm);
+    }
+    // Reverse-expand: a slot whose own term IS an alias's canonical form
+    // (e.g. "AD FREQUENCY") should also accept an incoming metric using the
+    // alias's shorter form ("FREQUENCY").
+    for (const [shortForm, canonical] of Object.entries(TERM_ALIASES)) {
+      if (matchKeys.has(canonical)) matchKeys.add(shortForm);
+    }
+    slots.push({ titleRuns, descText, matchKeys: [...matchKeys] });
+  }
 
-  entries.forEach((entry, i) => {
-    const col = Math.floor(i / rowsPerCol);
-    const row = i % rowsPerCol;
-    const x = MARGIN + col * (colW + COL_GAP);
-    const y = contentTop + row * (CARD_H + rowGap);
+  return slots;
+}
 
-    shapes.push(roundedCard({ x, y, w: colW, h: CARD_H, fillHex: CARD_FILL, strokeHex: CARD_STROKE, radiusPt: 4 }));
+export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[]): string {
+  const slots = parseTemplateLegendSlots(templateXml);
+  const usedSlotIndex = new Set<number>();
+  const unmatchedEntries: LegendEntry[] = [];
 
-    const textX = x + CARD_PAD_X;
-    const textW = colW - CARD_PAD_X * 2;
-    shapes.push(
-      textBox({
-        x: textX,
-        y: y + CARD_PAD_Y,
-        w: textW,
-        h: TERM_H,
-        text: entry.term.toUpperCase(),
-        sizePt: TERM_SIZE_PT,
-        bold: true,
-        colorHex: TERM_COLOR,
-      }),
-    );
-    shapes.push(
-      textBox({
-        x: textX,
-        y: y + CARD_PAD_Y + TERM_H + GAP_TERM_EXPL,
-        w: textW,
-        h: EXPL_H,
-        text: entry.explanation,
-        sizePt: EXPL_SIZE_PT,
-        colorHex: TEXT_COLOR,
-      }),
-    );
-  });
+  // Pass 1 — leave any slot whose own template wording already matches a
+  // used metric completely untouched (original text, description, icon).
+  for (const entry of entries) {
+    const normTerm = normalize(entry.term);
+    const slotIndex = slots.findIndex((slot, i) => !usedSlotIndex.has(i) && slot.matchKeys.includes(normTerm));
+    if (slotIndex === -1) {
+      unmatchedEntries.push(entry);
+    } else {
+      usedSlotIndex.add(slotIndex);
+    }
+  }
 
-  return buildBlankSlideXml(shapes);
+  // Pass 2 — every used metric with no natural match borrows the next
+  // still-unclaimed slot's shapes, retexted in place.
+  let xml = templateXml;
+  let cursor = 0;
+  for (const entry of unmatchedEntries) {
+    while (cursor < slots.length && usedSlotIndex.has(cursor)) cursor++;
+    if (cursor >= slots.length) break; // out of slots — the fixed 12-card grid is full
+    const slot = slots[cursor];
+    usedSlotIndex.add(cursor);
+    cursor++;
+
+    xml = replaceLiteralText(xml, slot.titleRuns[0], entry.term.toUpperCase());
+    if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], "");
+    xml = replaceLiteralText(xml, slot.descText, entry.explanation);
+  }
+
+  return xml;
 }

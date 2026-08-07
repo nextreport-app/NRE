@@ -115,8 +115,11 @@ export function buildChartSlideXml(
   shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
 
   const activeCount = chart.activeCampaignCount;
+  // Fix 4 — clients don't recognize "MTD" any better here than in the
+  // title above; spell it out instead of abbreviating.
+  const spendPeriodLabel = chart.periodLabel === "MTD" ? "Month to Date" : chart.periodLabel;
   const subtitleText =
-    `Total ${chart.periodLabel} Spend:  ` +
+    `Total ${spendPeriodLabel} Spend:  ` +
     currencySymbol +
     Math.round(chart.totalAllSpend).toLocaleString("en-US") +
     `     ·     ${activeCount} Active Campaign${activeCount === 1 ? "" : "s"}`;

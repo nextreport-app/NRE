@@ -258,6 +258,13 @@ describe("budgetSummaryLine", () => {
   it("formats spend/budget/percent/days-remaining", () => {
     const now = new Date(2026, 6, 22); // July 22 2026 (local) — 31 days in July
     const line = budgetSummaryLine(25000, 50000, "₹", now);
-    expect(line).toBe("Monthly Ad Budget: ₹25,000 of ₹50,000 used (50.0%) — 9 days remaining");
+    expect(line).toBe("Monthly Ad Budget: ₹25,000 of ₹50,000 used (50%) — 9 days remaining");
+  });
+
+  // Fix 6 — always a whole-number percentage, never one decimal place.
+  it("rounds the percentage to the nearest whole number, never showing a decimal", () => {
+    const now = new Date(2026, 6, 22);
+    expect(budgetSummaryLine(20600, 100000, "$", now)).toContain("(21%)"); // 20.6 -> rounds up
+    expect(budgetSummaryLine(20400, 100000, "$", now)).toContain("(20%)"); // 20.4 -> rounds down
   });
 });

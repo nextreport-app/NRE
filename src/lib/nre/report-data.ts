@@ -35,7 +35,7 @@ import {
   isArchivedDeliveryStatus,
   type DeliveryStatusIndicator,
 } from "./delivery-status";
-import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, getMonthYearLabel, parseDate } from "./dates";
+import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
@@ -309,6 +309,16 @@ function freqLine(freq: number): string {
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
+/** Fix 3 — "July 1 - 31" for a same-month, multi-day range (the end day alone, not a second "July"); "July 15" for a single day. Falls back to getDateRangeShortLabel's own "Month D - Month D" form for the (unexpected) case a Previous Month Data upload spans more than one calendar month. */
+function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, monthName: string | null): string {
+  const s = parseDate(rawStart);
+  const e = parseDate(rawEnd);
+  if (!s || !monthName) return "Previous Month";
+  if (!e || (s.day === e.day && s.month === e.month && s.year === e.year)) return `${monthName} ${s.day}`;
+  if (s.month === e.month && s.year === e.year) return `${monthName} ${s.day} - ${e.day}`;
+  return getDateRangeShortLabel(rawStart, rawEnd);
+}
+
 /**
  * Shared computation for the Period row and the MTD row of the 10-column
  * table. `isMtdRow` marks the MTD-Daily-CSV row, which is per-day data, and
@@ -377,23 +387,17 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
 
-  // MTD row: "July 1 - July 26, 2026 MTD" — the year is added (Fix 2) for
-  // clarity alongside the Previous Month row's own "Month Year" label
-  // below. MTD never crosses a calendar month boundary (it's month-to-date
-  // by definition), so either endpoint's year is the same; rawEnd is
-  // preferred simply as the more "current" of the two.
-  //
-  // Previous Month row: "Previous Month — July 2026" (Fix 1) rather than
-  // the raw date range — this makes it immediately clear the row comes
-  // from the separate Previous Month Data upload, not the MTD Daily CSV,
-  // which the date-range-only label didn't communicate on its own.
+  // Fix 3 — both rows now show just the plain date range: no "Previous
+  // Month — " prefix, no year, no "MTD" suffix. The MTD row's rawMonthLabel
+  // ("August 1 - August 5") is already exactly that shape. The Previous
+  // Month row needs its own compact same-month form ("July 1 - 31" — the
+  // end day alone, not a second "July") since getDateRangeShortLabel always
+  // repeats the month name on both ends.
   let monthLabel: string;
   if (isMtdRow) {
-    const year = parseDate(rawEnd || rawStart)?.year;
-    monthLabel = year ? `${rawMonthLabel}, ${year} MTD` : `${rawMonthLabel} MTD`;
+    monthLabel = rawMonthLabel;
   } else {
-    const monthYear = rawStart ? getMonthYearLabel(rawStart) : null;
-    monthLabel = monthYear ? `Previous Month — ${monthYear}` : "Previous Month";
+    monthLabel = rawStart ? compactSameMonthRangeLabel(rawStart, rawEnd, monthName) : "Previous Month";
   }
 
   return {
@@ -939,11 +943,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // The chart is always MTD data (see the "MTD performance chart slide"
   // comment above) — its sub-line must reflect the MTD period even for
   // Weekly reports, not the trailing-7-day weekly window used elsewhere on
-  // those slides. mtdRow.monthLabel is already "August 1 - August 2, 2026
-  // MTD" (computeTableRow above); stripping the " MTD" suffix gives exactly
-  // the "[Month] 1 - [Yesterday], [Year]" sub-line the chart needs, reusing
-  // the same date range already computed for the Combined Total table's MTD
-  // row rather than recomputing it here.
+  // those slides. mtdRow.monthLabel is "August 1 - August 5" (Fix 3 dropped
+  // its year/" MTD" suffix, now that the Combined Total table shows the
+  // plain range on its own) — appending the year here reuses that same
+  // date range for the chart's own "[Month] 1 - [Yesterday], [Year]"
+  // sub-line without recomputing it.
   const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
   const periodSubLabel =
     reportType === "MONTHLY"
@@ -951,7 +955,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         ? `Full Month — ${mtdRow.monthName} ${periodYear}`
         : ""
       : mtdRow.hasData
-        ? mtdRow.monthLabel.replace(/ MTD$/, "")
+        ? periodYear
+          ? `${mtdRow.monthLabel}, ${periodYear}`
+          : mtdRow.monthLabel
         : "";
 
   const chart: ChartSlideData = {
