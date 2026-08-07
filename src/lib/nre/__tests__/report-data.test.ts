@@ -10,6 +10,7 @@ import {
 } from "../report-data";
 import { adSetKey } from "../ad-sets";
 import type { NreRow } from "../columns";
+import type { SelectedMetric } from "../available-metrics";
 
 beforeAll(() => {
   process.env.TZ = "UTC";
@@ -1493,7 +1494,7 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
   });
 });
 
-describe("buildReportData — automatic 7-slot metric assignment (Change 2, no wizard input)", () => {
+describe("buildReportData — automatic 8-slot metric assignment (Change 2, no wizard input)", () => {
   // Unlike buildDailyRows above, _raw carries the actual CSV header names
   // slot-assignment.ts's dictionary lookups key off — the fixed-field
   // builder never needed this since aggregateRows only reads the mapped
@@ -1517,7 +1518,7 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
 
   const rows: NreRow[] = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase"));
 
-  it("always populates dynamicMetrics with exactly 7 entries, with no selectedMetrics input at all", () => {
+  it("always populates dynamicMetrics with exactly 8 entries, with no selectedMetrics input at all", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -1527,7 +1528,7 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
       now: NOW,
     });
     const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics).toHaveLength(7);
+    expect(dynamicMetrics).toHaveLength(8);
   });
 
   it("keeps slots 1-3 (Spend/Reach/Impressions) and slot 6 (CTR) fixed regardless of objective", () => {
@@ -1616,7 +1617,7 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
     expect(slots[6].value).toBe("—");
   });
 
-  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 7-slot assignment (Step 7)", () => {
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 8-slot assignment", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -1628,7 +1629,110 @@ describe("buildReportData — automatic 7-slot metric assignment (Change 2, no w
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes");
-    expect(slidesForShoes[0].dynamicMetrics.length).toBe(7);
+    expect(slidesForShoes[0].dynamicMetrics.length).toBe(8);
+  });
+
+  it("additionalMetricsSlide is undefined when no selectedMetrics is passed — regression guard for backward compatibility", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+    expect(data.campaignSlides[0].additionalMetricsSlide).toBeUndefined();
+  });
+});
+
+describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-slide", () => {
+  function dynamicRow(day: string, spend: number, reach: number, ctr: number, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
+    return {
+      _raw: { Day: day, "Amount spent": String(spend), Reach: String(reach), "CTR (all)": String(ctr), ...extraRaw },
+      campaign_name: "Shoes",
+      ad_set_name: "Set 1",
+      result_type: resultType,
+      spend: String(spend),
+      reach: String(reach),
+      impressions: "1000",
+      results: "2",
+      ctr: String(ctr),
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const rows: NreRow[] = daysInclusive(13, 19).map((day) =>
+    dynamicRow(day, 50, 500, 2, "Purchase", {
+      "Link clicks": "10",
+      "CPM (cost per 1,000 impressions)": "5",
+      "Landing page views": "8",
+      "Video plays": "3",
+    }),
+  );
+
+  const eightMetrics = [
+    { key: "spend", label: "AD SPEND", format: "currency" as const, csvName: "amount spent" },
+    { key: "reach", label: "REACH", format: "number" as const, csvName: "reach" },
+    { key: "impressions", label: "IMPRESSIONS", format: "number" as const, csvName: "impressions" },
+    { key: "results", label: "RESULTS", format: "number" as const, csvName: "results" },
+    { key: "cost_per_result", label: "COST PER RESULT", format: "currency" as const, csvName: "cost per result" },
+    { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, csvName: "ctr (all)" },
+    { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, csvName: "link clicks" },
+    { key: "cpc_all", label: "CPC (ALL)", format: "currency" as const, csvName: "cpc (all)" },
+  ];
+
+  it("uses the wizard's own selectedMetrics instead of the automatic assignment when 8 or fewer are given", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics: eightMetrics.slice(0, 5),
+    });
+    const slide = data.campaignSlides[0];
+    expect(slide.dynamicMetrics.map((m) => m.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result"]);
+    expect(slide.additionalMetricsSlide).toBeUndefined();
+  });
+
+  it("splits into a second 'Additional Metrics' slide when selectedMetrics exceeds 8", () => {
+    const nineMetrics: SelectedMetric[] = [...eightMetrics, { key: "impressions", label: "IMPRESSIONS", format: "number" as const, csvName: "impressions" }];
+    // Swap the 9th for a genuinely distinct key so slide 2 isn't empty after dedup expectations.
+    nineMetrics[8] = { key: "frequency", label: "FREQUENCY", format: "ratio" as const, csvName: "frequency" };
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics: nineMetrics,
+    });
+    const slide = data.campaignSlides[0];
+    expect(slide.dynamicMetrics).toHaveLength(8);
+    expect(slide.additionalMetricsSlide).toBeDefined();
+    // Padded from 1 (just "frequency") up to the 4-metric minimum, using
+    // the highest-priority unselected metrics the CSV's own headers make
+    // available (cpm/landing_page_views/video_views here).
+    expect(slide.additionalMetricsSlide).toHaveLength(4);
+    expect(slide.additionalMetricsSlide![0].key).toBe("frequency");
+  });
+
+  it("reuses the already-computed baseline value for a core key (spend) rather than re-deriving it from raw rows", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics: [eightMetrics[0]],
+    });
+    // 7 days * $50 = $350, same total the fixed metrics.spend field itself computes.
+    expect(data.campaignSlides[0].dynamicMetrics[0].value).toBe(data.campaignSlides[0].metrics.spend);
   });
 });
 

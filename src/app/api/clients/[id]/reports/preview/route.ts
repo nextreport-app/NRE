@@ -19,6 +19,7 @@ import {
   platformSchema,
   reportTypeSchema,
   selectedCampaignsSchema,
+  selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
   const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
   const platform = platformOverride ?? detectPlatform(headers);
+  const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   if (platform === "GOOGLE") {
     const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
@@ -62,6 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       monthlyBudget: client.monthlyBudget,
       mtdDailyRows: rows,
+      selectedMetrics,
     });
 
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
@@ -130,6 +133,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange: dateResolution.weeklyRange,
     reportType,
+    selectedMetrics,
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

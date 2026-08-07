@@ -41,7 +41,7 @@ function collectLegendEntries(data: ReportData): LegendEntry[] {
   const findByKey = data.platform === "GOOGLE" ? findGoogleMetricByKey : findMetaMetricByKey;
 
   for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
-    for (const metric of slide.dynamicMetrics ?? []) {
+    for (const metric of [...(slide.dynamicMetrics ?? []), ...(slide.additionalMetricsSlide ?? [])]) {
       if (metric.key === "spend" || seen.has(metric.key)) continue;
       seen.add(metric.key);
       const dictEntry = findByKey(metric.key);
@@ -170,6 +170,14 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
+      // Part 4 — a second "[Name] — Additional Metrics" slide, present only
+      // when the wizard's selectedMetrics exceeded 8 for this campaign.
+      if (slide.additionalMetricsSlide) {
+        slides.push({
+          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, true),
+          rels: template.campaign.rels,
+        });
+      }
     }
     for (const slide of data.adSetSlides) {
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
@@ -177,6 +185,12 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
         rels: template.campaign.rels,
       });
+      if (slide.additionalMetricsSlide) {
+        slides.push({
+          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, true),
+          rels: template.campaign.rels,
+        });
+      }
     }
     if (data.chart) {
       slides.push({

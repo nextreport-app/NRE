@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findMetaMetric, findMetaMetricByKey, META_METRIC_DICTIONARY } from "../meta-dictionary";
+import { autoClassifyUnknownColumn, findMetaMetric, findMetaMetricByKey, META_METRIC_DICTIONARY } from "../meta-dictionary";
 
 describe("findMetaMetric", () => {
   it("finds a primary metric by exact lowercase csvName", () => {
@@ -108,5 +108,48 @@ describe("Fix 3 — perUnitOf recompute metadata", () => {
   it("CPM/cost-per-1K-reached carry a 1000x perUnitScale", () => {
     expect(findMetaMetric("cpm (cost per 1,000 impressions)")?.perUnitScale).toBe(1000);
     expect(findMetaMetric("cost per 1,000 meta accounts reached")?.perUnitScale).toBe(1000);
+  });
+});
+
+describe("Part 2 — autoClassifyUnknownColumn", () => {
+  it("returns null for a column matching a skip pattern (name/status/delivery/level/setting/starts/ends/type/id/budget/currency/ranking)", () => {
+    for (const col of ["Ad name", "Delivery status", "Budget type", "Attribution setting", "Currency code", "Quality Ranking"]) {
+      expect(autoClassifyUnknownColumn(col)).toBeNull();
+    }
+  });
+
+  it("classifies a brand-new column as a low-priority secondary metric, uppercased label, key from the lowercased/underscored name", () => {
+    const entry = autoClassifyUnknownColumn("Some Brand New Metric");
+    expect(entry).not.toBeNull();
+    expect(entry?.type).toBe("secondary");
+    expect(entry?.priority).toBe(30);
+    expect(entry?.label).toBe("SOME BRAND NEW METRIC");
+    expect(entry?.key).toBe("some_brand_new_metric");
+    expect(entry?.csvName).toBe("some brand new metric");
+    expect(entry?.explanation).toContain("Custom metric detected from your CSV");
+  });
+
+  it("auto-detects currency format from cost/cpc/cpm/cpa/spend/value/revenue keywords", () => {
+    for (const col of ["New Cost Metric", "Weird CPC Variant", "Odd CPM Field", "Target CPA Metric", "Extra Spend Column", "Predicted Value", "Gross Revenue Alt"]) {
+      expect(autoClassifyUnknownColumn(col)?.format).toBe("currency");
+    }
+  });
+
+  it("classifies a ROAS-named column as ratio, not currency", () => {
+    expect(autoClassifyUnknownColumn("Weird New ROAS Metric")?.format).toBe("ratio");
+  });
+
+  it("auto-detects percentage format from rate/ctr/%/ratio/share keywords", () => {
+    for (const col of ["Odd Rate Metric", "New CTR Variant", "Weird % Field", "Custom Ratio Metric", "Impression Share Alt"]) {
+      expect(autoClassifyUnknownColumn(col)?.format).toBe("percentage");
+    }
+  });
+
+  it("defaults to number format when no keyword matches", () => {
+    expect(autoClassifyUnknownColumn("Totally Unknown Field")?.format).toBe("number");
+  });
+
+  it("has an empty objectives array — eligible for every objective", () => {
+    expect(autoClassifyUnknownColumn("Some New Field")?.objectives).toEqual([]);
   });
 });

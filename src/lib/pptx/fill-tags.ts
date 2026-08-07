@@ -205,18 +205,23 @@ function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
   return out;
 }
 
-// The campaign template's 7 fixed card slots, in their physical
+// The campaign template's 8 fixed card slots, in their physical
 // left-to-right/top-to-bottom order (Spend/Reach/Impressions/Results/CTR/
-// Cost per Result/CPC — see ppt/slides/slide2.xml). Which METRIC now fills
-// each physical position is decided upstream, entirely automatically —
-// slot-assignment.ts's buildMetaSlots/buildGoogleSlots map each campaign's
-// own objective onto the 7 slots, with no wizard step or user input at all
-// — and arrives here as slide.dynamicMetrics, already in slot order — this
-// module only ever retargets each slot's own label/value/icon in place,
-// never moves, removes, or adds a shape. RESULT_LABEL/COST_LABEL (the
-// RESULTS/Cost per Result cards' own template tags) are simply overwritten
-// like every other slot's label — there is no separate handling for them
-// here.
+// Cost per Result/CPC/[slot 8] — see ppt/slides/slide2.xml). Which METRIC
+// now fills each physical position is decided upstream, entirely
+// automatically — slot-assignment.ts's buildMetaSlots/buildGoogleSlots map
+// each campaign's own objective onto the 8 slots, with no wizard step
+// required (an optional wizard override can also supply this array) — and
+// arrives here as slide.dynamicMetrics, already in slot order — this module
+// only ever retargets each slot's own label/value/icon in place, never
+// moves, removes, or adds a shape.
+//
+// Slot 8 is structurally different from slots 1-7: it was added (Part 1) by
+// cloning the CPC card into the template's own already-empty 8th grid
+// position, and — since it has no fixed default metric the way slots 1-7
+// do — BOTH its label and value are {{TAG}} placeholders in the template
+// (METRIC_8_LABEL/METRIC_8_VALUE), rather than a static label string that
+// gets retexted in place via replaceCardLabel.
 const CARD_SLOT_TAGS = [
   "{{METRIC_SPEND}}",
   "{{METRIC_REACH}}",
@@ -225,14 +230,33 @@ const CARD_SLOT_TAGS = [
   "{{METRIC_CTR}}",
   "{{METRIC_CPR}}",
   "{{METRIC_CPC}}",
+  "{{METRIC_8_VALUE}}",
 ] as const;
+
+// Each slot's own label tag, where the template's default label is itself a
+// {{TAG}} rather than static text — null for a slot whose default label is
+// plain static text (Spend/Reach/Impressions/CTR/CPC's own "AD SPEND"/
+// "REACH"/"IMPRESSIONS"/"CTR (All)"/"CPC (All)"), which gets retexted in
+// place via replaceCardLabel instead. Results/Cost per Result are the two
+// exceptions among slots 1-7 — the ORIGINAL (non-dynamic) pipeline needed
+// their labels to vary by objective ("WEBSITE LEADS"/"COST PER LEAD" vs.
+// "PURCHASES"/"COST PER PURCHASE", etc.), so the template itself stores
+// {{RESULT_LABEL}}/{{COST_LABEL}} tags there, not literal text. A slot with
+// a real labelTag here MUST be filled directly via replaceTagRun rather
+// than replaceCardLabel — and, just as importantly, MUST be explicitly
+// dashed out (not left as a raw unfilled tag) when no metric is assigned to
+// it, which replaceCardLabel's "no-op if the value tag isn't found" fallback
+// can't do for a tag it was never pointed at in the first place.
+const CARD_SLOT_LABEL_TAGS: (string | null)[] = [null, null, null, "{{RESULT_LABEL}}", null, "{{COST_LABEL}}", null, "{{METRIC_8_LABEL}}"];
 
 // Each slot's own native icon category, in the same order — read once (via
 // findCardIconRelId) to discover that icon's relationship id before any
 // slot's tag text changes, so a slot whose assigned metric maps to a
 // DIFFERENT icon category can borrow another slot's icon relationship
-// instead of leaving its own (now mismatched) template icon in place.
-const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc"];
+// instead of leaving its own (now mismatched) template icon in place. Slot
+// 8 was cloned from the CPC card, so it inherits CPC's icon as its own
+// native default.
+const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc", "cpc"];
 
 export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
@@ -240,10 +264,22 @@ export function buildCampaignOrAdSetSlideXml(
   ai: AiCopy = FALLBACK_AI_COPY,
   reportType: ReportType = "WEEKLY",
   platform: Platform = "META",
+  /**
+   * Part 4 — true for a campaign/ad-set's second "Additional Metrics" slide
+   * (present only when slide.additionalMetricsSlide is set, i.e. the
+   * wizard's selectedMetrics exceeded 8 for this campaign): swaps the
+   * heading for "[Name] — Additional Metrics" and fills the 8 card slots
+   * from slide.additionalMetricsSlide instead of slide.dynamicMetrics.
+   * DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS are unaffected — the
+   * continuation slide reuses the same AI copy as the primary slide rather
+   * than triggering a second AI call for the same campaign.
+   */
+  useAdditionalMetricsSlide = false,
 ): string {
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
-  const heading =
-    slide.kind === "adset"
+  const heading = useAdditionalMetricsSlide
+    ? (slide.kind === "adset" ? slide.adSetName || slide.campaignName : slide.campaignName) + " — Additional Metrics"
+    : slide.kind === "adset"
       ? slide.adSetName
         ? slide.adSetName + adGroupOrSetLabel
         : slide.campaignName
@@ -254,7 +290,7 @@ export function buildCampaignOrAdSetSlideXml(
   // delivery-status column to judge it from.
   const statusSuffix = slide.statusIndicator ? `  (${slide.statusIndicator})` : null;
 
-  const dynamicSlots = slide.dynamicMetrics;
+  const dynamicSlots = useAdditionalMetricsSlide ? slide.additionalMetricsSlide : slide.dynamicMetrics;
   const useDynamicSlots = !!dynamicSlots && dynamicSlots.length > 0;
 
   let xml: string;
@@ -299,14 +335,26 @@ export function buildCampaignOrAdSetSlideXml(
 
     CARD_SLOT_TAGS.forEach((tag, i) => {
       const metric = dynamicSlots![i];
-      // Fewer than 7 metrics assigned (a CSV with under 7 classifiable
-      // columns) — leave the slot's own template label as-is and just show
-      // a dash for its value, rather than an unfilled raw {{TAG}}.
+      const labelTag = CARD_SLOT_LABEL_TAGS[i];
+      // Fewer than 8 metrics assigned (a CSV with under 8 classifiable
+      // columns, or a wizard selection/continuation slide with fewer than
+      // 8 metrics — see Part 4) — the static-label slots (Spend/Reach/
+      // Impressions/CTR/CPC) simply keep their own template label as-is,
+      // showing only a dash for the value. The three slots whose label is
+      // itself a {{TAG}} (Results/Cost per Result/slot 8) have no static
+      // text to fall back to, so their own label tag gets dashed out too —
+      // otherwise it would render as a raw, unfilled {{RESULT_LABEL}}/
+      // {{COST_LABEL}}/{{METRIC_8_LABEL}} placeholder.
       if (!metric) {
         xml = replaceTagRun(xml, tag, "—").xml;
+        if (labelTag) xml = replaceTagRun(xml, labelTag, "—").xml;
         return;
       }
-      xml = replaceCardLabel(xml, tag, metric.label);
+      if (labelTag) {
+        xml = replaceTagRun(xml, labelTag, metric.label).xml;
+      } else {
+        xml = replaceCardLabel(xml, tag, metric.label);
+      }
       const relId = nativeIconRelIds[resolveMetricIconId(metric)];
       if (relId) xml = replaceCardIcon(xml, tag, relId);
       xml = replaceTagRun(xml, tag, metric.value).xml;
@@ -324,6 +372,8 @@ export function buildCampaignOrAdSetSlideXml(
         METRIC_CTR: slide.metrics.ctr,
         METRIC_CPR: slide.metrics.cpr,
         METRIC_CPC: slide.metrics.cpc,
+        METRIC_8_LABEL: "—",
+        METRIC_8_VALUE: "—",
         DATE_RANGE: slide.dateRangeLine,
         CAMPAIGN_SUMMARY: ai.summary,
         KEY_INSIGHTS: ai.insights,
@@ -382,6 +432,8 @@ export function buildPausedSlideXml(
       METRIC_CTR: "—",
       METRIC_CPR: "—",
       METRIC_CPC: "—",
+      METRIC_8_LABEL: "—",
+      METRIC_8_VALUE: "—",
       DATE_RANGE: dateRangeFallback,
       CAMPAIGN_SUMMARY: pausedMessage,
       KEY_INSIGHTS: "Campaigns paused — no data recorded for this period. Awaiting instructions to resume.",

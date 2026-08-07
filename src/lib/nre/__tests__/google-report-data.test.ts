@@ -115,16 +115,16 @@ describe("buildGoogleReportData", () => {
   });
 });
 
-describe("buildGoogleReportData — automatic 7-slot metric assignment (Change 2, no wizard input)", () => {
+describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2, no wizard input)", () => {
   const mtdDailyRows = rows(
     ["Shoes - Search", "Prospecting", "13-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
     ["Shoes - Search", "Prospecting", "14-07-2026", "50", "20", "1000", "2%", "2.50", "3"],
   );
 
-  it("always populates dynamicMetrics with exactly 7 entries, with no selectedMetrics input at all", () => {
+  it("always populates dynamicMetrics with exactly 8 entries, with no selectedMetrics input at all", () => {
     const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
     const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
-    expect(dynamicMetrics).toHaveLength(7);
+    expect(dynamicMetrics).toHaveLength(8);
     expect(dynamicMetrics.map((m) => m.key)).toEqual([
       "spend",
       "reach",
@@ -133,6 +133,7 @@ describe("buildGoogleReportData — automatic 7-slot metric assignment (Change 2
       "cost_per_conv",
       "ctr",
       "avg_cpc",
+      "conv_rate",
     ]);
   });
 
@@ -208,11 +209,11 @@ describe("buildGoogleReportData — automatic 7-slot metric assignment (Change 2
     expect(slots[4].label).toBe("AVG. CPV");
   });
 
-  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 7-slot assignment (Step 7)", () => {
+  it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 8-slot assignment", () => {
     const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
     const slidesForShoes = data.campaignSlides.filter((s) => s.campaignName.startsWith("Shoes"));
     expect(slidesForShoes.length).toBe(1);
     expect(slidesForShoes[0].campaignName).toBe("Shoes - Search");
-    expect(slidesForShoes[0].dynamicMetrics.length).toBe(7);
+    expect(slidesForShoes[0].dynamicMetrics.length).toBe(8);
   });
 });

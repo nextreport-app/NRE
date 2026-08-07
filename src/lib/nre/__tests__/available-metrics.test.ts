@@ -1,0 +1,146 @@
+import { describe, it, expect } from "vitest";
+import {
+  defaultGoogleSelection,
+  defaultMetaSelection,
+  listAvailableMetrics,
+  listSelectableMetrics,
+  MAX_TOTAL_METRICS,
+  MIN_SECOND_SLIDE_METRICS,
+  splitMetricsForSlides,
+  type AvailableMetric,
+  type SelectedMetric,
+} from "../available-metrics";
+import { buildGoogleSlots, buildMetaSlots } from "../slot-assignment";
+
+const META_HEADERS = [
+  "Campaign name",
+  "Amount spent",
+  "Reach",
+  "Impressions",
+  "Results",
+  "Cost per result",
+  "CTR (All)",
+  "Link clicks",
+  "Landing page views",
+  "A Totally Unknown Column",
+];
+
+describe("listAvailableMetrics — Part 2/3a", () => {
+  it("includes every classifiable primary/secondary column, sorted by priority descending", () => {
+    const metrics = listAvailableMetrics(META_HEADERS, "META");
+    const keys = metrics.map((m) => m.key);
+    expect(keys).toContain("spend");
+    expect(keys).toContain("link_clicks");
+    for (let i = 1; i < metrics.length; i++) {
+      expect(metrics[i - 1].priority).toBeGreaterThanOrEqual(metrics[i].priority);
+    }
+  });
+
+  it("never drops an unrecognized column — falls through to autoClassifyUnknownColumn (Part 2)", () => {
+    const metrics = listAvailableMetrics(META_HEADERS, "META");
+    const unknown = metrics.find((m) => m.key === "a_totally_unknown_column");
+    expect(unknown).toBeDefined();
+    expect(unknown?.isAutoCatch).toBe(true);
+    expect(unknown?.priority).toBe(30);
+  });
+
+  it("excludes dimension/metadata columns (e.g. campaign name)", () => {
+    const metrics = listAvailableMetrics(META_HEADERS, "META");
+    expect(metrics.some((m) => m.key === "campaign_name")).toBe(false);
+  });
+
+  it("deduplicates by key — first-seen wins", () => {
+    const metrics = listAvailableMetrics(["Amount spent", "Amount spent (USD)"], "META");
+    expect(metrics.filter((m) => m.key === "spend")).toHaveLength(1);
+  });
+});
+
+describe("listSelectableMetrics — the wizard's own dropdown pool", () => {
+  it("excludes every auto-caught column (always priority 30, below the 50 cutoff)", () => {
+    const metrics = listSelectableMetrics(META_HEADERS, "META");
+    expect(metrics.every((m) => !m.isAutoCatch)).toBe(true);
+    expect(metrics.every((m) => m.priority >= 50)).toBe(true);
+    expect(metrics.some((m) => m.key === "a_totally_unknown_column")).toBe(false);
+  });
+});
+
+describe("defaultMetaSelection — matches slot-assignment.ts's own automatic picks", () => {
+  it.each(["WEBSITE LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES", "UNKNOWN"])(
+    "produces the same 8 keys, in the same order, as buildMetaSlots for %s (no ADD TO CART column present)",
+    (resultLabel) => {
+      const preview = defaultMetaSelection(resultLabel, "COST PER RESULT", META_HEADERS);
+      const real = buildMetaSlots(
+        { resultLabel, costLabel: "COST PER RESULT", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "1", cprValue: "$1" },
+        [],
+        "$",
+      );
+      expect(preview.map((m) => m.key)).toEqual(real.map((m) => m.key));
+    },
+  );
+
+  it("PURCHASES: picks ADD TO CART when the header is present, matching buildMetaSlots' own header-presence check", () => {
+    const headersWithCart = [...META_HEADERS, "Adds to cart"];
+    const preview = defaultMetaSelection("PURCHASES", "COST PER PURCHASE", headersWithCart);
+    expect(preview[7].key).toBe("add_to_cart");
+  });
+
+  it("always returns exactly 8 metrics", () => {
+    expect(defaultMetaSelection("RESULTS", "COST PER RESULT", META_HEADERS)).toHaveLength(8);
+  });
+});
+
+describe("defaultGoogleSelection — matches slot-assignment.ts's own automatic picks", () => {
+  it.each(["search", "shopping", "performance_max", "display", "video", "youtube"] as const)(
+    "produces the same 8 keys, in the same order, as buildGoogleSlots for %s",
+    (objectiveKey) => {
+      const preview = defaultGoogleSelection(objectiveKey);
+      const real = buildGoogleSlots(objectiveKey, { spend: "$1", reach: "1", impressions: "1", ctr: "1%", cpc: "$1", results: "1", cpr: "$1" }, [], "$");
+      expect(preview.map((m) => m.key)).toEqual(real.map((m) => m.key));
+    },
+  );
+});
+
+function metric(key: string, priority = 60): AvailableMetric {
+  return { key, label: key.toUpperCase(), format: "number", csvName: key, priority, isAutoCatch: false };
+}
+
+function selected(key: string): SelectedMetric {
+  return { key, label: key.toUpperCase(), format: "number", csvName: key };
+}
+
+describe("splitMetricsForSlides — Part 4", () => {
+  it("returns a single slide's worth unchanged when 8 or fewer are selected", () => {
+    const sel = Array.from({ length: 5 }, (_, i) => selected(`m${i}`));
+    expect(splitMetricsForSlides(sel, [])).toEqual([sel]);
+  });
+
+  it("splits into slide 1 (first 8) + slide 2 (the rest) for 9-16 selected", () => {
+    const sel = Array.from({ length: 10 }, (_, i) => selected(`m${i}`));
+    const [slide1, slide2] = splitMetricsForSlides(sel, []);
+    expect(slide1).toHaveLength(8);
+    expect(slide1.map((m) => m.key)).toEqual(["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7"]);
+    expect(slide2.map((m) => m.key)).toEqual(["m8", "m9"]);
+  });
+
+  it("pads slide 2 up to MIN_SECOND_SLIDE_METRICS with the highest-priority unselected available metrics", () => {
+    const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`)); // slide 2 would be just ["m8"]
+    const available = [metric("pad_low", 40), metric("pad_high", 90), metric("pad_mid", 60)];
+    const [, slide2] = splitMetricsForSlides(sel, available);
+    expect(slide2).toHaveLength(MIN_SECOND_SLIDE_METRICS);
+    expect(slide2.map((m) => m.key)).toEqual(["m8", "pad_high", "pad_mid", "pad_low"]);
+  });
+
+  it("never pads with a metric that's already selected", () => {
+    const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`));
+    const available = [metric("m0", 99), metric("pad", 50)];
+    const [, slide2] = splitMetricsForSlides(sel, available);
+    expect(slide2.map((m) => m.key)).not.toContain("m0");
+    expect(slide2.map((m) => m.key)).toContain("pad");
+  });
+
+  it("caps at MAX_TOTAL_METRICS, dropping anything beyond it", () => {
+    const sel = Array.from({ length: 20 }, (_, i) => selected(`m${i}`));
+    const [slide1, slide2] = splitMetricsForSlides(sel, []);
+    expect(slide1.length + slide2.length).toBe(MAX_TOTAL_METRICS);
+  });
+});

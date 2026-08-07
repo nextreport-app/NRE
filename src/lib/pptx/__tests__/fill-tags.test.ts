@@ -414,10 +414,74 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system (7-s
     expect(openGrp).toBe(closeGrp);
   });
 
-  it("fills a shorter-than-7 assignment's remaining slots with a dash rather than leaving a raw {{TAG}} visible (defensive)", () => {
+  it("fills a shorter-than-8 assignment's remaining slots with a dash rather than leaving a raw {{TAG}} visible (defensive)", () => {
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics().slice(0, 3) };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
     expect(xml).not.toContain("{{METRIC_");
     expect(xml).toContain("—");
+  });
+});
+
+function eightSlotMetrics() {
+  return [
+    ...sevenSlotMetrics(),
+    { key: "clicks_all", label: "CLICKS (ALL)", format: "number" as const, value: "12,345", type: "secondary" as const },
+  ];
+}
+
+describe("buildCampaignOrAdSetSlideXml — Part 1: 8th card slot", () => {
+  it("fills the 8th card's own {{METRIC_8_LABEL}}/{{METRIC_8_VALUE}} tags (both dynamic, unlike slots 1-7's static label)", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: eightSlotMetrics() };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).toContain("CLICKS (ALL)");
+    expect(xml).toContain("12,345");
+    expect(xml).not.toContain("{{METRIC_8_LABEL}}");
+    expect(xml).not.toContain("{{METRIC_8_VALUE}}");
+  });
+
+  it("shows a dash for both the 8th slot's label and value when only 7 metrics are assigned", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).not.toContain("{{METRIC_8_LABEL}}");
+    expect(xml).not.toContain("{{METRIC_8_VALUE}}");
+  });
+
+  it("keeps shape count identical to the 7-slot render — the 8th card is a pre-existing template shape, never inserted at render time", () => {
+    const shapeCount = (xml: string) =>
+      (xml.match(/<p:sp>/g) || []).length + (xml.match(/<p:grpSp>/g) || []).length + (xml.match(/<p:pic>/g) || []).length;
+    const sevenSlide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const eightSlide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: eightSlotMetrics() };
+    const sevenXml = buildCampaignOrAdSetSlideXml(template.campaign, sevenSlide);
+    const eightXml = buildCampaignOrAdSetSlideXml(template.campaign, eightSlide);
+    expect(shapeCount(eightXml)).toBe(shapeCount(sevenXml));
+  });
+
+  it("buildPausedSlideXml fills the 8th slot with a dash too (no raw {{TAG}} leakage on the paused-campaign path)", () => {
+    const xml = buildPausedSlideXml(template.campaign, "Acme Inc", "Paused this week.", "Jul 13 - Jul 19");
+    expect(xml).not.toContain("{{METRIC_8_LABEL}}");
+    expect(xml).not.toContain("{{METRIC_8_VALUE}}");
+  });
+});
+
+describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continuation slide", () => {
+  it("renders '[Name] — Additional Metrics' as the heading, using additionalMetricsSlide instead of dynamicMetrics, when useAdditionalMetricsSlide is true", () => {
+    const slide = {
+      ...makeCampaignSlide("Shoes - Search"),
+      dynamicMetrics: eightSlotMetrics(),
+      additionalMetricsSlide: [{ key: "frequency", label: "FREQUENCY", format: "ratio" as const, value: "2.3" }],
+    };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "WEEKLY", "META", true);
+    expect(xml).toContain("Shoes - Search — Additional Metrics");
+    expect(xml).not.toContain("(Campaign)");
+    expect(xml).toContain("FREQUENCY");
+    expect(xml).toContain("2.3");
+    // The main slide's own 8-slot values don't leak onto the continuation slide.
+    expect(xml).not.toContain("12,345");
+  });
+
+  it("continuation slide still shows the same DATE_RANGE — the AI copy column is untouched by useAdditionalMetricsSlide", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: eightSlotMetrics(), additionalMetricsSlide: eightSlotMetrics() };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "WEEKLY", "META", true);
+    expect(xml).toContain("Jul 13 - Jul 19");
   });
 });

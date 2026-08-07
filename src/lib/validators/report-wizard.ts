@@ -59,6 +59,27 @@ export const comparisonPeriodSchema = z.object({
   endIso: z.string().trim().min(1),
 });
 
+// Part 3 — one metric card, as picked in the wizard's optional Metric
+// Review step. Matches available-metrics.ts's SelectedMetric shape
+// (validated independently here rather than importing that module, same
+// "stay independent of the NRE engine's own types" reasoning as
+// comparisonPeriodSchema above). `format`/`perUnitOf`/`perUnitScale` all
+// come straight from a dictionary lookup, never typed by hand in the
+// browser, but are still validated here since the request body is
+// untrusted regardless of source.
+export const selectedMetricSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  format: z.enum(["currency", "number", "percentage", "duration", "ratio", "text"]),
+  csvName: z.string().trim().min(1),
+  perUnitOf: z.string().trim().min(1).optional(),
+  perUnitScale: z.number().optional(),
+});
+
+// Part 4's own cap (available-metrics.ts's MAX_TOTAL_METRICS) — validated
+// again here at the request boundary rather than trusted from the client.
+export const selectedMetricsSchema = z.array(selectedMetricSchema).max(16);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

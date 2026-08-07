@@ -831,3 +831,32 @@ export function findGoogleMetric(csvName: string): GoogleMetricDefinition | unde
 export function findGoogleMetricByKey(key: string): GoogleMetricDefinition | undefined {
   return GOOGLE_METRIC_DICTIONARY.find((entry) => entry.key === key && (entry.type === "primary" || entry.type === "secondary"));
 }
+
+const AUTO_CLASSIFY_SKIP_PATTERNS = ["name", "status", "delivery", "level", "setting", "starts", "ends", "type", "id", "budget", "currency", "ranking"];
+
+/** Google Ads counterpart of meta-dictionary.ts's autoClassifyUnknownColumn — same heuristic, same fixed priority 30. */
+export function autoClassifyUnknownColumn(csvColumnName: string): GoogleMetricDefinition | null {
+  const lower = csvColumnName.toLowerCase().trim();
+
+  if (AUTO_CLASSIFY_SKIP_PATTERNS.some((p) => lower.includes(p))) return null;
+
+  let format: MetricFormat = "number";
+  if (["cost", "cpc", "cpm", "cpa", "spend", "value", "revenue", "roas"].some((p) => lower.includes(p))) {
+    format = lower.includes("roas") ? "ratio" : "currency";
+  } else if (["rate", "ctr", "%", "ratio", "share"].some((p) => lower.includes(p))) {
+    format = "percentage";
+  }
+
+  const label = csvColumnName.toUpperCase().trim();
+
+  return {
+    csvName: lower,
+    key: lower.replace(/[^a-z0-9]/g, "_"),
+    label,
+    type: "secondary",
+    format,
+    objectives: [],
+    priority: 30,
+    explanation: `${label}: Custom metric detected from your CSV`,
+  };
+}

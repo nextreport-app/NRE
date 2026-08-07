@@ -46,7 +46,8 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
-import { buildMetaSlots } from "./slot-assignment";
+import { buildMetaSlots, buildSlotsFromSelection, type MetaSlotBaseline } from "./slot-assignment";
+import { listAvailableMetrics, splitMetricsForSlides, type SelectedMetric } from "./available-metrics";
 
 /** Re-exported from dynamic-metrics.ts (its canonical home) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
 export type { DynamicMetricValue };
@@ -95,13 +96,23 @@ export interface CampaignSlideData {
   /** Small "Paused"/"Inactive" tag next to the campaign name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
   /**
-   * The campaign template's 7 fixed card slots, automatically assigned by
-   * the engine (slot-assignment.ts's buildMetaSlots) — no wizard step or
-   * user input involved. Always exactly 7 entries, in physical slot order
-   * 1-7; see pptx/fill-tags.ts's buildCampaignOrAdSetSlideXml, which maps
-   * each entry straight onto the template's corresponding card position.
+   * The campaign template's 8 fixed card slots — automatically assigned by
+   * the engine (slot-assignment.ts's buildMetaSlots) when the wizard's
+   * Metric Review step is skipped, or built from the wizard's own
+   * `selectedMetrics` (BuildReportDataInput) when it isn't. Always exactly
+   * 8 entries, in physical slot order 1-8; see pptx/fill-tags.ts's
+   * buildCampaignOrAdSetSlideXml, which maps each entry straight onto the
+   * template's corresponding card position.
    */
   dynamicMetrics: DynamicMetricValue[];
+  /**
+   * Part 4 — present only when the wizard's selectedMetrics exceeded 8 for
+   * this report; this campaign's own remaining metrics (padded up to 4 if
+   * fewer), rendered as a second "[Campaign Name] — Additional Metrics"
+   * slide immediately after the main one. Absent (the common case) means no
+   * second slide.
+   */
+  additionalMetricsSlide?: DynamicMetricValue[];
 }
 
 export interface AdSetSlideData {
@@ -118,6 +129,8 @@ export interface AdSetSlideData {
   statusIndicator: DeliveryStatusIndicator;
   /** See CampaignSlideData.dynamicMetrics. */
   dynamicMetrics: DynamicMetricValue[];
+  /** See CampaignSlideData.additionalMetricsSlide. */
+  additionalMetricsSlide?: DynamicMetricValue[];
 }
 
 export type SlideData = CampaignSlideData | AdSetSlideData;
@@ -291,6 +304,16 @@ export interface BuildReportDataInput {
   /** See the ReportType doc comment above. Defaults to "WEEKLY". */
   reportType?: ReportType;
   now?: Date;
+  /**
+   * Part 3 — the wizard's optional Metric Review step output. Applies the
+   * SAME metric selection uniformly to every campaign/ad-set slide in the
+   * report (per-campaign customization is a Phase 2 "Coming soon" in the
+   * wizard). `undefined`/empty means the step was skipped or left
+   * untouched — every slide keeps the automatic per-objective 8-slot
+   * assignment (slot-assignment.ts's buildMetaSlots), exactly as before
+   * this field existed.
+   */
+  selectedMetrics?: SelectedMetric[];
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -498,6 +521,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     weeklyRange,
     reportType = "WEEKLY",
     now = new Date(),
+    selectedMetrics,
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
 
@@ -697,6 +721,50 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     (adSetRawGroups[key] ??= []).push(row);
   });
 
+  // Part 3/4 — the wizard's selectedMetrics (if any) apply the SAME metric
+  // list, in the SAME slide split, to every campaign/ad-set in the report;
+  // only each metric's own aggregated VALUE differs per campaign/ad set
+  // (computed below, per slide, from that slide's own raw rows). Computed
+  // once here rather than per-slide since the key list itself never varies.
+  // `available` (for Part 4's under-4-on-slide-2 padding) is derived from
+  // the CSV's own column headers — every row in one upload shares the same
+  // columns, so the first row's `_raw` keys stand in for the full header
+  // set without needing a separate headers input threaded all the way in.
+  const metricSlideKeyGroups: SelectedMetric[][] | null =
+    selectedMetrics && selectedMetrics.length > 0
+      ? splitMetricsForSlides(selectedMetrics, listAvailableMetrics(Object.keys(primaryRawRows[0]?._raw ?? {}), "META"))
+      : null;
+
+  /**
+   * One slide's worth of metric cards — the automatic per-objective 8-slot
+   * assignment (no wizard input), or the wizard's own selectedMetrics split
+   * into slide(s) via metricSlideKeyGroups above. `baseline` is reused as-is
+   * for the handful of keys report-data.ts already computes (spend/reach/
+   * impressions/ctr/results/cost_per_result) — see slot-assignment.ts's
+   * buildSlotsFromSelection.
+   */
+  function computeMetaSlideMetrics(
+    baseline: MetaSlotBaseline,
+    rawRows: NreRow[],
+  ): { dynamicMetrics: DynamicMetricValue[]; additionalMetricsSlide?: DynamicMetricValue[] } {
+    if (!metricSlideKeyGroups) {
+      return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
+    }
+    const baselineValues: Partial<Record<string, string>> = {
+      spend: baseline.spend,
+      reach: baseline.reach,
+      impressions: baseline.impressions,
+      ctr: baseline.ctr,
+      results: baseline.resultValue,
+      cost_per_result: baseline.cprValue,
+    };
+    const [slide1Keys, slide2Keys] = metricSlideKeyGroups;
+    return {
+      dynamicMetrics: buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
+      additionalMetricsSlide: slide2Keys ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol) : undefined,
+    };
+  }
+
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide
   // is only worth generating if the ad set's TOTAL MTD spend clears the
   // threshold below, not just its spend within the (possibly much smaller)
@@ -776,12 +844,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
     };
 
-    // The campaign template's 7 fixed card slots, automatically assigned by
-    // objective — see slot-assignment.ts's buildMetaSlots.
-    const dynamicMetrics: DynamicMetricValue[] = buildMetaSlots(
+    // The campaign template's 8 fixed card slots — automatically assigned by
+    // objective (slot-assignment.ts's buildMetaSlots), or built from the
+    // wizard's own selectedMetrics — see computeMetaSlideMetrics above.
+    const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       campaignRawGroups[campaignName] ?? [],
-      currencySymbol,
     );
 
     return {
@@ -794,6 +862,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       avgFreq,
       statusIndicator,
       dynamicMetrics,
+      additionalMetricsSlide,
       ai: {
         ctx: campaignName + " (combined " + campRows.length + " ad sets)",
         dateRange: globalWeekDateRange,
@@ -859,10 +928,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
-    const dynamicMetrics: DynamicMetricValue[] = buildMetaSlots(
+    const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
-      currencySymbol,
     );
 
     adSetSlides.push({
@@ -876,6 +944,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       rowFreq,
       statusIndicator,
       dynamicMetrics,
+      additionalMetricsSlide,
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         dateRange: globalWeekDateRange,

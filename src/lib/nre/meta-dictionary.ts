@@ -778,6 +778,26 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
 
   // Shopping / Purchase / ROAS
   {
+    csvName: "adds to cart",
+    key: "add_to_cart",
+    label: "ADD TO CART",
+    type: "secondary",
+    format: "number",
+    objectives: ["sales"],
+    priority: 78,
+    explanation: "Number of times people added your product to their cart",
+  },
+  {
+    csvName: "website adds to cart",
+    key: "add_to_cart",
+    label: "ADD TO CART",
+    type: "secondary",
+    format: "number",
+    objectives: ["sales"],
+    priority: 78,
+    explanation: "Number of times people added your product to their cart",
+  },
+  {
     csvName: "results value",
     key: "results_value",
     label: "PURCHASE VALUE",
@@ -1002,4 +1022,42 @@ export function findMetaMetric(csvName: string): MetaMetricDefinition | undefine
 /** Looks up a primary/secondary entry by its internal `key` (not csvName) — used by the dynamic legend slide to resolve a SelectedMetric's explanation text. First entry wins when multiple csvName variants share a key (e.g. "spend"). */
 export function findMetaMetricByKey(key: string): MetaMetricDefinition | undefined {
   return META_METRIC_DICTIONARY.find((entry) => entry.key === key && (entry.type === "primary" || entry.type === "secondary"));
+}
+
+const AUTO_CLASSIFY_SKIP_PATTERNS = ["name", "status", "delivery", "level", "setting", "starts", "ends", "type", "id", "budget", "currency", "ranking"];
+
+/**
+ * Part 2 — a column the dictionary above has no entry for (a CSV export
+ * variant, a new Meta column, an unusual account-level field, ...) is
+ * synthesized into a low-priority secondary metric instead of being
+ * silently dropped from the metric system entirely. Called by
+ * available-metrics.ts as the fallback whenever findMetaMetric misses.
+ * Priority is fixed at 30 — below every real dictionary entry (the lowest
+ * real priority in this file is 60) — so an auto-caught column is available
+ * (never discarded) without crowding out a properly-classified metric.
+ */
+export function autoClassifyUnknownColumn(csvColumnName: string): MetaMetricDefinition | null {
+  const lower = csvColumnName.toLowerCase().trim();
+
+  if (AUTO_CLASSIFY_SKIP_PATTERNS.some((p) => lower.includes(p))) return null;
+
+  let format: MetricFormat = "number";
+  if (["cost", "cpc", "cpm", "cpa", "spend", "value", "revenue", "roas"].some((p) => lower.includes(p))) {
+    format = lower.includes("roas") ? "ratio" : "currency";
+  } else if (["rate", "ctr", "%", "ratio", "share"].some((p) => lower.includes(p))) {
+    format = "percentage";
+  }
+
+  const label = csvColumnName.toUpperCase().trim();
+
+  return {
+    csvName: lower,
+    key: lower.replace(/[^a-z0-9]/g, "_"),
+    label,
+    type: "secondary",
+    format,
+    objectives: [],
+    priority: 30,
+    explanation: `${label}: Custom metric detected from your CSV`,
+  };
 }

@@ -5,23 +5,36 @@ import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
+import type { AvailableMetric, SelectedMetric } from "@/lib/nre/available-metrics";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
 // misled clients). The underlying filter logic still lives in
 // lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
 // just never called from here — so it can come back without re-deriving it.
-// Preview + Generate are one screen (see the step === 4 block below) — the
+// Preview + Generate are one screen (see the step === 5 block below) — the
 // action row at the bottom swaps between "Generate" button, a loading
 // spinner, the download/slides links, or an error + Try Again, all without
-// navigating away, so the step indicator only ever needs to count 4 steps.
-type Step = 1 | 2 | 3 | 4;
+// navigating away.
+//
+// Step 3 (Metrics — Part 3) is Meta-only and optional: skipping it (or
+// never touching it) leaves the engine's own automatic per-objective 8-slot
+// assignment in place, exactly as before this step existed. Google Ads
+// still skips straight from Upload to Preview (step 5) — see
+// dispatchAfterAnalyze — since it has no campaign-selection step for a
+// Metric Review to meaningfully follow either.
+type Step = 1 | 2 | 3 | 4 | 5;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
-  3: "Dates",
-  4: "Preview",
+  3: "Metrics",
+  4: "Dates",
+  5: "Preview",
 };
+
+const MIN_SELECTED_METRICS = 4;
+const MAX_METRICS_PER_SLIDE = 8;
+const MAX_TOTAL_METRICS = 16;
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -188,7 +201,21 @@ export function ReportUploadWizard({
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
-  // Step 3 — Dates (populated by /analyze)
+  // Step 3 — Metrics (Part 3, Meta only — populated by /metrics, called
+  // right after Campaign Selection so the engine's default 8 reflects the
+  // objective of the campaigns actually being reported on). `selectedMetrics`
+  // is the wizard's own ordered pick list (up to MAX_TOTAL_METRICS); empty
+  // means "use the engine's automatic assignment" (never sent to the
+  // generate/preview APIs in that case — see currentSelectedMetricsPayload).
+  const [availableMetrics, setAvailableMetrics] = useState<AvailableMetric[]>([]);
+  const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
+  const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [metricsTouched, setMetricsTouched] = useState(false);
+  const [openMetricDropdownIndex, setOpenMetricDropdownIndex] = useState<number | null>(null);
+  const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
+  const [showIndividualCampaignMetrics, setShowIndividualCampaignMetrics] = useState(false);
+
+  // Step 4 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
   const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
@@ -214,9 +241,9 @@ export function ReportUploadWizard({
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
 
-  // Step 4 — Preview. Comparison reports populate comparisonData instead of
+  // Step 5 — Preview. Comparison reports populate comparisonData instead of
   // data — previewKind (set alongside both in applyPreviewResult) is what
-  // the step === 4 JSX actually branches on.
+  // the step === 5 JSX actually branches on.
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
   const [previewErrors, setPreviewErrors] = useState<ValidationIssue[]>([]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
@@ -231,7 +258,7 @@ export function ReportUploadWizard({
   // of which Report Type is picked.
   const [reportTitleTouched, setReportTitleTouched] = useState(false);
 
-  // Step 4 — Generate (same screen as Preview above, see the step === 4 JSX block)
+  // Step 5 — Generate (same screen as Preview above, see the step === 5 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -405,7 +432,7 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(4);
+    setStep(5);
   }
 
   // ── Step 1 -> 2: Analyze ────────────────────────────────────────────────
@@ -511,12 +538,84 @@ export function ReportUploadWizard({
     });
   }
 
+  // ── Step 2 -> 3: Campaigns -> Metrics ───────────────────────────────────
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
+
+    if (!mtdFile) return;
+    setMetricsStatus("loading");
+    setMetricsTouched(false);
+    setMetricsLimitMessage(null);
+    setShowIndividualCampaignMetrics(false);
+    setOpenMetricDropdownIndex(null);
+
+    const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
+      method: "POST",
+      body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }),
+    });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json || json.error) {
+      // The Metric Review step is a nice-to-have preview, not a hard
+      // requirement — a failure here shouldn't strand the wizard. Fall
+      // through with an empty selection (the engine's automatic
+      // assignment) and let the user continue past step 3 regardless.
+      setMetricsStatus("error");
+      setAvailableMetrics([]);
+      setSelectedMetrics([]);
+      setStep(3);
+      return;
+    }
+
+    setAvailableMetrics(json.availableMetrics || []);
+    setSelectedMetrics(json.defaultSelection || []);
+    setMetricsStatus("idle");
     setStep(3);
   }
 
-  // ── Step 3: Dates ───────────────────────────────────────────────────────
+  // ── Step 3: Metrics (Part 3) ────────────────────────────────────────────
+  /** Metrics available for the dropdown, minus whatever's already selected. */
+  function unselectedAvailableMetrics(): AvailableMetric[] {
+    const selectedKeys = new Set(selectedMetrics.map((m) => m.key));
+    return availableMetrics.filter((m) => !selectedKeys.has(m.key));
+  }
+
+  function swapMetricAt(index: number, replacement: AvailableMetric) {
+    setMetricsTouched(true);
+    setSelectedMetrics((prev) => prev.map((m, i) => (i === index ? { ...replacement } : m)));
+    setOpenMetricDropdownIndex(null);
+  }
+
+  function removeMetricAt(index: number) {
+    if (selectedMetrics.length <= MIN_SELECTED_METRICS) {
+      setMetricsLimitMessage(`Keep at least ${MIN_SELECTED_METRICS} metrics.`);
+      return;
+    }
+    setMetricsLimitMessage(null);
+    setMetricsTouched(true);
+    setSelectedMetrics((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addMetric(metric: AvailableMetric) {
+    if (selectedMetrics.length >= MAX_TOTAL_METRICS) {
+      setMetricsLimitMessage(`Maximum ${MAX_TOTAL_METRICS} metrics (2 slides) per campaign.`);
+      return;
+    }
+    setMetricsLimitMessage(null);
+    setMetricsTouched(true);
+    setSelectedMetrics((prev) => [...prev, metric]);
+  }
+
+  function handleMetricsContinue() {
+    setStep(4);
+  }
+
+  /** Only sent to the preview/generate APIs once the user actually changes something on the Metric Review step — leaving it untouched (the common case: "Most users will just click Continue") keeps the engine's own true per-campaign automatic assignment, rather than pinning every campaign to the single majority-objective default shown in the wizard. */
+  function currentSelectedMetricsPayload(): SelectedMetric[] | undefined {
+    return metricsTouched && selectedMetrics.length > 0 ? selectedMetrics : undefined;
+  }
+
+  // ── Step 4: Dates ───────────────────────────────────────────────────────
   function validateCustomRange(): boolean {
     if (dateMode !== "custom") return true;
     if (!customStart || !customEnd) {
@@ -576,6 +675,7 @@ export function ReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
+        selectedMetrics: currentSelectedMetricsPayload(),
         dateSelection,
         reportType,
         platform,
@@ -597,10 +697,10 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(4);
+    setStep(5);
   }
 
-  // ── Step 4: Preview + Generate (one screen) ─────────────────────────────
+  // ── Step 5: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile) return;
     setGenerateStatus("loading");
@@ -618,6 +718,7 @@ export function ReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
+        selectedMetrics: currentSelectedMetricsPayload(),
         dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
         reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
         reportType,
@@ -699,9 +800,9 @@ export function ReportUploadWizard({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 3 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
+  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 4 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
   function handleBackToDates() {
-    setStep(3);
+    setStep(4);
   }
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
@@ -717,6 +818,14 @@ export function ReportUploadWizard({
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
+
+    setAvailableMetrics([]);
+    setSelectedMetrics([]);
+    setMetricsStatus("idle");
+    setMetricsTouched(false);
+    setOpenMetricDropdownIndex(null);
+    setMetricsLimitMessage(null);
+    setShowIndividualCampaignMetrics(false);
 
     setDateBounds(null);
     setWeeklyOptions(null);
@@ -971,16 +1080,142 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleCampaignsContinue}
-              disabled={selectedCampaigns.size === 0}
+              disabled={selectedCampaigns.size === 0 || metricsStatus === "loading"}
               className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
-              Continue
+              {metricsStatus === "loading" ? "Loading…" : "Continue"}
             </button>
           </div>
         </div>
       )}
 
       {step === 3 && (
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+          <div>
+            <h3 className="text-[16px] font-semibold text-white">Review Metric Cards</h3>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">
+              Your report will show these {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics
+              per campaign slide. Tap any card to change it, or continue with our recommended selection.
+            </p>
+          </div>
+
+          {metricsStatus === "error" && (
+            <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[13px] text-amber-200">
+              Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
+            </div>
+          )}
+
+          {selectedMetrics.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                {selectedMetrics.map((metric, i) => (
+                  <div key={`${metric.key}-${i}`} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMetricDropdownIndex(openMetricDropdownIndex === i ? null : i)}
+                      className="flex w-full items-center justify-between gap-2 rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-left text-[13px] text-dash-ink hover:border-dash-accent"
+                    >
+                      <span className="truncate">{metric.label}</span>
+                      <span className="text-dash-ink-secondary">▼</span>
+                    </button>
+                    {openMetricDropdownIndex === i && (
+                      <div className="absolute z-10 mt-1 max-h-64 w-full min-w-[220px] overflow-y-auto rounded-md border border-dash-border bg-dash-card shadow-lg">
+                        <button
+                          type="button"
+                          onClick={() => removeMetricAt(i)}
+                          className="block w-full px-3 py-2 text-left text-[13px] text-red-300 hover:bg-dash-border"
+                        >
+                          Remove this card
+                        </button>
+                        <div className="border-t border-dash-border" />
+                        {unselectedAvailableMetrics().map((candidate) => (
+                          <button
+                            key={candidate.key}
+                            type="button"
+                            onClick={() => swapMetricAt(i, candidate)}
+                            className="block w-full px-3 py-2 text-left text-[13px] text-dash-ink hover:bg-dash-border"
+                          >
+                            {candidate.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {unselectedAvailableMetrics().length > 0 && (
+                <div>
+                  <p className="mb-2 text-[13px] text-dash-ink-secondary">Add another metric:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {unselectedAvailableMetrics().map((candidate) => (
+                      <button
+                        key={candidate.key}
+                        type="button"
+                        onClick={() => addMetric(candidate)}
+                        className="rounded-full border border-dash-border px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink"
+                      >
+                        + {candidate.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
+
+              {selectedMetrics.length > MAX_METRICS_PER_SLIDE && (
+                <div className="rounded-md border border-dash-accent/40 bg-dash-accent/10 p-3 text-[13px] text-dash-ink">
+                  Your selection will generate 2 slides for this campaign. Slide 1: first {MAX_METRICS_PER_SLIDE} metrics.
+                  Slide 2: remaining {selectedMetrics.length - MAX_METRICS_PER_SLIDE} metrics.
+                </div>
+              )}
+
+              <div className="border-t border-dash-border pt-4">
+                {!showIndividualCampaignMetrics ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowIndividualCampaignMetrics(true)}
+                    className="text-[13px] text-dash-ink-secondary underline hover:text-dash-ink"
+                  >
+                    ← Change for individual campaigns
+                  </button>
+                ) : (
+                  <div className="rounded-md border border-dash-border bg-dash-bg p-3 text-[13px] text-dash-ink-secondary">
+                    Per-campaign metric customization is coming soon. For now, this selection applies to every campaign in
+                    the report.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowIndividualCampaignMetrics(false)}
+                      className="text-dash-accent underline hover:no-underline"
+                    >
+                      Back
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(2)}
+              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleMetricsContinue}
+              disabled={selectedMetrics.length > 0 && selectedMetrics.length < MIN_SELECTED_METRICS}
+              className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+            >
+              Continue →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
         <div className="space-y-5">
           <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
 
@@ -1249,7 +1484,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(3)}
               className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -1270,7 +1505,7 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 4 && (data || comparisonData) && (
+      {step === 5 && (data || comparisonData) && (
         <div className="space-y-6">
           {/* Section 1 — Report Summary */}
           <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4">
@@ -1347,7 +1582,7 @@ export function ReportUploadWizard({
           {generateStatus === "idle" && (
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
               >
                 Back
@@ -1375,7 +1610,7 @@ export function ReportUploadWizard({
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                   className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
                 >
                   Back
@@ -1580,7 +1815,7 @@ export function ReportUploadWizard({
 }
 
 function StepIndicator({ step }: { step: Step }) {
-  const steps: Step[] = [1, 2, 3, 4];
+  const steps: Step[] = [1, 2, 3, 4, 5];
   return (
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       {steps.map((s, i) => (

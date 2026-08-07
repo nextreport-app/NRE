@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findGoogleMetric, findGoogleMetricByKey, GOOGLE_METRIC_DICTIONARY } from "../google-dictionary";
+import { autoClassifyUnknownColumn, findGoogleMetric, findGoogleMetricByKey, GOOGLE_METRIC_DICTIONARY } from "../google-dictionary";
 
 describe("findGoogleMetric", () => {
   it("finds a primary metric by exact lowercase csvName", () => {
@@ -49,5 +49,29 @@ describe("GOOGLE_METRIC_DICTIONARY — data integrity", () => {
     for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
     const duplicates = [...counts.entries()].filter(([, count]) => count > 1);
     expect(duplicates).toEqual([["all conv. rate", 2]]);
+  });
+});
+
+describe("Part 2 — autoClassifyUnknownColumn (Google)", () => {
+  it("returns null for a column matching a skip pattern", () => {
+    for (const col of ["Campaign status", "Budget name", "Currency code"]) {
+      expect(autoClassifyUnknownColumn(col)).toBeNull();
+    }
+  });
+
+  it("classifies a brand-new column as a low-priority secondary metric", () => {
+    const entry = autoClassifyUnknownColumn("Some New Google Metric");
+    expect(entry).not.toBeNull();
+    expect(entry?.type).toBe("secondary");
+    expect(entry?.priority).toBe(30);
+    expect(entry?.label).toBe("SOME NEW GOOGLE METRIC");
+    expect(entry?.key).toBe("some_new_google_metric");
+  });
+
+  it("auto-detects currency/ratio/percentage/number formats the same way as Meta's version", () => {
+    expect(autoClassifyUnknownColumn("New Cost Field")?.format).toBe("currency");
+    expect(autoClassifyUnknownColumn("Weird New ROAS Metric")?.format).toBe("ratio");
+    expect(autoClassifyUnknownColumn("New Conv. Rate Variant")?.format).toBe("percentage");
+    expect(autoClassifyUnknownColumn("Totally Unknown Field")?.format).toBe("number");
   });
 });
