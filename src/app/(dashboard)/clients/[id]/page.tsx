@@ -96,29 +96,15 @@ export default async function ClientDetailPage({
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
-        {/* Left column — primary action + report history */}
-        <div className="space-y-4">
-          <Card accent>
-            <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
-            <p className="text-[15px] text-dash-ink-secondary">
-              Upload your MTD daily CSV to generate a branded performance report
-            </p>
-            <Link
-              href={`/clients/${client.id}/reports/new`}
-              className="mt-5 block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-            >
-              Generate Report
-            </Link>
-          </Card>
-
-          <Card>
-            <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
-            <ReportHistoryList clientId={client.id} initialReports={reportItems} hasMoreReports={reportCount > reportItems.length} />
-          </Card>
-        </div>
-
-        {/* Right column — client settings + previous month data */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_3fr]">
+        {/* Left column — client settings + previous month data. Source-first
+            (and second-listed at md:grid-cols-[2fr_3fr]'s narrower 2fr
+            track) so the section order — Client Settings, Previous Month
+            Data, Generate New Report, Recent Downloaded Reports — matches
+            top-to-bottom on the grid-cols-1 mobile stack too, not just
+            side-by-side on desktop. Column width is swapped along with the
+            content (2fr here, 3fr on the right below) so each card keeps
+            the exact same rendered width it had before this reorder. */}
         <div className="space-y-4">
           <Card>
             <CardHeading>Client Settings</CardHeading>
@@ -155,6 +141,27 @@ export default async function ClientDetailPage({
               initialCampaigns={previousMonthCampaigns}
               initialSelectedCampaigns={previousMonthSelectedCampaigns}
             />
+          </Card>
+        </div>
+
+        {/* Right column — primary action + report history. */}
+        <div className="space-y-4">
+          <Card accent>
+            <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
+            <p className="text-[15px] text-dash-ink-secondary">
+              Upload your MTD daily CSV to generate a branded performance report
+            </p>
+            <Link
+              href={`/clients/${client.id}/reports/new`}
+              className="mt-5 block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            >
+              Generate Report
+            </Link>
+          </Card>
+
+          <Card>
+            <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
+            <ReportHistoryList clientId={client.id} initialReports={reportItems} hasMoreReports={reportCount > reportItems.length} />
           </Card>
         </div>
       </div>
