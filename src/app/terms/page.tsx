@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
+import { BetaBanner } from "@/components/beta-banner";
 
 export const metadata: Metadata = {
   title: "Terms of Service — NextReport",
@@ -13,6 +14,7 @@ export default async function TermsPage() {
 
   return (
     <>
+      <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
       <Link href="/" className="text-sm text-accent hover:underline">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
+import { BetaBanner } from "@/components/beta-banner";
 
 export const metadata: Metadata = {
   title: "How to Download Your Ad Report Data — NextReport",
@@ -131,6 +132,7 @@ export default async function DownloadGuidePage() {
 
   return (
     <>
+      <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <section className="bg-navy px-6 py-16 text-center">

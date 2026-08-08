@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BETA_HIDE_PRICING } from "@/lib/beta";
 
 /** A CSS-only "mock report preview" card — no image asset, matches the PPTX report's own dark/metric-tile look without rendering a real slide. */
 function ReportPreviewCard() {
@@ -104,12 +105,15 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
                 >
                   Start free trial
                 </Link>
-                <Link
-                  href="/pricing"
-                  className="w-full rounded-md border border-navy-border px-6 py-3 text-center text-sm font-medium text-white hover:bg-navy-panel sm:w-auto"
-                >
-                  View pricing
-                </Link>
+                {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
+                {!BETA_HIDE_PRICING && (
+                  <Link
+                    href="/pricing"
+                    className="w-full rounded-md border border-navy-border px-6 py-3 text-center text-sm font-medium text-white hover:bg-navy-panel sm:w-auto"
+                  >
+                    View pricing
+                  </Link>
+                )}
               </>
             )}
           </div>

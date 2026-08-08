@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { SocialLinks } from "@/components/social-links";
+import { BETA_HIDE_PRICING } from "@/lib/beta";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -82,7 +83,10 @@ export default function RootLayout({
                 <h3 className="text-sm font-semibold text-white">Product</h3>
                 <nav className="mt-3 flex flex-col gap-2 text-sm text-ink-muted">
                   <Link href="/" className="hover:text-white">Home</Link>
-                  <Link href="/pricing" className="hover:text-white">Pricing</Link>
+                  {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
+                  {!BETA_HIDE_PRICING && (
+                    <Link href="/pricing" className="hover:text-white">Pricing</Link>
+                  )}
                   <Link href="/help/download" className="hover:text-white">How It Works</Link>
                   <Link href="/help/download" className="hover:text-white">Download Guide</Link>
                 </nav>

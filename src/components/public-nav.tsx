@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { BETA_HIDE_PRICING } from "@/lib/beta";
 
-const LINKS = [
+const ALL_LINKS = [
   { href: "/", label: "Home" },
   { href: "/pricing", label: "Pricing" },
   { href: "/help/download", label: "How It Works" },
 ];
+
+// BETA: hidden during beta period — restore before public launch (flip
+// BETA_HIDE_PRICING in lib/beta.ts; ALL_LINKS above is untouched).
+const LINKS = BETA_HIDE_PRICING ? ALL_LINKS.filter((link) => link.href !== "/pricing") : ALL_LINKS;
 
 /**
  * Top nav for public marketing pages only (home, pricing, help, about,

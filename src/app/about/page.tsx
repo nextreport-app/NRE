@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
+import { BetaBanner } from "@/components/beta-banner";
 
 export const metadata: Metadata = {
   title: "About — NextReport",
@@ -61,6 +62,7 @@ export default async function AboutPage() {
 
   return (
     <>
+      <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         {/* Hero */}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
+import { BetaBanner } from "@/components/beta-banner";
 import { ContactForm } from "@/components/contact-form";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default async function ContactPage() {
 
   return (
     <>
+      <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="mx-auto w-full max-w-[600px] flex-1 px-6 py-16">
         <Link href="/" className="text-sm text-accent hover:underline">
