@@ -167,6 +167,7 @@ export function ReportUploadWizard({
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
   initialLastDriveFolderName,
+  hasPreviousMonthData,
 }: {
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
@@ -176,6 +177,8 @@ export function ReportUploadWizard({
   /** Client.lastDriveFolderId/lastDriveFolderName — the folder this client's reports were last saved to, if any. Pre-navigates the folder picker into it as a convenience. */
   initialLastDriveFolderId: string | null;
   initialLastDriveFolderName: string | null;
+  /** Whether Client.previousMonthDataUrl is set — drives Fix 1's "Missing previous month comparison" notice on the download screen for a WEEKLY/MONTHLY report. */
+  hasPreviousMonthData: boolean;
 }) {
   const [step, setStep] = useState<Step>(1);
   const { showToast } = useToast();
@@ -1837,6 +1840,20 @@ export function ReportUploadWizard({
                   >
                     Save to a different folder
                   </button>
+                </div>
+              )}
+
+              {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
+              {reportType !== "COMPARISON" && !hasPreviousMonthData && (
+                <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
+                  <p className="font-semibold">📊 Missing previous month comparison</p>
+                  <p className="mt-1 text-dash-ink-secondary">
+                    Your Campaign Performance Overview slide does not have a previous month row because no previous
+                    month data has been uploaded for this client.
+                  </p>
+                  <Link href={`/clients/${clientId}`} className="mt-2 inline-block text-dash-accent hover:underline">
+                    → Upload previous month data in Client Settings
+                  </Link>
                 </div>
               )}
 

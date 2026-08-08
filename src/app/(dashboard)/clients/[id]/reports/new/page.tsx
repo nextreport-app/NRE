@@ -42,6 +42,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         hasGoogleDriveConnected={!!user.googleRefreshToken}
         initialLastDriveFolderId={client.lastDriveFolderId}
         initialLastDriveFolderName={client.lastDriveFolderName}
+        hasPreviousMonthData={!!client.previousMonthDataUrl}
       />
     </div>
   );

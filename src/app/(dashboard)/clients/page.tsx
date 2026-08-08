@@ -21,6 +21,7 @@ export default async function ClientsPage() {
     monthlyBudget: c.monthlyBudget,
     template: c.template,
     lastReportAt: c.reports[0]?.createdAt.toISOString() ?? null,
+    hasPreviousMonthData: !!c.previousMonthDataUrl,
   }));
 
   return (

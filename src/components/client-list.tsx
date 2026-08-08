@@ -116,6 +116,8 @@ interface ClientListItem {
   monthlyBudget: number | null;
   /** ISO timestamp of the most recent report generated for this client, or null if none yet. */
   lastReportAt: string | null;
+  /** Whether Client.previousMonthDataUrl is set — drives Fix 2's status dot below the last-report line. */
+  hasPreviousMonthData: boolean;
 }
 
 function formatLastReport(iso: string | null): string {
@@ -127,6 +129,19 @@ function formatLastReport(iso: string | null): string {
 function formatBudget(currency: Currency, budget: number | null): string {
   if (budget == null) return "No monthly ad spend budget set";
   return `Monthly Ad Spend Budget: ${CURRENCY_SYMBOLS[currency]}${budget.toLocaleString("en-US")}`;
+}
+
+/** Fix 2 — at-a-glance Previous Month Data status, most useful at the start of each new month when last month's upload needs replacing. */
+function PreviousMonthDataStatus({ uploaded }: { uploaded: boolean }) {
+  return (
+    <p className={`mt-1 flex items-center gap-1.5 text-[11px] ${uploaded ? "text-dash-ink-secondary" : "text-dash-accent"}`}>
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${uploaded ? "bg-emerald-500" : "bg-dash-accent"}`}
+      />
+      {uploaded ? "Prev. month data ✓" : "Prev. month data missing"}
+    </p>
+  );
 }
 
 /**
@@ -210,6 +225,7 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
                   </p>
                   <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatBudget(client.currency, client.monthlyBudget)}</p>
                   <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatLastReport(client.lastReportAt)}</p>
+                  <PreviousMonthDataStatus uploaded={client.hasPreviousMonthData} />
                 </div>
                 <div className="mt-5 flex gap-3">
                   <Link
