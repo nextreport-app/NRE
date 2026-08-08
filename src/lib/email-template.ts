@@ -1,0 +1,145 @@
+/**
+ * Report email HTML/subject builder — read by lib/email.ts's sendReportEmail.
+ * Inline CSS only (external stylesheets are unreliable across email
+ * clients), and a plain-text logo (image logos are unreliable in email —
+ * see api/reports/[id]/send-email/route.ts's own header for the same
+ * reasoning applied to the rest of this feature).
+ */
+
+export interface ReportEmailProps {
+  clientName: string;
+  /** Human label, already resolved by the caller — "Weekly" / "Monthly" / "Comparison", not the raw ReportType enum value. */
+  reportType: string;
+  dateRange: string;
+  /** Full https://nextreport.in/r/[shareToken] URL. */
+  shareLink: string;
+  /** Report.slidesUrl (Google Slides), if this report was ever saved to Drive. */
+  driveLink?: string;
+  senderName: string;
+  agencyName?: string;
+  /**
+   * The sender's optional note from the send-email modal. Its placeholder
+   * text ("Hi, please find your weekly performance report attached...")
+   * mirrors the default greeting below, so when present it replaces that
+   * default paragraph rather than being silently dropped.
+   */
+  message?: string;
+}
+
+const BG = "#0d1b2e";
+const CARD_BG = "#111f35";
+const BORDER = "#1e3a5f";
+const ACCENT = "#f6ad55";
+const TEXT = "#ffffff";
+const TEXT_MUTED = "#94a3b8";
+
+export function buildReportEmailSubject({
+  clientName,
+  reportType,
+  dateRange,
+}: Pick<ReportEmailProps, "clientName" | "reportType" | "dateRange">): string {
+  return `${clientName} — ${reportType} Report — ${dateRange}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** \n -> <br> after escaping, so a multi-line custom message renders as written instead of collapsing to one line. */
+function escapeHtmlMultiline(value: string): string {
+  return escapeHtml(value).replace(/\n/g, "<br>");
+}
+
+export function buildReportEmailHtml(props: ReportEmailProps): string {
+  const clientName = escapeHtml(props.clientName);
+  const reportType = escapeHtml(props.reportType);
+  const dateRange = escapeHtml(props.dateRange);
+  const senderName = escapeHtml(props.senderName);
+  const preparedBy = escapeHtml(props.agencyName || props.senderName);
+  const shareLink = escapeHtml(props.shareLink);
+
+  const bodyParagraph = props.message
+    ? `<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${TEXT};">${escapeHtmlMultiline(props.message)}</p>`
+    : `<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${TEXT};">Hi,</p>
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${TEXT};">
+      Please find your ${reportType} performance report for ${dateRange} below.
+    </p>`;
+
+  const driveRow = props.driveLink
+    ? `<p style="margin:16px 0 0;font-size:13px;">
+        <a href="${escapeHtml(props.driveLink)}" style="color:${TEXT_MUTED};text-decoration:underline;">Or download as PowerPoint</a>
+      </p>`
+    : "";
+
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background-color:${BG};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BG};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+            <tr>
+              <td style="padding-bottom:28px;text-align:center;">
+                <span style="font-size:20px;font-weight:700;color:${TEXT};letter-spacing:-0.02em;">Next<span style="color:${ACCENT};">Report</span></span>
+                <p style="margin:6px 0 0;font-size:13px;color:${TEXT_MUTED};">Performance Report</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;background-color:${CARD_BG};border:1px solid ${BORDER};border-radius:8px;">
+                ${bodyParagraph}
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                  <tr>
+                    <td style="border-radius:6px;background-color:${ACCENT};">
+                      <a href="${shareLink}" style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#0d1b2e;text-decoration:none;">View Report →</a>
+                    </td>
+                  </tr>
+                </table>
+                ${driveRow}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 4px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BORDER};border-radius:8px;">
+                  <tr>
+                    <td style="padding:16px 20px;font-size:13px;line-height:1.9;color:${TEXT_MUTED};">
+                      <strong style="color:${TEXT};">Client:</strong> ${clientName}<br>
+                      <strong style="color:${TEXT};">Period:</strong> ${dateRange}<br>
+                      <strong style="color:${TEXT};">Generated by:</strong> ${senderName} via NextReport
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:20px;text-align:center;">
+                <p style="margin:0 0 4px;font-size:12px;color:${TEXT_MUTED};">This report was prepared by ${preparedBy} using NextReport</p>
+                <p style="margin:0 0 12px;font-size:12px;color:${TEXT_MUTED};">nextreport.in</p>
+                <p style="margin:0;font-size:11px;color:${TEXT_MUTED};">
+                  You are receiving this because your agency shared a performance report with you.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export function buildReportEmailText(props: ReportEmailProps): string {
+  const lines = [
+    props.message ?? `Hi,\n\nPlease find your ${props.reportType} performance report for ${props.dateRange} below.`,
+    "",
+    `View Report: ${props.shareLink}`,
+  ];
+  if (props.driveLink) lines.push(`Download as PowerPoint: ${props.driveLink}`);
+  lines.push("", `Client: ${props.clientName}`, `Period: ${props.dateRange}`, `Generated by: ${props.senderName} via NextReport`);
+  lines.push("", `This report was prepared by ${props.agencyName || props.senderName} using NextReport`, "nextreport.in");
+  return lines.join("\n");
+}

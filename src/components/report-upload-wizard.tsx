@@ -150,12 +150,6 @@ function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
 
-function buildEmailShareUrl(reportUrl: string): string {
-  const subject = encodeURIComponent("Your Performance Report");
-  const body = encodeURIComponent(`Please find your report here: ${reportUrl}`);
-  return `mailto:?subject=${subject}&body=${body}`;
-}
-
 /** The public read-only share page's URL (see app/r/[token]/page.tsx) — a plain domain/path, no protocol, matching how it's shown/copied everywhere in the product spec. */
 function buildShareReportUrl(shareToken: string): string {
   return `nextreport.in/r/${shareToken}`;
@@ -293,6 +287,15 @@ export function ReportUploadWizard({
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Email modal — sends the public share link via Resend (api/reports/[id]/
+  // send-email/route.ts), replacing the old mailto: Email button. Errors
+  // surface as a toast (per spec) rather than inline, so emailModalError
+  // only tracks the in-flight/loading state's button label, not a message.
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
@@ -821,6 +824,35 @@ export function ReportUploadWizard({
     await navigator.clipboard.writeText(driveSaveUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function openEmailModal() {
+    setEmailTo("");
+    setEmailMessage("");
+    setEmailModalOpen(true);
+  }
+
+  async function handleSendEmail() {
+    if (!reportId || !emailTo.trim()) return;
+    setEmailSending(true);
+    try {
+      const res = await fetch(`/api/reports/${reportId}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: emailTo.trim(), message: emailMessage.trim() || undefined }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success) {
+        showToast(json?.error || "Could not send the email. Please try again.", "error");
+        return;
+      }
+      showToast(`Report sent to ${emailTo.trim()}`, "success");
+      setEmailModalOpen(false);
+    } catch {
+      showToast("Could not reach the server. Please try again.", "error");
+    } finally {
+      setEmailSending(false);
+    }
   }
 
   /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 4 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
@@ -1823,13 +1855,14 @@ export function ReportUploadWizard({
                       <WhatsAppIcon />
                       WhatsApp
                     </a>
-                    <a
-                      href={buildEmailShareUrl(driveSaveUrl)}
+                    <button
+                      type="button"
+                      onClick={openEmailModal}
                       className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
                     >
                       <MailIcon />
                       Email
-                    </a>
+                    </button>
                   </div>
                   <button
                     onClick={() => {
@@ -1866,6 +1899,57 @@ export function ReportUploadWizard({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {emailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-lg border border-dash-border bg-dash-card p-5">
+            <h2 className="text-[16px] font-semibold text-dash-ink">Send Report by Email</h2>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-sm text-dash-ink-secondary">To</label>
+              <input
+                autoFocus
+                type="email"
+                required
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="client@example.com"
+                className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-sm text-dash-ink-secondary">Message (optional)</label>
+              <textarea
+                rows={3}
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Hi, please find your weekly performance report attached..."
+                className="w-full resize-none rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={emailSending}
+                className="rounded-md border border-dash-border px-4 py-2 text-[13px] text-dash-ink-secondary hover:bg-dash-bg disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                disabled={emailSending || !emailTo.trim()}
+                className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+              >
+                {emailSending ? "Sending…" : "Send Email →"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

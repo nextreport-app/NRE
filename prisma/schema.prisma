@@ -326,6 +326,11 @@ model Report {
   // null only for reports that predate this column, which fall back to
   // computing that same default label on the fly wherever they're read.
   displayName String?
+  // How many times "Send Report by Email" (the download screen's Email
+  // modal, see api/reports/[id]/send-email/route.ts) has successfully sent
+  // this report — capped at MAX_EMAILS_PER_REPORT there to prevent a report
+  // link from being used to spam arbitrary addresses.
+  emailsSent Int @default(0)
 
   // Snapshot of computed metrics for history/preview without re-parsing the
   // pptx — for a WEEKLY/MONTHLY report (not COMPARISON) this is now the full
