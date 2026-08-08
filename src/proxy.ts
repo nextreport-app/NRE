@@ -24,6 +24,11 @@ export default auth((req) => {
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith("/api/auth") ||
+    // Public read-only report share pages (/r/[shareToken]) — see
+    // app/r/[token]/page.tsx. Anyone with the unguessable token can open
+    // these without logging in; the page itself does its own
+    // token-not-found/not-COMPLETE 404 handling, not this middleware.
+    pathname.startsWith("/r/") ||
     // Razorpay calls this server-to-server with no NextAuth session — it
     // authenticates itself via its own HMAC webhook signature instead (see
     // api/payments/webhook/route.ts), not a session cookie. A session-based

@@ -306,8 +306,18 @@ model Report {
   // Cached Drive webViewLink once "Get Google Slides Link" has been used —
   // avoids creating a duplicate Drive file on every click.
   slidesUrl String?
+  // Unguessable 12-character token for the public read-only share page at
+  // /r/[shareToken] (see app/r/[token]/page.tsx) — generated once when the
+  // report is created (lib/share-token.ts) and never reused. Nullable/unique
+  // rather than required: reports created before this feature existed have
+  // no token, and a null column has no uniqueness conflict in Postgres
+  // (multiple NULLs are allowed under a UNIQUE constraint).
+  shareToken String? @unique
 
-  // Snapshot of computed metrics for history/preview without re-parsing the pptx
+  // Snapshot of computed metrics for history/preview without re-parsing the
+  // pptx — for a WEEKLY/MONTHLY report (not COMPARISON) this is now the full
+  // ShareReportData JSON (lib/nre/share-report.ts) the public share page
+  // reads, not just the small summary object the wizard/report list read.
   summaryJson  String? @db.Text
   errorMessage String? @db.Text
 

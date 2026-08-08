@@ -11,6 +11,13 @@ export interface ReportHistoryItem {
   status: string;
   reportType: string;
   createdAt: string; // ISO
+  /** Report.shareToken — null for a report generated before this feature existed, or a COMPARISON report (share pages don't support that data shape yet — see lib/nre/share-report.ts's header). */
+  shareToken: string | null;
+}
+
+/** The public read-only share page's URL — see app/r/[token]/page.tsx. */
+function shareReportUrl(shareToken: string): string {
+  return `nextreport.in/r/${shareToken}`;
 }
 
 function formatDate(iso: string): string {
@@ -76,6 +83,11 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
       else next.add(reportId);
       return next;
     });
+  }
+
+  async function handleCopyShareLink(shareToken: string) {
+    await navigator.clipboard.writeText(shareReportUrl(shareToken));
+    showToast("Share link copied!");
   }
 
   async function handleBulkDelete() {
@@ -193,6 +205,15 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
                   <a href={`/api/reports/${r.id}/download`} className="text-[13px] font-semibold text-dash-accent hover:underline">
                     Download
                   </a>
+                )}
+                {r.status === "COMPLETE" && r.shareToken && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyShareLink(r.shareToken!)}
+                    className="text-[13px] font-semibold text-dash-accent hover:underline"
+                  >
+                    Share Link
+                  </button>
                 )}
                 <button
                   type="button"

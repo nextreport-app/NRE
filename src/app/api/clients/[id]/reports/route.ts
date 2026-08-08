@@ -6,6 +6,8 @@ import { deleteReportFile } from "@/lib/storage";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
+import { buildShareReportData } from "@/lib/nre/share-report";
+import { generateShareToken } from "@/lib/share-token";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
@@ -268,6 +270,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         weekStart,
         weekEnd,
         fileName,
+        // Generated unconditionally, before the report even finishes
+        // rendering — the public share page checks status === "COMPLETE"
+        // before trusting summaryJson, so a token existing on a still-
+        // generating (or later FAILED) report is harmless.
+        shareToken: generateShareToken(),
         summaryJson: JSON.stringify({
           isPaused: data.isPaused,
           healthScore: data.cover.healthScore,
@@ -302,15 +309,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const filePath = await saveReportFile(report.id, pptxBuffer);
 
+    // Replaces the small create-time summaryJson above with the full
+    // payload the public share page reads (lib/nre/share-report.ts) — done
+    // here, not at create time, so a report that ends up FAILED never gets
+    // a share page's worth of (possibly stale-looking) data attached to it.
+    const shareData = buildShareReportData(data, aiCopyBySlideKey);
+
     await prisma.report.update({
       where: { id: report.id },
-      data: { status: "COMPLETE", filePath },
+      data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
     });
 
     // Saving to Google Drive is a separate, explicit action the user takes
     // from the download screen (see /api/reports/[id]/save-to-drive) — the
     // report is already fully generated and downloadable at this point.
-    return NextResponse.json({ ok: true, reportId: report.id });
+    return NextResponse.json({ ok: true, reportId: report.id, shareToken: report.shareToken });
   } catch (err) {
     console.error("[api:reports:generate] failed:", err);
     const message = err instanceof Error ? err.message : "Report generation failed.";

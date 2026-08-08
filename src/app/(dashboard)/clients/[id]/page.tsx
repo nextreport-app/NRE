@@ -78,6 +78,7 @@ export default async function ClientDetailPage({
     status: r.status,
     reportType: r.reportType,
     createdAt: r.createdAt.toISOString(),
+    shareToken: r.shareToken,
   }));
 
   return (

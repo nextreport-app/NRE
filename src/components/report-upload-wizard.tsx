@@ -6,6 +6,7 @@ import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import type { AvailableMetric, SelectedMetric } from "@/lib/nre/available-metrics";
+import { useToast } from "@/components/toast";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -155,6 +156,11 @@ function buildEmailShareUrl(reportUrl: string): string {
   return `mailto:?subject=${subject}&body=${body}`;
 }
 
+/** The public read-only share page's URL (see app/r/[token]/page.tsx) — a plain domain/path, no protocol, matching how it's shown/copied everywhere in the product spec. */
+function buildShareReportUrl(shareToken: string): string {
+  return `nextreport.in/r/${shareToken}`;
+}
+
 export function ReportUploadWizard({
   clientId,
   clientName,
@@ -172,6 +178,7 @@ export function ReportUploadWizard({
   initialLastDriveFolderName: string | null;
 }) {
   const [step, setStep] = useState<Step>(1);
+  const { showToast } = useToast();
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
       ? { id: initialLastDriveFolderId, name: initialLastDriveFolderName }
@@ -263,6 +270,7 @@ export function ReportUploadWizard({
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   // "Save to Google Drive" — an explicit, per-report action the user takes
   // right here on the download screen (see handleSaveToDrive below), not
   // anything the generate request itself touches. rememberedFolder mirrors
@@ -354,6 +362,7 @@ export function ReportUploadWizard({
     setGenerateMessage(null);
     setReportId(null);
     setDownloadUrl(null);
+    setShareToken(null);
     setDriveView("collapsed");
     setDriveSaving(false);
     setDriveFolderLinkInput("");
@@ -713,6 +722,7 @@ export function ReportUploadWizard({
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
+    setShareToken(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -737,7 +747,17 @@ export function ReportUploadWizard({
 
     setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
+    // Comparison reports don't get a share page (see share-report.ts's
+    // header) — json.shareToken is simply absent for that reportType, so
+    // this naturally stays null and the Share Report button never renders.
+    setShareToken(json.shareToken ?? null);
     setGenerateStatus("done");
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareToken) return;
+    await navigator.clipboard.writeText(buildShareReportUrl(shareToken));
+    showToast("Share link copied!");
   }
 
   async function handleSaveToDrive(folderId: string, folderName?: string) {
@@ -1651,6 +1671,19 @@ export function ReportUploadWizard({
                   Download PPTX
                 </a>
 
+                {/* Public read-only share page — always available once the
+                    report is generated (see share-token.ts/share-report.ts),
+                    independent of the Google Drive save flow below. */}
+                {shareToken && (
+                  <button
+                    type="button"
+                    onClick={handleCopyShareLink}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+                  >
+                    🔗 Share Report
+                  </button>
+                )}
+
                 {/* State 4 (not connected): nothing Drive-related renders at all. */}
                 {hasGoogleDriveConnected && driveView === "collapsed" && (
                   <div>
@@ -1762,6 +1795,14 @@ export function ReportUploadWizard({
                   >
                     {driveDisplayLabel()}
                   </a>
+                  {shareToken && (
+                    <p className="mb-3 text-[13px] text-dash-ink-secondary">
+                      Share link: {buildShareReportUrl(shareToken)} ·{" "}
+                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
+                        Copy
+                      </button>
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={handleCopyLink}
