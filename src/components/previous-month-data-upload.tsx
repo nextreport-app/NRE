@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
@@ -49,6 +49,17 @@ export function PreviousMonthDataUpload({
   const [error, setError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  // Fix 2 — the master checkbox's "indeterminate" (dash) state can only be
+  // set via the DOM property, not a JSX/HTML attribute, so it's applied
+  // imperatively here whenever the selection changes relative to the full
+  // campaign list.
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = selected.size > 0 && selected.size < campaigns.length;
+    }
+  }, [selected, campaigns]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,6 +143,13 @@ export function PreviousMonthDataUpload({
     });
   }
 
+  /** Fix 2 — native checkbox semantics: checking selects every campaign, unchecking clears the selection. A click while indeterminate (some selected) always lands on `checked`, so this also covers "some → all" without special-casing it. */
+  function handleSelectAllChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = e.target.checked ? new Set(campaigns) : new Set<string>();
+    setSelected(next);
+    void saveSelection(next);
+  }
+
   return (
     <div className="rounded-lg border border-dash-border bg-dash-card p-5">
       <div className="mb-3 space-y-2 text-[13px] text-dash-ink-secondary">
@@ -182,14 +200,31 @@ export function PreviousMonthDataUpload({
       {uploading && <p className="mt-2 text-[13px] text-dash-ink-secondary">Uploading…</p>}
       {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
 
+      {/* Fix 1 can legitimately leave zero campaigns (a file where nothing had real spend) — say so explicitly rather than silently showing nothing below the file card. */}
+      {fileName && campaigns.length === 0 && (
+        <p className="mt-4 border-t border-dash-border pt-4 text-[13px] text-dash-ink-secondary">
+          No campaigns with spend were found in this file.
+        </p>
+      )}
+
       {fileName && campaigns.length > 0 && (
         <div className="mt-4 border-t border-dash-border pt-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[13px] font-medium text-dash-ink">
-              Include campaigns ({selected.size} of {campaigns.length})
-            </p>
+            <label className="flex items-center gap-2 text-[13px] font-medium text-dash-ink">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={campaigns.length > 0 && selected.size === campaigns.length}
+                onChange={handleSelectAllChange}
+                className="h-4 w-4 accent-accent"
+              />
+              Select All
+            </label>
             {savingSelection && <span className="text-[12px] text-dash-ink-secondary">Saving…</span>}
           </div>
+          <p className="mb-2 text-[13px] text-dash-ink">
+            {selected.size} of {campaigns.length} campaigns selected
+          </p>
           <p className="mb-2 text-[12px] text-dash-ink-secondary">
             Uncheck any campaigns you don&rsquo;t manage — only checked campaigns are included in the
             Combined Total table&rsquo;s previous-month comparison.

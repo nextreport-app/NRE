@@ -139,7 +139,7 @@ function PreviousMonthDataStatus({ uploaded }: { uploaded: boolean }) {
         aria-hidden="true"
         className={`h-1.5 w-1.5 rounded-full ${uploaded ? "bg-emerald-500" : "bg-dash-accent"}`}
       />
-      {uploaded ? "Prev. month data ✓" : "Prev. month data missing"}
+      {uploaded ? "Prev. month ✓" : "Prev. month missing"}
     </p>
   );
 }

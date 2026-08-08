@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { extractCampaignNames, filterRowsByCampaigns, resolveCampaignSelection } from "../campaigns";
+import { extractCampaignNames, extractSpendingCampaignNames, filterRowsByCampaigns, resolveCampaignSelection } from "../campaigns";
 import type { NreRow } from "../columns";
 
 function row(campaignName: string): NreRow {
   return { _raw: {}, campaign_name: campaignName };
+}
+
+function rowWithSpend(campaignName: string, spend: string): NreRow {
+  return { _raw: {}, campaign_name: campaignName, spend };
 }
 
 describe("extractCampaignNames", () => {
@@ -24,6 +28,44 @@ describe("extractCampaignNames", () => {
 
   it("returns an empty array for no rows", () => {
     expect(extractCampaignNames([])).toEqual([]);
+  });
+});
+
+describe("extractSpendingCampaignNames — Fix 1: Previous Month Data's own campaign list", () => {
+  it("only includes campaigns whose total spend across all their rows exceeds a cent", () => {
+    const rows = [
+      rowWithSpend("Shoes", "100"),
+      rowWithSpend("Shoes", "50"),
+      rowWithSpend("Boots", "0"),
+      rowWithSpend("Hats", "0.00"),
+    ];
+    expect(extractSpendingCampaignNames(rows)).toEqual(["Shoes"]);
+  });
+
+  it("sums spend across multiple rows for the same campaign before filtering", () => {
+    const rows = [rowWithSpend("Shoes", "0.005"), rowWithSpend("Shoes", "0.006")];
+    // 0.005 + 0.006 = 0.011, just over the 0.01 threshold
+    expect(extractSpendingCampaignNames(rows)).toEqual(["Shoes"]);
+  });
+
+  it("excludes a campaign whose total spend is exactly at or under the 0.01 threshold", () => {
+    const rows = [rowWithSpend("Shoes", "0.01"), rowWithSpend("Boots", "0.009")];
+    expect(extractSpendingCampaignNames(rows)).toEqual([]);
+  });
+
+  it("sorts the filtered result alphabetically, not by first-seen or spend order", () => {
+    const rows = [rowWithSpend("Zebra Co", "10"), rowWithSpend("Acme Inc", "5"), rowWithSpend("Mid Corp", "1")];
+    expect(extractSpendingCampaignNames(rows)).toEqual(["Acme Inc", "Mid Corp", "Zebra Co"]);
+  });
+
+  it("ignores blank campaign names and unparseable spend values (treated as 0)", () => {
+    const rows = [rowWithSpend("", "500"), rowWithSpend("Shoes", "not a number"), rowWithSpend("Shoes", "10")];
+    expect(extractSpendingCampaignNames(rows)).toEqual(["Shoes"]);
+  });
+
+  it("returns an empty array when no rows have any real spend (the reported 586-campaign case)", () => {
+    const rows = Array.from({ length: 586 }, (_, i) => rowWithSpend(`Campaign ${i}`, "0"));
+    expect(extractSpendingCampaignNames(rows)).toEqual([]);
   });
 });
 

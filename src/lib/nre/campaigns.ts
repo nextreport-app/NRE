@@ -7,6 +7,7 @@
  */
 
 import type { NreRow } from "./columns";
+import { parseCellNum } from "./format";
 
 /** Distinct campaign names present in the uploaded CSV, in first-seen order. */
 export function extractCampaignNames(rows: NreRow[]): string[] {
@@ -19,6 +20,34 @@ export function extractCampaignNames(rows: NreRow[]): string[] {
     names.push(name);
   }
   return names;
+}
+
+// Sub-cent totals are treated as zero — floating-point/rounding noise on an
+// otherwise-inactive campaign shouldn't count as "real" spend.
+const MIN_CAMPAIGN_SPEND = 0.01;
+
+/**
+ * Previous Month Data's own campaign list (Fix 1): only campaigns whose
+ * total Amount Spent across every row sums to more than a cent, sorted
+ * alphabetically. Deliberately a separate function from
+ * extractCampaignNames above, not a shared/modified version of it — that
+ * one is also used by the main report wizard's own Campaigns step
+ * (reports/analyze/route.ts), which intentionally lists every campaign
+ * regardless of spend; this is scoped to Previous Month Data only, whose
+ * CSV is a full month/account export that can otherwise surface hundreds
+ * of long-paused, zero-spend campaigns in the selection checkbox list.
+ */
+export function extractSpendingCampaignNames(rows: NreRow[]): string[] {
+  const totalSpendByName = new Map<string, number>();
+  for (const row of rows) {
+    const name = (row.campaign_name || "").trim();
+    if (!name) continue;
+    totalSpendByName.set(name, (totalSpendByName.get(name) ?? 0) + parseCellNum(row.spend));
+  }
+  return [...totalSpendByName.entries()]
+    .filter(([, totalSpend]) => totalSpend > MIN_CAMPAIGN_SPEND)
+    .map(([name]) => name)
+    .sort((a, b) => a.localeCompare(b));
 }
 
 /**

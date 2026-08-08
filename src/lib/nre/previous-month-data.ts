@@ -11,7 +11,7 @@
 
 import { readPreviousMonthDataFile } from "@/lib/storage";
 import { parseUploadedFile } from "./parse-file";
-import { extractCampaignNames, filterRowsByCampaigns } from "./campaigns";
+import { extractSpendingCampaignNames, filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 
 /**
@@ -48,5 +48,5 @@ function parseSelectedCampaigns(raw: string | null | undefined): string[] | null
 export async function loadPreviousMonthDataCampaigns(previousMonthDataUrl: string): Promise<string[]> {
   const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
   const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
-  return extractCampaignNames(rows);
+  return extractSpendingCampaignNames(rows);
 }

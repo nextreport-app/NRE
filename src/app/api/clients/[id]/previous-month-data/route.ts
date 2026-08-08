@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileEntryFromFormData } from "@/lib/http-file";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
-import { extractCampaignNames } from "@/lib/nre/campaigns";
+import { extractSpendingCampaignNames } from "@/lib/nre/campaigns";
 import {
   deletePreviousMonthDataFile,
   previousMonthDataFileName,
@@ -49,7 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Re-extracted from this same parse rather than a second read, so the
   // saved selection always exactly matches what's actually in the file
   // that was just saved.
-  const campaigns = extractCampaignNames(parsed.rows);
+  const campaigns = extractSpendingCampaignNames(parsed.rows);
 
   try {
     const previousUrl = client.previousMonthDataUrl;
