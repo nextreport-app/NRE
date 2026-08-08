@@ -205,9 +205,11 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot4 = byKey("META", "results", "PURCHASES")!;
       slot5 = byKey("META", "cost_per_result", "COST PER PURCHASE")!;
       slot7 = byKey("META", "results_roas")!;
-      slot8 = hasHeader(headers, "adds to cart", "website adds to cart")
+      slot8 = hasHeader(headers, "adds to cart", "website adds to cart", "add to cart")
         ? byKey("META", "add_to_cart")!
-        : byKey("META", "landing_page_views")!;
+        : hasHeader(headers, "initiate checkout")
+          ? byKey("META", "initiate_checkout")!
+          : clicksAll;
       break;
     case "APP INSTALLS":
     case "MOBILE APP INSTALLS":

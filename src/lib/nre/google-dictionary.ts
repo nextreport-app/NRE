@@ -180,6 +180,17 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     perUnitOf: "conversions",
   },
   {
+    csvName: "cost per result",
+    key: "cost_per_conv",
+    label: "COST PER RESULT",
+    type: "secondary",
+    format: "currency",
+    objectives: ["search", "display", "performance_max"],
+    priority: 82,
+    explanation: "Average spend per completed conversion",
+    perUnitOf: "conversions",
+  },
+  {
     csvName: "conv. rate",
     key: "conv_rate",
     label: "CONV. RATE",
@@ -703,6 +714,18 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     perUnitOf: "interactions",
   },
 
+  // Phone Calls
+  {
+    csvName: "phone calls",
+    key: "phone_calls",
+    label: "PHONE CALLS",
+    type: "secondary",
+    format: "number",
+    objectives: ["search", "leads", "local"],
+    priority: 80,
+    explanation: "Number of phone calls from your ad",
+  },
+
   // Conversion value metrics
   {
     csvName: "conv. value / click",
@@ -815,8 +838,8 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     label: "RESULTS VALUE",
     type: "secondary",
     format: "currency",
-    objectives: ["youtube", "video"],
-    priority: 75,
+    objectives: ["youtube", "video", "performance_max"],
+    priority: 78,
     explanation: "Total value of all results",
   },
 ];

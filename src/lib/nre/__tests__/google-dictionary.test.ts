@@ -52,6 +52,26 @@ describe("GOOGLE_METRIC_DICTIONARY — data integrity", () => {
   });
 });
 
+describe("Round B — new/aliased Google dictionary entries", () => {
+  it("adds phone calls and the cost per result alias", () => {
+    expect(findGoogleMetric("phone calls")?.key).toBe("phone_calls");
+    expect(findGoogleMetric("cost per result")?.key).toBe("cost_per_conv");
+    expect(findGoogleMetric("cost per result")?.perUnitOf).toBe("conversions");
+  });
+
+  it("widens results value's objectives to include performance_max", () => {
+    const entry = findGoogleMetric("results value");
+    expect(entry?.key).toBe("results_value");
+    expect(entry?.objectives).toContain("performance_max");
+  });
+
+  it("existing aliases (avg. cost / conv. value per cost / search impr. share) are already present", () => {
+    expect(findGoogleMetric("avg. cost")?.key).toBe("avg_cost");
+    expect(findGoogleMetric("conv. value / cost")?.key).toBe("roas");
+    expect(findGoogleMetric("search impr. share")?.key).toBe("search_impr_share");
+  });
+});
+
 describe("Part 2 — autoClassifyUnknownColumn (Google)", () => {
   it("returns null for a column matching a skip pattern", () => {
     for (const col of ["Campaign status", "Budget name", "Currency code"]) {

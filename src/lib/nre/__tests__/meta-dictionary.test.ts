@@ -111,6 +111,34 @@ describe("Fix 3 — perUnitOf recompute metadata", () => {
   });
 });
 
+describe("Round B — new/aliased Meta dictionary entries", () => {
+  it("adds leads forms / website forms / cost per website lead / on-facebook leads", () => {
+    expect(findMetaMetric("leads forms")?.key).toBe("results");
+    expect(findMetaMetric("website forms")?.key).toBe("website_leads");
+    expect(findMetaMetric("cost per website lead")?.key).toBe("cost_per_website_lead");
+    expect(findMetaMetric("cost per website lead")?.perUnitOf).toBe("website_leads");
+    expect(findMetaMetric("on-facebook leads")?.key).toBe("on_fb_leads");
+  });
+
+  it("adds purchases conversion value / purchase roas aliases / add to cart / initiate checkout chain", () => {
+    expect(findMetaMetric("purchases conversion value")?.key).toBe("purchases_conversion_value");
+    expect(findMetaMetric("purchase roas (return on ad spend)")?.key).toBe("results_roas");
+    expect(findMetaMetric("purchase roas")?.key).toBe("results_roas");
+    expect(findMetaMetric("roas")?.key).toBe("results_roas");
+    expect(findMetaMetric("add to cart")?.key).toBe("add_to_cart");
+    expect(findMetaMetric("cost per add to cart")?.key).toBe("cost_per_add_to_cart");
+    expect(findMetaMetric("cost per add to cart")?.perUnitOf).toBe("add_to_cart");
+    expect(findMetaMetric("initiate checkout")?.key).toBe("initiate_checkout");
+    expect(findMetaMetric("cost per initiate checkout")?.key).toBe("cost_per_initiate_checkout");
+    expect(findMetaMetric("cost per initiate checkout")?.perUnitOf).toBe("initiate_checkout");
+  });
+
+  it("bare 'spend' aliases to the same key as 'amount spent'", () => {
+    expect(findMetaMetric("spend")?.key).toBe("spend");
+    expect(findMetaMetric("amount spent")?.key).toBe("spend");
+  });
+});
+
 describe("Part 2 — autoClassifyUnknownColumn", () => {
   it("returns null for a column matching a skip pattern (name/status/delivery/level/setting/starts/ends/type/id/budget/currency/ranking)", () => {
     for (const col of ["Ad name", "Delivery status", "Budget type", "Attribution setting", "Currency code", "Quality Ranking"]) {

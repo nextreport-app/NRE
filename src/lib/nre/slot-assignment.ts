@@ -151,14 +151,19 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot4 = slot("results", "PURCHASES", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER PURCHASE", "currency", baseline.cprValue);
       slot7 = slot("results_roas", "ROAS", "ratio", v("results_roas"));
-      // Product spec: "ADD TO CART (if present) or ROAS (if present) or
-      // LANDING PAGE VIEWS" — ROAS is already this case's own slot 7, so
-      // that middle fallback tier is skipped here to avoid a duplicate.
+      // Product spec: "prioritize ADD TO CART when available, then
+      // INITIATE CHECKOUT, then ROAS" — ROAS is already this case's own
+      // slot 7, so that final fallback tier is skipped here (same
+      // avoid-a-duplicate reasoning as every other slot 8 substitution in
+      // this file) in favor of the default CLICKS (ALL) pick.
       const addToCart = v("add_to_cart");
+      const initiateCheckout = v("initiate_checkout");
       slot8 =
         addToCart !== "—"
           ? slot("add_to_cart", "ADD TO CART", "number", addToCart)
-          : slot("landing_page_views", "LANDING PAGE VIEWS", "number", v("landing_page_views"));
+          : initiateCheckout !== "—"
+            ? slot("initiate_checkout", "INITIATE CHECKOUT", "number", initiateCheckout)
+            : clicksAllSlot8();
       break;
     }
 

@@ -57,9 +57,16 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
     expect(slots[7].value).not.toBe("—");
   });
 
-  it("PURCHASES: slot 8 falls back to LANDING PAGE VIEWS when ADD TO CART isn't in the CSV (skipping ROAS, already slot 7)", () => {
+  it("PURCHASES: slot 8 falls back to INITIATE CHECKOUT when ADD TO CART isn't in the CSV", () => {
+    const rows = [row({ "Amount spent": "100", "Initiate checkout": "40" })];
+    const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
+    expect(slots[7].key).toBe("initiate_checkout");
+    expect(slots[7].value).not.toBe("—");
+  });
+
+  it("PURCHASES: slot 8 falls back to the default CLICKS (ALL) when neither ADD TO CART nor INITIATE CHECKOUT is in the CSV (skipping ROAS, already slot 7)", () => {
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), [], "$");
-    expect(slots[7].key).toBe("landing_page_views");
+    expect(slots[7].key).toBe("clicks_all");
   });
 
   it("never assigns the same key to two different slots among 4/5/7/8, across every documented case", () => {

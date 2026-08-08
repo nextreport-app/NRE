@@ -229,6 +229,18 @@ model Client {
   // these two were asked for.
   previousMonthDataUrl       String?
   previousMonthDataUpdatedAt DateTime?
+  // previousMonthSelectedCampaigns: JSON string[] of campaign names to
+  // include from previousMonthDataUrl's own CSV — set right after upload
+  // (defaults to every campaign found in the file) and editable afterward
+  // from the same Previous Month Data card (see
+  // components/previous-month-data-upload.tsx's campaign checkbox list).
+  // `null` means "include everything" (a client that predates this column,
+  // or whose file was uploaded before this feature existed) — matches
+  // lastDeselectedCampaigns' own null-means-unfiltered convention above.
+  // Read by lib/nre/previous-month-data.ts's loadPreviousMonthDataRows,
+  // which filters the Period row's own rows down to this set before
+  // report-data.ts ever aggregates them.
+  previousMonthSelectedCampaigns String? @db.Text
 
   // Last Google Drive folder this client's reports were saved to (download
   // screen's "Save to Google Drive" button, report-upload-wizard.tsx) —

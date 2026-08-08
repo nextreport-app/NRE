@@ -7,6 +7,7 @@ import { DeleteClientButton } from "@/components/delete-client-button";
 import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
+import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
 
 const REPORT_HISTORY_LIMIT = 10;
 
@@ -44,6 +45,30 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
     take: REPORT_HISTORY_LIMIT,
   });
+
+  // Part 1 — re-parsed server-side on every page load (rather than stored)
+  // so the checkbox list's full universe always matches the file's actual
+  // current contents, even if it was replaced outside this render. A
+  // corrupt/unreadable file (rare — it already passed this same parse at
+  // upload time) degrades to an empty list rather than failing the page.
+  let previousMonthCampaigns: string[] = [];
+  if (client.previousMonthDataUrl) {
+    try {
+      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+    } catch {
+      previousMonthCampaigns = [];
+    }
+  }
+  const previousMonthSelectedCampaigns: string[] | null = client.previousMonthSelectedCampaigns
+    ? (() => {
+        try {
+          const parsed = JSON.parse(client.previousMonthSelectedCampaigns!);
+          return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === "string") : null;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   const reportItems = reports.map((r) => ({
     id: r.id,
@@ -116,6 +141,8 @@ export default async function ClientDetailPage({
               clientId={client.id}
               initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
               initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+              initialCampaigns={previousMonthCampaigns}
+              initialSelectedCampaigns={previousMonthSelectedCampaigns}
             />
           </Card>
         </div>
