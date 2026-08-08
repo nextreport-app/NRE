@@ -130,6 +130,11 @@ export const clientSchema = z.object({
     .optional()
     .transform((v) => (typeof v === "number" && !Number.isNaN(v) ? v : null)),
   template: z.enum(TEMPLATES),
+  notes: z
+    .string()
+    .max(1000, "Notes must be 1000 characters or fewer")
+    .optional()
+    .transform((v) => (v && v.trim() ? v.trim() : null)),
 });
 
 export type ClientInput = z.infer<typeof clientSchema>;

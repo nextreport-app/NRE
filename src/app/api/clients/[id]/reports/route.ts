@@ -8,6 +8,7 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
 import { buildShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
+import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
@@ -193,6 +194,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           reportType: "COMPARISON",
           platform: "META",
           fileName,
+          displayName: defaultReportDisplayName(
+            "COMPARISON",
+            null,
+            null,
+            `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`,
+          ),
           summaryJson: JSON.stringify({
             isPaused: comparisonData.isPaused,
             periodALabel: comparisonData.periodALabel,
@@ -270,6 +277,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         weekStart,
         weekEnd,
         fileName,
+        displayName: defaultReportDisplayName(data.reportType, weekStart, weekEnd),
         // Generated unconditionally, before the report even finishes
         // rendering — the public share page checks status === "COMPLETE"
         // before trusting summaryJson, so a token existing on a still-

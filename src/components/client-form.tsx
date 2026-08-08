@@ -19,12 +19,14 @@ export type ClientFormValues = {
   timezone: string;
   monthlyBudget: number | null;
   template: (typeof TEMPLATES)[number];
+  notes: string;
 };
 
 const CURRENCY_SYMBOL = CURRENCY_SYMBOLS;
 
 const ACCEPTED_LOGO_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const NOTES_MAX_LENGTH = 1000;
 
 export function ClientForm({
   clientId,
@@ -64,9 +66,15 @@ export function ClientForm({
     timezone: initial?.timezone ?? "Asia/Kolkata",
     monthlyBudget: initial?.monthlyBudget ?? null,
     template: initial?.template ?? "DARK",
+    notes: initial?.notes ?? "",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Read-only card by default whenever there's already saved content to
+  // show at a glance (returning to an existing client's page); a blank
+  // client (nothing to show yet, or a brand-new client being created) opens
+  // straight into the editable textarea instead of an empty "no notes" card.
+  const [notesEditing, setNotesEditing] = useState(!initial?.notes);
 
   // Logo: staged separately from the JSON client fields above and uploaded
   // via a second request after the client is saved (see handleSubmit) —
@@ -156,6 +164,7 @@ export function ClientForm({
 
     setLoading(false);
     showToast(savedMessage ?? (clientId ? "Client updated." : "Client created."));
+    if (values.notes) setNotesEditing(false);
 
     if (inline) {
       router.refresh();
@@ -276,6 +285,48 @@ export function ClientForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Client Notes</label>
+        {notesEditing ? (
+          <>
+            <textarea
+              rows={4}
+              maxLength={NOTES_MAX_LENGTH}
+              value={values.notes}
+              onChange={(e) => set("notes", e.target.value.slice(0, NOTES_MAX_LENGTH))}
+              placeholder="Add notes about this client — industry, key contacts, reporting preferences, special requirements..."
+              className="w-full resize-y rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+            />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-[12px] text-dash-ink-secondary">
+                {values.notes.length}/{NOTES_MAX_LENGTH}
+              </span>
+              {values.notes && (
+                <button
+                  type="button"
+                  onClick={() => setNotesEditing(false)}
+                  className="text-[12px] font-medium text-dash-accent hover:underline"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNotesEditing(true)}
+            className="block w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-left text-sm hover:border-dash-accent"
+          >
+            {values.notes ? (
+              <span className="whitespace-pre-wrap text-dash-ink">{values.notes}</span>
+            ) : (
+              <span className="italic text-dash-ink-secondary">No notes added yet — click to add.</span>
+            )}
+          </button>
+        )}
       </div>
 
       {error && <p className="text-sm text-dash-error">{error}</p>}

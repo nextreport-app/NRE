@@ -275,6 +275,12 @@ model Client {
   // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
   lastDateSelection       String? @db.Text
 
+  // Free-text notes on the client's own Manage page (industry, key
+  // contacts, reporting preferences, special requirements, ...) — plain
+  // display copy, never read by the NRE engine or any report. 1000-char
+  // limit enforced by the form/validator, not the column itself.
+  notes String? @db.Text
+
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports Report[]
 
@@ -313,6 +319,13 @@ model Report {
   // no token, and a null column has no uniqueness conflict in Postgres
   // (multiple NULLs are allowed under a UNIQUE constraint).
   shareToken String? @unique
+  // User-editable display name shown in the report history lists (pencil-
+  // icon inline rename — see components/report-history-list.tsx). Set to
+  // the auto-generated default ("Weekly — July 30 - August 5", see
+  // lib/nre/report-display-name.ts) at creation time so it's never blank;
+  // null only for reports that predate this column, which fall back to
+  // computing that same default label on the fly wherever they're read.
+  displayName String?
 
   // Snapshot of computed metrics for history/preview without re-parsing the
   // pptx — for a WEEKLY/MONTHLY report (not COMPARISON) this is now the full

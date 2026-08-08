@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useToast } from "@/components/toast";
+import { shareReportUrl, formatReportDate } from "@/lib/report-list-shared";
 
 export interface ReportHistoryItem {
   id: string;
@@ -13,19 +15,8 @@ export interface ReportHistoryItem {
   createdAt: string; // ISO
   /** Report.shareToken — null for a report generated before this feature existed, or a COMPARISON report (share pages don't support that data shape yet — see lib/nre/share-report.ts's header). */
   shareToken: string | null;
-}
-
-/** The public read-only share page's URL — see app/r/[token]/page.tsx. */
-function shareReportUrl(shareToken: string): string {
-  return `nextreport.in/r/${shareToken}`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-}
-
-function reportLabel(r: ReportHistoryItem): string {
-  return r.fileName || (r.weekStart && r.weekEnd ? `${r.weekStart} – ${r.weekEnd}` : r.id);
+  /** Report.displayName, already resolved to the auto-generated default (lib/nre/report-display-name.ts) when no custom name was saved — always a non-empty display string, never re-derived client-side. */
+  displayName: string;
 }
 
 function weekPeriodLabel(r: ReportHistoryItem): string {
@@ -44,8 +35,26 @@ function weekPeriodLabel(r: ReportHistoryItem): string {
  * than a native confirm() dialog, so it can be styled and labeled exactly
  * as specified). Bulk delete uses the same inline-confirm pattern at the
  * list level and a single DELETE /api/clients/[id]/reports call.
+ *
+ * Feature 4 — each row's name is inline-editable (pencil icon → text
+ * input, Enter/blur to save) via PATCH /api/clients/[id]/reports/[reportId].
+ * An empty save reverts to (and re-saves) the auto-generated default rather
+ * than leaving a blank name.
+ *
+ * Feature 1 — "View all reports" link shown only when this client has more
+ * reports than the 10 shown here (hasMoreReports, computed server-side by
+ * comparing the client's total report count against this list's length).
  */
-export function ReportHistoryList({ clientId, initialReports }: { clientId: string; initialReports: ReportHistoryItem[] }) {
+export function ReportHistoryList({
+  clientId,
+  initialReports,
+  hasMoreReports = false,
+}: {
+  clientId: string;
+  initialReports: ReportHistoryItem[];
+  /** True when the client has reports beyond the ones shown here — see clients/[id]/page.tsx's total-count query. Drives the "View all reports →" link. */
+  hasMoreReports?: boolean;
+}) {
   const { showToast } = useToast();
   const [reports, setReports] = useState(initialReports);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -53,6 +62,8 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   async function handleDelete(reportId: string) {
     setDeletingId(reportId);
@@ -88,6 +99,29 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
   async function handleCopyShareLink(shareToken: string) {
     await navigator.clipboard.writeText(shareReportUrl(shareToken));
     showToast("Share link copied!");
+  }
+
+  function startEditing(r: ReportHistoryItem) {
+    setEditingId(r.id);
+    setEditValue(r.displayName);
+  }
+
+  async function commitRename(reportId: string) {
+    const trimmed = editValue.trim();
+    setEditingId(null);
+    const current = reports.find((r) => r.id === reportId);
+    if (!trimmed || !current || trimmed === current.displayName) return;
+
+    const res = await fetch(`/api/clients/${clientId}/reports/${reportId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: trimmed }),
+    });
+    if (res.ok) {
+      setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, displayName: trimmed } : r)));
+    } else {
+      showToast("Could not rename the report. Please try again.", "error");
+    }
   }
 
   async function handleBulkDelete() {
@@ -164,18 +198,46 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
       <ul className="divide-y divide-dash-border rounded-lg border border-dash-border bg-dash-card">
         {reports.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <input
                 type="checkbox"
                 checked={selectedIds.has(r.id)}
                 onChange={() => toggleSelected(r.id)}
-                aria-label={`Select ${reportLabel(r)}`}
+                aria-label={`Select ${r.displayName}`}
                 className="h-4 w-4 shrink-0 rounded border-dash-border accent-dash-accent"
               />
-              <div className="min-w-0">
-                <p className="truncate text-[15px] text-dash-ink">{reportLabel(r)}</p>
+              <div className="min-w-0 flex-1">
+                {editingId === r.id ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => commitRename(r.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitRename(r.id);
+                      } else if (e.key === "Escape") {
+                        setEditingId(null);
+                      }
+                    }}
+                    className="w-full max-w-sm rounded border border-dash-accent bg-dash-bg px-2 py-0.5 text-[15px] text-dash-ink outline-none"
+                  />
+                ) : (
+                  <p className="flex items-center gap-1.5 text-[15px] text-dash-ink">
+                    <span className="truncate">{r.displayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(r)}
+                      aria-label={`Rename ${r.displayName}`}
+                      className="shrink-0 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                    >
+                      ✏️
+                    </button>
+                  </p>
+                )}
                 <p className="mt-0.5 text-[13px] text-dash-ink-secondary">
-                  Generated {formatDate(r.createdAt)} · Week: {weekPeriodLabel(r)}
+                  Generated {formatReportDate(r.createdAt)} · Week: {weekPeriodLabel(r)}
                 </p>
               </div>
             </div>
@@ -227,7 +289,14 @@ export function ReportHistoryList({ clientId, initialReports }: { clientId: stri
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[13px] text-dash-ink-secondary">Showing your 10 most recent reports.</p>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <p className="text-[13px] text-dash-ink-secondary">Showing your {reports.length} most recent reports.</p>
+        {hasMoreReports && (
+          <Link href={`/clients/${clientId}/reports`} className="text-[13px] font-semibold text-dash-accent hover:underline">
+            View all reports →
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

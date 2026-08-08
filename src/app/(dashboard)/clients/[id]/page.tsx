@@ -4,10 +4,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientForm } from "@/components/client-form";
 import { DeleteClientButton } from "@/components/delete-client-button";
+import { DuplicateClientButton } from "@/components/duplicate-client-button";
 import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
+import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 
 const REPORT_HISTORY_LIMIT = 10;
 
@@ -40,11 +42,14 @@ export default async function ClientDetailPage({
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
-  const reports = await prisma.report.findMany({
-    where: { clientId: client.id },
-    orderBy: { createdAt: "desc" },
-    take: REPORT_HISTORY_LIMIT,
-  });
+  const [reports, reportCount] = await Promise.all([
+    prisma.report.findMany({
+      where: { clientId: client.id },
+      orderBy: { createdAt: "desc" },
+      take: REPORT_HISTORY_LIMIT,
+    }),
+    prisma.report.count({ where: { clientId: client.id } }),
+  ]);
 
   // Part 1 — re-parsed server-side on every page load (rather than stored)
   // so the checkbox list's full universe always matches the file's actual
@@ -79,6 +84,7 @@ export default async function ClientDetailPage({
     reportType: r.reportType,
     createdAt: r.createdAt.toISOString(),
     shareToken: r.shareToken,
+    displayName: r.displayName ?? defaultReportDisplayName(r.reportType, r.weekStart, r.weekEnd),
   }));
 
   return (
@@ -108,7 +114,7 @@ export default async function ClientDetailPage({
 
           <Card>
             <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
-            <ReportHistoryList clientId={client.id} initialReports={reportItems} />
+            <ReportHistoryList clientId={client.id} initialReports={reportItems} hasMoreReports={reportCount > reportItems.length} />
           </Card>
         </div>
 
@@ -124,6 +130,7 @@ export default async function ClientDetailPage({
                 timezone: client.timezone,
                 monthlyBudget: client.monthlyBudget,
                 template: client.template,
+                notes: client.notes ?? "",
               }}
               hasLogo={!!client.logoUrl}
               submitLabel="Save Changes"
@@ -133,6 +140,9 @@ export default async function ClientDetailPage({
             />
             <div className="mt-4">
               <DeleteClientButton clientId={client.id} />
+            </div>
+            <div className="mt-2">
+              <DuplicateClientButton clientId={client.id} clientName={client.accountName} />
             </div>
           </Card>
 

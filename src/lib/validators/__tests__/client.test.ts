@@ -87,6 +87,45 @@ describe("clientSchema", () => {
   });
 });
 
+describe("clientSchema — notes (Feature 2)", () => {
+  function parse(notes: unknown) {
+    return clientSchema.safeParse({
+      accountName: "Test Client",
+      currency: "INR",
+      timezone: "Asia/Kolkata",
+      template: "DARK",
+      notes,
+    });
+  }
+
+  it("accepts a notes string up to 1000 characters", () => {
+    const result = parse("a".repeat(1000));
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a notes string over 1000 characters", () => {
+    const result = parse("a".repeat(1001));
+    expect(result.success).toBe(false);
+  });
+
+  it("trims whitespace and converts an empty/whitespace-only string to null", () => {
+    expect(parse("  Some notes  ").success && parse("  Some notes  ").data?.notes).toBe("Some notes");
+    expect(parse("   ").success && parse("   ").data?.notes).toBeNull();
+    expect(parse("").success && parse("").data?.notes).toBeNull();
+  });
+
+  it("is optional — omitting it entirely is valid and defaults to null", () => {
+    const result = clientSchema.safeParse({
+      accountName: "Test Client",
+      currency: "INR",
+      timezone: "Asia/Kolkata",
+      template: "DARK",
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.notes).toBeNull();
+  });
+});
+
 describe("TIMEZONE_GROUPS", () => {
   const ALL_REQUESTED_TIMEZONES = [
     "America/Toronto",
