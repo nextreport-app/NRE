@@ -9,10 +9,12 @@ import { buildCombinedTotalTableGrid, type CoverData, type Platform, type Report
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
   cloneShapeAsTag,
+  ensureCardLabelValueGap,
   enforceMinFontSize,
   findCardIconRelId,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
+  ptToEmu,
   replaceCardIcon,
   replaceCardLabel,
   replaceLiteralText,
@@ -23,8 +25,13 @@ import {
 } from "./ooxml";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
-import { emuToPt, fitFontSizePt } from "./text-fit";
+import { emuToPt, fitCardLabel, fitFontSizePt } from "./text-fit";
 import { resolveMetricIconId, type MetricIconId } from "./metric-icons";
+
+// Metric card label/value spacing fix — see ensureCardLabelValueGap's own
+// doc comment in ooxml.ts. Applied to every one of the 8 card slots,
+// unconditionally, regardless of label length.
+const MIN_CARD_LABEL_VALUE_GAP_EMU = ptToEmu(4);
 
 // ACCOUNT_NAME shape (ppt/slides/slide1.xml, cover template): cx="5300000"
 // lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
@@ -324,6 +331,16 @@ export function buildCampaignOrAdSetSlideXml(
       },
     );
 
+    // Fix 4 (readability pass) floor, moved here (before any card-label
+    // sizing below) rather than at the very end: it must run BEFORE the
+    // label auto-shrink fix's own per-label sizePt overrides, since a
+    // long label is deliberately sized below this 12pt floor — if the
+    // floor ran last (as it used to, unconditionally, over the whole
+    // slide) it would immediately undo that shrink. Running it here still
+    // catches every card label untouched by the loop below (the "fewer
+    // than 8 metrics assigned" dash case), same as before.
+    xml = enforceMinFontSize(xml, 12);
+
     // Discover every slot's own native icon relationship id BEFORE any
     // slot's {{METRIC_*}} tag text is touched — findCardIconRelId locates
     // it relative to that still-untouched tag.
@@ -346,17 +363,28 @@ export function buildCampaignOrAdSetSlideXml(
       // otherwise it would render as a raw, unfilled {{RESULT_LABEL}}/
       // {{COST_LABEL}}/{{METRIC_8_LABEL}} placeholder.
       if (!metric) {
+        // Card label/value spacing fix — applied to every slot
+        // unconditionally, including this dashed-out one, while `tag` is
+        // still present in the xml to locate the value shape by (it gets
+        // consumed by the replaceTagRun call right after).
+        xml = ensureCardLabelValueGap(xml, tag, MIN_CARD_LABEL_VALUE_GAP_EMU);
         xml = replaceTagRun(xml, tag, "—").xml;
         if (labelTag) xml = replaceTagRun(xml, labelTag, "—").xml;
         return;
       }
+      // Metric card label overflow fix: shrink long labels by a fixed
+      // amount based on character-count band, truncating with "..." past
+      // 35 characters where even the largest reduction can't reliably
+      // keep the label on one line.
+      const { text: labelText, sizePt: labelSizePt } = fitCardLabel(metric.label);
       if (labelTag) {
-        xml = replaceTagRun(xml, labelTag, metric.label).xml;
+        xml = replaceTagRun(xml, labelTag, labelText, { sizePt: labelSizePt }).xml;
       } else {
-        xml = replaceCardLabel(xml, tag, metric.label);
+        xml = replaceCardLabel(xml, tag, labelText, { sizePt: labelSizePt });
       }
       const relId = nativeIconRelIds[resolveMetricIconId(metric)];
       if (relId) xml = replaceCardIcon(xml, tag, relId);
+      xml = ensureCardLabelValueGap(xml, tag, MIN_CARD_LABEL_VALUE_GAP_EMU);
       xml = replaceTagRun(xml, tag, metric.value).xml;
     });
   } else {
@@ -386,6 +414,11 @@ export function buildCampaignOrAdSetSlideXml(
       },
     );
     xml = applyGoogleAdsCardLabels(xml, platform);
+    // Fix 4 (readability pass) floor — this branch has no per-label
+    // overrides at all, so (unlike the dynamic-slots branch above) there's
+    // nothing for this to clobber; kept in the same relative position as
+    // before this change.
+    xml = enforceMinFontSize(xml, 12);
   }
 
   const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
@@ -400,14 +433,7 @@ export function buildCampaignOrAdSetSlideXml(
   const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true });
-  // Fix 4 (readability pass) — floor pass for anything not already covered
-  // above by an explicit sizePt override: catches the template's own
-  // static card labels ("AD SPEND"/"REACH"/"IMPRESSIONS"/"CTR (All)"/
-  // "CPC (All)", plus {{RESULT_LABEL}}/{{COST_LABEL}} once retexted),
-  // stored at 11.5pt in templates/dark.pptx and never routed through a
-  // styleOverride (replaceCardLabel only swaps their text, not their
-  // styling).
-  return enforceMinFontSize(xml, 12);
+  return xml;
 }
 
 /** Port of the isPaused branch's dedicated message slide (also a campaign-template clone). */

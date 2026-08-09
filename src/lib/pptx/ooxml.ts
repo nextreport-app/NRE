@@ -257,8 +257,16 @@ export function insertShapeBeforeSpTreeClose(xml: string, shapeXml: string): str
  * immediately preceding sibling `<p:sp>...</p:sp>` (the label), then replace
  * that shape's single `<a:t>` run's text, preserving all of its own styling.
  * No-op (returns xml unchanged) if `valueLocatorText` isn't found.
+ *
+ * `styleOverride` (added for the metric-card label auto-shrink fix) is
+ * applied to the label's own `<a:rPr>` block the same way applyStyleOverride
+ * already does for replaceTagRun — this was previously untouched (text-only
+ * swap), which is why fill-tags.ts's enforceMinFontSize floor pass exists:
+ * every card label sat at the template's stored 11.5pt with no way to
+ * override it per-label. A caller wanting a different size now can pass one
+ * directly instead of relying on that blanket floor.
  */
-export function replaceCardLabel(xml: string, valueLocatorText: string, newLabelText: string): string {
+export function replaceCardLabel(xml: string, valueLocatorText: string, newLabelText: string, styleOverride?: StyleOverride): string {
   const valueIdx = xml.indexOf(valueLocatorText);
   if (valueIdx === -1) return xml;
 
@@ -272,9 +280,62 @@ export function replaceCardLabel(xml: string, valueLocatorText: string, newLabel
 
   const labelBlockEnd = labelSpEnd + "</p:sp>".length;
   const labelBlock = xml.slice(labelSpStart, labelBlockEnd);
-  const newLabelBlock = labelBlock.replace(/<a:t>[^<]*<\/a:t>/, `<a:t>${escapeXmlText(newLabelText)}</a:t>`);
+  let newLabelBlock = labelBlock.replace(/<a:t>[^<]*<\/a:t>/, `<a:t>${escapeXmlText(newLabelText)}</a:t>`);
+
+  if (styleOverride) {
+    const rPrRegex = /<a:rPr\b[^>]*(?:\/>|>[\s\S]*?<\/a:rPr>)/;
+    const rPrMatch = newLabelBlock.match(rPrRegex);
+    if (rPrMatch) {
+      newLabelBlock = newLabelBlock.replace(rPrRegex, applyStyleOverride(rPrMatch[0], styleOverride));
+    }
+  }
 
   return xml.slice(0, labelSpStart) + newLabelBlock + xml.slice(labelBlockEnd);
+}
+
+/**
+ * Metric card label/value spacing fix — ensures at least `minGapEmu`
+ * between the bottom of a metric card's label shape and the top of its
+ * value shape (located via `valueLocatorText`, the value's own {{TAG}} —
+ * must be called BEFORE that tag's text is replaced, same ordering
+ * constraint as findCardIconRelId/replaceCardIcon above, since this locates
+ * the value shape the same way). Uses the same "value's immediately
+ * preceding <p:sp> sibling is the label" structural fact replaceCardLabel
+ * relies on. Only ever pushes the value shape DOWN — a template whose
+ * built-in gap already meets the minimum is left untouched, never pulled
+ * tighter. No-op if `valueLocatorText` isn't found or either shape's
+ * geometry can't be read.
+ */
+export function ensureCardLabelValueGap(xml: string, valueLocatorText: string, minGapEmu: number): string {
+  const valueIdx = xml.indexOf(valueLocatorText);
+  if (valueIdx === -1) return xml;
+
+  const valueSpStart = xml.lastIndexOf("<p:sp>", valueIdx);
+  if (valueSpStart === -1) return xml;
+  const valueSpEndIdx = xml.indexOf("</p:sp>", valueIdx);
+  if (valueSpEndIdx === -1) return xml;
+  const valueSpEnd = valueSpEndIdx + "</p:sp>".length;
+
+  const labelSpEnd = xml.lastIndexOf("</p:sp>", valueSpStart);
+  if (labelSpEnd === -1) return xml;
+  const labelSpStart = xml.lastIndexOf("<p:sp>", labelSpEnd);
+  if (labelSpStart === -1) return xml;
+
+  const labelBlock = xml.slice(labelSpStart, labelSpEnd + "</p:sp>".length);
+  const valueBlock = xml.slice(valueSpStart, valueSpEnd);
+
+  const labelOff = labelBlock.match(/<a:off x="\d+" y="(\d+)"/);
+  const labelExt = labelBlock.match(/<a:ext cx="\d+" cy="(\d+)"/);
+  const valueOff = valueBlock.match(/<a:off x="\d+" y="(\d+)"/);
+  if (!labelOff || !labelExt || !valueOff) return xml;
+
+  const labelBottom = Number(labelOff[1]) + Number(labelExt[1]);
+  const currentValueY = Number(valueOff[1]);
+  const minValueY = labelBottom + minGapEmu;
+  if (currentValueY >= minValueY) return xml;
+
+  const newValueBlock = valueBlock.replace(/(<a:off x="\d+" y=")\d+(")/, `$1${minValueY}$2`);
+  return xml.slice(0, valueSpStart) + newValueBlock + xml.slice(valueSpEnd);
 }
 
 /**

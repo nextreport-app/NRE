@@ -65,3 +65,37 @@ export function fitFontSizePt(text: string, maxWidthPt: number, candidateSizesPt
 export function emuToPt(emu: number): number {
   return emu / 12700;
 }
+
+/**
+ * Metric card label overflow fix (campaign/ad-set slide cards) — unlike
+ * the width-estimation approach above, the spec here is exact fixed
+ * character-count bands, not "measure and find whatever fits," so this is
+ * plain length-based arithmetic. CARD_LABEL_BASE_SIZE_PT is 12pt because
+ * that's the *effective* current label size: the template's own stored
+ * card-label runs are 11.5pt, but fill-tags.ts's readability-pass floor
+ * (enforceMinFontSize) already bumps every one of them up to 12pt today —
+ * "current size" for a short label means what's actually on screen now.
+ */
+const CARD_LABEL_BASE_SIZE_PT = 12;
+const CARD_LABEL_TRUNCATE_AT = 35;
+
+export interface CardLabelFit {
+  /** Possibly-truncated label text. */
+  text: string;
+  /** Font size to render `text` at, in points. */
+  sizePt: number;
+}
+
+/**
+ * Shrinks a metric card label's font size by a fixed amount based on its
+ * (pre-truncation) character-count band, and truncates with a "..." past
+ * CARD_LABEL_TRUNCATE_AT characters — even the largest reduction can't
+ * reliably keep a label that long on one line in the card's fixed-width
+ * label box.
+ */
+export function fitCardLabel(label: string): CardLabelFit {
+  const len = label.length;
+  const reductionPt = len <= 18 ? 0 : len <= 24 ? 1.5 : len <= 30 ? 2.5 : 3.5;
+  const text = len > CARD_LABEL_TRUNCATE_AT ? label.slice(0, CARD_LABEL_TRUNCATE_AT) + "..." : label;
+  return { text, sizePt: CARD_LABEL_BASE_SIZE_PT - reductionPt };
+}

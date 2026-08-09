@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ensureCardLabelValueGap,
   escapeXmlText,
   findCardIconRelId,
   forceRunStyle,
@@ -182,6 +183,13 @@ describe("replaceCardLabel", () => {
   it("no-ops when the value locator text isn't found", () => {
     expect(replaceCardLabel(FULL_CARD_XML, "{{METRIC_NOPE}}", "X")).toBe(FULL_CARD_XML);
   });
+
+  it("applies a style override (e.g. the long-label auto-shrink size) to the label run, alongside its text", () => {
+    const out = replaceCardLabel(FULL_CARD_XML, "{{METRIC_SPEND}}", "COST PER WEBSITE LEAD", { sizePt: 10.5 });
+    expect(out).toContain("<a:t>COST PER WEBSITE LEAD</a:t>");
+    expect(out).toContain('sz="1050"');
+    expect(out).not.toContain('sz="1150"');
+  });
 });
 
 describe("findCardIconRelId / replaceCardIcon", () => {
@@ -206,5 +214,43 @@ describe("findCardIconRelId / replaceCardIcon", () => {
 
   it("is a no-op when the value locator text isn't found", () => {
     expect(replaceCardIcon(FULL_CARD_XML, "{{METRIC_NOPE}}", "rId9")).toBe(FULL_CARD_XML);
+  });
+});
+
+// Fixtures with real <a:xfrm> geometry (label bottom vs. value top) —
+// FULL_CARD_XML/PAIR_CARD_XML above have no spPr geometry at all, so they
+// can't exercise ensureCardLabelValueGap's position math.
+const CARD_WITH_TIGHT_GAP =
+  '<p:sp><p:nvSpPr><p:cNvPr id="39" name="Label"/></p:nvSpPr>' +
+  '<p:spPr><a:xfrm><a:off x="100" y="1000"/><a:ext cx="500" cy="200"/></a:xfrm></p:spPr>' +
+  '<p:txBody><a:p><a:r><a:rPr sz="1150"/><a:t>AD SPEND</a:t></a:r></a:p></p:txBody></p:sp>' +
+  '<p:sp><p:nvSpPr><p:cNvPr id="40" name="Value"/></p:nvSpPr>' +
+  '<p:spPr><a:xfrm><a:off x="100" y="1210"/><a:ext cx="500" cy="300"/></a:xfrm></p:spPr>' +
+  '<p:txBody><a:p><a:r><a:rPr sz="2100" b="1"/><a:t>{{METRIC_SPEND}}</a:t></a:r></a:p></p:txBody></p:sp>';
+
+describe("ensureCardLabelValueGap", () => {
+  it("pushes the value shape down when the template's built-in gap is below the minimum", () => {
+    // Label bottom = 1000 + 200 = 1200; value currently starts at 1210 (a
+    // 10 EMU gap) — well under a 50800 EMU (4pt) minimum.
+    const out = ensureCardLabelValueGap(CARD_WITH_TIGHT_GAP, "{{METRIC_SPEND}}", 50800);
+    expect(out).toContain('<a:off x="100" y="52000"/>'); // 1200 + 50800
+    expect(out).not.toContain('<a:off x="100" y="1210"/>');
+    // Label geometry and both shapes' other content are untouched.
+    expect(out).toContain('<a:off x="100" y="1000"/>');
+    expect(out).toContain("<a:t>AD SPEND</a:t>");
+  });
+
+  it("does not move the value shape when the existing gap already meets the minimum (never pulls tighter)", () => {
+    // Minimum of 5 EMU is already satisfied by the fixture's 10 EMU gap.
+    const out = ensureCardLabelValueGap(CARD_WITH_TIGHT_GAP, "{{METRIC_SPEND}}", 5);
+    expect(out).toBe(CARD_WITH_TIGHT_GAP);
+  });
+
+  it("no-ops when the value locator text isn't found", () => {
+    expect(ensureCardLabelValueGap(CARD_WITH_TIGHT_GAP, "{{METRIC_NOPE}}", 50800)).toBe(CARD_WITH_TIGHT_GAP);
+  });
+
+  it("no-ops when either shape has no readable xfrm geometry", () => {
+    expect(ensureCardLabelValueGap(FULL_CARD_XML, "{{METRIC_SPEND}}", 50800)).toBe(FULL_CARD_XML);
   });
 });

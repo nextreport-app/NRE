@@ -422,6 +422,63 @@ describe("buildCampaignOrAdSetSlideXml — dynamic metric dictionary system (7-s
   });
 });
 
+describe("buildCampaignOrAdSetSlideXml — metric card label overflow fix", () => {
+  it("shrinks a long card label's font size and still renders it in full when under the truncation threshold", () => {
+    const slots = sevenSlotMetrics();
+    slots[3] = { key: "cost_per_website_lead", label: "COST PER WEBSITE LEAD", format: "currency" as const, value: "$9.10", type: "secondary" as const, perUnitOf: "website_leads" };
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: slots };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).toContain("<a:t>COST PER WEBSITE LEAD</a:t>");
+    expect(sizeOfRunContaining(xml, "COST PER WEBSITE LEAD")).toBe(10.5); // 21 chars -> 12 - 1.5
+  });
+
+  it("keeps a short card label (<=18 chars) at the normal 12pt size, unaffected by the shrink logic", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(sizeOfRunContaining(xml, "WEBSITE LEADS")).toBe(12); // 13 chars, slot 4's own {{RESULT_LABEL}} tag
+  });
+
+  it("truncates a card label over 35 characters to 35 chars + an ellipsis, at the largest reduction size", () => {
+    const longLabel = "COST PER SOME VERY LONG CUSTOM CONVERSION EVENT NAME";
+    const slots = sevenSlotMetrics();
+    slots[3] = { key: "custom_metric", label: longLabel, format: "currency" as const, value: "$5.00", type: "secondary" as const, perUnitOf: "clicks_all" };
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: slots };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    const truncated = longLabel.slice(0, 35) + "...";
+    expect(xml).toContain(`<a:t>${truncated}</a:t>`);
+    expect(xml).not.toContain(`<a:t>${longLabel}</a:t>`);
+    expect(sizeOfRunContaining(xml, truncated)).toBe(8.5);
+  });
+
+  it("shrinks a long label assigned to one of the static-label slots (e.g. slot 1, Spend) via replaceCardLabel too", () => {
+    const slots = sevenSlotMetrics();
+    slots[0] = { key: "cost_per_landing_page_view", label: "COST PER LANDING PAGE VIEW", format: "currency" as const, value: "$1.20", type: "secondary" as const, perUnitOf: "landing_page_views" };
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: slots };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).toContain("<a:t>COST PER LANDING PAGE VIEW</a:t>");
+    expect(sizeOfRunContaining(xml, "COST PER LANDING PAGE VIEW")).toBe(9.5); // 27 chars -> 12 - 2.5
+  });
+
+  it("keeps every card's label/value shapes at least 4pt apart, even for slots with a short (unshrunk) label", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    // Locate the AD SPEND label and its value shape's <a:off>/<a:ext> pair
+    // in document order and confirm the enforced minimum gap.
+    const labelIdx = xml.indexOf("<a:t>AD SPEND</a:t>");
+    const labelSpStart = xml.lastIndexOf("<p:sp>", labelIdx);
+    const labelOff = /<a:off x="\d+" y="(\d+)"/.exec(xml.slice(labelSpStart));
+    const labelExt = /<a:ext cx="\d+" cy="(\d+)"/.exec(xml.slice(labelSpStart));
+    const valueSpStart = xml.indexOf("<p:sp>", xml.indexOf("</p:sp>", labelSpStart));
+    const valueOff = /<a:off x="\d+" y="(\d+)"/.exec(xml.slice(valueSpStart));
+    expect(labelOff).not.toBeNull();
+    expect(labelExt).not.toBeNull();
+    expect(valueOff).not.toBeNull();
+    const labelBottom = Number(labelOff![1]) + Number(labelExt![1]);
+    const gapEmu = Number(valueOff![1]) - labelBottom;
+    expect(gapEmu).toBeGreaterThanOrEqual(50800); // 4pt in EMU
+  });
+});
+
 function eightSlotMetrics() {
   return [
     ...sevenSlotMetrics(),
