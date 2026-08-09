@@ -1606,10 +1606,12 @@ export function ReportUploadWizard({
 
       {step === 5 && (data || comparisonData) && (
         <div className="space-y-6">
-          {/* Fix 3 — every section of this confirmation screen shares one
-              width/gap so nothing looks narrower or wider than its
-              neighbor. */}
-          <div className="mx-auto w-full max-w-[580px] space-y-4">
+          {/* Every section of this confirmation screen shares one width —
+              no max-width of its own, same as every other step's container
+              (steps 1-3's card divs, step 4's flat space-y-5 div), so it
+              fills exactly the same width as the rest of the wizard at
+              every screen size. */}
+          <div className="space-y-4">
             {/* Section 1 — Reporting Period card */}
             <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
               <p className="text-[12px] uppercase tracking-wide text-[#94a3b8]">Reporting Period</p>
