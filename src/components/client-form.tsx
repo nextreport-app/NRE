@@ -179,6 +179,7 @@ export function ClientForm({
       <div>
         <label className="mb-1 block text-sm text-dash-ink-secondary">Account name</label>
         <input
+          id="account-name-input"
           required
           value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
@@ -287,6 +288,16 @@ export function ClientForm({
         </select>
       </div>
 
+      {error && <p className="text-sm text-dash-error">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
+      >
+        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
+      </button>
+
       <div>
         <label className="mb-1 block text-sm text-dash-ink-secondary">Client Notes</label>
         {notesEditing ? (
@@ -328,16 +339,6 @@ export function ClientForm({
           </button>
         )}
       </div>
-
-      {error && <p className="text-sm text-dash-error">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
-      >
-        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
-      </button>
     </form>
   );
 }
