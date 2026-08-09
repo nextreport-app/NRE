@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
@@ -1003,7 +1003,7 @@ export function ReportUploadWizard({
           <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ReportTypeCard
-              icon="📘"
+              icon={<MetaAdsIcon />}
               heading="Meta Ads"
               description="Upload your Meta Ads Manager CSV export"
               selected={selectedPlatformCard === "META"}
@@ -1016,7 +1016,7 @@ export function ReportUploadWizard({
               }}
             />
             <ReportTypeCard
-              icon="🔵"
+              icon={<GoogleAdsIcon />}
               heading="Google Ads"
               description="Upload your Google Ads CSV export"
               selected={selectedPlatformCard === "GOOGLE"}
@@ -2047,6 +2047,43 @@ function DriveIcon() {
   );
 }
 
+/** Meta Ads platform-selector icon — Facebook brand-style "f" glyph. */
+function MetaAdsIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="24" fill="#1877F2" />
+      <path
+        d="M29 24h-3.5v12h-5V24H18v-4.5h2.5v-2.8c0-3.4 1.4-5.2 5.2-5.2H29V16h-2.3c-1.5 0-1.7.6-1.7 1.7v1.8H29L29 24z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+/** Google Ads platform-selector icon — Google brand-style "G" glyph. */
+function GoogleAdsIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path
+        d="M43.6 20H24v8h11.3C33.6 32.6 29.3 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.3 1 7.2 2.7l5.7-5.7C33.6 7.3 29.1 5 24 5 12.9 5 4 13.9 4 25s8.9 20 20 20c11 0 19.4-7.7 19.4-20 0-1.3-.1-2.7-.4-4H43.6z"
+        fill="#4285F4"
+      />
+      <path
+        d="M6.3 14.7l6.6 4.8C14.6 16.1 19 13 24 13c2.8 0 5.3 1 7.2 2.7l5.7-5.7C33.6 7.3 29.1 5 24 5 16.3 5 9.7 9.3 6.3 14.7z"
+        fill="#EA4335"
+      />
+      <path
+        d="M24 45c5 0 9.5-1.7 13-4.5l-6-5C29.3 37 26.8 38 24 38c-5.3 0-9.7-3.6-11.3-8.5l-6.5 5C9.6 40.7 16.3 45 24 45z"
+        fill="#34A853"
+      />
+      <path
+        d="M43.6 20H24v8h11.3c-.8 2.2-2.3 4-4.3 5.2l6 5c3.5-3.3 5.6-8.1 5.6-13.2 0-1.3-.1-2.7-.4-4H43.6z"
+        fill="#FBBC05"
+      />
+    </svg>
+  );
+}
+
 /**
  * Renders NO_DATA_ROWS_MESSAGE's paragraph / bulleted-causes / numbered-steps
  * structure as real list markup instead of a wall of text — the message is
@@ -2096,7 +2133,7 @@ function ReportTypeCard({
   selected,
   onSelect,
 }: {
-  icon: string;
+  icon: ReactNode;
   heading: string;
   description: string;
   selected: boolean;
@@ -2113,7 +2150,7 @@ function ReportTypeCard({
           : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
       }`}
     >
-      <span className="text-2xl" aria-hidden="true">
+      <span className="inline-flex text-2xl" aria-hidden="true">
         {icon}
       </span>
       <p className="mt-2 text-[15px] font-semibold text-white">{heading}</p>
