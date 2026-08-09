@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
-import type { AvailableMetric, SelectedMetric } from "@/lib/nre/available-metrics";
+import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { useToast } from "@/components/toast";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
@@ -621,6 +621,34 @@ export function ReportUploadWizard({
     setSelectedMetrics((prev) => [...prev, metric]);
   }
 
+  /**
+   * The "Adding a second slide" warning shown once a 9th metric is added.
+   * Only relevant while slide 2 is genuinely thin (1-3 metrics) — once it
+   * reaches MIN_SECOND_SLIDE_METRICS the second slide is already
+   * professional-looking, so there's nothing left to warn about and the
+   * whole box goes away (also true, trivially, once the user removes back
+   * down to 8 or fewer and slide2Count returns to 0).
+   */
+  function slide2Warning(): { scenario: "A" | "B"; slide2Count: number; remaining: number; needed: number } | null {
+    const slide2Count = Math.max(0, selectedMetrics.length - MAX_METRICS_PER_SLIDE);
+    if (slide2Count === 0 || slide2Count >= MIN_SECOND_SLIDE_METRICS) return null;
+    const remaining = unselectedAvailableMetrics().length;
+    return {
+      scenario: remaining >= 3 ? "A" : "B",
+      slide2Count,
+      remaining,
+      needed: MIN_SECOND_SLIDE_METRICS - slide2Count,
+    };
+  }
+
+  /** Fix 1, Scenario C — the single remaining candidate is disabled if adding it can't possibly get slide 2 to a professional length (nothing else left in the CSV to add after it). */
+  function wouldLeaveSlide2TooShort(candidate: AvailableMetric): boolean {
+    const remaining = unselectedAvailableMetrics();
+    if (remaining.length !== 1 || remaining[0].key !== candidate.key) return false;
+    const slide2CountAfter = Math.max(0, selectedMetrics.length + 1 - MAX_METRICS_PER_SLIDE);
+    return slide2CountAfter < MIN_SECOND_SLIDE_METRICS;
+  }
+
   function handleMetricsContinue() {
     setStep(4);
   }
@@ -1179,32 +1207,66 @@ export function ReportUploadWizard({
                 ))}
               </div>
 
+              {(() => {
+                const warning = slide2Warning();
+                if (!warning) return null;
+                return (
+                  <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
+                    <p className="font-semibold">⚠️ Adding a second slide</p>
+                    {warning.scenario === "A" ? (
+                      <>
+                        <p className="mt-1 text-dash-ink-secondary">
+                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
+                          slide. Adding more creates a second slide for this campaign.
+                        </p>
+                        <p className="mt-1 text-dash-ink-secondary">
+                          For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
+                          currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
+                          fill it properly, or remove a less important metric from slide 1 to keep everything on one
+                          clean slide.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-1 text-dash-ink-secondary">
+                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
+                          slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
+                          slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
+                        </p>
+                        <p className="mt-1 text-dash-ink-secondary">
+                          Consider removing a less important metric from slide 1 and swapping it for this one
+                          instead.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
               {unselectedAvailableMetrics().length > 0 && (
                 <div>
-                  <p className="mb-2 text-[13px] text-dash-ink-secondary">Add another metric:</p>
+                  <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
                   <div className="flex flex-wrap gap-2">
-                    {unselectedAvailableMetrics().map((candidate) => (
-                      <button
-                        key={candidate.key}
-                        type="button"
-                        onClick={() => addMetric(candidate)}
-                        className="rounded-full border border-dash-border px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink"
-                      >
-                        + {candidate.label}
-                      </button>
-                    ))}
+                    {unselectedAvailableMetrics().map((candidate) => {
+                      const disabled = wouldLeaveSlide2TooShort(candidate);
+                      return (
+                        <button
+                          key={candidate.key}
+                          type="button"
+                          onClick={() => addMetric(candidate)}
+                          disabled={disabled}
+                          title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
+                          className="rounded-full border border-dash-border px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
+                        >
+                          + {candidate.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
-
-              {selectedMetrics.length > MAX_METRICS_PER_SLIDE && (
-                <div className="rounded-md border border-dash-accent/40 bg-dash-accent/10 p-3 text-[13px] text-dash-ink">
-                  Your selection will generate 2 slides for this campaign. Slide 1: first {MAX_METRICS_PER_SLIDE} metrics.
-                  Slide 2: remaining {selectedMetrics.length - MAX_METRICS_PER_SLIDE} metrics.
-                </div>
-              )}
             </>
           )}
 
