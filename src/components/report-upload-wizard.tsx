@@ -1192,14 +1192,14 @@ export function ReportUploadWizard({
                 {selectedMetrics.map((metric, i) => (
                   <div
                     key={`${metric.key}-${i}`}
-                    className="relative rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 pr-8 text-[13px] text-dash-ink"
+                    className="relative flex min-h-[80px] flex-col items-center justify-center rounded-lg border border-[#334155] border-t-[3px] border-t-[#f6ad55] bg-[#1e293b] p-3"
                   >
-                    <span className="block truncate">{metric.label}</span>
+                    <span className="text-center text-[12px] font-bold uppercase text-white">{metric.label}</span>
                     <button
                       type="button"
                       onClick={() => removeMetricAt(i)}
                       aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-dash-ink-secondary hover:text-red-300"
+                      className="absolute right-2 top-2 text-[11px] text-dash-ink-secondary hover:text-red-300"
                     >
                       ✕
                     </button>
