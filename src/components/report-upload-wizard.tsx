@@ -1243,26 +1243,40 @@ export function ReportUploadWizard({
 
           {selectedMetrics.length > 0 && (
             <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {selectedMetrics.map((metric, i) => (
                   <div
                     key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[80px] flex-col items-center justify-center gap-1.5 rounded-lg border border-[#334155] border-t-[3px] border-t-[#f6ad55] bg-[#1e293b] p-3"
+                    className="relative flex min-h-[110px] flex-col items-center justify-center rounded-lg p-3 shadow-md transition-[filter] hover:brightness-110"
+                    style={{
+                      background: "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(0,0,0,0.15)), #0d1b2e",
+                    }}
                   >
-                    <img
-                      src={`/metric-icons/${getIconName(metric.key)}.png`}
-                      alt=""
-                      width={24}
-                      height={24}
-                      style={{ objectFit: "contain" }}
-                      aria-hidden="true"
-                    />
-                    <span className="text-center text-[12px] font-bold uppercase text-white">{metric.label}</span>
+                    <div className="mx-auto mb-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f6ad55]">
+                      <img
+                        src={`/metric-icons/${getIconName(metric.key)}.png`}
+                        alt=""
+                        width={18}
+                        height={18}
+                        style={{ objectFit: "contain" }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <span
+                      className="text-center text-[11px] font-bold uppercase text-white"
+                      style={{ letterSpacing: "0.5px" }}
+                    >
+                      {metric.label}
+                    </span>
+                    {/* No real value yet at this step — a placeholder dash keeps the card's proportions the same as a filled-in PPT card. */}
+                    <span className="mt-1 text-[11px] text-dash-ink-secondary" aria-hidden="true">
+                      —
+                    </span>
                     <button
                       type="button"
                       onClick={() => removeMetricAt(i)}
                       aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-2 text-[11px] text-dash-ink-secondary hover:text-red-300"
+                      className="absolute right-2 top-1.5 text-[14px] leading-none text-[#64748b] hover:text-[#fc8181]"
                     >
                       ✕
                     </button>
@@ -1319,7 +1333,7 @@ export function ReportUploadWizard({
                           onClick={() => addMetric(candidate)}
                           disabled={disabled}
                           title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
-                          className="rounded-full border border-dash-border px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
+                          className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
                         >
                           + {candidate.label}
                         </button>
