@@ -1213,7 +1213,7 @@ export function ReportUploadWizard({
                 {selectedMetrics.map((metric, i) => (
                   <div
                     key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#1e293b] p-3 hover:border-[#f6ad55]"
+                    className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
                   >
                     <span
                       className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
@@ -1225,7 +1225,7 @@ export function ReportUploadWizard({
                       type="button"
                       onClick={() => removeMetricAt(i)}
                       aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-2 text-[13px] leading-none text-[#64748b] hover:text-[#fc8181]"
+                      className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
                     >
                       ✕
                     </button>
@@ -1606,52 +1606,55 @@ export function ReportUploadWizard({
 
       {step === 5 && (data || comparisonData) && (
         <div className="space-y-6">
-          {/* Section 1 — Report Summary (Fix 1) */}
-          <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4">
-            <p className="text-[12px] text-dash-ink-secondary">Reporting period</p>
-            <div className="mt-1 space-y-0.5">
-              {reportSummaryLines().map((line) => (
-                <p key={line.label} className="text-[14px] text-white">
-                  {line.label}: {line.value}
-                </p>
-              ))}
-            </div>
-          </div>
-
-          {previewKind === "normal" && data?.isPaused && (
-            <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
-              {data.pausedMessage}
-            </div>
-          )}
-
-          {previewKind === "normal" && data && !data.isPaused && data.objectiveWarnings.length > 0 && (
-            <div className="space-y-2">
-              {data.objectiveWarnings.map((w) => (
-                <div
-                  key={w.campaignName}
-                  className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200"
-                >
-                  <p>
-                    <span className="font-medium">{w.campaignName}:</span> Objective auto-detected as{" "}
-                    {w.detectedLabel}. If this is incorrect, make sure your CSV includes the relevant result
-                    column — for example Website leads, Meta leads, Purchases, Landing page views etc. See our{" "}
-                    <Link href="/help/download" className="underline hover:text-amber-100">
-                      Download Guide
-                    </Link>{" "}
-                    for the recommended columns to include.
+          {/* Fix 3 — every section of this confirmation screen shares one
+              width/gap so nothing looks narrower or wider than its
+              neighbor. */}
+          <div className="mx-auto w-full max-w-[580px] space-y-4">
+            {/* Section 1 — Reporting Period card */}
+            <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
+              <p className="text-[12px] uppercase tracking-wide text-[#94a3b8]">Reporting Period</p>
+              <div className="mt-1 space-y-0.5">
+                {reportSummaryLines().map((line) => (
+                  <p key={line.label} className="text-[14px] text-white">
+                    {line.label}: {line.value}
                   </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* Section 2 — "Ready to generate" confirmation card, replacing the
-              old visual slide carousel entirely: a plain summary of what
-              will be generated, no slide mockups. */}
-          <div className="mx-auto w-full max-w-[600px] space-y-4">
-            <div className="rounded-lg border-l-4 border-l-dash-accent bg-[#1e293b] p-6">
-              <h3 className="text-[18px] font-semibold text-white">Ready to generate</h3>
-              <div className="mt-4 space-y-2">
+            {previewKind === "normal" && data?.isPaused && (
+              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
+                {data.pausedMessage}
+              </div>
+            )}
+
+            {previewKind === "normal" && data && !data.isPaused && data.objectiveWarnings.length > 0 && (
+              <div className="space-y-2">
+                {data.objectiveWarnings.map((w) => (
+                  <div
+                    key={w.campaignName}
+                    className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200"
+                  >
+                    <p>
+                      <span className="font-medium">{w.campaignName}:</span> Objective auto-detected as{" "}
+                      {w.detectedLabel}. If this is incorrect, make sure your CSV includes the relevant result
+                      column — for example Website leads, Meta leads, Purchases, Landing page views etc. See our{" "}
+                      <Link href="/help/download" className="underline hover:text-amber-100">
+                        Download Guide
+                      </Link>{" "}
+                      for the recommended columns to include.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Section 2 — "Ready to generate" confirmation card. Same card
+                styling as Section 1, minus the amber left border. */}
+            <div className="rounded-lg bg-[#1e293b] p-5">
+              <h3 className="text-[16px] font-semibold text-white">Ready to generate</h3>
+              <hr className="my-3 border-t border-[#334155]" />
+              <div className="space-y-2">
                 <p className="text-[13px] text-[#94a3b8]">
                   Report Type: <span className="text-[14px] text-white">{reportTypeSummaryLabel()}</span>
                 </p>
@@ -1673,16 +1676,6 @@ export function ReportUploadWizard({
                     </div>
                   )}
                 </div>
-                {reportType === "WEEKLY" && weeklyRangeIso && (
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Week Period: <span className="text-[14px] text-white">{formatIsoRangeWithYear(weeklyRangeIso)}</span>
-                  </p>
-                )}
-                {(reportType === "WEEKLY" || reportType === "MONTHLY") && mtdRange && (
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Month to Date: <span className="text-[14px] text-white">{formatIsoRangeWithYear(mtdRange)}</span>
-                  </p>
-                )}
                 <p className="text-[13px] text-[#94a3b8]">
                   Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
                 </p>
@@ -1692,9 +1685,9 @@ export function ReportUploadWizard({
               </div>
             </div>
 
-            {/* Section 3 — Custom title */}
-            <div>
-              <label className="mb-1 block text-[13px] text-dash-ink-secondary">Custom report title (optional)</label>
+            {/* Section 3 — Custom title, now boxed in the same card style as sections 1/2. */}
+            <div className="rounded-lg bg-[#1e293b] p-5">
+              <label className="mb-1 block text-[13px] text-[#94a3b8]">Custom report title</label>
               <input
                 value={reportTitle}
                 onChange={(e) => {
@@ -1706,9 +1699,7 @@ export function ReportUploadWizard({
                 disabled={generateStatus === "loading" || generateStatus === "done"}
                 className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
               />
-              <p className="mt-1 text-[13px] text-dash-ink-secondary">
-                Replaces the report type title on the cover slide.
-              </p>
+              <p className="mt-1 text-[12px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
             </div>
 
             {/* Section 4 — Generate button. Same screen throughout: only
@@ -1725,7 +1716,7 @@ export function ReportUploadWizard({
                 >
                   Generate Report
                 </button>
-                <p className="mt-2 text-center text-[13px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                <p className="mt-2 text-center text-[12px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
               </div>
             )}
           </div>
