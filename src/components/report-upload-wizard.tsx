@@ -38,49 +38,6 @@ const MIN_SELECTED_METRICS = 4;
 const MAX_METRICS_PER_SLIDE = 8;
 const MAX_TOTAL_METRICS = 16;
 
-/**
- * Maps a metric's key to the real PPT template icon file it should use on
- * the Metric Review step's cards (public/metric-icons/*.png — extracted
- * from templates/dark.pptx by scripts/extract-metric-icons.ts). Mirrors
- * src/lib/pptx/metric-icons.ts's resolveMetricIconId, but as a plain
- * key->filename lookup rather than a format-aware resolver, since this only
- * needs to pick an icon to display, not participate in slide rendering.
- */
-function getIconName(metricKey: string): string {
-  switch (metricKey) {
-    case "spend":
-    case "cost":
-      return "spend";
-    case "reach":
-      return "reach";
-    case "impressions":
-      return "impressions";
-    case "results":
-    case "website_leads":
-    case "leads":
-    case "link_clicks":
-    case "purchases":
-    case "app_installs":
-    case "video_views":
-    case "messaging_conversations":
-    case "conversions":
-      return "results";
-    case "ctr":
-      return "ctr";
-    case "cpc_link_click":
-    case "avg_cpc":
-    case "cpc_all":
-      return "cpc";
-    case "cost_per_result":
-    case "cost_per_lead":
-    case "cost_per_link_click":
-    case "cost_per_conv":
-      return "cost-per-result";
-    default:
-      return "default";
-  }
-}
-
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
@@ -1237,40 +1194,23 @@ export function ReportUploadWizard({
 
           {selectedMetrics.length > 0 && (
             <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                 {selectedMetrics.map((metric, i) => (
                   <div
                     key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[110px] flex-col items-center justify-center rounded-lg p-3 shadow-md transition-[filter] hover:brightness-110"
-                    style={{
-                      background: "linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(0,0,0,0.15)), #0d1b2e",
-                    }}
+                    className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#1e293b] p-3 hover:border-[#f6ad55]"
                   >
-                    <div className="mx-auto mb-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f6ad55]">
-                      <img
-                        src={`/metric-icons/${getIconName(metric.key)}.png`}
-                        alt=""
-                        width={18}
-                        height={18}
-                        style={{ objectFit: "contain" }}
-                        aria-hidden="true"
-                      />
-                    </div>
                     <span
-                      className="text-center text-[11px] font-bold uppercase text-white"
+                      className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
                       style={{ letterSpacing: "0.5px" }}
                     >
                       {metric.label}
-                    </span>
-                    {/* No real value yet at this step — a placeholder dash keeps the card's proportions the same as a filled-in PPT card. */}
-                    <span className="mt-1 text-[11px] text-dash-ink-secondary" aria-hidden="true">
-                      —
                     </span>
                     <button
                       type="button"
                       onClick={() => removeMetricAt(i)}
                       aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-1.5 text-[14px] leading-none text-[#64748b] hover:text-[#fc8181]"
+                      className="absolute right-2 top-2 text-[13px] leading-none text-[#64748b] hover:text-[#fc8181]"
                     >
                       ✕
                     </button>
