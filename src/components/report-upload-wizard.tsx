@@ -30,12 +30,55 @@ const STEP_LABELS: Record<Step, string> = {
   2: "Campaigns",
   3: "Metrics",
   4: "Dates",
-  5: "Preview",
+  5: "Preview & Generate",
 };
 
 const MIN_SELECTED_METRICS = 4;
 const MAX_METRICS_PER_SLIDE = 8;
 const MAX_TOTAL_METRICS = 16;
+
+/**
+ * Maps a metric's key to the real PPT template icon file it should use on
+ * the Metric Review step's cards (public/metric-icons/*.png — extracted
+ * from templates/dark.pptx by scripts/extract-metric-icons.ts). Mirrors
+ * src/lib/pptx/metric-icons.ts's resolveMetricIconId, but as a plain
+ * key->filename lookup rather than a format-aware resolver, since this only
+ * needs to pick an icon to display, not participate in slide rendering.
+ */
+function getIconName(metricKey: string): string {
+  switch (metricKey) {
+    case "spend":
+    case "cost":
+      return "spend";
+    case "reach":
+      return "reach";
+    case "impressions":
+      return "impressions";
+    case "results":
+    case "website_leads":
+    case "leads":
+    case "link_clicks":
+    case "purchases":
+    case "app_installs":
+    case "video_views":
+    case "messaging_conversations":
+    case "conversions":
+      return "results";
+    case "ctr":
+      return "ctr";
+    case "cpc_link_click":
+    case "avg_cpc":
+    case "cpc_all":
+      return "cpc";
+    case "cost_per_result":
+    case "cost_per_lead":
+    case "cost_per_link_click":
+    case "cost_per_conv":
+      return "cost-per-result";
+    default:
+      return "default";
+  }
+}
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -174,7 +217,19 @@ export function ReportUploadWizard({
   /** Whether Client.previousMonthDataUrl is set — drives Fix 1's "Missing previous month comparison" notice on the download screen for a WEEKLY/MONTHLY report. */
   hasPreviousMonthData: boolean;
 }) {
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStepState] = useState<Step>(1);
+  // Which steps this session has actually passed through — the Google Ads
+  // flow jumps straight from step 1 to step 5 (see dispatchAfterAnalyze),
+  // so a plain "s < step" numeric check would wrongly offer steps 2-4 as
+  // clickable/completed in the step indicator even though they were never
+  // shown. Only grows (a step, once visited, stays "completed" even after
+  // navigating back to it and forward again).
+  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(new Set([1]));
+  /** Every step transition in the wizard goes through this — records the step as visited alongside switching to it. */
+  function setStep(s: Step) {
+    setStepState(s);
+    setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
+  }
   const { showToast } = useToast();
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
@@ -996,7 +1051,7 @@ export function ReportUploadWizard({
 
   return (
     <div className="space-y-6">
-      <StepIndicator step={step} />
+      <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
 
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
@@ -1192,8 +1247,16 @@ export function ReportUploadWizard({
                 {selectedMetrics.map((metric, i) => (
                   <div
                     key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[80px] flex-col items-center justify-center rounded-lg border border-[#334155] border-t-[3px] border-t-[#f6ad55] bg-[#1e293b] p-3"
+                    className="relative flex min-h-[80px] flex-col items-center justify-center gap-1.5 rounded-lg border border-[#334155] border-t-[3px] border-t-[#f6ad55] bg-[#1e293b] p-3"
                   >
+                    <img
+                      src={`/metric-icons/${getIconName(metric.key)}.png`}
+                      alt=""
+                      width={24}
+                      height={24}
+                      style={{ objectFit: "contain" }}
+                      aria-hidden="true"
+                    />
                     <span className="text-center text-[12px] font-bold uppercase text-white">{metric.label}</span>
                     <button
                       type="button"
@@ -1974,26 +2037,56 @@ export function ReportUploadWizard({
   );
 }
 
-function StepIndicator({ step }: { step: Step }) {
+/**
+ * `visitedSteps` (not just "s < step") decides whether a step is completed
+ * and clickable — the Google Ads flow jumps straight from step 1 to step 5
+ * (dispatchAfterAnalyze), so steps 2-4 are numerically "less than" step 5
+ * without ever having been shown; those must stay muted/unclickable rather
+ * than falsely offering navigation into a step that was never populated.
+ * Clicking a completed step just calls onNavigate(s) — a plain setStep,
+ * identical to the wizard's existing per-screen "Back" buttons — so all
+ * state (upload, campaigns, metrics, dates) is preserved automatically:
+ * nothing here clears or resets any of it.
+ */
+function StepIndicator({
+  step,
+  visitedSteps,
+  onNavigate,
+}: {
+  step: Step;
+  visitedSteps: Set<Step>;
+  onNavigate: (s: Step) => void;
+}) {
   const steps: Step[] = [1, 2, 3, 4, 5];
   return (
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
-      {steps.map((s, i) => (
-        <div key={s} className="flex items-center gap-2">
-          <span
-            className={
-              s === step
-                ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
-                : s < step
-                  ? "rounded-full border border-dash-accent px-3 py-1 text-dash-accent"
-                  : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
-            }
-          >
-            {STEP_LABELS[s]}
-          </span>
-          {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
-        </div>
-      ))}
+      {steps.map((s, i) => {
+        const isCompleted = s < step && visitedSteps.has(s);
+        return (
+          <div key={s} className="flex items-center gap-2">
+            {isCompleted ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(s)}
+                className="rounded-full px-3 py-1 font-medium text-dash-accent hover:underline"
+              >
+                {STEP_LABELS[s]}
+              </button>
+            ) : (
+              <span
+                className={
+                  s === step
+                    ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
+                    : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
+                }
+              >
+                {STEP_LABELS[s]}
+              </span>
+            )}
+            {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }
