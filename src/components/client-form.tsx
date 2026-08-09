@@ -179,45 +179,12 @@ export function ClientForm({
       <div>
         <label className="mb-1 block text-sm text-dash-ink-secondary">Account name</label>
         <input
-          id="account-name-input"
           required
           value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
           placeholder="e.g. Acme Retail — Meta Ads"
           className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>
-        <div className="flex items-center gap-3">
-          <input
-            type="file"
-            accept={ACCEPTED_LOGO_TYPES}
-            onChange={handleLogoChange}
-            className="flex-1 text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-2 file:text-sm file:text-dash-ink hover:file:bg-dash-card"
-          />
-          {((hasLogo && !removeLogo) || logoFile) && (
-            <button
-              type="button"
-              onClick={handleRemoveLogo}
-              className="rounded-md border border-dash-border px-3 py-2 text-sm text-dash-ink-secondary hover:bg-dash-border"
-            >
-              Remove
-            </button>
-          )}
-        </div>
-        {logoPreviewSrc && (
-          <img
-            src={logoPreviewSrc}
-            alt="Logo preview"
-            className="mt-2 h-[60px] w-[120px] rounded border border-dash-border bg-dash-bg object-contain"
-          />
-        )}
-        {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB.
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -255,48 +222,71 @@ export function ClientForm({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="mb-1 block text-sm text-dash-ink-secondary">
+            Monthly Ad Spend Budget ({CURRENCY_SYMBOL[values.currency]}) — optional
+          </label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={values.monthlyBudget ?? ""}
+            onChange={(e) => set("monthlyBudget", e.target.value ? Number(e.target.value) : null)}
+            placeholder="e.g. 50000"
+            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+          />
+          <p className="mt-1 text-[13px] text-dash-ink-secondary">
+            Used to show budget utilisation on the cover slide.
+          </p>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
+          <select
+            value={values.template}
+            onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
+            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+          >
+            {SELECTABLE_TEMPLATES.map((t) => (
+              <option key={t} value={t}>
+                {TEMPLATE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">
-          Monthly Ad Spend Budget ({CURRENCY_SYMBOL[values.currency]}) — optional
-        </label>
-        <input
-          type="number"
-          min={0}
-          step="0.01"
-          value={values.monthlyBudget ?? ""}
-          onChange={(e) => set("monthlyBudget", e.target.value ? Number(e.target.value) : null)}
-          placeholder="e.g. 50000"
-          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-        />
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            accept={ACCEPTED_LOGO_TYPES}
+            onChange={handleLogoChange}
+            className="flex-1 text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-2 file:text-sm file:text-dash-ink hover:file:bg-dash-card"
+          />
+          {((hasLogo && !removeLogo) || logoFile) && (
+            <button
+              type="button"
+              onClick={handleRemoveLogo}
+              className="rounded-md border border-dash-border px-3 py-2 text-sm text-dash-ink-secondary hover:bg-dash-border"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {logoPreviewSrc && (
+          <img
+            src={logoPreviewSrc}
+            alt="Logo preview"
+            className="mt-2 h-[60px] w-[120px] rounded border border-dash-border bg-dash-bg object-contain"
+          />
+        )}
+        {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Used to show budget utilisation on the cover slide.
+          Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB.
         </p>
       </div>
-
-      <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
-        <select
-          value={values.template}
-          onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
-          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-        >
-          {SELECTABLE_TEMPLATES.map((t) => (
-            <option key={t} value={t}>
-              {TEMPLATE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && <p className="text-sm text-dash-error">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
-      >
-        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
-      </button>
 
       <div>
         <label className="mb-1 block text-sm text-dash-ink-secondary">Client Notes</label>
@@ -339,6 +329,16 @@ export function ClientForm({
           </button>
         )}
       </div>
+
+      {error && <p className="text-sm text-dash-error">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
+      >
+        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
+      </button>
     </form>
   );
 }
