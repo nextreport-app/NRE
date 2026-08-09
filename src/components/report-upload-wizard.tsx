@@ -7,6 +7,7 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { useToast } from "@/components/toast";
+import { SlidePreviewCarousel } from "@/components/wizard-preview-carousel";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -158,6 +159,12 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
+/** "August 2026" — used by the Report Summary card's Monthly "Full Month" line (Fix 1). */
+function formatIsoMonthYear(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
+}
+
 /** Same as formatIsoRange, with the end date's year appended — used for the Month to Date / Full Month Period card, whose range always ends within the current reporting year. */
 function formatIsoRangeWithYear(range: DateRangeIso): string {
   return `${formatIsoRange(range)}, ${range.endIso.slice(0, 4)}`;
@@ -307,7 +314,6 @@ export function ReportUploadWizard({
   const [previewKind, setPreviewKind] = useState<PreviewKind>("normal");
   const [data, setData] = useState<ReportData | null>(null);
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
-  const [slidesListExpanded, setSlidesListExpanded] = useState(false);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
   // False until the user actually types in the Report Title field — while
   // false, switching Report Type keeps swapping the title's own default
@@ -463,7 +469,6 @@ export function ReportUploadWizard({
       setData(json.data);
       setComparisonData(null);
     }
-    setSlidesListExpanded(false);
     setPreviewStatus("idle");
     resetGenerateState();
   }
@@ -983,7 +988,6 @@ export function ReportUploadWizard({
     setPreviewKind("normal");
     setData(null);
     setComparisonData(null);
-    setSlidesListExpanded(false);
     setReportTitle(DEFAULT_REPORT_TITLE);
     setReportTitleTouched(false);
 
@@ -996,37 +1000,27 @@ export function ReportUploadWizard({
     dateMode === "custom" && spanDays !== null && spanDays > 7 && !customRangeError && !longRangeConfirmed;
   const weeklyRangeIso = currentWeeklyRangeIso();
 
-  /** B2 Section 1's report summary line. */
-  function reportSummaryLine(): string {
-    if (previewKind === "comparison" && comparisonData) {
-      const n = comparisonData.campaigns.length;
-      return `${n} campaign${n === 1 ? "" : "s"} · ${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
-    }
-    if (data) {
-      const n = selectedCampaigns.size;
-      const parts = [`${n} campaign${n === 1 ? "" : "s"}`];
-      if (reportType === "WEEKLY" && weeklyRangeIso) parts.push(`Week: ${formatIsoRange(weeklyRangeIso)}`);
-      if (mtdRange) parts.push(`MTD: ${formatIsoRange(mtdRange)}`);
-      return parts.join(" · ");
-    }
-    return "";
-  }
-
-  /** B2 Section 2's collapsed slide list. */
-  function buildSlideList(): string[] {
+  /**
+   * B2 Section 1's report summary card content (Fix 1) — no longer a single
+   * "N campaigns · Week: ... · MTD: ..." string: the campaign count is
+   * dropped entirely, and each remaining piece becomes its own labelled
+   * "Label: value" line, varying by report type.
+   */
+  function reportSummaryLines(): { label: string; value: string }[] {
     if (previewKind === "comparison" && comparisonData) {
       return [
-        "Cover slide",
-        ...comparisonData.campaigns.map((c) => `${c.campaignName} — Comparison`),
-        "Campaign Comparison Summary",
+        { label: "Period A", value: comparisonData.periodALabel },
+        { label: "Period B", value: comparisonData.periodBLabel },
       ];
     }
     if (data) {
-      const list = ["Cover slide"];
-      data.campaignSlides.forEach((s) => list.push(`${s.campaignName} — Campaign`));
-      data.adSetSlides.forEach((s) => list.push(`${s.campaignName} — ${s.adSetName} — Ad Set`));
-      list.push("MTD Performance Chart", "Campaign Performance Overview", "Metric Guide");
-      return list;
+      if (reportType === "MONTHLY") {
+        return mtdRange ? [{ label: "Full Month", value: formatIsoMonthYear(mtdRange.startIso) }] : [];
+      }
+      const lines: { label: string; value: string }[] = [];
+      if (reportType === "WEEKLY" && weeklyRangeIso) lines.push({ label: "Week", value: formatIsoRange(weeklyRangeIso) });
+      if (mtdRange) lines.push({ label: "Month till date (MTD)", value: formatIsoRange(mtdRange) });
+      return lines;
     }
     return [];
   }
@@ -1657,9 +1651,16 @@ export function ReportUploadWizard({
 
       {step === 5 && (data || comparisonData) && (
         <div className="space-y-6">
-          {/* Section 1 — Report Summary */}
+          {/* Section 1 — Report Summary (Fix 1) */}
           <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4">
-            <p className="text-[13px] text-dash-ink">{reportSummaryLine()}</p>
+            <p className="text-[12px] text-dash-ink-secondary">Reporting period</p>
+            <div className="mt-1 space-y-0.5">
+              {reportSummaryLines().map((line) => (
+                <p key={line.label} className="text-[14px] text-white">
+                  {line.label}: {line.value}
+                </p>
+              ))}
+            </div>
           </div>
 
           {previewKind === "normal" && data?.isPaused && (
@@ -1689,22 +1690,17 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {/* Section 2 — Slides Preview */}
+          {/* Section 2 — Slides Preview (Fix 2: real visual carousel, not a text list) */}
           <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-            <button
-              type="button"
-              onClick={() => setSlidesListExpanded((v) => !v)}
-              className="text-[13px] font-medium text-dash-ink-secondary hover:text-dash-ink"
-            >
-              Slides Preview {slidesListExpanded ? "▲" : "▼"}
-            </button>
-            {slidesListExpanded && (
-              <ul className="mt-3 space-y-1 text-[13px] text-dash-ink-secondary">
-                {buildSlideList().map((s, i) => (
-                  <li key={i}>• {s}</li>
-                ))}
-              </ul>
-            )}
+            <SlidePreviewCarousel
+              platform={platform}
+              reportType={reportType}
+              previewKind={previewKind}
+              clientName={clientName}
+              data={data}
+              comparisonData={comparisonData}
+              selectedMetrics={selectedMetrics}
+            />
           </div>
 
           {/* Section 3 — Custom title */}
