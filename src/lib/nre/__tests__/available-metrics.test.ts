@@ -87,6 +87,30 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
   it("always returns exactly 8 metrics", () => {
     expect(defaultMetaSelection("RESULTS", "COST PER RESULT", META_HEADERS)).toHaveLength(8);
   });
+
+  // Regression for the Metric Review step's "Website Leads shows as both a
+  // card and an Add-another-metric option" bug: the generic "Results"
+  // column (key "results") gets relabeled "WEBSITE LEADS" for this
+  // objective, while the CSV's own separate "Website Leads" column maps to
+  // a *different* dictionary key ("website_leads") with that same label —
+  // a key-only duplicate check misses this. The wizard's own filter
+  // (report-upload-wizard.tsx's unselectedAvailableMetrics) was fixed to
+  // also check label; this test pins the underlying data collision that
+  // made that necessary, using headers that include both columns.
+  it("produces a label collision with listSelectableMetrics for a CSV that has its own separate Website Leads column", () => {
+    const headersWithWebsiteLeadsColumn = [...META_HEADERS, "Website Leads"];
+    const selection = defaultMetaSelection("WEBSITE LEADS", "COST PER LEAD", headersWithWebsiteLeadsColumn);
+    const available = listSelectableMetrics(headersWithWebsiteLeadsColumn, "META");
+
+    const slot4 = selection[3];
+    expect(slot4.label).toBe("WEBSITE LEADS");
+    expect(slot4.key).toBe("results");
+
+    const availableWebsiteLeads = available.find((m) => m.label === "WEBSITE LEADS");
+    expect(availableWebsiteLeads?.key).toBe("website_leads");
+    // Same label, different key — a key-only filter would let this through.
+    expect(availableWebsiteLeads?.key).not.toBe(slot4.key);
+  });
 });
 
 describe("defaultGoogleSelection — matches slot-assignment.ts's own automatic picks", () => {

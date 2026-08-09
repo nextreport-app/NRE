@@ -215,9 +215,7 @@ export function ReportUploadWizard({
   const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [metricsTouched, setMetricsTouched] = useState(false);
-  const [openMetricDropdownIndex, setOpenMetricDropdownIndex] = useState<number | null>(null);
   const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
-  const [showIndividualCampaignMetrics, setShowIndividualCampaignMetrics] = useState(false);
 
   // Step 4 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -561,8 +559,6 @@ export function ReportUploadWizard({
     setMetricsStatus("loading");
     setMetricsTouched(false);
     setMetricsLimitMessage(null);
-    setShowIndividualCampaignMetrics(false);
-    setOpenMetricDropdownIndex(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
@@ -589,16 +585,20 @@ export function ReportUploadWizard({
   }
 
   // ── Step 3: Metrics (Part 3) ────────────────────────────────────────────
-  /** Metrics available for the dropdown, minus whatever's already selected. */
+  /**
+   * "Add another metric" pool, minus whatever's already showing as a card.
+   * Filters on both key AND label: the dictionary can map two different CSV
+   * columns to the same display label under different keys (e.g. a
+   * "Website Leads" objective's default slot 4 resolves to the generic
+   * `results` key relabeled "WEBSITE LEADS", while the CSV's own "Website
+   * Leads" column separately maps to dictionary key `website_leads` with
+   * that same label) — a key-only filter misses that case and "WEBSITE
+   * LEADS" would show up as both a card and an add-option (Fix 2).
+   */
   function unselectedAvailableMetrics(): AvailableMetric[] {
     const selectedKeys = new Set(selectedMetrics.map((m) => m.key));
-    return availableMetrics.filter((m) => !selectedKeys.has(m.key));
-  }
-
-  function swapMetricAt(index: number, replacement: AvailableMetric) {
-    setMetricsTouched(true);
-    setSelectedMetrics((prev) => prev.map((m, i) => (i === index ? { ...replacement } : m)));
-    setOpenMetricDropdownIndex(null);
+    const selectedLabels = new Set(selectedMetrics.map((m) => m.label));
+    return availableMetrics.filter((m) => !selectedKeys.has(m.key) && !selectedLabels.has(m.label));
   }
 
   function removeMetricAt(index: number) {
@@ -878,9 +878,7 @@ export function ReportUploadWizard({
     setSelectedMetrics([]);
     setMetricsStatus("idle");
     setMetricsTouched(false);
-    setOpenMetricDropdownIndex(null);
     setMetricsLimitMessage(null);
-    setShowIndividualCampaignMetrics(false);
 
     setDateBounds(null);
     setWeeklyOptions(null);
@@ -1164,37 +1162,19 @@ export function ReportUploadWizard({
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                 {selectedMetrics.map((metric, i) => (
-                  <div key={`${metric.key}-${i}`} className="relative">
+                  <div
+                    key={`${metric.key}-${i}`}
+                    className="relative rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 pr-8 text-[13px] text-dash-ink"
+                  >
+                    <span className="block truncate">{metric.label}</span>
                     <button
                       type="button"
-                      onClick={() => setOpenMetricDropdownIndex(openMetricDropdownIndex === i ? null : i)}
-                      className="flex w-full items-center justify-between gap-2 rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-left text-[13px] text-dash-ink hover:border-dash-accent"
+                      onClick={() => removeMetricAt(i)}
+                      aria-label={`Remove ${metric.label}`}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-dash-ink-secondary hover:text-red-300"
                     >
-                      <span className="truncate">{metric.label}</span>
-                      <span className="text-dash-ink-secondary">▼</span>
+                      ✕
                     </button>
-                    {openMetricDropdownIndex === i && (
-                      <div className="absolute z-10 mt-1 max-h-64 w-full min-w-[220px] overflow-y-auto rounded-md border border-dash-border bg-dash-card shadow-lg">
-                        <button
-                          type="button"
-                          onClick={() => removeMetricAt(i)}
-                          className="block w-full px-3 py-2 text-left text-[13px] text-red-300 hover:bg-dash-border"
-                        >
-                          Remove this card
-                        </button>
-                        <div className="border-t border-dash-border" />
-                        {unselectedAvailableMetrics().map((candidate) => (
-                          <button
-                            key={candidate.key}
-                            type="button"
-                            onClick={() => swapMetricAt(i, candidate)}
-                            className="block w-full px-3 py-2 text-left text-[13px] text-dash-ink hover:bg-dash-border"
-                          >
-                            {candidate.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1225,30 +1205,6 @@ export function ReportUploadWizard({
                   Slide 2: remaining {selectedMetrics.length - MAX_METRICS_PER_SLIDE} metrics.
                 </div>
               )}
-
-              <div className="border-t border-dash-border pt-4">
-                {!showIndividualCampaignMetrics ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowIndividualCampaignMetrics(true)}
-                    className="text-[13px] text-dash-ink-secondary underline hover:text-dash-ink"
-                  >
-                    ← Change for individual campaigns
-                  </button>
-                ) : (
-                  <div className="rounded-md border border-dash-border bg-dash-bg p-3 text-[13px] text-dash-ink-secondary">
-                    Per-campaign metric customization is coming soon. For now, this selection applies to every campaign in
-                    the report.{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowIndividualCampaignMetrics(false)}
-                      className="text-dash-accent underline hover:no-underline"
-                    >
-                      Back
-                    </button>
-                  </div>
-                )}
-              </div>
             </>
           )}
 
