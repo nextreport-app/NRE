@@ -7,7 +7,6 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { useToast } from "@/components/toast";
-import { SlidePreviewCarousel } from "@/components/wizard-preview-carousel";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
 // produced MTD totals that no longer matched real account spend, which
@@ -169,6 +168,7 @@ export function ReportUploadWizard({
   initialLastDriveFolderId,
   initialLastDriveFolderName,
   hasPreviousMonthData,
+  clientTemplate,
 }: {
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
@@ -180,6 +180,8 @@ export function ReportUploadWizard({
   initialLastDriveFolderName: string | null;
   /** Whether Client.previousMonthDataUrl is set — drives Fix 1's "Missing previous month comparison" notice on the download screen for a WEEKLY/MONTHLY report. */
   hasPreviousMonthData: boolean;
+  /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
+  clientTemplate: string;
 }) {
   const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
@@ -987,6 +989,19 @@ export function ReportUploadWizard({
     return reportType === "MONTHLY" ? "Monthly Report" : "Weekly Report";
   }
 
+  /** "Ready to generate" summary card's Report Type line — distinct wording from reportTypeLabel() above (which drives the Drive save label elsewhere), matching this card's own spec literally. */
+  function reportTypeSummaryLabel(): string {
+    if (previewKind === "comparison") return "Comparison Report";
+    return reportType === "MONTHLY" ? "Monthly Performance Report" : "Weekly Performance Report";
+  }
+
+  /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
+  function summaryCampaignNames(): string[] {
+    if (previewKind === "comparison" && comparisonData) return comparisonData.campaigns.map((c) => c.campaignName);
+    if (data) return data.campaignSlides.map((s) => s.campaignName);
+    return [];
+  }
+
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     if (reportType === "WEEKLY" && weeklyRangeIso) return formatIsoRange(weeklyRangeIso);
@@ -1630,57 +1645,90 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {/* Section 2 — Slides Preview (Fix 2: real visual carousel, not a text list) */}
-          <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-            <SlidePreviewCarousel
-              platform={platform}
-              reportType={reportType}
-              previewKind={previewKind}
-              clientName={clientName}
-              data={data}
-              comparisonData={comparisonData}
-              selectedMetrics={selectedMetrics}
-            />
-          </div>
-
-          {/* Section 3 — Custom title */}
-          <div>
-            <label className="mb-1 block text-[13px] text-dash-ink-secondary">Custom title (optional)</label>
-            <input
-              value={reportTitle}
-              onChange={(e) => {
-                setReportTitle(e.target.value);
-                setReportTitleTouched(true);
-              }}
-              placeholder={defaultReportTitleFor(reportType)}
-              maxLength={100}
-              disabled={generateStatus === "loading" || generateStatus === "done"}
-              className="w-full max-w-md rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
-            />
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Replaces the report type title on the cover slide.
-            </p>
-          </div>
-
-          {/* Same screen throughout: only this action row changes as
-              generateStatus moves idle -> loading -> done/error, so there's
-              no navigation between "getting ready" and "here's your file". */}
-          {generateStatus === "idle" && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep(4)}
-                className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleGenerate}
-                className="rounded-md bg-dash-accent px-6 py-3 text-base font-semibold text-dash-ink hover:bg-dash-accent-hover"
-              >
-                Generate Report
-              </button>
+          {/* Section 2 — "Ready to generate" confirmation card, replacing the
+              old visual slide carousel entirely: a plain summary of what
+              will be generated, no slide mockups. */}
+          <div className="mx-auto w-full max-w-[600px] space-y-4">
+            <div className="rounded-lg border-l-4 border-l-dash-accent bg-[#1e293b] p-6">
+              <h3 className="text-[18px] font-semibold text-white">Ready to generate</h3>
+              <div className="mt-4 space-y-2">
+                <p className="text-[13px] text-[#94a3b8]">
+                  Report Type: <span className="text-[14px] text-white">{reportTypeSummaryLabel()}</span>
+                </p>
+                <p className="text-[13px] text-[#94a3b8]">
+                  Client: <span className="text-[14px] text-white">{clientName}</span>
+                </p>
+                <div>
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Campaigns:{" "}
+                    <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
+                  </p>
+                  {summaryCampaignNames().length > 0 && (
+                    <div className="mt-1 space-y-0.5 pl-3">
+                      {summaryCampaignNames().map((name) => (
+                        <p key={name} className="text-[13px] text-[#94a3b8]">
+                          {name}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {reportType === "WEEKLY" && weeklyRangeIso && (
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Week Period: <span className="text-[14px] text-white">{formatIsoRangeWithYear(weeklyRangeIso)}</span>
+                  </p>
+                )}
+                {(reportType === "WEEKLY" || reportType === "MONTHLY") && mtdRange && (
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Month to Date: <span className="text-[14px] text-white">{formatIsoRangeWithYear(mtdRange)}</span>
+                  </p>
+                )}
+                <p className="text-[13px] text-[#94a3b8]">
+                  Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                </p>
+                <p className="text-[13px] text-[#94a3b8]">
+                  Platform: <span className="text-[14px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* Section 3 — Custom title */}
+            <div>
+              <label className="mb-1 block text-[13px] text-dash-ink-secondary">Custom report title (optional)</label>
+              <input
+                value={reportTitle}
+                onChange={(e) => {
+                  setReportTitle(e.target.value);
+                  setReportTitleTouched(true);
+                }}
+                placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
+                maxLength={100}
+                disabled={generateStatus === "loading" || generateStatus === "done"}
+                className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
+              />
+              <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                Replaces the report type title on the cover slide.
+              </p>
+            </div>
+
+            {/* Section 4 — Generate button. Same screen throughout: only
+                this changes as generateStatus moves idle -> loading ->
+                done/error, so there's no navigation between "getting ready"
+                and "here's your file". Back-navigation now lives solely in
+                the clickable step indicator above, so there's no separate
+                inline Back button here. */}
+            {generateStatus === "idle" && (
+              <div>
+                <button
+                  onClick={handleGenerate}
+                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-white hover:bg-dash-accent-hover"
+                >
+                  Generate Report
+                </button>
+                <p className="mt-2 text-center text-[13px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+              </div>
+            )}
+          </div>
 
           {generateStatus === "loading" && (
             <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] text-dash-ink-secondary">

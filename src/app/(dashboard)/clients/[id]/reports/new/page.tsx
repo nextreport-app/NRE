@@ -43,6 +43,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         initialLastDriveFolderId={client.lastDriveFolderId}
         initialLastDriveFolderName={client.lastDriveFolderName}
         hasPreviousMonthData={!!client.previousMonthDataUrl}
+        clientTemplate={client.template}
       />
     </div>
   );
