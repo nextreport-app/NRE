@@ -425,21 +425,13 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   const combinedCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
   const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
-  console.log(
-    `[CombinedTotal:${isMtdRow ? "MTD" : "Period"}] CTR — rawClicks=${totalClicks} rawImpressions=${totalImpr} calculatedCTR=${combinedCtr} | displayedImpressions=${fmtNumber(totalImpr)}`,
-  );
-  console.log(
-    `[CombinedTotal:${isMtdRow ? "MTD" : "Period"}] CPC — rawSpend=${totalSpend} rawClicks=${totalClicks} calculatedCPC=${combinedCpc} | displayedSpend=${fmtCurrency(totalSpend, currencySymbol)}`,
-  );
-
   // Every distinct objective present in this row's own data becomes its own
-  // column pair — Reach included: it used to be filtered out here unless it
-  // was the ONLY objective present, on the assumption a fixed 2-column table
-  // couldn't spare room for it alongside real conversion objectives. Now
-  // that the table grows to fit (Fix 1), that exclusion no longer applies —
-  // Reach just naturally sorts last most of the time (Meta doesn't populate
-  // a `results` count for it, so its count is usually 0, same as any other
-  // group with no results yet).
+  // column pair. Zero-count objectives are then dropped below (e.g. an
+  // account running only Website Leads campaigns must never show an empty
+  // "Results"/"Cost Per Result" pair alongside it, nor a "0"-count Reach
+  // pair when nothing in this row set is a real Reach objective) — only an
+  // objective with at least one real result anywhere in this row set earns
+  // a column.
   //
   // Bug fix: getResultGroups' own avgCpr is scoped to ONLY the rows that
   // matched that particular objective (e.g. only the Website Leads
@@ -449,7 +441,12 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   // (and every other cost-per-X column) must divide that same displayed
   // total spend by this objective's own result count — never a spend
   // subset the user never sees broken out anywhere. See impliedCpr below.
-  const allGroups = getResultGroups(rows);
+  const allGroupsWithData = getResultGroups(rows).filter((g) => g.count > 0);
+  // Every group had a 0 count (e.g. real spend but literally no results yet
+  // for any objective) — fall back to the unfiltered list rather than
+  // leaving the table with zero result-column pairs, which
+  // fillCombinedTotalTable requires at least one of (see table-slide.ts).
+  const allGroups = allGroupsWithData.length > 0 ? allGroupsWithData : getResultGroups(rows);
 
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
@@ -502,10 +499,6 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
           ? totalSpend / g.count
           : 0;
       if (g.label === "REACH" && !isUncountedReach) cpr *= 1000;
-
-      console.log(
-        `[CombinedTotal:${isMtdRow ? "MTD" : "Period"}] ${g.costLabel} (${g.label}) — rawSpend=${totalSpend} raw${isUncountedReach ? "Reach" : "Count"}=${isUncountedReach ? totalReach : g.count} calculatedCPR=${cpr} | displayedSpend=${fmtCurrency(totalSpend, currencySymbol)} displayed${isUncountedReach ? "Reach" : g.label}=${isUncountedReach ? fmtNumber(totalReach) : fmtNumber(g.count)}`,
-      );
 
       return {
         label: g.label,

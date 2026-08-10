@@ -274,14 +274,15 @@ describe("renderPptx — real template end-to-end", () => {
 
     // This fixture has no Previous Month Data, so the Period row must be structurally
     // removed, not just blanked — verified with an independent OOXML reader
-    // (python-pptx), not our own fill code. It has 2 distinct objectives
-    // (Purchases from the Shoes campaign, Reach from the Brand campaign —
-    // Fix 1: Reach now gets its own column pair alongside other objectives
-    // instead of being dropped), which fits the template's native 10-column
-    // width exactly, with nothing hidden or grown.
+    // (python-pptx), not our own fill code. The Brand campaign's Reach
+    // objective never gets its own column pair here (round 4: a zero-count
+    // objective — Meta doesn't populate a results figure for a real Reach
+    // objective — is hidden entirely rather than shown as a dead "0"/"—"
+    // pair), so only Purchases (from the Shoes campaign) gets one, one
+    // column pair short of the template's native 10-column width.
     const tableDims = inspectTableDimensions(outPath, 6); // slide index 6 = table
     expect(tableDims.rows).toBe(2); // header + MTD only, Period row hidden
-    expect(tableDims.cols).toBe(10); // 6 static + 2 objectives (Purchases, Reach)
+    expect(tableDims.cols).toBe(8); // 6 static + 1 objective (Purchases only; 0-count Reach hidden)
 
     expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
@@ -479,7 +480,10 @@ describe("renderPptx — real template end-to-end", () => {
     // Cover + 2 campaign slides + 2 ad-set slides + chart + table + legend = 8; table is index 6.
     const tableDims = inspectTableDimensions(outPath, 6);
     expect(tableDims.rows).toBe(2); // header + Previous Month only — no MTD row, no footnote row
-    expect(tableDims.cols).toBe(10);
+    // 6 static + 1 objective pair (Purchases only) — the mtdDailyRows
+    // fixture's Brand campaign runs a 0-count Reach objective, hidden
+    // entirely (round 4: zero-count objective columns are dropped).
+    expect(tableDims.cols).toBe(8);
 
     const { texts } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
@@ -567,7 +571,11 @@ describe("renderPptx — real template end-to-end", () => {
       spend: 200,
       reach: 10000,
       impressions: 15000,
-      results: 0,
+      // Non-zero, unlike other Reach fixtures in this file — this test's own
+      // point is 3 SIMULTANEOUS objective columns, so this one must be a
+      // real (non-zero-count) objective too, or the zero-count-column fix
+      // (round 4) drops it and there are only 2 objectives to grow from.
+      results: 5,
       link_clicks: 0,
       ctr: 0.8,
       cpc: 0,
@@ -1078,7 +1086,11 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       // The legend slide's own white-run count should match its own amber
       // (term) run count 1:1 — one card, one term, one explanation each.
       const legendEntryCount = (xml.match(/val="f6ad55"/gi) || []).length;
-      const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : isLegendSlide ? legendEntryCount : 0;
+      // 16, not the template's native-width 20 — this fixture's Brand
+      // campaign runs a 0-count Reach objective, hidden entirely (round 4:
+      // zero-count objective columns are dropped), so the table is 8
+      // columns wide (6 static + 1 objective pair) instead of 10.
+      const expected = isTableSlide ? 16 : isChartSlide ? chartCampaignCount : isLegendSlide ? legendEntryCount : 0;
       expect(whiteCount).toBe(expected);
     }
 

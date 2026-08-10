@@ -226,9 +226,13 @@ describe("buildReportData — multi-campaign integration", () => {
 
   it("computes the MTD row and derives table header labels from it", () => {
     // Two distinct objectives across this fixture's 3 campaigns: Purchases
-    // (Shoes campaign) and Reach (Brand campaign) — both get their own
-    // column now (Fix 1: Reach is no longer excluded just because another
-    // objective also exists), Purchases first since it has far more results.
+    // (Shoes campaign, real results) and Reach (Brand campaign) — but Reach
+    // gets no column of its own (bug fix, round 4): its "count" is always 0
+    // (Meta doesn't populate a results figure for a real Reach objective),
+    // and a 0-count objective is now hidden entirely — an account whose
+    // only other objective is Purchases must not show an irrelevant,
+    // always-"0" Reach column pair. Reach's own spend/reach numbers are
+    // still fully visible via the table's always-present static columns.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
       // Fix 3 (round 4) — just the plain date range: no "MTD" suffix, no
@@ -249,23 +253,16 @@ describe("buildReportData — multi-campaign integration", () => {
       // rounding); combinedCpc = (350x7 total spend) / 1505 clicks = ₹1.63.
       ctr: "1.07%",
       cpc: "₹1.63",
-      // Bug fix (round 3): Cost Per Purchase/1K Reach now divide the SAME
-      // combined ₹2,450 total spend shown in the "spend" field above — not
-      // each objective's own campaign spend (₹1,050 for Purchases, ₹1,400
-      // for Reach) the way getGroupedResultDisplay's per-campaign-slide
-      // calculation still correctly does (see the "campaign summary
-      // metrics" tests above, unaffected — a different call site).
-      // ₹2,450 / 21 purchases = ₹116.67; ₹2,450 x1000 / 82,600 reach = ₹29.66.
-      resultColumns: [
-        { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹116.67" },
-        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹29.66" },
-      ],
+      // Bug fix (round 3): Cost Per Purchase now divides the SAME combined
+      // ₹2,450 total spend shown in the "spend" field above — not just the
+      // Purchases campaign's own ₹1,050 spend the way
+      // getGroupedResultDisplay's per-campaign-slide calculation still
+      // correctly does (see the "campaign summary metrics" tests above,
+      // unaffected — a different call site). ₹2,450 / 21 purchases = ₹116.67.
+      resultColumns: [{ label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹116.67" }],
     });
     expect(data.tableHeaderLabels).toEqual({
-      resultColumns: [
-        { label: "PURCHASES", costLabel: "COST PER PURCHASE" },
-        { label: "REACH", costLabel: "COST PER 1K REACH" },
-      ],
+      resultColumns: [{ label: "PURCHASES", costLabel: "COST PER PURCHASE" }],
     });
   });
 
@@ -698,6 +695,125 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
     const rawSpend = 200 + 156;
     const rawLeads = 5;
     expect(rawSpend / rawLeads).toBeCloseTo(71.2);
+  });
+});
+
+// Regression (bug fix, round 4): the Combined Total table used to show every
+// objective getResultGroups ever produces, including ones with a 0 count —
+// e.g. a stray blank-result_type row bucketed into the generic "RESULTS"
+// group, or a Reach campaign (whose own "count" is always 0, since Meta
+// doesn't populate a results figure for a real Reach objective) sitting
+// alongside a real conversion objective. Those showed up as dead "0"/"—"
+// column pairs with no useful information — hidden entirely now.
+describe("computeTableRow (via periodRow/mtdRow) — zero-count objective columns are hidden entirely", () => {
+  function leadRow(overrides: Partial<NreRow> = {}): NreRow {
+    return {
+      _raw: {},
+      campaign_name: "Leads Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Website lead",
+      spend: "100",
+      reach: "3000",
+      impressions: "9000",
+      results: "5",
+      ctr: "1.5",
+      cpc: "6",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+      ...overrides,
+    };
+  }
+
+  it("an account with only Website Leads campaigns shows Website Leads + Cost Per Website Lead only — no Results/Cost Per Result column", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [leadRow()],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toEqual([
+      { label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "5", cprValue: "$20.00" },
+    ]);
+    expect(data.periodRow.resultColumns.some((c) => c.label === "RESULTS")).toBe(false);
+  });
+
+  it("a blank result_type row that buckets into the generic 0-count RESULTS group is dropped, leaving only the real objective", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        leadRow(),
+        // No result_type at all -> getResultLabels' generic "RESULTS"
+        // fallback bucket, with 0 results (nothing in this row's own
+        // "results" field) — must not surface as its own dead column.
+        leadRow({ campaign_name: "Untagged Campaign", result_type: "", results: "0", spend: "50" }),
+      ],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toEqual([
+      { label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "5", cprValue: "$30.00" },
+    ]);
+  });
+
+  it("an account with mixed objectives (Website Leads + Link Clicks) shows both column pairs, still no Results column", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        leadRow(),
+        leadRow({ campaign_name: "Clicks Campaign", result_type: "Link Click", results: "8", spend: "40" }),
+      ],
+      now: NOW,
+    });
+
+    const labels = data.periodRow.resultColumns.map((c) => c.label).sort();
+    expect(labels).toEqual(["LINK CLICKS", "WEBSITE LEADS"]);
+  });
+
+  it("an account with only Purchases shows Purchases + Cost Per Purchase only", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [leadRow({ campaign_name: "Purchases Campaign", result_type: "Purchase", results: "3", spend: "300" })],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toEqual([
+      { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "3", cprValue: "$100.00" },
+    ]);
+  });
+
+  it("falls back to showing the (0-count) group rather than an empty resultColumns array when every objective genuinely has 0 results", () => {
+    // Real spend, but nothing converted yet for any objective — the table
+    // must still render a valid column pair (fillCombinedTotalTable
+    // requires at least one), not an empty, structurally-invalid grid.
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [leadRow({ result_type: "Website lead", results: "0" })],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toHaveLength(1);
+    expect(data.periodRow.resultColumns[0].label).toBe("WEBSITE LEADS");
+    expect(data.periodRow.resultColumns[0].value).toBe("0");
   });
 });
 
