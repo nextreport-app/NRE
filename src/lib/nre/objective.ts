@@ -298,6 +298,8 @@ export interface ResultGroup {
   costLabel: string;
   count: number;
   avgCpr: number;
+  /** This objective's own campaigns' spend total — never the account's combined spend across every objective. Exposed for callers (e.g. report-data.ts's Combined Total table) that need to rank objectives by spend or distinguish "spend but zero results" from "no activity at all", neither of which avgCpr alone can answer (it's 0 in both cases). */
+  totalSpend: number;
 }
 
 /**
@@ -332,7 +334,7 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
         const rawCpr = g.count > 0 ? g.totalSpend / g.count : 0;
         adjCpr = label === "REACH" ? rawCpr * 1000 : rawCpr;
       }
-      return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr };
+      return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr, totalSpend: g.totalSpend };
     })
     .sort((a, b) => b.count - a.count);
 }

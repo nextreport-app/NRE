@@ -426,27 +426,36 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
   // Every distinct objective present in this row's own data becomes its own
-  // column pair. Zero-count objectives are then dropped below (e.g. an
-  // account running only Website Leads campaigns must never show an empty
-  // "Results"/"Cost Per Result" pair alongside it, nor a "0"-count Reach
-  // pair when nothing in this row set is a real Reach objective) — only an
-  // objective with at least one real result anywhere in this row set earns
-  // a column.
+  // column pair — kept if it has real spend OR a real result (an objective
+  // with truly neither never occurred in this row set and earns no column).
   //
-  // Bug fix: getResultGroups' own avgCpr is scoped to ONLY the rows that
-  // matched that particular objective (e.g. only the Website Leads
-  // campaigns' spend) — correct for a single-campaign slide, but wrong here,
-  // where the table's "Ad Spend" column displays the FULL combined total
-  // spend across every row regardless of objective. Cost Per Website Lead
-  // (and every other cost-per-X column) must divide that same displayed
-  // total spend by this objective's own result count — never a spend
-  // subset the user never sees broken out anywhere. See impliedCpr below.
-  const allGroupsWithData = getResultGroups(rows).filter((g) => g.count > 0);
-  // Every group had a 0 count (e.g. real spend but literally no results yet
-  // for any objective) — fall back to the unfiltered list rather than
+  // Per-objective spend tracking (reverses the earlier "reconcile with Ad
+  // Spend" fix): a multi-objective account's cost-per-X must divide ONLY
+  // that objective's OWN campaigns' spend, never the combined spend across
+  // every objective — otherwise a Reach campaign's spend inflates a
+  // completely unrelated Meta Form Leads campaign's cost-per-lead (and vice
+  // versa). getResultGroups already computes this correctly per objective
+  // (avgCpr + totalSpend, both scoped to only that objective's own rows);
+  // the "Ad Spend" column above is the one place the FULL combined total
+  // still belongs — the overall budget view, not any single objective's
+  // cost math.
+  const allGroupsRaw = getResultGroups(rows);
+  // "RESULTS" is getResultLabels' own generic fallback bucket for a blank
+  // or unrecognized result_type (not a real, nameable objective) — it must
+  // never earn a zero-count-but-spend column the way a genuine objective
+  // (Website Leads, Reach, ...) does; a stray untagged row with some spend
+  // attached is noise, not an objective a client would recognize.
+  const activeGroups = allGroupsRaw.filter((g) => g.count > 0 || (g.totalSpend > 0 && g.label !== "RESULTS"));
+  // Every group had literally zero spend and zero results (shouldn't
+  // happen with real data) — fall back to the unfiltered list rather than
   // leaving the table with zero result-column pairs, which
   // fillCombinedTotalTable requires at least one of (see table-slide.ts).
-  const allGroups = allGroupsWithData.length > 0 ? allGroupsWithData : getResultGroups(rows);
+  const groupsToShow = activeGroups.length > 0 ? activeGroups : allGroupsRaw;
+  // Cap at 3 objective column pairs — a real PPT table can't grow
+  // unbounded; when more than 3 objectives are running simultaneously, the
+  // 3 with the most spend behind them are the ones worth a client's
+  // attention.
+  const allGroups = [...groupsToShow].sort((a, b) => b.totalSpend - a.totalSpend).slice(0, 3);
 
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
@@ -479,26 +488,25 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
     ctr: combinedCtr > 0 ? fmtPercent(combinedCtr) : "—",
     cpc: combinedCpc > 0 ? fmtCurrency2dp(combinedCpc, currencySymbol) : "—",
     resultColumns: allGroups.map((g) => {
-      // Cost Per <Objective> = the SAME displayed total spend (totalSpend,
-      // the exact number behind the "Ad Spend" column above) divided by
-      // this objective's own displayed count — never getResultGroups' own
-      // g.avgCpr, which is scoped to only the rows that matched this one
-      // objective. That per-objective scoping is correct for a single
-      // campaign's own slide (a different, unrelated call site — see
-      // getGroupedResultDisplay), but wrong here: the Combined Total
-      // table's "Ad Spend" column always shows the FULL combined spend
-      // across every row regardless of objective, so every cost-per-X
-      // column in this table must divide that same number, or the two
-      // never reconcile (the reported Cost Per Website Lead bug).
+      // g.avgCpr is already this objective's own spend divided by its own
+      // count (or, for an uncounted Reach objective — real Reach campaigns
+      // rarely populate a `results` count — its own spend × 1000 / its own
+      // reach) — computed entirely from this objective's own rows by
+      // getResultGroups, never the account's combined spend.
       const isUncountedReach = g.label === "REACH" && g.count === 0;
-      let cpr = isUncountedReach
-        ? totalReach > 0
-          ? (totalSpend * 1000) / totalReach
-          : 0
-        : g.count > 0
-          ? totalSpend / g.count
-          : 0;
-      if (g.label === "REACH" && !isUncountedReach) cpr *= 1000;
+      let cprValue: string;
+      if (isUncountedReach) {
+        cprValue = g.avgCpr > 0 ? fmtCurrency2dp(g.avgCpr, currencySymbol) : "—";
+      } else if (g.count > 0) {
+        cprValue = fmtCurrency2dp(g.avgCpr, currencySymbol);
+      } else if (g.totalSpend > 0) {
+        // Real spend, zero results — the cost is genuinely undefined
+        // (dividing by zero), not "$0.00" and not silently hidden. The
+        // client should still see that this objective ran and spent money.
+        cprValue = "N/A";
+      } else {
+        cprValue = "—";
+      }
 
       return {
         label: g.label,
@@ -507,7 +515,7 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
         // the actual objective's cost label, never an abbreviation.
         costLabel: g.costLabel,
         value: fmtNumber(g.count),
-        cprValue: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—",
+        cprValue,
       };
     }),
   };

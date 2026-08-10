@@ -226,13 +226,16 @@ describe("buildReportData — multi-campaign integration", () => {
 
   it("computes the MTD row and derives table header labels from it", () => {
     // Two distinct objectives across this fixture's 3 campaigns: Purchases
-    // (Shoes campaign, real results) and Reach (Brand campaign) — but Reach
-    // gets no column of its own (bug fix, round 4): its "count" is always 0
-    // (Meta doesn't populate a results figure for a real Reach objective),
-    // and a 0-count objective is now hidden entirely — an account whose
-    // only other objective is Purchases must not show an irrelevant,
-    // always-"0" Reach column pair. Reach's own spend/reach numbers are
-    // still fully visible via the table's always-present static columns.
+    // (Shoes campaign, real results) and Reach (Brand campaign) — both earn
+    // their own column pair. Reach's own "count" is always 0 (Meta doesn't
+    // populate a results figure for a real Reach objective), but it still
+    // has real spend, so it's shown with an N/A-free, genuinely computed
+    // Cost Per 1K Reach — a per-objective-spend fix (this round): each
+    // objective's cost divides ONLY that objective's own campaigns' spend,
+    // never the combined account-wide total, so Reach's ₹1,400 spend / 70,000
+    // reach = ₹20.00 per 1K, and Purchases' own ₹1,050 spend / 21 results =
+    // ₹50.00 (matching shoesChart.cpr above exactly) — not the old, wrongly
+    // inflated ₹2,450 (combined) / 21 = ₹116.67.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
       // Fix 3 (round 4) — just the plain date range: no "MTD" suffix, no
@@ -253,16 +256,24 @@ describe("buildReportData — multi-campaign integration", () => {
       // rounding); combinedCpc = (350x7 total spend) / 1505 clicks = ₹1.63.
       ctr: "1.07%",
       cpc: "₹1.63",
-      // Bug fix (round 3): Cost Per Purchase now divides the SAME combined
-      // ₹2,450 total spend shown in the "spend" field above — not just the
-      // Purchases campaign's own ₹1,050 spend the way
-      // getGroupedResultDisplay's per-campaign-slide calculation still
-      // correctly does (see the "campaign summary metrics" tests above,
-      // unaffected — a different call site). ₹2,450 / 21 purchases = ₹116.67.
-      resultColumns: [{ label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹116.67" }],
+      // Per-objective spend tracking (this round): Cost Per Purchase divides
+      // ONLY the Purchases campaign's own ₹1,050 spend (₹1,050 / 21 = ₹50.00,
+      // matching getGroupedResultDisplay's per-campaign-slide calculation
+      // exactly — see the "campaign summary metrics" tests above), never
+      // the combined ₹2,450 account-wide total. Cost Per 1K Reach likewise
+      // divides only the Reach campaign's own ₹1,400 spend by its own
+      // 70,000 reach. Ordered by each objective's own spend descending —
+      // Reach's ₹1,400 outspends Purchases' ₹1,050.
+      resultColumns: [
+        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹20.00" },
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
+      ],
     });
     expect(data.tableHeaderLabels).toEqual({
-      resultColumns: [{ label: "PURCHASES", costLabel: "COST PER PURCHASE" }],
+      resultColumns: [
+        { label: "REACH", costLabel: "COST PER 1K REACH" },
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE" },
+      ],
     });
   });
 
@@ -631,14 +642,14 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
     expect(data.mtdRow.cpc).toBe("$2.12");
   });
 
-  // Regression (bug fix, round 3) — reproduces the exact reported bug: Cost
-  // Per Website Lead came out lower than displayed_spend/displayed_leads
-  // because it was computed from ONLY the Website Leads campaign's own
-  // spend ($200), silently excluding the $156 spent by a same-account
-  // Traffic campaign that ran a different objective and had zero leads —
-  // even though the Combined Total table's "Ad Spend" column always shows
-  // the FULL $356 combined total, not a per-objective subset.
-  it("Cost Per Website Lead = the SAME displayed total spend / displayed leads, even when other campaigns ran a different objective", () => {
+  // Per-objective spend tracking (this round) — reverses the earlier
+  // "round 3" behavior: Cost Per Website Lead must divide ONLY the Website
+  // Leads campaign's own $200 spend, never a same-account Traffic
+  // campaign's unrelated $156 spend just because the "Ad Spend" column
+  // happens to show their $356 combined total. The Traffic campaign's own
+  // Link Clicks objective still earns its own column pair, with 0 results
+  // and an N/A cost (real spend, no results — not a calculated number).
+  it("Cost Per Website Lead uses ONLY the Website Leads campaign's own spend, never a same-account Traffic campaign's unrelated spend", () => {
     const periodRows: NreRow[] = [
       {
         _raw: {},
@@ -684,28 +695,33 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
       now: NOW,
     });
 
+    // Ad Spend always shows the full combined total — unaffected by the
+    // per-objective cost-calculation fix.
     expect(data.periodRow.spend).toBe("$356");
     const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(leadsColumn?.costLabel).toBe("COST PER WEBSITE LEAD");
     expect(leadsColumn?.value).toBe("5");
-    // $356 / 5 = $71.20 — the absolute rule: displayed spend / displayed
-    // count. NOT $200 / 5 = $40.00 (the old per-objective-scoped bug).
-    expect(leadsColumn?.cprValue).toBe("$71.20");
+    // $200 (Website Leads campaign's own spend) / 5 = $40.00 — NOT
+    // $356 / 5 = $71.20 (the combined-total bug this round fixes).
+    expect(leadsColumn?.cprValue).toBe("$40.00");
 
-    const rawSpend = 200 + 156;
-    const rawLeads = 5;
-    expect(rawSpend / rawLeads).toBeCloseTo(71.2);
+    const linkClicksColumn = data.periodRow.resultColumns.find((c) => c.label === "LINK CLICKS");
+    expect(linkClicksColumn?.value).toBe("0");
+    expect(linkClicksColumn?.cprValue).toBe("N/A");
   });
 });
 
-// Regression (bug fix, round 4): the Combined Total table used to show every
-// objective getResultGroups ever produces, including ones with a 0 count —
-// e.g. a stray blank-result_type row bucketed into the generic "RESULTS"
-// group, or a Reach campaign (whose own "count" is always 0, since Meta
-// doesn't populate a results figure for a real Reach objective) sitting
-// alongside a real conversion objective. Those showed up as dead "0"/"—"
-// column pairs with no useful information — hidden entirely now.
-describe("computeTableRow (via periodRow/mtdRow) — zero-count objective columns are hidden entirely", () => {
+// Regression (bug fix, round 4, refined this round): the generic "RESULTS"
+// fallback bucket (a stray blank-result_type row that getResultLabels can't
+// classify as any real objective) must never surface as its own column,
+// with or without spend — it isn't a real, nameable objective a client
+// would recognize. A genuine objective's own 0-count column (e.g. Reach,
+// whose "count" is always 0 since Meta doesn't populate a results figure
+// for it; or Website Leads with real spend but no leads yet) is NOT
+// hidden — it's shown with its real count (0) and an N/A cost, per this
+// round's explicit "still show this objective column so the client can
+// see the spend existed" requirement.
+describe("computeTableRow (via periodRow/mtdRow) — the generic RESULTS fallback bucket never gets its own column", () => {
   function leadRow(overrides: Partial<NreRow> = {}): NreRow {
     return {
       _raw: {},
@@ -758,8 +774,11 @@ describe("computeTableRow (via periodRow/mtdRow) — zero-count objective column
       now: NOW,
     });
 
+    // $100 (Website Leads campaign's own spend) / 5 = $20.00 — the
+    // untagged row's $50 never counts toward this objective's own cost,
+    // same per-objective-spend rule as everywhere else in this file.
     expect(data.periodRow.resultColumns).toEqual([
-      { label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "5", cprValue: "$30.00" },
+      { label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "5", cprValue: "$20.00" },
     ]);
   });
 
@@ -814,6 +833,127 @@ describe("computeTableRow (via periodRow/mtdRow) — zero-count objective column
     expect(data.periodRow.resultColumns).toHaveLength(1);
     expect(data.periodRow.resultColumns[0].label).toBe("WEBSITE LEADS");
     expect(data.periodRow.resultColumns[0].value).toBe("0");
+  });
+});
+
+// Comprehensive regression test for the exact reported scenario: 3
+// campaigns, 3 objectives, mixed spend — Meta Form Leads' Cost Per Lead
+// must divide only its own $596 spend, never the $751 combined total.
+describe("computeTableRow (via periodRow/mtdRow) — per-objective spend tracking, 3-campaign mixed-objective scenario", () => {
+  it("Reach ($0, real reach numbers) + Meta Form Leads ($596, 14 leads) + Website Lead Forms ($155, 0 leads)", () => {
+    const periodRows: NreRow[] = [
+      {
+        _raw: {},
+        campaign_name: "Awareness Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Reach",
+        spend: "0",
+        reach: "5000",
+        impressions: "8000",
+        results: "0",
+        ctr: "0.5",
+        cpc: "0",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Meta Form Leads Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Meta lead",
+        spend: "596",
+        reach: "4000",
+        impressions: "9000",
+        results: "14",
+        ctr: "1.8",
+        cpc: "5",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Website Lead Forms Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Website lead",
+        spend: "155",
+        reach: "2500",
+        impressions: "5000",
+        results: "0",
+        ctr: "1.2",
+        cpc: "4",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    // Ad Spend is the TOTAL combined spend across all three objectives —
+    // $0 + $596 + $155 = $751 — the overall-budget view, unaffected by the
+    // per-objective cost fix.
+    expect(data.periodRow.spend).toBe("$751");
+
+    const metaFormLeads = data.periodRow.resultColumns.find((c) => c.label === "META FORM LEADS");
+    expect(metaFormLeads?.value).toBe("14");
+    // 596 / 14 = $42.57 — ONLY the Meta Form Leads campaign's own spend,
+    // NOT 751 / 14 = $53.64 (what the old combined-total bug would show).
+    expect(metaFormLeads?.cprValue).toBe("$42.57");
+    expect(596 / 14).not.toBeCloseTo(751 / 14, 1);
+
+    const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    // Real spend ($155), but zero results — the count is shown as 0 (not
+    // hidden), and the cost is N/A (not a calculated number), per the
+    // explicit "still show this objective column so the client can see the
+    // spend existed" requirement.
+    expect(websiteLeads?.value).toBe("0");
+    expect(websiteLeads?.cprValue).toBe("N/A");
+
+    // The Awareness/Reach campaign has $0 spend and 0 results in this
+    // fixture (chosen so the combined total lands exactly on the reported
+    // $751 — $0 + $596 + $155) — genuinely nothing to report for it, so it
+    // earns no column of its own, same rule that drops the generic
+    // "RESULTS" fallback bucket elsewhere in this file. A real Reach
+    // campaign with actual spend/reach numbers gets its own Cost Per 1K
+    // Reach column exactly like Meta Form Leads and Website Leads do here
+    // — see the MTD row test above ("computes the MTD row...") for that
+    // case with real Reach spend.
+    expect(data.periodRow.resultColumns.some((c) => c.label === "REACH")).toBe(false);
+    expect(data.periodRow.resultColumns).toHaveLength(2);
+  });
+
+  it("caps at 3 objective column pairs, keeping the top 3 by spend, when more than 3 objectives are present", () => {
+    const periodRows: NreRow[] = [
+      { _raw: {}, campaign_name: "A", ad_set_name: "Set 1", result_type: "Meta lead", spend: "596", reach: "1000", impressions: "2000", results: "14", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
+      { _raw: {}, campaign_name: "B", ad_set_name: "Set 1", result_type: "Website lead", spend: "155", reach: "1000", impressions: "2000", results: "0", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
+      { _raw: {}, campaign_name: "C", ad_set_name: "Set 1", result_type: "Reach", spend: "300", reach: "5000", impressions: "8000", results: "0", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
+      { _raw: {}, campaign_name: "D", ad_set_name: "Set 1", result_type: "Purchase", spend: "50", reach: "500", impressions: "1000", results: "2", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    // 4 objectives present (Meta Form Leads $596, Reach $300, Website Leads
+    // $155, Purchases $50) — capped at the top 3 by spend; Purchases (the
+    // lowest-spend objective) is dropped.
+    expect(data.periodRow.resultColumns).toHaveLength(3);
+    const labels = data.periodRow.resultColumns.map((c) => c.label);
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
+    expect(labels).not.toContain("PURCHASES");
   });
 });
 
