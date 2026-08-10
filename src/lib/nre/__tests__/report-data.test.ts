@@ -249,9 +249,16 @@ describe("buildReportData — multi-campaign integration", () => {
       // rounding); combinedCpc = (350x7 total spend) / 1505 clicks = ₹1.63.
       ctr: "1.07%",
       cpc: "₹1.63",
+      // Bug fix (round 3): Cost Per Purchase/1K Reach now divide the SAME
+      // combined ₹2,450 total spend shown in the "spend" field above — not
+      // each objective's own campaign spend (₹1,050 for Purchases, ₹1,400
+      // for Reach) the way getGroupedResultDisplay's per-campaign-slide
+      // calculation still correctly does (see the "campaign summary
+      // metrics" tests above, unaffected — a different call site).
+      // ₹2,450 / 21 purchases = ₹116.67; ₹2,450 x1000 / 82,600 reach = ₹29.66.
       resultColumns: [
-        { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
-        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹20.00" },
+        { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹116.67" },
+        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹29.66" },
       ],
     });
     expect(data.tableHeaderLabels).toEqual({
@@ -625,6 +632,72 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
 
     expect(data.mtdRow.ctr).toBe("4.73%");
     expect(data.mtdRow.cpc).toBe("$2.12");
+  });
+
+  // Regression (bug fix, round 3) — reproduces the exact reported bug: Cost
+  // Per Website Lead came out lower than displayed_spend/displayed_leads
+  // because it was computed from ONLY the Website Leads campaign's own
+  // spend ($200), silently excluding the $156 spent by a same-account
+  // Traffic campaign that ran a different objective and had zero leads —
+  // even though the Combined Total table's "Ad Spend" column always shows
+  // the FULL $356 combined total, not a per-objective subset.
+  it("Cost Per Website Lead = the SAME displayed total spend / displayed leads, even when other campaigns ran a different objective", () => {
+    const periodRows: NreRow[] = [
+      {
+        _raw: {},
+        campaign_name: "Leads Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Website lead",
+        spend: "200",
+        reach: "3000",
+        impressions: "9000",
+        results: "5",
+        ctr: "1.5",
+        cpc: "6",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        // Different objective, zero leads — its spend must still count
+        // toward the displayed Ad Spend total, and toward Cost Per Website
+        // Lead's denominator, since that's the same number shown in the
+        // "Ad Spend" column of this exact table row.
+        campaign_name: "Traffic Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Link Click",
+        spend: "156",
+        reach: "2000",
+        impressions: "6000",
+        results: "0",
+        ctr: "1",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    expect(data.periodRow.spend).toBe("$356");
+    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(leadsColumn?.costLabel).toBe("COST PER WEBSITE LEAD");
+    expect(leadsColumn?.value).toBe("5");
+    // $356 / 5 = $71.20 — the absolute rule: displayed spend / displayed
+    // count. NOT $200 / 5 = $40.00 (the old per-objective-scoped bug).
+    expect(leadsColumn?.cprValue).toBe("$71.20");
+
+    const rawSpend = 200 + 156;
+    const rawLeads = 5;
+    expect(rawSpend / rawLeads).toBeCloseTo(71.2);
   });
 });
 
