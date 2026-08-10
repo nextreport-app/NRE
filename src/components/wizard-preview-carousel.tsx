@@ -339,7 +339,9 @@ function buildSlides({
   const firstCampaign = data.campaignSlides[0];
   if (firstCampaign) {
     const labels =
-      selectedMetrics.length > 0 ? selectedMetrics.map((m) => m.label) : firstCampaign.dynamicMetrics.map((m) => m.label);
+      selectedMetrics.length > 0
+        ? selectedMetrics.map((m) => m.label)
+        : firstCampaign.dynamicMetrics.filter((m) => m !== null).map((m) => m.label);
     slides.push({
       key: "campaign",
       render: () => (
@@ -351,7 +353,9 @@ function buildSlides({
   const firstAdSet = data.adSetSlides[0];
   if (firstAdSet) {
     const labels =
-      selectedMetrics.length > 0 ? selectedMetrics.map((m) => m.label) : firstAdSet.dynamicMetrics.map((m) => m.label);
+      selectedMetrics.length > 0
+        ? selectedMetrics.map((m) => m.label)
+        : firstAdSet.dynamicMetrics.filter((m) => m !== null).map((m) => m.label);
     slides.push({
       key: "adset",
       render: () => (
@@ -391,7 +395,7 @@ function buildSlides({
     selectedMetrics.length > 0
       ? selectedMetrics.map((m) => m.label)
       : firstCampaign
-        ? firstCampaign.dynamicMetrics.map((m) => m.label)
+        ? firstCampaign.dynamicMetrics.filter((m) => m !== null).map((m) => m.label)
         : [];
   const uniqueLegendLabels = Array.from(new Set(legendLabels)).slice(0, 6);
   if (uniqueLegendLabels.length > 0) {
