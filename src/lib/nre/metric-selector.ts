@@ -47,6 +47,19 @@ export interface SelectedMetric {
  * padding pool (see report-data.ts) both need: the full candidate universe,
  * not just what's objective-relevant.
  */
+/**
+ * (Step 6) Keys that are real dictionary secondary/primary entries — needed
+ * elsewhere (e.g. slot-assignment.ts's REACH-objective card and its global
+ * fallback chain both read "frequency" via the same dictionary entry) — but
+ * must never surface as a selectable/available metric in the wizard's own
+ * pool. Frequency is already shown on every campaign/ad-set slide (the "Ad
+ * Frequency: X.Xx avg" line under the date range — see report-data.ts's
+ * freqLine), so offering it again here would just duplicate that. Excluded
+ * by key rather than by dictionary `type` so the dictionary entry itself
+ * (and every other consumer of it) stays untouched.
+ */
+const ALWAYS_EXCLUDED_KEYS = new Set(["frequency"]);
+
 export function getAvailableMetrics(
   detectedColumns: string[],
   platform: "meta" | "google",
@@ -64,6 +77,7 @@ export function getAvailableMetrics(
 
   for (const entry of dictionary) {
     if (entry.type !== "primary" && entry.type !== "secondary") continue;
+    if (ALWAYS_EXCLUDED_KEYS.has(entry.key)) continue;
     if (!normalizedColumns.has(entry.csvName)) continue;
     if (!entry.label || !entry.format || entry.priority == null) continue;
     if (seenKeys.has(entry.key)) continue;
