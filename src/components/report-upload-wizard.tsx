@@ -1953,7 +1953,7 @@ export function ReportUploadWizard({
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
                   <p className="font-semibold">📊 Missing previous month comparison</p>
                   <p className="mt-1 text-dash-ink-secondary">
-                    Your Campaign Performance Overview slide does not have a previous month row.{" "}
+                    Your Monthly Campaign Performance Overview slide does not have a previous month row.{" "}
                     <Link href={`/clients/${clientId}`} className="text-dash-accent hover:underline">
                       Upload previous month data in Client Settings
                     </Link>{" "}

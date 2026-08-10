@@ -118,12 +118,15 @@ export async function loadTemplate(buffer: Buffer): Promise<LoadedTemplate> {
 
   const cover = find((t) => t.includes("{{ACCOUNT_NAME}}"), "cover");
   const campaign = find((t) => t.includes("{{METRIC_SPEND}}"), "campaign template");
-  // Matches either the current heading ("CAMPAIGN PERFORMANCE OVERVIEW",
-  // Fix 3's rename) or the pre-rename one ("CAMPAIGN OVERVIEW-Combined
-  // Total") — the latter only still exists in the untouched legacy
-  // reference/templates/ADS_TEMPLATE_V2.pptx fixture (kept intentionally
-  // pristine since the repo's first commit, unlike templates/dark.pptx and
-  // its derived templates, which Fix 3 renamed).
+  // Matches the current heading — "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW"
+  // (this round's rename) or its pre-rename "CAMPAIGN PERFORMANCE OVERVIEW"
+  // (Fix 3) both contain "CAMPAIGN PERFORMANCE OVERVIEW" as a substring, so
+  // this check still matches either — or the original pre-Fix-3 heading
+  // ("CAMPAIGN OVERVIEW-Combined Total"), which only still exists in the
+  // untouched legacy reference/templates/ADS_TEMPLATE_V2.pptx fixture (kept
+  // intentionally pristine since the repo's first commit, unlike
+  // templates/dark.pptx and its derived templates, which Fix 3 renamed and
+  // this round renamed again).
   const table = find((t) => t.includes("CAMPAIGN PERFORMANCE OVERVIEW") || t.includes("CAMPAIGN OVERVIEW"), "period/MTD table");
   const legend = find((t) => t.includes("METRIC ABBREVIATION"), "legend");
 

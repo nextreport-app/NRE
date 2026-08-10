@@ -155,7 +155,7 @@ export function ShareReportView({ data }: { data: ShareReportData }) {
 
         {/* Combined Total table */}
         <section className="mb-8">
-          <h2 className="mb-3 text-[18px] font-bold text-white">Campaign Performance Overview</h2>
+          <h2 className="mb-3 text-[18px] font-bold text-white">Monthly Campaign Performance Overview</h2>
           <CombinedTotalTable data={data} />
         </section>
       </main>

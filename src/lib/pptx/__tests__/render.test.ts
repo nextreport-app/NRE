@@ -1102,7 +1102,9 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     // Performance") whenever a month name is available, not always the
     // all-caps fallback.
     expect(chart.toLowerCase()).toContain("campaign performance");
-    expect(table).toContain("CAMPAIGN PERFORMANCE OVERVIEW");
+    // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
+    // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
+    expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");
 
     fs.unlinkSync(outPath);
   }, 30000);
