@@ -85,24 +85,26 @@ export default async function AboutPage() {
               <h2 className="text-2xl font-semibold text-accent-orange">The Story</h2>
               <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary">
                 <p>
-                  My name is Mohit Sharma, and I spent years managing Meta Ads campaigns for clients across
-                  India and the US. Every week, without fail, I would spend hours doing the same thing —
-                  downloading CSVs, copying numbers into PowerPoint, writing the same campaign summaries,
-                  formatting the same slides.
+                  This started from frustration — the same frustration every digital agency feels every Monday
+                  morning.
+                </p>
+                <p>
+                  Years of managing Meta Ads campaigns for clients across India and the US meant one thing
+                  without fail every week: hours spent downloading CSVs, copying numbers into PowerPoint,
+                  writing the same campaign summaries, formatting the same slides.
                 </p>
                 <p>It was not strategy. It was data entry.</p>
                 <p>
-                  I knew there had to be a better way. I looked at the tools available — most were expensive,
-                  built for Western markets, priced in dollars, and designed for enterprise teams. None of them
-                  understood how Indian agencies actually work.
+                  The tools available were expensive, built for Western markets, priced in dollars, and
+                  designed for enterprise teams. None of them understood how Indian agencies actually work.
                 </p>
+                <p>So NextReport was built.</p>
                 <p>
-                  So I built NextReport — and today we are helping digital agencies across India save hours
-                  every week on reporting, so they can spend more time on what actually matters: growing their
-                  clients results.
+                  Starting from India, we built a reporting tool that understands Indian agencies — INR
+                  pricing, the platforms Indian clients actually use, and a workflow that fits how agency teams
+                  actually operate. What used to take hours now takes minutes.
                 </p>
-                <p>What used to take hours now takes minutes.</p>
-                <p className="pt-2 font-medium text-white">— Mohit Sharma, Founder, NextReport</p>
+                <p className="pt-2 font-medium text-white">— NextReport Team</p>
               </div>
             </div>
             <StoryIllustration />
