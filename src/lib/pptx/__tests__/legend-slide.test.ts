@@ -6,13 +6,16 @@ import { loadTemplate, type LoadedTemplate } from "../package";
 
 const DARK_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const GOOGLE_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/google-ads-dark.pptx");
+const LIGHT_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/meta-ads-light.pptx");
 
 let darkTemplate: LoadedTemplate;
 let googleTemplate: LoadedTemplate;
+let lightTemplate: LoadedTemplate;
 
 beforeAll(async () => {
   darkTemplate = await loadTemplate(fs.readFileSync(DARK_TEMPLATE_PATH));
   googleTemplate = await loadTemplate(fs.readFileSync(GOOGLE_TEMPLATE_PATH));
+  lightTemplate = await loadTemplate(fs.readFileSync(LIGHT_TEMPLATE_PATH));
 });
 
 function entry(overrides: Partial<LegendEntry> = {}): LegendEntry {
@@ -117,4 +120,38 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
     expect(xmlWithNew).toContain("PURCHASES");
     expect(xmlWithNew).toContain("Purchases explanation");
   });
+});
+
+describe("template font sizes — Metric Abbreviation Guide title and Combined Total table title stay consistent with every other slide (28pt)", () => {
+  const templates: [string, () => LoadedTemplate][] = [
+    ["dark", () => darkTemplate],
+    ["google", () => googleTemplate],
+    ["light", () => lightTemplate],
+  ];
+
+  for (const [name, getTemplate] of templates) {
+    it(`${name} template: legend slide heading is 28pt, not 40pt`, () => {
+      const xml = getTemplate().legend.xml;
+      expect(xml).not.toContain('sz="4000"');
+      expect(xml).toContain("METRIC ABBREVIATION GUIDE");
+    });
+
+    it(`${name} template: table slide heading is 28pt, not 40pt`, () => {
+      const xml = getTemplate().table.xml;
+      expect(xml).not.toContain('sz="4000"');
+      expect(xml).toContain('sz="2800"');
+    });
+
+    it(`${name} template: legend card description text is at least 10pt (not 9pt)`, () => {
+      const xml = getTemplate().legend.xml;
+      expect(xml).not.toContain('sz="900"');
+      const descriptionRuns = (xml.match(/sz="1000"/g) || []).length;
+      expect(descriptionRuns).toBe(12);
+    });
+
+    it(`${name} template: legend card title/label text is still at least 11pt`, () => {
+      const xml = getTemplate().legend.xml;
+      expect(xml).toContain('sz="1400"');
+    });
+  }
 });
