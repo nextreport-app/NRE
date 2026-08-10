@@ -322,6 +322,24 @@ function average(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
+/**
+ * A single row's own CTR/CPC columns are Meta-computed percentages/currency
+ * amounts, not raw click counts — MetricRow never carries a raw "clicks"
+ * field. To recalculate a combined CTR/CPC across many rows from real
+ * totals (rather than summing/averaging percentages, which isn't
+ * meaningful), each row's own click count is backed out from whichever of
+ * its CTR or CPC columns is actually populated: CTR × impressions (Meta's
+ * own CTR formula, so this recovers the exact click count) preferred, spend
+ * ÷ CPC as a fallback when a row has CPC but no CTR.
+ */
+function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
+  const ctr = parseCellNum(row.ctr);
+  if (impressions > 0 && ctr > 0) return (ctr / 100) * impressions;
+  const cpc = parseCellNum(row.cpc);
+  if (cpc > 0 && spend > 0) return spend / cpc;
+  return 0;
+}
+
 function rowFrequency(row: MetricRow): number {
   const explicit = parseCellNum(row.frequency);
   if (explicit > 0) return explicit;
@@ -357,8 +375,10 @@ export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, mon
  * approximation (product decision, not an oversight): every other reporting
  * tool agencies/clients use does the same, and a dash here reads as "no
  * data" rather than "this number is approximate," which was actively
- * confusing. Only Reach gets this treatment; CTR/CPC stay true averages, not
- * sums, since those aren't meaningful summed.
+ * confusing. Only Reach gets this treatment; CTR/CPC are neither summed nor
+ * simply averaged (see impliedClicks below) — they're recalculated from
+ * this row set's combined totals instead, since a plain average would give
+ * a low-volume row's rate equal weight to a high-volume row's.
  */
 function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: boolean): TableRowData {
   if (!rows || rows.length === 0) {
@@ -380,25 +400,30 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   let totalSpend = 0;
   let totalReach = 0;
   let totalImpr = 0;
-  const ctrs: number[] = [];
-  const cpcs: number[] = [];
+  let totalClicks = 0;
   let rawStart = "";
   let rawEnd = "";
 
   rows.forEach((row) => {
-    totalSpend += parseCellNum(row.spend);
+    const spend = parseCellNum(row.spend);
+    const impr = parseCellNum(row.impressions);
+    totalSpend += spend;
     totalReach += parseCellNum(row.reach);
-    totalImpr += parseCellNum(row.impressions);
-    const ctr = parseCellNum(row.ctr);
-    const cpc = parseCellNum(row.cpc);
-    if (ctr > 0) ctrs.push(ctr);
-    if (cpc > 0) cpcs.push(cpc);
+    totalImpr += impr;
+    totalClicks += impliedClicks(row, spend, impr);
     if (row.date_start && (!rawStart || row.date_start < rawStart)) rawStart = row.date_start;
     if (row.date_end && (!rawEnd || row.date_end > rawEnd)) rawEnd = row.date_end;
   });
 
-  const avgCtr = average(ctrs);
-  const avgCpc = average(cpcs);
+  // CTR/CPC can't be summed OR simply averaged across rows — a low-volume
+  // row's CTR/CPC would count exactly as much as a high-volume row's, which
+  // skews the combined figure away from the true blended rate whenever rows
+  // span multiple campaigns/ad sets with different volumes (the reported
+  // bug). Both are instead recalculated from combined totals, the same way
+  // Meta computes them in the first place: CTR (All) = total clicks / total
+  // impressions × 100, CPC (All) = total spend / total clicks.
+  const combinedCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
+  const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
   // Every distinct objective present in this row's own data becomes its own
   // column pair — Reach included: it used to be filtered out here unless it
@@ -438,8 +463,8 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
     spend: fmtCurrency(totalSpend, currencySymbol),
     reach: fmtNumber(totalReach),
     impressions: fmtNumber(totalImpr),
-    ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
-    cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
+    ctr: combinedCtr > 0 ? fmtPercent(combinedCtr) : "—",
+    cpc: combinedCpc > 0 ? fmtCurrency2dp(combinedCpc, currencySymbol) : "—",
     resultColumns: allGroups.map((g) => ({
       label: g.label,
       // The real costLabel from getResultLabels() (e.g. "COST PER LEAD",

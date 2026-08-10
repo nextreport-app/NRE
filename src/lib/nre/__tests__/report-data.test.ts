@@ -241,8 +241,14 @@ describe("buildReportData — multi-campaign integration", () => {
       // A straight sum of the daily rows' reach — see the dedicated reach test below.
       reach: "82,600",
       impressions: "140,000",
-      ctr: "1.60%",
-      cpc: "₹3.50",
+      // Recalculated from combined totals (bug fix), not averaged across
+      // the 3 campaigns' own per-row CTR/CPC: implied clicks per day are
+      // 45 (Prospecting, 1.5% of 3000) + 50 (Retargeting, 2.5% of 2000) +
+      // 120 (Awareness, 0.8% of 15000) = 215/day, x7 days = 1505 total —
+      // combinedCtr = 1505/140,000 x100 = 1.075% -> "1.07%" (float
+      // rounding); combinedCpc = (350x7 total spend) / 1505 clicks = ₹1.63.
+      ctr: "1.07%",
+      cpc: "₹1.63",
       resultColumns: [
         { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
         { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹20.00" },
@@ -472,6 +478,153 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.periodRow.reach).toBe("3,000");
     expect(data.periodRow.impressions).toBe("6,000");
     expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("15");
+  });
+});
+
+// Regression (bug fix, round 2): after fixing the double-filter bug that
+// dropped a selected campaign entirely, spend/reach/impressions/results
+// summed correctly — but CTR (All)/CPC (All) were still a plain arithmetic
+// mean of each row's own CTR/CPC value (equal weight regardless of volume),
+// and per-objective cost-per-result must likewise come from combined
+// spend/count, never from averaging each campaign's own ratio.
+describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recalculated from combined totals, not summed or averaged", () => {
+  // Campaign A: 10,000 impressions, 5% CTR -> 500 implied clicks, $1000 spend, $2 CPC.
+  // Campaign B: 1,000 impressions, 2% CTR -> 20 implied clicks, $100 spend, $5 CPC.
+  // A plain average of the two rows' own CTR/CPC ((5+2)/2=3.5%, (2+5)/2=$3.50)
+  // would be wrong either way — it happens to equal neither campaign's real
+  // combined rate, which is exactly why it must be recalculated instead.
+  const twoCampaignPeriodRows: NreRow[] = [
+    {
+      _raw: {},
+      campaign_name: "Campaign A",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: "1000",
+      reach: "4000",
+      impressions: "10000",
+      results: "0",
+      ctr: "5",
+      cpc: "2",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    },
+    {
+      _raw: {},
+      campaign_name: "Campaign B",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: "100",
+      reach: "400",
+      impressions: "1000",
+      results: "0",
+      ctr: "2",
+      cpc: "5",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    },
+  ];
+
+  it("CTR (All) = combined implied clicks / combined impressions x 100 — not the average of the 2 campaigns' own CTRs (3.50%)", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: twoCampaignPeriodRows,
+      now: NOW,
+    });
+
+    // (500 + 20) / (10,000 + 1,000) x 100 = 4.727...% -> "4.73%"
+    expect(data.periodRow.ctr).toBe("4.73%");
+  });
+
+  it("CPC (All) = combined spend / combined implied clicks — not the average of the 2 campaigns' own CPCs ($3.50)", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: twoCampaignPeriodRows,
+      now: NOW,
+    });
+
+    // (1000 + 100) / (500 + 20) = 2.1153... -> "$2.12"
+    expect(data.periodRow.cpc).toBe("$2.12");
+  });
+
+  it("Cost Per Lead = combined spend / combined leads — not the average of the 2 campaigns' own CPLs ($60)", () => {
+    // Campaign X: $1000 spend, 10 leads -> its own CPL is $100.
+    // Campaign Y: $300 spend, 15 leads -> its own CPL is $20.
+    // Averaging those two CPLs gives $60 — wrong either way, since the real
+    // combined rate is total spend / total leads = $52.
+    const periodRows: NreRow[] = [
+      {
+        _raw: {},
+        campaign_name: "Campaign X",
+        ad_set_name: "Set 1",
+        result_type: "Lead",
+        spend: "1000",
+        reach: "3000",
+        impressions: "8000",
+        results: "10",
+        ctr: "3",
+        cpc: "4",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Campaign Y",
+        ad_set_name: "Set 1",
+        result_type: "Lead",
+        spend: "300",
+        reach: "1500",
+        impressions: "4000",
+        results: "15",
+        ctr: "1.5",
+        cpc: "1",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "LEADS");
+    expect(leadsColumn?.costLabel).toBe("COST PER LEAD");
+    expect(leadsColumn?.value).toBe("25");
+    // (1000 + 300) / (10 + 15) = 52.00, not the $60 simple average.
+    expect(leadsColumn?.cprValue).toBe("$52.00");
+  });
+
+  it("applies the exact same combined-totals recalculation to the MTD row, not just the Previous Month row", () => {
+    const mtdRowsTwoCampaigns: NreRow[] = twoCampaignPeriodRows.map((row) => ({
+      ...row,
+      date_start: "13-07-2026",
+      date_end: "13-07-2026",
+    }));
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: mtdRowsTwoCampaigns,
+      now: NOW,
+    });
+
+    expect(data.mtdRow.ctr).toBe("4.73%");
+    expect(data.mtdRow.cpc).toBe("$2.12");
   });
 });
 
