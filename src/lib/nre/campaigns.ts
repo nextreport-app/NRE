@@ -56,11 +56,16 @@ export function extractSpendingCampaignNames(rows: NreRow[]): string[] {
  * (used when a caller genuinely wants everything, e.g. a client that has
  * never gone through the selection step). An empty array is a deliberate
  * "nothing selected" and correctly filters everything out.
+ *
+ * Matching is case-insensitive (as well as trimmed) — some ad platform
+ * exports vary a campaign name's casing between files (e.g. a monthly
+ * export vs. a Previous Month Data export for the same account), which
+ * would otherwise silently drop an already-selected campaign's rows.
  */
 export function filterRowsByCampaigns<T extends NreRow>(rows: T[], selectedCampaigns: string[] | null): T[] {
   if (selectedCampaigns === null) return rows;
-  const selected = new Set(selectedCampaigns.map((name) => name.trim()));
-  return rows.filter((row) => selected.has((row.campaign_name || "").trim()));
+  const selected = new Set(selectedCampaigns.map((name) => name.trim().toLowerCase()));
+  return rows.filter((row) => selected.has((row.campaign_name || "").trim().toLowerCase()));
 }
 
 /** Full campaign list + excluded subset from the upload that last saved a selection — see Client.lastDeselectedCampaigns's schema comment. */

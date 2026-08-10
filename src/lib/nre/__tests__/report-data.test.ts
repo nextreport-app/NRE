@@ -322,12 +322,16 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.adSetSlides).toHaveLength(2);
   });
 
-  // Regression: Previous Month Data (previous full month, optional second
-  // upload) fed straight into the table slide's "Period" row without ever
-  // going through filterRowsByCampaigns/filterRowsByAdSets — a deselected
-  // ad set's spend still reached the report via that row even though the
-  // MTD row correctly excluded it.
-  it("also applies ad-set/campaign selection to Previous Month Data, not just the MTD Daily CSV", () => {
+  // Regression (bug fix): Previous Month Data (previous full month, optional
+  // second upload) has its own INDEPENDENT campaign selection
+  // (Client.previousMonthSelectedCampaigns), already applied upstream by
+  // loadPreviousMonthDataRows() before periodRows ever reaches
+  // buildReportData. The MTD Daily CSV's own selectedCampaigns/selectedAdSets
+  // must have NO effect on it — re-applying them here used to silently drop
+  // a previous-month campaign/ad set that wasn't present in (or selectable
+  // from) the current month's MTD CSV, e.g. a campaign paused this month
+  // that still had spend last month.
+  it("does not re-filter Previous Month Data by the MTD CSV's own selectedAdSets", () => {
     const periodRows = [
       {
         _raw: {},
@@ -366,17 +370,17 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
       monthlyBudget: null,
       mtdDailyRows,
       periodRows,
-      // Only Prospecting selected — Retargeting's $300 must vanish from the
-      // Period row exactly as it already does from the MTD row.
+      // Only Prospecting selected for the MTD CSV — must have zero effect on
+      // Previous Month Data: both ad sets' spend ($500 + $300) are summed.
       selectedAdSets: [adSetKey("Shoes - Purchases", "Prospecting"), adSetKey("Brand - Reach", "Awareness")],
       now: NOW,
     });
 
-    expect(data.periodRow.spend).toBe("$500");
-    expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("10");
+    expect(data.periodRow.spend).toBe("$800");
+    expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("15");
   });
 
-  it("deselecting an entire campaign also removes its Previous Month Data rows", () => {
+  it("does not re-filter Previous Month Data by the MTD CSV's own selectedCampaigns", () => {
     const periodRows = [
       {
         _raw: {},
@@ -401,11 +405,73 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
       monthlyBudget: null,
       mtdDailyRows,
       periodRows,
-      selectedCampaigns: ["Shoes - Purchases"], // Brand - Reach excluded entirely
+      // MTD CSV's own selection excludes "Brand - Reach" from the MTD row —
+      // Previous Month Data still shows it, since it wasn't excluded from
+      // Client.previousMonthSelectedCampaigns.
+      selectedCampaigns: ["Shoes - Purchases"],
       now: NOW,
     });
 
-    expect(data.periodRow.hasData).toBe(false);
+    expect(data.periodRow.hasData).toBe(true);
+    expect(data.periodRow.spend).toBe("$900");
+  });
+
+  it("combined total's Previous Month row sums ALL campaigns in previousMonthSelectedCampaigns, including one paused during the current month", () => {
+    // Simulates what loadPreviousMonthDataRows() hands buildReportData when
+    // previousMonthSelectedCampaigns lists 2 campaigns and both have spend
+    // in the Previous Month Data CSV — "Campaign B" is paused this month
+    // (absent from mtdDailyRows/selectedCampaigns entirely) but still had
+    // real spend last month, and must still be counted.
+    const periodRows = [
+      {
+        _raw: {},
+        campaign_name: "Campaign A",
+        ad_set_name: "Set 1",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Campaign B",
+        ad_set_name: "Set 1",
+        result_type: "Purchase",
+        spend: "300",
+        reach: "1000",
+        impressions: "2000",
+        results: "5",
+        ctr: "1.5",
+        cpc: "2",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows,
+      // Current month's MTD CSV only ever had "Shoes - Purchases"/"Brand -
+      // Reach" — neither "Campaign A" nor "Campaign B" is selectable here,
+      // proving the Previous Month row doesn't depend on this selection.
+      selectedCampaigns: ["Shoes - Purchases", "Brand - Reach"],
+      now: NOW,
+    });
+
+    expect(data.periodRow.hasData).toBe(true);
+    expect(data.periodRow.spend).toBe("$800");
+    expect(data.periodRow.reach).toBe("3,000");
+    expect(data.periodRow.impressions).toBe("6,000");
+    expect(data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")?.value).toBe("15");
   });
 });
 

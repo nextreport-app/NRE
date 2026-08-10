@@ -533,14 +533,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
 
   // The optional Previous Month Data (previous full month) feeds the table
-  // slide's separate "Period" row — it must go through the exact same
-  // campaign/ad-set selection as the MTD Daily CSV, or a deselected ad set
-  // still reaches the report via this second row even though the MTD row
-  // correctly excludes it.
-  const filteredPeriodRows = filterRowsByAdSets(
-    filterRowsByCampaigns(periodRows ?? [], selectedCampaigns ?? null),
-    selectedAdSets ?? null,
-  );
+  // slide's separate "Period" row. Its campaign selection is independent of
+  // the MTD Daily CSV's — it's made against the Previous Month Data upload's
+  // own campaign list (Client.previousMonthSelectedCampaigns) and applied by
+  // the caller via loadPreviousMonthDataRows() *before* periodRows ever
+  // reaches this function. Re-filtering here with the MTD CSV's own
+  // selectedCampaigns/selectedAdSets (an unrelated selection, scoped to a
+  // different month's data and often a different set of campaigns/ad sets
+  // entirely) would silently drop previous-month campaigns that aren't
+  // present in — or selectable from — the current month's MTD CSV, e.g. a
+  // campaign paused this month that still had spend last month. So
+  // periodRows is used as-is here, already filtered exactly once, correctly.
+  const filteredPeriodRows = periodRows ?? [];
   const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   const mtdRows: AggRow[] = split?.mtdRows ?? [];
   // The rows campaign/ad-set slides, the health score, and the report-wide

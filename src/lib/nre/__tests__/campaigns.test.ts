@@ -89,6 +89,11 @@ describe("filterRowsByCampaigns", () => {
     const result = filterRowsByCampaigns(rows, ["  Shoes  "]);
     expect(result.map((r) => r.campaign_name)).toEqual(["Shoes"]);
   });
+
+  it("matches campaign names case-insensitively", () => {
+    const result = filterRowsByCampaigns(rows, ["shoes", "HATS"]);
+    expect(result.map((r) => r.campaign_name)).toEqual(["Shoes", "Hats"]);
+  });
 });
 
 describe("resolveCampaignSelection — Campaigns step is always shown, only the pre-checked default varies", () => {
