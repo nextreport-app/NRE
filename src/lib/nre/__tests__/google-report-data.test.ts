@@ -125,7 +125,7 @@ describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2
     const data = buildGoogleReportData({ accountName: "Test Agency", currencySymbol: "$", monthlyBudget: null, mtdDailyRows });
     const dynamicMetrics = data.campaignSlides[0].dynamicMetrics;
     expect(dynamicMetrics).toHaveLength(8);
-    expect(dynamicMetrics.map((m) => m.key)).toEqual([
+    expect(dynamicMetrics.map((m) => m?.key)).toEqual([
       "spend",
       "reach",
       "impressions",
@@ -145,10 +145,10 @@ describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2
       mtdDailyRows: rows(["Shoes - Search", "Prospecting", "13-07-2026", "100", "20", "1000", "2%", "5.00", "4"]),
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[3].label).toBe("CONVERSIONS");
-    expect(slots[3].value).toBe("4");
-    expect(slots[4].label).toBe("COST PER CONV.");
-    expect(slots[4].value).toBe("$25.00"); // 100 / 4
+    expect(slots[3]?.label).toBe("CONVERSIONS");
+    expect(slots[3]?.value).toBe("4");
+    expect(slots[4]?.label).toBe("COST PER CONV.");
+    expect(slots[4]?.value).toBe("$25.00"); // 100 / 4
   });
 
   it("keeps slots 1-3 and 6-7 fixed (Spend/Reach/Impressions/CTR/CPC) regardless of objective", () => {
@@ -173,8 +173,8 @@ describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2
       mtdDailyRows: shoppingRows,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[3].label).toBe("CONV. VALUE");
-    expect(slots[4].label).toBe("ROAS");
+    expect(slots[3]?.label).toBe("CONV. VALUE");
+    expect(slots[4]?.label).toBe("ROAS");
   });
 
   it("switches slots 4-5 to VIEWABLE IMPR. + VIEWABLE RATE for a Display CSV", () => {
@@ -189,8 +189,8 @@ describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2
       mtdDailyRows: displayRows,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[3].label).toBe("VIEWABLE IMPR.");
-    expect(slots[4].label).toBe("VIEWABLE RATE");
+    expect(slots[3]?.label).toBe("VIEWABLE IMPR.");
+    expect(slots[4]?.label).toBe("VIEWABLE RATE");
   });
 
   it("switches slots 4-5 to VIDEO VIEWS + AVG. CPV for a Video/TrueView CSV", () => {
@@ -205,8 +205,8 @@ describe("buildGoogleReportData — automatic 8-slot metric assignment (Change 2
       mtdDailyRows: videoRows,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[3].label).toBe("VIDEO VIEWS");
-    expect(slots[4].label).toBe("AVG. CPV");
+    expect(slots[3]?.label).toBe("VIDEO VIEWS");
+    expect(slots[4]?.label).toBe("AVG. CPV");
   });
 
   it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 8-slot assignment", () => {

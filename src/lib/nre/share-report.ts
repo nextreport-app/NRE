@@ -65,7 +65,11 @@ export function buildShareReportData(data: ReportData, aiCopyBySlideKey: Map<str
       resultLabel: slide.resultLabel,
       dateRange: slide.ai.dateRange,
       statusIndicator: slide.statusIndicator,
-      metrics: slide.dynamicMetrics,
+      // Round I — dynamicMetrics may now contain null entries (a slot the
+      // uploaded CSV genuinely has no data for); the share page's metric
+      // grid only ever renders real, CSV-backed metrics, so nulls are
+      // dropped here rather than threaded through as empty cards.
+      metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
       aiSummary: ai.summary,
       aiInsights: ai.insights,
     };

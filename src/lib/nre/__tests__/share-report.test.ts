@@ -63,12 +63,17 @@ describe("buildShareReportData", () => {
     expect(share.cover.budgetSummary).toBe(data.cover.budgetSummary);
   });
 
-  it("builds one campaign entry per campaign slide, with its own 8 dynamic metrics and matched AI copy", () => {
+  it("builds one campaign entry per campaign slide, with its own dynamic metrics (nulls dropped) and matched AI copy", () => {
     expect(share.campaigns).toHaveLength(1);
     const c = share.campaigns[0];
     expect(c.campaignName).toBe("Shoes - Purchases");
-    expect(c.metrics).toHaveLength(8);
-    expect(c.metrics).toBe(data.campaignSlides[0].dynamicMetrics);
+    // This fixture's CSV has no extra dictionary columns at all (only Day
+    // in _raw), so slots 7/8 (Round I: no metric shown unless the CSV
+    // genuinely backs it) are null — dropped from the share page's own
+    // metric list rather than threaded through as empty cards.
+    const realDynamicMetrics = data.campaignSlides[0].dynamicMetrics.filter((m) => m !== null);
+    expect(c.metrics).toHaveLength(realDynamicMetrics.length);
+    expect(c.metrics).toEqual(realDynamicMetrics);
     expect(c.aiSummary).toBe("Great week.");
     expect(c.aiInsights).toBe("Keep scaling.");
   });

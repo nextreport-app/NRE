@@ -78,6 +78,23 @@ const REDUNDANT_WITH: Record<string, string[]> = {
 
 type SlotCandidate = { key: string; label: string; format: DynamicMetricValue["format"] };
 
+const CLICKS_ALL: SlotCandidate = { key: "clicks_all", label: "CLICKS (ALL)", format: "number" };
+const LINK_CLICKS: SlotCandidate = { key: "link_clicks", label: "LINK CLICKS", format: "number" };
+const COST_PER_LINK_CLICK: SlotCandidate = { key: "cpc_link_click", label: "COST PER LINK CLICK", format: "currency" };
+const LANDING_PAGE_VIEWS: SlotCandidate = { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" };
+const COST_PER_LPV: SlotCandidate = { key: "cost_per_lpv", label: "COST PER LPV", format: "currency" };
+
+/**
+ * Product spec's mandatory global fallback chain for slots 7/8 (round I bug
+ * fix): when a case's own objective-specific candidate(s) have no real data
+ * in this CSV, these four are tried next, in this order, before the slot is
+ * given up on entirely. Never assigned redundantly (REDUNDANT_WITH still
+ * applies) and never assigned twice to the same card set.
+ */
+const FREQUENCY: SlotCandidate = { key: "frequency", label: "FREQUENCY", format: "ratio" };
+const CPM: SlotCandidate = { key: "cpm", label: "CPM", format: "currency" };
+const GLOBAL_FALLBACK_CHAIN: SlotCandidate[] = [LINK_CLICKS, CLICKS_ALL, FREQUENCY, CPM];
+
 /**
  * Picks the first candidate (checked in the given priority order) that:
  * isn't already used by an earlier slot in this same card set, isn't made
@@ -86,36 +103,41 @@ type SlotCandidate = { key: string; label: string; format: DynamicMetricValue["f
  * a missing column or a zero aggregate, via dynamic-metrics.ts's
  * lookupMetricValue, so `!== "—"` is exactly "column exists AND value >
  * 0"). Once a candidate is used/redundant, it's dropped from consideration
- * entirely — even the final "nothing had real data" fallback (Part 1's
- * existing "always show the label, dash if no value" convention) only
- * ever falls back to the last non-redundant candidate, never back to a
- * duplicate/superset one just to avoid an empty slot.
+ * entirely.
+ *
+ * Round I bug fix: previously, when nothing in `candidates` had real data,
+ * this fell back to displaying the LAST candidate's own label with a dash
+ * value — i.e. a metric NOT present in the uploaded CSV, shown by name with
+ * no real number behind it. Per the product's non-negotiable rule ("never
+ * assign a metric to a slot unless its column exists in the CSV AND its
+ * aggregated value is non-zero"), this now instead tries the mandatory
+ * global fallback chain (LINK CLICKS -> CLICKS (ALL) -> FREQUENCY -> CPM),
+ * and if NONE of those have real data either, returns null — fill-tags.ts's
+ * buildCampaignOrAdSetSlideXml already dashes out both the label and the
+ * value for a null slot, so the slide shows a genuinely empty card rather
+ * than a metric name the CSV doesn't actually support.
  */
-function pickSlot(candidates: SlotCandidate[], already: Set<string>, lookup: (key: string) => string): DynamicMetricValue {
+function pickSlot(candidates: SlotCandidate[], already: Set<string>, lookup: (key: string) => string): DynamicMetricValue | null {
   const isRedundant = (key: string) => [...already].some((usedKey) => REDUNDANT_WITH[usedKey]?.includes(key));
-  const eligible = candidates.filter((c) => !already.has(c.key) && !isRedundant(c.key));
-  // Every case below always lists at least one genuinely non-redundant
-  // candidate for its own objective, so `eligible` is never empty in
-  // practice — the full candidate list is only a defensive fallback
-  // against a future case whose entire list happens to collide.
-  const pool = eligible.length > 0 ? eligible : candidates;
-  for (const c of pool) {
+  const isUsable = (c: SlotCandidate) => !already.has(c.key) && !isRedundant(c.key);
+
+  for (const c of candidates.filter(isUsable)) {
     const val = lookup(c.key);
     if (val !== "—") return slot(c.key, c.label, c.format, val);
   }
-  const last = pool[pool.length - 1];
-  return slot(last.key, last.label, last.format, "—");
+
+  const alreadyTried = new Set(candidates.map((c) => c.key));
+  for (const c of GLOBAL_FALLBACK_CHAIN.filter((c) => !alreadyTried.has(c.key) && isUsable(c))) {
+    const val = lookup(c.key);
+    if (val !== "—") return slot(c.key, c.label, c.format, val);
+  }
+
+  return null;
 }
 
-function usedKeys(...slots: DynamicMetricValue[]): Set<string> {
-  return new Set(slots.map((s) => s.key));
+function usedKeys(...slots: (DynamicMetricValue | null)[]): Set<string> {
+  return new Set(slots.filter((s): s is DynamicMetricValue => s !== null).map((s) => s.key));
 }
-
-const CLICKS_ALL: SlotCandidate = { key: "clicks_all", label: "CLICKS (ALL)", format: "number" };
-const LINK_CLICKS: SlotCandidate = { key: "link_clicks", label: "LINK CLICKS", format: "number" };
-const COST_PER_LINK_CLICK: SlotCandidate = { key: "cpc_link_click", label: "COST PER LINK CLICK", format: "currency" };
-const LANDING_PAGE_VIEWS: SlotCandidate = { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" };
-const COST_PER_LPV: SlotCandidate = { key: "cost_per_lpv", label: "COST PER LPV", format: "currency" };
 
 /**
  * Final safety net (explicit ask, Part 2): scans the already-built 8-slot
@@ -124,17 +146,19 @@ const COST_PER_LPV: SlotCandidate = { key: "cost_per_lpv", label: "COST PER LPV"
  * pickSlot above (which substitutes the actual next-best candidate at
  * build time, when it still has access to that slot's own candidate
  * list) — this pass can't re-derive a substitute that late with no
- * candidate list of its own, so it can only blank the redundant slot's
- * value to "—" rather than ever display two cards for the same
- * underlying metric. In practice this never fires against the cases
- * below; it exists as a structural guarantee against a future case that
- * assigns a redundant key directly instead of through pickSlot.
+ * candidate list of its own, so it blanks the redundant slot out entirely
+ * (null, per Round I's "never show a slot the CSV doesn't genuinely back"
+ * rule) rather than ever display two cards for the same underlying metric.
+ * In practice this never fires against the cases below; it exists as a
+ * structural guarantee against a future case that assigns a redundant key
+ * directly instead of through pickSlot.
  */
-function dedupeSlots(slots: DynamicMetricValue[]): DynamicMetricValue[] {
-  const keys = slots.map((s) => s.key);
+function dedupeSlots(slots: (DynamicMetricValue | null)[]): (DynamicMetricValue | null)[] {
+  const keys = slots.map((s) => s?.key);
   return slots.map((s, i) => {
-    const isRedundant = keys.some((otherKey, j) => j !== i && REDUNDANT_WITH[otherKey]?.includes(s.key));
-    return isRedundant ? { ...s, value: "—" } : s;
+    if (!s) return null;
+    const isRedundant = keys.some((otherKey, j) => j !== i && otherKey && REDUNDANT_WITH[otherKey]?.includes(s.key));
+    return isRedundant ? null : s;
   });
 }
 
@@ -163,14 +187,14 @@ export interface MetaSlotBaseline {
  * objective.ts actually produces (e.g. "MESSAGING LEADS" for the messaging
  * branch) so the mapping fires correctly against real data.
  */
-export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow[], currencySymbol: string): DynamicMetricValue[] {
+export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow[], currencySymbol: string): (DynamicMetricValue | null)[] {
   const v = (key: string) => metaSlotValue(rawRows, key, currencySymbol);
   const resultLabel = (baseline.resultLabel || "").toUpperCase();
 
   let slot4: DynamicMetricValue;
   let slot5: DynamicMetricValue;
-  let slot7: DynamicMetricValue;
-  let slot8: DynamicMetricValue;
+  let slot7: DynamicMetricValue | null;
+  let slot8: DynamicMetricValue | null;
 
   switch (resultLabel) {
     case "WEBSITE LEADS":

@@ -1971,7 +1971,7 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     expect(slots[3]).toMatchObject({ key: "results", label: "PURCHASES" });
     expect(slots[4]).toMatchObject({ key: "cost_per_result", label: "COST PER PURCHASE" });
     expect(slots[6]).toMatchObject({ key: "results_roas", label: "ROAS" });
-    expect(slots[6].value).not.toBe("—");
+    expect(slots[6]?.value).not.toBe("—");
   });
 
   it("assigns slots 4/5/7 for the WEBSITE LEADS objective (Results/Cost per Lead/Link Clicks), reading the extra field straight off the raw CSV via the dictionary", () => {
@@ -2012,7 +2012,14 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS" });
   });
 
-  it("shows a dash (not $0.00) for an extra dictionary field that's zero or absent from the CSV", () => {
+  // Round I bug fix: previously this slot showed the case's own candidate
+  // label (e.g. "ROAS") with a dash value — a metric name absent from the
+  // CSV, shown anyway. Now it's null entirely (fill-tags.ts dashes out
+  // both the label and the value for a null slot) since this CSV has none
+  // of PURCHASES' own slot 7 candidate (Results ROAS) nor anything in the
+  // global fallback chain (no Link Clicks/Clicks (All)/Frequency columns,
+  // and no raw Impressions column either, so even CPM can't be computed).
+  it("slot is null (not a dash-valued metric name) for an extra dictionary field that's zero or absent from the CSV — Round I", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -2022,7 +2029,7 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
       now: NOW,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[6].value).toBe("—");
+    expect(slots[6]).toBeNull();
   });
 
   it("never splits a campaign into a second/continued slide — a campaign always gets exactly one slide with the automatic 8-slot assignment", () => {
@@ -2102,7 +2109,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
       selectedMetrics: eightMetrics.slice(0, 5),
     });
     const slide = data.campaignSlides[0];
-    expect(slide.dynamicMetrics.map((m) => m.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result"]);
+    expect(slide.dynamicMetrics.map((m) => m?.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result"]);
     expect(slide.additionalMetricsSlide).toBeUndefined();
   });
 
@@ -2140,7 +2147,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
       selectedMetrics: [eightMetrics[0]],
     });
     // 7 days * $50 = $350, same total the fixed metrics.spend field itself computes.
-    expect(data.campaignSlides[0].dynamicMetrics[0].value).toBe(data.campaignSlides[0].metrics.spend);
+    expect(data.campaignSlides[0].dynamicMetrics[0]?.value).toBe(data.campaignSlides[0].metrics.spend);
   });
 });
 

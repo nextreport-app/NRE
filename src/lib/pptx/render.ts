@@ -42,7 +42,7 @@ function collectLegendEntries(data: ReportData): LegendEntry[] {
 
   for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
     for (const metric of [...(slide.dynamicMetrics ?? []), ...(slide.additionalMetricsSlide ?? [])]) {
-      if (metric.key === "spend" || seen.has(metric.key)) continue;
+      if (!metric || metric.key === "spend" || seen.has(metric.key)) continue;
       seen.add(metric.key);
       const dictEntry = findByKey(metric.key);
       entries.push({ term: metric.label, explanation: dictEntry?.explanation ?? metric.label });

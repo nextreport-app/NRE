@@ -104,7 +104,7 @@ export interface CampaignSlideData {
    * buildCampaignOrAdSetSlideXml, which maps each entry straight onto the
    * template's corresponding card position.
    */
-  dynamicMetrics: DynamicMetricValue[];
+  dynamicMetrics: (DynamicMetricValue | null)[];
   /**
    * Part 4 — present only when the wizard's selectedMetrics exceeded 8 for
    * this report; this campaign's own remaining metrics (padded up to 4 if
@@ -128,7 +128,7 @@ export interface AdSetSlideData {
   /** Small "Paused"/"Inactive" tag next to the ad set name; null when active or the CSV has no delivery-status data. */
   statusIndicator: DeliveryStatusIndicator;
   /** See CampaignSlideData.dynamicMetrics. */
-  dynamicMetrics: DynamicMetricValue[];
+  dynamicMetrics: (DynamicMetricValue | null)[];
   /** See CampaignSlideData.additionalMetricsSlide. */
   additionalMetricsSlide?: DynamicMetricValue[];
 }
@@ -811,7 +811,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   function computeMetaSlideMetrics(
     baseline: MetaSlotBaseline,
     rawRows: NreRow[],
-  ): { dynamicMetrics: DynamicMetricValue[]; additionalMetricsSlide?: DynamicMetricValue[] } {
+  ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: DynamicMetricValue[] } {
     if (!metricSlideKeyGroups) {
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
