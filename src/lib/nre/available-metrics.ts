@@ -152,6 +152,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
   const core = [byKey("META", "spend")!, byKey("META", "reach")!, byKey("META", "impressions")!];
   const ctr = byKey("META", "ctr")!;
   const clicksAll = byKey("META", "clicks_all")!;
+  const costPerLinkClick = byKey("META", "cpc_link_click", "COST PER LINK CLICK")!;
 
   let slot4: SelectedMetric;
   let slot5: SelectedMetric;
@@ -171,20 +172,26 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot4 = byKey("META", "link_clicks")!;
       slot5 = byKey("META", "cpc_link_click")!;
       slot7 = byKey("META", "landing_page_views")!;
-      slot8 = clicksAll;
+      // CLICKS (ALL) would duplicate slot 4's own LINK CLICKS (Issue 1) —
+      // COST PER LPV pairs with slot 7's own Landing Page Views instead.
+      slot8 = byKey("META", "cost_per_lpv")!;
       break;
+    // Landing Page Views — Issue 1's reported bug: CLICKS (ALL) used to sit
+    // alongside LINK CLICKS here. Mirrors slot-assignment.ts's buildMetaSlots
+    // fix exactly: LINK CLICKS + COST PER LINK CLICK, no CLICKS (ALL).
     case "LANDING PAGE VIEWS":
       slot4 = byKey("META", "landing_page_views")!;
       slot5 = byKey("META", "cost_per_lpv")!;
       slot7 = byKey("META", "link_clicks")!;
-      slot8 = clicksAll;
+      slot8 = costPerLinkClick;
       break;
     case "REACH":
     case "UNIQUE REACH":
       slot4 = byKey("META", "cpm")!;
       slot5 = byKey("META", "frequency")!;
       slot7 = byKey("META", "link_clicks")!;
-      slot8 = clicksAll;
+      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS (Issue 1).
+      slot8 = costPerLinkClick;
       break;
     case "VIDEO VIEWS":
     case "THRUPLAYS":
@@ -205,6 +212,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot4 = byKey("META", "results", "PURCHASES")!;
       slot5 = byKey("META", "cost_per_result", "COST PER PURCHASE")!;
       slot7 = byKey("META", "results_roas")!;
+      // Not redundant here — LINK CLICKS isn't used anywhere else in this case.
       slot8 = hasHeader(headers, "adds to cart", "website adds to cart", "add to cart")
         ? byKey("META", "add_to_cart")!
         : hasHeader(headers, "initiate checkout")
@@ -222,6 +230,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot4 = byKey("META", "results", "PAGE LIKES")!;
       slot5 = byKey("META", "cost_per_result", "COST PER LIKE")!;
       slot7 = byKey("META", "post_engagements")!;
+      // Not redundant here — LINK CLICKS isn't used anywhere else in this case.
       slot8 = clicksAll;
       break;
     case "POST ENGAGEMENTS":
@@ -229,13 +238,17 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot4 = byKey("META", "results", "POST ENGAGEMENTS")!;
       slot5 = byKey("META", "cost_per_result", "COST PER ENGAGEMENT")!;
       slot7 = byKey("META", "link_clicks")!;
-      slot8 = clicksAll;
+      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS, and POST
+      // ENGAGEMENTS would duplicate slot 4's own result (Issue 1) — POST
+      // REACTIONS is the next most relevant engagement breakdown metric.
+      slot8 = byKey("META", "post_reactions")!;
       break;
     default:
       slot4 = byKey("META", "results", resultLabel || "RESULTS")!;
       slot5 = byKey("META", "cost_per_result", resultCostLabel || "COST PER RESULT")!;
       slot7 = byKey("META", "link_clicks")!;
-      slot8 = clicksAll;
+      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS (Issue 1).
+      slot8 = costPerLinkClick;
   }
 
   return [...core, slot4, slot5, ctr, slot7, slot8];

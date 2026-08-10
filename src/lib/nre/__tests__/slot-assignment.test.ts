@@ -17,7 +17,10 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
   it("always returns exactly 8 entries, in physical slot order 1-8", () => {
     const slots = buildMetaSlots(metaBaseline(), [], "$");
     expect(slots).toHaveLength(8);
-    expect(slots.map((s) => s.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "clicks_all"]);
+    // Slot 8's default-case fallback is COST PER LINK CLICK, not CLICKS
+    // (ALL) — CLICKS (ALL) would duplicate slot 7's own LINK CLICKS
+    // (redundancy fix, round 5).
+    expect(slots.map((s) => s.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "cpc_link_click"]);
   });
 
   it("keeps slots 1-3 and 6 fixed to the baseline regardless of objective", () => {
@@ -42,13 +45,79 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
     expect(slots[7].key).toBe(expectedSlot8Key);
   });
 
-  it.each(["LINK CLICKS", "REACH", "UNIQUE REACH", "LANDING PAGE VIEWS", "PAGE LIKES", "POST ENGAGEMENTS", "ENGAGEMENT", "SOMETHING UNRECOGNIZED"])(
-    "falls back to the default CLICKS (ALL) for slot 8 when the spec's literal pick would duplicate that case's own slot 4/5/7 — %s",
-    (resultLabel) => {
+  // Regression (redundancy fix, round 5): when the spec's literal slot 8
+  // pick would duplicate that case's own slot 4/5/7, the fallback is no
+  // longer unconditionally CLICKS (ALL) — CLICKS (ALL) is itself a
+  // redundant superset of LINK CLICKS (Issue 1), so any case that already
+  // shows LINK CLICKS elsewhere picks a genuinely different, non-redundant
+  // metric instead. PAGE LIKES doesn't use LINK CLICKS anywhere in its own
+  // slots, so CLICKS (ALL) is still a valid (non-redundant) fallback there.
+  it.each([
+    ["LINK CLICKS", "cost_per_lpv"],
+    ["REACH", "cpc_link_click"],
+    ["UNIQUE REACH", "cpc_link_click"],
+    ["LANDING PAGE VIEWS", "cpc_link_click"],
+    ["PAGE LIKES", "clicks_all"],
+    ["POST ENGAGEMENTS", "post_reactions"],
+    ["ENGAGEMENT", "post_reactions"],
+    ["SOMETHING UNRECOGNIZED", "cpc_link_click"],
+  ])("assigns a non-redundant slot 8 fallback when the spec's literal pick would duplicate that case's own slot 4/5/7 — %s", (resultLabel, expectedKey) => {
+    const slots = buildMetaSlots(metaBaseline({ resultLabel }), [], "$");
+    expect(slots[7].key).toBe(expectedKey);
+  });
+
+  it("never selects CLICKS (ALL) for slot 8 when LINK CLICKS is already shown elsewhere in the same card set — Issue 1", () => {
+    for (const resultLabel of ["LINK CLICKS", "LANDING PAGE VIEWS", "REACH", "UNIQUE REACH", "POST ENGAGEMENTS", "ENGAGEMENT", "SOMETHING UNRECOGNIZED"]) {
       const slots = buildMetaSlots(metaBaseline({ resultLabel }), [], "$");
-      expect(slots[7].key).toBe("clicks_all");
-    },
-  );
+      const keys = slots.map((s) => s.key);
+      if (keys.includes("link_clicks")) {
+        expect(keys, resultLabel).not.toContain("clicks_all");
+      }
+    }
+  });
+
+  it("Landing Page Views campaigns get exactly the spec'd 8 slots — no CLICKS (ALL)", () => {
+    const rows = [
+      row({
+        "Amount spent": "500",
+        Reach: "10000",
+        Impressions: "40000",
+        "Landing page views": "300",
+        "Cost per landing page view": "1.50",
+        CTR: "2.5",
+        "Link clicks": "800",
+        "CPC (cost per link click)": "0.60",
+      }),
+    ];
+    const slots = buildMetaSlots(
+      metaBaseline({ resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV", spend: "$500", reach: "10,000", impressions: "40,000", ctr: "2.50%" }),
+      rows,
+      "$",
+    );
+    expect(slots.map((s) => s.key)).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "landing_page_views",
+      "cost_per_lpv",
+      "ctr",
+      "link_clicks",
+      "cpc_link_click",
+    ]);
+    expect(slots.map((s) => s.label)).toEqual([
+      "AD SPEND",
+      "REACH",
+      "IMPRESSIONS",
+      "LANDING PAGE VIEWS",
+      "COST PER LPV",
+      "CTR (ALL)",
+      "LINK CLICKS",
+      "COST PER LINK CLICK",
+    ]);
+    expect(slots.map((s) => s.key)).not.toContain("clicks_all");
+    expect(slots[6].value).not.toBe("—");
+    expect(slots[7].value).not.toBe("—");
+  });
 
   it("PURCHASES: slot 8 is ADD TO CART when present in the CSV", () => {
     const rows = [row({ "Amount spent": "100", "Adds to cart": "25" })];
@@ -67,6 +136,24 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
   it("PURCHASES: slot 8 falls back to the default CLICKS (ALL) when neither ADD TO CART nor INITIATE CHECKOUT is in the CSV (skipping ROAS, already slot 7)", () => {
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), [], "$");
     expect(slots[7].key).toBe("clicks_all");
+  });
+
+  // Regression (Issue 2): a candidate column present in the CSV but
+  // aggregating to zero must be skipped just like a missing column — the
+  // next candidate in priority order is tried instead of showing a dash
+  // for a metric that technically "exists" but has no real data.
+  it("PURCHASES: slot 8 skips ADD TO CART when its CSV column is present but sums to zero, falling through to INITIATE CHECKOUT", () => {
+    const rows = [row({ "Amount spent": "100", "Adds to cart": "0", "Initiate checkout": "40" })];
+    const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
+    expect(slots[7].key).toBe("initiate_checkout");
+    expect(slots[7].value).not.toBe("—");
+  });
+
+  it("PURCHASES: slot 8 skips ADD TO CART and INITIATE CHECKOUT when both are zero, falling through to CLICKS (ALL) with real data rather than showing a dash", () => {
+    const rows = [row({ "Amount spent": "100", "Adds to cart": "0", "Initiate checkout": "0", "Clicks (all)": "250" })];
+    const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
+    expect(slots[7].key).toBe("clicks_all");
+    expect(slots[7].value).not.toBe("—");
   });
 
   it("never assigns the same key to two different slots among 4/5/7/8, across every documented case", () => {

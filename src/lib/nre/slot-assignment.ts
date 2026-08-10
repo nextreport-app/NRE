@@ -8,12 +8,16 @@
  * resultLabel/costLabel, unrelated to and untouched by this module), not
  * the old detect-objective.ts broad-key classifier.
  *
- * Slot 8 (Part 1) picks a metric that doesn't already appear in that same
- * campaign's own slots 4/5/7 — a few of the product's literal per-objective
- * picks would otherwise duplicate an already-assigned slot for that
- * specific case (e.g. Reach's own slot 4 is already CPM; Purchases' own
- * slot 7 is already ROAS) — those specific cases substitute the next most
- * relevant metric instead, documented case-by-case below.
+ * Slots 7/8 (Part 1, plus the redundancy fix below) are chosen by pickSlot,
+ * which tries each case's own candidates in priority order and skips any
+ * that duplicate an earlier slot in the same card set, are a redundant
+ * superset of one (per REDUNDANT_WITH — e.g. CLICKS (ALL) once LINK CLICKS
+ * is already shown), or have no real, non-zero data in this CSV — a few of
+ * the product's literal per-objective picks would otherwise duplicate an
+ * already-assigned slot for that specific case (e.g. Reach's own slot 4 is
+ * already CPM; Purchases' own slot 7 is already ROAS) — those specific
+ * cases substitute the next most relevant metric instead, documented
+ * case-by-case below.
  *
  * A wizard-driven metric selection (Part 3's optional Metric Review step)
  * can override this automatic assignment entirely — see report-data.ts's
@@ -52,6 +56,88 @@ function slot(key: string, label: string, format: DynamicMetricValue["format"], 
   return { key, label, format, value, perUnitOf };
 }
 
+/**
+ * key -> keys that become redundant once this (more specific) key is
+ * already selected for another slot in the same card set. CLICKS (ALL)
+ * (every click type) is a strict superset of LINK CLICKS (just link
+ * clicks) — a campaign whose LINK CLICKS card already shows real data
+ * gets no extra information from also showing the broader, less specific
+ * CLICKS (ALL) figure alongside it, and it invites the reader to compare
+ * two numbers that are the same metric measured two different ways
+ * (bug report: a Landing Page Views campaign showing both). VIDEO PLAYS
+ * (any play, however brief) is likewise a superset of VIDEO VIEWS/
+ * THRUPLAYS (a real, counted view) — included even though no case below
+ * currently selects VIDEO PLAYS, so a future case can't reintroduce this
+ * same redundant pair without this map already covering it.
+ */
+const REDUNDANT_WITH: Record<string, string[]> = {
+  link_clicks: ["clicks_all"],
+  video_views: ["video_plays"],
+  thruplays: ["video_plays"],
+};
+
+type SlotCandidate = { key: string; label: string; format: DynamicMetricValue["format"] };
+
+/**
+ * Picks the first candidate (checked in the given priority order) that:
+ * isn't already used by an earlier slot in this same card set, isn't made
+ * redundant by one (per REDUNDANT_WITH — Issue 1), and actually has real,
+ * non-zero data in this CSV (Issue 2 — `lookup()` already returns "—" for
+ * a missing column or a zero aggregate, via dynamic-metrics.ts's
+ * lookupMetricValue, so `!== "—"` is exactly "column exists AND value >
+ * 0"). Once a candidate is used/redundant, it's dropped from consideration
+ * entirely — even the final "nothing had real data" fallback (Part 1's
+ * existing "always show the label, dash if no value" convention) only
+ * ever falls back to the last non-redundant candidate, never back to a
+ * duplicate/superset one just to avoid an empty slot.
+ */
+function pickSlot(candidates: SlotCandidate[], already: Set<string>, lookup: (key: string) => string): DynamicMetricValue {
+  const isRedundant = (key: string) => [...already].some((usedKey) => REDUNDANT_WITH[usedKey]?.includes(key));
+  const eligible = candidates.filter((c) => !already.has(c.key) && !isRedundant(c.key));
+  // Every case below always lists at least one genuinely non-redundant
+  // candidate for its own objective, so `eligible` is never empty in
+  // practice — the full candidate list is only a defensive fallback
+  // against a future case whose entire list happens to collide.
+  const pool = eligible.length > 0 ? eligible : candidates;
+  for (const c of pool) {
+    const val = lookup(c.key);
+    if (val !== "—") return slot(c.key, c.label, c.format, val);
+  }
+  const last = pool[pool.length - 1];
+  return slot(last.key, last.label, last.format, "—");
+}
+
+function usedKeys(...slots: DynamicMetricValue[]): Set<string> {
+  return new Set(slots.map((s) => s.key));
+}
+
+const CLICKS_ALL: SlotCandidate = { key: "clicks_all", label: "CLICKS (ALL)", format: "number" };
+const LINK_CLICKS: SlotCandidate = { key: "link_clicks", label: "LINK CLICKS", format: "number" };
+const COST_PER_LINK_CLICK: SlotCandidate = { key: "cpc_link_click", label: "COST PER LINK CLICK", format: "currency" };
+const LANDING_PAGE_VIEWS: SlotCandidate = { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number" };
+const COST_PER_LPV: SlotCandidate = { key: "cost_per_lpv", label: "COST PER LPV", format: "currency" };
+
+/**
+ * Final safety net (explicit ask, Part 2): scans the already-built 8-slot
+ * array for any pair where one key is a superset of another per
+ * REDUNDANT_WITH. Every case in buildMetaSlots already avoids this via
+ * pickSlot above (which substitutes the actual next-best candidate at
+ * build time, when it still has access to that slot's own candidate
+ * list) — this pass can't re-derive a substitute that late with no
+ * candidate list of its own, so it can only blank the redundant slot's
+ * value to "—" rather than ever display two cards for the same
+ * underlying metric. In practice this never fires against the cases
+ * below; it exists as a structural guarantee against a future case that
+ * assigns a redundant key directly instead of through pickSlot.
+ */
+function dedupeSlots(slots: DynamicMetricValue[]): DynamicMetricValue[] {
+  const keys = slots.map((s) => s.key);
+  return slots.map((s, i) => {
+    const isRedundant = keys.some((otherKey, j) => j !== i && REDUNDANT_WITH[otherKey]?.includes(s.key));
+    return isRedundant ? { ...s, value: "—" } : s;
+  });
+}
+
 /** The 4 always-the-same core inputs slots 1-3 and 6 are built from — already computed by report-data.ts's existing campaign/ad-set aggregation (fmtCurrency(spend) etc.), reused as-is rather than recomputed here. */
 export interface MetaSlotBaseline {
   resultLabel: string;
@@ -86,53 +172,58 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
   let slot7: DynamicMetricValue;
   let slot8: DynamicMetricValue;
 
-  // Default (Part 1's "Default/all" bucket) — CLICKS (ALL), the same
-  // fallback used for every case below whose product-spec pick would
-  // otherwise duplicate that case's own slot 4/5/7 assignment.
-  const clicksAllSlot8 = () => slot("clicks_all", "CLICKS (ALL)", "number", v("clicks_all"));
-
   switch (resultLabel) {
     case "WEBSITE LEADS":
     case "LEADS":
     case "META FORM LEADS":
       slot4 = slot("results", baseline.resultLabel, "number", baseline.resultValue);
       slot5 = slot("cost_per_result", baseline.costLabel, "currency", baseline.cprValue);
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot8 = slot("landing_page_views", "LANDING PAGE VIEWS", "number", v("landing_page_views"));
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "LINK CLICKS":
       slot4 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
       slot5 = slot("cpc_link_click", "COST PER CLICK", "currency", v("cpc_link_click"));
-      slot7 = slot("landing_page_views", "LANDING PAGE VIEWS", "number", v("landing_page_views"));
+      slot7 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5), v);
       // Product spec's "Link Clicks/Traffic: LANDING PAGE VIEWS" would
-      // duplicate this case's own slot 7 — fall back to the default pick.
-      slot8 = clicksAllSlot8();
+      // duplicate this case's own slot 7, and CLICKS (ALL) would duplicate
+      // slot 4's own LINK CLICKS (Issue 1) — COST PER LPV pairs naturally
+      // with slot 7's own Landing Page Views count instead.
+      slot8 = pickSlot([COST_PER_LPV, CLICKS_ALL], usedKeys(slot4, slot5, slot7), v);
       break;
 
+    // Landing Page Views campaigns — Issue 1's reported bug: CLICKS (ALL)
+    // used to sit alongside LINK CLICKS here, showing two cards for
+    // (near enough) the same underlying metric. Spec: AD SPEND, REACH,
+    // IMPRESSIONS, LANDING PAGE VIEWS, COST PER LPV, CTR, LINK CLICKS,
+    // COST PER LINK CLICK — no CLICKS (ALL).
     case "LANDING PAGE VIEWS":
       slot4 = slot("landing_page_views", "LANDING PAGE VIEWS", "number", v("landing_page_views"));
       slot5 = slot("cost_per_lpv", "COST PER LPV", "currency", v("cost_per_lpv"));
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot8 = clicksAllSlot8();
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "REACH":
     case "UNIQUE REACH":
       slot4 = slot("cpm", "CPM", "currency", v("cpm"));
       slot5 = slot("frequency", "FREQUENCY", "ratio", v("frequency"));
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
       // Product spec's "Reach/Awareness: CPM" would duplicate this case's
-      // own slot 4 — fall back to the default pick.
-      slot8 = clicksAllSlot8();
+      // own slot 4, and CLICKS (ALL) would duplicate slot 7's own LINK
+      // CLICKS (Issue 1) — COST PER LINK CLICK pairs with it instead.
+      slot8 = pickSlot([COST_PER_LINK_CLICK, CLICKS_ALL], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "VIDEO VIEWS":
     case "THRUPLAYS":
       slot4 = slot("video_views", "VIDEO VIEWS", "number", v("video_views"));
       slot5 = slot("cost_per_thruplay", "COST PER VIEW", "currency", v("cost_per_thruplay"));
-      slot7 = slot("thruplays", "THRUPLAYS", "number", v("thruplays"));
-      slot8 = slot("video_p100", "VIDEO AT 100%", "number", v("video_p100"));
+      // REDUNDANT_WITH already blocks VIDEO PLAYS from ever following
+      // either VIDEO VIEWS (slot 4) or THRUPLAYS (slot 7) here.
+      slot7 = pickSlot([{ key: "thruplays", label: "THRUPLAYS", format: "number" }], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([{ key: "video_p100", label: "VIDEO AT 100%", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
     // "MESSAGING LEADS" is objective.ts's actual resultLabel for this
@@ -143,27 +234,28 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     case "CONVERSATIONS":
       slot4 = slot("messaging_conversations_started", "CONVERSATIONS", "number", v("messaging_conversations_started"));
       slot5 = slot("cost_per_conversation", "COST PER CONV.", "currency", v("cost_per_conversation"));
-      slot7 = slot("new_messaging_contacts", "NEW CONTACTS", "number", v("new_messaging_contacts"));
-      slot8 = slot("messaging_contacts", "MESSAGING CONTACTS", "number", v("messaging_contacts"));
+      slot7 = pickSlot([{ key: "new_messaging_contacts", label: "NEW CONTACTS", format: "number" }], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([{ key: "messaging_contacts", label: "MESSAGING CONTACTS", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "PURCHASES": {
       slot4 = slot("results", "PURCHASES", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER PURCHASE", "currency", baseline.cprValue);
-      slot7 = slot("results_roas", "ROAS", "ratio", v("results_roas"));
+      slot7 = pickSlot([{ key: "results_roas", label: "ROAS", format: "ratio" }], usedKeys(slot4, slot5), v);
       // Product spec: "prioritize ADD TO CART when available, then
       // INITIATE CHECKOUT, then ROAS" — ROAS is already this case's own
-      // slot 7, so that final fallback tier is skipped here (same
-      // avoid-a-duplicate reasoning as every other slot 8 substitution in
-      // this file) in favor of the default CLICKS (ALL) pick.
-      const addToCart = v("add_to_cart");
-      const initiateCheckout = v("initiate_checkout");
-      slot8 =
-        addToCart !== "—"
-          ? slot("add_to_cart", "ADD TO CART", "number", addToCart)
-          : initiateCheckout !== "—"
-            ? slot("initiate_checkout", "INITIATE CHECKOUT", "number", initiateCheckout)
-            : clicksAllSlot8();
+      // slot 7, so that final fallback tier is skipped in favor of the
+      // default CLICKS (ALL) pick (not redundant here — LINK CLICKS isn't
+      // used anywhere else in this case).
+      slot8 = pickSlot(
+        [
+          { key: "add_to_cart", label: "ADD TO CART", format: "number" },
+          { key: "initiate_checkout", label: "INITIATE CHECKOUT", format: "number" },
+          CLICKS_ALL,
+        ],
+        usedKeys(slot4, slot5, slot7),
+        v,
+      );
       break;
     }
 
@@ -171,33 +263,38 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     case "MOBILE APP INSTALLS":
       slot4 = slot("results", "APP INSTALLS", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER INSTALL", "currency", baseline.cprValue);
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot8 = slot("app_events", "APP EVENTS", "number", v("app_events"));
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([{ key: "app_events", label: "APP EVENTS", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "PAGE LIKES":
       slot4 = slot("results", "PAGE LIKES", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER LIKE", "currency", baseline.cprValue);
-      slot7 = slot("post_engagements", "POST ENGAGEMENTS", "number", v("post_engagements"));
-      slot8 = clicksAllSlot8();
+      slot7 = pickSlot([{ key: "post_engagements", label: "POST ENGAGEMENTS", format: "number" }], usedKeys(slot4, slot5), v);
+      // Not redundant here — LINK CLICKS isn't used anywhere else in this case.
+      slot8 = pickSlot([CLICKS_ALL], usedKeys(slot4, slot5, slot7), v);
       break;
 
     case "POST ENGAGEMENTS":
     case "ENGAGEMENT":
       slot4 = slot("results", "POST ENGAGEMENTS", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER ENGAGEMENT", "currency", baseline.cprValue);
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot8 = clicksAllSlot8();
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS, and POST
+      // ENGAGEMENTS would duplicate slot 4's own result (Issue 1) — POST
+      // REACTIONS is the next most relevant engagement breakdown metric.
+      slot8 = pickSlot([{ key: "post_reactions", label: "POST REACTIONS", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
     default:
       slot4 = slot("results", baseline.resultLabel || "RESULTS", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", baseline.costLabel || "COST PER RESULT", "currency", baseline.cprValue);
-      slot7 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot8 = clicksAllSlot8();
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS (Issue 1).
+      slot8 = pickSlot([LANDING_PAGE_VIEWS, COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
   }
 
-  return [
+  return dedupeSlots([
     slot("spend", "AD SPEND", "currency", baseline.spend),
     slot("reach", "REACH", "number", baseline.reach),
     slot("impressions", "IMPRESSIONS", "number", baseline.impressions),
@@ -206,7 +303,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     slot("ctr", "CTR (ALL)", "percentage", baseline.ctr),
     slot7,
     slot8,
-  ];
+  ]);
 }
 
 /** Slots 1-3, 6, and 7 for a Google Ads campaign — the 5 core fields already formatted by google-report-data.ts's existing aggregation (slots 6-7 are truly fixed for Google, unlike Meta's slot 7, which every objective branch below reassigns). */
