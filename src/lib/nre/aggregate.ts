@@ -18,7 +18,7 @@
 
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
-import { canonicalResultTypeText, detectObjectiveFromColumns, getResultLabels } from "./objective";
+import { canonicalResultTypeText, detectObjectiveFromColumns, resolveObjective } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
 
@@ -64,6 +64,16 @@ interface GroupAcc {
   meta_leads: number;
   leads: number;
   landing_page_views: number;
+  /**
+   * Priority-1 "exotic" signals (see objective.ts's resolveObjective doc
+   * comment) — not part of NRE_METRIC_KEYS/columns.ts's mapped-field set,
+   * so unlike purchases/website_leads/etc above these aren't already on
+   * NreRow; summed straight from each row's own _raw via
+   * sumRawColumnByKeywords below.
+   */
+  mobile_app_installs: number;
+  messaging_conversations_started: number;
+  thruplays: number;
   ctrs: number[];
   cpcs: number[];
   freqs: number[];
@@ -73,6 +83,23 @@ interface GroupAcc {
 
 function average(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+}
+
+/**
+ * Sums a row's raw CSV column value(s) whose header text contains any of the
+ * given keywords — used for the 3 Priority-1 signals that have no dedicated
+ * mapped field on NreRow (mobile app installs, messaging conversations
+ * started, thruplays), mirroring detectObjectiveFromColumns' own
+ * substring-match approach but reading values instead of just presence.
+ */
+function sumRawColumnByKeywords(raw: Record<string, string> | undefined, keywords: string[]): number {
+  if (!raw) return 0;
+  let total = 0;
+  for (const [header, value] of Object.entries(raw)) {
+    const h = header.toLowerCase();
+    if (keywords.some((k) => h.includes(k))) total += parseCellNum(value);
+  }
+  return total;
 }
 
 /** Port of the aggregate() closure inside splitMTDDaily_. */
@@ -106,6 +133,9 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         meta_leads: 0,
         leads: 0,
         landing_page_views: 0,
+        mobile_app_installs: 0,
+        messaging_conversations_started: 0,
+        thruplays: 0,
         ctrs: [],
         cpcs: [],
         freqs: [],
@@ -131,6 +161,9 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     g.meta_leads += parseCellNum(row.meta_leads);
     g.leads += parseCellNum(row.leads);
     g.landing_page_views += parseCellNum(row.landing_page_views);
+    g.mobile_app_installs += sumRawColumnByKeywords(row._raw, ["mobile app install", "app install"]);
+    g.messaging_conversations_started += sumRawColumnByKeywords(row._raw, ["messaging conversations started"]);
+    g.thruplays += sumRawColumnByKeywords(row._raw, ["thruplay"]);
 
     const ctr = parseCellNum(row.ctr);
     const freq = parseCellNum(row.frequency);
@@ -153,79 +186,102 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     // than spend/link_clicks, which is 0 when the link_clicks column is empty).
     const cpc = g.cpcs.length > 0 ? average(g.cpcs) : g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
 
-    // 4-step objective priority chain (see objective.ts's OBJECTIVE_CATALOG
-    // doc comment for the full rationale):
-    //   1. result_type text itself, if non-empty.
-    //   2. Column presence — which objective-specific columns the CSV
-    //      headers actually include (columnObjective, computed once above),
-    //      regardless of their values.
-    //   3. Data values — which specific metrics are non-zero, in priority
-    //      order (Purchases > Website leads > Meta leads > Leads > Landing
-    //      page views > Link clicks > Reach). Only reached when neither
-    //      Step 1 nor Step 2 resolved anything.
-    //   4. Generic RESULTS/COST PER RESULT.
-    const { resultLabel: step1Label } = getResultLabels(g.result_type);
+    // Unified objective priority chain — see objective.ts's resolveObjective
+    // doc comment for the full Priority 1-4 rationale (Priority 1: dedicated
+    // metric columns with a real non-zero value, the fix for the reported
+    // "Website Leads shown as Landing Page Views" bug; Priority 2: result_type
+    // text, preserved verbatim; Priority 3: column presence only; Priority 4:
+    // remaining data-value fallbacks, then the generic RESULTS bucket).
+    const resolution = resolveObjective(
+      {
+        result_type: g.result_type,
+        results: g.results,
+        reach: g.reach,
+        purchases: g.purchases,
+        website_leads: g.website_leads,
+        meta_leads: g.meta_leads,
+        leads: g.leads,
+        landing_page_views: g.landing_page_views,
+        link_clicks: g.link_clicks,
+        mobile_app_installs: g.mobile_app_installs,
+        messaging_conversations_started: g.messaging_conversations_started,
+        thruplays: g.thruplays,
+      },
+      columnObjective,
+    );
 
     let actualResultType = g.result_type;
     let actualResults = g.results;
     let actualCpr: number;
     let objectiveConfident: boolean;
 
-    if (step1Label !== "RESULTS") {
-      // Step 1 resolved it (a recognized objective, or an unrecognized-but-
-      // present result_type kept as its own text) — trust result_type text
-      // as-is, no correction needed.
-      actualCpr = step1Label === "REACH" ? (g.reach > 0 ? (g.spend * 1000) / g.reach : 0) : g.results > 0 ? g.spend / g.results : 0;
+    if (resolution.source === "resultType") {
+      // Trust result_type text as-is, no correction needed — preserve the
+      // row's own raw text exactly rather than substituting canonical text.
+      actualCpr =
+        resolution.resultLabel === "REACH"
+          ? g.reach > 0
+            ? (g.spend * 1000) / g.reach
+            : 0
+          : g.results > 0
+            ? g.spend / g.results
+            : 0;
       objectiveConfident = true;
-    } else if (columnObjective) {
-      // Step 2: no result_type text, but a specific objective column exists
-      // in the CSV — trust that over which columns merely have non-zero
-      // data (Meta always tracks link clicks regardless of objective, so
-      // "link clicks > 0" alone is a weak signal). Keep the
-      // already-correctly-mapped results/cpr (0/— for a brand new campaign
-      // with no results yet) — only the label changes here.
-      actualResultType = canonicalResultTypeText(columnObjective.resultLabel);
-      actualCpr = g.results > 0 ? g.spend / g.results : 0;
+    } else if (resolution.source === "priority1" || resolution.source === "priority3") {
+      // Priority 1 (a dedicated metric column has real current data) and
+      // Priority 3 (a specific objective column exists in the CSV, even with
+      // no results yet) are both confident, non-guessed signals.
+      actualResultType = canonicalResultTypeText(resolution.resultLabel);
       objectiveConfident = true;
-    } else if (g.purchases > 0) {
-      actualResultType = canonicalResultTypeText("PURCHASES");
-      actualResults = g.purchases;
-      actualCpr = g.spend / g.purchases;
-      objectiveConfident = false;
-    } else if (g.website_leads > 0) {
-      actualResultType = canonicalResultTypeText("WEBSITE LEADS");
-      actualResults = g.website_leads;
-      actualCpr = g.spend / g.website_leads;
-      objectiveConfident = false;
-    } else if (g.meta_leads > 0) {
-      actualResultType = canonicalResultTypeText("META FORM LEADS");
-      actualResults = g.meta_leads;
-      actualCpr = g.spend / g.meta_leads;
-      objectiveConfident = false;
-    } else if (g.leads > 0) {
-      actualResultType = canonicalResultTypeText("LEADS");
-      actualResults = g.leads;
-      actualCpr = g.spend / g.leads;
-      objectiveConfident = false;
-    } else if (g.landing_page_views > 0) {
-      actualResultType = canonicalResultTypeText("LANDING PAGE VIEWS");
-      actualResults = g.landing_page_views;
-      actualCpr = g.spend / g.landing_page_views;
-      objectiveConfident = false;
-    } else if (g.link_clicks > 0 && g.reach !== g.results) {
-      actualResultType = canonicalResultTypeText("LINK CLICKS");
-      actualResults = g.link_clicks;
-      actualCpr = g.spend / g.link_clicks;
-      objectiveConfident = false;
-    } else if (g.reach > 0) {
-      actualResultType = canonicalResultTypeText("REACH");
-      actualResults = 0;
-      actualCpr = (g.spend * 1000) / g.reach;
-      objectiveConfident = false;
+      switch (resolution.resultLabel) {
+        case "PURCHASES":
+          actualResults = g.purchases;
+          break;
+        case "WEBSITE LEADS":
+          actualResults = g.website_leads;
+          break;
+        case "META FORM LEADS":
+          actualResults = g.leads > 0 ? g.leads : g.meta_leads;
+          break;
+        case "APP INSTALLS":
+          actualResults = resolution.source === "priority1" ? g.mobile_app_installs : g.results;
+          break;
+        case "MESSAGING LEADS":
+          actualResults = resolution.source === "priority1" ? g.messaging_conversations_started : g.results;
+          break;
+        case "VIDEO VIEWS":
+          actualResults = resolution.source === "priority1" ? g.thruplays : g.results;
+          break;
+        default:
+          actualResults = g.results;
+      }
+      actualCpr = actualResults > 0 ? g.spend / actualResults : 0;
     } else {
-      // Step 4: generic fallback — nothing to go on at all.
-      actualCpr = g.results > 0 ? g.spend / g.results : 0;
+      // Priority 4: remaining data-value fallbacks (meta leads, landing page
+      // views, link clicks, reach), or the absolute-last-resort generic
+      // RESULTS bucket — none of these are confident signals.
+      actualResultType = canonicalResultTypeText(resolution.resultLabel);
       objectiveConfident = false;
+      switch (resolution.resultLabel) {
+        case "META FORM LEADS":
+          actualResults = g.meta_leads;
+          actualCpr = g.spend / g.meta_leads;
+          break;
+        case "LANDING PAGE VIEWS":
+          actualResults = g.landing_page_views;
+          actualCpr = g.spend / g.landing_page_views;
+          break;
+        case "LINK CLICKS":
+          actualResults = g.link_clicks;
+          actualCpr = g.spend / g.link_clicks;
+          break;
+        case "REACH":
+          actualResults = 0;
+          actualCpr = g.reach > 0 ? (g.spend * 1000) / g.reach : 0;
+          break;
+        default:
+          actualCpr = g.results > 0 ? g.spend / g.results : 0;
+      }
     }
 
     return {

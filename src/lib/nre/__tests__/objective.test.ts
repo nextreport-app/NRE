@@ -5,8 +5,10 @@ import {
   getResultGroups,
   getResultLabels,
   getSingleRowResultDisplay,
+  resolveObjective,
 } from "../objective";
 import type { AggRow } from "../aggregate";
+import type { MetricRow } from "../types";
 
 function row(overrides: Partial<AggRow> = {}): AggRow {
   return {
@@ -305,6 +307,191 @@ describe("getResultGroups", () => {
     expect(groups[0].label).toBe("REACH");
     expect(groups[0].count).toBe(0);
     expect(groups[0].avgCpr).toBeCloseTo((1400 * 1000) / 70000);
+  });
+});
+
+/**
+ * Builds a Period-row-shaped MetricRow the way a raw, un-aggregated NreRow
+ * looks (real CSV headers in _raw, plus the mapped objective-specific
+ * fields) — this is exactly the shape getResultGroups receives for the
+ * Combined Total table's Previous Month Data row, which (unlike the MTD
+ * row) never passes through aggregate.ts's aggregateRows first, so
+ * getResultGroups' own Priority 1-4 chain is the ONLY objective correction
+ * these rows ever get.
+ */
+function metricRow(overrides: Partial<MetricRow> & { _raw: Record<string, string> }): MetricRow {
+  return {
+    campaign_name: "Campaign A",
+    ad_set_name: "Ad Set 1",
+    result_type: "",
+    spend: 100,
+    reach: 0,
+    impressions: 1000,
+    results: 0,
+    ...overrides,
+  };
+}
+
+describe("resolveObjective — Priority 1 (dedicated metric columns) beats Priority 2 (result_type text)", () => {
+  // Reported bug: result_type = 'landing_page_view' (an intermediate signal
+  // Meta always populates) must not win over a real, non-zero Website leads
+  // column — Website leads is the actual conversion being optimized for.
+  it("Test 1 — website leads column value 5 + result_type 'landing_page_view' -> WEBSITE LEADS, not LANDING PAGE VIEWS", () => {
+    const resolution = resolveObjective(
+      { result_type: "landing_page_view", website_leads: 5, results: 5 },
+      null,
+    );
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.resultLabel).not.toBe("LANDING PAGE VIEWS");
+  });
+
+  it("Test 2 — leads column value 14 + result_type 'onsite_conversion.lead_grouped' -> META FORM LEADS", () => {
+    const resolution = resolveObjective(
+      { result_type: "onsite_conversion.lead_grouped", leads: 14, results: 14 },
+      null,
+    );
+    expect(resolution.resultLabel).toBe("META FORM LEADS");
+  });
+
+  it("Test 3 — a Reach campaign with no conversion columns at all -> REACH", () => {
+    const resolution = resolveObjective({ result_type: "Reach", reach: 20000, results: 0 }, null);
+    expect(resolution.resultLabel).toBe("REACH");
+  });
+
+  it("is deterministic — the same input always produces the same classification", () => {
+    const signals = { result_type: "landing_page_view", website_leads: 5, results: 5 };
+    const results = new Set(
+      Array.from({ length: 20 }, () => resolveObjective(signals, null).resultLabel),
+    );
+    expect(results.size).toBe(1);
+    expect(results.has("WEBSITE LEADS")).toBe(true);
+  });
+});
+
+describe("getResultGroups — Priority 1 dedicated metric columns (the reported Combined Total table bug)", () => {
+  it("Test 1 — website leads column (value 5) beats result_type = 'landing_page_view'", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        _raw: { "Website leads": "5", "Result type": "landing_page_view" },
+        result_type: "landing_page_view",
+        website_leads: 5,
+        results: 5,
+        spend: 100,
+      }),
+    ];
+    const groups = getResultGroups(rows);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].label).toBe("WEBSITE LEADS");
+    expect(groups[0].count).toBe(5);
+  });
+
+  it("Test 2 — leads column (value 14) + result_type 'onsite_conversion.lead_grouped' -> META FORM LEADS", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        _raw: { Leads: "14", "Result type": "onsite_conversion.lead_grouped" },
+        result_type: "onsite_conversion.lead_grouped",
+        leads: 14,
+        results: 14,
+        spend: 596,
+      }),
+    ];
+    const groups = getResultGroups(rows);
+    expect(groups[0].label).toBe("META FORM LEADS");
+    expect(groups[0].count).toBe(14);
+  });
+
+  it("Test 3 — a Reach campaign with no conversion columns -> REACH", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        _raw: { Reach: "20000", "Result type": "Reach" },
+        result_type: "Reach",
+        reach: 20000,
+        results: 0,
+        spend: 400,
+      }),
+    ];
+    const groups = getResultGroups(rows);
+    expect(groups[0].label).toBe("REACH");
+  });
+
+  // A real CSV export has the SAME header row for every campaign in the
+  // file — getResultGroups (like aggregate.ts) computes columnObjective
+  // once from the first row's headers, so every fixture row below carries
+  // the full shared header set (with "0" for whichever columns that
+  // particular campaign didn't earn), exactly as columns.ts's
+  // readRowsWithAutoMap would produce.
+  const mixedAccountHeaders = { Reach: "0", Leads: "0", "Website leads": "0" };
+
+  it("Test 4 — mixed account (Reach + Meta Form Leads + Website Leads) resolves as three separate objective columns", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Awareness",
+        _raw: { ...mixedAccountHeaders, Reach: "20000" },
+        // A real Reach campaign's own result_type is "Reach" — Priority 2
+        // resolves it correctly before ever reaching Priority 3's
+        // file-level (not per-campaign) column-presence fallback, which
+        // would otherwise see this same file's "Website leads" header
+        // (earned by a different campaign) and misclassify this one too.
+        result_type: "Reach",
+        reach: 20000,
+        results: 0,
+        spend: 400,
+      }),
+      metricRow({
+        campaign_name: "Meta Leads",
+        _raw: { ...mixedAccountHeaders, Leads: "14" },
+        result_type: "",
+        leads: 14,
+        results: 14,
+        spend: 596,
+      }),
+      metricRow({
+        campaign_name: "Website Leads",
+        _raw: { ...mixedAccountHeaders, "Website leads": "9" },
+        result_type: "",
+        website_leads: 9,
+        results: 9,
+        spend: 155,
+      }),
+    ];
+    const groups = getResultGroups(rows);
+    const labels = groups.map((g) => g.label).sort();
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
+    expect(groups.find((g) => g.label === "WEBSITE LEADS")).toMatchObject({ count: 9, totalSpend: 155 });
+    expect(groups.find((g) => g.label === "META FORM LEADS")).toMatchObject({ count: 14, totalSpend: 596 });
+    expect(groups.find((g) => g.label === "REACH")).toMatchObject({ count: 0, totalSpend: 400 });
+  });
+
+  it("Test 5 — website leads at 0 shows 0/no cost, meta form leads at 14 shows its own $42.57 cost per lead", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Meta Leads",
+        _raw: { ...mixedAccountHeaders, Leads: "14" },
+        result_type: "",
+        leads: 14,
+        results: 14,
+        spend: 596,
+      }),
+      metricRow({
+        campaign_name: "Website Leads",
+        _raw: { ...mixedAccountHeaders, "Website leads": "0" },
+        result_type: "",
+        website_leads: 0,
+        results: 0,
+        spend: 155,
+      }),
+    ];
+    const groups = getResultGroups(rows);
+    const metaLeads = groups.find((g) => g.label === "META FORM LEADS");
+    expect(metaLeads?.count).toBe(14);
+    expect(metaLeads?.avgCpr).toBeCloseTo(42.57, 1);
+    // Website leads column exists (Priority 3) but has 0 value -> its own
+    // group with 0 count, no cost computable (report-data.ts renders this
+    // as "N/A", not "$0.00" — see report-data.test.ts for that assertion).
+    const websiteLeads = groups.find((g) => g.label === "WEBSITE LEADS");
+    expect(websiteLeads?.count).toBe(0);
+    expect(websiteLeads?.avgCpr).toBe(0);
+    expect(websiteLeads?.totalSpend).toBe(155);
   });
 });
 

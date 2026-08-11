@@ -766,10 +766,13 @@ describe("computeTableRow (via periodRow/mtdRow) — the generic RESULTS fallbac
       mtdDailyRows,
       periodRows: [
         leadRow(),
-        // No result_type at all -> getResultLabels' generic "RESULTS"
-        // fallback bucket, with 0 results (nothing in this row's own
-        // "results" field) — must not surface as its own dead column.
-        leadRow({ campaign_name: "Untagged Campaign", result_type: "", results: "0", spend: "50" }),
+        // No result_type, no reach, no objective-specific column data at all
+        // -> resolveObjective's absolute-last-resort generic "RESULTS"
+        // bucket, with 0 results — must not surface as its own dead column.
+        // (reach must be explicitly zeroed too: getResultGroups now runs the
+        // full Priority 1-4 chain, including the Priority 4 reach fallback,
+        // so a non-zero reach here would legitimately resolve to REACH.)
+        leadRow({ campaign_name: "Untagged Campaign", result_type: "", results: "0", spend: "50", reach: "0" }),
       ],
       now: NOW,
     });
@@ -833,6 +836,164 @@ describe("computeTableRow (via periodRow/mtdRow) — the generic RESULTS fallbac
     expect(data.periodRow.resultColumns).toHaveLength(1);
     expect(data.periodRow.resultColumns[0].label).toBe("WEBSITE LEADS");
     expect(data.periodRow.resultColumns[0].value).toBe("0");
+  });
+});
+
+// Regression tests for the reported bug: the Combined Total table was
+// showing LANDING PAGE VIEWS instead of WEBSITE LEADS for a campaign that
+// had both a landing_page_view result_type AND real Website leads column
+// data — Website leads is the actual conversion being optimized for, and
+// must win over the intermediate landing_page_view signal. Fixed via
+// objective.ts's resolveObjective: a dedicated metric column with a real
+// non-zero value (Priority 1) now outranks result_type text (Priority 2).
+describe("computeTableRow — objective Priority 1 column-value detection (reported Combined Total table bug)", () => {
+  function bugRow(overrides: Partial<NreRow> = {}): NreRow {
+    return {
+      _raw: {},
+      campaign_name: "Retargeting Campaign",
+      ad_set_name: "Set 1",
+      result_type: "",
+      spend: "100",
+      reach: "0",
+      impressions: "9000",
+      results: "0",
+      ctr: "1.5",
+      cpc: "6",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+      ...overrides,
+    };
+  }
+
+  it("Test 1 — website leads column (value 5) beats result_type = 'landing_page_view'", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [bugRow({ result_type: "landing_page_view", website_leads: "5", results: "5", spend: "100" })],
+      now: NOW,
+    });
+
+    const labels = data.periodRow.resultColumns.map((c) => c.label);
+    expect(labels).toContain("WEBSITE LEADS");
+    expect(labels).not.toContain("LANDING PAGE VIEWS");
+    expect(data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("5");
+  });
+
+  it("Test 2 — leads column (value 14) + result_type 'onsite_conversion.lead_grouped' -> META FORM LEADS", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        bugRow({
+          campaign_name: "Lead Gen Campaign",
+          result_type: "onsite_conversion.lead_grouped",
+          leads: "14",
+          results: "14",
+          spend: "596",
+        }),
+      ],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toEqual([
+      { label: "META FORM LEADS", costLabel: "COST PER LEAD", value: "14", cprValue: "$42.57" },
+    ]);
+  });
+
+  it("Test 3 — a Reach campaign with no conversion columns -> REACH", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        bugRow({ campaign_name: "Awareness Campaign", result_type: "Reach", reach: "20000", results: "0", spend: "400" }),
+      ],
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns).toHaveLength(1);
+    expect(data.periodRow.resultColumns[0].label).toBe("REACH");
+  });
+
+  it("Test 4 — mixed account (Reach + Meta Form Leads + Website Leads) shows three separate objective columns, each correctly identified", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        bugRow({ campaign_name: "Awareness", result_type: "Reach", reach: "20000", results: "0", spend: "400" }),
+        bugRow({ campaign_name: "Meta Leads", leads: "14", results: "14", spend: "596" }),
+        bugRow({ campaign_name: "Website Leads", website_leads: "9", results: "9", spend: "155" }),
+      ],
+      now: NOW,
+    });
+
+    const labels = data.periodRow.resultColumns.map((c) => c.label).sort();
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
+  });
+
+  it("Test 5 — website leads at 0 shows 0/N/A, meta form leads at 14 shows its own $42.57 cost per lead", () => {
+    // A real CSV export carries the same header row for every campaign —
+    // the Website Leads campaign's own "Website leads" column (Priority 3)
+    // is what classifies it even though this period's value is 0.
+    const sharedHeaders = { Leads: "0", "Website leads": "0" };
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        bugRow({
+          campaign_name: "Meta Leads",
+          _raw: { ...sharedHeaders, Leads: "14" },
+          leads: "14",
+          results: "14",
+          spend: "596",
+        }),
+        bugRow({
+          campaign_name: "Website Leads",
+          _raw: { ...sharedHeaders, "Website leads": "0" },
+          website_leads: "0",
+          results: "0",
+          spend: "155",
+        }),
+      ],
+      now: NOW,
+    });
+
+    const metaLeads = data.periodRow.resultColumns.find((c) => c.label === "META FORM LEADS");
+    const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(metaLeads).toEqual({ label: "META FORM LEADS", costLabel: "COST PER LEAD", value: "14", cprValue: "$42.57" });
+    expect(websiteLeads).toEqual({ label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "0", cprValue: "N/A" });
+  });
+
+  it("is deterministic — repeated builds of the same reported-bug CSV input always classify identically", () => {
+    const buildOnce = () =>
+      buildReportData({
+        accountName: "Test Agency",
+        currencySymbol: "$",
+        timezone: "Asia/Kolkata",
+        monthlyBudget: null,
+        mtdDailyRows,
+        periodRows: [bugRow({ result_type: "landing_page_view", website_leads: "5", results: "5", spend: "100" })],
+        now: NOW,
+      }).periodRow.resultColumns;
+
+    const first = buildOnce();
+    for (let i = 0; i < 5; i++) {
+      expect(buildOnce()).toEqual(first);
+    }
   });
 });
 

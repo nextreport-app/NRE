@@ -293,6 +293,137 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
   return null;
 }
 
+/**
+ * Numeric/text signals resolveObjective needs — a normalized subset of
+ * either a raw NreRow (already-parsed numbers) or an aggregate.ts GroupAcc
+ * accumulator. All fields optional/defaultable to 0 so a caller can pass
+ * only what it has (e.g. an already-aggregated AggRow structurally lacks
+ * website_leads/purchases/etc., so they're simply absent → treated as 0,
+ * which correctly no-ops Priority 1 and falls straight through to Priority 2
+ * on that row's own already-corrected result_type text).
+ */
+export interface ObjectiveSignals {
+  result_type?: string | null;
+  results?: number;
+  reach?: number;
+  purchases?: number;
+  website_leads?: number;
+  meta_leads?: number;
+  leads?: number;
+  landing_page_views?: number;
+  link_clicks?: number;
+  mobile_app_installs?: number;
+  messaging_conversations_started?: number;
+  thruplays?: number;
+}
+
+/**
+ * Which priority tier resolveObjective matched on — callers that write a
+ * synthetic result_type back onto a row (aggregate.ts) need this to know
+ * whether to preserve the row's own raw result_type text ("resultType", the
+ * only tier that read real text rather than inferring a label) or write
+ * canonicalResultTypeText(resultLabel) instead (every other tier, none of
+ * which have real result_type text to preserve — either it was blank, or it
+ * was blank/generic and got overridden by a stronger signal).
+ */
+export type ObjectiveSource = "priority1" | "resultType" | "priority3" | "priority4";
+
+export interface ObjectiveResolution extends ResultLabels {
+  source: ObjectiveSource;
+}
+
+/**
+ * The unified objective-detection priority chain — shared by aggregate.ts's
+ * aggregateRows (MTD/Weekly rows) and this file's own getResultGroups
+ * (Period rows, and campaign/ad-set slide grouping). Fixes a real-account
+ * bug report: a campaign with result_type = "landing_page_view" (an
+ * intermediate signal Meta always populates) AND a non-zero "Website leads"
+ * column (its actual, currently-optimized-for conversion) was showing
+ * LANDING PAGE VIEWS instead of WEBSITE LEADS, because the old chain trusted
+ * result_type text unconditionally, before ever looking at column values.
+ *
+ * Priority 1 — dedicated metric columns with an actual non-zero value: the
+ * strongest signal there is, since it reflects real, current conversion
+ * activity rather than a possibly-stale/intermediate result_type label or a
+ * column that merely exists in the export with no data behind it yet.
+ * Checked in the order specified by the bug fix (website leads > meta form
+ * leads > purchases > app installs > messaging > video views). Link clicks
+ * is deliberately NOT one of these checks — Meta always populates link
+ * clicks regardless of objective, so a non-zero value alone is too weak a
+ * signal on its own (unlike the objective-specific columns above, which an
+ * agency only includes when that's their actual objective); the spec's
+ * "link clicks column exists AND result_type shows link_click" condition is
+ * exactly what Priority 2 below already does once result_type genuinely
+ * says so, so it's handled there instead of duplicated here.
+ *
+ * Priority 2 — result_type text, trusted as-is once present (same as the
+ * old Step 1) — this is what let LANDING PAGE VIEWS win before; now only
+ * reached once Priority 1 has confirmed no stronger, more-current signal
+ * exists.
+ *
+ * Priority 3 — column presence only, no value check (the old Step 2/
+ * detectObjectiveFromColumns) — a brand new campaign with zero results yet
+ * still gets its real objective from which column the agency's export
+ * included, not a generic RESULTS bucket.
+ *
+ * Priority 4 — remaining data-value fallbacks in their original order (the
+ * old Step 3's leftovers, now that website leads/leads/purchases moved up to
+ * Priority 1: meta leads > landing page views > link clicks[gated by
+ * reach !== results] > reach), then the generic RESULTS/COST PER RESULT
+ * bucket as the absolute last resort.
+ */
+export function resolveObjective(
+  signals: ObjectiveSignals,
+  columnObjective: ResultLabels | null,
+): ObjectiveResolution {
+  const websiteLeads = signals.website_leads ?? 0;
+  const leads = signals.leads ?? 0;
+  const linkClicks = signals.link_clicks ?? 0;
+  const purchases = signals.purchases ?? 0;
+  const mobileAppInstalls = signals.mobile_app_installs ?? 0;
+  const messaging = signals.messaging_conversations_started ?? 0;
+  const thruplays = signals.thruplays ?? 0;
+  const metaLeads = signals.meta_leads ?? 0;
+  const landingPageViews = signals.landing_page_views ?? 0;
+  const reach = signals.reach ?? 0;
+  const results = signals.results ?? 0;
+
+  if (websiteLeads > 0) {
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", source: "priority1" };
+  }
+  if (leads > 0) {
+    return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority1" };
+  }
+  if (purchases > 0) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", source: "priority1" };
+  }
+  if (mobileAppInstalls > 0) {
+    return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL", source: "priority1" };
+  }
+  if (messaging > 0) {
+    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION", source: "priority1" };
+  }
+  if (thruplays > 0) {
+    return { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW", source: "priority1" };
+  }
+
+  const rt = getResultLabels(signals.result_type);
+  if (rt.resultLabel !== "RESULTS") return { ...rt, source: "resultType" };
+
+  if (columnObjective) return { ...columnObjective, source: "priority3" };
+
+  if (metaLeads > 0) return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority4" };
+  if (landingPageViews > 0) {
+    return { resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV", source: "priority4" };
+  }
+  if (linkClicks > 0 && reach !== results) {
+    return { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", source: "priority4" };
+  }
+  if (reach > 0) return { resultLabel: "REACH", costLabel: "COST PER 1K REACH", source: "priority4" };
+
+  return { resultLabel: "RESULTS", costLabel: "COST PER RESULT", source: "priority4" };
+}
+
 export interface ResultGroup {
   label: string;
   costLabel: string;
@@ -317,8 +448,32 @@ export interface ResultGroup {
 export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   const groups: Record<string, { costLabel: string; count: number; totalSpend: number; totalReach: number }> = {};
 
+  // Column-presence signal (Priority 3), computed once per call from the
+  // first row's own raw headers — same reasoning as aggregate.ts's
+  // columnObjective: which columns exist is a property of the upload these
+  // rows came from, identical for every row in it. Absent on an
+  // already-aggregated AggRow (no _raw survives aggregateRows), which is
+  // fine — those rows already carry a corrected result_type from
+  // aggregateRows' own resolveObjective pass, so they resolve via Priority 2
+  // here regardless.
+  const rawHeaders = rows.length > 0 ? Object.keys(rows[0]._raw || {}) : [];
+  const columnObjective = detectObjectiveFromColumns(rawHeaders);
+
   rows.forEach((row) => {
-    const { resultLabel: label, costLabel: cost } = getResultLabels(row.result_type || "");
+    const { resultLabel: label, costLabel: cost } = resolveObjective(
+      {
+        result_type: row.result_type,
+        results: parseCellNum(row.results),
+        reach: parseCellNum(row.reach),
+        purchases: parseCellNum(row.purchases),
+        website_leads: parseCellNum(row.website_leads),
+        meta_leads: parseCellNum(row.meta_leads),
+        leads: parseCellNum(row.leads),
+        landing_page_views: parseCellNum(row.landing_page_views),
+        link_clicks: parseCellNum(row.link_clicks),
+      },
+      columnObjective,
+    );
     if (!groups[label]) groups[label] = { costLabel: cost, count: 0, totalSpend: 0, totalReach: 0 };
     groups[label].count += parseCellNum(row.results);
     groups[label].totalSpend += parseCellNum(row.spend);
