@@ -2131,32 +2131,20 @@ function DriveIcon() {
   );
 }
 
-/** Meta Ads platform-selector icon — simple dark navy branded card, no external brand glyphs. */
+/** Meta Ads platform-selector icon — a plain solid blue circle, no text or brand glyphs. */
 function MetaAdsIcon() {
   return (
-    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect width="48" height="48" rx="10" fill="#0d1b2e" stroke="#0082FB" strokeWidth="2" />
-      <text x="24" y="20" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="700" fill="#0082FB" textAnchor="middle" letterSpacing="2">
-        META
-      </text>
-      <text x="24" y="32" fontFamily="Arial, sans-serif" fontSize="9" fill="#94a3b8" textAnchor="middle">
-        ADS
-      </text>
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="20" cy="20" r="20" fill="#1877F2" />
     </svg>
   );
 }
 
-/** Google Ads platform-selector icon — simple dark navy branded card, no external brand glyphs. */
+/** Google Ads platform-selector icon — a plain solid blue rounded square, no text or brand glyphs. */
 function GoogleAdsIcon() {
   return (
-    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect width="48" height="48" rx="10" fill="#0d1b2e" stroke="#4285F4" strokeWidth="2" />
-      <text x="24" y="20" fontFamily="Arial, sans-serif" fontSize="9" fontWeight="700" fill="#4285F4" textAnchor="middle" letterSpacing="1">
-        GOOGLE
-      </text>
-      <text x="24" y="32" fontFamily="Arial, sans-serif" fontSize="9" fill="#94a3b8" textAnchor="middle">
-        ADS
-      </text>
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="40" height="40" rx="8" fill="#4285F4" />
     </svg>
   );
 }
