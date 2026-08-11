@@ -45,6 +45,7 @@ import {
   getResultLabels,
   getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
+  normalizeCampaignName,
   type ResultLabels,
 } from "./objective";
 import type { MetricRow } from "./types";
@@ -936,10 +937,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const avgCpc = average(cpcs);
     // Step 0's single source of truth — see buildReportData's own Step 0
     // comment and objective.ts's buildCampaignObjectiveMap doc comment.
-    // Falls back to the generic RESULTS bucket only defensively (every
-    // campaign here came from primaryRows, which campaignObjectiveMap was
-    // itself built from — this should never actually miss).
-    const campaignObjective = campaignObjectiveMap.get(campaignName) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+    // normalizeCampaignName closes the case-sensitivity loophole: the map's
+    // own keys are normalized (see buildCampaignObjectiveMap), so a
+    // display-cased lookup here must be normalized identically or it would
+    // silently miss. Falls back to the generic RESULTS bucket only
+    // defensively (every campaign here came from primaryRows, which
+    // campaignObjectiveMap was itself built from — this should never
+    // actually miss).
+    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
     const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
     if (campRows.some((r) => !r.objectiveConfident)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
@@ -1040,7 +1048,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // truth), not this ad set's own individually-resolved result_type — so
     // every ad-set slide under one campaign always agrees with that
     // campaign's own summary slide and with the Combined Total table.
-    const campaignObjective = campaignObjectiveMap.get(campaignName) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+    // normalizeCampaignName matches the map's own normalized keys (see
+    // buildCampaignObjectiveMap) — same case-sensitivity fix as above.
+    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
     const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
     const rowFreq = rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;

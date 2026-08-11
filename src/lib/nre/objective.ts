@@ -513,10 +513,27 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   return buildResultGroups(groups);
 }
 
+/**
+ * Normalizes a campaign name for case-insensitive matching — trimmed and
+ * lower-cased. Closes a case-sensitivity loophole: without this, "Website
+ * Leads Campaign" and "website leads campaign" (e.g. the same campaign
+ * re-exported with different capitalization, or compared against a
+ * differently-cased lookup key) would be treated as two distinct campaigns
+ * — silently missing campaignObjectiveMap and falling back to the generic
+ * RESULTS bucket instead of the campaign's real objective. Every place a
+ * campaign name is grouped INTO campaignObjectiveMap (groupRowsByCampaign
+ * below) or looked up FROM it (report-data.ts's campaign/ad-set slide
+ * building) must run the name through this same function, or the two sides
+ * can silently drift back out of sync.
+ */
+export function normalizeCampaignName(name: string | null | undefined): string {
+  return String(name || "Unknown Campaign").trim().toLowerCase();
+}
+
 function groupRowsByCampaign(rows: MetricRow[]): Record<string, MetricRow[]> {
   const campaignRowGroups: Record<string, MetricRow[]> = {};
   rows.forEach((row) => {
-    const name = String(row.campaign_name || "Unknown Campaign").trim();
+    const name = normalizeCampaignName(row.campaign_name);
     (campaignRowGroups[name] ??= []).push(row);
   });
   return campaignRowGroups;
@@ -537,17 +554,22 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * weren't identical, so the table could show a different objective's column
  * than what a campaign's own slide displayed).
  *
- * Groups `rows` by campaign_name, resolves each campaign's rows via
- * getResultGroups (row-level resolveObjective, then the campaign-level
- * pickPrimaryResultGroup selection above), and returns ONE
- * {resultLabel, costLabel} per campaign_name. Every consumer that needs "what
- * objective is this campaign" — campaign slides, ad-set slides, and the
- * Combined Total table's column grouping (groupResultsByCampaignObjective
- * below) — reads from this same map instead of re-deriving its own answer,
- * so they're guaranteed to agree. Call once per relevant row set (report-
- * data.ts builds one from the current MTD/weekly rows, and a separate one
- * from Previous Month Data — see buildReportData's Step 0) rather than
- * re-building it per consumer.
+ * Groups `rows` by campaign_name (normalized via normalizeCampaignName —
+ * trimmed, lower-cased, so casing differences never fracture one campaign
+ * into two map entries), resolves each campaign's rows via getResultGroups
+ * (row-level resolveObjective, then the campaign-level pickPrimaryResultGroup
+ * selection above), and returns ONE {resultLabel, costLabel} per normalized
+ * campaign name. Every consumer that needs "what objective is this
+ * campaign" — campaign slides, ad-set slides, and the Combined Total
+ * table's column grouping (groupResultsByCampaignObjective below) — reads
+ * from this same map instead of re-deriving its own answer, so they're
+ * guaranteed to agree. A caller looking up a display-cased campaign name
+ * (e.g. report-data.ts's campaignName, straight off the row) MUST run it
+ * through normalizeCampaignName first, or a mixed-case lookup will silently
+ * miss the map. Call once per relevant row set (report-data.ts builds one
+ * from the current MTD/weekly rows, and a separate one from Previous Month
+ * Data — see buildReportData's Step 0) rather than re-building it per
+ * consumer.
  */
 export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();

@@ -9,6 +9,7 @@ import {
   getSingleRowResultDisplay,
   getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
+  normalizeCampaignName,
   resolveObjective,
 } from "../objective";
 import type { AggRow } from "../aggregate";
@@ -624,12 +625,16 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
       metricRow({ campaign_name: "Campaign 5", _raw: {}, result_type: "", landing_page_views: 40, results: 0, spend: 100 }),
     ];
 
+    // buildCampaignObjectiveMap's keys are normalized (trimmed, lower-cased
+    // — see normalizeCampaignName) — every lookup below runs the same
+    // display-cased name through it, exactly as report-data.ts's own
+    // campaign/ad-set slide building does.
     const objectiveMap = buildCampaignObjectiveMap(rows);
-    expect(objectiveMap.get("Campaign 1")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
-    expect(objectiveMap.get("Campaign 2")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
-    expect(objectiveMap.get("Campaign 3")).toEqual({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" });
-    expect(objectiveMap.get("Campaign 4")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
-    expect(objectiveMap.get("Campaign 5")).toEqual({ resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" });
+    expect(objectiveMap.get(normalizeCampaignName("Campaign 1"))).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    expect(objectiveMap.get(normalizeCampaignName("Campaign 2"))).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    expect(objectiveMap.get(normalizeCampaignName("Campaign 3"))).toEqual({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" });
+    expect(objectiveMap.get(normalizeCampaignName("Campaign 4"))).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    expect(objectiveMap.get(normalizeCampaignName("Campaign 5"))).toEqual({ resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" });
 
     // Combined Total table's grouping: 4 distinct objective buckets, PURCHASES combining both campaigns.
     const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
@@ -642,8 +647,8 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     // Campaign 1 and Campaign 2 both independently resolve to PURCHASES.
     const campaign1Rows = rows.filter((r) => r.campaign_name === "Campaign 1");
     const campaign3Rows = rows.filter((r) => r.campaign_name === "Campaign 3");
-    const display1 = getGroupedResultDisplayForObjective(campaign1Rows, objectiveMap.get("Campaign 1")!, "$");
-    const display3 = getGroupedResultDisplayForObjective(campaign3Rows, objectiveMap.get("Campaign 3")!, "$");
+    const display1 = getGroupedResultDisplayForObjective(campaign1Rows, objectiveMap.get(normalizeCampaignName("Campaign 1"))!, "$");
+    const display3 = getGroupedResultDisplayForObjective(campaign3Rows, objectiveMap.get(normalizeCampaignName("Campaign 3"))!, "$");
     expect(display1.resultLabel).toBe("PURCHASES");
     expect(display1.costLabel).toBe("COST PER PURCHASE");
     expect(display3.resultLabel).toBe("META FORM LEADS");
@@ -662,12 +667,40 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     ];
     const objectiveMap = buildCampaignObjectiveMap(rows);
     expect(objectiveMap.size).toBe(1);
-    expect(objectiveMap.get("Mixed Campaign")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    expect(objectiveMap.get(normalizeCampaignName("Mixed Campaign"))).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
 
     const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
     expect(tableGroups.map((g) => g.label)).toEqual(["WEBSITE LEADS"]);
     expect(tableGroups.find((g) => g.label === "LANDING PAGE VIEWS")).toBeUndefined();
     expect(tableGroups.find((g) => g.label === "REACH")).toBeUndefined();
+  });
+
+  it("case-insensitivity fix — differently-cased occurrences of the same campaign name are treated as ONE campaign, not two", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 200 }),
+      // Same campaign, differently cased (e.g. a re-export, or a different
+      // ad set's row that happened to carry different capitalization) —
+      // must still fold into the SAME map entry and the SAME table bucket,
+      // not spawn a second "website leads campaign" column.
+      metricRow({ campaign_name: "website leads campaign", _raw: {}, result_type: "", website_leads: 5, results: 5, spend: 50 }),
+      metricRow({ campaign_name: "WEBSITE LEADS CAMPAIGN", _raw: {}, result_type: "", website_leads: 3, results: 3, spend: 30 }),
+    ];
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    // One map entry, not three.
+    expect(objectiveMap.size).toBe(1);
+    expect(objectiveMap.get(normalizeCampaignName("Website Leads Campaign"))).toEqual({
+      resultLabel: "WEBSITE LEADS",
+      costLabel: "COST PER WEBSITE LEAD",
+    });
+    // Every differently-cased spelling normalizes to the same key and hits the same entry.
+    expect(objectiveMap.get("website leads campaign")).toEqual(objectiveMap.get(normalizeCampaignName("WEBSITE LEADS CAMPAIGN")));
+
+    // The table rolls all three rows' totals into ONE bucket, not three
+    // separate (accidentally-duplicated) WEBSITE LEADS columns.
+    const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
+    expect(tableGroups).toHaveLength(1);
+    expect(tableGroups[0]).toMatchObject({ label: "WEBSITE LEADS", count: 28, totalSpend: 280 });
   });
 });
 
