@@ -249,12 +249,18 @@ export function fillCombinedTotalTable(
   options: TableVisibilityOptions = {},
 ): string {
   const targetCols = grid[0]?.length ?? 0;
-  // Column-overflow fix: 3 objective pairs (12 total columns, already past
-  // the template's native 10) shrinks the header font to keep labels
-  // readable; 4+ (never produced by report-data.ts's own 3-pair cap, but
-  // this function accepts any grid shape) shrinks it further still.
+  // Font-size floors (product owner spec): header row never below 10pt
+  // normally, data rows (values + the row-label date-range cell in column
+  // 0) never below 11pt — except when 3+ objective pairs force the header
+  // to grow past the template's native 10 columns, where 9pt is the
+  // absolute minimum floor the header is allowed to shrink to (never
+  // lower), to keep the longer objective labels from overflowing their
+  // narrower columns. Applies uniformly across all 3 templates (dark,
+  // light, Google) since this is the shared XML-filling layer they all
+  // route through.
   const objectivePairCount = (targetCols - STATIC_COLS) / 2;
-  const headerFontSizeHundredths = objectivePairCount >= 4 ? 800 : objectivePairCount === 3 ? 900 : undefined;
+  const headerFontSizeHundredths = objectivePairCount >= 3 ? 900 : 1000;
+  const dataRowFontSizeHundredths = 1100;
   const validShape =
     grid.length === EXPECTED_ROWS &&
     grid.every((row) => row.length === targetCols) &&
@@ -316,15 +322,17 @@ export function fillCombinedTotalTable(
   // when the grid is 8-10 columns wide (nothing left over), or the grown
   // width when it's wider. When the grid is narrower than 10 (1 objective),
   // the untouched trailing native cells are removed next by hideColIndexes.
-  // Row 0 (the header) gets abbreviated labels + a smaller font once space
-  // is genuinely tight (3+ objective pairs) — rows 1-2 (Period/MTD data)
-  // keep their plain numbers/currency at the template's own font size.
+  // Row 0 (the header) gets abbreviated labels once space is genuinely
+  // tight (3+ objective pairs) plus the header font floor; rows 1-2
+  // (Period/MTD data, including each row's own date-range label in column
+  // 0) get the data-row font floor.
   const rowsToFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   for (let r = EXPECTED_ROWS - 1; r >= 0; r--) {
     const row = rowsToFill[r];
     const isHeaderRow = r === 0;
     const rowValues = isHeaderRow && objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r];
-    const filled = fillRow(row.xml, rowValues, r, isHeaderRow ? headerFontSizeHundredths : undefined);
+    const fontSize = isHeaderRow ? headerFontSizeHundredths : dataRowFontSizeHundredths;
+    const filled = fillRow(row.xml, rowValues, r, fontSize);
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }
 

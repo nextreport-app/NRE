@@ -254,9 +254,9 @@ describe("generateInsights", () => {
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
       expect(campaignCopy.summary).toBe(
-        "This campaign generated 5 LEADS at a $20.00 COST PER LEAD, reaching 1,000 people with 2,000 " +
-          "impressions. Performance showed a 1.00% click-through rate at $2.00 cost per click, reflecting " +
-          "current audience engagement levels.",
+        "This campaign generated 5 LEADS at $20.00 COST PER LEAD, spending $100 to reach 1,000 people across " +
+          "2,000 impressions. The campaign achieved a 1.00% click-through rate at $2.00 cost per click, " +
+          "reflecting current audience engagement levels.",
       );
       expect(campaignCopy.insights).toBe("AI insight sentence one. AI insight sentence two. AI insight sentence three.");
 

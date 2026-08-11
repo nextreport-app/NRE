@@ -44,12 +44,15 @@ describe("fillCombinedTotalTable", () => {
     expect(out).not.toMatch(/R\d+C\d+/);
   });
 
-  it("preserves each cell's existing run style (rPr) while swapping its text", () => {
+  it("applies the font-size floors (10pt header, 11pt data rows), overriding the fixture's own sz", () => {
     const xml = buildFixtureTable();
     const grid = grid3x10(() => "X");
     const out = fillCombinedTotalTable(xml, grid);
-    // Every cell in the fixture was built with sz="1400" — confirm it survived the fill.
-    expect((out.match(/sz="1400"/g) || []).length).toBe(EXPECTED_ROWS * NATIVE_COLS);
+    const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+    expect((rows[0].match(/sz="1000"/g) || []).length).toBe(NATIVE_COLS);
+    expect((rows[1].match(/sz="1100"/g) || []).length).toBe(NATIVE_COLS);
+    expect((rows[2].match(/sz="1100"/g) || []).length).toBe(NATIVE_COLS);
+    expect(out).not.toContain('sz="1400"');
   });
 
   it("column 2 (Reach) never disappears: header text and both row values land exactly there", () => {
@@ -226,42 +229,45 @@ describe("fillCombinedTotalTable", () => {
       expect(new Set(widths).size).toBe(1); // all equal
     });
 
-    it("clones the grown row cells with each row's own existing run style, not a generic one", () => {
+    it("applies the data-row font floor (11pt) to the grown row cells, overriding the fixture's own style", () => {
       const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
       const grid = grid3xN(12, () => "x");
       const out = fillCombinedTotalTable(xml, grid);
-      // Data rows (1-2, 12 cells each) keep the fixture's sz="1400" rPr —
-      // only the header row's font shrinks (column-overflow fix, 3
-      // objective pairs = 12 columns).
-      expect((out.match(/sz="1400"/g) || []).length).toBe(2 * 12);
+      // Data rows (1-2, 12 cells each, including the newly-grown pair) all
+      // get the 11pt floor — the header row's own floor is 9pt at 3+
+      // objective pairs (column-overflow fix, tested below).
+      expect((out.match(/sz="1100"/g) || []).length).toBe(2 * 12);
+      expect(out).not.toContain('sz="1400"');
     });
 
-    describe("column-overflow fix: header font size + label abbreviation", () => {
-      it("shrinks the header row to 9pt for exactly 3 objective pairs (12 columns), leaving data rows untouched", () => {
+    describe("font-size floors: header row + data rows (product owner spec — never below 9pt anywhere)", () => {
+      it("shrinks the header row to its 9pt floor for exactly 3 objective pairs (12 columns); data rows get their own 11pt floor", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
         const grid = grid3xN(12, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
         expect((rows[0].match(/sz="900"/g) || []).length).toBe(12);
         expect(rows[0]).not.toContain('sz="1400"');
-        expect((rows[1].match(/sz="1400"/g) || []).length).toBe(12);
-        expect((rows[2].match(/sz="1400"/g) || []).length).toBe(12);
+        expect((rows[1].match(/sz="1100"/g) || []).length).toBe(12);
+        expect((rows[2].match(/sz="1100"/g) || []).length).toBe(12);
       });
 
-      it("shrinks the header row to 8pt for 4+ objective pairs (14 columns)", () => {
+      it("never drops the header below its 9pt floor even at 4+ objective pairs (14 columns)", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
         const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="800"/g) || []).length).toBe(14);
+        expect((rows[0].match(/sz="900"/g) || []).length).toBe(14);
+        expect(rows[0]).not.toContain('sz="800"');
       });
 
-      it("leaves the header font untouched for 1-2 objective pairs (no overflow risk)", () => {
+      it("sets the header row to its 10pt minimum for 1-2 objective pairs (no overflow risk)", () => {
         const xml = buildFixtureTable();
         const grid = grid3x10((r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1400"/g) || []).length).toBe(10);
+        expect((rows[0].match(/sz="1000"/g) || []).length).toBe(10);
+        expect(rows[0]).not.toContain('sz="1400"');
       });
 
       it("abbreviates known objective labels in the header row only, once 3+ pairs are present", () => {

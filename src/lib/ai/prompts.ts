@@ -19,14 +19,23 @@ import type { AiContext } from "../nre/report-data";
 
 export function buildSummaryPrompt(ctx: AiContext): string {
   return (
-    "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide. Start directly with what the campaign achieved. For example start with: This campaign generated... or Campaign delivery showed... or Performance this week showed...\n" +
-    "Sentence 1: What the campaign achieved in terms of results, reach and impressions.\n" +
-    "Sentence 2: The CTR and CPC performance and what it reflects about audience engagement.\n" +
+    "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+    "Sentence 1 must mention ALL of these in order:\n" +
+    "- The primary result count and label (e.g. 20 leads, 47 website leads, 312 link clicks, 5 purchases)\n" +
+    "- The cost per result (e.g. at $40 per lead, at $6.04 cost per lead)\n" +
+    "- The total spend (e.g. spending $800 this week)\n" +
+    "- Reach and impressions\n" +
+    "Sentence 2 must mention:\n" +
+    "- CTR percentage\n" +
+    "- CPC value\n" +
+    "- A brief engagement observation\n" +
+    "Example of correct format: \"This campaign generated 20 leads at $40 cost per lead, spending $800 to reach 22,170 people across 28,192 impressions. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting moderate audience engagement this week.\"\n" +
     "Rules:\n" +
-    "- Never start with During [date] or The [campaign name] campaign\n" +
-    "- Always use real numbers from the data\n" +
-    "- Under 55 words total\n" +
-    "- Professional tone\n\n" +
+    "- ALWAYS mention the primary result count and cost in sentence 1 — this is the most important metric\n" +
+    "- If results = 0, say \"recorded no [result label] this week\" in sentence 1\n" +
+    "- Use real numbers from the data — never invent or estimate\n" +
+    "- Keep total under 60 words\n" +
+    "- Professional tone like a senior account manager\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", Impressions: " + ctx.impressions + ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
     ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
@@ -89,13 +98,17 @@ export function buildZeroResultsSummary(ctx: AiContext): string {
  * it can never itself be cut off mid-sentence the way an AI response can.
  * Fix 3 — no longer opens with "During [dateRange], the [campaignName]
  * campaign...", matching buildSummaryPrompt's own new "don't repeat what's
- * already on the slide" instruction.
+ * already on the slide" instruction. Mirrors buildSummaryPrompt's own
+ * required structure exactly (results + cost per result always first,
+ * spend/reach/impressions in sentence 1, CTR/CPC in sentence 2) — this
+ * fallback must never omit results and cost per result the way the AI
+ * output previously could.
  */
 export function buildFallbackSummary(ctx: AiContext): string {
   return (
-    "This campaign generated " + ctx.results + " " + ctx.resultLabel + " at a " + ctx.cpr + " " + ctx.costLabel +
-    ", reaching " + ctx.reach + " people with " + ctx.impressions + " impressions. Performance showed a " +
-    ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
+    "This campaign generated " + ctx.results + " " + ctx.resultLabel + " at " + ctx.cpr + " " + ctx.costLabel +
+    ", spending " + ctx.spend + " to reach " + ctx.reach + " people across " + ctx.impressions +
+    " impressions. The campaign achieved a " + ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
     " cost per click, reflecting current audience engagement levels."
   );
 }

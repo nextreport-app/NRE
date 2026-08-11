@@ -32,15 +32,28 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
 }
 
 describe("buildSummaryPrompt", () => {
-  it("uses the exact fixed structure from the product owner's spec (Fix 3 — no longer opens with the date/campaign name)", () => {
+  it("uses the exact fixed structure from the product owner's spec (permanent fix — primary result count/cost per result must always be mentioned)", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
-      "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide.",
+      "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.",
     );
-    expect(prompt).toContain("Sentence 1: What the campaign achieved in terms of results, reach and impressions.");
-    expect(prompt).toContain("Sentence 2: The CTR and CPC performance and what it reflects about audience engagement.");
-    expect(prompt).toContain("Never start with During [date] or The [campaign name] campaign");
-    expect(prompt).toContain("Under 55 words total");
+    expect(prompt).toContain("Sentence 1 must mention ALL of these in order:");
+    expect(prompt).toContain("- The primary result count and label (e.g. 20 leads, 47 website leads, 312 link clicks, 5 purchases)");
+    expect(prompt).toContain("- The cost per result (e.g. at $40 per lead, at $6.04 cost per lead)");
+    expect(prompt).toContain("- The total spend (e.g. spending $800 this week)");
+    expect(prompt).toContain("- Reach and impressions");
+    expect(prompt).toContain("Sentence 2 must mention:");
+    expect(prompt).toContain("- CTR percentage");
+    expect(prompt).toContain("- CPC value");
+    expect(prompt).toContain("- A brief engagement observation");
+    expect(prompt).toContain(
+      "Example of correct format: \"This campaign generated 20 leads at $40 cost per lead, spending $800 to reach 22,170 people across 28,192 impressions. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting moderate audience engagement this week.\"",
+    );
+    expect(prompt).toContain("- ALWAYS mention the primary result count and cost in sentence 1 — this is the most important metric");
+    expect(prompt).toContain("- If results = 0, say \"recorded no [result label] this week\" in sentence 1");
+    expect(prompt).toContain("- Use real numbers from the data — never invent or estimate");
+    expect(prompt).toContain("- Keep total under 60 words");
+    expect(prompt).toContain("- Professional tone like a senior account manager");
   });
 
   it("substitutes every {token} in the Data line with the slide's real numbers", () => {
@@ -50,7 +63,7 @@ describe("buildSummaryPrompt", () => {
     );
   });
 
-  it("never mentions frequency — dropped from the new fixed structure", () => {
+  it("never mentions frequency — dropped from the fixed structure", () => {
     const prompt = buildSummaryPrompt(ctx({ freq: 5 }));
     expect(prompt).not.toContain("frequency");
     expect(prompt).not.toContain("creative fatigue");
@@ -147,21 +160,35 @@ describe("capInsights", () => {
 });
 
 describe("buildFallbackSummary", () => {
-  it("builds the exact 2-sentence structure from real data, always ending in a period (Fix 3 — no longer opens with the date/campaign name)", () => {
+  it("builds the exact 2-sentence structure from real data, always ending in a period, results/cost per result always in sentence 1 (Fix 3 — no longer opens with the date/campaign name; permanent fix — spend is now always included)", () => {
     const result = buildFallbackSummary(ctx());
     expect(result).toBe(
-      "This campaign generated 21 PURCHASES at a ₹50.00 COST PER PURCHASE, reaching 12,600 people with 45,000 " +
-        "impressions. Performance showed a 2.00% click-through rate at ₹3.50 cost per click, reflecting current " +
-        "audience engagement levels.",
+      "This campaign generated 21 PURCHASES at ₹50.00 COST PER PURCHASE, spending ₹1,050 to reach 12,600 people " +
+        "across 45,000 impressions. The campaign achieved a 2.00% click-through rate at ₹3.50 cost per click, " +
+        "reflecting current audience engagement levels.",
     );
     expect(result.endsWith(".")).toBe(true);
     expect(result).not.toContain("During");
     expect(result).not.toContain("Shoes - Purchases");
   });
 
+  it("never omits results and cost per result from sentence 1", () => {
+    const result = buildFallbackSummary(ctx());
+    const firstSentence = result.split(". ")[0];
+    expect(firstSentence).toContain("21");
+    expect(firstSentence).toContain("PURCHASES");
+    expect(firstSentence).toContain("₹50.00");
+    expect(firstSentence).toContain("COST PER PURCHASE");
+  });
+
+  it("always includes total spend (previously missing from the fallback)", () => {
+    const result = buildFallbackSummary(ctx());
+    expect(result).toContain("spending ₹1,050");
+  });
+
   it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
     const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
-    expect(result).toContain("showed a 0.35% click-through rate");
+    expect(result).toContain("achieved a 0.35% click-through rate");
     expect(result).not.toContain("0.35%%");
   });
 });
