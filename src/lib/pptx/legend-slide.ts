@@ -33,7 +33,7 @@
  * objective report often exceeds 12 anyway.
  */
 
-import { replaceLiteralText } from "./ooxml";
+import { enforceMinFontSize, replaceLiteralText } from "./ooxml";
 
 export interface LegendEntry {
   term: string;
@@ -152,6 +152,44 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
     if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], "");
     xml = replaceLiteralText(xml, slot.descText, entry.explanation);
   }
+
+  // Readability floor (product owner spec): every card's title/label text
+  // at least 12pt, its description text underneath at least 11pt. The
+  // template's own baked-in sizes are a title run at 14pt (already above
+  // the floor — untouched), a smaller abbreviation-expansion run at 10.5pt
+  // (e.g. "(COST PER LEAD)", part of the label), and a description run at
+  // 10pt — both of the latter are below both floors, so a single blanket
+  // 12pt pass (enforceMinFontSize, the same "readability pass" utility
+  // fill-tags.ts already uses for the campaign template's card labels)
+  // satisfies both requirements in one pass: it only ever RAISES a size
+  // that's below the floor, never lowers one already at or above it.
+  const before = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
+  console.log(
+    `[legend-slide] font sizes before 12pt floor: ${[...new Set(before)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
+  );
+  xml = enforceMinFontSize(xml, 12);
+  const after = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
+  console.log(
+    `[legend-slide] font sizes after 12pt floor: ${[...new Set(after)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
+  );
+
+  // Overflow guard for the longer descriptions (e.g. "Learning Phase"'s):
+  // every description text box in the template uses <a:spAutoFit/> ("grow
+  // the shape to fit the text"), which made sense at the template's
+  // original 10pt, but at the bumped-up 12pt floor a long description can
+  // now grow past its card's fixed background rectangle — visibly
+  // overflowing the card. Every <a:spAutoFit/> in this slide belongs to a
+  // description shape (title shapes all use <a:noAutofit/> instead,
+  // confirmed by inspecting the template), so swapping it slide-wide for
+  // <a:normAutofit/> ("shrink the TEXT to fit the shape" instead) is a safe,
+  // targeted fix: it only ever engages for a description whose text
+  // genuinely doesn't fit its card at the 12pt floor, leaving every other
+  // (shorter) description at the full 12pt untouched.
+  const beforeAutofitCount = (xml.match(/<a:spAutoFit\/>/g) || []).length;
+  xml = xml.replace(/<a:spAutoFit\/>/g, "<a:normAutofit/>");
+  console.log(
+    `[legend-slide] converted ${beforeAutofitCount} description text box(es) from spAutoFit (grow shape, can overflow) to normAutofit (shrink text to fit)`,
+  );
 
   return xml;
 }

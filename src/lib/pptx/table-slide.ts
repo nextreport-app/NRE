@@ -79,6 +79,12 @@ function setRunFontSize(rPrXml: string, sizeHundredths: number): string {
   return rPrXml.slice(0, openTagMatch.index) + newOpenTag + rPrXml.slice(openTagMatch.index + openTag.length);
 }
 
+/** Extracts the numeric sz="..." value (hundredths of a point) from an <a:rPr> block, or null when absent (inherited/default size). */
+function readRunFontSize(rPrXml: string): number | null {
+  const m = /<a:rPr\b[^>]*\bsz="(\d+)"/.exec(rPrXml);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 function setCellText(
   cellXml: string,
   value: string,
@@ -93,7 +99,19 @@ function setCellText(
       `Combined Total table cell [row ${rowIndex}, col ${colIndex}] has no text run to fill (tried to write "${value}") — the template's table structure has changed.`,
     );
   }
-  const rPrBlock = fontSizeHundredths ? setRunFontSize(match[1] ?? "", fontSizeHundredths) : (match[1] ?? "");
+  const originalRPrBlock = match[1] ?? "";
+  const rPrBlock = fontSizeHundredths ? setRunFontSize(originalRPrBlock, fontSizeHundredths) : originalRPrBlock;
+  // Verification logging (product owner explicitly asked to confirm the
+  // actual before/after sz values being written, since a previous round's
+  // font-size change reportedly didn't visibly take effect) — only logs
+  // when this call is actually overriding the size, so a normal fill isn't
+  // spammed for cells the font-size floors don't apply to.
+  if (fontSizeHundredths) {
+    const oldSize = readRunFontSize(originalRPrBlock);
+    console.log(
+      `[table-slide] font size [row ${rowIndex}, col ${colIndex}]: ${oldSize !== null ? oldSize / 100 + "pt" : "inherited/default"} -> ${fontSizeHundredths / 100}pt`,
+    );
+  }
   const lines = String(value).split("\n");
   const runs = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
   return cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
@@ -108,11 +126,12 @@ function setCellText(
  * content never matters. When the grid matches or exceeds the row's native
  * width (2 objectives, or 3+ after growing), this fills every cell.
  *
- * `fontSizeHundredths`, when given, overrides every cell's font size in
- * this row (used only for the header row when 3+ objective pairs are
- * present — see fillCombinedTotalTable's column-overflow handling).
+ * `fontSizeForCol`, when given, is called per column index to get that
+ * cell's font-size override (hundredths of a point) — lets the header row
+ * use one flat size while data rows use a different size for column 0 (the
+ * row's own date-range label) vs. every other column (the numeric values).
  */
-function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeHundredths?: number): string {
+function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeForCol?: (colIndex: number) => number): string {
   const cells = findSpans(rowXml, /<a:tc[\s\S]*?<\/a:tc>/g);
   if (values.length > cells.length) {
     throw new Error(
@@ -125,7 +144,7 @@ function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeHun
   // for every earlier (lower-indexed) cell not yet processed.
   for (let c = values.length - 1; c >= 0; c--) {
     const cell = cells[c];
-    const filled = setCellText(cell.xml, values[c], rowIndex, c, fontSizeHundredths);
+    const filled = setCellText(cell.xml, values[c], rowIndex, c, fontSizeForCol?.(c));
     out = out.slice(0, cell.start) + filled + out.slice(cell.end);
   }
   return out;
@@ -249,18 +268,24 @@ export function fillCombinedTotalTable(
   options: TableVisibilityOptions = {},
 ): string {
   const targetCols = grid[0]?.length ?? 0;
-  // Font-size floors (product owner spec): header row never below 10pt
-  // normally, data rows (values + the row-label date-range cell in column
-  // 0) never below 11pt — except when 3+ objective pairs force the header
-  // to grow past the template's native 10 columns, where 9pt is the
-  // absolute minimum floor the header is allowed to shrink to (never
-  // lower), to keep the longer objective labels from overflowing their
-  // narrower columns. Applies uniformly across all 3 templates (dark,
-  // light, Google) since this is the shared XML-filling layer they all
-  // route through.
+  // Font-size floors (product owner spec, tightened this round): header row
+  // 11pt normally, data ROW LABEL cells (column 0, the Period/MTD date-range
+  // text) 11pt, data VALUE cells (every other column — the numbers/currency)
+  // 12pt. 10pt is the absolute floor for ANY text in this table — the only
+  // thing allowed to shrink below the normal sizes at all is the header when
+  // 3+ objective pairs force it to grow past the template's native 10
+  // columns, and even then it stops at 10pt, never lower. Applies uniformly
+  // across all 3 templates (dark, light, Google) since this is the shared
+  // XML-filling layer they all route through.
+  const HEADER_FONT_SIZE = 1100; // 11pt
+  const HEADER_FONT_SIZE_OVERFLOW = 1000; // 10pt — absolute floor, 3+ objective pairs only
+  const ROW_LABEL_FONT_SIZE = 1100; // 11pt — data rows' own column-0 date-range text
+  const DATA_VALUE_FONT_SIZE = 1200; // 12pt — data rows' numeric/currency cells
   const objectivePairCount = (targetCols - STATIC_COLS) / 2;
-  const headerFontSizeHundredths = objectivePairCount >= 3 ? 900 : 1000;
-  const dataRowFontSizeHundredths = 1100;
+  const headerFontSizeHundredths = objectivePairCount >= 3 ? HEADER_FONT_SIZE_OVERFLOW : HEADER_FONT_SIZE;
+  console.log(
+    `[table-slide] fillCombinedTotalTable: ${objectivePairCount} objective pair(s) -> header ${headerFontSizeHundredths / 100}pt, row label ${ROW_LABEL_FONT_SIZE / 100}pt, data values ${DATA_VALUE_FONT_SIZE / 100}pt`,
+  );
   const validShape =
     grid.length === EXPECTED_ROWS &&
     grid.every((row) => row.length === targetCols) &&
@@ -323,16 +348,18 @@ export function fillCombinedTotalTable(
   // width when it's wider. When the grid is narrower than 10 (1 objective),
   // the untouched trailing native cells are removed next by hideColIndexes.
   // Row 0 (the header) gets abbreviated labels once space is genuinely
-  // tight (3+ objective pairs) plus the header font floor; rows 1-2
-  // (Period/MTD data, including each row's own date-range label in column
-  // 0) get the data-row font floor.
+  // tight (3+ objective pairs) plus the header font size; rows 1-2
+  // (Period/MTD data) get the row-label size in column 0 and the data-value
+  // size everywhere else.
   const rowsToFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   for (let r = EXPECTED_ROWS - 1; r >= 0; r--) {
     const row = rowsToFill[r];
     const isHeaderRow = r === 0;
     const rowValues = isHeaderRow && objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r];
-    const fontSize = isHeaderRow ? headerFontSizeHundredths : dataRowFontSizeHundredths;
-    const filled = fillRow(row.xml, rowValues, r, fontSize);
+    const fontSizeForCol = isHeaderRow
+      ? () => headerFontSizeHundredths
+      : (c: number) => (c === 0 ? ROW_LABEL_FONT_SIZE : DATA_VALUE_FONT_SIZE);
+    const filled = fillRow(row.xml, rowValues, r, fontSizeForCol);
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }
 
