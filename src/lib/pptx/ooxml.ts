@@ -204,6 +204,25 @@ export function setShapeOffsetY(xml: string, locatorText: string, y: number): st
 }
 
 /**
+ * Swaps `<a:spAutoFit/>` ("grow the shape to fit the text," can overflow a
+ * fixed card/background) for `<a:normAutofit/>` ("shrink the text to fit
+ * the shape," never overflows) within the single `<p:sp>` shape located by
+ * `locatorText` — unlike enforceMinFontSize (slide-wide), this only touches
+ * the one located shape's own bodyPr, leaving every other shape's autofit
+ * mode untouched. No-op if the locator isn't found, or if that shape
+ * doesn't currently use `<a:spAutoFit/>`.
+ */
+export function setShapeNormAutofit(xml: string, locatorText: string): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  const sp = xml.slice(start, end);
+  const newSp = sp.replace("<a:spAutoFit/>", "<a:normAutofit/>");
+  return xml.slice(0, start) + newSp + xml.slice(end);
+}
+
+/**
  * Clones the `<p:sp>` shape whose sole text run is `sourceTag` (a
  * {{TAG}} placeholder), retargets that run to `newTag`, repositions it to
  * a new y offset, and assigns it a fresh shape id so it doesn't collide

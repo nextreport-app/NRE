@@ -249,6 +249,118 @@ describe("buildCampaignOrAdSetSlideXml — readability font sizes (Fix 4)", () =
   });
 });
 
+describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / Key Insights overflow fix", () => {
+  /** Enclosing <p:sp> shape for whichever run contains `text`, for bodyPr/autofit inspection. */
+  function shapeContaining(xml: string, text: string): string {
+    const idx = xml.indexOf(text);
+    expect(idx).toBeGreaterThan(-1);
+    const start = xml.lastIndexOf("<p:sp>", idx);
+    const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+    return xml.slice(start, end);
+  }
+
+  it("leaves Campaign Summary/Key Insights text at or under the caps completely unchanged, at the full 14pt", () => {
+    const summary = "Spend was steady this week with a modest lift in leads.";
+    const insights = "Cost per lead improved slightly versus last week's average.";
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), { summary, insights });
+    expect(xml).toContain(`<a:t>${summary}</a:t>`);
+    expect(xml).toContain(`<a:t>${insights}</a:t>`);
+    expect(sizeOfRunContaining(xml, summary)).toBe(14);
+    expect(sizeOfRunContaining(xml, insights)).toBe(14);
+  });
+
+  it("truncates Campaign Summary over 300 characters at the last complete sentence, never mid-sentence", () => {
+    const sentences = Array.from({ length: 10 }, (_, i) => `This is performance sentence number ${i} about the campaign.`);
+    const longSummary = sentences.join(" ");
+    expect(longSummary.length).toBeGreaterThan(300);
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
+      summary: longSummary,
+      insights: "Short insights.",
+    });
+    expect(xml).not.toContain(longSummary);
+    const kept = /<a:t>(This is performance sentence[^<]*)<\/a:t>/.exec(xml);
+    expect(kept).not.toBeNull();
+    const truncated = kept![1];
+    expect(truncated.length).toBeLessThanOrEqual(300);
+    expect(truncated.endsWith(".")).toBe(true);
+    // Never cut mid-sentence: the truncated text is always an exact prefix
+    // ending where a real sentence in the original text ended.
+    expect(longSummary.startsWith(truncated)).toBe(true);
+  });
+
+  it("truncates Key Insights over 400 characters at the last complete sentence, never mid-sentence", () => {
+    const sentences = Array.from({ length: 12 }, (_, i) => `Insight number ${i} shows a change in cost efficiency this period.`);
+    const longInsights = sentences.join(" ");
+    expect(longInsights.length).toBeGreaterThan(400);
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
+      summary: "Short summary.",
+      insights: longInsights,
+    });
+    expect(xml).not.toContain(longInsights);
+    const kept = /<a:t>(Insight number[^<]*)<\/a:t>/.exec(xml);
+    expect(kept).not.toBeNull();
+    const truncated = kept![1];
+    expect(truncated.length).toBeLessThanOrEqual(400);
+    expect(truncated.endsWith(".")).toBe(true);
+    expect(longInsights.startsWith(truncated)).toBe(true);
+  });
+
+  it("reduces font size by 1pt once text passes 250 characters", () => {
+    const summary = "A".repeat(259) + ".";
+    expect(summary.length).toBe(260);
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
+      summary,
+      insights: "Short insights.",
+    });
+    expect(xml).toContain(`<a:t>${summary}</a:t>`); // under the 300 cap — kept verbatim
+    expect(sizeOfRunContaining(xml, summary)).toBe(13);
+  });
+
+  it("reduces font size by 2pt once text passes 300 characters (reachable for Key Insights' own 400-char cap)", () => {
+    const insights = "B".repeat(349) + ".";
+    expect(insights.length).toBe(350);
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
+      summary: "Short summary.",
+      insights,
+    });
+    expect(xml).toContain(`<a:t>${insights}</a:t>`); // under the 400 cap — kept verbatim
+    expect(sizeOfRunContaining(xml, insights)).toBe(12);
+  });
+
+  it("uses <a:normAutofit/> (shrink text to fit) instead of <a:spAutoFit/> (grow shape) for the Campaign Summary and Key Insights boxes specifically", () => {
+    const summary = "A short campaign summary.";
+    const insights = "A short set of key insights.";
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), { summary, insights });
+    expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, summary)).not.toContain("<a:spAutoFit/>");
+    expect(shapeContaining(xml, insights)).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, insights)).not.toContain("<a:spAutoFit/>");
+    // Only these two shapes are touched — other card shapes on the same
+    // slide (e.g. AD SPEND) keep their own template autofit mode as-is.
+    expect(xml).toContain("<a:spAutoFit/>");
+  });
+
+  it("applies the same truncation/font-size/normAutofit treatment on the dynamic 7-slot metric path", () => {
+    const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
+    const summary = "A".repeat(259) + ".";
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary, insights: "Short insights." });
+    expect(sizeOfRunContaining(xml, summary)).toBe(13);
+    expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
+  });
+
+  it("applies the same treatment to buildPausedSlideXml's Campaign Summary text", () => {
+    const longPausedMessage = Array.from({ length: 10 }, (_, i) => `Paused notice sentence number ${i} for this account.`).join(" ");
+    expect(longPausedMessage.length).toBeGreaterThan(300);
+    const xml = buildPausedSlideXml(template.campaign, "Acme Inc", longPausedMessage, "Jul 13 - Jul 19");
+    expect(xml).not.toContain(longPausedMessage);
+    const kept = /<a:t>(Paused notice sentence[^<]*)<\/a:t>/.exec(xml);
+    expect(kept).not.toBeNull();
+    expect(kept![1].length).toBeLessThanOrEqual(300);
+    expect(kept![1].endsWith(".")).toBe(true);
+    expect(shapeContaining(xml, kept![1])).toContain("<a:normAutofit/>");
+  });
+});
+
 describe("buildCampaignOrAdSetSlideXml / buildPausedSlideXml — Fix 1: reportType header", () => {
   it("defaults to 'YOUR WEEKLY PERFORMANCE REPORT' when reportType is omitted", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));

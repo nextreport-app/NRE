@@ -2321,9 +2321,9 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
     expect(weekly.chart?.periodSubLabel).toBe("July 1 - July 19, 2026");
   });
 
-  it("keeps the 'Full Month' chart sub-line for Monthly reports", () => {
+  it("keeps the 'Full Month [Year]' chart sub-line for Monthly reports", () => {
     const monthly = build("MONTHLY");
-    expect(monthly.chart?.periodSubLabel).toBe("Full Month — July 2026");
+    expect(monthly.chart?.periodSubLabel).toBe("Full Month 2026");
   });
 
   it("is paused only when there's no data in the relevant window — an explicit weekly gap week for Weekly, vs. the full MTD for Monthly", () => {

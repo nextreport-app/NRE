@@ -279,7 +279,7 @@ describe("fillCombinedTotalTable", () => {
         expect(rows[0]).not.toContain('sz="1400"');
       });
 
-      it("abbreviates known objective labels in the header row only, once 3+ pairs are present", () => {
+      it("abbreviates objective labels but spells cost labels out in full (product owner: 'CP ...' read as unclear), once 3+ pairs are present", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
         const header = [
           ...COMBINED_TOTAL_STATIC_HEADERS,
@@ -293,16 +293,38 @@ describe("fillCombinedTotalTable", () => {
         const dataRow = header.map(() => "x");
         const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow]);
         expect(out).toContain("<a:t>WEB LEADS</a:t>");
-        expect(out).toContain("<a:t>CPW LEAD</a:t>");
+        expect(out).toContain("<a:t>COST PER WEB LEAD</a:t>");
         expect(out).toContain("<a:t>FORM LEADS</a:t>");
-        expect(out).toContain("<a:t>CP LEAD</a:t>");
+        expect(out).toContain("<a:t>COST PER LEAD</a:t>"); // unchanged — already full text
         expect(out).toContain("<a:t>LP VIEWS</a:t>");
-        expect(out).toContain("<a:t>CP LPV</a:t>");
+        expect(out).toContain("<a:t>COST PER LPV</a:t>"); // unchanged — already full text
         expect(out).not.toContain("<a:t>WEBSITE LEADS</a:t>");
         expect(out).not.toContain("<a:t>META FORM LEADS</a:t>");
         expect(out).not.toContain("<a:t>LANDING PAGE VIEWS</a:t>");
+        expect(out).not.toContain("<a:t>COST PER WEBSITE LEAD</a:t>");
+        expect(out).not.toContain("<a:t>CPW LEAD</a:t>");
+        expect(out).not.toContain("<a:t>CP LEAD</a:t>");
+        expect(out).not.toContain("<a:t>CP LPV</a:t>");
+        expect(out).not.toContain("<a:t>CP 1K REACH</a:t>");
         // Static headers (e.g. "Ad Spend") are untouched — not in the map.
         expect(out).toContain("<a:t>Ad Spend</a:t>");
+      });
+
+      it("spells COST PER 1K REACH out in full rather than abbreviating to CP 1K REACH", () => {
+        const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
+        const header = [
+          ...COMBINED_TOTAL_STATIC_HEADERS,
+          "REACH",
+          "COST PER 1K REACH",
+          "META FORM LEADS",
+          "COST PER LEAD",
+          "WEBSITE LEADS",
+          "COST PER WEBSITE LEAD",
+        ];
+        const dataRow = header.map(() => "x");
+        const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow]);
+        expect(out).toContain("<a:t>COST PER 1K REACH</a:t>");
+        expect(out).not.toContain("<a:t>CP 1K REACH</a:t>");
       });
 
       it("does NOT abbreviate labels in the data rows, only the header", () => {

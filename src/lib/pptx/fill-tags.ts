@@ -20,6 +20,7 @@ import {
   replaceLiteralText,
   replaceTagRun,
   replaceTagRunWithSuffix,
+  setShapeNormAutofit,
   setShapeOffsetY,
   type StyleOverride,
 } from "./ooxml";
@@ -53,6 +54,66 @@ function fillTags(xml: string, values: Record<string, string>, styleOverrides: R
     out = replaceTagRun(out, `{{${tag}}}`, value, styleOverrides[tag]).xml;
   }
   return out;
+}
+
+// Fix 3 (permanent overflow fix) — hard render-time ceilings on the
+// Campaign Summary / Key Insights text boxes, tighter than ai/prompts.ts's
+// own upstream AI-response safety net (capSummary/capInsights, 400/500
+// chars) and enforced at the point these strings actually get laid out on
+// the campaign/ad-set slide, not just at AI-generation time. Reported
+// symptom this fixes: Campaign Summary text touching the Key Insights
+// heading below it, and Key Insights text getting cut off at the bottom of
+// the slide.
+const CAMPAIGN_SUMMARY_MAX_CHARS = 300;
+const KEY_INSIGHTS_MAX_CHARS = 400;
+const CARD_TEXT_BASE_FONT_PT = 14;
+const CARD_TEXT_MIN_FONT_PT = 9;
+
+/**
+ * True when `text[index]` is a period that reads as a SENTENCE end — at the
+ * end of the string, or followed by whitespace — rather than a decimal
+ * point inside a number like "$2.50", which is always followed immediately
+ * by another digit, never whitespace. A bare `lastIndexOf(".", limit)` would
+ * happily cut a response off mid-value.
+ */
+function isSentenceEndingPeriod(text: string, index: number): boolean {
+  if (text[index] !== ".") return false;
+  const next = text[index + 1];
+  return next === undefined || /\s/.test(next);
+}
+
+function lastSentenceEndAtOrBefore(text: string, limit: number): number {
+  for (let i = Math.min(limit, text.length - 1); i >= 0; i--) {
+    if (isSentenceEndingPeriod(text, i)) return i;
+  }
+  return -1;
+}
+
+/**
+ * Truncates `raw` to at most `maxChars`, always ending on a complete
+ * sentence (a real sentence-ending period, never mid-sentence) — never a
+ * hard character cut except in the pathological case where the text has no
+ * sentence boundary at all within that span, which only ever happens for
+ * punctuation-free AI output.
+ */
+function truncateToSentence(raw: string, maxChars: number): string {
+  const text = raw.trim();
+  if (text.length <= maxChars) return text;
+  const cut = lastSentenceEndAtOrBefore(text, maxChars);
+  return cut >= 0 ? text.slice(0, cut + 1) : text.slice(0, maxChars).trim() + ".";
+}
+
+/**
+ * Graduated font-size reduction so a long (but within the hard cap above)
+ * Campaign Summary/Key Insights never visually overflows its card: -1pt
+ * past 250 characters, -2pt past 300, floored at 9pt. Same 250/300
+ * thresholds for both fields (per spec) even though Key Insights' higher
+ * 400-char cap means it reaches the -2pt tier more often than Campaign
+ * Summary's own 300-char cap normally allows.
+ */
+function fontSizeForTextLength(length: number): number {
+  const reduction = length > 300 ? 2 : length > 250 ? 1 : 0;
+  return Math.max(CARD_TEXT_BASE_FONT_PT - reduction, CARD_TEXT_MIN_FONT_PT);
 }
 
 export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
@@ -300,6 +361,17 @@ export function buildCampaignOrAdSetSlideXml(
   const dynamicSlots = useAdditionalMetricsSlide ? slide.additionalMetricsSlide : slide.dynamicMetrics;
   const useDynamicSlots = !!dynamicSlots && dynamicSlots.length > 0;
 
+  // Fix 3 (permanent overflow fix) — truncate to the hard char caps (always
+  // ending on a complete sentence) and pick a font size that shrinks as the
+  // (now-capped) text gets longer, so Campaign Summary never touches the
+  // Key Insights heading below it and Key Insights never gets cut off at
+  // the bottom of the slide. Applies to both branches below and to
+  // buildPausedSlideXml, across all 3 templates (the same template clone).
+  const summaryText = truncateToSentence(ai.summary, CAMPAIGN_SUMMARY_MAX_CHARS);
+  const insightsText = truncateToSentence(ai.insights, KEY_INSIGHTS_MAX_CHARS);
+  const summarySizePt = fontSizeForTextLength(summaryText.length);
+  const insightsSizePt = fontSizeForTextLength(insightsText.length);
+
   let xml: string;
   if (useDynamicSlots) {
     // Metric Preview wizard's 7-slot system — the campaign template's own 7
@@ -310,12 +382,14 @@ export function buildCampaignOrAdSetSlideXml(
     // template's existing shapes. DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS
     // live in a separate, untouched region of the same template (the
     // AI-copy column) and still go through the normal tag-fill.
+    let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+    templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
     xml = fillTags(
-      template.xml,
+      templateXml,
       {
         DATE_RANGE: slide.dateRangeLine,
-        CAMPAIGN_SUMMARY: ai.summary,
-        KEY_INSIGHTS: ai.insights,
+        CAMPAIGN_SUMMARY: summaryText,
+        KEY_INSIGHTS: insightsText,
       },
       {
         // Fix 4 (readability pass), bumped further by Fix 5 (13pt -> still
@@ -326,8 +400,8 @@ export function buildCampaignOrAdSetSlideXml(
         // every resulting line). OOXML only has a binary bold toggle, not
         // numeric font weights, so "600/semibold" maps to `bold: true`.
         DATE_RANGE: { sizePt: 13, bold: true },
-        CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
-        KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+        CAMPAIGN_SUMMARY: { bold: false, sizePt: summarySizePt, fontFamily: "Poppins" },
+        KEY_INSIGHTS: { bold: false, sizePt: insightsSizePt, fontFamily: "Poppins" },
       },
     );
 
@@ -388,8 +462,10 @@ export function buildCampaignOrAdSetSlideXml(
       xml = replaceTagRun(xml, tag, metric.value).xml;
     });
   } else {
+    let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+    templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
     xml = fillTags(
-      template.xml,
+      templateXml,
       {
         RESULT_LABEL: slide.resultLabel,
         COST_LABEL: slide.costLabel,
@@ -403,14 +479,14 @@ export function buildCampaignOrAdSetSlideXml(
         METRIC_8_LABEL: "—",
         METRIC_8_VALUE: "—",
         DATE_RANGE: slide.dateRangeLine,
-        CAMPAIGN_SUMMARY: ai.summary,
-        KEY_INSIGHTS: ai.insights,
+        CAMPAIGN_SUMMARY: summaryText,
+        KEY_INSIGHTS: insightsText,
       },
       {
         // Fix 5 — bumped alongside its dynamic-slots sibling above.
         DATE_RANGE: { sizePt: 13, bold: true },
-        CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
-        KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+        CAMPAIGN_SUMMARY: { bold: false, sizePt: summarySizePt, fontFamily: "Poppins" },
+        KEY_INSIGHTS: { bold: false, sizePt: insightsSizePt, fontFamily: "Poppins" },
       },
     );
     xml = applyGoogleAdsCardLabels(xml, platform);
@@ -445,8 +521,15 @@ export function buildPausedSlideXml(
   reportType: ReportType = "WEEKLY",
   platform: Platform = "META",
 ): string {
+  const summaryText = truncateToSentence(pausedMessage, CAMPAIGN_SUMMARY_MAX_CHARS);
+  const insightsText = truncateToSentence(
+    "Campaigns paused — no data recorded for this period. Awaiting instructions to resume.",
+    KEY_INSIGHTS_MAX_CHARS,
+  );
+  let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+  templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
   let xml = fillTags(
-    template.xml,
+    templateXml,
     {
       CAMPAIGN_NAME: "All Campaigns — Paused",
       RESULT_LABEL: "RESULTS",
@@ -461,13 +544,13 @@ export function buildPausedSlideXml(
       METRIC_8_LABEL: "—",
       METRIC_8_VALUE: "—",
       DATE_RANGE: dateRangeFallback,
-      CAMPAIGN_SUMMARY: pausedMessage,
-      KEY_INSIGHTS: "Campaigns paused — no data recorded for this period. Awaiting instructions to resume.",
+      CAMPAIGN_SUMMARY: summaryText,
+      KEY_INSIGHTS: insightsText,
     },
     {
       CAMPAIGN_NAME: { sizePt: 18 },
-      CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
-      KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
+      CAMPAIGN_SUMMARY: { bold: false, sizePt: fontSizeForTextLength(summaryText.length), fontFamily: "Poppins" },
+      KEY_INSIGHTS: { bold: false, sizePt: fontSizeForTextLength(insightsText.length), fontFamily: "Poppins" },
     },
   );
   xml = applyGoogleAdsCardLabels(xml, platform);

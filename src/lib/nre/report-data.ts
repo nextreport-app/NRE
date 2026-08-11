@@ -159,11 +159,14 @@ export interface ChartSlideData {
   /** Calendar month name of the MTD data (e.g. "July"), from mtdRow.monthName. Whenever available, the chart title reads "[mtdMonthName] Campaign Performance" instead of the all-caps "MTD/WEEKLY CAMPAIGN PERFORMANCE" fallback — "MTD" is jargon clients don't recognize, and the actual month name reads clearly regardless of report type. */
   mtdMonthName: string | null;
   /**
-   * The clarifying sub-line shown directly under the chart title — the
-   * literal date span for a Weekly report ("July 27 - August 2, 2026"), or
-   * "Full Month — [Month] [Year]" for a Monthly report. Empty string when
-   * there's no usable date data (e.g. a paused/zero-data report) — the chart
-   * slide renders no sub-line at all in that case, rather than a blank gap.
+   * The date-range component combined into the chart title's single line
+   * (see chart-slide.ts's buildChartSlideXml, "[Month] Campaign Performance:
+   * [periodSubLabel]") — the literal date span for a Weekly report ("July 27
+   * - August 2, 2026"), or "Full Month [Year]" for a Monthly report. Empty
+   * string when there's no usable date data (e.g. a paused/zero-data
+   * report) — the chart slide's title then falls back to just the bare
+   * "[Month] Campaign Performance" (or the all-caps MTD/WEEKLY fallback)
+   * with no ": ..." suffix at all.
    */
   periodSubLabel: string;
 }
@@ -1111,11 +1114,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // form — see TableRowData's own doc comment) — appending the year here
   // reuses that same date range for the chart's own "[Month] 1 - [Yesterday],
   // [Year]" sub-line without recomputing it.
+  // Fix 2 (chart title/date single-line combination): the Monthly branch
+  // used to repeat the month name here ("Full Month — August 2026"), which
+  // read fine as its own sub-line but duplicates the month name once
+  // chart-slide.ts folds this into the title itself ("August Campaign
+  // Performance: Full Month — August 2026"). Dropped the repeated month name
+  // and the dash so the combined title reads "August Campaign Performance:
+  // Full Month 2026" instead.
   const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
   const periodSubLabel =
     reportType === "MONTHLY"
       ? mtdRow.monthName && periodYear
-        ? `Full Month — ${mtdRow.monthName} ${periodYear}`
+        ? `Full Month ${periodYear}`
         : ""
       : mtdRow.hasData
         ? periodYear

@@ -156,35 +156,59 @@ describe("buildChartSlideXml — month-name chart title (Weekly and Monthly alik
   });
 });
 
-describe("buildChartSlideXml — Fix 2: date-range sub-line under the title", () => {
-  function subLabelText(xml: string): string | null {
-    const matches = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)];
-    return matches[1]?.[1] ?? null; // [0] = title, [1] = sub-line when present
+describe("buildChartSlideXml — Fix 2: title and date range combined onto a single line", () => {
+  /** The shape holding the title text — the first <p:sp> in document order. */
+  function titleShape(xml: string): string {
+    const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
+    return shapes[0]!;
   }
 
-  it("renders the sub-line directly after the title when periodSubLabel is set", () => {
+  function titleFontSizePt(xml: string): number {
+    return Number(/sz="(\d+)"/.exec(titleShape(xml))![1]) / 100;
+  }
+
+  it("combines the title and date range onto one line for a Weekly report: '[Month] Campaign Performance: [range]'", () => {
     const xml = buildChartSlideXml(
-      buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "July 27 - August 2, 2026" }),
+      buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "August 1 - August 10, 2026" }),
       "$",
       BACKGROUND,
     );
-    expect(subLabelText(xml)).toBe("July 27 - August 2, 2026");
+    expect(chartTitleText(xml)).toBe("August Campaign Performance: August 1 - August 10, 2026");
   });
 
-  it("renders a 'Full Month —' sub-line for a Monthly report", () => {
+  it("combines the title and 'Full Month [Year]' onto one line for a Monthly report", () => {
     const xml = buildChartSlideXml(
-      buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: "July", periodSubLabel: "Full Month — July 2026" }),
+      buildChart([campaign("A")], { reportType: "MONTHLY", mtdMonthName: "July", periodSubLabel: "Full Month 2026" }),
       "$",
       BACKGROUND,
     );
-    expect(subLabelText(xml)).toBe("Full Month — July 2026");
+    expect(chartTitleText(xml)).toBe("July Campaign Performance: Full Month 2026");
   });
 
-  it("renders no sub-line at all when periodSubLabel is empty, same as before this fix", () => {
-    const xml = buildChartSlideXml(buildChart([campaign("A")], { periodSubLabel: "" }), "$", BACKGROUND);
-    // The 2nd <a:t> is the pre-existing spend/campaign-count subtitle, not a blank sub-line.
-    // Fix 4 — "MTD" is spelled out, not abbreviated.
-    expect(subLabelText(xml)).toContain("Total Month to Date Spend");
+  it("falls back to the bare '[Month] Campaign Performance' title, with no ': ...' suffix, when periodSubLabel is empty", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "" }), "$", BACKGROUND);
+    expect(chartTitleText(xml)).toBe("August Campaign Performance");
+  });
+
+  it("renders no separate sub-line shape at all — the 2nd <a:t> is always the pre-existing spend/campaign-count subtitle", () => {
+    const xml = buildChartSlideXml(
+      buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "August 1 - August 10, 2026" }),
+      "$",
+      BACKGROUND,
+    );
+    const matches = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)];
+    expect(matches[1][1]).toContain("Total Month to Date Spend");
+  });
+
+  it("uses a smaller font size for the combined line than the bare title, so the longer string still fits on one line", () => {
+    const withRange = buildChartSlideXml(
+      buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "August 1 - August 10, 2026" }),
+      "$",
+      BACKGROUND,
+    );
+    const withoutRange = buildChartSlideXml(buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "" }), "$", BACKGROUND);
+    expect(titleFontSizePt(withRange)).toBeLessThan(titleFontSizePt(withoutRange));
+    expect(titleFontSizePt(withRange)).toBeLessThanOrEqual(16);
   });
 });
 

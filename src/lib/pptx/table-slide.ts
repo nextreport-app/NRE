@@ -153,19 +153,28 @@ function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeFor
 /**
  * Column-overflow fix: when the header row has to grow to fit 3+ objective
  * pairs (see the file header for the growth mechanism), plain full-length
- * labels/cost-labels start crowding and overflowing their narrower columns.
- * Abbreviated only for the specific labels product owner called out — every
- * other label (including all 6 static headers) passes through unchanged.
+ * labels/cost-labels start crowding their narrower columns. Only the
+ * OBJECTIVE labels themselves are still abbreviated (WEBSITE LEADS -> WEB
+ * LEADS, META FORM LEADS -> FORM LEADS) — product owner feedback: the "CP
+ * ..." cost-label abbreviations (CP LEAD, CP 1K REACH, CP LPV) read as
+ * unclear/cryptic, so those cost labels are spelled out in full instead
+ * ("Cost Per ..."); a 2-line wrap in a narrow header cell is preferred over
+ * an ambiguous abbreviation. Website Leads' own cost label keeps a short
+ * "WEB" (matching its objective label) rather than the full "WEBSITE", the
+ * one abbreviation still needed to keep that particular header from being
+ * the widest cell in the row. Landing Page Views still abbreviates too
+ * (unchanged from before) since it was never called out as unclear.
  * Applied ONLY to the header row's text, never the data rows' own numbers.
+ * A cell that wraps to 2 lines under its real column width is expected and
+ * fine — <a:tr h="..."> is a minimum, not a fixed height, so PowerPoint/
+ * LibreOffice auto-grows the row to fit wrapped header text; no extra
+ * height-management code is needed here.
  */
 const HEADER_ABBREVIATIONS: Record<string, string> = {
   "WEBSITE LEADS": "WEB LEADS",
   "META FORM LEADS": "FORM LEADS",
-  "COST PER WEBSITE LEAD": "CPW LEAD",
-  "COST PER LEAD": "CP LEAD",
-  "COST PER 1K REACH": "CP 1K REACH",
+  "COST PER WEBSITE LEAD": "COST PER WEB LEAD",
   "LANDING PAGE VIEWS": "LP VIEWS",
-  "COST PER LPV": "CP LPV",
 };
 
 function abbreviateHeaderRow(headerRow: string[]): string[] {
