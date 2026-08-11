@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCampaignObjectiveMap,
   detectObjectiveFromColumns,
-  getCampaignLevelResultGroups,
   getGroupedResultDisplay,
+  getGroupedResultDisplayForObjective,
   getResultGroups,
   getResultLabels,
   getSingleRowResultDisplay,
+  getSingleRowResultDisplayForObjective,
+  groupResultsByCampaignObjective,
   resolveObjective,
 } from "../objective";
 import type { AggRow } from "../aggregate";
@@ -496,7 +499,7 @@ describe("getResultGroups — Priority 1 dedicated metric columns (the reported 
   });
 });
 
-describe("getCampaignLevelResultGroups — campaign-level, not column-level, objective detection", () => {
+describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single source of truth for campaign objective detection", () => {
   // The exact reported bug: a real Website Leads campaign also has one ad
   // set whose result_type read as the intermediate "landing_page_view"
   // signal (Meta always tracks landing page views regardless of objective)
@@ -546,7 +549,8 @@ describe("getCampaignLevelResultGroups — campaign-level, not column-level, obj
       }),
     ];
 
-    const groups = getCampaignLevelResultGroups(rows);
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const groups = groupResultsByCampaignObjective(rows, objectiveMap);
     const labels = groups.map((g) => g.label).sort();
     expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
     // Landing Page Views never appears — no campaign was actually detected
@@ -568,7 +572,8 @@ describe("getCampaignLevelResultGroups — campaign-level, not column-level, obj
     const rowLevelLabels = getResultGroups(rows).map((g) => g.label).sort();
     expect(rowLevelLabels).toEqual(["LANDING PAGE VIEWS", "WEBSITE LEADS"]);
 
-    const campaignLevelLabels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const campaignLevelLabels = groupResultsByCampaignObjective(rows, objectiveMap).map((g) => g.label);
     expect(campaignLevelLabels).toEqual(["WEBSITE LEADS"]);
   });
 
@@ -576,7 +581,8 @@ describe("getCampaignLevelResultGroups — campaign-level, not column-level, obj
     const rows: MetricRow[] = [
       metricRow({ campaign_name: "LP Views Campaign", _raw: {}, result_type: "", landing_page_views: 50, results: 0, spend: 300 }),
     ];
-    const labels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const labels = groupResultsByCampaignObjective(rows, objectiveMap).map((g) => g.label);
     expect(labels).toEqual(["LANDING PAGE VIEWS"]);
   });
 
@@ -584,7 +590,8 @@ describe("getCampaignLevelResultGroups — campaign-level, not column-level, obj
     const rows: MetricRow[] = [
       metricRow({ campaign_name: "Reach Only", _raw: {}, result_type: "Reach", reach: 9000, results: 0, spend: 120 }),
     ];
-    const labels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const labels = groupResultsByCampaignObjective(rows, objectiveMap).map((g) => g.label);
     expect(labels).toEqual(["REACH"]);
   });
 
@@ -593,10 +600,86 @@ describe("getCampaignLevelResultGroups — campaign-level, not column-level, obj
       metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 200 }),
       metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", landing_page_views: 8, results: 0, spend: 10 }),
     ];
-    const first = getCampaignLevelResultGroups(rows);
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const first = groupResultsByCampaignObjective(rows, objectiveMap);
     for (let i = 0; i < 5; i++) {
-      expect(getCampaignLevelResultGroups(rows)).toEqual(first);
+      expect(groupResultsByCampaignObjective(rows, objectiveMap)).toEqual(first);
     }
+  });
+
+  // The user's exact required scenario: 5 campaigns, 4 distinct objectives
+  // (2 campaigns share PURCHASES), capped at the top 3 by spend for the
+  // table's own column limit (buildReportData's own responsibility, not
+  // this function's — verified separately in report-data.test.ts). Here we
+  // verify the map itself assigns the right objective to every campaign,
+  // and that the SAME map drives both the "per-campaign display" use case
+  // (campaign slides) and the "grouped totals" use case (Combined Total
+  // table), guaranteeing they agree.
+  it("5-campaign mixed-objective scenario — same objective map used for per-campaign display and grouped table totals", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Campaign 1", _raw: {}, result_type: "Purchase", results: 10, spend: 500 }),
+      metricRow({ campaign_name: "Campaign 2", _raw: {}, result_type: "Purchase", results: 8, spend: 400 }),
+      metricRow({ campaign_name: "Campaign 3", _raw: {}, result_type: "Leads (form)", results: 15, spend: 300 }),
+      metricRow({ campaign_name: "Campaign 4", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 250 }),
+      metricRow({ campaign_name: "Campaign 5", _raw: {}, result_type: "", landing_page_views: 40, results: 0, spend: 100 }),
+    ];
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get("Campaign 1")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    expect(objectiveMap.get("Campaign 2")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    expect(objectiveMap.get("Campaign 3")).toEqual({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" });
+    expect(objectiveMap.get("Campaign 4")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    expect(objectiveMap.get("Campaign 5")).toEqual({ resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" });
+
+    // Combined Total table's grouping: 4 distinct objective buckets, PURCHASES combining both campaigns.
+    const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
+    const tableLabels = tableGroups.map((g) => g.label).sort();
+    expect(tableLabels).toEqual(["LANDING PAGE VIEWS", "META FORM LEADS", "PURCHASES", "WEBSITE LEADS"]);
+    const purchases = tableGroups.find((g) => g.label === "PURCHASES");
+    expect(purchases).toMatchObject({ count: 18, totalSpend: 900 });
+
+    // Campaign slides' per-campaign display, using the exact same map —
+    // Campaign 1 and Campaign 2 both independently resolve to PURCHASES.
+    const campaign1Rows = rows.filter((r) => r.campaign_name === "Campaign 1");
+    const campaign3Rows = rows.filter((r) => r.campaign_name === "Campaign 3");
+    const display1 = getGroupedResultDisplayForObjective(campaign1Rows, objectiveMap.get("Campaign 1")!, "$");
+    const display3 = getGroupedResultDisplayForObjective(campaign3Rows, objectiveMap.get("Campaign 3")!, "$");
+    expect(display1.resultLabel).toBe("PURCHASES");
+    expect(display1.costLabel).toBe("COST PER PURCHASE");
+    expect(display3.resultLabel).toBe("META FORM LEADS");
+    expect(display3.costLabel).toBe("COST PER LEAD");
+  });
+
+  it("no phantom objectives from secondary metrics — a campaign's minority in-campaign signal never earns its own map entry or table column", () => {
+    const rows: MetricRow[] = [
+      // Dominant signal: 30 website leads.
+      metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "", website_leads: 30, results: 30, spend: 600 }),
+      // Minority in-campaign signal: some landing page view activity, no
+      // website_leads value on this particular row.
+      metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "", landing_page_views: 12, results: 0, spend: 20 }),
+      // Another minority signal: a stray reach-only row.
+      metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "Reach", reach: 5000, results: 0, spend: 5 }),
+    ];
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.size).toBe(1);
+    expect(objectiveMap.get("Mixed Campaign")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+
+    const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
+    expect(tableGroups.map((g) => g.label)).toEqual(["WEBSITE LEADS"]);
+    expect(tableGroups.find((g) => g.label === "LANDING PAGE VIEWS")).toBeUndefined();
+    expect(tableGroups.find((g) => g.label === "REACH")).toBeUndefined();
+  });
+});
+
+describe("getSingleRowResultDisplayForObjective — ad-set slides read the parent campaign's objective, not their own row-level result_type", () => {
+  it("forces the given objective's label even when the row's own result_type disagrees", () => {
+    const r = row({ result_type: "Landing page view", results: 12, cpr: 8 });
+    const display = getSingleRowResultDisplayForObjective(r, { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" }, "$");
+    expect(display.resultLabel).toBe("WEBSITE LEADS");
+    expect(display.costLabel).toBe("COST PER WEBSITE LEAD");
+    // The row's own numbers are unchanged — only the label is forced.
+    expect(display.resultValue).toBe("12");
+    expect(display.cprValue).toBe("$8.00");
   });
 });
 

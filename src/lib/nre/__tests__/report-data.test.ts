@@ -1274,6 +1274,113 @@ describe("computeTableRow (via periodRow/mtdRow) — campaign-level objective de
   });
 });
 
+// Permanent architectural fix: campaign slides and the Combined Total table
+// now both read from the SAME campaignObjectiveMap (see report-data.ts's own
+// Step 0 and objective.ts's buildCampaignObjectiveMap) instead of each
+// independently re-detecting a campaign's objective, which could disagree.
+describe("buildReportData — single source of truth for campaign objective detection (campaign slides vs. Combined Total table)", () => {
+  it("5-campaign mixed-objective scenario — every campaign slide's own objective matches what the Combined Total table shows for that campaign", () => {
+    const localMtdDailyRows: NreRow[] = [
+      ...buildDailyRows({ campaign_name: "Campaign 1", ad_set_name: "Set 1", result_type: "Purchase", spend: 50, reach: 1000, impressions: 2000, results: 2, link_clicks: 20, ctr: 1, cpc: 1, frequency: 1 }),
+      ...buildDailyRows({ campaign_name: "Campaign 2", ad_set_name: "Set 1", result_type: "Purchase", spend: 40, reach: 900, impressions: 1800, results: 1, link_clicks: 15, ctr: 1, cpc: 1, frequency: 1 }),
+      ...buildDailyRows({ campaign_name: "Campaign 3", ad_set_name: "Set 1", result_type: "Leads (form)", spend: 30, reach: 800, impressions: 1600, results: 5, link_clicks: 10, ctr: 1, cpc: 1, frequency: 1 }),
+      ...buildDailyRows({ campaign_name: "Campaign 4", ad_set_name: "Set 1", result_type: "Website lead", spend: 20, reach: 700, impressions: 1400, results: 4, link_clicks: 8, ctr: 1, cpc: 1, frequency: 1 }),
+      ...buildDailyRows({ campaign_name: "Campaign 5", ad_set_name: "Set 1", result_type: "Landing page view", spend: 10, reach: 600, impressions: 1200, results: 0, link_clicks: 5, ctr: 1, cpc: 1, frequency: 1 }),
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      now: NOW,
+    });
+
+    // Every campaign gets its own slide (all 5 have real spend), each
+    // showing its own campaign-level objective — Campaign 1 and Campaign 2
+    // independently resolve to the SAME objective (PURCHASES).
+    const slideLabels = new Map(data.campaignSlides.map((s) => [s.campaignName, s.resultLabel]));
+    expect(slideLabels.get("Campaign 1")).toBe("PURCHASES");
+    expect(slideLabels.get("Campaign 2")).toBe("PURCHASES");
+    expect(slideLabels.get("Campaign 3")).toBe("META FORM LEADS");
+    expect(slideLabels.get("Campaign 4")).toBe("WEBSITE LEADS");
+    expect(slideLabels.get("Campaign 5")).toBe("LANDING PAGE VIEWS");
+
+    // The Combined Total table's MTD row: 4 distinct objectives detected,
+    // capped at the top 3 by combined spend — Purchases ($630 = ($50+$40)×7
+    // days), Meta Form Leads ($210 = $30×7), Website Leads ($140 = $20×7);
+    // Landing Page Views ($70 = $10×7, the lowest-spend objective) is
+    // dropped, exactly the same "top 3 by spend" rule a 4th-objective
+    // scenario already exercises elsewhere in this file.
+    const tableLabels = data.mtdRow.resultColumns.map((c) => c.label);
+    expect(tableLabels).toEqual(["PURCHASES", "META FORM LEADS", "WEBSITE LEADS"]);
+    expect(tableLabels).not.toContain("LANDING PAGE VIEWS");
+
+    // No phantom objective: every column label the table actually shows is
+    // also some campaign's own slide-level objective — the table never
+    // shows a label no campaign slide agrees with.
+    for (const label of tableLabels) {
+      expect([...slideLabels.values()]).toContain(label);
+    }
+
+    // The PURCHASES column's numbers are the exact combined total of BOTH
+    // campaigns that share it (2+1 results/day × 7 days = 21, ($50+$40)×7 =
+    // $630 spend) — proving the table doesn't just match labels but also
+    // correctly rolls both campaigns' totals into the one shared bucket.
+    const purchases = data.mtdRow.resultColumns.find((c) => c.label === "PURCHASES");
+    expect(purchases?.value).toBe("21");
+    expect(purchases?.cprValue).toBe("$30.00"); // 630 / 21
+  });
+
+  it("Previous Month Data resolves its own objective per campaign independently of the current MTD map (separate previousMonthObjectiveMap)", () => {
+    // Same campaign name, but a genuinely DIFFERENT objective last month —
+    // proves periodRow's objective isn't blindly inherited from
+    // campaignObjectiveMap (built from MTD data).
+    const periodRows: NreRow[] = buildDailyRows({
+      campaign_name: "Seasonal Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Reach",
+      spend: 40,
+      reach: 9000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.5,
+      cpc: 0,
+      frequency: 1,
+    }).map((r) => ({ ...r, date_start: "01-06-2026", date_end: "07-06-2026" }));
+
+    const localMtdDailyRows = buildDailyRows({
+      campaign_name: "Seasonal Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: 60,
+      reach: 5000,
+      impressions: 10000,
+      results: 3,
+      link_clicks: 30,
+      ctr: 1,
+      cpc: 2,
+      frequency: 1,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["REACH"]);
+    expect(data.mtdRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
+    expect(data.campaignSlides.find((s) => s.campaignName === "Seasonal Campaign")?.resultLabel).toBe("PURCHASES");
+  });
+});
+
 describe("buildReportData — Combined Total row labels and same-month note (Fixes 1-3)", () => {
   const junePeriodRows = [
     {

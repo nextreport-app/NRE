@@ -440,7 +440,7 @@ interface ObjectiveBucket {
   totalReach: number;
 }
 
-/** Shared tail of getResultGroups/getCampaignLevelResultGroups: turns accumulated per-label buckets into sorted ResultGroup[], computing REACH's cost-per-1K special case (see getResultGroups' doc comment). */
+/** Shared tail of getResultGroups/groupResultsByCampaignObjective: turns accumulated per-label buckets into sorted ResultGroup[], computing REACH's cost-per-1K special case (see getResultGroups' doc comment). */
 function buildResultGroups(groups: Record<string, ObjectiveBucket>): ResultGroup[] {
   return Object.entries(groups)
     .map(([label, g]) => {
@@ -472,8 +472,8 @@ function buildResultGroups(groups: Record<string, ObjectiveBucket>): ResultGroup
  * mixed set of rows (e.g. every ad set across an entire account) can produce
  * a group for every distinct signal present anywhere in that set — exactly
  * right for a single campaign's own rows (getGroupedResultDisplay), but see
- * getCampaignLevelResultGroups below for why that's the wrong granularity
- * for the Combined Total table.
+ * buildCampaignObjectiveMap/groupResultsByCampaignObjective below for why
+ * that's the wrong granularity for the Combined Total table.
  */
 export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
@@ -513,42 +513,75 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   return buildResultGroups(groups);
 }
 
-/**
- * Campaign-LEVEL objective grouping for the Combined Total table — fixes a
- * reported bug where a secondary/minority signal inside a single campaign
- * (e.g. one ad set whose result_type read as an intermediate
- * "landing_page_view" inside an otherwise Website-Leads campaign) spawned
- * its own phantom column via getResultGroups' row-level grouping, even
- * though no campaign was actually built around that objective — Landing
- * Page Views was just a metric on one ad set within a Website Leads
- * campaign, never the campaign's real objective.
- *
- * Groups rows by campaign_name first. Each campaign is then assigned
- * exactly ONE objective — the same "prefer a real objective over a
- * pure-Reach one" selection getGroupedResultDisplay already makes for
- * campaign slides (top non-REACH group by count, or the top REACH group if
- * that's genuinely all the campaign ran) — and that campaign's ENTIRE
- * spend/results/reach roll into that single bucket, never split across
- * multiple labels within one campaign. A label only appears in the result
- * here if some campaign was actually, wholly assigned it; a stray row-level
- * signal from inside a campaign assigned a different dominant objective
- * never gets its own column.
- */
-export function getCampaignLevelResultGroups(rows: MetricRow[]): ResultGroup[] {
+function groupRowsByCampaign(rows: MetricRow[]): Record<string, MetricRow[]> {
   const campaignRowGroups: Record<string, MetricRow[]> = {};
   rows.forEach((row) => {
     const name = String(row.campaign_name || "Unknown Campaign").trim();
     (campaignRowGroups[name] ??= []).push(row);
   });
+  return campaignRowGroups;
+}
 
+/** The "prefer a real objective over a pure-Reach one" selection shared by every campaign-level consumer below — top non-REACH group by count, or the top REACH group if that's genuinely all the campaign ran. Undefined only for an empty group list (a campaign with literally zero rows, which can't happen via groupRowsByCampaign's own grouping). */
+function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | undefined {
+  const nonReach = campaignGroups.filter((g) => g.label !== "REACH");
+  return nonReach[0] || campaignGroups[0];
+}
+
+/**
+ * Single source of truth for campaign objective detection (permanent
+ * architectural fix for a reported bug: campaign slides and the Combined
+ * Total table used to run objective detection independently — e.g. via
+ * getGroupedResultDisplay for slides and the old getCampaignLevelResultGroups
+ * for the table — and could disagree when fed row sets that overlapped but
+ * weren't identical, so the table could show a different objective's column
+ * than what a campaign's own slide displayed).
+ *
+ * Groups `rows` by campaign_name, resolves each campaign's rows via
+ * getResultGroups (row-level resolveObjective, then the campaign-level
+ * pickPrimaryResultGroup selection above), and returns ONE
+ * {resultLabel, costLabel} per campaign_name. Every consumer that needs "what
+ * objective is this campaign" — campaign slides, ad-set slides, and the
+ * Combined Total table's column grouping (groupResultsByCampaignObjective
+ * below) — reads from this same map instead of re-deriving its own answer,
+ * so they're guaranteed to agree. Call once per relevant row set (report-
+ * data.ts builds one from the current MTD/weekly rows, and a separate one
+ * from Previous Month Data — see buildReportData's Step 0) rather than
+ * re-building it per consumer.
+ */
+export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
+  const map = new Map<string, ResultLabels>();
+  Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
+    const primary = pickPrimaryResultGroup(getResultGroups(campRows));
+    map.set(name, {
+      resultLabel: primary?.label ?? "RESULTS",
+      costLabel: primary?.costLabel ?? "COST PER RESULT",
+    });
+  });
+  return map;
+}
+
+/**
+ * Turns `rows` into per-objective ResultGroup[] for the Combined Total
+ * table, using a PRE-BUILT campaignObjectiveMap (see buildCampaignObjectiveMap
+ * above) instead of independently re-detecting each campaign's objective —
+ * replaces the old getCampaignLevelResultGroups, whose self-contained
+ * re-detection was the actual source of the campaign-slide/table
+ * disagreement this fixes. A campaign's ENTIRE spend/results/reach still
+ * rolls into its one mapped objective's bucket, never split across multiple
+ * labels within one campaign (same "no phantom column from a secondary
+ * in-campaign signal" guarantee the old function made) — the only change is
+ * WHERE the objective assignment comes from. Falls back to the generic
+ * RESULTS bucket for a campaign name absent from objectiveMap (defensive
+ * only: every call site below passes the same rows the map was itself built
+ * from, so this should never actually trigger).
+ */
+export function groupResultsByCampaignObjective(rows: MetricRow[], objectiveMap: Map<string, ResultLabels>): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
-  Object.values(campaignRowGroups).forEach((campRows) => {
-    const campaignGroups = getResultGroups(campRows);
-    const nonReach = campaignGroups.filter((g) => g.label !== "REACH");
-    const primary = nonReach[0] || campaignGroups[0];
-    const label = primary?.label ?? "RESULTS";
-    const costLabel = primary?.costLabel ?? "COST PER RESULT";
-    if (!groups[label]) groups[label] = { costLabel, count: 0, totalSpend: 0, totalReach: 0 };
+  Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
+    const objective = objectiveMap.get(name) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+    const label = objective.resultLabel;
+    if (!groups[label]) groups[label] = { costLabel: objective.costLabel, count: 0, totalSpend: 0, totalReach: 0 };
     campRows.forEach((row) => {
       groups[label].count += parseCellNum(row.results);
       groups[label].totalSpend += parseCellNum(row.spend);
@@ -588,6 +621,77 @@ export function getSingleRowResultDisplay(row: AggRow, currencySymbol: string): 
   return {
     resultLabel: labels.resultLabel,
     costLabel: labels.costLabel,
+    resultValue: results > 0 ? fmtNumber(results) : "0",
+    cprValue: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—",
+  };
+}
+
+/**
+ * Single-source-of-truth counterpart to getGroupedResultDisplay — for a
+ * CAMPAIGN SUMMARY slide, reading the objective from a pre-built
+ * campaignObjectiveMap (see buildCampaignObjectiveMap) instead of
+ * independently re-deriving it from campRows. Sums this campaign's ENTIRE
+ * row set (every ad set, regardless of that ad set's own row-level
+ * objective) into the one mapped objective — the same "whole campaign rolls
+ * into its one assigned objective" rule groupResultsByCampaignObjective
+ * applies for the Combined Total table, so a campaign slide's displayed
+ * count/cost always matches what the table shows for that same campaign.
+ */
+export function getGroupedResultDisplayForObjective(
+  campRows: MetricRow[],
+  objective: ResultLabels,
+  currencySymbol: string,
+): ResultDisplay {
+  let count = 0;
+  let totalSpend = 0;
+  let totalReach = 0;
+  campRows.forEach((row) => {
+    count += parseCellNum(row.results);
+    totalSpend += parseCellNum(row.spend);
+    totalReach += parseCellNum(row.reach);
+  });
+
+  // Same uncounted-Reach special case as buildResultGroups: a real Reach
+  // objective rarely populates a `results` count, so its cost is derived
+  // from spend/reach (×1000) instead of spend/count.
+  const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
+  let cprValue: string;
+  if (isUncountedReach) {
+    const reachCpr = totalReach > 0 ? (totalSpend * 1000) / totalReach : 0;
+    cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
+  } else if (count > 0) {
+    cprValue = fmtCurrency2dp(totalSpend / count, currencySymbol);
+  } else if (totalSpend > 0) {
+    // Real spend, zero results — the cost is genuinely undefined, not "$0.00".
+    cprValue = "N/A";
+  } else {
+    cprValue = "—";
+  }
+
+  return {
+    resultLabel: objective.resultLabel,
+    costLabel: objective.costLabel,
+    resultValue: count > 0 ? fmtNumber(count) : "0",
+    cprValue,
+  };
+}
+
+/**
+ * Single-source-of-truth counterpart to getSingleRowResultDisplay — for a
+ * SINGLE AD SET row, reading the resultLabel/costLabel from the PARENT
+ * campaign's own objective (via campaignObjectiveMap) instead of that row's
+ * own individually-resolved result_type, so every ad-set slide under one
+ * campaign always agrees with that campaign's own summary slide and with
+ * the Combined Total table. The row's own results/cpr numbers are used
+ * as-is (unchanged) — only the label is forced to match the campaign's
+ * official objective.
+ */
+export function getSingleRowResultDisplayForObjective(row: AggRow, objective: ResultLabels, currencySymbol: string): ResultDisplay {
+  const results = parseCellNum(row.results);
+  const cpr = parseCellNum(row.cpr);
+  return {
+    resultLabel: objective.resultLabel,
+    costLabel: objective.costLabel,
     resultValue: results > 0 ? fmtNumber(results) : "0",
     cprValue: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—",
   };

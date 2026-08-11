@@ -39,11 +39,13 @@ import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMont
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
-  getCampaignLevelResultGroups,
-  getGroupedResultDisplay,
+  buildCampaignObjectiveMap,
+  getGroupedResultDisplayForObjective,
   getResultGroups,
   getResultLabels,
-  getSingleRowResultDisplay,
+  getSingleRowResultDisplayForObjective,
+  groupResultsByCampaignObjective,
+  type ResultLabels,
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
@@ -384,7 +386,12 @@ export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, mon
  * this row set's combined totals instead, since a plain average would give
  * a low-volume row's rate equal weight to a high-volume row's.
  */
-function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: boolean): TableRowData {
+function computeTableRow(
+  rows: MetricRow[],
+  currencySymbol: string,
+  isMtdRow: boolean,
+  objectiveMap: Map<string, ResultLabels>,
+): TableRowData {
   if (!rows || rows.length === 0) {
     return {
       hasData: false,
@@ -434,9 +441,11 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   // objective with truly neither never occurred in this row set and earns no
   // column).
   //
-  // Campaign-level, not column-level (reported bug fix): getCampaignLevelResultGroups
-  // assigns each CAMPAIGN exactly one objective — the same detection
-  // campaign slides already use — and rolls that campaign's entire
+  // Campaign-level, not column-level (permanent architectural fix — see
+  // report-data.ts's own Step 0 and objective.ts's buildCampaignObjectiveMap
+  // doc comment): groupResultsByCampaignObjective assigns each CAMPAIGN
+  // exactly one objective, read from the SAME objectiveMap campaign/ad-set
+  // slides use — never re-detected here — and rolls that campaign's entire
   // spend/results into that single bucket. Grouping by each ROW's own
   // resolveObjective result instead (the old getResultGroups(rows) call
   // here) let a secondary/minority signal inside one campaign (e.g. one ad
@@ -449,12 +458,12 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   // that objective's OWN campaigns' spend, never the combined spend across
   // every objective — otherwise a Reach campaign's spend inflates a
   // completely unrelated Meta Form Leads campaign's cost-per-lead (and vice
-  // versa). getCampaignLevelResultGroups already computes this correctly per
-  // objective (avgCpr + totalSpend, both scoped to only that objective's own
-  // campaigns); the "Ad Spend" column above is the one place the FULL
+  // versa). groupResultsByCampaignObjective already computes this correctly
+  // per objective (avgCpr + totalSpend, both scoped to only that objective's
+  // own campaigns); the "Ad Spend" column above is the one place the FULL
   // combined total still belongs — the overall budget view, not any single
   // objective's cost math.
-  const allGroupsRaw = getCampaignLevelResultGroups(rows);
+  const allGroupsRaw = groupResultsByCampaignObjective(rows, objectiveMap);
   // "RESULTS" is getResultLabels' own generic fallback bucket for a blank
   // or unrecognized result_type (not a real, nameable objective) — it must
   // never earn a zero-count-but-spend column the way a genuine objective
@@ -647,6 +656,25 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // campaignGroups/individual AggRow rows already are for the fixed metrics.
   const primaryRawRows: NreRow[] = isMonthlyReport ? (split?.mtdRawRows ?? []) : (split?.weeklyRawRows ?? []);
 
+  // Step 0 — single source of truth for campaign objective detection (see
+  // objective.ts's buildCampaignObjectiveMap doc comment): permanent fix for
+  // campaign slides and the Combined Total table disagreeing on a campaign's
+  // objective when each independently re-detected it from a row set that
+  // only partially overlapped the other's. Built once here, before any
+  // slide or table row is built, and reused by every consumer below —
+  // computeTableRow's MTD row, every campaign/ad-set summary slide (Phase
+  // A1/A2), and the Combined Total table's column grouping. Built from
+  // mtdRows ∪ primaryRows so the map covers every campaign either the table
+  // (always MTD-based) or the slides (weekly OR MTD-based, depending on
+  // reportType) might ask about, even the rare case where a custom weekly
+  // window falls partly outside the current MTD span.
+  const campaignObjectiveMap = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
+  // A campaign's Previous Month objective is resolved independently, from
+  // that separate upload's own (different month's) data — a campaign's
+  // objective can genuinely differ month to month, so this stays a SEPARATE
+  // map from campaignObjectiveMap above, never merged into it.
+  const previousMonthObjectiveMap = buildCampaignObjectiveMap(filteredPeriodRows as MetricRow[]);
+
   // Whether the CSV actually has delivery-status data anywhere at all — a
   // file without that column (the common case) falls back to the original
   // spend-based "active" heuristic instead of every campaign coming back as
@@ -718,8 +746,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false);
-  const mtdRow = computeTableRow(mtdRows, currencySymbol, true);
+  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap);
+  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
   // calendar month (e.g. a report generated on the 1st, before the new
@@ -906,7 +934,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
-    const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplay(campRows, currencySymbol);
+    // Step 0's single source of truth — see buildReportData's own Step 0
+    // comment and objective.ts's buildCampaignObjectiveMap doc comment.
+    // Falls back to the generic RESULTS bucket only defensively (every
+    // campaign here came from primaryRows, which campaignObjectiveMap was
+    // itself built from — this should never actually miss).
+    const campaignObjective = campaignObjectiveMap.get(campaignName) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+    const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
     if (campRows.some((r) => !r.objectiveConfident)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
@@ -1002,7 +1036,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const mtdSpend = mtdAdSetSpend[adSetKey(campaignName, adSetName)] || 0;
     if (mtdSpend < MIN_ADSET_MTD_SPEND_FOR_SLIDE) return;
 
-    const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplay(row, currencySymbol);
+    // Reads the PARENT campaign's own objective (Step 0's single source of
+    // truth), not this ad set's own individually-resolved result_type — so
+    // every ad-set slide under one campaign always agrees with that
+    // campaign's own summary slide and with the Combined Total table.
+    const campaignObjective = campaignObjectiveMap.get(campaignName) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+    const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
     const rowFreq = rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
