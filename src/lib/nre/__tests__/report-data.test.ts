@@ -1118,6 +1118,162 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
   });
 });
 
+// Reported bug fix: the Combined Total table used to re-detect objectives
+// per ROW (column-level), so a secondary/minority signal within a single
+// campaign (e.g. one ad set whose result_type read as an intermediate
+// "landing_page_view" inside an otherwise Website-Leads campaign) could
+// spawn its own phantom column, even though no campaign was ever built
+// around that objective. The fix groups by CAMPAIGN first — each campaign
+// gets exactly ONE detected objective (the same detection campaign slides
+// already use), and its entire spend/results roll into that one bucket.
+describe("computeTableRow (via periodRow/mtdRow) — campaign-level objective detection (reported Combined Total table bug)", () => {
+  it("campaigns detected as [REACH, META FORM LEADS, WEBSITE LEADS] produce exactly those 3 columns — Landing Page Views never appears, even with real LP-view data inside the Website Leads campaign", () => {
+    const periodRows: NreRow[] = [
+      {
+        _raw: {},
+        campaign_name: "Awareness Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Reach",
+        spend: "400",
+        reach: "20000",
+        impressions: "30000",
+        results: "0",
+        ctr: "0.5",
+        cpc: "0",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      {
+        _raw: {},
+        campaign_name: "Meta Leads Campaign",
+        ad_set_name: "Set 1",
+        result_type: "",
+        leads: "14",
+        spend: "596",
+        reach: "4000",
+        impressions: "9000",
+        results: "14",
+        ctr: "1.8",
+        cpc: "5",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      // Website Leads campaign, ad set 1 — the campaign's real, dominant
+      // objective: 20 website leads.
+      {
+        _raw: {},
+        campaign_name: "Website Leads Campaign",
+        ad_set_name: "Prospecting",
+        result_type: "",
+        website_leads: "20",
+        spend: "200",
+        reach: "3000",
+        impressions: "6000",
+        results: "20",
+        ctr: "1.2",
+        cpc: "4",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+      // Same campaign, a DIFFERENT ad set — no website_leads value here,
+      // just real Landing Page Views data. Row-level detection alone would
+      // call this ad set "LANDING PAGE VIEWS"; campaign-level detection
+      // must fold it into the campaign's own dominant WEBSITE LEADS bucket.
+      {
+        _raw: {},
+        campaign_name: "Website Leads Campaign",
+        ad_set_name: "Retargeting",
+        result_type: "",
+        landing_page_views: "8",
+        spend: "10",
+        reach: "500",
+        impressions: "1000",
+        results: "0",
+        ctr: "0.9",
+        cpc: "1",
+        date_start: "01-06-2026",
+        date_end: "30-06-2026",
+      },
+    ];
+
+    // A local MTD fixture with the SAME 3 campaigns/objectives (not the
+    // shared module-level mtdDailyRows, which has its own unrelated Reach +
+    // Purchases campaigns) — both rows agreeing on the objective mix keeps
+    // this test focused on the campaign-level grouping fix, not the
+    // separate MTD-vs-Period header-union behavior tested elsewhere.
+    const localMtdDailyRows: NreRow[] = [
+      ...buildDailyRows({
+        campaign_name: "Awareness Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Reach",
+        spend: 57,
+        reach: 20000,
+        impressions: 30000,
+        results: 0,
+        link_clicks: 0,
+        ctr: 0.5,
+        cpc: 0,
+        frequency: 1,
+      }),
+      ...buildDailyRows({
+        campaign_name: "Meta Leads Campaign",
+        ad_set_name: "Set 1",
+        result_type: "Meta lead",
+        spend: 85,
+        reach: 4000,
+        impressions: 9000,
+        results: 2,
+        link_clicks: 40,
+        ctr: 1.8,
+        cpc: 5,
+        frequency: 1,
+      }),
+      ...buildDailyRows({
+        campaign_name: "Website Leads Campaign",
+        ad_set_name: "Prospecting",
+        result_type: "Website lead",
+        spend: 30,
+        reach: 3000,
+        impressions: 6000,
+        results: 3,
+        link_clicks: 20,
+        ctr: 1.2,
+        cpc: 4,
+        frequency: 1,
+      }),
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    const labels = data.periodRow.resultColumns.map((c) => c.label).sort();
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
+    expect(labels).not.toContain("LANDING PAGE VIEWS");
+    expect(data.periodRow.resultColumns).toHaveLength(3);
+
+    // The Website Leads campaign's entire spend/results (both ad sets
+    // combined: $200 + $10, 20 + 0) rolled into one bucket, not split.
+    const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(websiteLeads?.value).toBe("20");
+    expect(websiteLeads?.cprValue).toBe("$10.50"); // (200 + 10) / 20
+
+    // Header labels (shared by both rows) also reflect exactly these 3,
+    // never a 4th Landing Page Views column.
+    expect(data.tableHeaderLabels.resultColumns.map((c) => c.label).sort()).toEqual([
+      "META FORM LEADS",
+      "REACH",
+      "WEBSITE LEADS",
+    ]);
+  });
+});
+
 describe("buildReportData — Combined Total row labels and same-month note (Fixes 1-3)", () => {
   const junePeriodRows = [
     {

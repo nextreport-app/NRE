@@ -39,6 +39,7 @@ import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMont
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
+  getCampaignLevelResultGroups,
   getGroupedResultDisplay,
   getResultGroups,
   getResultLabels,
@@ -425,21 +426,32 @@ function computeTableRow(rows: MetricRow[], currencySymbol: string, isMtdRow: bo
   const combinedCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
   const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
-  // Every distinct objective present in this row's own data becomes its own
-  // column pair — kept if it has real spend OR a real result (an objective
-  // with truly neither never occurred in this row set and earns no column).
+  // Every distinct objective actually DETECTED AT THE CAMPAIGN LEVEL becomes
+  // its own column pair — kept if it has real spend OR a real result (an
+  // objective with truly neither never occurred in this row set and earns no
+  // column).
+  //
+  // Campaign-level, not column-level (reported bug fix): getCampaignLevelResultGroups
+  // assigns each CAMPAIGN exactly one objective — the same detection
+  // campaign slides already use — and rolls that campaign's entire
+  // spend/results into that single bucket. Grouping by each ROW's own
+  // resolveObjective result instead (the old getResultGroups(rows) call
+  // here) let a secondary/minority signal inside one campaign (e.g. one ad
+  // set read as an intermediate "landing_page_view" inside an otherwise
+  // Website-Leads campaign) spawn its own phantom column, even though no
+  // campaign was actually built around that objective.
   //
   // Per-objective spend tracking (reverses the earlier "reconcile with Ad
   // Spend" fix): a multi-objective account's cost-per-X must divide ONLY
   // that objective's OWN campaigns' spend, never the combined spend across
   // every objective — otherwise a Reach campaign's spend inflates a
   // completely unrelated Meta Form Leads campaign's cost-per-lead (and vice
-  // versa). getResultGroups already computes this correctly per objective
-  // (avgCpr + totalSpend, both scoped to only that objective's own rows);
-  // the "Ad Spend" column above is the one place the FULL combined total
-  // still belongs — the overall budget view, not any single objective's
-  // cost math.
-  const allGroupsRaw = getResultGroups(rows);
+  // versa). getCampaignLevelResultGroups already computes this correctly per
+  // objective (avgCpr + totalSpend, both scoped to only that objective's own
+  // campaigns); the "Ad Spend" column above is the one place the FULL
+  // combined total still belongs — the overall budget view, not any single
+  // objective's cost math.
+  const allGroupsRaw = getCampaignLevelResultGroups(rows);
   // "RESULTS" is getResultLabels' own generic fallback bucket for a blank
   // or unrecognized result_type (not a real, nameable objective) — it must
   // never earn a zero-count-but-spend column the way a genuine objective
@@ -728,19 +740,25 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // empty. When BOTH rows have real data, though, their objective mixes can
   // genuinely differ (e.g. Period ran an objective MTD no longer does) — Fix
   // 1 unions both rows' labels rather than picking one exclusively, so an
-  // objective present in either row always gets a column, never dropped.
+  // objective present in either row always gets a column, never dropped —
+  // capped at 3 overall (column-overflow fix): each row's own resultColumns
+  // is already sorted by that row's own spend descending and capped at 3
+  // (see computeTableRow above), so taking MTD's own top objectives first,
+  // then filling any remaining slots from Period's own additional ones in
+  // its own spend order, is already a "top 3 by spend" pick — just never
+  // more than 3 header pairs total, however many objectives either row has.
   const headerSource = mtdRow.hasData ? mtdRow : periodRow;
   const otherSource = headerSource === mtdRow ? periodRow : mtdRow;
   const seenLabels = new Set<string>();
-  const resultColumnHeaders: { label: string; costLabel: string }[] = [];
+  const unionColumnHeaders: { label: string; costLabel: string }[] = [];
   for (const row of otherSource.hasData ? [headerSource, otherSource] : [headerSource]) {
     for (const col of row.resultColumns) {
       if (seenLabels.has(col.label)) continue;
       seenLabels.add(col.label);
-      resultColumnHeaders.push({ label: col.label, costLabel: col.costLabel });
+      unionColumnHeaders.push({ label: col.label, costLabel: col.costLabel });
     }
   }
-  const tableHeaderLabels: TableHeaderLabels = { resultColumns: resultColumnHeaders };
+  const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders.slice(0, 3) };
 
   // ── Paused case: single message slide, no campaign/ad-set/chart slides ──
   if (isPaused) {

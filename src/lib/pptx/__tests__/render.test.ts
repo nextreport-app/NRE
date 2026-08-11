@@ -605,7 +605,10 @@ describe("renderPptx — real template end-to-end", () => {
     const { slideTexts } = inspectWithPythonPptx(outPath);
     const tableText = slideTexts[5];
     expect(tableText).toContain("LINK CLICKS");
-    expect(tableText).toContain("META FORM LEADS");
+    // Column-overflow fix: at exactly 3 objective pairs, the header row's
+    // labels are abbreviated to fit ("META FORM LEADS" -> "FORM LEADS").
+    expect(tableText).toContain("FORM LEADS");
+    expect(tableText).not.toContain("META FORM LEADS");
     expect(tableText).toContain("REACH");
     expect(tableText).not.toContain("{{");
 

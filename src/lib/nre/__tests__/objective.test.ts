@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   detectObjectiveFromColumns,
+  getCampaignLevelResultGroups,
   getGroupedResultDisplay,
   getResultGroups,
   getResultLabels,
@@ -492,6 +493,110 @@ describe("getResultGroups — Priority 1 dedicated metric columns (the reported 
     expect(websiteLeads?.count).toBe(0);
     expect(websiteLeads?.avgCpr).toBe(0);
     expect(websiteLeads?.totalSpend).toBe(155);
+  });
+});
+
+describe("getCampaignLevelResultGroups — campaign-level, not column-level, objective detection", () => {
+  // The exact reported bug: a real Website Leads campaign also has one ad
+  // set whose result_type read as the intermediate "landing_page_view"
+  // signal (Meta always tracks landing page views regardless of objective)
+  // — Landing Page Views must never earn its own Combined Total column,
+  // since no campaign was actually built around it; it's just a metric
+  // inside the Website Leads campaign.
+  it("required scenario — campaigns detected as [REACH, META FORM LEADS, WEBSITE LEADS] produce exactly those 3 columns, even with real Landing Page Views data inside one campaign", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Awareness Campaign",
+        _raw: {},
+        result_type: "Reach",
+        reach: 20000,
+        results: 0,
+        spend: 400,
+      }),
+      metricRow({
+        campaign_name: "Meta Leads Campaign",
+        _raw: {},
+        result_type: "",
+        leads: 14,
+        results: 14,
+        spend: 596,
+      }),
+      // Website Leads campaign, ad set 1: the campaign's real, dominant
+      // objective — 20 website leads.
+      metricRow({
+        campaign_name: "Website Leads Campaign",
+        _raw: {},
+        result_type: "",
+        website_leads: 20,
+        results: 20,
+        spend: 200,
+      }),
+      // Website Leads campaign, ad set 2: a SECONDARY signal within the
+      // SAME campaign — no website_leads value on this row, just landing
+      // page view data, so row-level detection alone would call this
+      // "LANDING PAGE VIEWS". Small spend/count vs. the campaign's own
+      // dominant ad set above.
+      metricRow({
+        campaign_name: "Website Leads Campaign",
+        _raw: {},
+        result_type: "",
+        landing_page_views: 8,
+        results: 0,
+        spend: 10,
+      }),
+    ];
+
+    const groups = getCampaignLevelResultGroups(rows);
+    const labels = groups.map((g) => g.label).sort();
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
+    // Landing Page Views never appears — no campaign was actually detected
+    // as a Landing Page Views campaign, even though the raw data exists.
+    expect(labels).not.toContain("LANDING PAGE VIEWS");
+
+    // The Website Leads campaign's ENTIRE spend/results (both ad sets) roll
+    // into the one WEBSITE LEADS bucket — nothing siphoned off into a
+    // phantom column.
+    const websiteLeads = groups.find((g) => g.label === "WEBSITE LEADS");
+    expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 210 });
+  });
+
+  it("row-level getResultGroups WOULD have produced a phantom 4th column for the same input — proving this is a real fix, not a no-op", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 200 }),
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", landing_page_views: 8, results: 0, spend: 10 }),
+    ];
+    const rowLevelLabels = getResultGroups(rows).map((g) => g.label).sort();
+    expect(rowLevelLabels).toEqual(["LANDING PAGE VIEWS", "WEBSITE LEADS"]);
+
+    const campaignLevelLabels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    expect(campaignLevelLabels).toEqual(["WEBSITE LEADS"]);
+  });
+
+  it("a campaign whose OWN dominant objective genuinely is Landing Page Views still gets a real column", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "LP Views Campaign", _raw: {}, result_type: "", landing_page_views: 50, results: 0, spend: 300 }),
+    ];
+    const labels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    expect(labels).toEqual(["LANDING PAGE VIEWS"]);
+  });
+
+  it("a REACH-only campaign still shows as REACH (not folded into a non-existent non-Reach objective)", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Reach Only", _raw: {}, result_type: "Reach", reach: 9000, results: 0, spend: 120 }),
+    ];
+    const labels = getCampaignLevelResultGroups(rows).map((g) => g.label);
+    expect(labels).toEqual(["REACH"]);
+  });
+
+  it("is deterministic — the same campaign-level input always produces the same grouping", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 200 }),
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", landing_page_views: 8, results: 0, spend: 10 }),
+    ];
+    const first = getCampaignLevelResultGroups(rows);
+    for (let i = 0; i < 5; i++) {
+      expect(getCampaignLevelResultGroups(rows)).toEqual(first);
+    }
   });
 });
 

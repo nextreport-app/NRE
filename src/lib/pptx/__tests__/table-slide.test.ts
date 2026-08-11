@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fillCombinedTotalTable } from "../table-slide";
 import { buildTableSlideXml } from "../fill-tags";
+import { COMBINED_TOTAL_STATIC_HEADERS } from "../../nre/report-data";
 import type { TableHeaderLabels, TableRowData } from "../../nre/report-data";
 
 const EXPECTED_ROWS = 3;
@@ -229,8 +230,87 @@ describe("fillCombinedTotalTable", () => {
       const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
       const grid = grid3xN(12, () => "x");
       const out = fillCombinedTotalTable(xml, grid);
-      // Every cell (grown ones included) keeps the fixture's sz="1400" rPr.
-      expect((out.match(/sz="1400"/g) || []).length).toBe(EXPECTED_ROWS * 12);
+      // Data rows (1-2, 12 cells each) keep the fixture's sz="1400" rPr —
+      // only the header row's font shrinks (column-overflow fix, 3
+      // objective pairs = 12 columns).
+      expect((out.match(/sz="1400"/g) || []).length).toBe(2 * 12);
+    });
+
+    describe("column-overflow fix: header font size + label abbreviation", () => {
+      it("shrinks the header row to 9pt for exactly 3 objective pairs (12 columns), leaving data rows untouched", () => {
+        const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
+        const grid = grid3xN(12, (r, c) => `V${r}-${c}`);
+        const out = fillCombinedTotalTable(xml, grid);
+        const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+        expect((rows[0].match(/sz="900"/g) || []).length).toBe(12);
+        expect(rows[0]).not.toContain('sz="1400"');
+        expect((rows[1].match(/sz="1400"/g) || []).length).toBe(12);
+        expect((rows[2].match(/sz="1400"/g) || []).length).toBe(12);
+      });
+
+      it("shrinks the header row to 8pt for 4+ objective pairs (14 columns)", () => {
+        const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
+        const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
+        const out = fillCombinedTotalTable(xml, grid);
+        const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+        expect((rows[0].match(/sz="800"/g) || []).length).toBe(14);
+      });
+
+      it("leaves the header font untouched for 1-2 objective pairs (no overflow risk)", () => {
+        const xml = buildFixtureTable();
+        const grid = grid3x10((r, c) => `V${r}-${c}`);
+        const out = fillCombinedTotalTable(xml, grid);
+        const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+        expect((rows[0].match(/sz="1400"/g) || []).length).toBe(10);
+      });
+
+      it("abbreviates known objective labels in the header row only, once 3+ pairs are present", () => {
+        const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
+        const header = [
+          ...COMBINED_TOTAL_STATIC_HEADERS,
+          "WEBSITE LEADS",
+          "COST PER WEBSITE LEAD",
+          "META FORM LEADS",
+          "COST PER LEAD",
+          "LANDING PAGE VIEWS",
+          "COST PER LPV",
+        ];
+        const dataRow = header.map(() => "x");
+        const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow]);
+        expect(out).toContain("<a:t>WEB LEADS</a:t>");
+        expect(out).toContain("<a:t>CPW LEAD</a:t>");
+        expect(out).toContain("<a:t>FORM LEADS</a:t>");
+        expect(out).toContain("<a:t>CP LEAD</a:t>");
+        expect(out).toContain("<a:t>LP VIEWS</a:t>");
+        expect(out).toContain("<a:t>CP LPV</a:t>");
+        expect(out).not.toContain("<a:t>WEBSITE LEADS</a:t>");
+        expect(out).not.toContain("<a:t>META FORM LEADS</a:t>");
+        expect(out).not.toContain("<a:t>LANDING PAGE VIEWS</a:t>");
+        // Static headers (e.g. "Ad Spend") are untouched — not in the map.
+        expect(out).toContain("<a:t>Ad Spend</a:t>");
+      });
+
+      it("does NOT abbreviate labels in the data rows, only the header", () => {
+        const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
+        const header = [
+          ...COMBINED_TOTAL_STATIC_HEADERS,
+          "WEBSITE LEADS",
+          "COST PER WEBSITE LEAD",
+          "META FORM LEADS",
+          "COST PER LEAD",
+          "LANDING PAGE VIEWS",
+          "COST PER LPV",
+        ];
+        // A data row would never literally contain "WEBSITE LEADS" as a
+        // cell VALUE in practice (those cells hold numbers/currency), but
+        // this confirms abbreviateHeaderRow is never applied to rows 1-2
+        // even if it were.
+        const dataRow = header.map((_, i) => (i === 6 ? "WEBSITE LEADS" : "x"));
+        const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow]);
+        const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
+        expect(rows[1]).toContain("<a:t>WEBSITE LEADS</a:t>");
+        expect(rows[2]).toContain("<a:t>WEBSITE LEADS</a:t>");
+      });
     });
   });
 });

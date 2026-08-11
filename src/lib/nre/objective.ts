@@ -433,6 +433,29 @@ export interface ResultGroup {
   totalSpend: number;
 }
 
+interface ObjectiveBucket {
+  costLabel: string;
+  count: number;
+  totalSpend: number;
+  totalReach: number;
+}
+
+/** Shared tail of getResultGroups/getCampaignLevelResultGroups: turns accumulated per-label buckets into sorted ResultGroup[], computing REACH's cost-per-1K special case (see getResultGroups' doc comment). */
+function buildResultGroups(groups: Record<string, ObjectiveBucket>): ResultGroup[] {
+  return Object.entries(groups)
+    .map(([label, g]) => {
+      let adjCpr: number;
+      if (label === "REACH" && g.count === 0) {
+        adjCpr = g.totalReach > 0 ? (g.totalSpend * 1000) / g.totalReach : 0;
+      } else {
+        const rawCpr = g.count > 0 ? g.totalSpend / g.count : 0;
+        adjCpr = label === "REACH" ? rawCpr * 1000 : rawCpr;
+      }
+      return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr, totalSpend: g.totalSpend };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
 /**
  * Port of getResultGroups_ — groups rows by detected result label, totals
  * count + spend, and computes avgCpr (REACH is cost-per-1K, so ×1000).
@@ -444,9 +467,16 @@ export interface ResultGroup {
  * awareness campaigns) — so the campaign slide would show a dash instead of
  * a real cost figure. When a REACH group has no results, cost-per-1K-reach
  * is computed directly from the reach column instead.
+ *
+ * Row-level grouping: each ROW gets its own resolveObjective call, so a
+ * mixed set of rows (e.g. every ad set across an entire account) can produce
+ * a group for every distinct signal present anywhere in that set — exactly
+ * right for a single campaign's own rows (getGroupedResultDisplay), but see
+ * getCampaignLevelResultGroups below for why that's the wrong granularity
+ * for the Combined Total table.
  */
 export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
-  const groups: Record<string, { costLabel: string; count: number; totalSpend: number; totalReach: number }> = {};
+  const groups: Record<string, ObjectiveBucket> = {};
 
   // Column-presence signal (Priority 3), computed once per call from the
   // first row's own raw headers — same reasoning as aggregate.ts's
@@ -480,18 +510,53 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
     groups[label].totalReach += parseCellNum(row.reach);
   });
 
-  return Object.entries(groups)
-    .map(([label, g]) => {
-      let adjCpr: number;
-      if (label === "REACH" && g.count === 0) {
-        adjCpr = g.totalReach > 0 ? (g.totalSpend * 1000) / g.totalReach : 0;
-      } else {
-        const rawCpr = g.count > 0 ? g.totalSpend / g.count : 0;
-        adjCpr = label === "REACH" ? rawCpr * 1000 : rawCpr;
-      }
-      return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr, totalSpend: g.totalSpend };
-    })
-    .sort((a, b) => b.count - a.count);
+  return buildResultGroups(groups);
+}
+
+/**
+ * Campaign-LEVEL objective grouping for the Combined Total table — fixes a
+ * reported bug where a secondary/minority signal inside a single campaign
+ * (e.g. one ad set whose result_type read as an intermediate
+ * "landing_page_view" inside an otherwise Website-Leads campaign) spawned
+ * its own phantom column via getResultGroups' row-level grouping, even
+ * though no campaign was actually built around that objective — Landing
+ * Page Views was just a metric on one ad set within a Website Leads
+ * campaign, never the campaign's real objective.
+ *
+ * Groups rows by campaign_name first. Each campaign is then assigned
+ * exactly ONE objective — the same "prefer a real objective over a
+ * pure-Reach one" selection getGroupedResultDisplay already makes for
+ * campaign slides (top non-REACH group by count, or the top REACH group if
+ * that's genuinely all the campaign ran) — and that campaign's ENTIRE
+ * spend/results/reach roll into that single bucket, never split across
+ * multiple labels within one campaign. A label only appears in the result
+ * here if some campaign was actually, wholly assigned it; a stray row-level
+ * signal from inside a campaign assigned a different dominant objective
+ * never gets its own column.
+ */
+export function getCampaignLevelResultGroups(rows: MetricRow[]): ResultGroup[] {
+  const campaignRowGroups: Record<string, MetricRow[]> = {};
+  rows.forEach((row) => {
+    const name = String(row.campaign_name || "Unknown Campaign").trim();
+    (campaignRowGroups[name] ??= []).push(row);
+  });
+
+  const groups: Record<string, ObjectiveBucket> = {};
+  Object.values(campaignRowGroups).forEach((campRows) => {
+    const campaignGroups = getResultGroups(campRows);
+    const nonReach = campaignGroups.filter((g) => g.label !== "REACH");
+    const primary = nonReach[0] || campaignGroups[0];
+    const label = primary?.label ?? "RESULTS";
+    const costLabel = primary?.costLabel ?? "COST PER RESULT";
+    if (!groups[label]) groups[label] = { costLabel, count: 0, totalSpend: 0, totalReach: 0 };
+    campRows.forEach((row) => {
+      groups[label].count += parseCellNum(row.results);
+      groups[label].totalSpend += parseCellNum(row.spend);
+      groups[label].totalReach += parseCellNum(row.reach);
+    });
+  });
+
+  return buildResultGroups(groups);
 }
 
 export interface ResultDisplay {

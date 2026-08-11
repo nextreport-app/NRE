@@ -61,7 +61,31 @@ function removeSpans(xml: string, spans: Span[], indexesToRemove: number[]): str
   return out;
 }
 
-function setCellText(cellXml: string, value: string, rowIndex: number, colIndex: number): string {
+/**
+ * Overrides (or inserts) the sz="..." attribute — hundredths of a point,
+ * e.g. 900 = 9pt — on an <a:rPr> block's opening tag. Handles both the
+ * self-closing (<a:rPr .../>) and open/close (<a:rPr ...>...</a:rPr>) forms;
+ * only the opening tag's attributes are touched, so any children (e.g. a
+ * <a:solidFill> color override) survive untouched. A no-op when `rPrXml`
+ * has no <a:rPr> at all (a run with fully inherited/default properties).
+ */
+function setRunFontSize(rPrXml: string, sizeHundredths: number): string {
+  const openTagMatch = /<a:rPr\b[^>]*>/.exec(rPrXml);
+  if (!openTagMatch) return rPrXml;
+  const openTag = openTagMatch[0];
+  const newOpenTag = /\bsz="\d+"/.test(openTag)
+    ? openTag.replace(/\bsz="\d+"/, `sz="${sizeHundredths}"`)
+    : openTag.replace(/^<a:rPr\b/, `<a:rPr sz="${sizeHundredths}"`);
+  return rPrXml.slice(0, openTagMatch.index) + newOpenTag + rPrXml.slice(openTagMatch.index + openTag.length);
+}
+
+function setCellText(
+  cellXml: string,
+  value: string,
+  rowIndex: number,
+  colIndex: number,
+  fontSizeHundredths?: number,
+): string {
   const runRegex = /<a:r>((?:(?!<\/a:r>)[\s\S])*?)<a:t>[^<]*<\/a:t><\/a:r>/;
   const match = runRegex.exec(cellXml);
   if (!match) {
@@ -69,7 +93,7 @@ function setCellText(cellXml: string, value: string, rowIndex: number, colIndex:
       `Combined Total table cell [row ${rowIndex}, col ${colIndex}] has no text run to fill (tried to write "${value}") — the template's table structure has changed.`,
     );
   }
-  const rPrBlock = match[1] ?? "";
+  const rPrBlock = fontSizeHundredths ? setRunFontSize(match[1] ?? "", fontSizeHundredths) : (match[1] ?? "");
   const lines = String(value).split("\n");
   const runs = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
   return cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
@@ -83,8 +107,12 @@ function setCellText(cellXml: string, value: string, rowIndex: number, colIndex:
  * `hideColIndexes` removes right afterward, so their stale placeholder
  * content never matters. When the grid matches or exceeds the row's native
  * width (2 objectives, or 3+ after growing), this fills every cell.
+ *
+ * `fontSizeHundredths`, when given, overrides every cell's font size in
+ * this row (used only for the header row when 3+ objective pairs are
+ * present — see fillCombinedTotalTable's column-overflow handling).
  */
-function fillRow(rowXml: string, values: string[], rowIndex: number): string {
+function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeHundredths?: number): string {
   const cells = findSpans(rowXml, /<a:tc[\s\S]*?<\/a:tc>/g);
   if (values.length > cells.length) {
     throw new Error(
@@ -97,10 +125,32 @@ function fillRow(rowXml: string, values: string[], rowIndex: number): string {
   // for every earlier (lower-indexed) cell not yet processed.
   for (let c = values.length - 1; c >= 0; c--) {
     const cell = cells[c];
-    const filled = setCellText(cell.xml, values[c], rowIndex, c);
+    const filled = setCellText(cell.xml, values[c], rowIndex, c, fontSizeHundredths);
     out = out.slice(0, cell.start) + filled + out.slice(cell.end);
   }
   return out;
+}
+
+/**
+ * Column-overflow fix: when the header row has to grow to fit 3+ objective
+ * pairs (see the file header for the growth mechanism), plain full-length
+ * labels/cost-labels start crowding and overflowing their narrower columns.
+ * Abbreviated only for the specific labels product owner called out — every
+ * other label (including all 6 static headers) passes through unchanged.
+ * Applied ONLY to the header row's text, never the data rows' own numbers.
+ */
+const HEADER_ABBREVIATIONS: Record<string, string> = {
+  "WEBSITE LEADS": "WEB LEADS",
+  "META FORM LEADS": "FORM LEADS",
+  "COST PER WEBSITE LEAD": "CPW LEAD",
+  "COST PER LEAD": "CP LEAD",
+  "COST PER 1K REACH": "CP 1K REACH",
+  "LANDING PAGE VIEWS": "LP VIEWS",
+  "COST PER LPV": "CP LPV",
+};
+
+function abbreviateHeaderRow(headerRow: string[]): string[] {
+  return headerRow.map((cell) => HEADER_ABBREVIATIONS[cell] ?? cell);
 }
 
 /** Removes the given 0-indexed columns from one row's cells. */
@@ -199,6 +249,12 @@ export function fillCombinedTotalTable(
   options: TableVisibilityOptions = {},
 ): string {
   const targetCols = grid[0]?.length ?? 0;
+  // Column-overflow fix: 3 objective pairs (12 total columns, already past
+  // the template's native 10) shrinks the header font to keep labels
+  // readable; 4+ (never produced by report-data.ts's own 3-pair cap, but
+  // this function accepts any grid shape) shrinks it further still.
+  const objectivePairCount = (targetCols - STATIC_COLS) / 2;
+  const headerFontSizeHundredths = objectivePairCount >= 4 ? 800 : objectivePairCount === 3 ? 900 : undefined;
   const validShape =
     grid.length === EXPECTED_ROWS &&
     grid.every((row) => row.length === targetCols) &&
@@ -260,10 +316,15 @@ export function fillCombinedTotalTable(
   // when the grid is 8-10 columns wide (nothing left over), or the grown
   // width when it's wider. When the grid is narrower than 10 (1 objective),
   // the untouched trailing native cells are removed next by hideColIndexes.
+  // Row 0 (the header) gets abbreviated labels + a smaller font once space
+  // is genuinely tight (3+ objective pairs) — rows 1-2 (Period/MTD data)
+  // keep their plain numbers/currency at the template's own font size.
   const rowsToFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   for (let r = EXPECTED_ROWS - 1; r >= 0; r--) {
     const row = rowsToFill[r];
-    const filled = fillRow(row.xml, grid[r], r);
+    const isHeaderRow = r === 0;
+    const rowValues = isHeaderRow && objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r];
+    const filled = fillRow(row.xml, rowValues, r, isHeaderRow ? headerFontSizeHundredths : undefined);
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }
 
