@@ -200,15 +200,20 @@ describe("buildChartSlideXml — Fix 2: title and date range combined onto a sin
     expect(matches[1][1]).toContain("Total Month to Date Spend");
   });
 
-  it("uses a smaller font size for the combined line than the bare title, so the longer string still fits on one line", () => {
+  // Fix 1 (later round) — the title is always 28pt, matching every other
+  // slide's own heading size, whether or not the combined line includes a
+  // date range. It previously dropped to 16pt whenever a date-range
+  // sub-line was present (i.e. almost every real report), which read as
+  // visibly smaller than the rest of the deck instead of uniform.
+  it("keeps the title at 28pt regardless of whether the combined line includes a date range", () => {
     const withRange = buildChartSlideXml(
       buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "August 1 - August 10, 2026" }),
       "$",
       BACKGROUND,
     );
     const withoutRange = buildChartSlideXml(buildChart([campaign("A")], { mtdMonthName: "August", periodSubLabel: "" }), "$", BACKGROUND);
-    expect(titleFontSizePt(withRange)).toBeLessThan(titleFontSizePt(withoutRange));
-    expect(titleFontSizePt(withRange)).toBeLessThanOrEqual(16);
+    expect(titleFontSizePt(withRange)).toBe(28);
+    expect(titleFontSizePt(withoutRange)).toBe(28);
   });
 });
 

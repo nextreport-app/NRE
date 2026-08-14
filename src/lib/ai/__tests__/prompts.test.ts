@@ -21,6 +21,7 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
     cpr: "₹50.00",
     ctr: "2.00%",
     cpc: "₹3.50",
+    cpm: "₹23.33",
     resultLabel: "PURCHASES",
     costLabel: "COST PER PURCHASE",
     freq: 2.5,
@@ -197,7 +198,7 @@ describe("buildZeroResultsSummary", () => {
   it("builds the exact 2-sentence structure from real data, always ending in a period", () => {
     const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, hasResults: false }));
     expect(result).toBe(
-      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign recorded no PURCHASES this " +
+      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign recorded no purchases this " +
         "week, with ₹1,050 spent reaching 12,600 people across 45,000 impressions. The campaign maintained a " +
         "2.00% click-through rate at ₹3.50 cost per click, with delivery active and results expected as the " +
         "campaign optimises.",
@@ -215,6 +216,98 @@ describe("buildZeroResultsSummary", () => {
     const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, ctr: "0.35%" }));
     expect(result).toContain("maintained a 0.35% click-through rate");
     expect(result).not.toContain("0.35%%");
+  });
+});
+
+// A REACH/AWARENESS campaign has no conversion objective — resultLabel is
+// "REACH", costLabel is "COST PER 1K REACH", and `results`/`resultsNum` are
+// structurally always 0 (Meta doesn't populate a results count for pure
+// awareness campaigns). The reported bug: a Reach campaign's summary
+// incorrectly opened with "This campaign recorded no purchases at $0 cost
+// per purchase" — every function below must never mention results,
+// purchases, leads, or link clicks for a Reach campaign, and must use the
+// dedicated reach/impressions/frequency/CPM template instead.
+function reachCtx(overrides: Partial<AiContext> = {}): AiContext {
+  return ctx({
+    resultLabel: "REACH",
+    costLabel: "COST PER 1K REACH",
+    results: "0",
+    resultsNum: 0,
+    hasResults: false,
+    cpr: "₹4.20", // Reach's own COST PER 1K REACH — deliberately NOT reused by the reach template, which uses cpm instead
+    cpm: "₹18.50",
+    freq: 1.8,
+    ...overrides,
+  });
+}
+
+describe("Reach/Awareness campaigns — never mention results, purchases, leads, or conversions", () => {
+  describe("buildSummaryPrompt", () => {
+    it("switches to the Reach-specific prompt, with the explicit instruction line, when resultLabel is REACH", () => {
+      const prompt = buildSummaryPrompt(reachCtx());
+      expect(prompt).toContain(
+        "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions. Focus only on reach, impressions, frequency, CPM, CTR and CPC.",
+      );
+      expect(prompt).not.toContain("primary result count and label");
+      expect(prompt).not.toContain("47 website leads, 312 link clicks, 5 purchases");
+    });
+
+    it("substitutes reach/impressions/CPM/frequency/CTR/CPC in the Data line — never the result/cost-per-result tokens", () => {
+      const prompt = buildSummaryPrompt(reachCtx());
+      expect(prompt).toContain(
+        "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, CPM: ₹18.50, Frequency: 1.8x, CTR: 2.00%, CPC: ₹3.50",
+      );
+      expect(prompt).not.toContain("REACH: 0");
+      expect(prompt).not.toContain("COST PER 1K REACH: ₹4.20");
+    });
+
+    it("still uses the generic prompt for a non-Reach objective (e.g. PURCHASES)", () => {
+      const prompt = buildSummaryPrompt(ctx());
+      expect(prompt).not.toContain("REACH/AWARENESS campaign");
+      expect(prompt).toContain("Sentence 1 must mention ALL of these in order:");
+    });
+  });
+
+  describe("buildZeroResultsSummary", () => {
+    it("uses the fixed reach template instead of 'recorded no REACH' or any conversion wording", () => {
+      const result = buildZeroResultsSummary(reachCtx());
+      expect(result).toBe(
+        "This campaign reached 12,600 people with 45,000 impressions at a ₹18.50 CPM, maintaining a 1.8x " +
+          "average frequency. The campaign achieved a 2.00% click-through rate at ₹3.50 cost per click, " +
+          "reflecting current audience engagement levels.",
+      );
+      expect(result).not.toContain("recorded no");
+      expect(result).not.toContain("purchase");
+      expect(result).not.toContain("REACH");
+      expect(result).not.toContain("result");
+    });
+  });
+
+  describe("buildFallbackSummary", () => {
+    it("uses the fixed reach template instead of 'generated 0 REACH at ... COST PER 1K REACH'", () => {
+      const result = buildFallbackSummary(reachCtx());
+      expect(result).toBe(
+        "This campaign reached 12,600 people with 45,000 impressions at a ₹18.50 CPM, maintaining a 1.8x " +
+          "average frequency. The campaign achieved a 2.00% click-through rate at ₹3.50 cost per click, " +
+          "reflecting current audience engagement levels.",
+      );
+      expect(result).not.toContain("generated");
+      expect(result).not.toContain("purchase");
+      expect(result).not.toContain("COST PER 1K REACH");
+    });
+  });
+
+  it("never shows 'no purchases' for a non-purchase campaign — the fallback dynamically lower-cases whatever the real resultLabel is", () => {
+    expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", results: "0", resultsNum: 0 }))).toContain(
+      "recorded no website leads",
+    );
+    expect(buildZeroResultsSummary(ctx({ resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", results: "0", resultsNum: 0 }))).toContain(
+      "recorded no link clicks",
+    );
+    expect(buildZeroResultsSummary(ctx({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", results: "0", resultsNum: 0 }))).toContain(
+      "recorded no purchases",
+    );
+    expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", results: "0", resultsNum: 0 }))).not.toContain("no purchases");
   });
 });
 

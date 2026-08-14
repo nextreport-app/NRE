@@ -193,6 +193,25 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(retargetingSlide2.ai.spendNum).toBe(350);
   });
 
+  // Fix 3 (AI campaign summary for Reach campaigns) — ai.cpm feeds the
+  // Reach/Awareness-specific summary prompt and fallback templates in
+  // prompts.ts, which never use costLabel's own "COST PER 1K REACH" value
+  // (that divides by reach, not impressions).
+  it("computes ai.cpm (spend / impressions × 1000) for both campaign and ad-set slides", () => {
+    const brand = data.campaignSlides.find((s) => s.campaignName === "Brand - Reach")!;
+    expect(brand.resultLabel).toBe("REACH");
+    // spend 200/day × 7 = ₹1,400; impressions 15,000/day × 7 = 105,000 → (1400/105000)*1000 = ₹13.33
+    expect(brand.ai.cpm).toBe("₹13.33");
+
+    const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
+    // spend (100+50)/day × 7 = ₹1,050; impressions (3000+2000)/day × 7 = 35,000 → ₹30.00
+    expect(shoes.ai.cpm).toBe("₹30.00");
+
+    const prospectingSlide = data.adSetSlides.find((s) => s.adSetName === "Prospecting")!;
+    // spend 100/day × 7 = ₹700; impressions 3,000/day × 7 = 21,000 → ₹33.33
+    expect(prospectingSlide.ai.cpm).toBe("₹33.33");
+  });
+
   it("computes the account health score and badge", () => {
     // results>0 (25) + avgCtr 1.6 in [1.0,2.0) (13) + avgFreq 2.17 in [2.0,2.5) (17) + cost-neutral (12) = 67
     expect(data.cover.healthScore).toBe(67);

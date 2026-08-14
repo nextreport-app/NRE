@@ -22,7 +22,7 @@
 
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { getDateRangeShortLabel, formatDateUS, getMonthName, parseDate } from "./dates";
-import { compactSameMonthRangeLabel } from "./report-data";
+import { compactSameMonthRangeLabel, fmtCpm } from "./report-data";
 import { budgetSummaryLine } from "./health";
 import type { GoogleRow } from "./google-columns";
 import type {
@@ -122,6 +122,7 @@ function buildAiContext(group: GoogleGroupTotals, ctxLabel: string, dateRangeLab
     cpr: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—",
     ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "0%",
     cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : fmtCurrency2dp(0, currencySymbol),
+    cpm: fmtCpm(group.cost, group.impressions, currencySymbol),
     resultLabel: RESULT_LABEL,
     costLabel: COST_LABEL,
     freq: 0, // Google Ads has no "ad frequency" concept — freqLine-equivalent rendering is simply skipped (see fill-tags.ts's DATE_RANGE handling).

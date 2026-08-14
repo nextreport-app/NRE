@@ -12,6 +12,7 @@ const ctx: AiContext = {
   cpr: "$16.67",
   ctr: "2%",
   cpc: "$2.50",
+  cpm: "$50.00",
   resultLabel: "CONVERSIONS",
   costLabel: "COST PER CONVERSION",
   freq: 0,

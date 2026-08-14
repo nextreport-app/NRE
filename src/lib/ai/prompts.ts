@@ -17,7 +17,47 @@
 
 import type { AiContext } from "../nre/report-data";
 
+/**
+ * A Reach/Awareness campaign has no conversion objective at all — its
+ * costLabel is "COST PER 1K REACH" and its `results`/`resultsNum` are
+ * always structurally 0 (Meta doesn't populate a results count for pure
+ * awareness campaigns; see aggregate.ts's own REACH handling). The generic
+ * prompt/fallback templates below all center on "the primary result count
+ * and cost," which produces nonsense for Reach ("recorded no REACH this
+ * week") or, worse, invites the model to substitute a plausible-sounding
+ * but WRONG conversion metric from its own examples (the reported bug: a
+ * Reach campaign's summary opening with "recorded no purchases at $0 cost
+ * per purchase" — Reach has no purchase objective at all). Every
+ * summary-generation function below branches on this check first.
+ */
+function isReachCampaign(ctx: Pick<AiContext, "resultLabel">): boolean {
+  return ctx.resultLabel === "REACH";
+}
+
 export function buildSummaryPrompt(ctx: AiContext): string {
+  if (isReachCampaign(ctx)) {
+    return (
+      "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions. Focus only on reach, impressions, frequency, CPM, CTR and CPC.\n" +
+      "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+      "Sentence 1 must mention ALL of these in order:\n" +
+      "- Reach (people reached) and impressions\n" +
+      "- The CPM (cost per 1,000 impressions)\n" +
+      "- The average frequency\n" +
+      "Sentence 2 must mention:\n" +
+      "- CTR percentage\n" +
+      "- CPC value\n" +
+      "- A brief audience-engagement observation\n" +
+      "Example of correct format: \"This campaign reached 22,170 people with 28,192 impressions at a $8.50 CPM, maintaining a 1.3x average frequency. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting current audience engagement levels.\"\n" +
+      "Rules:\n" +
+      "- Do NOT mention results, purchases, leads, link clicks, or any conversion count — this campaign has no conversion objective\n" +
+      "- Use real numbers from the data — never invent or estimate\n" +
+      "- Keep total under 60 words\n" +
+      "- Professional tone like a senior account manager\n\n" +
+      "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+      ", Impressions: " + ctx.impressions + ", CPM: " + ctx.cpm + ", Frequency: " + ctx.freq.toFixed(1) + "x" +
+      ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
+    );
+  }
   return (
     "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
     "Sentence 1 must mention ALL of these in order:\n" +
@@ -71,6 +111,27 @@ function ctrNumberOnly(ctr: string): string {
 }
 
 /**
+ * Fixed, always-complete summary for a REACH/AWARENESS campaign — shared by
+ * buildZeroResultsSummary and buildFallbackSummary below (Reach's `results`
+ * is structurally always 0, so both of those functions' own reasons for
+ * firing coincide for a Reach campaign). Never mentions results, purchases,
+ * leads, or any conversion metric — a Reach campaign has no conversion
+ * objective, so those tokens can only ever be wrong here. Matches the exact
+ * wording spec: "This campaign reached [reach] people with [impressions]
+ * impressions at a [cpm] CPM, maintaining a [frequency]x average frequency.
+ * The campaign achieved a [ctr]% click-through rate at [cpc] cost per
+ * click, reflecting current audience engagement levels."
+ */
+function buildReachSummary(ctx: AiContext): string {
+  return (
+    "This campaign reached " + ctx.reach + " people with " + ctx.impressions + " impressions at a " + ctx.cpm +
+    " CPM, maintaining a " + ctx.freq.toFixed(1) + "x average frequency. The campaign achieved a " +
+    ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc + " cost per click, reflecting current audience " +
+    "engagement levels."
+  );
+}
+
+/**
  * Deterministic replacement for buildSummaryPrompt's AI output on a slide
  * that has real spend/delivery but exactly zero results this week (Fix 6).
  * Never sent through the AI at all — CPR is mathematically undefined at
@@ -81,10 +142,20 @@ function ctrNumberOnly(ctr: string): string {
  * reported bug. This sidesteps the CPR/count phrasing entirely rather than
  * prompting the AI to avoid it, since a real, always-complete sentence is
  * more reliable than trusting the model wends around a dash in a template.
+ *
+ * REACH campaigns get their own dedicated wording (buildReachSummary) —
+ * never "recorded no REACH," which reads as nonsense (reach itself is
+ * never actually zero; only the unrelated `results` counter is). Every
+ * other objective's own resultLabel is lower-cased for natural phrasing
+ * ("recorded no website leads" / "recorded no purchases" / "recorded no
+ * link clicks") — this was already substituting the campaign's real,
+ * correct resultLabel dynamically (never a hardcoded "purchases"), just not
+ * lower-cased before.
  */
 export function buildZeroResultsSummary(ctx: AiContext): string {
+  if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
-    "During " + ctx.dateRange + ", the " + ctx.ctx + " campaign recorded no " + ctx.resultLabel +
+    "During " + ctx.dateRange + ", the " + ctx.ctx + " campaign recorded no " + ctx.resultLabel.toLowerCase() +
     " this week, with " + ctx.spend + " spent reaching " + ctx.reach + " people across " + ctx.impressions +
     " impressions. The campaign maintained a " + ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
     " cost per click, with delivery active and results expected as the campaign optimises."
@@ -103,8 +174,14 @@ export function buildZeroResultsSummary(ctx: AiContext): string {
  * spend/reach/impressions in sentence 1, CTR/CPC in sentence 2) — this
  * fallback must never omit results and cost per result the way the AI
  * output previously could.
+ *
+ * REACH campaigns get buildReachSummary instead — `results` is
+ * structurally always 0 for Reach, so the generic template here would
+ * otherwise always read "generated 0 REACH at [cost] COST PER 1K REACH,"
+ * the same category of wrong-metric bug this whole fix addresses.
  */
 export function buildFallbackSummary(ctx: AiContext): string {
+  if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
     "This campaign generated " + ctx.results + " " + ctx.resultLabel + " at " + ctx.cpr + " " + ctx.costLabel +
     ", spending " + ctx.spend + " to reach " + ctx.reach + " people across " + ctx.impressions +

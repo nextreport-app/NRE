@@ -362,15 +362,22 @@ export function buildCampaignOrAdSetSlideXml(
   const useDynamicSlots = !!dynamicSlots && dynamicSlots.length > 0;
 
   // Fix 3 (permanent overflow fix) — truncate to the hard char caps (always
-  // ending on a complete sentence) and pick a font size that shrinks as the
-  // (now-capped) text gets longer, so Campaign Summary never touches the
+  // ending on a complete sentence), so Campaign Summary never touches the
   // Key Insights heading below it and Key Insights never gets cut off at
   // the bottom of the slide. Applies to both branches below and to
   // buildPausedSlideXml, across all 3 templates (the same template clone).
   const summaryText = truncateToSentence(ai.summary, CAMPAIGN_SUMMARY_MAX_CHARS);
   const insightsText = truncateToSentence(ai.insights, KEY_INSIGHTS_MAX_CHARS);
   const summarySizePt = fontSizeForTextLength(summaryText.length);
-  const insightsSizePt = fontSizeForTextLength(insightsText.length);
+  // Fix 2 (this round) — Key Insights is always 14pt now, matching Campaign
+  // Summary's own common-case size, instead of shrinking below it whenever
+  // the text ran past 250 characters (Key Insights' looser 400-char cap
+  // made that the common case in practice, so it read as visibly smaller
+  // than Campaign Summary on most real reports). Overflow protection still
+  // comes from the 400-char truncation above and the CAMPAIGN_SUMMARY/
+  // KEY_INSIGHTS text boxes' own normAutofit (shrink-to-fit) setting below,
+  // not from pre-shrinking the requested size here.
+  const insightsSizePt = 14;
 
   let xml: string;
   if (useDynamicSlots) {
@@ -550,7 +557,10 @@ export function buildPausedSlideXml(
     {
       CAMPAIGN_NAME: { sizePt: 18 },
       CAMPAIGN_SUMMARY: { bold: false, sizePt: fontSizeForTextLength(summaryText.length), fontFamily: "Poppins" },
-      KEY_INSIGHTS: { bold: false, sizePt: fontSizeForTextLength(insightsText.length), fontFamily: "Poppins" },
+      // Fix 2 (this round) — flat 14pt, matching the campaign/ad-set slide
+      // Key Insights treatment above (see buildCampaignOrAdSetSlideXml's own
+      // insightsSizePt comment).
+      KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );
   xml = applyGoogleAdsCardLabels(xml, platform);

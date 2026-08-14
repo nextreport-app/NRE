@@ -112,8 +112,7 @@ export function buildChartSlideXml(
   // Fix 2 — the title and its clarifying date-range sub-line used to be two
   // separate stacked text boxes with no gap between them, which read as
   // cluttered. Folded into one combined line instead ("August Campaign
-  // Performance: August 1 - August 10, 2026" / "...: Full Month 2026") at a
-  // smaller font size so the longer combined string still fits on one line.
+  // Performance: August 1 - August 10, 2026" / "...: Full Month 2026").
   // hasSubLabel/periodSubLabel is empty for a paused/zero-data report — the
   // title then falls back to the bare "[Month] Campaign Performance" (or the
   // all-caps fallback) with no ": ..." suffix, same as before this line
@@ -123,7 +122,12 @@ export function buildChartSlideXml(
     ? `${chart.mtdMonthName} Campaign Performance`
     : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
   const chartTitle = hasSubLabel ? `${baseTitle}: ${chart.periodSubLabel}` : baseTitle;
-  const TITLE_SIZE_PT = hasSubLabel ? 16 : 28;
+  // Fix 1 (this round) — always 28pt, matching every other slide's own
+  // heading size (cover/campaign/table/legend all use 28pt) — this used to
+  // drop to 16pt whenever a date-range sub-line was present (i.e. almost
+  // every real report), which read as visibly smaller than the rest of the
+  // deck instead of uniform.
+  const TITLE_SIZE_PT = 28;
 
   shapes.push(backgroundImage({ relId: CHART_BG_REL_ID, ...background }));
 

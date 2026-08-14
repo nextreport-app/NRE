@@ -79,6 +79,8 @@ export interface AiContext {
   cpr: string;
   ctr: string;
   cpc: string;
+  /** Cost per 1,000 impressions (spend / impressions * 1000), formatted with the account's currency symbol — "—" when impressions are 0. Used by prompts.ts's Reach/Awareness-specific summary prompt and fallback templates (a Reach campaign's own costLabel is already "COST PER 1K REACH", a different metric from CPM). */
+  cpm: string;
   resultLabel: string;
   costLabel: string;
   freq: number;
@@ -352,6 +354,11 @@ function rowFrequency(row: MetricRow): number {
   if (explicit > 0) return explicit;
   const reach = parseCellNum(row.reach);
   return reach > 0 ? parseCellNum(row.impressions) / reach : 0;
+}
+
+/** Cost per 1,000 impressions (spend / impressions × 1000) — feeds AiContext.cpm, the Reach/Awareness-specific summary prompt's own primary cost metric (distinct from a Reach campaign's costLabel, "COST PER 1K REACH", which divides by reach instead). Exported for google-report-data.ts's own AiContext construction (Google Ads has no Reach objective, but AiContext.cpm is a required field on the shared type either way). */
+export function fmtCpm(spend: number, impressions: number, currencySymbol: string): string {
+  return impressions > 0 ? fmtCurrency2dp((spend / impressions) * 1000, currencySymbol) : "—";
 }
 
 function freqLine(freq: number): string {
@@ -1009,6 +1016,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         cpr: metrics.cpr, // see file header: reuses the correctly-computed display value
         ctr: metrics.ctr,
         cpc: metrics.cpc,
+        cpm: fmtCpm(totalSpend, totalImpr, currencySymbol),
         resultLabel,
         costLabel,
         freq: avgFreq,
@@ -1101,6 +1109,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         cpr: fmtCurrency2dp(row.cpr, currencySymbol),
         ctr: fmtPercent(row.ctr),
         cpc: fmtCurrency2dp(row.cpc, currencySymbol),
+        cpm: fmtCpm(rowSpend, rowImpr, currencySymbol),
         resultLabel,
         costLabel,
         freq: rowFreq,

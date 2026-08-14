@@ -43,6 +43,7 @@ function makeReportData(
     cpr: campaignResultsNum > 0 ? "$20.00" : "—",
     ctr: "1.00%",
     cpc: "$2.00",
+    cpm: "$50.00",
     resultLabel,
     costLabel: "COST PER LEAD",
     freq: 2,
@@ -192,7 +193,7 @@ describe("generateInsights", () => {
 
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
       expect(campaignCopy.summary).toBe(
-        "During Jul 13 - Jul 19, the Campaign A campaign recorded no LEADS this week, with $100 spent " +
+        "During Jul 13 - Jul 19, the Campaign A campaign recorded no leads this week, with $100 spent " +
           "reaching 1,000 people across 2,000 impressions. The campaign maintained a 1.00% click-through rate " +
           "at $2.00 cost per click, with delivery active and results expected as the campaign optimises.",
       );

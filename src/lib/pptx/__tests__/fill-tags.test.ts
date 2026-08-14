@@ -49,6 +49,7 @@ function makeCampaignSlide(campaignName: string): CampaignSlideData {
       cpr: "$50",
       ctr: "1.5%",
       cpc: "$3",
+      cpm: "$33.33",
       resultLabel: "RESULTS",
       costLabel: "COST PER RESULT",
       freq: 3,
@@ -316,7 +317,11 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     expect(sizeOfRunContaining(xml, summary)).toBe(13);
   });
 
-  it("reduces font size by 2pt once text passes 300 characters (reachable for Key Insights' own 400-char cap)", () => {
+  // Fix 2 (later round) — Key Insights no longer shrinks by length at all;
+  // it's always 14pt (matching Campaign Summary's own common-case size),
+  // relying on the 400-char truncation above plus the text box's own
+  // normAutofit (shrink-to-fit) setting for overflow protection instead.
+  it("keeps Key Insights at a flat 14pt even for long text (under its own 400-char cap)", () => {
     const insights = "B".repeat(349) + ".";
     expect(insights.length).toBe(350);
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
@@ -324,7 +329,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
       insights,
     });
     expect(xml).toContain(`<a:t>${insights}</a:t>`); // under the 400 cap — kept verbatim
-    expect(sizeOfRunContaining(xml, insights)).toBe(12);
+    expect(sizeOfRunContaining(xml, insights)).toBe(14);
   });
 
   it("uses <a:normAutofit/> (shrink text to fit) instead of <a:spAutoFit/> (grow shape) for the Campaign Summary and Key Insights boxes specifically", () => {
