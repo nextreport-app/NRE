@@ -1928,13 +1928,22 @@ export function ReportUploadWizard({
                     report is generated (see share-token.ts/share-report.ts),
                     independent of the Google Drive save flow below. */}
                 {shareToken && (
-                  <button
-                    type="button"
-                    onClick={handleCopyShareLink}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-                  >
-                    🔗 Share Report
-                  </button>
+                  <div>
+                    <a
+                      href={`https://${buildShareReportUrl(shareToken)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+                    >
+                      🌐 View Report in Browser
+                    </a>
+                    <p className="mt-1.5 text-[12px] text-dash-ink-secondary">
+                      {buildShareReportUrl(shareToken)} ·{" "}
+                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
+                        Copy
+                      </button>
+                    </p>
+                  </div>
                 )}
 
                 {/* State 4 (not connected): nothing Drive-related renders at all. */}

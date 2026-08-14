@@ -87,7 +87,8 @@ function campaignRingColor(index: number): string {
 // reusing it here for "no spend" carries that same "nothing here" meaning.
 const EMPTY_RING_COLOR = "9ca3af";
 
-function ringColorForCampaign(d: ChartCampaignData, index: number): string {
+/** Exported for share-report.ts, which needs the exact same per-campaign color the PPT chart slide's donut ring uses (real palette color for a campaign with real spend, the shared grey for a genuine $0 month) so the public share page's bar chart matches the deck. */
+export function ringColorForCampaign(d: ChartCampaignData, index: number): string {
   return d.spend > 0 ? campaignRingColor(index) : EMPTY_RING_COLOR;
 }
 

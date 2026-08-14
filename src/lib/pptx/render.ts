@@ -35,7 +35,8 @@ function buildChartSlideRels(backgroundMediaTarget: string): string {
 }
 
 /** Collects every distinct metric key used across a report's dynamicMetrics (the automatic 7-slot assignment — see slot-assignment.ts), in first-seen order, and resolves each to a term + one-line explanation from the platform's own dictionary. Excludes "spend" — Ad Spend is always slot 1 but is a plain currency figure with nothing to abbreviate, matching the Meta template's own legend (which has no such entry); the Google template's legend does explain its own "COST" card, so that slot simply keeps its own default copy instead (see legend-slide.ts's leftover-slot fallback). */
-function collectLegendEntries(data: ReportData): LegendEntry[] {
+/** Exported for share-report.ts, which reuses this exact same collection so the public share page's Metric Guide section lists precisely the same terms/explanations as the PPT's own legend slide. */
+export function collectLegendEntries(data: ReportData): LegendEntry[] {
   const seen = new Set<string>();
   const entries: LegendEntry[] = [];
   const findByKey = data.platform === "GOOGLE" ? findGoogleMetricByKey : findMetaMetricByKey;

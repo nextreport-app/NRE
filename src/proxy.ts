@@ -29,6 +29,10 @@ export default auth((req) => {
     // these without logging in; the page itself does its own
     // token-not-found/not-COMPLETE 404 handling, not this middleware.
     pathname.startsWith("/r/") ||
+    // The share page's own "Download PPTX" button (api/r/[token]/download) —
+    // same trust boundary as the page itself (the shareToken), not a
+    // session cookie.
+    pathname.startsWith("/api/r/") ||
     // Razorpay calls this server-to-server with no NextAuth session — it
     // authenticates itself via its own HMAC webhook signature instead (see
     // api/payments/webhook/route.ts), not a session cookie. A session-based

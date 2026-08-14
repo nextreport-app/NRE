@@ -270,12 +270,22 @@ export function FullReportHistoryList({ clientId, initialReports }: { clientId: 
                       </a>
                     )}
                     {r.status === "COMPLETE" && r.shareToken && (
+                      <a
+                        href={`https://${shareReportUrl(r.shareToken)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[13px] font-semibold text-dash-accent hover:underline"
+                      >
+                        View in Browser
+                      </a>
+                    )}
+                    {r.status === "COMPLETE" && r.shareToken && (
                       <button
                         type="button"
                         onClick={() => handleCopyShareLink(r.shareToken!)}
                         className="text-[13px] font-semibold text-dash-accent hover:underline"
                       >
-                        Share Link
+                        Copy Link
                       </button>
                     )}
                     <button

@@ -324,7 +324,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // payload the public share page reads (lib/nre/share-report.ts) — done
     // here, not at create time, so a report that ends up FAILED never gets
     // a share page's worth of (possibly stale-looking) data attached to it.
-    const shareData = buildShareReportData(data, aiCopyBySlideKey);
+    const shareData = buildShareReportData(data, aiCopyBySlideKey, new Date(), {
+      currencySymbol,
+      agencyName: user?.agencyName,
+    });
 
     await prisma.report.update({
       where: { id: report.id },

@@ -16,11 +16,11 @@ function daysInclusive(startDay: number, endDay: number): string[] {
   return days;
 }
 
-function buildDailyRows(campaignName: string): NreRow[] {
+function buildDailyRowsForAdSet(campaignName: string, adSetName: string): NreRow[] {
   return daysInclusive(13, 19).map((day) => ({
     _raw: { Day: day },
     campaign_name: campaignName,
-    ad_set_name: "Prospecting",
+    ad_set_name: adSetName,
     result_type: "Purchase",
     spend: "100",
     reach: "1000",
@@ -35,6 +35,10 @@ function buildDailyRows(campaignName: string): NreRow[] {
   }));
 }
 
+function buildDailyRows(campaignName: string): NreRow[] {
+  return buildDailyRowsForAdSet(campaignName, "Prospecting");
+}
+
 describe("buildShareReportData", () => {
   const mtdDailyRows = buildDailyRows("Shoes - Purchases");
   const data = buildReportData({
@@ -47,7 +51,7 @@ describe("buildShareReportData", () => {
   });
 
   const aiCopy = new Map([[slideAiKey(data.campaignSlides[0]), { summary: "Great week.", insights: "Keep scaling." }]]);
-  const share = buildShareReportData(data, aiCopy, new Date("2026-07-20T18:00:00Z"));
+  const share = buildShareReportData(data, aiCopy, new Date("2026-07-20T18:00:00Z"), { currencySymbol: "₹" });
 
   it("carries version, account, report type, and generatedAt", () => {
     expect(share.version).toBe(1);
@@ -90,7 +94,62 @@ describe("buildShareReportData", () => {
     expect(share.tableHeaderLabels).toBe(data.tableHeaderLabels);
   });
 
-  it("only includes campaign slides, never ad-set slides", () => {
+  it("builds one ad-set entry per ad-set slide (Round J)", () => {
+    // A campaign with only one ad set has no separate ad-set slide (the
+    // campaign slide already covers it — see report-data.ts) so this needs
+    // its own two-ad-set fixture to exercise the projection at all.
+    const twoAdSetRows = [
+      ...buildDailyRowsForAdSet("Shoes - Purchases", "Prospecting"),
+      ...buildDailyRowsForAdSet("Shoes - Purchases", "Retargeting"),
+    ];
+    const twoAdSetData = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 100000,
+      mtdDailyRows: twoAdSetRows,
+      now: NOW,
+    });
+    expect(twoAdSetData.adSetSlides.length).toBeGreaterThan(0);
+    const twoAdSetShare = buildShareReportData(twoAdSetData, new Map(), NOW, { currencySymbol: "₹" });
+    expect(twoAdSetShare.adSets).toHaveLength(twoAdSetData.adSetSlides.length);
+    const a = twoAdSetShare.adSets[0];
+    expect(a.campaignName).toBe("Shoes - Purchases");
+    expect(["Prospecting", "Retargeting"]).toContain(a.adSetName);
+    const realDynamicMetrics = twoAdSetData.adSetSlides[0].dynamicMetrics.filter((m) => m !== null);
+    expect(a.metrics).toEqual(realDynamicMetrics);
+  });
+
+  it("projects the MTD chart into bar-chart-friendly campaign entries, colored the same way as the PPT donut ring", () => {
+    expect(data.chart).not.toBeNull();
+    expect(share.chart).not.toBeNull();
+    expect(share.chart!.campaigns).toHaveLength(data.chart!.campaigns.length);
+    const c = share.chart!.campaigns[0];
+    expect(c.name).toBe(data.chart!.campaigns[0].name);
+    expect(c.spendLabel).toBe("₹" + Math.round(data.chart!.campaigns[0].spend).toLocaleString("en-US"));
+    expect(c.color).toBe("f6ad55"); // first campaign, real spend -> first palette color (orange)
+    expect(share.chart!.title).toContain("Campaign Performance");
+    expect(share.chart!.totalSpendLine).toContain("Total");
+  });
+
+  it("collects the same Metric Guide entries the PPT legend slide would show (spend excluded, deduped)", () => {
+    expect(share.metricGuide.every((e) => e.term.toUpperCase() !== "AD SPEND")).toBe(true);
+    const terms = share.metricGuide.map((e) => e.term);
+    expect(new Set(terms).size).toBe(terms.length);
+  });
+
+  it("threads agencyName through from extras, defaulting to null", () => {
+    expect(share.agencyName).toBeNull();
+    const withAgency = buildShareReportData(data, aiCopy, NOW, { agencyName: "Acme Agency" });
+    expect(withAgency.agencyName).toBe("Acme Agency");
+  });
+
+  it("defaults chart spend formatting to '$' when no currencySymbol is passed", () => {
+    const noCurrency = buildShareReportData(data, aiCopy, NOW);
+    expect(noCurrency.chart!.campaigns[0].spendLabel.startsWith("$")).toBe(true);
+  });
+
+  it("only includes campaign slides, never leaks ad-set data into the campaigns array", () => {
     // Two ad sets under the same campaign would otherwise produce ad-set
     // slides too — confirm the share payload doesn't leak them in.
     const multiAdSetRows = [...buildDailyRows("Shoes - Purchases"), ...buildDailyRows("Shoes - Purchases")];
@@ -104,5 +163,6 @@ describe("buildShareReportData", () => {
     });
     const multiShare = buildShareReportData(multiData, new Map());
     expect(multiShare.campaigns).toHaveLength(multiData.campaignSlides.length);
+    expect(multiShare.adSets).toHaveLength(multiData.adSetSlides.length);
   });
 });

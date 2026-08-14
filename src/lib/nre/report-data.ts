@@ -376,7 +376,8 @@ export function fmtCpm(spend: number, impressions: number, currencySymbol: strin
   return impressions > 0 ? fmtCurrency2dp((spend / impressions) * 1000, currencySymbol) : "—";
 }
 
-function freqLine(freq: number): string {
+/** Exported for share-report.ts, which needs the same "Ad Frequency: X.Xx avg [⚠️ High]" text (minus the leading "\n") for the public share page's campaign/ad-set date-range line. */
+export function freqLine(freq: number): string {
   if (freq <= 0) return "";
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }

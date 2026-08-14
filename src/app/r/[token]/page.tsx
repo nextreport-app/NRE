@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
     return { title: "Report not found — NextReport" };
   }
 
-  const title = `${data.accountName} — ${reportTypeLabel(data)} — NextReport`;
+  const title = `${data.accountName} — ${reportTypeLabel(data)} | NextReport`;
   const description = `${data.accountName} performance report — ${data.cover.dateRange}`;
 
   return {
@@ -63,5 +63,5 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
   const data = await getReportByToken(token);
   if (!data) notFound();
 
-  return <ShareReportView data={data} />;
+  return <ShareReportView data={data} shareToken={token} />;
 }
