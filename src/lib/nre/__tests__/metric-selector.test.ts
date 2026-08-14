@@ -66,10 +66,15 @@ describe("selectMetrics — required test scenarios (Google Ads CSV)", () => {
 });
 
 describe("selectMetrics — general algorithm behavior (uncapped, priority-sorted)", () => {
-  it("includes every matched primary metric regardless of objective", () => {
+  it("includes every matched primary metric regardless of objective, except the always-excluded generic RESULTS/COST PER RESULT keys (Fix 1)", () => {
     const selected = selectMetrics(META_PRIMARY_COLUMNS, "meta", "traffic");
     expect(selected.every((m) => m.type === "primary")).toBe(true);
-    expect(selected.length).toBe(META_PRIMARY_COLUMNS.length);
+    // "results" and "cost per result" are 2 of META_PRIMARY_COLUMNS' 6
+    // entries — always excluded (see ALWAYS_EXCLUDED_KEYS), so 4 remain.
+    expect(selected.length).toBe(META_PRIMARY_COLUMNS.length - 2);
+    const keys = selected.map((m) => m.key);
+    expect(keys).not.toContain("results");
+    expect(keys).not.toContain("cost_per_result");
   });
 
   it("sorts the whole combined primary+secondary list by priority descending, not primaries-block-first", () => {

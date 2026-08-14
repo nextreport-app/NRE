@@ -10,7 +10,7 @@
  */
 
 import { fmtNumber } from "../nre/format";
-import type { ChartSlideData } from "../nre/report-data";
+import type { ChartCampaignData, ChartSlideData } from "../nre/report-data";
 import type { TemplateBackgroundImage } from "./package";
 import { backgroundImage, buildBlankSlideXml, ellipse, rectangle, resetShapeIdCounter, textBox } from "./shapes";
 
@@ -76,6 +76,19 @@ const CAMPAIGN_COLOR_PALETTE = [
 
 function campaignRingColor(index: number): string {
   return CAMPAIGN_COLOR_PALETTE[index % CAMPAIGN_COLOR_PALETTE.length];
+}
+
+// Fix 6 — a campaign with zero spend this month (no MTD rows at all, or
+// present with every value at 0) reads as an empty/grey donut instead of
+// one of the real campaign colors, so a genuine $0 month is visually
+// distinct from real data at a glance. Grey is otherwise reserved
+// exclusively for the donut's own inner hole (see BG_COLOR_DARK/LIGHT's own
+// doc comment above) and never used as a real campaign's ring color, so
+// reusing it here for "no spend" carries that same "nothing here" meaning.
+const EMPTY_RING_COLOR = "9ca3af";
+
+function ringColorForCampaign(d: ChartCampaignData, index: number): string {
+  return d.spend > 0 ? campaignRingColor(index) : EMPTY_RING_COLOR;
 }
 
 function cprShortForChart(label: string): string {
@@ -250,7 +263,7 @@ export function buildChartSlideXml(
   );
 
   chart.campaigns.forEach((d, ci) => {
-    const col = campaignRingColor(ci);
+    const col = ringColorForCampaign(d, ci);
     const colX = rowXOffset + MARGIN + ci * (COL_W + MARGIN);
     const cx = colX + Math.floor(COL_W / 2);
     const circX = cx - Math.floor(CIRCLE_D / 2);
@@ -353,7 +366,7 @@ export function buildChartSlideXml(
   chart.campaigns.forEach((d, ci) => {
     const pct = chart.totalAllSpend > 0 ? d.spend / chart.totalAllSpend : 1 / n;
     const segW = Math.max(Math.round(W * pct), 2);
-    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: BAR_H, fillHex: campaignRingColor(ci) }));
+    shapes.push(rectangle({ x: barOffset, y: barY, w: segW, h: BAR_H, fillHex: ringColorForCampaign(d, ci) }));
     barOffset += segW;
   });
 

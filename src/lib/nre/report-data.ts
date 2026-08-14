@@ -399,8 +399,36 @@ function computeTableRow(
   currencySymbol: string,
   isMtdRow: boolean,
   objectiveMap: Map<string, ResultLabels>,
+  now: Date = new Date(),
 ): TableRowData {
   if (!rows || rows.length === 0) {
+    // Fix 5 — a zero-spend current month (no MTD Daily CSV rows fell within
+    // this calendar month at all — the common case for a campaign that ran
+    // last month and simply hasn't delivered since) must never look like
+    // the MTD row is missing: the row still needs to show the REAL current
+    // month date range, not the bare "—" placeholder below. The Previous
+    // Month row (isMtdRow false) has no such requirement — an empty
+    // Previous Month Data upload has no "current period" of its own to
+    // synthesize, so it keeps the plain placeholder.
+    if (isMtdRow) {
+      const todayStartTs = new Date(now.toISOString().split("T")[0] + "T00:00:00Z").getTime();
+      const yesterdayIso = new Date(todayStartTs - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const monthStartIso = yesterdayIso.slice(0, 7) + "-01";
+      const currentMonthName = getMonthName(monthStartIso);
+      return {
+        hasData: false,
+        monthLabel: compactSameMonthRangeLabel(monthStartIso, yesterdayIso, currentMonthName),
+        fullMonthLabel: getDateRangeShortLabel(monthStartIso, yesterdayIso),
+        monthName: currentMonthName,
+        sameMonthAsCurrentMTD: false,
+        spend: "—",
+        reach: "—",
+        impressions: "—",
+        ctr: "—",
+        cpc: "—",
+        resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }],
+      };
+    }
     return {
       hasData: false,
       monthLabel: "—",
@@ -754,8 +782,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap);
-  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap);
+  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now);
+  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
   // calendar month (e.g. a report generated on the 1st, before the new
@@ -1131,7 +1159,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     if (!chartGroups[name]) chartGroups[name] = [];
     chartGroups[name].push(row);
   });
-  const chartCampaignNames = Object.keys(chartGroups).sort();
+  // Fix 6 — a campaign that's part of this report (campaignNames, built
+  // from primaryRows above) but contributed zero rows to mtdRows this
+  // calendar month must still get its own donut, showing $0/empty rather
+  // than silently vanishing from the chart. campaignNames only ever comes
+  // from primaryRows (this report's own weekly/MTD scope) — never from
+  // Previous Month Data — so unioning it in here can't leak last month's
+  // figures onto the chart, only supplies campaign IDENTITY for a $0 month.
+  const chartCampaignNames = Array.from(new Set([...Object.keys(chartGroups), ...campaignNames])).sort();
 
   let totalAllSpend = 0;
   const chartCampaigns: ChartCampaignData[] = chartCampaignNames.map((name) => {
@@ -1182,17 +1217,20 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // Performance: Full Month — August 2026"). Dropped the repeated month name
   // and the dash so the combined title reads "August Campaign Performance:
   // Full Month 2026" instead.
+  // Fix 6 — mtdRow.monthName/fullMonthLabel are now ALWAYS the real current
+  // month's range (see Fix 5's computeTableRow change above), never a bare
+  // "—" placeholder even when mtdRows is empty — so the sub-line no longer
+  // needs to gate on mtdRow.hasData to avoid showing stale/blank text; it
+  // always reflects the current month, zero-spend or not.
   const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
   const periodSubLabel =
     reportType === "MONTHLY"
       ? mtdRow.monthName && periodYear
         ? `Full Month ${periodYear}`
         : ""
-      : mtdRow.hasData
-        ? periodYear
-          ? `${mtdRow.fullMonthLabel}, ${periodYear}`
-          : mtdRow.fullMonthLabel
-        : "";
+      : periodYear
+        ? `${mtdRow.fullMonthLabel}, ${periodYear}`
+        : mtdRow.fullMonthLabel;
 
   const chart: ChartSlideData = {
     periodLabel: "MTD",

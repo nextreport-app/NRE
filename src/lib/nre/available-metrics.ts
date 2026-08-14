@@ -79,9 +79,23 @@ export function listAvailableMetrics(headers: string[], platform: MetricPlatform
   return out.sort((a, b) => b.priority - a.priority);
 }
 
-/** The wizard's own dropdown pool — real dictionary metrics only (Part 3's "not dimension/metadata/never/auto-catch items with priority < 50"; autoClassifyUnknownColumn's priority is always fixed at 30, so this cutoff always excludes every auto-caught column from the picker while still counting it in listAvailableMetrics above). */
+/**
+ * Fix 1 — "results"/"cost_per_result" are the dictionary's own GENERIC
+ * fallback keys ("RESULTS"/"COST PER RESULT"). defaultMetaSelection below
+ * already substitutes the campaign's actual objective label for these same
+ * underlying CSV columns (WEBSITE LEADS, META FORM LEADS, LINK CLICKS,
+ * PURCHASES, etc.) when building the pre-selected default — so offering the
+ * raw generic label as a SEPARATE, addable "Add a metric" option is always
+ * redundant and reads as unclear next to the specific one already on the
+ * slide. Excluded by key (not from listAvailableMetrics itself, which still
+ * needs the full pool for Part 4's slide-2 padding and defaultMetaSelection's
+ * own byKey lookups) so only the wizard's own addable dropdown is affected.
+ */
+const ALWAYS_EXCLUDED_SELECTABLE_KEYS = new Set(["results", "cost_per_result"]);
+
+/** The wizard's own dropdown pool — real dictionary metrics only (Part 3's "not dimension/metadata/never/auto-catch items with priority < 50"; autoClassifyUnknownColumn's priority is always fixed at 30, so this cutoff always excludes every auto-caught column from the picker while still counting it in listAvailableMetrics above), minus the always-excluded generic RESULTS/COST PER RESULT keys (Fix 1). */
 export function listSelectableMetrics(headers: string[], platform: MetricPlatform): AvailableMetric[] {
-  return listAvailableMetrics(headers, platform).filter((m) => m.priority >= 50);
+  return listAvailableMetrics(headers, platform).filter((m) => m.priority >= 50 && !ALWAYS_EXCLUDED_SELECTABLE_KEYS.has(m.key));
 }
 
 /** Part 4's per-campaign-slide cap — 1-8 selected metrics fit the template's own 8 card slots on one slide; 9-16 spill onto a second "Additional Metrics" slide. */

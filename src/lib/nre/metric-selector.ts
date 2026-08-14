@@ -57,8 +57,17 @@ export interface SelectedMetric {
  * freqLine), so offering it again here would just duplicate that. Excluded
  * by key rather than by dictionary `type` so the dictionary entry itself
  * (and every other consumer of it) stays untouched.
+ *
+ * Fix 1 — "results"/"cost_per_result" are the dictionary's own GENERIC
+ * fallback labels ("RESULTS"/"COST PER RESULT"). The wizard's default
+ * selection (available-metrics.ts's defaultMetaSelection) already
+ * substitutes the campaign's actual objective label for these same
+ * underlying CSV columns (WEBSITE LEADS, META FORM LEADS, LINK CLICKS,
+ * PURCHASES, etc.), so offering the raw generic label as a SEPARATE,
+ * addable "Add a metric" option is always redundant and reads as unclear
+ * next to the specific one already on the slide.
  */
-const ALWAYS_EXCLUDED_KEYS = new Set(["frequency"]);
+const ALWAYS_EXCLUDED_KEYS = new Set(["frequency", "results", "cost_per_result"]);
 
 export function getAvailableMetrics(
   detectedColumns: string[],

@@ -134,6 +134,41 @@ describe("buildChartSlideXml — Fix 3: per-campaign donut ring colors", () => {
   });
 });
 
+// Fix 6 — a campaign with zero spend this month reads as an empty/grey
+// donut, distinguishing "no MTD spend" from real data at a glance. This is
+// a deliberate, separate exception to Fix 3's "never grey for a real
+// campaign" rule above — those tests all use campaigns with real (non-zero)
+// spend, so they're unaffected by this new zero-spend-only branch.
+describe("buildChartSlideXml — Fix 6: empty/grey donut for a zero-spend campaign", () => {
+  const EMPTY_RING = "9ca3af";
+
+  it("rings a $0 campaign grey instead of its normal palette color", () => {
+    const campaigns = [campaign("Real Spend Co", { spend: 100 }), campaign("Zero Spend Co", { spend: 0 })];
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    const rings = ellipseFillColors(xml).filter((_, i) => i % 2 === 0);
+    expect(rings[0]).toBe(PALETTE[0]);
+    expect(rings[1]).toBe(EMPTY_RING);
+  });
+
+  it("still gives a later real-spend campaign its own palette color, skipping only the zero-spend one's slot", () => {
+    const campaigns = [
+      campaign("Zero Spend Co", { spend: 0 }),
+      campaign("Real Spend Co", { spend: 250 }),
+    ];
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    const rings = ellipseFillColors(xml).filter((_, i) => i % 2 === 0);
+    expect(rings[0]).toBe(EMPTY_RING);
+    expect(rings[1]).toBe(PALETTE[1]); // still its own index color, not shifted down to index 0
+  });
+
+  it("also colors the zero-spend campaign's spend-bar segment grey, matching its own ring", () => {
+    const campaigns = [campaign("Real Spend Co", { spend: 100 }), campaign("Zero Spend Co", { spend: 0 })];
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    const bars = barSegmentColors(xml);
+    expect(bars[1]).toBe(EMPTY_RING);
+  });
+});
+
 describe("buildChartSlideXml — month-name chart title (Weekly and Monthly alike)", () => {
   it("uses '[Month] Campaign Performance' for a Weekly report when a month name is available", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")], { reportType: "WEEKLY", mtdMonthName: "July" }), "$", BACKGROUND);

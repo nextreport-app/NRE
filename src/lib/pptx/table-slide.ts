@@ -277,17 +277,17 @@ export function fillCombinedTotalTable(
   options: TableVisibilityOptions = {},
 ): string {
   const targetCols = grid[0]?.length ?? 0;
-  // Font-size floors (product owner spec, tightened this round): header row
-  // 11pt normally, data ROW LABEL cells (column 0, the Period/MTD date-range
-  // text) 11pt, data VALUE cells (every other column — the numbers/currency)
-  // 12pt. 10pt is the absolute floor for ANY text in this table — the only
-  // thing allowed to shrink below the normal sizes at all is the header when
-  // 3+ objective pairs force it to grow past the template's native 10
-  // columns, and even then it stops at 10pt, never lower. Applies uniformly
-  // across all 3 templates (dark, light, Google) since this is the shared
-  // XML-filling layer they all route through.
-  const HEADER_FONT_SIZE = 1100; // 11pt
-  const HEADER_FONT_SIZE_OVERFLOW = 1000; // 10pt — absolute floor, 3+ objective pairs only
+  // Font-size floors (product owner spec — Fix 4a raised the header row from
+  // 11pt to 12pt): header row 12pt normally, data ROW LABEL cells (column 0,
+  // the Period/MTD date-range text) 11pt, data VALUE cells (every other
+  // column — the numbers/currency) 12pt. 11pt is the absolute floor for the
+  // header — the only thing allowed to shrink below the normal size at all
+  // is the header when 3+ objective pairs force it to grow past the
+  // template's native 10 columns, and even then it stops at 11pt, never
+  // lower. Applies uniformly across all 3 templates (dark, light, Google)
+  // since this is the shared XML-filling layer they all route through.
+  const HEADER_FONT_SIZE = 1200; // 12pt
+  const HEADER_FONT_SIZE_OVERFLOW = 1100; // 11pt — floor, 3+ objective pairs only
   const ROW_LABEL_FONT_SIZE = 1100; // 11pt — data rows' own column-0 date-range text
   const DATA_VALUE_FONT_SIZE = 1200; // 12pt — data rows' numeric/currency cells
   const objectivePairCount = (targetCols - STATIC_COLS) / 2;

@@ -1637,6 +1637,110 @@ describe("buildReportData — paused account", () => {
     // MTD is empty, so header labels fall back to the period row's groups.
     expect(data.tableHeaderLabels.resultColumns[0].label).toBe("PURCHASES");
   });
+
+  // Fix 5 — a zero-spend current month must never look like the MTD row is
+  // missing from the Combined Total table: even with zero MTD Daily CSV
+  // rows at all (mtdDailyRows: []), the row still needs to show the real
+  // current month's date range (derived from `now`), not a bare "—".
+  it("still shows the real current-month date range on the MTD row even when mtdDailyRows is completely empty (Fix 5)", () => {
+    const data = buildReportData({
+      accountName: "Idle Co",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      mtdDailyRows: [],
+      now: NOW, // "2026-07-20T12:00:00Z" — current month is July, "yesterday" is July 19
+    });
+    expect(data.mtdRow.hasData).toBe(false);
+    expect(data.mtdRow.monthLabel).not.toBe("—");
+    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
+    expect(data.mtdRow.fullMonthLabel).toBe("July 1 - July 19");
+    expect(data.mtdRow.monthName).toBe("July");
+    // Every other value stays 0/"—" — only the date label changes.
+    expect(data.mtdRow.spend).toBe("—");
+    expect(data.mtdRow.reach).toBe("—");
+    // Never hidden: buildTableSlideXml's hideMtdRow only fires when both
+    // rows share a month, which requires mtdRow.hasData — false here.
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
+  });
+});
+
+// Fix 6 — the visual chart slide must always reflect the CURRENT month's
+// data, never previous month's, and must never silently drop a campaign
+// that's in scope for this report just because it has zero MTD rows this
+// calendar month. "Old Campaign" only ever ran in June and picks up its
+// spend through a custom weekly range set entirely in June (so it's part of
+// campaignNames, this report's own scope); "Active Campaign" has real July
+// rows, which is what anchors "yesterday"/the MTD month to July (splitMtdDaily
+// always tracks the CSV's own latest date) and keeps mtdRows non-empty. The
+// result: mtdRows/chartGroups has an entry for "Active Campaign" but not for
+// "Old Campaign" at all — exactly the shape a campaign that stopped
+// delivering at the start of the new month would take in a real multi-
+// campaign account's CSV.
+describe("buildReportData — chart slide with zero current-month spend (Fix 6)", () => {
+  function dailyRow(campaignName: string, day: string, spend: number): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: campaignName,
+      ad_set_name: "Only Ad Set",
+      result_type: "Purchase",
+      spend: String(spend),
+      reach: "500",
+      impressions: "1000",
+      results: "5",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const juneDays = ["2026-06-20", "2026-06-21", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26"];
+  const julyDays = daysInclusive(13, 19); // "13-07-2026".."19-07-2026" — the trailing-7-day window for NOW = 2026-07-20
+
+  const rows: NreRow[] = [
+    ...juneDays.map((day) => dailyRow("Old Campaign", day, 100)),
+    ...julyDays.map((day) => dailyRow("Active Campaign", day, 200)),
+  ];
+
+  const data = buildReportData({
+    accountName: "Test Agency",
+    currencySymbol: "$",
+    timezone: "UTC",
+    monthlyBudget: null,
+    mtdDailyRows: rows,
+    weeklyRange: { startIso: "2026-06-20", endIso: "2026-06-26" }, // scopes campaignNames/weeklyRows to June, onto Old Campaign only
+    now: NOW,
+  });
+
+  it("is not paused — the custom weekly window has real (June) spend", () => {
+    expect(data.isPaused).toBe(false);
+    expect(data.chart).not.toBeNull();
+  });
+
+  it("mtdRows (this calendar month) tracks July, not June — confirms the fixture actually reproduces the gap", () => {
+    expect(data.mtdRow.hasData).toBe(true);
+    expect(data.mtdRow.monthName).toBe("July");
+  });
+
+  it("still gives the June-only campaign its own $0 donut on the chart, instead of dropping it because MTD (July) has no rows for it", () => {
+    const entry = data.chart!.campaigns.find((c) => c.name === "Old Campaign");
+    expect(entry).toBeDefined();
+    expect(entry!.spend).toBe(0);
+    expect(entry!.results).toBe(0);
+  });
+
+  it("shows a $0 Total Month to Date Spend contribution from the June-only campaign, never June's real figure", () => {
+    // Active Campaign's real July spend (7 days x $200 = $1400) is the only
+    // contributor — Old Campaign's $700 June spend never leaks in.
+    expect(data.chart!.totalAllSpend).toBe(1400);
+  });
+
+  it("shows the CURRENT month (July) on the chart sub-line and title, never June", () => {
+    expect(data.chart!.mtdMonthName).toBe("July");
+    expect(data.chart!.periodSubLabel).toContain("July");
+    expect(data.chart!.periodSubLabel).not.toContain("June");
+  });
 });
 
 describe("compactSameMonthRangeLabel (Fix 2, round 5) — Combined Total table's short date format", () => {

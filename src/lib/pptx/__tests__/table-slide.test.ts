@@ -44,12 +44,12 @@ describe("fillCombinedTotalTable", () => {
     expect(out).not.toMatch(/R\d+C\d+/);
   });
 
-  it("applies the font-size floors (11pt header, 11pt row-label column, 12pt data values), overriding the fixture's own sz", () => {
+  it("applies the font-size floors (12pt header — Fix 4a, 11pt row-label column, 12pt data values), overriding the fixture's own sz", () => {
     const xml = buildFixtureTable();
     const grid = grid3x10(() => "X");
     const out = fillCombinedTotalTable(xml, grid);
     const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-    expect((rows[0].match(/sz="1100"/g) || []).length).toBe(NATIVE_COLS);
+    expect((rows[0].match(/sz="1200"/g) || []).length).toBe(NATIVE_COLS);
     // Column 0 (row label / date range) is 11pt; the other 9 data columns (values) are 12pt.
     expect((rows[1].match(/sz="1100"/g) || []).length).toBe(1);
     expect((rows[1].match(/sz="1200"/g) || []).length).toBe(NATIVE_COLS - 1);
@@ -246,13 +246,13 @@ describe("fillCombinedTotalTable", () => {
       expect(out).not.toContain('sz="1400"');
     });
 
-    describe("font-size floors: header row + data rows (product owner spec — never below 10pt anywhere)", () => {
-      it("shrinks the header row to its 10pt overflow floor for exactly 3 objective pairs (12 columns); data rows keep their own 11pt/12pt floors", () => {
+    describe("font-size floors: header row + data rows (product owner spec — Fix 4a raised the header to 12pt, never below 11pt anywhere)", () => {
+      it("shrinks the header row to its 11pt overflow floor for exactly 3 objective pairs (12 columns); data rows keep their own 11pt/12pt floors", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
         const grid = grid3xN(12, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1000"/g) || []).length).toBe(12);
+        expect((rows[0].match(/sz="1100"/g) || []).length).toBe(12);
         expect(rows[0]).not.toContain('sz="1400"');
         expect((rows[1].match(/sz="1100"/g) || []).length).toBe(1);
         expect((rows[1].match(/sz="1200"/g) || []).length).toBe(11);
@@ -260,22 +260,23 @@ describe("fillCombinedTotalTable", () => {
         expect((rows[2].match(/sz="1200"/g) || []).length).toBe(11);
       });
 
-      it("never drops the header below its 10pt absolute floor even at 4+ objective pairs (14 columns)", () => {
+      it("never drops the header below its 11pt absolute floor even at 4+ objective pairs (14 columns)", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
         const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1000"/g) || []).length).toBe(14);
+        expect((rows[0].match(/sz="1100"/g) || []).length).toBe(14);
+        expect(rows[0]).not.toContain('sz="1000"');
         expect(rows[0]).not.toContain('sz="900"');
         expect(rows[0]).not.toContain('sz="800"');
       });
 
-      it("sets the header row to its 11pt normal size for 1-2 objective pairs (no overflow risk)", () => {
+      it("sets the header row to its 12pt normal size for 1-2 objective pairs (no overflow risk)", () => {
         const xml = buildFixtureTable();
         const grid = grid3x10((r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1100"/g) || []).length).toBe(10);
+        expect((rows[0].match(/sz="1200"/g) || []).length).toBe(10);
         expect(rows[0]).not.toContain('sz="1400"');
       });
 

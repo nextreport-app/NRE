@@ -100,6 +100,27 @@ describe("listSelectableMetrics — the wizard's own dropdown pool", () => {
     expect(metrics.every((m) => m.priority >= 50)).toBe(true);
     expect(metrics.some((m) => m.key === "a_totally_unknown_column")).toBe(false);
   });
+
+  // Fix 1 — RESULTS/COST PER RESULT are the dictionary's own generic
+  // fallback labels; defaultMetaSelection already substitutes the
+  // campaign's real objective label (WEBSITE LEADS, PURCHASES, etc.) for
+  // these same CSV columns, so offering the raw generic label as a
+  // separate, addable "Add a metric" option is always redundant.
+  it("permanently excludes results/cost_per_result from the addable pool, even though they're real high-priority primary dictionary entries", () => {
+    // Confirm they'd otherwise qualify (real primary entries, priority
+    // well above the 50 cutoff, present in this CSV) — proving the
+    // exclusion is a deliberate override, not an accident of priority.
+    const fullPool = listAvailableMetrics(META_HEADERS, "META");
+    const results = fullPool.find((m) => m.key === "results");
+    const costPerResult = fullPool.find((m) => m.key === "cost_per_result");
+    expect(results?.priority).toBeGreaterThanOrEqual(50);
+    expect(costPerResult?.priority).toBeGreaterThanOrEqual(50);
+
+    const selectable = listSelectableMetrics(META_HEADERS, "META");
+    const keys = selectable.map((m) => m.key);
+    expect(keys).not.toContain("results");
+    expect(keys).not.toContain("cost_per_result");
+  });
 });
 
 describe("defaultMetaSelection — matches slot-assignment.ts's own automatic picks", () => {

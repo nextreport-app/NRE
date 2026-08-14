@@ -33,6 +33,16 @@ const STEP_LABELS: Record<Step, string> = {
   5: "Preview & Generate",
 };
 
+// Fix 2 — context-specific wizard heading per step, replacing the generic
+// "Generate Report" heading that used to be static on every screen.
+const STEP_HEADINGS: Record<Step, string> = {
+  1: "Upload Your CSV",
+  2: "Select Campaigns",
+  3: "Review Metric Cards",
+  4: "Choose Report Period",
+  5: "Preview & Generate",
+};
+
 const MIN_SELECTED_METRICS = 4;
 const MAX_METRICS_PER_SLIDE = 8;
 const MAX_TOTAL_METRICS = 16;
@@ -119,11 +129,6 @@ function formatIsoRange(range: DateRangeIso): string {
 function formatIsoMonthYear(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
   return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
-}
-
-/** Same as formatIsoRange, with the end date's year appended — used for the Month to Date / Full Month Period card, whose range always ends within the current reporting year. */
-function formatIsoRangeWithYear(range: DateRangeIso): string {
-  return `${formatIsoRange(range)}, ${range.endIso.slice(0, 4)}`;
 }
 
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
@@ -1017,6 +1022,10 @@ export function ReportUploadWizard({
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="mb-1 text-[24px] font-bold text-dash-ink">{STEP_HEADINGS[step]}</h1>
+        <p className="text-[15px] text-dash-ink-secondary">{clientName}</p>
+      </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
 
       {step === 1 && (
@@ -1534,23 +1543,6 @@ export function ReportUploadWizard({
               <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
                 Tip: Your CSV must cover both date ranges. Download a custom date range from Meta Ads Manager that
                 includes all dates from both periods.
-              </p>
-            </section>
-          )}
-
-          {/* Section 3 — Month to Date / Full Month Period (not shown for Comparison) */}
-          {reportType !== "COMPARISON" && (
-            <section className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">
-                {reportType === "MONTHLY" ? "Full Month Period" : "Month to Date Period"}
-              </h4>
-              <p className="mt-3 text-[13px] text-dash-ink">
-                {mtdRange
-                  ? `${formatIsoRangeWithYear(mtdRange)} (auto-detected from your CSV)`
-                  : "Month to Date period unavailable"}
-              </p>
-              <p className="mt-1 text-[13px] text-dash-ink-secondary">
-                This is automatically calculated from your uploaded CSV data.
               </p>
             </section>
           )}
