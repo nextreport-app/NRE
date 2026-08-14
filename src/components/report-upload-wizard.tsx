@@ -6,6 +6,8 @@ import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
+import { normalizeCampaignName } from "@/lib/nre/objective";
 import { useToast } from "@/components/toast";
 
 // Ad-set-level filtering was removed from the wizard (product decision: it
@@ -13,24 +15,32 @@ import { useToast } from "@/components/toast";
 // misled clients). The underlying filter logic still lives in
 // lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
 // just never called from here — so it can come back without re-deriving it.
-// Preview + Generate are one screen (see the step === 5 block below) — the
+// Preview + Generate are one screen (see the step === 6 block below) — the
 // action row at the bottom swaps between "Generate" button, a loading
 // spinner, the download/slides links, or an error + Try Again, all without
 // navigating away.
 //
-// Step 3 (Metrics — Part 3) is Meta-only and optional: skipping it (or
+// Step 3 (Objective Confirmation — the permanent objective-detection fix)
+// is Meta-only: the engine's own per-campaign detection (objective.ts's
+// resolveCampaignObjective, backed by result-type-map.ts) pre-fills every
+// campaign's dropdown, and continuing without changing anything keeps that
+// same engine detection exactly as before this step existed — it's a
+// review/correction surface, not a new decision the user is forced to make.
+//
+// Step 4 (Metrics — Part 3) is Meta-only and optional: skipping it (or
 // never touching it) leaves the engine's own automatic per-objective 8-slot
 // assignment in place, exactly as before this step existed. Google Ads
-// still skips straight from Upload to Preview (step 5) — see
-// dispatchAfterAnalyze — since it has no campaign-selection step for a
-// Metric Review to meaningfully follow either.
-type Step = 1 | 2 | 3 | 4 | 5;
+// still skips straight from Upload to Preview (step 6) — see
+// dispatchAfterAnalyze — since it has no campaign-selection step for either
+// Objective Confirmation or a Metric Review to meaningfully follow.
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
-  3: "Metrics",
-  4: "Dates",
-  5: "Preview & Generate",
+  3: "Objectives",
+  4: "Metrics",
+  5: "Dates",
+  6: "Preview & Generate",
 };
 
 // Fix 2 — context-specific wizard heading per step, replacing the generic
@@ -38,9 +48,10 @@ const STEP_LABELS: Record<Step, string> = {
 const STEP_HEADINGS: Record<Step, string> = {
   1: "Upload Your CSV",
   2: "Select Campaigns",
-  3: "Review Metric Cards",
-  4: "Choose Report Period",
-  5: "Preview & Generate",
+  3: "Confirm Objectives",
+  4: "Review Metric Cards",
+  5: "Choose Report Period",
+  6: "Preview & Generate",
 };
 
 const MIN_SELECTED_METRICS = 4;
@@ -190,8 +201,8 @@ export function ReportUploadWizard({
 }) {
   const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
-  // flow jumps straight from step 1 to step 5 (see dispatchAfterAnalyze),
-  // so a plain "s < step" numeric check would wrongly offer steps 2-4 as
+  // flow jumps straight from step 1 to step 6 (see dispatchAfterAnalyze),
+  // so a plain "s < step" numeric check would wrongly offer steps 2-5 as
   // clickable/completed in the step indicator even though they were never
   // shown. Only grows (a step, once visited, stays "completed" even after
   // navigating back to it and forward again).
@@ -231,7 +242,20 @@ export function ReportUploadWizard({
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
-  // Step 3 — Metrics (Part 3, Meta only — populated by /metrics, called
+  // Step 3 — Objective Confirmation (the permanent objective-detection fix,
+  // Meta only — populated by the same /metrics call as Step 4 below, right
+  // after Campaign Selection). Keyed by objective.ts's normalizeCampaignName
+  // so lookups always agree with what buildReportData itself uses. A
+  // campaign present here means the user has SEEN (and possibly corrected)
+  // the engine's detection; only entries the user actually touches need to
+  // be sent back to the server as an override (see
+  // currentCampaignObjectivesPayload) — leaving everything untouched keeps
+  // the engine's own true per-campaign detection, not a copy of whatever
+  // happened to be pre-filled.
+  const [campaignObjectives, setCampaignObjectives] = useState<Map<string, ObjectiveInfo>>(new Map());
+  const [touchedObjectiveCampaigns, setTouchedObjectiveCampaigns] = useState<Set<string>>(new Set());
+
+  // Step 4 — Metrics (Part 3, Meta only — populated by /metrics, called
   // right after Campaign Selection so the engine's default 8 reflects the
   // objective of the campaigns actually being reported on). `selectedMetrics`
   // is the wizard's own ordered pick list (up to MAX_TOTAL_METRICS); empty
@@ -243,7 +267,7 @@ export function ReportUploadWizard({
   const [metricsTouched, setMetricsTouched] = useState(false);
   const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
 
-  // Step 4 — Dates (populated by /analyze)
+  // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
   const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
@@ -259,7 +283,7 @@ export function ReportUploadWizard({
   // handleDatesContinue/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
 
-  // Step 3 — Comparison Report's Period A/B pickers (A1). Seeded from
+  // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
   // weeklyOptions (This week vs Last week, the default preset) as soon as
   // /analyze returns — see applyAnalyzeResult — so switching to the
   // Comparison tab always starts with something sensible pre-filled even
@@ -269,9 +293,9 @@ export function ReportUploadWizard({
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
 
-  // Step 5 — Preview. Comparison reports populate comparisonData instead of
+  // Step 6 — Preview. Comparison reports populate comparisonData instead of
   // data — previewKind (set alongside both in applyPreviewResult) is what
-  // the step === 5 JSX actually branches on.
+  // the step === 6 JSX actually branches on.
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
   const [previewErrors, setPreviewErrors] = useState<ValidationIssue[]>([]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
@@ -285,7 +309,7 @@ export function ReportUploadWizard({
   // of which Report Type is picked.
   const [reportTitleTouched, setReportTitleTouched] = useState(false);
 
-  // Step 5 — Generate (same screen as Preview above, see the step === 5 JSX block)
+  // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -385,7 +409,7 @@ export function ReportUploadWizard({
     }
   }
 
-  /** Resets everything the Preview/Generate/Download screen (step 4) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
+  /** Resets everything the Preview/Generate/Download screen (step 6) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
   function resetGenerateState() {
     setGenerateStatus("idle");
     setGenerateMessage(null);
@@ -469,7 +493,7 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(5);
+    setStep(6);
   }
 
   // ── Step 1 -> 2: Analyze ────────────────────────────────────────────────
@@ -575,7 +599,35 @@ export function ReportUploadWizard({
     });
   }
 
-  // ── Step 2 -> 3: Campaigns -> Metrics ───────────────────────────────────
+  /**
+   * The Objective Confirmation dropdown's fixed option list is the common
+   * 16 objectives (see result-type-map.ts's OBJECTIVE_DROPDOWN_OPTIONS) —
+   * but the engine's own detection can legitimately return something rarer
+   * that isn't one of them (e.g. "AD RECALL LIFT"). Rather than silently
+   * mis-mapping that to the nearest dropdown entry (misrepresenting what
+   * the engine actually found), this synthesizes a matching option carrying
+   * the real detected label/cost text so the dropdown always shows ground
+   * truth as its pre-selected value, even outside the common list.
+   */
+  function objectiveInfoForResultLabel(resultLabel: string, costLabel: string): ObjectiveInfo {
+    const match = OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.resultLabel === resultLabel);
+    if (match) return match;
+    return { key: resultLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_"), resultLabel, costLabel, isReach: false };
+  }
+
+  /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel}` per normalized campaign name) into the wizard's own Map<string, ObjectiveInfo> state shape. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function campaignObjectivesFromJson(json: Record<string, any> | undefined | null): Map<string, ObjectiveInfo> {
+    const map = new Map<string, ObjectiveInfo>();
+    if (!json) return map;
+    for (const [name, info] of Object.entries(json)) {
+      if (!info?.resultLabel || !info?.costLabel) continue;
+      map.set(name, objectiveInfoForResultLabel(info.resultLabel, info.costLabel));
+    }
+    return map;
+  }
+
+  // ── Step 2 -> 3: Campaigns -> Objective Confirmation ────────────────────
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
 
@@ -583,6 +635,7 @@ export function ReportUploadWizard({
     setMetricsStatus("loading");
     setMetricsTouched(false);
     setMetricsLimitMessage(null);
+    setTouchedObjectiveCampaigns(new Set());
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
@@ -594,21 +647,50 @@ export function ReportUploadWizard({
       // The Metric Review step is a nice-to-have preview, not a hard
       // requirement — a failure here shouldn't strand the wizard. Fall
       // through with an empty selection (the engine's automatic
-      // assignment) and let the user continue past step 3 regardless.
+      // assignment) and an empty objective map (the Objective Confirmation
+      // step falls back to RESULTS for every campaign in that case) and let
+      // the user continue past step 3 regardless.
       setMetricsStatus("error");
       setAvailableMetrics([]);
       setSelectedMetrics([]);
+      setCampaignObjectives(new Map());
       setStep(3);
       return;
     }
 
     setAvailableMetrics(json.availableMetrics || []);
     setSelectedMetrics(json.defaultSelection || []);
+    setCampaignObjectives(campaignObjectivesFromJson(json.campaignObjectives));
     setMetricsStatus("idle");
     setStep(3);
   }
 
-  // ── Step 3: Metrics (Part 3) ────────────────────────────────────────────
+  // ── Step 3: Objective Confirmation (the permanent objective-detection fix) ──
+  /** Dropdown onChange — records the user's choice AND marks the campaign as touched, so only campaigns the user actually reviewed/changed are sent back as an override (see currentCampaignObjectivesPayload) — an untouched campaign keeps the engine's own true detection rather than a copy of whatever was pre-filled. Keyed by normalizeCampaignName, matching the server's own campaignObjectiveMap keys exactly. */
+  function setCampaignObjective(campaignName: string, objectiveKey: string) {
+    const option = OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === objectiveKey);
+    if (!option) return;
+    const normalized = normalizeCampaignName(campaignName);
+    setCampaignObjectives((prev) => new Map(prev).set(normalized, option));
+    setTouchedObjectiveCampaigns((prev) => new Set(prev).add(normalized));
+  }
+
+  /** Only sent to the preview/generate APIs for campaigns the user actually touched on the Objective Confirmation step — leaving a campaign untouched keeps the engine's own true per-campaign detection (report-data.ts's resolveCampaignObjective), rather than pinning it to whatever the wizard happened to pre-select. */
+  function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
+    if (touchedObjectiveCampaigns.size === 0) return undefined;
+    const out: Record<string, { resultLabel: string; costLabel: string }> = {};
+    for (const name of touchedObjectiveCampaigns) {
+      const info = campaignObjectives.get(name);
+      if (info) out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  }
+
+  function handleObjectivesContinue() {
+    setStep(4);
+  }
+
+  // ── Step 4: Metrics (Part 3) ────────────────────────────────────────────
   /**
    * "Add another metric" pool, minus whatever's already showing as a card.
    * Filters on both key AND label: the dictionary can map two different CSV
@@ -674,7 +756,7 @@ export function ReportUploadWizard({
   }
 
   function handleMetricsContinue() {
-    setStep(4);
+    setStep(5);
   }
 
   /** Only sent to the preview/generate APIs once the user actually changes something on the Metric Review step — leaving it untouched (the common case: "Most users will just click Continue") keeps the engine's own true per-campaign automatic assignment, rather than pinning every campaign to the single majority-objective default shown in the wizard. */
@@ -682,7 +764,7 @@ export function ReportUploadWizard({
     return metricsTouched && selectedMetrics.length > 0 ? selectedMetrics : undefined;
   }
 
-  // ── Step 4: Dates ───────────────────────────────────────────────────────
+  // ── Step 5: Dates ───────────────────────────────────────────────────────
   function validateCustomRange(): boolean {
     if (dateMode !== "custom") return true;
     if (!customStart || !customEnd) {
@@ -743,6 +825,7 @@ export function ReportUploadWizard({
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
         selectedMetrics: currentSelectedMetricsPayload(),
+        campaignObjectives: currentCampaignObjectivesPayload(),
         dateSelection,
         reportType,
         platform,
@@ -764,10 +847,10 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(5);
+    setStep(6);
   }
 
-  // ── Step 5: Preview + Generate (one screen) ─────────────────────────────
+  // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile) return;
     setGenerateStatus("loading");
@@ -787,6 +870,7 @@ export function ReportUploadWizard({
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
         selectedMetrics: currentSelectedMetricsPayload(),
+        campaignObjectives: currentCampaignObjectivesPayload(),
         dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
         reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
         reportType,
@@ -907,9 +991,9 @@ export function ReportUploadWizard({
     }
   }
 
-  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 4 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
+  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 5 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
   function handleBackToDates() {
-    setStep(4);
+    setStep(5);
   }
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
@@ -925,6 +1009,9 @@ export function ReportUploadWizard({
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
+
+    setCampaignObjectives(new Map());
+    setTouchedObjectiveCampaigns(new Set());
 
     setAvailableMetrics([]);
     setSelectedMetrics([]);
@@ -1201,6 +1288,73 @@ export function ReportUploadWizard({
       )}
 
       {step === 3 && (
+        <div className="space-y-4 rounded-lg border border-dash-border bg-[#1e293b] p-5">
+          <div>
+            <h3 className="text-[16px] font-semibold text-white">Confirm Campaign Objectives</h3>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">
+              We&apos;ve detected the objectives for each campaign. Review and correct if needed before generating
+              your report.
+            </p>
+          </div>
+
+          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
+            {campaigns
+              .filter((name) => selectedCampaigns.has(name))
+              .map((name) => {
+                const normalized = normalizeCampaignName(name);
+                const current = campaignObjectives.get(normalized);
+                // The dropdown always has a real, selectable value — a
+                // campaign the engine (or a fetch failure) never resolved
+                // falls back to the generic RESULTS option rather than
+                // showing nothing selected.
+                const currentKey = current?.key ?? "results";
+                const options = OBJECTIVE_DROPDOWN_OPTIONS.some((o) => o.key === currentKey)
+                  ? OBJECTIVE_DROPDOWN_OPTIONS
+                  : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
+                return (
+                  <li key={name} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <span className="truncate text-[13px] text-white" title={name}>
+                      {name}
+                    </span>
+                    <select
+                      value={currentKey}
+                      onChange={(e) => setCampaignObjective(name, e.target.value)}
+                      className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55]"
+                    >
+                      {options.map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.resultLabel}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
+                );
+              })}
+          </ul>
+
+          <p className="text-[13px] text-dash-ink-secondary">
+            The detected objective is shown. Change it if incorrect. The objective determines which metrics are
+            highlighted in your report.
+          </p>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(2)}
+              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleObjectivesContinue}
+              className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            >
+              Continue →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
             <h3 className="text-[16px] font-semibold text-white">Review Metric Cards</h3>
@@ -1307,7 +1461,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(3)}
               className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -1323,7 +1477,7 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <div className="space-y-5">
           <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
 
@@ -1575,7 +1729,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(4)}
               className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -1596,11 +1750,11 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 5 && (data || comparisonData) && (
+      {step === 6 && (data || comparisonData) && (
         <div className="space-y-6">
           {/* Every section of this confirmation screen shares one width —
               no max-width of its own, same as every other step's container
-              (steps 1-3's card divs, step 4's flat space-y-5 div), so it
+              (steps 1-4's card divs, step 5's flat space-y-5 div), so it
               fills exactly the same width as the rest of the wizard at
               every screen size. */}
           <div className="space-y-4">
@@ -1729,7 +1883,7 @@ export function ReportUploadWizard({
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(5)}
                   className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
                 >
                   Back
@@ -2022,13 +2176,13 @@ export function ReportUploadWizard({
 
 /**
  * `visitedSteps` (not just "s < step") decides whether a step is completed
- * and clickable — the Google Ads flow jumps straight from step 1 to step 5
- * (dispatchAfterAnalyze), so steps 2-4 are numerically "less than" step 5
+ * and clickable — the Google Ads flow jumps straight from step 1 to step 6
+ * (dispatchAfterAnalyze), so steps 2-5 are numerically "less than" step 6
  * without ever having been shown; those must stay muted/unclickable rather
  * than falsely offering navigation into a step that was never populated.
  * Clicking a completed step just calls onNavigate(s) — a plain setStep,
  * identical to the wizard's existing per-screen "Back" buttons — so all
- * state (upload, campaigns, metrics, dates) is preserved automatically:
+ * state (upload, campaigns, objectives, metrics, dates) is preserved automatically:
  * nothing here clears or resets any of it.
  */
 function StepIndicator({
@@ -2040,7 +2194,7 @@ function StepIndicator({
   visitedSteps: Set<Step>;
   onNavigate: (s: Step) => void;
 }) {
-  const steps: Step[] = [1, 2, 3, 4, 5];
+  const steps: Step[] = [1, 2, 3, 4, 5, 6];
   return (
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       {steps.map((s, i) => {
@@ -2182,7 +2336,7 @@ function NoDataRowsWarning({ message }: { message: string }) {
   );
 }
 
-/** Step 1's platform cards and Step 3's Report Type cards share this same "full selectable card" shape (icon/heading/description) — plain buttons rather than native radios, since the visual design calls for full selectable cards, not a radio dot + label row. */
+/** Step 1's platform cards and Step 5's Report Type cards share this same "full selectable card" shape (icon/heading/description) — plain buttons rather than native radios, since the visual design calls for full selectable cards, not a radio dot + label row. */
 function ReportTypeCard({
   icon,
   heading,

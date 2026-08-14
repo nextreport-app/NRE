@@ -959,6 +959,21 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Average cost per checkout initiated",
     perUnitOf: "initiate_checkout",
   },
+  // Objective Confirmation (Part 6) — an Initiate Checkout or Add To Cart
+  // campaign's own "Results" column is that campaign's OWN objective count
+  // (checkouts/carts, not purchases), so unlike a Purchases campaign, the
+  // funnel's actual purchase count needs its own dedicated column lookup to
+  // show as a secondary slot 8 metric.
+  {
+    csvName: "purchases",
+    key: "purchases",
+    label: "PURCHASES",
+    type: "secondary",
+    format: "number",
+    objectives: ["sales"],
+    priority: 74,
+    explanation: "Number of purchases from your ad, further down the funnel than this campaign's own objective",
+  },
 
   // Phone Calls
   {

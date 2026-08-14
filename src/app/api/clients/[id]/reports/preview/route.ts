@@ -13,6 +13,7 @@ import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import {
+  campaignObjectivesSchema,
   comparisonPeriodSchema,
   dateSelectionSchema,
   parseJsonFormField,
@@ -81,6 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
 
   // Comparison reports skip the weekly/monthly date-selection resolution
@@ -134,6 +136,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     weeklyRange: dateResolution.weeklyRange,
     reportType,
     selectedMetrics,
+    campaignObjectives,
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

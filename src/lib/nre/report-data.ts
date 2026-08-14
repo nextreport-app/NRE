@@ -323,6 +323,21 @@ export interface BuildReportDataInput {
    * this field existed.
    */
   selectedMetrics?: SelectedMetric[];
+  /**
+   * Objective Confirmation wizard step's output — user-reviewed/corrected
+   * objectives, keyed by normalized campaign name (see objective.ts's
+   * normalizeCampaignName). Engine-detected objectives (via
+   * buildCampaignObjectiveMap's resolveCampaignObjective, itself now backed
+   * by result-type-map.ts as its first priority) are always computed first;
+   * any campaign present here OVERRIDES that engine result before campaign
+   * slides, ad-set slides, or the Combined Total table ever read from
+   * campaignObjectiveMap — so a user correction is guaranteed to reach
+   * every one of those consumers uniformly, since they all already read
+   * from that single map (see Step 0 below). `undefined`/empty means the
+   * step was skipped or left untouched — every campaign keeps its
+   * engine-detected objective, exactly as before this field existed.
+   */
+  campaignObjectives?: Record<string, ResultLabels>;
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -651,6 +666,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     reportType = "WEEKLY",
     now = new Date(),
     selectedMetrics,
+    campaignObjectives,
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
 
@@ -705,6 +721,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // reportType) might ask about, even the rare case where a custom weekly
   // window falls partly outside the current MTD span.
   const campaignObjectiveMap = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
+  // Objective Confirmation wizard step — a user-reviewed/corrected
+  // objective always wins over the engine's own detection, for every
+  // consumer that reads campaignObjectiveMap below (campaign slides,
+  // ad-set slides via their parent campaign, and the Combined Total
+  // table's column grouping all already read from this one map — see the
+  // doc comment above). Scoped to THIS month's campaigns only: a campaign
+  // absent from campaignObjectives simply keeps its engine-detected
+  // objective, and previousMonthObjectiveMap below is never touched by it
+  // (last month's objective is resolved independently, from that separate
+  // upload's own data, and can genuinely differ from this month's).
+  if (campaignObjectives) {
+    for (const [name, objective] of Object.entries(campaignObjectives)) {
+      campaignObjectiveMap.set(normalizeCampaignName(name), objective);
+    }
+  }
   // A campaign's Previous Month objective is resolved independently, from
   // that separate upload's own (different month's) data — a campaign's
   // objective can genuinely differ month to month, so this stays a SEPARATE

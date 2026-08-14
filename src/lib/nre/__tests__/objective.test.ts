@@ -10,6 +10,7 @@ import {
   getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
   normalizeCampaignName,
+  resolveCampaignObjective,
   resolveObjective,
 } from "../objective";
 import type { AggRow } from "../aggregate";
@@ -701,6 +702,98 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
     expect(tableGroups).toHaveLength(1);
     expect(tableGroups[0]).toMatchObject({ label: "WEBSITE LEADS", count: 28, totalSpend: 280 });
+  });
+});
+
+// Objective Confirmation — the permanent objective-detection fix (Part 8's
+// numbered test list). resolveCampaignObjective is the new per-campaign
+// resolver buildCampaignObjectiveMap now uses: exact result_type ground
+// truth (result-type-map.ts) first, the existing dedicated-column/fuzzy-
+// catalog/data-value priority chain as fallback for anything it doesn't
+// recognize.
+describe("resolveCampaignObjective — Objective Confirmation permanent fix (Part 8)", () => {
+  it("Test 1 — result_type 'initiate_checkout' -> INITIATE CHECKOUT, even with real purchases column data present", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "initiate_checkout", purchases: 50, results: 40, spend: 300 }),
+      metricRow({ _raw: {}, result_type: "initiate_checkout", purchases: 30, results: 35, spend: 280 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
+    expect(resolution.resultLabel).not.toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER CHECKOUT");
+  });
+
+  it("Test 2 — result_type 'purchase' -> PURCHASES", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "purchase", purchases: 20, results: 20, spend: 500 }),
+      metricRow({ _raw: {}, result_type: "purchase", purchases: 15, results: 15, spend: 400 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER PURCHASE");
+  });
+
+  it("Test 4 — result_type 'onsite_conversion.lead_grouped' -> META FORM LEADS", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "onsite_conversion.lead_grouped", results: 12, spend: 150 }),
+      metricRow({ _raw: {}, result_type: "onsite_conversion.lead_grouped", results: 9, spend: 120 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("META FORM LEADS");
+    expect(resolution.costLabel).toBe("COST PER LEAD");
+  });
+
+  it("Test 5 — result_type missing but website_leads column has value -> WEBSITE LEADS (falls through to the existing dedicated-column priority)", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
+      metricRow({ _raw: {}, result_type: "", website_leads: 7, results: 7, spend: 90 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.costLabel).toBe("COST PER WEBSITE LEAD");
+  });
+
+  describe("Test 9 — the landing_page_view special case", () => {
+    it("result_type 'landing_page_view' + real website_leads column data -> WEBSITE LEADS (a lead campaign using LPV as a mid-funnel signal)", () => {
+      const rows: MetricRow[] = [
+        metricRow({ _raw: {}, result_type: "landing_page_view", website_leads: 22, landing_page_views: 340, results: 22, spend: 260 }),
+        metricRow({ _raw: {}, result_type: "landing_page_view", website_leads: 14, landing_page_views: 210, results: 14, spend: 190 }),
+      ];
+      const resolution = resolveCampaignObjective(rows);
+      expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+      expect(resolution.resultLabel).not.toBe("LANDING PAGE VIEWS");
+    });
+
+    it("result_type 'landing_page_view' + genuinely zero leads anywhere -> LANDING PAGE VIEWS (a real traffic/LPV campaign)", () => {
+      const rows: MetricRow[] = [
+        metricRow({ _raw: {}, result_type: "landing_page_view", landing_page_views: 500, results: 500, spend: 300 }),
+        metricRow({ _raw: {}, result_type: "landing_page_view", landing_page_views: 420, results: 420, spend: 260 }),
+      ];
+      const resolution = resolveCampaignObjective(rows);
+      expect(resolution.resultLabel).toBe("LANDING PAGE VIEWS");
+      expect(resolution.costLabel).toBe("COST PER LPV");
+    });
+  });
+
+  it("Test 6 setup — buildCampaignObjectiveMap's engine detection can be overridden by a caller-supplied map entry (report-data.ts's own override layer is tested at the buildReportData level)", () => {
+    // resolveCampaignObjective itself has no override concept — the
+    // override happens one layer up, in report-data.ts's buildReportData
+    // (see report-data.test.ts's own Objective Confirmation coverage) —
+    // this just confirms the engine's own detection is what gets
+    // overridden, i.e. it's deterministic and doesn't itself special-case
+    // any campaign name.
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "initiate_checkout", results: 10, spend: 100 })];
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("INITIATE CHECKOUT");
+  });
+
+  it("outnumbering the blank bucket still requires a real majority — a single stray non-blank result_type among mostly-blank rows never overrides the blank majority's own dedicated-column detection", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 15, results: 15, spend: 200 }),
+      metricRow({ _raw: {}, result_type: "", website_leads: 10, results: 10, spend: 150 }),
+      metricRow({ _raw: {}, result_type: "reach", reach: 5000, results: 0, spend: 5 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
   });
 });
 

@@ -262,24 +262,48 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot8 = pickSlot([{ key: "messaging_contacts", label: "MESSAGING CONTACTS", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
+    // Objective Confirmation (Part 6) — Purchases' own funnel steps (ADD TO
+    // CART, then INITIATE CHECKOUT) take priority for slots 7/8 whenever
+    // the CSV actually has real, non-zero data for either one; only when
+    // NEITHER does the case fall back to ROAS + LANDING PAGE VIEWS instead.
     case "PURCHASES": {
       slot4 = slot("results", "PURCHASES", "number", baseline.resultValue);
       slot5 = slot("cost_per_result", "COST PER PURCHASE", "currency", baseline.cprValue);
-      slot7 = pickSlot([{ key: "results_roas", label: "ROAS", format: "ratio" }], usedKeys(slot4, slot5), v);
-      // Product spec: "prioritize ADD TO CART when available, then
-      // INITIATE CHECKOUT, then ROAS" — ROAS is already this case's own
-      // slot 7, so that final fallback tier is skipped in favor of the
-      // default CLICKS (ALL) pick (not redundant here — LINK CLICKS isn't
-      // used anywhere else in this case).
-      slot8 = pickSlot(
-        [
-          { key: "add_to_cart", label: "ADD TO CART", format: "number" },
-          { key: "initiate_checkout", label: "INITIATE CHECKOUT", format: "number" },
-          CLICKS_ALL,
-        ],
-        usedKeys(slot4, slot5, slot7),
-        v,
-      );
+      const hasFunnelData = v("add_to_cart") !== "—" || v("initiate_checkout") !== "—";
+      if (hasFunnelData) {
+        slot7 = pickSlot([{ key: "add_to_cart", label: "ADD TO CART", format: "number" }], usedKeys(slot4, slot5), v);
+        slot8 = pickSlot(
+          [{ key: "initiate_checkout", label: "INITIATE CHECKOUT", format: "number" }],
+          usedKeys(slot4, slot5, slot7),
+          v,
+        );
+      } else {
+        slot7 = pickSlot([{ key: "results_roas", label: "ROAS", format: "ratio" }], usedKeys(slot4, slot5), v);
+        slot8 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5, slot7), v);
+      }
+      break;
+    }
+
+    // Objective Confirmation (Part 6) — a campaign optimizing for Initiate
+    // Checkout: slot 7 looks one funnel step earlier (ADD TO CART), slot 8
+    // one step later (PURCHASES), showing where this campaign's traffic
+    // actually converts further down the funnel.
+    case "INITIATE CHECKOUT": {
+      slot4 = slot("results", "INITIATE CHECKOUT", "number", baseline.resultValue);
+      slot5 = slot("cost_per_result", "COST PER CHECKOUT", "currency", baseline.cprValue);
+      slot7 = pickSlot([{ key: "add_to_cart", label: "ADD TO CART", format: "number" }], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([{ key: "purchases", label: "PURCHASES", format: "number" }], usedKeys(slot4, slot5, slot7), v);
+      break;
+    }
+
+    // Objective Confirmation (Part 6) — a campaign optimizing for Add To
+    // Cart: slot 7 looks one funnel step later (INITIATE CHECKOUT), slot 8
+    // the full-funnel outcome (PURCHASES).
+    case "ADD TO CART": {
+      slot4 = slot("results", "ADD TO CART", "number", baseline.resultValue);
+      slot5 = slot("cost_per_result", "COST PER ADD TO CART", "currency", baseline.cprValue);
+      slot7 = pickSlot([{ key: "initiate_checkout", label: "INITIATE CHECKOUT", format: "number" }], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([{ key: "purchases", label: "PURCHASES", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
     }
 

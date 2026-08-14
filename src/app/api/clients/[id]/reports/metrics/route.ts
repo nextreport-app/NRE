@@ -6,7 +6,7 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
-import { getResultGroups } from "@/lib/nre/objective";
+import { buildCampaignObjectiveMap, getResultGroups } from "@/lib/nre/objective";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
 import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics } from "@/lib/nre/available-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -73,9 +73,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const resultLabel = topGroup?.label ?? "RESULTS";
     const costLabel = topGroup?.costLabel ?? "COST PER RESULT";
 
+    // Objective Confirmation wizard step — one entry per selected campaign
+    // (keyed by objective.ts's own normalizeCampaignName, so the wizard's
+    // lookup and the eventual campaignObjectives override sent back to
+    // buildReportData use identical keys), from the SAME algorithm
+    // buildReportData itself uses (resolveCampaignObjective, via
+    // buildCampaignObjectiveMap) — so the dropdown's pre-selected value is
+    // never a different guess than what the report would generate if the
+    // user changed nothing.
+    const campaignObjectives = Object.fromEntries(buildCampaignObjectiveMap(rowsForObjective));
+
     return NextResponse.json({
       defaultSelection: defaultMetaSelection(resultLabel, costLabel, mtdParsed.headers),
       availableMetrics: listSelectableMetrics(mtdParsed.headers, "META"),
+      campaignObjectives,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:metrics");

@@ -159,10 +159,12 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     expect(real[7]?.key).toBe("landing_page_views");
   });
 
-  it("PURCHASES: picks ADD TO CART when the header is present, matching buildMetaSlots' own header-presence check", () => {
+  // Objective Confirmation (Part 6) — ADD TO CART is now slot 7 (index 6),
+  // not slot 8, matching buildMetaSlots' own updated priority.
+  it("PURCHASES: picks ADD TO CART for slot 7 when the header is present, matching buildMetaSlots' own header-presence check", () => {
     const headersWithCart = [...META_HEADERS, "Adds to cart"];
     const preview = defaultMetaSelection("PURCHASES", "COST PER PURCHASE", headersWithCart);
-    expect(preview[7].key).toBe("add_to_cart");
+    expect(preview[6].key).toBe("add_to_cart");
   });
 
   it("always returns exactly 8 metrics", () => {

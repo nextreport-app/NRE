@@ -222,17 +222,25 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot7 = byKey("META", "new_messaging_contacts")!;
       slot8 = byKey("META", "messaging_contacts")!;
       break;
-    case "PURCHASES":
+    // Objective Confirmation (Part 6) — mirrors buildMetaSlots' own PURCHASES
+    // case exactly: ADD TO CART/INITIATE CHECKOUT (this campaign's own
+    // funnel steps) take priority for slots 7/8 whenever either header is
+    // present; only when NEITHER is does the case fall back to ROAS +
+    // LANDING PAGE VIEWS.
+    case "PURCHASES": {
       slot4 = byKey("META", "results", "PURCHASES")!;
       slot5 = byKey("META", "cost_per_result", "COST PER PURCHASE")!;
-      slot7 = byKey("META", "results_roas")!;
-      // Not redundant here — LINK CLICKS isn't used anywhere else in this case.
-      slot8 = hasHeader(headers, "adds to cart", "website adds to cart", "add to cart")
-        ? byKey("META", "add_to_cart")!
-        : hasHeader(headers, "initiate checkout")
-          ? byKey("META", "initiate_checkout")!
-          : clicksAll;
+      const hasAddToCart = hasHeader(headers, "adds to cart", "website adds to cart", "add to cart");
+      const hasInitiateCheckout = hasHeader(headers, "initiate checkout");
+      if (hasAddToCart || hasInitiateCheckout) {
+        slot7 = hasAddToCart ? byKey("META", "add_to_cart")! : clicksAll;
+        slot8 = hasInitiateCheckout ? byKey("META", "initiate_checkout")! : clicksAll;
+      } else {
+        slot7 = byKey("META", "results_roas")!;
+        slot8 = hasHeader(headers, "landing page views") ? byKey("META", "landing_page_views")! : clicksAll;
+      }
       break;
+    }
     case "APP INSTALLS":
     case "MOBILE APP INSTALLS":
       slot4 = byKey("META", "results", "APP INSTALLS")!;

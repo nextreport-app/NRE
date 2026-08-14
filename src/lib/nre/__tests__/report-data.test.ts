@@ -634,8 +634,13 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
       now: NOW,
     });
 
-    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "LEADS");
-    expect(leadsColumn?.costLabel).toBe("COST PER LEAD");
+    // result_type "Lead" is now resolved via result-type-map.ts's exact
+    // machine-string match (Objective Confirmation permanent fix) as the
+    // more specific WEBSITE LEADS, not the old fuzzy-catalog generic LEADS
+    // fallback — the math being tested here (combined-totals CPL, not an
+    // average of the two campaigns' own CPLs) is unaffected either way.
+    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(leadsColumn?.costLabel).toBe("COST PER WEBSITE LEAD");
     expect(leadsColumn?.value).toBe("25");
     // (1000 + 300) / (10 + 15) = 52.00, not the $60 simple average.
     expect(leadsColumn?.cprValue).toBe("$52.00");
@@ -1677,6 +1682,110 @@ describe("buildReportData — paused account", () => {
 // "Old Campaign" at all — exactly the shape a campaign that stopped
 // delivering at the start of the new month would take in a real multi-
 // campaign account's CSV.
+// Objective Confirmation — the permanent objective-detection fix (Part 8's
+// numbered test list, the buildReportData-level tests).
+describe("buildReportData — Objective Confirmation (Part 8)", () => {
+  function objRow(campaignName: string, resultType: string, resultsCount: number, spend: number): NreRow {
+    return {
+      _raw: {},
+      campaign_name: campaignName,
+      result_type: resultType,
+      spend: String(spend),
+      reach: "1000",
+      impressions: "3000",
+      results: String(resultsCount),
+      ctr: "1.5",
+      cpc: "2",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    } as unknown as NreRow;
+  }
+
+  it("Test 3 — a mixed account (Initiate Checkout + Purchases + Reach campaigns) gets 3 separate Combined Total columns; each objective's cost-per-result uses ONLY that objective's own spend", () => {
+    const periodRows: NreRow[] = [
+      objRow("IC Campaign", "initiate_checkout", 40, 400), // its own CPP = 400/40 = $10
+      objRow("Purchases Campaign", "purchase", 20, 1000), // its own CPP = 1000/20 = $50
+      objRow("Reach Campaign", "reach", 0, 50),
+    ];
+    const data = buildReportData({
+      accountName: "Mixed Objective Agency",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows: [],
+      periodRows,
+      now: NOW,
+    });
+
+    const labels = data.periodRow.resultColumns.map((c) => c.label);
+    expect(labels).toEqual(expect.arrayContaining(["INITIATE CHECKOUT", "PURCHASES", "REACH"]));
+    expect(labels).toHaveLength(3);
+
+    const icColumn = data.periodRow.resultColumns.find((c) => c.label === "INITIATE CHECKOUT")!;
+    const purchasesColumn = data.periodRow.resultColumns.find((c) => c.label === "PURCHASES")!;
+    // Each objective's own cost-per-result — IC's $400 spend never leaks
+    // into Purchases' own $1000/20 = $50.00 calculation (would be
+    // ($400+$1000)/20 = $70.00 if the combined spend were wrongly used).
+    expect(icColumn.value).toBe("40");
+    expect(icColumn.cprValue).toBe("$10.00");
+    expect(purchasesColumn.value).toBe("20");
+    expect(purchasesColumn.cprValue).toBe("$50.00");
+  });
+
+  it("Test 6 — a user-confirmed objective override (campaignObjectives) wins over the engine's own detection for that campaign", () => {
+    const mtdDays = daysInclusive(13, 19);
+    const mtdDailyRows: NreRow[] = mtdDays.map(
+      (day) =>
+        ({
+          _raw: { Day: day },
+          campaign_name: "Checkout Campaign",
+          result_type: "initiate_checkout",
+          spend: "50",
+          reach: "1000",
+          impressions: "3000",
+          results: "5",
+          ctr: "1.5",
+          cpc: "2",
+          date_start: day,
+          date_end: day,
+        }) as unknown as NreRow,
+    );
+
+    // Without any override — engine detection wins (INITIATE CHECKOUT).
+    const engineData = buildReportData({
+      accountName: "Override Agency",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows,
+      now: NOW,
+    });
+    expect(engineData.mtdRow.resultColumns[0].label).toBe("INITIATE CHECKOUT");
+
+    // With the Objective Confirmation step's user override — PURCHASES wins
+    // for this campaign, for every consumer that reads campaignObjectiveMap
+    // (the Combined Total table here; campaign/ad-set slides read the same
+    // map — see report-data.ts's Step 0).
+    const overriddenData = buildReportData({
+      accountName: "Override Agency",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows,
+      now: NOW,
+      campaignObjectives: {
+        "checkout campaign": { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" },
+      },
+    });
+    expect(overriddenData.mtdRow.resultColumns[0].label).toBe("PURCHASES");
+    expect(overriddenData.mtdRow.resultColumns[0].costLabel).toBe("COST PER PURCHASE");
+    // The campaign slide's own objective agrees with the table (single
+    // source of truth — both read the same overridden campaignObjectiveMap).
+    const slide = overriddenData.campaignSlides.find((s) => s.campaignName === "Checkout Campaign")!;
+    expect(slide.resultLabel).toBe("PURCHASES");
+  });
+});
+
 describe("buildReportData — chart slide with zero current-month spend (Fix 6)", () => {
   function dailyRow(campaignName: string, day: string, spend: number): NreRow {
     return {

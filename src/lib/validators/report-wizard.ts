@@ -80,6 +80,19 @@ export const selectedMetricSchema = z.object({
 // again here at the request boundary rather than trusted from the client.
 export const selectedMetricsSchema = z.array(selectedMetricSchema).max(16);
 
+// Objective Confirmation wizard step's output — user-reviewed/corrected
+// per-campaign objectives, keyed by normalized campaign name (matches
+// objective.ts's normalizeCampaignName and buildCampaignObjectiveMap's own
+// Map<string, ResultLabels> shape, serialized as a plain object for JSON
+// transport — see report-data.ts's own campaignObjectives field). Every
+// campaign is optional; a campaign absent from this object simply keeps
+// its engine-detected objective.
+export const objectiveInfoSchema = z.object({
+  resultLabel: z.string().trim().min(1),
+  costLabel: z.string().trim().min(1),
+});
+export const campaignObjectivesSchema = z.record(z.string(), objectiveInfoSchema);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

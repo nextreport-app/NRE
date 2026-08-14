@@ -186,11 +186,14 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
     expect(slots[7]?.value).not.toBe("—");
   });
 
-  it("PURCHASES: slot 8 is ADD TO CART when present in the CSV", () => {
+  // Objective Confirmation (Part 6) — ADD TO CART is now this case's own
+  // slot 7 pick (a funnel-step-earlier metric, prioritized over ROAS
+  // whenever real funnel data exists), not slot 8.
+  it("PURCHASES: slot 7 is ADD TO CART when present in the CSV", () => {
     const rows = [row({ "Amount spent": "100", "Adds to cart": "25" })];
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
-    expect(slots[7]?.key).toBe("add_to_cart");
-    expect(slots[7]?.value).not.toBe("—");
+    expect(slots[6]?.key).toBe("add_to_cart");
+    expect(slots[6]?.value).not.toBe("—");
   });
 
   it("PURCHASES: slot 8 falls back to INITIATE CHECKOUT when ADD TO CART isn't in the CSV", () => {

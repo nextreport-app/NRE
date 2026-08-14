@@ -26,6 +26,7 @@ import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import {
+  campaignObjectivesSchema,
   comparisonPeriodSchema,
   dateSelectionSchema,
   parseJsonFormField,
@@ -68,6 +69,7 @@ async function buildMetaData(
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
+  const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
   // caller (POST below) returns early for reportType "COMPARISON" before
@@ -95,6 +97,7 @@ async function buildMetaData(
     weeklyRange: dateResolution.weeklyRange,
     reportType,
     selectedMetrics,
+    campaignObjectives,
   });
 
   return { data };

@@ -9,6 +9,7 @@
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
+import { resolveObjectiveFromResultType } from "./result-type-map";
 
 export interface ResultLabels {
   resultLabel: string;
@@ -571,14 +572,92 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * Data — see buildReportData's Step 0) rather than re-building it per
  * consumer.
  */
+/**
+ * Objective Confirmation (permanent objective-detection fix) — per-campaign
+ * objective resolution, now the single algorithm buildCampaignObjectiveMap
+ * uses instead of getResultGroups + pickPrimaryResultGroup directly.
+ *
+ * Priority 1 — the campaign's own DOMINANT result_type (the most common
+ * non-empty result_type value across its rows — a campaign can, in
+ * principle, carry more than one distinct value across different days if
+ * the objective genuinely changed mid-flight; the majority wins), looked up
+ * in result-type-map.ts's RESULT_TYPE_MAP for an EXACT match against Meta's
+ * own machine-readable event names (e.g. "offsite_conversion.fb_pixel_purchase",
+ * "onsite_conversion.lead_grouped"). This is Meta's own declaration of what
+ * the campaign is optimized for — ground truth, trusted above every other
+ * signal, with one documented exception immediately below.
+ *
+ * Special case — result_type = "landing_page_view" is Meta's own
+ * intermediate/tracking signal, populated both by a genuine Traffic/LPV
+ * campaign AND by a Sales campaign that happens to use "Landing Page View"
+ * as its optimization event; the two are indistinguishable from result_type
+ * text alone. A campaign with real Website Leads/Meta Leads column data is
+ * unambiguously a lead-generation campaign using LPV as a mid-funnel
+ * signal, not a genuine traffic campaign — so that specific combination
+ * defers to Priority 2 below instead of trusting the exact map, letting the
+ * existing dedicated-column-value priority correctly pick the real
+ * objective. Every other result_type keeps trusting the exact map
+ * unconditionally, even when some other column also happens to have data
+ * (e.g. an Initiate Checkout campaign that also shows Purchases further
+ * down the funnel stays INITIATE CHECKOUT, not PURCHASES).
+ *
+ * Priority 2 — falls through to the existing row-level priority chain
+ * (resolveObjective's dedicated-column/fuzzy-catalog/column-presence/
+ * data-value tiers, via getResultGroups + pickPrimaryResultGroup) for any
+ * campaign whose dominant result_type has no RESULT_TYPE_MAP entry at all —
+ * a blank result_type, or a rare/new event name it doesn't recognize.
+ */
+export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
+  const resultTypeCounts = new Map<string, number>();
+  let blankCount = 0;
+  for (const row of rows) {
+    const rt = (row.result_type || "").toLowerCase().trim();
+    if (rt) resultTypeCounts.set(rt, (resultTypeCounts.get(rt) ?? 0) + 1);
+    else blankCount++;
+  }
+
+  let dominantResultType = "";
+  let maxCount = 0;
+  for (const [rt, count] of resultTypeCounts) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominantResultType = rt;
+    }
+  }
+
+  // A non-blank result_type must genuinely be this campaign's dominant
+  // signal — outnumbering rows with NO result_type opinion at all — before
+  // it's trusted as ground truth. Without this, a single stray/incidental
+  // row that happens to carry SOME result_type (e.g. one Reach-flavored row
+  // in an otherwise blank-result_type Website Leads campaign) would win by
+  // default against a much larger blank-result_type majority that Priority
+  // 2's dedicated-column check would otherwise have resolved correctly —
+  // exactly the "phantom objective from a minority in-campaign signal" bug
+  // this whole map was built to prevent.
+  if (dominantResultType && maxCount > blankCount) {
+    const isLandingPageViewSpecialCase = dominantResultType === "landing_page_view";
+    const hasRealLeadsColumnData =
+      isLandingPageViewSpecialCase &&
+      rows.some(
+        (r) => parseCellNum(r.website_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.meta_leads) > 0,
+      );
+    if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
+      const info = resolveObjectiveFromResultType(dominantResultType);
+      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel };
+    }
+    // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
+    // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads
+    // column above a plain "LANDING PAGE VIEWS" result.
+  }
+
+  const primary = pickPrimaryResultGroup(getResultGroups(rows));
+  return { resultLabel: primary?.label ?? "RESULTS", costLabel: primary?.costLabel ?? "COST PER RESULT" };
+}
+
 export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    const primary = pickPrimaryResultGroup(getResultGroups(campRows));
-    map.set(name, {
-      resultLabel: primary?.label ?? "RESULTS",
-      costLabel: primary?.costLabel ?? "COST PER RESULT",
-    });
+    map.set(name, resolveCampaignObjective(campRows));
   });
   return map;
 }
