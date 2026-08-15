@@ -163,36 +163,65 @@ function AdSetCard({ adSet }: { adSet: ShareAdSetData }) {
   );
 }
 
-const DONUT_SIZE = 120;
-const DONUT_STROKE = 16;
-const DONUT_RADIUS = (DONUT_SIZE - DONUT_STROKE) / 2;
+const DONUT_RADIUS = 45;
+const DONUT_STROKE = 12;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 
-/** One campaign's donut — an SVG replica of the PPT chart slide's own ring-and-hole donut (chart-slide.ts's buildChartSlideXml), same per-campaign color cycle (or the shared zero-spend grey) via c.color. Rotated -90deg so the filled arc starts at 12 o'clock, matching the deck. */
+/**
+ * One campaign's donut — the arc is drawn via an SVG presentation-attribute
+ * `transform` on the `<circle>` itself (supported since SVG 1.1) rather
+ * than a CSS `transform` on the outer `<svg>`, and the spend/percentage
+ * labels are real `<text>` nodes instead of an absolutely-positioned HTML
+ * overlay stacked on top of the SVG — both changes make this render
+ * reliably in contexts (older WebViews, link-preview crawlers) that don't
+ * fully support CSS transforms on a root `<svg>` element or exact
+ * absolute-position stacking.
+ */
 function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
-  const filled = (DONUT_CIRCUMFERENCE * Math.min(Math.max(c.percentage, 0), 100)) / 100;
+  const percentage = Math.min(Math.max(c.percentage, 0), 100);
+  const filledLength = (DONUT_CIRCUMFERENCE * percentage) / 100;
+  const gapLength = DONUT_CIRCUMFERENCE - filledLength;
   return (
-    <div className="flex w-[120px] flex-col items-center text-center">
-      <div className="relative" style={{ width: DONUT_SIZE, height: DONUT_SIZE }}>
-        <svg width={DONUT_SIZE} height={DONUT_SIZE} viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={DONUT_SIZE / 2} cy={DONUT_SIZE / 2} r={DONUT_RADIUS} fill="none" stroke="#1e3a5f" strokeWidth={DONUT_STROKE} />
-          {filled > 0 && (
-            <circle
-              cx={DONUT_SIZE / 2}
-              cy={DONUT_SIZE / 2}
-              r={DONUT_RADIUS}
-              fill="none"
-              stroke={`#${c.color}`}
-              strokeWidth={DONUT_STROKE}
-              strokeLinecap="round"
-              strokeDasharray={`${filled} ${DONUT_CIRCUMFERENCE - filled}`}
-            />
-          )}
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center px-2 text-[14px] font-bold text-ink">{c.spendLabel}</div>
+    <div style={{ textAlign: "center", width: "140px" }}>
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r={DONUT_RADIUS} fill="none" stroke="#1e3a5f" strokeWidth={DONUT_STROKE} />
+        {filledLength > 0 && (
+          <circle
+            cx="55"
+            cy="55"
+            r={DONUT_RADIUS}
+            fill="none"
+            stroke={`#${c.color}`}
+            strokeWidth={DONUT_STROKE}
+            strokeDasharray={`${filledLength} ${gapLength}`}
+            strokeLinecap="round"
+            transform="rotate(-90 55 55)"
+          />
+        )}
+        <text x="55" y="50" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" style={{ fontFamily: "inherit" }}>
+          {c.spendLabel}
+        </text>
+        <text x="55" y="66" textAnchor="middle" fill="#94a3b8" fontSize="11" style={{ fontFamily: "inherit" }}>
+          {percentage.toFixed(1)}%
+        </text>
+      </svg>
+      <div
+        style={{
+          color: "white",
+          fontSize: "11px",
+          marginTop: "8px",
+          lineHeight: "1.4",
+          maxWidth: "130px",
+          marginLeft: "auto",
+          marginRight: "auto",
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}
+      >
+        {c.name}
       </div>
-      <p className="mt-2 line-clamp-2 text-[11px] text-ink">{c.name}</p>
-      <p className="mt-0.5 text-[11px] text-ink-muted">{c.percentage.toFixed(1)}%</p>
     </div>
   );
 }
@@ -204,13 +233,13 @@ function ChartSlide({ chart }: { chart: ShareChartData }) {
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
 
-      <div className="mt-6 flex flex-wrap items-start justify-center gap-6">
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px", marginTop: "24px" }}>
         {shown.map((c, i) => (
           <DonutChart key={`${c.name}-${i}`} c={c} />
         ))}
       </div>
 
-      <p className="mt-6 text-center text-[13px] text-ink-muted">{chart.totalSpendLine}</p>
+      <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px", color: "#94a3b8" }}>{chart.totalSpendLine}</div>
     </SlideCard>
   );
 }
@@ -402,15 +431,9 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
         </section>
       </main>
 
-      <footer className="border-t border-navy-border px-4 py-10 sm:px-6">
-        <div className="mx-auto max-w-[960px] text-center text-[12px] text-ink-muted">
-          <p>
-            {data.agencyName ? `This report was prepared by ${data.agencyName} using NextReport` : "This report was generated using NextReport"}
-          </p>
-          <p className="mt-1">
-            Generated on {generatedDate} · nextreport.in
-          </p>
-        </div>
+      <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
+        <div style={{ color: "#94a3b8", fontSize: "12px" }}>This report was generated using NextReport · nextreport.in</div>
+        <div style={{ color: "#64748b", fontSize: "11px", marginTop: "4px" }}>Generated on {generatedDate}</div>
       </footer>
     </div>
   );
