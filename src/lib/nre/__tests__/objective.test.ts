@@ -379,16 +379,33 @@ describe("resolveObjective — Priority 1 (dedicated metric columns) beats Prior
 // incidental conversions even when the campaign's real optimization event
 // is Initiate Checkout — the old unconditional `purchases > 0 -> PURCHASES`
 // check never looked at Initiate Checkout at all, so a 4-IC/2-secondary-
-// purchase campaign was misclassified as PURCHASES.
-describe("resolveObjective — Purchases vs Initiate Checkout ratio, and Add To Cart (Part 6 bug fix)", () => {
-  it("Initiate Checkout count > Purchases count -> INITIATE CHECKOUT, not PURCHASES", () => {
+// purchase campaign was misclassified as PURCHASES. Part 6 then fixed that
+// by picking whichever of the two had the larger raw count — but Initiate
+// Checkout routinely out-counts Purchases simply because a checkout has to
+// start before it can complete (normal funnel drop-off), so that "larger
+// wins" rule itself over-classified genuine purchase campaigns as INITIATE
+// CHECKOUT. Part 7 replaces the raw-count race with a Results-column match:
+// whichever of Purchases/Initiate Checkout/Add To Cart sums closest to the
+// Results column (Meta's own declared primary conversion metric) wins.
+describe("resolveObjective — Purchases vs Initiate Checkout: Results-column match, not raw count race (Part 7 bug fix)", () => {
+  it("a higher Initiate Checkout count does NOT automatically win — Results decides", () => {
+    // Results=2 matches Purchases exactly (diff 0) vs Initiate Checkout's
+    // diff of 2 — Part 6's old "larger count wins" rule would have picked
+    // Initiate Checkout (4 > 2) here and gotten it wrong.
+    const resolution = resolveObjective({ result_type: "", purchases: 2, initiate_checkout: 4, results: 2 }, null);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER PURCHASE");
+    expect(resolution.source).toBe("priority1");
+  });
+
+  it("Results matches Initiate Checkout more closely than Purchases -> INITIATE CHECKOUT", () => {
     const resolution = resolveObjective({ result_type: "", purchases: 2, initiate_checkout: 4, results: 4 }, null);
     expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
     expect(resolution.costLabel).toBe("COST PER CHECKOUT");
     expect(resolution.source).toBe("priority1");
   });
 
-  it("Purchases count >= Initiate Checkout count -> PURCHASES", () => {
+  it("a tie in distance-to-Results goes to Purchases (deepest funnel event)", () => {
     expect(resolveObjective({ result_type: "", purchases: 5, initiate_checkout: 5, results: 5 }, null).resultLabel).toBe(
       "PURCHASES",
     );
@@ -883,6 +900,67 @@ describe("resolveCampaignObjective — Objective Confirmation permanent fix (Par
     ];
     const resolution = resolveCampaignObjective(rows);
     expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+  });
+});
+
+// Real-account bug report (follow-up to Part 6/7's own bug report): a
+// purchase campaign whose result_type is blank on most days still shows the
+// explicit "Website purchases" text on the handful of days a purchase
+// actually landed. Part 6's per-row purchases-vs-IC logic, and even Part 7's
+// row-level "closest to Results" replacement, could still get outvoted by
+// the many blank-result_type days if their own Initiate Checkout column
+// happened to sum higher than the one explicit-text day's Purchases count —
+// because neither of those fixes ever looks across the WHOLE campaign's rows
+// for explicit result_type evidence sitting on some OTHER row. This is the
+// CAMPAIGN-level fix: resolveCampaignObjective now treats a single explicit
+// purchase/Initiate-Checkout result_type occurrence, anywhere in the
+// campaign's rows, as definitive — full stop, ahead of every raw column
+// count anywhere else in that same campaign.
+describe("resolveCampaignObjective — explicit result_type text beats raw column counts campaign-wide (Part 7 bug fix)", () => {
+  it("result_type = 'Website purchases' on 1 of many days, Initiate Checkout column has values on every other (blank-result_type) day -> PURCHASES, not INITIATE CHECKOUT", () => {
+    const blankIcHeavyDays: MetricRow[] = Array.from({ length: 20 }, () =>
+      metricRow({ _raw: { "Initiate checkout": "1" }, result_type: "", purchases: 0, results: 1, spend: 10 }),
+    );
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 }),
+      ...blankIcHeavyDays,
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER PURCHASE");
+  });
+
+  it("result_type = 'initiate_checkout' on 5 days, purchases column has values on 2 (blank-result_type) days -> INITIATE CHECKOUT", () => {
+    const icDays: MetricRow[] = Array.from({ length: 5 }, () =>
+      metricRow({ _raw: {}, result_type: "initiate_checkout", purchases: 0, results: 1, spend: 10 }),
+    );
+    const blankPurchaseDays: MetricRow[] = Array.from({ length: 2 }, () =>
+      metricRow({ _raw: {}, result_type: "", purchases: 1, results: 1, spend: 8 }),
+    );
+    const rows: MetricRow[] = [...icDays, ...blankPurchaseDays];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
+    expect(resolution.costLabel).toBe("COST PER CHECKOUT");
+  });
+
+  it("result_type completely blank for every row, Purchases column totals 3, Initiate Checkout column totals 8 -> Results column total disambiguates (matches Purchases here) instead of the raw IC/Purchases count race", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", purchases: 3, results: 3, spend: 90 }),
+      metricRow({ _raw: { "Initiate checkout": "8" }, result_type: "", purchases: 0, results: 0, spend: 40 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER PURCHASE");
+  });
+
+  it("result_type completely blank for every row, Results total matches Initiate Checkout more closely than Purchases -> INITIATE CHECKOUT", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", purchases: 3, results: 8, spend: 90 }),
+      metricRow({ _raw: { "Initiate checkout": "8" }, result_type: "", purchases: 0, results: 0, spend: 40 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
+    expect(resolution.costLabel).toBe("COST PER CHECKOUT");
   });
 });
 

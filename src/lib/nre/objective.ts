@@ -402,24 +402,38 @@ export function resolveObjective(
   if (leads > 0) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority1" };
   }
-  // Purchases vs Initiate Checkout (Part 6 bug fix) — a purchase-funnel
-  // campaign's Purchases column can carry secondary/incidental conversions
-  // even when the campaign's real optimization event is further up the
-  // funnel (real-account report: an Initiate-Checkout campaign with 4 ICs
-  // and 2 secondary purchases was misclassified as PURCHASES by the old
-  // unconditional `purchases > 0` check, which never looked at Initiate
-  // Checkout at all). Whichever of the two has the larger count wins; a tie
-  // — or Purchases alone, IC = 0 — keeps the funnel's deepest/most-valuable
-  // event, preserving the original behavior when Initiate Checkout data
-  // isn't present.
-  if (purchases > 0 || initiateCheckout > 0) {
-    if (initiateCheckout > purchases) {
-      return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", source: "priority1" };
+  // Purchases vs Initiate Checkout vs Add To Cart (Part 7 bug fix, replacing
+  // Part 6's "whichever count is larger" rule) — a raw column-count race
+  // between these three is unreliable on its own: Initiate Checkout will
+  // routinely out-count Purchases simply because a checkout has to start
+  // before it can complete (normal funnel drop-off), not because the
+  // campaign is actually optimizing for Initiate Checkout. Real-account bug
+  // report: a genuine purchase campaign with sparse purchases but a bigger
+  // Initiate Checkout column total (across mostly blank-result_type rows)
+  // was misclassified as INITIATE CHECKOUT by the old "larger wins" rule.
+  // Once more than one of the three is present, the tie-break instead
+  // trusts the Results column — Meta's own declared primary conversion
+  // metric for this row/group — and picks whichever of the three sums
+  // closest to it. A single genuinely-alone nonzero signal always wins
+  // outright with no comparison needed, preserving the original
+  // single-signal behavior (Purchases alone -> PURCHASES, IC alone ->
+  // INITIATE CHECKOUT, ATC alone -> ADD TO CART).
+  const funnelCandidates = [
+    { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", value: purchases },
+    { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", value: initiateCheckout },
+    { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", value: addToCart },
+  ].filter((c) => c.value > 0);
+  if (funnelCandidates.length > 0) {
+    let best = funnelCandidates[0];
+    let bestDiff = Math.abs(funnelCandidates[0].value - results);
+    for (const c of funnelCandidates.slice(1)) {
+      const diff = Math.abs(c.value - results);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = c;
+      }
     }
-    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", source: "priority1" };
-  }
-  if (addToCart > 0) {
-    return { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", source: "priority1" };
+    return { resultLabel: best.resultLabel, costLabel: best.costLabel, source: "priority1" };
   }
   if (mobileAppInstalls > 0) {
     return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL", source: "priority1" };
@@ -644,9 +658,63 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * consumer.
  */
 /**
+ * Purchase-variant result_type text (Part 7 bug fix) — every human-readable
+ * and machine-readable spelling Meta writes into result_type for a real
+ * purchase conversion. Matched with an EXACT (not fuzzy/substring) equality
+ * check after lower-casing/trimming, since resolveCampaignObjective below
+ * treats even a single occurrence anywhere in a campaign's rows as
+ * definitive proof — a loose/fuzzy match here would risk false-positives on
+ * unrelated text.
+ */
+const PURCHASE_RESULT_TYPE_TEXTS = new Set([
+  "purchase",
+  "purchases",
+  "website purchase",
+  "website purchases",
+  "offsite_conversion.fb_pixel_purchase",
+  "onsite_web_purchase",
+  "product_catalog_sales",
+]);
+
+/** Initiate-Checkout-variant result_type text — see PURCHASE_RESULT_TYPE_TEXTS' doc comment; same exact-match reasoning. */
+const INITIATE_CHECKOUT_RESULT_TYPE_TEXTS = new Set([
+  "initiate_checkout",
+  "initiate checkout",
+  "checkouts initiated",
+  "offsite_conversion.fb_pixel_initiate_checkout",
+  "onsite_web_initiate_checkout",
+]);
+
+function isPurchaseResultTypeText(resultType: string | null | undefined): boolean {
+  const rt = (resultType || "").toLowerCase().trim();
+  return rt !== "" && PURCHASE_RESULT_TYPE_TEXTS.has(rt);
+}
+
+function isInitiateCheckoutResultTypeText(resultType: string | null | undefined): boolean {
+  const rt = (resultType || "").toLowerCase().trim();
+  return rt !== "" && INITIATE_CHECKOUT_RESULT_TYPE_TEXTS.has(rt);
+}
+
+/**
  * Objective Confirmation (permanent objective-detection fix) — per-campaign
  * objective resolution, now the single algorithm buildCampaignObjectiveMap
  * uses instead of getResultGroups + pickPrimaryResultGroup directly.
+ *
+ * Step 0 (Part 7 bug fix) — an explicit purchase-variant or
+ * initiate-checkout result_type appearing on even ONE of this campaign's
+ * rows is definitive proof of its real funnel objective, full stop, ahead of
+ * every other signal below (including the dominant-result_type majority
+ * check in Priority 1) — Meta only ever writes that text on a day the
+ * underlying event counted as THE optimization result, so a single such day
+ * outweighs every other blank-result_type day's raw Initiate Checkout/
+ * Purchases column counts entirely. Real-account bug: a campaign with
+ * "Website purchases" result_type on 1 of 30 days (and a blank result_type
+ * on the other 29, which carried a bigger Initiate Checkout column total)
+ * was misclassified as INITIATE CHECKOUT — Initiate Checkout simply
+ * appearing more often is normal mid-funnel drop-off, not evidence of the
+ * objective. Purchase text wins over Initiate Checkout text if a campaign
+ * somehow has rows with both (deepest funnel event, same tie-break used
+ * throughout this file).
  *
  * Priority 1 — the campaign's own DOMINANT result_type (the most common
  * non-empty result_type value across its rows — a campaign can, in
@@ -679,6 +747,13 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * a blank result_type, or a rare/new event name it doesn't recognize.
  */
 export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
+  if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
+  if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
+    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT" };
+  }
+
   const resultTypeCounts = new Map<string, number>();
   let blankCount = 0;
   for (const row of rows) {
@@ -719,6 +794,49 @@ export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
     // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads
     // column above a plain "LANDING PAGE VIEWS" result.
+  }
+
+  // Priority 2, Purchases/Initiate Checkout/Add To Cart case only (Part 7
+  // bug fix, Steps 3-4) — result_type is completely blank on EVERY row (Step
+  // 0 above already ruled out any explicit purchase/IC text, and
+  // resultTypeCounts being empty means no OTHER result_type text exists
+  // either), so there is no text signal left to trust at all. Rather than
+  // falling through to the old per-row race (getResultGroups below, which
+  // would let Initiate Checkout's typically-larger raw count win by the same
+  // flawed reasoning Step 0 exists to override), sum each dedicated column
+  // across the WHOLE campaign and compare each to the campaign's own Results
+  // column total — Meta's own declared primary conversion metric — picking
+  // whichever funnel column sums closest to it. Falls through unchanged to
+  // Priority 2's generic per-row resolution for every other objective
+  // (leads, reach, app installs, ...), which this block never touches.
+  if (resultTypeCounts.size === 0) {
+    let resultsTotal = 0;
+    let purchasesTotal = 0;
+    let icTotal = 0;
+    let atcTotal = 0;
+    for (const row of rows) {
+      resultsTotal += parseCellNum(row.results);
+      purchasesTotal += parseCellNum(row.purchases);
+      icTotal += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
+      atcTotal += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
+    }
+    const funnelCandidates = [
+      { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", value: purchasesTotal },
+      { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", value: icTotal },
+      { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", value: atcTotal },
+    ].filter((c) => c.value > 0);
+    if (funnelCandidates.length > 0) {
+      let best = funnelCandidates[0];
+      let bestDiff = Math.abs(funnelCandidates[0].value - resultsTotal);
+      for (const c of funnelCandidates.slice(1)) {
+        const diff = Math.abs(c.value - resultsTotal);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = c;
+        }
+      }
+      return { resultLabel: best.resultLabel, costLabel: best.costLabel };
+    }
   }
 
   const primary = pickPrimaryResultGroup(getResultGroups(rows));
