@@ -333,7 +333,7 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     expect(data.chart!.campaigns.find((c) => c.name === "Shoes - Purchases")!.spend).toBe(1050);
   });
 
-  it("deselecting every ad set in a campaign shows a campaign slide with no ad-set slides underneath it — the campaign itself and the report totals are untouched", () => {
+  it("deselecting every ad set in a multi-ad-set campaign shows a campaign slide with no ad-set slides underneath it — the campaign itself and the report totals are untouched", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "₹",
@@ -349,7 +349,12 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
     // never removes a campaign.
     expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach", "Shoes - Purchases"]);
     // Neither Shoes ad set gets its own slide (both deselected)...
-    expect(data.adSetSlides).toEqual([]);
+    expect(data.adSetSlides.some((s) => s.campaignName === "Shoes - Purchases")).toBe(false);
+    // ...but Brand's single ad set, being explicitly selected, does get its
+    // own opt-in slide (see report-data.ts's Phase A2 doc comment — a
+    // single-ad-set campaign's slide is opt-in via selection, not an
+    // automatic skip, once real selection info is present).
+    expect(data.adSetSlides.map((s) => s.adSetName)).toEqual(["Awareness"]);
     // ...but Shoes' own totals are unaffected (still both ad sets' spend).
     const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
     expect(shoes.metrics.spend).toBe("₹1,050");

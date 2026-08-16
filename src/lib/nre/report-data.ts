@@ -1151,19 +1151,31 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // literally as this codebase's single-currency-per-account model allows.
   const MIN_ADSET_MTD_SPEND_FOR_SLIDE = 1;
 
-  // ── Phase A2: individual ad set slides (only campaigns with 2+ ad sets) ─
+  // ── Phase A2: individual ad set slides ───────────────────────────────────
   // Deselecting an ad set in the wizard only removes ITS OWN slide here —
   // see BuildReportDataInput.selectedAdSets's doc comment for why this
   // can't be allowed to reach mtdDailyRows/weeklyRows/mtdRows.
+  //
+  // A single-ad-set campaign's slide is opt-in, not automatic: the wizard
+  // defaults it to unchecked (its own slide would be identical to the
+  // campaign slide), but checking it explicitly requests one anyway — so
+  // when a real selection is present, selection alone decides. Only when
+  // NO selection info was ever sent (selectedAdSetsSet === null — an older
+  // caller, or a test that doesn't pass selectedAdSets at all) does the
+  // engine fall back to its own old default of skipping single-ad-set
+  // campaigns automatically.
   const selectedAdSetsSet = selectedAdSets != null ? new Set(selectedAdSets) : null;
   const adSetSlides: AdSetSlideData[] = [];
   sortedWeeklyRows.forEach((row) => {
     const campaignName = String(row.campaign_name || "Campaign").trim();
     const adSetName = String(row.ad_set_name || "").trim();
     if (!keptCampaignNames.has(campaignName)) return; // zero weekly spend — no campaign slide, so no ad-set slides either
-    const campAdSetCount = campaignGroups[campaignName]?.length || 0;
-    if (campAdSetCount <= 1) return; // single ad set — campaign slide already covers it
-    if (selectedAdSetsSet && !selectedAdSetsSet.has(adSetKey(campaignName, adSetName))) return; // user deselected this ad set
+    if (selectedAdSetsSet) {
+      if (!selectedAdSetsSet.has(adSetKey(campaignName, adSetName))) return; // not selected (or deselected)
+    } else {
+      const campAdSetCount = campaignGroups[campaignName]?.length || 0;
+      if (campAdSetCount <= 1) return; // no selection info — single ad set covered by the campaign slide by default
+    }
 
     // Archived ad sets never get their own slide regardless of spend — a
     // more final state than merely paused/inactive, which still can.
