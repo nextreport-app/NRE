@@ -746,12 +746,29 @@ function isInitiateCheckoutResultTypeText(resultType: string | null | undefined)
  * campaign whose dominant result_type has no RESULT_TYPE_MAP entry at all —
  * a blank result_type, or a rare/new event name it doesn't recognize.
  */
-export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
+export interface ObjectiveConfidence extends ResultLabels {
+  /**
+   * Objective Confirmation memory cache (Part 6 — confidence display) —
+   * "high" for every branch above backed by real result_type TEXT (Step 0's
+   * explicit purchase/Initiate-Checkout match, or Priority 1's
+   * RESULT_TYPE_MAP dominant-text match); "low" for every branch that had to
+   * fall back to column presence/data values/ad-set name instead (Step 3-4's
+   * Results-column match, or the final getResultGroups/resolveObjective
+   * fallback) — text Meta itself wrote down is inherently more trustworthy
+   * than an inference from which columns happen to be populated. Purely a
+   * UI signal for the wizard's Objective Confirmation step; never affects
+   * which objective is actually returned.
+   */
+  confidence: "high" | "low";
+}
+
+/** Internal implementation shared by resolveCampaignObjective (public, unchanged signature — every existing caller/test keeps working exactly as before) and resolveCampaignObjectiveWithConfidence (new — the Objective Confirmation wizard step's own confidence badge, Part 6). See resolveCampaignObjective's own doc comment above for the full priority-chain writeup. */
+function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
   if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
-    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" };
   }
   if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
-    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT" };
+    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high" };
   }
 
   const resultTypeCounts = new Map<string, number>();
@@ -789,7 +806,7 @@ export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
       );
     if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
       const info = resolveObjectiveFromResultType(dominantResultType);
-      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel };
+      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high" };
     }
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
     // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads
@@ -835,18 +852,37 @@ export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
           best = c;
         }
       }
-      return { resultLabel: best.resultLabel, costLabel: best.costLabel };
+      return { resultLabel: best.resultLabel, costLabel: best.costLabel, confidence: "low" };
     }
   }
 
   const primary = pickPrimaryResultGroup(getResultGroups(rows));
-  return { resultLabel: primary?.label ?? "RESULTS", costLabel: primary?.costLabel ?? "COST PER RESULT" };
+  return { resultLabel: primary?.label ?? "RESULTS", costLabel: primary?.costLabel ?? "COST PER RESULT", confidence: "low" };
+}
+
+export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
+  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows);
+  return { resultLabel, costLabel };
+}
+
+/** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a "high"/"low" confidence tag the wizard's Objective Confirmation step uses to show a blue "Detected from result type" vs. grey "Please verify" indicator. Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
+export function resolveCampaignObjectiveWithConfidence(rows: MetricRow[]): ObjectiveConfidence {
+  return resolveCampaignObjectiveDetailed(rows);
 }
 
 export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
     map.set(name, resolveCampaignObjective(campRows));
+  });
+  return map;
+}
+
+/** Objective Confirmation memory cache (Part 6) — buildCampaignObjectiveMap's confidence-carrying counterpart, for the wizard's own /metrics route (the only consumer that needs the "high"/"low" badge; every other buildCampaignObjectiveMap call site is unaffected). */
+export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<string, ObjectiveConfidence> {
+  const map = new Map<string, ObjectiveConfidence>();
+  Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
+    map.set(name, resolveCampaignObjectiveWithConfidence(campRows));
   });
   return map;
 }

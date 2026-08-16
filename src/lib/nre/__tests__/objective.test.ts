@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCampaignObjectiveMap,
+  buildCampaignObjectiveMapWithConfidence,
   detectObjectiveFromColumns,
   getGroupedResultDisplay,
   getGroupedResultDisplayForObjective,
@@ -11,6 +12,7 @@ import {
   groupResultsByCampaignObjective,
   normalizeCampaignName,
   resolveCampaignObjective,
+  resolveCampaignObjectiveWithConfidence,
   resolveObjective,
 } from "../objective";
 import type { AggRow } from "../aggregate";
@@ -961,6 +963,66 @@ describe("resolveCampaignObjective — explicit result_type text beats raw colum
     const resolution = resolveCampaignObjective(rows);
     expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
     expect(resolution.costLabel).toBe("COST PER CHECKOUT");
+  });
+});
+
+// Objective Confirmation memory cache — resolveCampaignObjectiveWithConfidence
+// is resolveCampaignObjective's display-only counterpart: same detection,
+// plus a "high"/"low" confidence tag the /metrics route (and the wizard's
+// Objective Confirmation step) uses to show a blue "Detected from result
+// type" vs. grey "Please verify" badge. Never affects which objective is
+// actually returned — only ever consulted for the badge.
+describe("resolveCampaignObjectiveWithConfidence — confidence tiers for the Objective Confirmation memory cache badge", () => {
+  it("Step 0's explicit purchase/Initiate-Checkout result_type match -> high confidence", () => {
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
+    expect(resolveCampaignObjectiveWithConfidence(rows).confidence).toBe("high");
+  });
+
+  it("Priority 1's dominant result_type -> RESULT_TYPE_MAP exact match -> high confidence", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "onsite_conversion.lead_grouped", results: 12, spend: 150 }),
+      metricRow({ _raw: {}, result_type: "onsite_conversion.lead_grouped", results: 9, spend: 120 }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("META FORM LEADS");
+    expect(resolution.confidence).toBe("high");
+  });
+
+  it("the all-blank Results-column-match fallback -> low confidence (column data, not real result_type text)", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", purchases: 3, results: 3, spend: 90 }),
+      metricRow({ _raw: { "Initiate checkout": "8" }, result_type: "", purchases: 0, results: 0, spend: 40 }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.confidence).toBe("low");
+  });
+
+  it("the final getResultGroups/resolveObjective fallback (column presence/data value/ad-set name) -> low confidence", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
+      metricRow({ _raw: {}, result_type: "", website_leads: 7, results: 7, spend: 90 }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.confidence).toBe("low");
+  });
+
+  it("resolveCampaignObjective (the plain, unconfident version used everywhere else) is completely unaffected — same resultLabel/costLabel, no confidence field", () => {
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
+    expect(resolveCampaignObjective(rows)).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+  });
+});
+
+describe("buildCampaignObjectiveMapWithConfidence", () => {
+  it("returns one confidence-tagged entry per normalized campaign name, matching buildCampaignObjectiveMap's own grouping", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Purchase Campaign", _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 }),
+      metricRow({ campaign_name: "Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
+    ];
+    const map = buildCampaignObjectiveMapWithConfidence(rows);
+    expect(map.get("purchase campaign")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" });
+    expect(map.get("leads campaign")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", confidence: "low" });
   });
 });
 

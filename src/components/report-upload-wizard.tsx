@@ -254,6 +254,20 @@ export function ReportUploadWizard({
   // happened to be pre-filled.
   const [campaignObjectives, setCampaignObjectives] = useState<Map<string, ObjectiveInfo>>(new Map());
   const [touchedObjectiveCampaigns, setTouchedObjectiveCampaigns] = useState<Set<string>>(new Set());
+  // Objective Confirmation memory cache (Part 6) — per-campaign confidence
+  // tag from the /metrics response, keyed the same way campaignObjectives
+  // is (normalizeCampaignName). Drives the badge under each dropdown:
+  // "cached" -> green "Previously confirmed" (this exact client has
+  // confirmed this campaign before, on some earlier report), "resultType"
+  // -> blue "Detected from result type" (the engine found real result_type
+  // text), "columnData" -> grey "Please verify" (the engine had to fall
+  // back to column presence/data values/ad-set name). Cleared the moment a
+  // campaign is touched (see setCampaignObjective) — once the user has
+  // picked a value themselves, a badge describing where the PRE-fill came
+  // from is no longer meaningful.
+  const [campaignObjectiveConfidence, setCampaignObjectiveConfidence] = useState<
+    Map<string, "cached" | "resultType" | "columnData">
+  >(new Map());
 
   // Step 4 — Metrics (Part 3, Meta only — populated by /metrics, called
   // right after Campaign Selection so the engine's default 8 reflects the
@@ -615,16 +629,22 @@ export function ReportUploadWizard({
     return { key: resultLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_"), resultLabel, costLabel, isReach: false };
   }
 
-  /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel}` per normalized campaign name) into the wizard's own Map<string, ObjectiveInfo> state shape. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function campaignObjectivesFromJson(json: Record<string, any> | undefined | null): Map<string, ObjectiveInfo> {
-    const map = new Map<string, ObjectiveInfo>();
-    if (!json) return map;
+  /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel, source}` per normalized campaign name — source is "cached" | "resultType" | "columnData", see objective.ts's ObjectiveConfidence) into the wizard's own Map<string, ObjectiveInfo> + confidence state shapes. */
+  function campaignObjectivesFromJson(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    json: Record<string, any> | undefined | null,
+  ): { objectives: Map<string, ObjectiveInfo>; confidence: Map<string, "cached" | "resultType" | "columnData"> } {
+    const objectives = new Map<string, ObjectiveInfo>();
+    const confidence = new Map<string, "cached" | "resultType" | "columnData">();
+    if (!json) return { objectives, confidence };
     for (const [name, info] of Object.entries(json)) {
       if (!info?.resultLabel || !info?.costLabel) continue;
-      map.set(name, objectiveInfoForResultLabel(info.resultLabel, info.costLabel));
+      objectives.set(name, objectiveInfoForResultLabel(info.resultLabel, info.costLabel));
+      if (info.source === "cached" || info.source === "resultType" || info.source === "columnData") {
+        confidence.set(name, info.source);
+      }
     }
-    return map;
+    return { objectives, confidence };
   }
 
   // ── Step 2 -> 3: Campaigns -> Objective Confirmation ────────────────────
@@ -654,40 +674,110 @@ export function ReportUploadWizard({
       setAvailableMetrics([]);
       setSelectedMetrics([]);
       setCampaignObjectives(new Map());
+      setCampaignObjectiveConfidence(new Map());
       setStep(3);
       return;
     }
 
     setAvailableMetrics(json.availableMetrics || []);
     setSelectedMetrics(json.defaultSelection || []);
-    setCampaignObjectives(campaignObjectivesFromJson(json.campaignObjectives));
+    const { objectives, confidence } = campaignObjectivesFromJson(json.campaignObjectives);
+    setCampaignObjectives(objectives);
+    setCampaignObjectiveConfidence(confidence);
     setMetricsStatus("idle");
     setStep(3);
   }
 
   // ── Step 3: Objective Confirmation (the permanent objective-detection fix) ──
-  /** Dropdown onChange — records the user's choice AND marks the campaign as touched, so only campaigns the user actually reviewed/changed are sent back as an override (see currentCampaignObjectivesPayload) — an untouched campaign keeps the engine's own true detection rather than a copy of whatever was pre-filled. Keyed by normalizeCampaignName, matching the server's own campaignObjectiveMap keys exactly. */
+  /** Dropdown onChange — records the user's choice AND marks the campaign as touched, so only campaigns the user actually reviewed/changed are sent back as an override (see currentCampaignObjectivesPayload) — an untouched campaign keeps the engine's own true detection rather than a copy of whatever was pre-filled. Keyed by normalizeCampaignName, matching the server's own campaignObjectiveMap keys exactly. Also clears any confidence badge for this campaign — once the user has picked a value themselves, a badge describing where the PRE-fill came from is no longer meaningful. */
   function setCampaignObjective(campaignName: string, objectiveKey: string) {
     const option = OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === objectiveKey);
     if (!option) return;
     const normalized = normalizeCampaignName(campaignName);
     setCampaignObjectives((prev) => new Map(prev).set(normalized, option));
     setTouchedObjectiveCampaigns((prev) => new Set(prev).add(normalized));
+    setCampaignObjectiveConfidence((prev) => {
+      if (!prev.has(normalized)) return prev;
+      const next = new Map(prev);
+      next.delete(normalized);
+      return next;
+    });
   }
 
-  /** Only sent to the preview/generate APIs for campaigns the user actually touched on the Objective Confirmation step — leaving a campaign untouched keeps the engine's own true per-campaign detection (report-data.ts's resolveCampaignObjective), rather than pinning it to whatever the wizard happened to pre-select. */
+  /**
+   * Sent to the preview/generate APIs as the objective override actually
+   * used to BUILD this report — campaigns the user manually touched, PLUS
+   * campaigns pre-filled from the Objective Confirmation memory cache
+   * (confidence "cached"). The cache badge tells the user "Previously
+   * confirmed", so the report itself must actually use that value rather
+   * than silently letting the engine re-detect fresh (which could disagree
+   * with what's displayed if this month's data pattern is more ambiguous
+   * than the report that originally confirmed it). A campaign that's merely
+   * engine-detected (confidence "resultType"/"columnData") and never
+   * touched keeps the engine's own true per-campaign detection, exactly as
+   * before this cache existed.
+   */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
-    if (touchedObjectiveCampaigns.size === 0) return undefined;
+    const relevant = new Set(touchedObjectiveCampaigns);
+    for (const [name, tier] of campaignObjectiveConfidence) {
+      if (tier === "cached") relevant.add(name);
+    }
+    if (relevant.size === 0) return undefined;
     const out: Record<string, { resultLabel: string; costLabel: string }> = {};
-    for (const name of touchedObjectiveCampaigns) {
+    for (const name of relevant) {
       const info = campaignObjectives.get(name);
       if (info) out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
     }
     return Object.keys(out).length > 0 ? out : undefined;
   }
 
+  /**
+   * Part 3 — the full set of every campaign shown on the Objective
+   * Confirmation step (cached pre-fills, engine detections the user never
+   * touched, AND anything the user manually edited) — clicking Continue
+   * past that step is an implicit confirmation of whatever it currently
+   * shows, so ALL of it (not just the touched subset above) is what gets
+   * written back to the client's objective memory cache once the report
+   * actually generates (see handleGenerate). Only sent on the final
+   * generate request, never preview — the cache should only grow from a
+   * report the user actually committed to.
+   */
+  function confirmedCampaignObjectivesPayload(): Record<string, { key: string; resultLabel: string; costLabel: string }> | undefined {
+    if (campaignObjectives.size === 0) return undefined;
+    const out: Record<string, { key: string; resultLabel: string; costLabel: string }> = {};
+    for (const [name, info] of campaignObjectives) {
+      out[name] = { key: info.key, resultLabel: info.resultLabel, costLabel: info.costLabel };
+    }
+    return out;
+  }
+
   function handleObjectivesContinue() {
     setStep(4);
+  }
+
+  /**
+   * Part 6 — the three confidence tiers the Objective Confirmation step
+   * shows below each campaign's dropdown. "cached" (green check) is the
+   * highest confidence: this exact client has confirmed this exact campaign
+   * before. "resultType" (blue dot) is the engine finding real result_type
+   * text (objective.ts's resolveCampaignObjectiveWithConfidence "high"
+   * tier). "columnData" (grey dot) is everything else the engine had to
+   * fall back to — column presence, data values, or ad-set name — genuinely
+   * lower confidence, worth a second look. Returns null for a campaign with
+   * no confidence tag at all (the user has already touched its dropdown —
+   * see setCampaignObjective — so nothing needs to be shown).
+   */
+  function objectiveConfidenceBadge(tier: "cached" | "resultType" | "columnData" | undefined) {
+    if (tier === "cached") {
+      return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]" };
+    }
+    if (tier === "resultType") {
+      return { icon: "●", text: "Detected from result type", className: "text-[#63b3ed]" };
+    }
+    if (tier === "columnData") {
+      return { icon: "●", text: "Please verify", className: "text-dash-ink-secondary" };
+    }
+    return null;
   }
 
   // ── Step 4: Metrics (Part 3) ────────────────────────────────────────────
@@ -871,6 +961,10 @@ export function ReportUploadWizard({
         selectedCampaigns: Array.from(selectedCampaigns),
         selectedMetrics: currentSelectedMetricsPayload(),
         campaignObjectives: currentCampaignObjectivesPayload(),
+        // Part 3 — every campaign the Objective Confirmation step showed,
+        // saved back to this client's objective memory cache once the
+        // report actually generates. Only sent here, never on preview.
+        confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
         dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
         reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
         reportType,
@@ -1311,22 +1405,31 @@ export function ReportUploadWizard({
                 const options = OBJECTIVE_DROPDOWN_OPTIONS.some((o) => o.key === currentKey)
                   ? OBJECTIVE_DROPDOWN_OPTIONS
                   : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
+                const badge = objectiveConfidenceBadge(campaignObjectiveConfidence.get(normalized));
                 return (
-                  <li key={name} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <span className="truncate text-[13px] text-white" title={name}>
-                      {name}
-                    </span>
-                    <select
-                      value={currentKey}
-                      onChange={(e) => setCampaignObjective(name, e.target.value)}
-                      className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55]"
-                    >
-                      {options.map((o) => (
-                        <option key={o.key} value={o.key}>
-                          {o.resultLabel}
-                        </option>
-                      ))}
-                    </select>
+                  <li key={name} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate text-[13px] text-white" title={name}>
+                        {name}
+                      </span>
+                      <select
+                        value={currentKey}
+                        onChange={(e) => setCampaignObjective(name, e.target.value)}
+                        className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55]"
+                      >
+                        {options.map((o) => (
+                          <option key={o.key} value={o.key}>
+                            {o.resultLabel}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {badge && (
+                      <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${badge.className}`}>
+                        <span aria-hidden="true">{badge.icon}</span>
+                        <span>{badge.text}</span>
+                      </div>
+                    )}
                   </li>
                 );
               })}

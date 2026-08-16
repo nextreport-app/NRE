@@ -338,6 +338,21 @@ export interface BuildReportDataInput {
    * engine-detected objective, exactly as before this field existed.
    */
   campaignObjectives?: Record<string, ResultLabels>;
+  /**
+   * Objective Confirmation memory cache (see objective-cache.ts) — every
+   * campaign this client has ever confirmed on a PRIOR report's Objective
+   * Confirmation step, keyed by normalized campaign name. Consulted ONLY
+   * for a campaign's Previous Month row, and only as a fallback for a
+   * campaign present in Previous Month Data but ABSENT from the current
+   * month's CSV (so campaignObjectives/campaignObjectiveMap above has no
+   * entry for it at all) — a campaign the CURRENT report can already
+   * resolve keeps that fresher answer; see previousMonthObjectiveMap's own
+   * merge logic below for the exact priority order. `undefined`/empty means
+   * no campaign has ever been confirmed for this client (or the cache was
+   * reset) — every Previous-Month-only campaign keeps its own
+   * independently-resolved objective, exactly as before this cache existed.
+   */
+  objectiveCache?: Record<string, ResultLabels>;
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -668,6 +683,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     now = new Date(),
     selectedMetrics,
     campaignObjectives,
+    objectiveCache,
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
 
@@ -750,13 +766,23 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // touched the Objective Confirmation step); that confirmation is the
   // single most reliable signal available for this SAME campaign's Previous
   // Month row too, so it wins over independently re-detecting the objective
-  // from last month's own (often blanker/staler) result_type data. A
-  // campaign present ONLY in Previous Month Data (paused/renamed since)
-  // simply keeps its own independently-resolved objective above — there's
-  // no current-month entry to prefer.
+  // from last month's own (often blanker/staler) result_type data.
+  //
+  // Objective Confirmation memory cache (Part 4) — a campaign present ONLY
+  // in Previous Month Data (paused/renamed since, so campaignObjectiveMap
+  // has no entry for it at all) still checks the client's PERSISTED cache
+  // next, before falling back to its own independently-resolved objective —
+  // a past confirmation from an earlier report is a far more reliable
+  // signal than re-detecting from last month's own (often blanker/staler)
+  // raw rows. Only reached when there's no current-month entry to prefer.
   for (const name of previousMonthObjectiveMap.keys()) {
     const confirmed = campaignObjectiveMap.get(name);
-    if (confirmed) previousMonthObjectiveMap.set(name, confirmed);
+    if (confirmed) {
+      previousMonthObjectiveMap.set(name, confirmed);
+      continue;
+    }
+    const cached = objectiveCache?.[name];
+    if (cached) previousMonthObjectiveMap.set(name, cached);
   }
 
   // Whether the CSV actually has delivery-status data anywhere at all — a

@@ -12,6 +12,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
+import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignObjectivesSchema,
   comparisonPeriodSchema,
@@ -137,6 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reportType,
     selectedMetrics,
     campaignObjectives,
+    objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

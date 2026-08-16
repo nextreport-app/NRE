@@ -1514,6 +1514,111 @@ describe("buildReportData — single source of truth for campaign objective dete
     expect(data.mtdRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
   });
 
+  // Objective Confirmation memory cache (Part 4) — a campaign present ONLY
+  // in Previous Month Data (no current-month entry to prefer, same fixture
+  // as the test right above) now checks the client's persisted objective
+  // cache BEFORE falling back to independently re-detecting from last
+  // month's own raw rows. A prior confirmation is a stronger signal than
+  // re-detecting from what's often blanker/staler data.
+  it("Objective Confirmation memory cache — a campaign present ONLY in Previous Month Data uses the client's cached objective instead of independently re-detecting", () => {
+    const periodRows: NreRow[] = buildDailyRows({
+      campaign_name: "Retired Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Reach",
+      spend: 40,
+      reach: 9000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.5,
+      cpc: 0,
+      frequency: 1,
+    }).map((r) => ({ ...r, date_start: "01-06-2026", date_end: "07-06-2026" }));
+
+    const localMtdDailyRows = buildDailyRows({
+      campaign_name: "Unrelated Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: 60,
+      reach: 5000,
+      impressions: 10000,
+      results: 3,
+      link_clicks: 30,
+      ctr: 1,
+      cpc: 2,
+      frequency: 1,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      objectiveCache: {
+        "retired campaign": { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" },
+      },
+      now: NOW,
+    });
+
+    // Without the cache entry this would resolve REACH (its own Reach
+    // result_type — see the un-cached test right above) — the cache wins.
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
+  });
+
+  // Priority ordering — a campaign present in BOTH this month's data and
+  // the objective cache still prefers the CURRENT month's freshly-resolved
+  // objective (Part 6's own fix, above) over the persisted cache: the cache
+  // is only a fallback for a campaign with no current-month entry at all.
+  it("Objective Confirmation memory cache — the current month's own resolved objective still wins over a stale cache entry for the same campaign", () => {
+    const periodRows: NreRow[] = buildDailyRows({
+      campaign_name: "Seasonal Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Reach",
+      spend: 40,
+      reach: 9000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.5,
+      cpc: 0,
+      frequency: 1,
+    }).map((r) => ({ ...r, date_start: "01-06-2026", date_end: "07-06-2026" }));
+
+    const localMtdDailyRows = buildDailyRows({
+      campaign_name: "Seasonal Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: 60,
+      reach: 5000,
+      impressions: 10000,
+      results: 3,
+      link_clicks: 30,
+      ctr: 1,
+      cpc: 2,
+      frequency: 1,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      // A deliberately WRONG/stale cache entry for this campaign — should
+      // never be reached, since campaignObjectiveMap (this month) already
+      // has an entry for "seasonal campaign".
+      objectiveCache: {
+        "seasonal campaign": { resultLabel: "REACH", costLabel: "COST PER 1K REACH" },
+      },
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
+  });
+
   // Part 6 bug fix — the merge is keyed by normalizeCampaignName (trimmed,
   // lower-cased), same as every other campaignObjectiveMap lookup in this
   // codebase, so a Previous Month CSV exported with different capitalization

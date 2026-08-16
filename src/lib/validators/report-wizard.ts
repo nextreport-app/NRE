@@ -93,6 +93,20 @@ export const objectiveInfoSchema = z.object({
 });
 export const campaignObjectivesSchema = z.record(z.string(), objectiveInfoSchema);
 
+// Objective Confirmation memory cache (Part 3) — every campaign shown on
+// the Objective Confirmation step (cached pre-fills, untouched engine
+// detections, and user edits alike), sent only on the final generate
+// request so the client's campaignObjectiveCache (objective-cache.ts) can
+// be updated in the background after the report finishes. Distinct from
+// campaignObjectivesSchema above (which carries only the touched/cached
+// subset actually used to BUILD this report) — this one additionally
+// requires `key` (result-type-map.ts's stable machine identifier), which
+// the cache stores so it can round-trip losslessly on the next report.
+export const confirmedObjectiveSchema = objectiveInfoSchema.extend({
+  key: z.string().trim().min(1),
+});
+export const confirmedCampaignObjectivesSchema = z.record(z.string(), confirmedObjectiveSchema);
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

@@ -25,9 +25,11 @@ import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
+import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignObjectivesSchema,
   comparisonPeriodSchema,
+  confirmedCampaignObjectivesSchema,
   dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
@@ -98,6 +100,7 @@ async function buildMetaData(
     reportType,
     selectedMetrics,
     campaignObjectives,
+    objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
   });
 
   return { data };
@@ -157,6 +160,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const platform = platformOverride ?? detectPlatform(headers);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
   const reportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+
+  // Part 3 — Objective Confirmation memory cache. Every campaign the wizard's
+  // Objective Confirmation step showed (cached pre-fills, untouched engine
+  // detections, and user edits alike — see confirmedCampaignObjectivesPayload
+  // in report-upload-wizard.tsx) gets merged into this client's persisted
+  // cache. Fired here, before report generation even starts, and
+  // deliberately NOT awaited — "This update happens in the background — do
+  // not block report generation waiting for it." A failure here is logged
+  // but never surfaces as a report-generation error: the cache is a UX
+  // nicety for next month's wizard, not something this report depends on.
+  const confirmedCampaignObjectives = formData
+    ? parseJsonFormField(formData, "confirmedCampaignObjectives", confirmedCampaignObjectivesSchema)
+    : undefined;
+  if (confirmedCampaignObjectives && Object.keys(confirmedCampaignObjectives).length > 0) {
+    prisma.client
+      .update({
+        where: { id: client.id },
+        data: { campaignObjectiveCache: mergeObjectiveCache(client.campaignObjectiveCache, confirmedCampaignObjectives) },
+      })
+      .catch((err) => {
+        console.error("[api:reports:generate] failed to update campaign objective cache:", err);
+      });
+  }
 
   // Comparison reports are an entirely separate pipeline (buildComparisonReportData
   // + renderComparisonPptx — see report-data.ts's own "Comparison reports"

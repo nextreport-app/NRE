@@ -6,7 +6,8 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
-import { buildCampaignObjectiveMap, getResultGroups } from "@/lib/nre/objective";
+import { buildCampaignObjectiveMapWithConfidence, getResultGroups } from "@/lib/nre/objective";
+import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
 import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics } from "@/lib/nre/available-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -81,7 +82,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // buildCampaignObjectiveMap) — so the dropdown's pre-selected value is
     // never a different guess than what the report would generate if the
     // user changed nothing.
-    const campaignObjectives = Object.fromEntries(buildCampaignObjectiveMap(rowsForObjective));
+    //
+    // Objective Confirmation memory cache — a campaign this client has
+    // confirmed on any PRIOR report's Objective Confirmation step (see
+    // objective-cache.ts) always wins over a fresh engine re-detection: it's
+    // the single most reliable signal available, since it came from a human
+    // actually looking at the campaign, not an inference from column data.
+    // Every other campaign keeps the engine's own detection (Priority
+    // 1/RESULT_TYPE_MAP text match = "resultType", everything else =
+    // "columnData") so the wizard can show the right confidence badge.
+    const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
+    const campaignObjectives = Object.fromEntries(
+      Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
+        const cached = lookupCachedObjective(objectiveCache, name);
+        if (cached) {
+          return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" as const }];
+        }
+        return [
+          name,
+          {
+            resultLabel: detected.resultLabel,
+            costLabel: detected.costLabel,
+            source: detected.confidence === "high" ? ("resultType" as const) : ("columnData" as const),
+          },
+        ];
+      }),
+    );
 
     return NextResponse.json({
       defaultSelection: defaultMetaSelection(resultLabel, costLabel, mtdParsed.headers),

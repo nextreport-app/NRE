@@ -242,6 +242,23 @@ model Client {
   // report-data.ts ever aggregates them.
   previousMonthSelectedCampaigns String? @db.Text
 
+  // Objective Confirmation memory cache — JSON { [normalizedCampaignName]:
+  // { key, resultLabel, costLabel } }, one entry per campaign the user has
+  // ever confirmed (or left at its pre-filled value and clicked Continue)
+  // on the Objective Confirmation wizard step, across every report ever
+  // generated for this client. Read by the /metrics route to pre-select the
+  // Objective Confirmation dropdown and by report-data.ts's Previous Month
+  // objective resolution (a campaign present in Previous Month Data but
+  // absent from the current month's CSV has no engine-detected value to
+  // fall back on otherwise); written by the generate route in the
+  // background after each report, merging new confirmations in rather than
+  // overwriting (see objective-cache.ts). `null` means no campaign has been
+  // confirmed yet for this client, or the user reset it via the client
+  // Manage page's "Reset campaign objective memory" link — both cases fall
+  // back to the engine's own fresh per-campaign detection exactly as if
+  // this feature didn't exist.
+  campaignObjectiveCache String? @db.Text
+
   // Last Google Drive folder this client's reports were saved to (download
   // screen's "Save to Google Drive" button, report-upload-wizard.tsx) —
   // purely a convenience default: the folder picker pre-selects this folder

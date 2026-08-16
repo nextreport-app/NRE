@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ClientForm } from "@/components/client-form";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { DuplicateClientButton } from "@/components/duplicate-client-button";
+import { ResetObjectiveMemoryButton } from "@/components/reset-objective-memory-button";
 import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
@@ -118,6 +119,9 @@ export default async function ClientDetailPage({
             submitFullWidth
             inline
           />
+          <div className="mt-4">
+            <ResetObjectiveMemoryButton clientId={client.id} />
+          </div>
           <div className="mt-4">
             <DeleteClientButton clientId={client.id} />
           </div>
