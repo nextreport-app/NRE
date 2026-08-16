@@ -1142,6 +1142,137 @@ describe("computeTableRow (via mtdRow) — a campaign's mismatched ad set never 
   });
 });
 
+// Real-account bug report: the MTD donut chart slide showed "ADD TO CART" /
+// "COST PER ADD TO CART" for a genuine purchase campaign instead of
+// "PURCHASES" / "COST PER PURCHASE". Root cause: the chart's own
+// per-campaign label used to be a private port of addVisualScorecardSlide_'s
+// detection — getResultLabels() on just the FIRST ad-set-group's own
+// result_type, entirely independent of campaignObjectiveMap (the single
+// source of truth campaign/ad-set slides and the Combined Total table
+// already read from). A campaign whose FIRST-iterated ad set individually
+// resolved to ADD TO CART (blank result_type, real Add To Cart data) but
+// whose OTHER ad set had explicit "Website purchases" text — making
+// campaignObjectiveMap correctly assign the whole campaign PURCHASES via
+// Step 0's "any row" rule — showed the wrong, first-row-only label on the
+// chart, even though its own campaign slide correctly showed PURCHASES.
+describe("chart slide — reads resultLabel/costLabel from campaignObjectiveMap, not its own first-ad-set-only detection (reported chart bug)", () => {
+  it("campaignObjectiveMap says PURCHASES -> chart shows PURCHASES/COST PER PURCHASE, not ADD TO CART/COST PER ADD TO CART", () => {
+    // Listed FIRST in mtdDailyRows so its AggRow is chartGroups[name][0] —
+    // the exact row the OLD buggy detection read from exclusively.
+    const atcAdSetRows: NreRow[] = daysInclusive(13, 19).map((day) => ({
+      _raw: { Day: day, "Adds to cart": "1" },
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "Prospecting - ATC",
+      result_type: "",
+      spend: "10",
+      reach: "200",
+      impressions: "400",
+      results: "1",
+      purchases: "0",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const purchaseAdSetRows: NreRow[] = daysInclusive(13, 19).map((day, i) => ({
+      _raw: {},
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "Retargeting - Purchases",
+      result_type: "Website purchases",
+      spend: "20",
+      reach: "300",
+      impressions: "600",
+      results: String(i < 3 ? 1 : 0),
+      purchases: String(i < 3 ? 1 : 0),
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...atcAdSetRows, ...purchaseAdSetRows],
+      now: NOW,
+    });
+
+    const chartCampaign = data.chart!.campaigns.find((c) => c.name === "Purchase Campaign");
+    expect(chartCampaign?.resLabel).toBe("PURCHASES");
+    expect(chartCampaign?.cprLabel).toBe("COST PER PURCHASE");
+    expect(chartCampaign?.resLabel).not.toBe("ADD TO CART");
+    expect(chartCampaign?.cprLabel).not.toBe("COST PER ADD TO CART");
+
+    // The chart's own resultLabel must also agree with what the SAME
+    // campaign's own slide shows — no more chart/slide disagreement.
+    const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Purchase Campaign");
+    expect(campaignSlide?.resultLabel).toBe(chartCampaign?.resLabel);
+  });
+});
+
+// Comparison Reports had their own separate objective-detection logic
+// (pickPrimaryGroup, independently re-detecting each PERIOD's own
+// objective) — same audit, same fix: now reads from a campaignObjectiveMap
+// built once from both periods' combined rows.
+describe("buildComparisonReportData — reads campaign objectives from a single campaignObjectiveMap, not independent per-period re-detection", () => {
+  it("a campaign with a mismatched ad set in Period A doesn't have that ad set's own count summed into the wrong objective bucket", () => {
+    // Period A (13-16 July): one ad set individually leans Initiate
+    // Checkout (blank result_type, real IC data), another has the explicit
+    // "Website purchases" text that makes the WHOLE campaign (Steps 0)
+    // resolve PURCHASES.
+    const icRows: NreRow[] = ["13-07-2026", "14-07-2026", "15-07-2026", "16-07-2026"].map((day) => ({
+      _raw: { "Initiate checkout": "3" },
+      campaign_name: "Comparison Campaign",
+      ad_set_name: "Prospecting - IC",
+      result_type: "",
+      spend: "10",
+      reach: "200",
+      impressions: "400",
+      results: "3",
+      purchases: "0",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+    const purchaseRows: NreRow[] = ["13-07-2026", "14-07-2026"].map((day) => ({
+      _raw: {},
+      campaign_name: "Comparison Campaign",
+      ad_set_name: "Retargeting - Purchases",
+      result_type: "Website purchases",
+      spend: "20",
+      reach: "300",
+      impressions: "600",
+      results: "1",
+      purchases: "1",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const data = buildComparisonReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      mtdDailyRows: [...icRows, ...purchaseRows],
+      periodA: { startIso: "2026-07-13", endIso: "2026-07-16" },
+      periodB: { startIso: "2026-07-17", endIso: "2026-07-19" },
+      now: NOW,
+    });
+
+    const campaign = data.campaigns.find((c) => c.campaignName === "Comparison Campaign");
+    expect(campaign?.objective).toBe("PURCHASES");
+    expect(campaign?.costLabel).toBe("COST PER PURCHASE");
+    // NOT 14 (12 Initiate Checkouts across 4 days + 2 real purchases) — only
+    // the 2 real purchases count.
+    expect(campaign?.metricsA.results.value).toBe(2);
+  });
+});
+
 // Comprehensive regression test for the exact reported scenario: 3
 // campaigns, 3 objectives, mixed spend — Meta Form Leads' Cost Per Lead
 // must divide only its own $596 spend, never the $751 combined total.

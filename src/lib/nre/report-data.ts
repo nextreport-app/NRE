@@ -41,11 +41,10 @@ import { calculateAccountHealth, budgetSummaryLine } from "./health";
 import {
   buildCampaignObjectiveMap,
   getGroupedResultDisplayForObjective,
-  getResultGroups,
-  getResultLabels,
   getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
   normalizeCampaignName,
+  resultValueForObjective,
   type ResultLabels,
 } from "./objective";
 import type { MetricRow } from "./types";
@@ -1256,10 +1255,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const reach = rows.reduce((s, r) => s + parseCellNum(r.reach), 0);
     const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
     const avgCtr = average(ctrs);
-    // Port of addVisualScorecardSlide_'s per-campaign result-type detection —
-    // based on the FIRST row's result_type only, not an aggregate across rows.
-    const rt = rows[0] ? rows[0].result_type || "" : "";
-    const { resultLabel: resLabel, costLabel: cprLabel } = getResultLabels(rt);
+    // Single source of truth (reported bug: the donut chart showed "ADD TO
+    // CART" for a purchase campaign) — this used to be a private port of
+    // addVisualScorecardSlide_'s own per-campaign result-type detection,
+    // based on the FIRST row's result_type only via getResultLabels'
+    // fuzzy-text match — an entirely separate, un-synced detection path
+    // from the one campaign/ad-set slides and the Combined Total table
+    // already read from (campaignObjectiveMap, Step 0 above), so the chart
+    // could disagree with what a campaign's own slide displayed for the
+    // exact same campaign. Same normalizeCampaignName lookup, same fallback,
+    // as every other campaignObjectiveMap consumer in this function.
+    const chartObjective = campaignObjectiveMap.get(normalizeCampaignName(name)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
+    const resLabel = chartObjective.resultLabel;
+    const cprLabel = chartObjective.costLabel;
     // Same REACH fix as getResultGroups (objective.ts): a real Reach
     // objective typically has 0 in the results column, so cost-per-1K-reach
     // is computed from reach directly instead of showing a dash/0.
@@ -1446,12 +1457,46 @@ function groupAggRowsByCampaign(rows: NreRow[]): Record<string, AggRow[]> {
   return byCampaign;
 }
 
-/** Same "prefer a real objective over Reach unless it's the only one running" selection getGroupedResultDisplay uses, but returning the raw numeric count/avgCpr getGroupedResultDisplay only exposes pre-formatted (needed here for the % change math) — null for an empty row set (this campaign didn't run at all in this period). */
-function pickPrimaryGroup(rows: MetricRow[]): { label: string; costLabel: string; count: number; avgCpr: number } | null {
-  if (rows.length === 0) return null;
-  const allGroups = getResultGroups(rows);
-  const nonReach = allGroups.filter((g) => g.label !== "REACH");
-  return nonReach[0] || allGroups[0] || null;
+/**
+ * Comparison Report's per-period, per-campaign totals for a campaign's ONE
+ * assigned objective (from campaignObjectiveMap — see buildComparisonReportData
+ * below). Single source of truth fix: this used to be pickPrimaryGroup,
+ * which independently re-detected each PERIOD's own objective from
+ * getResultGroups/resolveObjective — a campaign could show one objective
+ * for Period A and a completely different one for Period B (both from the
+ * SAME campaign), and neither was guaranteed to match what that campaign's
+ * own slide or the Combined Total table displayed. Reusing
+ * resultValueForObjective (the exact per-row correction
+ * groupResultsByCampaignObjective already uses for the Combined Total
+ * table's MTD/Previous Month rows) means a campaign with multiple ad sets —
+ * one individually leaning toward a different objective than the campaign's
+ * overall assigned one — can't have that mismatched ad set's own count
+ * inflate this total either. `rows` may be empty (this campaign didn't run
+ * at all in this period) — count/cpr are both simply 0 in that case, same
+ * as pickPrimaryGroup's own null-for-empty behavior once formatted.
+ */
+function comparisonObjectiveTotals(rows: MetricRow[], objective: ResultLabels): { count: number; cpr: number } {
+  let count = 0;
+  let totalSpend = 0;
+  let totalReach = 0;
+  rows.forEach((row) => {
+    count += resultValueForObjective(row, objective.resultLabel);
+    totalSpend += parseCellNum(row.spend);
+    totalReach += parseCellNum(row.reach);
+  });
+  // Same uncounted-Reach special case as buildResultGroups/
+  // getGroupedResultDisplayForObjective: a real Reach objective rarely
+  // populates a `results` count, so its cost is derived from spend/reach
+  // (×1000) instead of spend/count.
+  const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
+  const cpr = isUncountedReach
+    ? totalReach > 0
+      ? (totalSpend * 1000) / totalReach
+      : 0
+    : count > 0
+      ? totalSpend / count
+      : 0;
+  return { count, cpr };
 }
 
 function comparisonMetricSet(spend: number, reach: number, results: number, cpr: number, currencySymbol: string): ComparisonMetricSet {
@@ -1490,6 +1535,17 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
 
   const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort();
 
+  // Single source of truth (reported bug: the chart slide showed "ADD TO
+  // CART" for a purchase campaign — same audit flagged Comparison Reports as
+  // having their own separate objective-detection logic, since fixed here
+  // too) — ONE objective per campaign, covering BOTH periods' rows together,
+  // so a campaign can never show Period A under one objective and Period B
+  // under a different one purely because each period's own data leaned a
+  // different way. Built from every row in this report's scope (both
+  // periods combined, campaign-filtered), same aggregateRows-then-classify
+  // pipeline every other campaignObjectiveMap in this file uses.
+  const campaignObjectiveMap = buildCampaignObjectiveMap(aggregateRows([...rowsA, ...rowsB]));
+
   const campaigns: ComparisonCampaignData[] = campaignNames.map((campaignName) => {
     const campRowsA = byCampaignA[campaignName] ?? [];
     const campRowsB = byCampaignB[campaignName] ?? [];
@@ -1499,15 +1555,18 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     const reachA = sumField(campRowsA, "reach");
     const reachB = sumField(campRowsB, "reach");
 
-    const primaryA = pickPrimaryGroup(campRowsA);
-    const primaryB = pickPrimaryGroup(campRowsB);
-    const primary = primaryA ?? primaryB;
-    const objective = primary?.label ?? "RESULTS";
-    const costLabel = primary?.costLabel ?? "COST PER RESULT";
-    const resultsA = primaryA?.count ?? 0;
-    const resultsB = primaryB?.count ?? 0;
-    const cprA = primaryA?.avgCpr ?? 0;
-    const cprB = primaryB?.avgCpr ?? 0;
+    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
+    const objective = campaignObjective.resultLabel;
+    const costLabel = campaignObjective.costLabel;
+    const totalsA = comparisonObjectiveTotals(campRowsA, campaignObjective);
+    const totalsB = comparisonObjectiveTotals(campRowsB, campaignObjective);
+    const resultsA = totalsA.count;
+    const resultsB = totalsB.count;
+    const cprA = totalsA.cpr;
+    const cprB = totalsB.cpr;
 
     return {
       campaignName,

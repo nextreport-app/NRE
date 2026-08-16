@@ -928,8 +928,14 @@ function rowAddToCart(row: MetricRow): number {
  * real, possibly secondary/incidental, possibly zero count for that
  * specific event) — a mismatched row's `results` is never trusted, since it
  * measures an entirely different metric.
+ *
+ * Exported (not just used internally by groupResultsByCampaignObjective
+ * below) so every other consumer that sums a campaign's rows against a
+ * SINGLE forced objective from campaignObjectiveMap — report-data.ts's
+ * Comparison Report campaign totals being the other one, as of this fix —
+ * gets the same mismatched-row correction instead of reimplementing it.
  */
-function resultValueForObjective(row: MetricRow, label: string): number {
+export function resultValueForObjective(row: MetricRow, label: string): number {
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
 
   if (ownLabel === label) {
