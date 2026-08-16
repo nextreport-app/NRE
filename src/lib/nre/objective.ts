@@ -887,6 +887,64 @@ export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<
   return map;
 }
 
+/** A row's own initiate_checkout/add_to_cart signal — its dedicated numeric field when present (an AggRow, post this round's fix), else summed straight from _raw (a raw NreRow, which has no dedicated column for either). Shared by resultValueForObjective's own reads below and its resolveObjective call, so both agree on the same number. */
+function rowInitiateCheckout(row: MetricRow): number {
+  return row.initiate_checkout !== undefined ? parseCellNum(row.initiate_checkout) : sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
+}
+function rowAddToCart(row: MetricRow): number {
+  return row.add_to_cart !== undefined
+    ? parseCellNum(row.add_to_cart)
+    : sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
+}
+
+/**
+ * MTD-row bug fix (Combined Total table showing inflated Purchases counts) —
+ * a CAMPAIGN can contain multiple ad-set-level rows/groups, each with its
+ * OWN independently-resolved `results` value (aggregate.ts's actualResults
+ * correction sets each ad-set-group's `results` to whatever THAT group's own
+ * classification decided — e.g. its own Purchases count, or its own
+ * Initiate Checkout count if that ad set individually leaned that way).
+ * groupResultsByCampaignObjective below assigns the whole CAMPAIGN to ONE
+ * objective bucket, but used to sum every one of its rows' `results` blindly
+ * into that bucket regardless of what each row's OWN results actually
+ * measured — so a Purchases-classified campaign with one ad set correctly
+ * showing 3 purchases and another ad set whose own classification leaned
+ * Initiate Checkout (results = 12 ICs) summed to 15 "purchases", not 3.
+ *
+ * The fix: first re-derive THIS row's own resolved objective by feeding it,
+ * alone, through resolveCampaignObjective — the EXACT SAME algorithm that
+ * built the campaign's own assigned objective in the first place (Step 0's
+ * explicit-text check, RESULT_TYPE_MAP's exact machine-string match, the
+ * landing_page_view special case, then the row-level resolveObjective
+ * fallback chain). Reusing the identical function (rather than a
+ * hand-rolled subset of it) guarantees this row-level check can never
+ * disagree with the campaign-level check over which text/signal wins —
+ * they're the same code. When this row's own label agrees with `label`,
+ * `results` already measures the right thing — use it as-is (the
+ * overwhelmingly common case: an ordinary single-objective campaign, where
+ * every row agrees). Only when a row's own objective genuinely DIFFERS from
+ * the campaign's assigned objective (the mixed-ad-set bug case) does it
+ * switch to that row's own dedicated metric field for `label` instead (its
+ * real, possibly secondary/incidental, possibly zero count for that
+ * specific event) — a mismatched row's `results` is never trusted, since it
+ * measures an entirely different metric.
+ */
+function resultValueForObjective(row: MetricRow, label: string): number {
+  const ownLabel = resolveCampaignObjective([row]).resultLabel;
+
+  if (ownLabel === label) {
+    return parseCellNum(row.results);
+  }
+  if (label === "PURCHASES") return parseCellNum(row.purchases);
+  if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
+  if (label === "ADD TO CART") return rowAddToCart(row);
+  // No dedicated field tracks any other objective (Leads, Reach, ...) on a
+  // mismatched row — it contributes nothing to a bucket it has no real
+  // metric for, rather than reusing `results`, which measures something
+  // else entirely for this specific row.
+  return 0;
+}
+
 /**
  * Turns `rows` into per-objective ResultGroup[] for the Combined Total
  * table, using a PRE-BUILT campaignObjectiveMap (see buildCampaignObjectiveMap
@@ -901,18 +959,44 @@ export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<
  * RESULTS bucket for a campaign name absent from objectiveMap (defensive
  * only: every call site below passes the same rows the map was itself built
  * from, so this should never actually trigger).
+ *
+ * `debugLabel`, when passed (report-data.ts's computeTableRow passes "MTD"
+ * or "Previous Month"), prints one console.log line per campaign — its
+ * assigned objective, the value actually read for that objective, and the
+ * running total for that objective's bucket — so a reported "wrong number"
+ * bug can be traced to the exact campaign/row producing it without a
+ * debugger. No-op (nothing printed) when omitted, same as before this
+ * existed.
  */
-export function groupResultsByCampaignObjective(rows: MetricRow[], objectiveMap: Map<string, ResultLabels>): ResultGroup[] {
+export function groupResultsByCampaignObjective(
+  rows: MetricRow[],
+  objectiveMap: Map<string, ResultLabels>,
+  debugLabel?: string,
+): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
     const objective = objectiveMap.get(name) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
     const label = objective.resultLabel;
     if (!groups[label]) groups[label] = { costLabel: objective.costLabel, count: 0, totalSpend: 0, totalReach: 0 };
+    let campaignValueSum = 0;
     campRows.forEach((row) => {
-      groups[label].count += parseCellNum(row.results);
+      const value = resultValueForObjective(row, label);
+      groups[label].count += value;
       groups[label].totalSpend += parseCellNum(row.spend);
       groups[label].totalReach += parseCellNum(row.reach);
+      campaignValueSum += value;
+      if (debugLabel) {
+        console.log(
+          `[${debugLabel}] campaign="${name}" ad_set="${row.ad_set_name ?? ""}" objective=${label} ` +
+            `ownLabel=${resolveCampaignObjective([row]).resultLabel} row.result_type="${row.result_type ?? ""}" ` +
+            `row.purchases=${row.purchases ?? "undefined"} row.results=${String(row.results ?? "undefined")} ` +
+            `valueUsed=${value} runningCampaignTotal=${campaignValueSum}`,
+        );
+      }
     });
+    if (debugLabel) {
+      console.log(`[${debugLabel}] campaign="${name}" TOTAL for objective=${label}: ${campaignValueSum} (bucket running total: ${groups[label].count})`);
+    }
   });
 
   return buildResultGroups(groups);

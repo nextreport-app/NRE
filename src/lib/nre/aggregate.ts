@@ -37,6 +37,20 @@ export interface AggRow {
   frequency: number;
   date_start: string;
   date_end: string;
+  /**
+   * Campaign-level objective rollup fix (Combined Total table MTD-row bug)
+   * — this ad-set-group's OWN dedicated-column totals, retained rather than
+   * discarded, so a CAMPAIGN-level rollup (objective.ts's
+   * groupResultsByCampaignObjective) can read the metric that actually
+   * matches the campaign's assigned objective for this group, instead of
+   * blindly trusting `results` above (which reflects THIS group's own —
+   * possibly different — resolved objective; see actualResults in
+   * aggregateRows below). Always a real number, never undefined, unlike
+   * MetricRow's identically-named optional fields.
+   */
+  purchases: number;
+  initiate_checkout: number;
+  add_to_cart: number;
   /** Raw text, e.g. "Active"/"Not delivering"/"Paused" — see delivery-status.ts. Empty when the CSV has no delivery-status column, or no row for this group had one set. */
   delivery_status: string;
   /**
@@ -294,6 +308,9 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       impressions: g.impressions,
       results: actualResults,
       link_clicks: g.link_clicks,
+      purchases: g.purchases,
+      initiate_checkout: g.initiate_checkout,
+      add_to_cart: g.add_to_cart,
       ctr,
       cpc,
       cpr: actualCpr,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildCampaignObjectiveMap,
   buildCampaignObjectiveMapWithConfidence,
@@ -30,6 +30,9 @@ function row(overrides: Partial<AggRow> = {}): AggRow {
     impressions: 10000,
     results: 20,
     link_clicks: 200,
+    purchases: 0,
+    initiate_checkout: 0,
+    add_to_cart: 0,
     ctr: 2,
     cpc: 5,
     cpr: 50,
@@ -810,6 +813,99 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
     expect(tableGroups).toHaveLength(1);
     expect(tableGroups[0]).toMatchObject({ label: "WEBSITE LEADS", count: 28, totalSpend: 280 });
+  });
+
+  // Real-account bug report (MTD row showing 15 purchases when the CSV only
+  // has 3): a campaign with TWO ad-set-level rows — one whose OWN
+  // resolveObjective classification is INITIATE CHECKOUT (its own blank
+  // result_type, IC column = 12), one whose own classification is PURCHASES
+  // (explicit "Website purchases" result_type, 3 real purchases) — gets
+  // assigned ONE campaign-wide objective (PURCHASES, since explicit purchase
+  // text wins per Part 7's own Step 0). Before this fix, groupResultsByCampaignObjective
+  // summed BOTH rows' `results` blindly into the PURCHASES bucket (12 + 3 =
+  // 15) even though the IC row's `results` measures Initiate Checkouts, not
+  // purchases. Now only the row that actually agrees with the campaign's
+  // assigned objective contributes its `results`; the mismatched IC row
+  // contributes its own (zero) purchases count instead.
+  it("MTD-row bug fix — a campaign's mismatched ad-set row (own objective differs from the campaign's assigned objective) never has its `results` summed into the wrong bucket", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Purchase Campaign",
+        ad_set_name: "Prospecting - IC",
+        _raw: { "Initiate checkout": "12" },
+        result_type: "",
+        purchases: 0,
+        results: 12,
+        spend: 120,
+      }),
+      metricRow({
+        campaign_name: "Purchase Campaign",
+        ad_set_name: "Retargeting - Purchases",
+        _raw: {},
+        result_type: "Website purchases",
+        purchases: 3,
+        results: 3,
+        spend: 60,
+      }),
+    ];
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get("purchase campaign")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+
+    const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
+    expect(tableGroups).toHaveLength(1);
+    // NOT 15 (12 + 3) — the exact reported bug.
+    expect(tableGroups[0]).toMatchObject({ label: "PURCHASES", count: 3 });
+  });
+
+  it("MTD-row bug fix — the reverse case: a campaign assigned INITIATE CHECKOUT correctly excludes a mismatched Purchases-classified row's own results", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "IC Campaign",
+        ad_set_name: "Set 1",
+        _raw: { "Initiate checkout": "20" },
+        result_type: "initiate_checkout",
+        purchases: 0,
+        results: 20,
+        spend: 100,
+      }),
+      // A secondary ad set with a blank result_type but real purchases data —
+      // individually (via the Step 3/4 Results-column-match fallback) it
+      // resolves to PURCHASES, even though the campaign overall was assigned
+      // INITIATE CHECKOUT (Set 1's explicit result_type text). Its `results`
+      // (5, its own purchase count) must not be counted as Initiate Checkouts.
+      metricRow({
+        campaign_name: "IC Campaign",
+        ad_set_name: "Set 2",
+        _raw: {},
+        result_type: "",
+        purchases: 5,
+        results: 5,
+        spend: 50,
+      }),
+    ];
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get("ic campaign")).toEqual({ resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT" });
+
+    const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
+    expect(tableGroups).toHaveLength(1);
+    // NOT 25 (20 + 5) — Set 2's 5 purchases are not Initiate Checkouts.
+    expect(tableGroups[0]).toMatchObject({ label: "INITIATE CHECKOUT", count: 20 });
+  });
+
+  it("groupResultsByCampaignObjective's debugLabel parameter prints per-campaign diagnostics without changing the returned result", () => {
+    const rows: MetricRow[] = [
+      metricRow({ campaign_name: "Debug Campaign", _raw: {}, result_type: "Purchase", purchases: 4, results: 4, spend: 40 }),
+    ];
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const withDebug = groupResultsByCampaignObjective(rows, objectiveMap, "TEST");
+    const withoutDebug = groupResultsByCampaignObjective(rows, objectiveMap);
+    expect(withDebug).toEqual(withoutDebug);
+    expect(logSpy).toHaveBeenCalled();
+    expect(logSpy.mock.calls.some((call) => String(call[0]).includes("[TEST]"))).toBe(true);
+    logSpy.mockRestore();
   });
 });
 

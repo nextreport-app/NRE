@@ -34,6 +34,22 @@ export interface MetricRow {
   meta_leads?: unknown;
   leads?: unknown;
   landing_page_views?: unknown;
+  /**
+   * Campaign-level objective rollup fix (Combined Total table MTD-row bug)
+   * — present as real numeric totals on an AggRow (aggregateRows now
+   * retains its own accumulated g.initiate_checkout/g.add_to_cart rather
+   * than discarding them), and undefined on a raw NreRow (which has no
+   * dedicated mapped column for either — objective.ts's
+   * groupResultsByCampaignObjective falls back to reading these straight
+   * from _raw for a raw row instead). Lets groupResultsByCampaignObjective
+   * read the metric that actually matches a CAMPAIGN's assigned objective
+   * for each of its ad-set rows, instead of blindly trusting `results`
+   * (which, per ad-set-group, reflects THAT ad set's own — possibly
+   * different — resolved objective; see aggregate.ts's actualResults
+   * correction).
+   */
+  initiate_checkout?: unknown;
+  add_to_cart?: unknown;
   /** Raw, unmapped CSV column values for this row, if the caller has them (a raw NreRow always does; an aggregated AggRow never does) — used only to detect column-name presence (Priority 3), never for values. */
   _raw?: Record<string, string>;
 }

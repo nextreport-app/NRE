@@ -1077,6 +1077,71 @@ describe("computeTableRow (via periodRow) — Purchases vs Initiate Checkout col
   });
 });
 
+// Real-account bug report (MTD row specifically, not Previous Month): a
+// single MTD campaign with two ad sets — one whose OWN per-day/per-ad-set
+// aggregation resolves to INITIATE CHECKOUT (blank result_type, real
+// Initiate Checkout column data, zero real purchases), one whose own
+// aggregation resolves to PURCHASES (explicit "Website purchases" result_type,
+// real purchases). The CAMPAIGN as a whole is assigned PURCHASES (explicit
+// text wins). Before this fix, the MTD row's PURCHASES column summed BOTH
+// ad sets' own `results` values (the IC ad set's own Initiate Checkout count
+// included), showing 15 when the CSV only had 3 actual purchases across the
+// period.
+describe("computeTableRow (via mtdRow) — a campaign's mismatched ad set never inflates the MTD row's Purchases count (MTD-row bug fix)", () => {
+  it("MTD row shows exactly 3 purchases, not 15 (12 real Initiate Checkouts + 3 real purchases)", () => {
+    // 12 Initiate Checkouts (blank result_type, no real purchases) spread
+    // across the 7-day window — its own aggregation resolves this ad set to
+    // INITIATE CHECKOUT.
+    const icAdSetRows: NreRow[] = daysInclusive(13, 19).map((day, i) => ({
+      _raw: { Day: day, "Initiate checkout": String(i < 5 ? 2 : 1) }, // 2+2+2+2+2+1+1 = 12
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "Prospecting - IC",
+      result_type: "",
+      spend: "10",
+      reach: "200",
+      impressions: "400",
+      results: String(i < 5 ? 2 : 1),
+      purchases: "0",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    // 3 real purchases, explicit result_type text — its own aggregation
+    // resolves this ad set to PURCHASES.
+    const purchaseAdSetRows: NreRow[] = daysInclusive(13, 19).map((day, i) => ({
+      _raw: {},
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "Retargeting - Purchases",
+      result_type: "Website purchases",
+      spend: "20",
+      reach: "300",
+      impressions: "600",
+      results: String(i < 3 ? 1 : 0), // 1+1+1+0+0+0+0 = 3
+      purchases: String(i < 3 ? 1 : 0),
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...icAdSetRows, ...purchaseAdSetRows],
+      now: NOW,
+    });
+
+    const purchases = data.mtdRow.resultColumns.find((c) => c.label === "PURCHASES");
+    expect(data.mtdRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
+    // NOT 15 (12 Initiate Checkouts + 3 purchases) — the exact reported bug.
+    expect(purchases?.value).toBe("3");
+  });
+});
+
 // Comprehensive regression test for the exact reported scenario: 3
 // campaigns, 3 objectives, mixed spend — Meta Form Leads' Cost Per Lead
 // must divide only its own $596 spend, never the $751 combined total.
