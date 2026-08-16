@@ -305,7 +305,14 @@ describe("buildReportData — multi-campaign integration", () => {
 describe("buildReportData — ad set filtering (report upload wizard's Ad Sets step)", () => {
   // "Shoes - Purchases" has two ad sets (Prospecting, Retargeting); "Brand -
   // Reach" has one (Awareness) — mirrors the multi-campaign fixture above.
-  it("removes excluded ad-set rows before the NRE engine runs — they never reach aggregation, results, or the chart", () => {
+  //
+  // selectedAdSets ONLY prunes which ad-set slides get built (Phase A2) — it
+  // never filters mtdDailyRows itself, unlike selectedCampaigns. An earlier
+  // version of this filter ran before splitMtdDaily and was removed from the
+  // wizard because it silently shrank MTD totals below the real account
+  // spend, misleading clients (see BuildReportDataInput.selectedAdSets's doc
+  // comment) — these tests guard against that regression.
+  it("excluding an ad set removes only its own slide — campaign totals, the chart, and the MTD/table rows are unaffected", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "₹",
@@ -316,19 +323,17 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
       now: NOW,
     });
 
-    // Retargeting's rows are gone entirely — not blanked, not zeroed,
-    // absent. Shoes now has only one surviving ad set (Prospecting), so per
-    // the existing "2+ ad sets get their own slide" rule it no longer gets
-    // a dedicated ad-set slide — its campaign summary slide covers it.
+    // Retargeting's own slide is gone...
     expect(data.adSetSlides.some((s) => s.adSetName === "Retargeting")).toBe(false);
-    // Shoes' campaign summary only reflects the surviving ad set's numbers
-    // (spend 700, not the combined 1,050 from both ad sets).
+    // ...but Shoes' campaign summary still reflects BOTH ad sets' combined
+    // spend (700 + 350 = 1,050) — the excluded ad set's rows were never
+    // removed from the underlying data, only its own slide was skipped.
     const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
-    expect(shoes.metrics.spend).toBe("₹700");
-    expect(data.chart!.campaigns.find((c) => c.name === "Shoes - Purchases")!.spend).toBe(700);
+    expect(shoes.metrics.spend).toBe("₹1,050");
+    expect(data.chart!.campaigns.find((c) => c.name === "Shoes - Purchases")!.spend).toBe(1050);
   });
 
-  it("deselecting every ad set in a campaign removes that campaign from the report entirely", () => {
+  it("deselecting every ad set in a campaign shows a campaign slide with no ad-set slides underneath it — the campaign itself and the report totals are untouched", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "₹",
@@ -340,11 +345,15 @@ describe("buildReportData — ad set filtering (report upload wizard's Ad Sets s
       now: NOW,
     });
 
-    expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach"]);
+    // Both campaigns still get their summary slide — deselecting ad sets
+    // never removes a campaign.
+    expect(data.campaignSlides.map((s) => s.campaignName)).toEqual(["Brand - Reach", "Shoes - Purchases"]);
+    // Neither Shoes ad set gets its own slide (both deselected)...
     expect(data.adSetSlides).toEqual([]);
-    expect(data.chart!.campaigns.map((c) => c.name)).toEqual(["Brand - Reach"]);
-    // The account isn't paused overall — Brand - Reach still has real data,
-    // only the fully-deselected campaign disappears.
+    // ...but Shoes' own totals are unaffected (still both ad sets' spend).
+    const shoes = data.campaignSlides.find((s) => s.campaignName === "Shoes - Purchases")!;
+    expect(shoes.metrics.spend).toBe("₹1,050");
+    expect(data.chart!.campaigns.map((c) => c.name).sort()).toEqual(["Brand - Reach", "Shoes - Purchases"]);
     expect(data.isPaused).toBe(false);
   });
 

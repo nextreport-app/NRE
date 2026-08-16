@@ -1122,15 +1122,45 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
   });
 });
 
+// MTD-row bug fix, extended to ad-set slides (per-row objective correction —
+// see resultValueForObjective/getGroupedResultDisplayForObjective) — an
+// ad-set slide always shows the PARENT campaign's forced objective label,
+// but its `results`/`cpr` numbers are no longer trusted as-is when this
+// specific ad set's own resolved objective genuinely differs from what's
+// being forced: `results` measures a different metric entirely in that
+// case, so the raw number is never reused, matching the exact correction
+// the Combined Total table already applies.
 describe("getSingleRowResultDisplayForObjective — ad-set slides read the parent campaign's objective, not their own row-level result_type", () => {
-  it("forces the given objective's label even when the row's own result_type disagrees", () => {
+  it("forces the given objective's label even when the row's own result_type disagrees, AND corrects the numbers when the row's own objective doesn't track that metric at all", () => {
     const r = row({ result_type: "Landing page view", results: 12, cpr: 8 });
     const display = getSingleRowResultDisplayForObjective(r, { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" }, "$");
     expect(display.resultLabel).toBe("WEBSITE LEADS");
     expect(display.costLabel).toBe("COST PER WEBSITE LEAD");
-    // The row's own numbers are unchanged — only the label is forced.
+    // NOT 12 — this ad set's own resolved objective is LANDING PAGE VIEWS,
+    // which has no dedicated Website Leads count to fall back to, so a
+    // mismatched row contributes 0 rather than reusing its LPV count. Since
+    // the row still has spend > 0, cpr reads as "N/A" (spend with no
+    // matching results), not "—" (which is reserved for zero spend).
+    expect(display.resultValue).toBe("0");
+    expect(display.cprValue).toBe("N/A");
+  });
+
+  it("the row's own numbers pass through unchanged when this ad set's own resolved objective already matches the forced one (the common, non-mismatched case)", () => {
+    const r = row({ result_type: "Website lead", results: 12, spend: 96, cpr: 999 /* deliberately wrong — must never be read directly */ });
+    const display = getSingleRowResultDisplayForObjective(r, { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" }, "$");
     expect(display.resultValue).toBe("12");
+    // Recomputed from spend/results (96/12 = 8), not the stale row.cpr (999).
     expect(display.cprValue).toBe("$8.00");
+  });
+
+  it("MTD-row bug fix scenario, single ad set — an Initiate-Checkout-leaning ad set forced to PURCHASES contributes 0, not its own IC count", () => {
+    const r = row({ result_type: "", results: 12, purchases: undefined, spend: 40 });
+    const display = getSingleRowResultDisplayForObjective(r, { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" }, "$");
+    // This ad set has no explicit result_type and its own `results` (12)
+    // isn't backed by any Purchases-specific data — resultValueForObjective
+    // falls back to row.purchases (undefined -> 0), not the mismatched 12.
+    expect(display.resultValue).toBe("0");
+    expect(display.cprValue).toBe("N/A"); // real spend, zero results.
   });
 });
 

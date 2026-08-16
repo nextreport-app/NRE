@@ -24,7 +24,7 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
-import { adSetKey, filterRowsByAdSets } from "./ad-sets";
+import { adSetKey } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
 import { getRowDate, type NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
@@ -296,9 +296,15 @@ export interface BuildReportDataInput {
   /**
    * Ad set composite keys (see ad-sets.ts's adSetKey) selected in the
    * wizard's ad-set-selection step, which runs right after campaign
-   * selection. Applied after selectedCampaigns filtering, same
-   * never-reaches-the-engine guarantee. `undefined`/`null` means no
-   * selection was made — every ad set passes.
+   * selection. Unlike selectedCampaigns, this is applied ONLY to which
+   * individual ad-set slides get generated (Phase A2 below) — it never
+   * filters mtdDailyRows itself, so it can't touch weeklyRows/mtdRows, the
+   * MTD chart, the Combined Total table, or campaign-slide totals. An
+   * earlier version of this filter ran before splitMtdDaily and was removed
+   * from the wizard because it silently shrank MTD totals below the real
+   * account spend, misleading clients — this scoped version can't repeat
+   * that. `undefined`/`null` means no selection was made — every ad set
+   * (that would otherwise get a slide) keeps its slide.
    */
   selectedAdSets?: string[] | null;
   /**
@@ -693,7 +699,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const isMonthlyReport = reportType === "MONTHLY";
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
-  const filteredMtdDailyRows = filterRowsByAdSets(campaignFilteredRows, selectedAdSets ?? null);
+  // selectedAdSets is NOT applied here — see its doc comment on
+  // BuildReportDataInput: it only prunes which ad-set slides get built
+  // (Phase A2 below), never the rows that feed MTD/weekly totals.
+  const filteredMtdDailyRows = campaignFilteredRows;
   // A Monthly report has no weekly window at all — weeklyRange is ignored
   // (never even resolved by the caller in that case) and splitMtdDaily's
   // own weekly split is simply never used below (see primaryRows).
@@ -1143,6 +1152,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const MIN_ADSET_MTD_SPEND_FOR_SLIDE = 1;
 
   // ── Phase A2: individual ad set slides (only campaigns with 2+ ad sets) ─
+  // Deselecting an ad set in the wizard only removes ITS OWN slide here —
+  // see BuildReportDataInput.selectedAdSets's doc comment for why this
+  // can't be allowed to reach mtdDailyRows/weeklyRows/mtdRows.
+  const selectedAdSetsSet = selectedAdSets != null ? new Set(selectedAdSets) : null;
   const adSetSlides: AdSetSlideData[] = [];
   sortedWeeklyRows.forEach((row) => {
     const campaignName = String(row.campaign_name || "Campaign").trim();
@@ -1150,6 +1163,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     if (!keptCampaignNames.has(campaignName)) return; // zero weekly spend — no campaign slide, so no ad-set slides either
     const campAdSetCount = campaignGroups[campaignName]?.length || 0;
     if (campAdSetCount <= 1) return; // single ad set — campaign slide already covers it
+    if (selectedAdSetsSet && !selectedAdSetsSet.has(adSetKey(campaignName, adSetName))) return; // user deselected this ad set
 
     // Archived ad sets never get their own slide regardless of spend — a
     // more final state than merely paused/inactive, which still can.

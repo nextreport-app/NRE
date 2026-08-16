@@ -20,6 +20,7 @@ import {
   parseJsonFormField,
   platformSchema,
   reportTypeSchema,
+  selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
@@ -83,6 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
 
@@ -134,6 +136,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
+    selectedAdSets: selectedAdSets ?? null,
     weeklyRange: dateResolution.weeklyRange,
     reportType,
     selectedMetrics,

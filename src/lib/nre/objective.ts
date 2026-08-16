@@ -1058,11 +1058,19 @@ export function getGroupedResultDisplayForObjective(
   objective: ResultLabels,
   currencySymbol: string,
 ): ResultDisplay {
+  // MTD-row bug fix, extended to campaign slides — see
+  // groupResultsByCampaignObjective's own doc comment and
+  // resultValueForObjective for the full rationale: a campaign summary
+  // must never sum an ad set's `results` when that ad set's OWN resolved
+  // objective differs from the campaign's assigned one (e.g. an Initiate-
+  // Checkout-leaning ad set inside an overall Purchases campaign), so a
+  // campaign slide's shown count always matches what the Combined Total
+  // table shows for that same campaign.
   let count = 0;
   let totalSpend = 0;
   let totalReach = 0;
   campRows.forEach((row) => {
-    count += parseCellNum(row.results);
+    count += resultValueForObjective(row, objective.resultLabel);
     totalSpend += parseCellNum(row.spend);
     totalReach += parseCellNum(row.reach);
   });
@@ -1098,17 +1106,42 @@ export function getGroupedResultDisplayForObjective(
  * campaign's own objective (via campaignObjectiveMap) instead of that row's
  * own individually-resolved result_type, so every ad-set slide under one
  * campaign always agrees with that campaign's own summary slide and with
- * the Combined Total table. The row's own results/cpr numbers are used
- * as-is (unchanged) — only the label is forced to match the campaign's
- * official objective.
+ * the Combined Total table.
+ *
+ * MTD-row bug fix, extended to ad-set slides — the row's own `results`/`cpr`
+ * are no longer trusted as-is: when THIS ad set's own resolved objective
+ * differs from the campaign's assigned one (e.g. this ad set individually
+ * leans Initiate Checkout inside an overall Purchases campaign), `results`
+ * measures the wrong metric entirely — resultValueForObjective reads its
+ * dedicated field for the campaign's real objective instead (its own,
+ * possibly zero, count for that specific event). cpr is then recomputed
+ * from spend/count (never the precomputed `row.cpr`, which was calculated
+ * against this ad set's own — possibly different — objective) so the two
+ * numbers never disagree; for the common case where this ad set's own
+ * objective already matches the campaign's, both formulas are identical
+ * (spend/results) and the displayed numbers are unchanged.
  */
 export function getSingleRowResultDisplayForObjective(row: AggRow, objective: ResultLabels, currencySymbol: string): ResultDisplay {
-  const results = parseCellNum(row.results);
-  const cpr = parseCellNum(row.cpr);
+  const results = resultValueForObjective(row, objective.resultLabel);
+  const spend = parseCellNum(row.spend);
+  const reach = parseCellNum(row.reach);
+  // Same uncounted-Reach special case as getGroupedResultDisplayForObjective.
+  const isUncountedReach = objective.resultLabel === "REACH" && results === 0;
+  let cprValue: string;
+  if (isUncountedReach) {
+    const reachCpr = reach > 0 ? (spend * 1000) / reach : 0;
+    cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
+  } else if (results > 0) {
+    cprValue = fmtCurrency2dp(spend / results, currencySymbol);
+  } else if (spend > 0) {
+    cprValue = "N/A";
+  } else {
+    cprValue = "—";
+  }
   return {
     resultLabel: objective.resultLabel,
     costLabel: objective.costLabel,
     resultValue: results > 0 ? fmtNumber(results) : "0",
-    cprValue: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—",
+    cprValue,
   };
 }

@@ -35,6 +35,7 @@ import {
   platformSchema,
   reportTitleSchema,
   reportTypeSchema,
+  selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
@@ -70,6 +71,7 @@ async function buildMetaData(
   }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+  const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
@@ -96,6 +98,7 @@ async function buildMetaData(
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
+    selectedAdSets: selectedAdSets ?? null,
     weeklyRange: dateResolution.weeklyRange,
     reportType,
     selectedMetrics,

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { adSetKey, extractAdSetGroups, filterRowsByAdSets, resolveDefaultSelectedAdSets } from "../ad-sets";
+import { adSetKey, extractAdSetGroups, extractSpendingAdSetGroups, filterRowsByAdSets, resolveDefaultSelectedAdSets } from "../ad-sets";
 import type { NreRow } from "../columns";
 
 function row(campaignName: string, adSetName: string): NreRow {
   return { _raw: {}, campaign_name: campaignName, ad_set_name: adSetName };
+}
+
+function rowWithSpend(campaignName: string, adSetName: string, spend: number): NreRow {
+  return { _raw: {}, campaign_name: campaignName, ad_set_name: adSetName, spend: String(spend) };
 }
 
 describe("extractAdSetGroups", () => {
@@ -37,6 +41,43 @@ describe("extractAdSetGroups", () => {
 
   it("returns an empty array for no rows", () => {
     expect(extractAdSetGroups([])).toEqual([]);
+  });
+});
+
+describe("extractSpendingAdSetGroups", () => {
+  it("excludes ad sets whose total spend across the CSV is zero, keeping the rest", () => {
+    const rows = [
+      rowWithSpend("Shoes", "Prospecting", 100),
+      rowWithSpend("Shoes", "Retargeting", 0), // never spent — long paused
+      rowWithSpend("Boots", "Awareness", 50),
+    ];
+    expect(extractSpendingAdSetGroups(rows)).toEqual([{ campaignName: "Shoes", adSetNames: ["Prospecting"] }, { campaignName: "Boots", adSetNames: ["Awareness"] }]);
+  });
+
+  it("sums an ad set's spend across multiple daily rows before comparing to the threshold", () => {
+    const rows = [
+      rowWithSpend("Shoes", "Prospecting", 0.005),
+      rowWithSpend("Shoes", "Prospecting", 0.006), // sums to 0.011 — just over the cent threshold
+    ];
+    expect(extractSpendingAdSetGroups(rows)).toEqual([{ campaignName: "Shoes", adSetNames: ["Prospecting"] }]);
+  });
+
+  it("omits a campaign entirely when none of its ad sets have real spend", () => {
+    const rows = [rowWithSpend("Shoes", "Prospecting", 0), rowWithSpend("Boots", "Awareness", 20)];
+    expect(extractSpendingAdSetGroups(rows)).toEqual([{ campaignName: "Boots", adSetNames: ["Awareness"] }]);
+  });
+
+  it("returns an empty array when no ad set has any real spend", () => {
+    const rows = [rowWithSpend("Shoes", "Prospecting", 0)];
+    expect(extractSpendingAdSetGroups(rows)).toEqual([]);
+  });
+
+  it("preserves first-seen order, same as extractAdSetGroups", () => {
+    const rows = [rowWithSpend("Boots", "Awareness", 20), rowWithSpend("Shoes", "Retargeting", 30), rowWithSpend("Shoes", "Prospecting", 10)];
+    expect(extractSpendingAdSetGroups(rows)).toEqual([
+      { campaignName: "Boots", adSetNames: ["Awareness"] },
+      { campaignName: "Shoes", adSetNames: ["Retargeting", "Prospecting"] },
+    ]);
   });
 });
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, resolveCampaignSelection, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
+import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { computeCsvDateBounds, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
@@ -74,6 +75,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         campaigns: [],
         selectedCampaigns: [],
         campaignStepMode: "choose",
+        adSetGroups: [],
         dateBounds: null,
         weeklyOptions: null,
         mtdRange: null,
@@ -98,6 +100,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (parsed.success) campaignMemory = parsed.data;
     }
     const { selectedCampaigns, stepMode: campaignStepMode } = resolveCampaignSelection(campaigns, campaignMemory);
+
+    // Improvement 2 — the Campaigns step's per-campaign expandable ad-set
+    // checklist. Every qualifying ad set (spend > 0) starts pre-checked;
+    // there's no saved memory for this like campaigns have (see
+    // ad-sets.ts's file header — deselection only ever affects this one
+    // report's ad-set slides, nothing persists across uploads).
+    const adSetGroups = extractSpendingAdSetGroups(mtdParsed.rows);
 
     let dateSelection: DateSelection = DEFAULT_DATE_SELECTION;
     if (client.lastDateSelection) {
@@ -124,6 +133,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaigns,
       selectedCampaigns,
       campaignStepMode,
+      adSetGroups,
       dateBounds,
       weeklyOptions,
       mtdRange,

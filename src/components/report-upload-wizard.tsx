@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
@@ -8,50 +8,65 @@ import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
+import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { useToast } from "@/components/toast";
 
-// Ad-set-level filtering was removed from the wizard (product decision: it
-// produced MTD totals that no longer matched real account spend, which
-// misled clients). The underlying filter logic still lives in
-// lib/nre/ad-sets.ts and report-data.ts's selectedAdSets param — untouched,
-// just never called from here — so it can come back without re-deriving it.
-// Preview + Generate are one screen (see the step === 6 block below) — the
-// action row at the bottom swaps between "Generate" button, a loading
-// spinner, the download/slides links, or an error + Try Again, all without
-// navigating away.
+// 3-screen wizard (originally 6 — Upload / Campaigns / Objectives / Metrics
+// / Dates / Preview+Generate — merged down, see git history for the prior
+// per-step layout if it's ever useful as a reference). Nothing was dropped
+// in the merge, only reorganised:
 //
-// Step 3 (Objective Confirmation — the permanent objective-detection fix)
-// is Meta-only: the engine's own per-campaign detection (objective.ts's
-// resolveCampaignObjective, backed by result-type-map.ts) pre-fills every
-// campaign's dropdown, and continuing without changing anything keeps that
-// same engine detection exactly as before this step existed — it's a
-// review/correction surface, not a new decision the user is forced to make.
+// Step 1 — Upload (unchanged): platform selector, file upload, Analyze.
 //
-// Step 4 (Metrics — Part 3) is Meta-only and optional: skipping it (or
-// never touching it) leaves the engine's own automatic per-objective 8-slot
-// assignment in place, exactly as before this step existed. Google Ads
-// still skips straight from Upload to Preview (step 6) — see
-// dispatchAfterAnalyze — since it has no campaign-selection step for either
-// Objective Confirmation or a Metric Review to meaningfully follow.
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+// Step 2 — Campaigns, Objectives & Metrics (Meta only): Section A is a
+// single per-campaign row combining what used to be three separate steps —
+// checkbox, campaign name, an inline ad-set expand arrow (Improvement 2,
+// see ad-sets.ts), and the objective dropdown + confidence badge (the
+// permanent objective-detection fix — objective.ts's
+// resolveCampaignObjective, backed by result-type-map.ts). The dropdown/
+// ad-set list/confidence badge for a campaign are only meaningful while
+// that campaign is checked, so they're hidden (not cleared — the state
+// underneath is untouched) the moment its checkbox is unchecked. Section B
+// (Metric Cards) is the old Metrics step, now collapsed by default behind a
+// one-line "N metrics selected: ..." summary — expanding it shows the exact
+// same review-card UI as before. The old per-step /metrics fetch (used to
+// fire on the Campaigns step's own "Continue" click) now fires once,
+// automatically, right after Analyze succeeds — see
+// fetchObjectivesAndMetrics/dispatchAfterAnalyze — using the same
+// analyze-resolved default campaign selection that would otherwise have
+// been sent; toggling a campaign checkbox afterwards doesn't re-fetch (each
+// campaign's objective dropdown and the metric cards stay fully editable by
+// hand either way, so nothing is lost).
+//
+// Step 3 — Report Period & Generate (Meta) / Preview & Generate (Google):
+// merges the old Dates step and Preview+Generate step onto one screen. The
+// preview (and the objective-confirmed campaign list it needs) can no
+// longer wait for an explicit "Continue" click between the two, so it's now
+// refetched automatically by a useEffect keyed on `step`/reportType/date
+// fields — see fetchPreview — every time the user changes something in the
+// Reporting Period section while on this step. Since applyPreviewResult
+// already calls resetGenerateState() on every successful fetch, changing
+// dates after a report has already been generated naturally clears the old
+// download links and shows the Generate button again, with no separate
+// "back to dates" navigation needed — the date controls are already right
+// there on the same screen. Google Ads' simpler pipeline (no weekly/
+// monthly/comparison choice, no campaign selection — see
+// google-report-data.ts's own file header) skips the Reporting Period
+// section and the refetch effect entirely, landing here with whatever
+// /preview response dispatchAfterAnalyze already fetched directly.
+type Step = 1 | 2 | 3;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
-  2: "Campaigns",
-  3: "Objectives",
-  4: "Metrics",
-  5: "Dates",
-  6: "Preview & Generate",
+  2: "Campaigns & Objectives",
+  3: "Period & Generate",
 };
 
 // Fix 2 — context-specific wizard heading per step, replacing the generic
 // "Generate Report" heading that used to be static on every screen.
 const STEP_HEADINGS: Record<Step, string> = {
   1: "Upload Your CSV",
-  2: "Select Campaigns",
-  3: "Confirm Objectives",
-  4: "Review Metric Cards",
-  5: "Choose Report Period",
-  6: "Preview & Generate",
+  2: "Campaigns, Objectives & Metrics",
+  3: "Report Period & Generate",
 };
 
 const MIN_SELECTED_METRICS = 4;
@@ -242,6 +257,16 @@ export function ReportUploadWizard({
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
+  // Improvement 2 — ad-set selection, collapsible under each campaign row
+  // (populated by /analyze's adSetGroups, only ad sets with real spend —
+  // see ad-sets.ts's extractSpendingAdSetGroups). Every ad set starts
+  // pre-checked; there's no saved memory for this like campaigns have (see
+  // ad-sets.ts's file header). expandedCampaigns tracks which campaigns'
+  // ad-set lists are currently shown — collapsed by default, per campaign.
+  const [adSetGroups, setAdSetGroups] = useState<AdSetGroup[]>([]);
+  const [selectedAdSets, setSelectedAdSets] = useState<Set<string>>(new Set());
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
+
   // Step 3 — Objective Confirmation (the permanent objective-detection fix,
   // Meta only — populated by the same /metrics call as Step 4 below, right
   // after Campaign Selection). Keyed by objective.ts's normalizeCampaignName
@@ -280,6 +305,10 @@ export function ReportUploadWizard({
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [metricsTouched, setMetricsTouched] = useState(false);
   const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
+  // Section B (Metric Cards) on the merged Step 2 — collapsed by default,
+  // showing just a one-line summary; expanding it reveals the same review-
+  // card UI the old standalone Metrics step had.
+  const [metricsSectionExpanded, setMetricsSectionExpanded] = useState(false);
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -294,7 +323,7 @@ export function ReportUploadWizard({
   // weekly period selector entirely and generates from the full MTD data
   // only. Comparison (A1) hides both the weekly picker AND the MTD Period
   // card, showing its own Period A/B preset picker instead — see
-  // handleDatesContinue/handleGenerate, which branch on this value.
+  // fetchPreview/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
 
   // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
@@ -322,6 +351,10 @@ export function ReportUploadWizard({
   // text to match; once true, their custom title is left alone regardless
   // of which Report Type is picked.
   const [reportTitleTouched, setReportTitleTouched] = useState(false);
+  // Custom title input starts collapsed behind an "Add custom title +"
+  // link on the merged Step 3 — expanding it once (or having already typed
+  // a title) keeps it expanded for the rest of the session.
+  const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -445,6 +478,10 @@ export function ReportUploadWizard({
   function applyAnalyzeResult(json: any) {
     setCampaigns(json.campaigns || []);
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
+    const groups: AdSetGroup[] = json.adSetGroups || [];
+    setAdSetGroups(groups);
+    setSelectedAdSets(new Set(groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name)))));
+    setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
     setWeeklyOptions(json.weeklyOptions || null);
     setMtdRange(json.mtdRange || null);
@@ -475,9 +512,16 @@ export function ReportUploadWizard({
     resetGenerateState();
   }
 
-  /** Meta keeps its existing multi-step campaigns/dates flow. Google Ads skips straight to the preview — no campaign selection, no report-type toggle, no Previous Month Data (see google-report-data.ts's own file header for why this pipeline is deliberately simpler for v1). */
+  /** Meta keeps its existing campaigns/objectives/dates flow, now spread across just 2 more screens instead of 4. Google Ads skips straight to the preview — no campaign selection, no report-type toggle, no Previous Month Data (see google-report-data.ts's own file header for why this pipeline is deliberately simpler for v1). */
   async function dispatchAfterAnalyze(platformValue: "META" | "GOOGLE") {
     if (platformValue === "META") {
+      // Section A's objective dropdowns + Section B's metric cards both need
+      // the /metrics response before Step 2 can render anything meaningful —
+      // fetch it now (using the analyze-resolved default campaign
+      // selection), same call the old standalone Campaigns step's "Continue"
+      // button used to make, just moved one click earlier since Campaigns
+      // and Objectives are now the same screen.
+      await fetchObjectivesAndMetrics();
       setStep(2);
       return;
     }
@@ -507,7 +551,7 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(6);
+    setStep(3);
   }
 
   // ── Step 1 -> 2: Analyze ────────────────────────────────────────────────
@@ -647,10 +691,12 @@ export function ReportUploadWizard({
     return { objectives, confidence };
   }
 
-  // ── Step 2 -> 3: Campaigns -> Objective Confirmation ────────────────────
-  async function handleCampaignsContinue() {
-    await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
-
+  // ── Step 1 -> 2: populate Section A's objective dropdowns + Section B's
+  // metric cards, using the analyze-resolved default campaign selection —
+  // see dispatchAfterAnalyze. Purely a data fetch: no navigation, no
+  // saveSelection (that now happens on Step 2's own Continue button, once
+  // the user is done with campaigns/ad sets/objectives/metrics together).
+  async function fetchObjectivesAndMetrics() {
     if (!mtdFile) return;
     setMetricsStatus("loading");
     setMetricsTouched(false);
@@ -664,18 +710,17 @@ export function ReportUploadWizard({
     const json = await res.json().catch(() => null);
 
     if (!res.ok || !json || json.error) {
-      // The Metric Review step is a nice-to-have preview, not a hard
+      // Objectives/Metrics are a nice-to-have preview, not a hard
       // requirement — a failure here shouldn't strand the wizard. Fall
       // through with an empty selection (the engine's automatic
-      // assignment) and an empty objective map (the Objective Confirmation
-      // step falls back to RESULTS for every campaign in that case) and let
-      // the user continue past step 3 regardless.
+      // assignment) and an empty objective map (Section A falls back to
+      // RESULTS for every campaign in that case) and let the user continue
+      // past Step 2 regardless.
       setMetricsStatus("error");
       setAvailableMetrics([]);
       setSelectedMetrics([]);
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
-      setStep(3);
       return;
     }
 
@@ -685,7 +730,48 @@ export function ReportUploadWizard({
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
     setMetricsStatus("idle");
+  }
+
+  // ── Step 2 -> 3: Campaigns/Objectives/Metrics -> Report Period & Generate ──
+  async function handleCampaignsObjectivesContinue() {
+    await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
     setStep(3);
+  }
+
+  // ── Improvement 2: ad-set selection (nested under each campaign row) ────
+  function toggleCampaignExpanded(campaignName: string) {
+    setExpandedCampaigns((prev) => {
+      const next = new Set(prev);
+      if (next.has(campaignName)) next.delete(campaignName);
+      else next.add(campaignName);
+      return next;
+    });
+  }
+
+  function toggleAdSet(campaignName: string, adSetName: string) {
+    const key = adSetKey(campaignName, adSetName);
+    setSelectedAdSets((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function selectAllAdSetsForCampaign(campaignName: string, adSetNames: string[]) {
+    setSelectedAdSets((prev) => {
+      const next = new Set(prev);
+      for (const name of adSetNames) next.add(adSetKey(campaignName, name));
+      return next;
+    });
+  }
+
+  function deselectAllAdSetsForCampaign(campaignName: string, adSetNames: string[]) {
+    setSelectedAdSets((prev) => {
+      const next = new Set(prev);
+      for (const name of adSetNames) next.delete(adSetKey(campaignName, name));
+      return next;
+    });
   }
 
   // ── Step 3: Objective Confirmation (the permanent objective-detection fix) ──
@@ -749,10 +835,6 @@ export function ReportUploadWizard({
       out[name] = { key: info.key, resultLabel: info.resultLabel, costLabel: info.costLabel };
     }
     return out;
-  }
-
-  function handleObjectivesContinue() {
-    setStep(4);
   }
 
   /**
@@ -845,10 +927,6 @@ export function ReportUploadWizard({
     return slide2CountAfter < MIN_SECOND_SLIDE_METRICS;
   }
 
-  function handleMetricsContinue() {
-    setStep(5);
-  }
-
   /** Only sent to the preview/generate APIs once the user actually changes something on the Metric Review step — leaving it untouched (the common case: "Most users will just click Continue") keeps the engine's own true per-campaign automatic assignment, rather than pinning every campaign to the single majority-objective default shown in the wizard. */
   function currentSelectedMetricsPayload(): SelectedMetric[] | undefined {
     return metricsTouched && selectedMetrics.length > 0 ? selectedMetrics : undefined;
@@ -879,7 +957,19 @@ export function ReportUploadWizard({
     return !!(comparisonPeriodA?.startIso && comparisonPeriodA?.endIso && comparisonPeriodB?.startIso && comparisonPeriodB?.endIso);
   }
 
-  async function handleDatesContinue() {
+  /**
+   * Step 3's Reporting Period section and its Generate section share one
+   * screen now, so there's no separate "Continue" click left to hang this
+   * fetch off of — see the useEffect right below, which calls this
+   * automatically whenever the user changes something here while on Step 3
+   * (and once, right on arrival). Self-guarding: bails out silently while
+   * a WEEKLY custom range is incomplete/needs the >7-day confirmation, or
+   * shows the inline error for an incomplete Comparison period, exactly the
+   * same validation the old standalone Dates step's "Continue" button used
+   * to gate on.
+   */
+  async function fetchPreview() {
+    if (!mtdFile) return;
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
     // sent (buildReportData then uses the full MTD data with no weekly
@@ -905,7 +995,6 @@ export function ReportUploadWizard({
     // weekly date-mode with nothing.
     if (dateSelection) await saveSelection({ dateSelection });
 
-    if (!mtdFile) return;
     setPreviewStatus("loading");
     setPreviewErrors([]);
     setPreviewMessage(null);
@@ -914,6 +1003,7 @@ export function ReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
+        selectedAdSets: Array.from(selectedAdSets),
         selectedMetrics: currentSelectedMetricsPayload(),
         campaignObjectives: currentCampaignObjectivesPayload(),
         dateSelection,
@@ -937,8 +1027,39 @@ export function ReportUploadWizard({
     }
 
     applyPreviewResult(json);
-    setStep(6);
   }
+
+  // Google Ads has no Reporting Period section on Step 3 at all (see this
+  // file's header) — dispatchAfterAnalyze already fetched its one-shot
+  // preview directly, so this effect only ever runs for Meta. Re-fires
+  // fetchPreview on every arrival at Step 3 and on every subsequent change
+  // to the Reporting Period inputs while already there; applyPreviewResult
+  // calls resetGenerateState() on each success, so editing dates after a
+  // report was already generated naturally clears the stale download links
+  // and brings the Generate button back — no separate "back to dates"
+  // navigation needed.
+  useEffect(() => {
+    if (step !== 3 || platform !== "META") return;
+    // fetchPreview's first line sets state (previewStatus "loading") — a
+    // microtask hop keeps that out of this effect's own synchronous call
+    // stack, matching react-hooks/set-state-in-effect's expectations
+    // without changing when the fetch actually starts.
+    void Promise.resolve().then(() => fetchPreview());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    step,
+    platform,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    longRangeConfirmed,
+    comparisonPreset,
+    comparisonPeriodA?.startIso,
+    comparisonPeriodA?.endIso,
+    comparisonPeriodB?.startIso,
+    comparisonPeriodB?.endIso,
+  ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
@@ -959,6 +1080,7 @@ export function ReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(mtdFile, {
         selectedCampaigns: Array.from(selectedCampaigns),
+        selectedAdSets: Array.from(selectedAdSets),
         selectedMetrics: currentSelectedMetricsPayload(),
         campaignObjectives: currentCampaignObjectivesPayload(),
         // Part 3 — every campaign the Objective Confirmation step showed,
@@ -1085,11 +1207,6 @@ export function ReportUploadWizard({
     }
   }
 
-  /** Download screen's "back to dates" navigation — the already-uploaded mtdFile and selectedCampaigns are untouched, so clicking Continue on Step 5 again re-runs the preview against the same CSV with just a different date range, no re-upload needed. */
-  function handleBackToDates() {
-    setStep(5);
-  }
-
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
     setSelectedPlatformCard(null);
@@ -1103,6 +1220,9 @@ export function ReportUploadWizard({
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
+    setAdSetGroups([]);
+    setSelectedAdSets(new Set());
+    setExpandedCampaigns(new Set());
 
     setCampaignObjectives(new Map());
     setTouchedObjectiveCampaigns(new Set());
@@ -1112,6 +1232,7 @@ export function ReportUploadWizard({
     setMetricsStatus("idle");
     setMetricsTouched(false);
     setMetricsLimitMessage(null);
+    setMetricsSectionExpanded(false);
 
     setDateBounds(null);
     setWeeklyOptions(null);
@@ -1135,6 +1256,7 @@ export function ReportUploadWizard({
     setComparisonData(null);
     setReportTitle(DEFAULT_REPORT_TITLE);
     setReportTitleTouched(false);
+    setCustomTitleExpanded(false);
 
     resetGenerateState();
     setStep(1);
@@ -1322,79 +1444,35 @@ export function ReportUploadWizard({
       )}
 
       {step === 2 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-[16px] font-semibold text-white">Select campaigns to include</h3>
-              <p className="text-[13px] text-dash-ink-secondary">
-                {selectedCampaigns.size} of {campaigns.length} campaigns selected
-              </p>
+        <div className="space-y-5">
+          {/* Section A — campaigns, ad sets (Improvement 2), and objectives, one row per campaign. */}
+          <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[16px] font-semibold text-white">Campaigns &amp; objectives</h3>
+                <p className="text-[13px] text-dash-ink-secondary">
+                  {selectedCampaigns.size} of {campaigns.length} campaigns selected
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedCampaigns(new Set(campaigns))}
+                  className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => setSelectedCampaigns(new Set())}
+                  className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
+                >
+                  Deselect All
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedCampaigns(new Set(campaigns))}
-                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedCampaigns(new Set())}
-                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-              >
-                Deselect All
-              </button>
-            </div>
-          </div>
 
-          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-            {campaigns.map((name) => (
-              <li key={name} className="flex items-center gap-3 px-4 py-2.5">
-                <input
-                  type="checkbox"
-                  id={`campaign-${name}`}
-                  checked={selectedCampaigns.has(name)}
-                  onChange={() => toggleCampaign(name)}
-                  className="h-4 w-4 accent-accent"
-                />
-                <label htmlFor={`campaign-${name}`} className="cursor-pointer text-[13px] text-dash-ink">
-                  {name}
-                </label>
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(1)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleCampaignsContinue}
-              disabled={selectedCampaigns.size === 0 || metricsStatus === "loading"}
-              className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-            >
-              {metricsStatus === "loading" ? "Loading…" : "Continue"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-[#1e293b] p-5">
-          <div>
-            <h3 className="text-[16px] font-semibold text-white">Confirm Campaign Objectives</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              We&apos;ve detected the objectives for each campaign. Review and correct if needed before generating
-              your report.
-            </p>
-          </div>
-
-          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-            {campaigns
-              .filter((name) => selectedCampaigns.has(name))
-              .map((name) => {
+            <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
+              {campaigns.map((name) => {
+                const isSelected = selectedCampaigns.has(name);
                 const normalized = normalizeCampaignName(name);
                 const current = campaignObjectives.get(normalized);
                 // The dropdown always has a real, selectable value — a
@@ -1406,16 +1484,28 @@ export function ReportUploadWizard({
                   ? OBJECTIVE_DROPDOWN_OPTIONS
                   : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
                 const badge = objectiveConfidenceBadge(campaignObjectiveConfidence.get(normalized));
+                const group = adSetGroups.find((g) => g.campaignName === name);
+                const isExpanded = expandedCampaigns.has(name);
+                const allAdSetsDeselected =
+                  !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
                 return (
                   <li key={name} className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-[13px] text-white" title={name}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id={`campaign-${name}`}
+                        checked={isSelected}
+                        onChange={() => toggleCampaign(name)}
+                        className="h-4 w-4 flex-shrink-0 accent-accent"
+                      />
+                      <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
                         {name}
-                      </span>
+                      </label>
                       <select
                         value={currentKey}
+                        disabled={!isSelected}
                         onChange={(e) => setCampaignObjective(name, e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55]"
+                        className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55] disabled:opacity-40"
                       >
                         {options.map((o) => (
                           <option key={o.key} value={o.key}>
@@ -1423,169 +1513,249 @@ export function ReportUploadWizard({
                           </option>
                         ))}
                       </select>
+                      {group && (
+                        <button
+                          type="button"
+                          onClick={() => toggleCampaignExpanded(name)}
+                          disabled={!isSelected}
+                          aria-expanded={isExpanded}
+                          aria-label={isExpanded ? `Hide ad sets for ${name}` : `Show ad sets for ${name}`}
+                          className="flex-shrink-0 rounded-md px-1.5 py-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30"
+                        >
+                          {isExpanded ? "▲" : "▼"}
+                        </button>
+                      )}
                     </div>
-                    {badge && (
+
+                    {isSelected && badge && (
                       <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${badge.className}`}>
                         <span aria-hidden="true">{badge.icon}</span>
                         <span>{badge.text}</span>
                       </div>
                     )}
+
+                    {isSelected && group && isExpanded && (
+                      <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[12px] text-dash-ink-secondary">Ad sets</p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
+                              className="text-[12px] text-dash-accent hover:underline"
+                            >
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
+                              className="text-[12px] text-dash-accent hover:underline"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
+                        </div>
+                        <ul className="space-y-1.5">
+                          {group.adSetNames.map((adSetName) => {
+                            const key = adSetKey(name, adSetName);
+                            return (
+                              <li key={key} className="flex items-center gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  id={`adset-${key}`}
+                                  checked={selectedAdSets.has(key)}
+                                  onChange={() => toggleAdSet(name, adSetName)}
+                                  className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
+                                />
+                                <label htmlFor={`adset-${key}`} className="min-w-0 flex-1 cursor-pointer truncate text-[12px] text-dash-ink-secondary" title={adSetName}>
+                                  {adSetName}
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        {allAdSetsDeselected && (
+                          <p className="text-[12px] text-amber-300">No ad set slides will be generated for this campaign.</p>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
-          </ul>
+            </ul>
 
-          <p className="text-[13px] text-dash-ink-secondary">
-            The detected objective is shown. Change it if incorrect. The objective determines which metrics are
-            highlighted in your report.
-          </p>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(2)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleObjectivesContinue}
-              className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-            >
-              Continue →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          <div>
-            <h3 className="text-[16px] font-semibold text-white">Review Metric Cards</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Your report will show these {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics
-              per campaign slide. Tap any card to change it, or continue with our recommended selection.
+            <p className="text-[13px] text-dash-ink-secondary">
+              The detected objective is shown for each campaign — change it if incorrect. Expand a campaign&apos;s ▼
+              to choose which of its ad sets get their own slide.
             </p>
           </div>
 
-          {metricsStatus === "error" && (
-            <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[13px] text-amber-200">
-              Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
-            </div>
-          )}
+          {/* Section B — Metric Cards, collapsed by default. */}
+          <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-5">
+            <button
+              type="button"
+              onClick={() => setMetricsSectionExpanded((v) => !v)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <h3 className="text-[16px] font-semibold text-white">
+                Metric Cards ({metricsStatus === "loading" ? "…" : selectedMetrics.length || MAX_METRICS_PER_SLIDE} auto-selected)
+              </h3>
+              <span className="text-[13px] text-dash-accent">{metricsSectionExpanded ? "▲ Hide" : "▼ Customise"}</span>
+            </button>
 
-          {selectedMetrics.length > 0 && (
-            <>
-              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                {selectedMetrics.map((metric, i) => (
-                  <div
-                    key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
-                  >
-                    <span
-                      className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
-                      style={{ letterSpacing: "0.5px" }}
-                    >
-                      {metric.label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeMetricAt(i)}
-                      aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
-                    >
-                      ✕
-                    </button>
+            {!metricsSectionExpanded && (
+              <p className="text-[13px] text-dash-ink-secondary">
+                {metricsStatus === "loading"
+                  ? "Loading metric selection…"
+                  : selectedMetrics.length > 0
+                    ? `${selectedMetrics.length} metrics selected: ${selectedMetrics.map((m) => m.label).join(", ")}`
+                    : "Metrics will be auto-selected based on each campaign's objective."}
+              </p>
+            )}
+
+            {metricsSectionExpanded && (
+              <div className="space-y-4">
+                <p className="text-[13px] text-dash-ink-secondary">
+                  Your report will show these {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics
+                  per campaign slide. Tap any card to change it, or leave our recommended selection as-is.
+                </p>
+
+                {metricsStatus === "error" && (
+                  <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[13px] text-amber-200">
+                    Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
                   </div>
-                ))}
-              </div>
+                )}
 
-              {(() => {
-                const warning = slide2Warning();
-                if (!warning) return null;
-                return (
-                  <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
-                    <p className="font-semibold">⚠️ Adding a second slide</p>
-                    {warning.scenario === "A" ? (
-                      <>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
-                          slide. Adding more creates a second slide for this campaign.
-                        </p>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
-                          currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
-                          fill it properly, or remove a less important metric from slide 1 to keep everything on one
-                          clean slide.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
-                          slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
-                          slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
-                        </p>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Consider removing a less important metric from slide 1 and swapping it for this one
-                          instead.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {unselectedAvailableMetrics().length > 0 && (
-                <div>
-                  <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {unselectedAvailableMetrics().map((candidate) => {
-                      const disabled = wouldLeaveSlide2TooShort(candidate);
-                      return (
-                        <button
-                          key={candidate.key}
-                          type="button"
-                          onClick={() => addMetric(candidate)}
-                          disabled={disabled}
-                          title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
-                          className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
+                {selectedMetrics.length > 0 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                      {selectedMetrics.map((metric, i) => (
+                        <div
+                          key={`${metric.key}-${i}`}
+                          className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
                         >
-                          + {candidate.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                          <span
+                            className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
+                            style={{ letterSpacing: "0.5px" }}
+                          >
+                            {metric.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeMetricAt(i)}
+                            aria-label={`Remove ${metric.label}`}
+                            className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
 
-              {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
-            </>
-          )}
+                    {(() => {
+                      const warning = slide2Warning();
+                      if (!warning) return null;
+                      return (
+                        <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
+                          <p className="font-semibold">⚠️ Adding a second slide</p>
+                          {warning.scenario === "A" ? (
+                            <>
+                              <p className="mt-1 text-dash-ink-secondary">
+                                Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
+                                slide. Adding more creates a second slide for this campaign.
+                              </p>
+                              <p className="mt-1 text-dash-ink-secondary">
+                                For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
+                                currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
+                                fill it properly, or remove a less important metric from slide 1 to keep everything on one
+                                clean slide.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="mt-1 text-dash-ink-secondary">
+                                Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
+                                slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
+                                slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
+                              </p>
+                              <p className="mt-1 text-dash-ink-secondary">
+                                Consider removing a less important metric from slide 1 and swapping it for this one
+                                instead.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {unselectedAvailableMetrics().length > 0 && (
+                      <div>
+                        <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {unselectedAvailableMetrics().map((candidate) => {
+                            const disabled = wouldLeaveSlide2TooShort(candidate);
+                            return (
+                              <button
+                                key={candidate.key}
+                                type="button"
+                                onClick={() => addMetric(candidate)}
+                                disabled={disabled}
+                                title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
+                                className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
+                              >
+                                + {candidate.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(1)}
               className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
             <button
-              onClick={handleMetricsContinue}
-              disabled={selectedMetrics.length > 0 && selectedMetrics.length < MIN_SELECTED_METRICS}
+              onClick={handleCampaignsObjectivesContinue}
+              disabled={
+                selectedCampaigns.size === 0 ||
+                metricsStatus === "loading" ||
+                (selectedMetrics.length > 0 && selectedMetrics.length < MIN_SELECTED_METRICS)
+              }
               className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
-              Continue →
+              {metricsStatus === "loading" ? "Loading…" : "Continue →"}
             </button>
           </div>
         </div>
       )}
 
-      {step === 5 && (
-        <div className="space-y-5">
-          <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
+      {step === 3 && (
+        <div className="space-y-6">
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="inline-block text-[13px] text-dash-ink-secondary hover:text-dash-ink hover:underline"
+          >
+            ← Back
+          </button>
 
-          {/* Section 1 — Report Type */}
-          <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+          {platform === "META" && (
+            <div className="space-y-5">
+              <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
+
+              {/* Section 1 — Report Type */}
+              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
             <h4 className="text-[16px] font-semibold text-white">Report Type</h4>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ReportTypeCard
@@ -1804,74 +1974,92 @@ export function ReportUploadWizard({
             </section>
           )}
 
-          {previewStatus === "invalid" && (
-            <div className="space-y-3">
-              {previewErrors.filter(isNoDataRowsError).map((e, i) => (
-                <NoDataRowsWarning key={i} message={e.message} />
-              ))}
-              {previewErrors.filter(isSpecificFieldError).map((e, i) => (
-                <SpecificFieldWarning key={i} message={e.message} />
-              ))}
-              {previewErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
-                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
-                  <p className="mb-2 text-[13px] font-medium text-red-300">Can&apos;t build a preview yet:</p>
-                  <ul className="list-inside list-disc space-y-1 text-[13px] text-red-300">
-                    {previewErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
-                      <li key={i}>{e.message}</li>
-                    ))}
-                  </ul>
+              {previewStatus === "invalid" && (
+                <div className="space-y-3">
+                  {previewErrors.filter(isNoDataRowsError).map((e, i) => (
+                    <NoDataRowsWarning key={i} message={e.message} />
+                  ))}
+                  {previewErrors.filter(isSpecificFieldError).map((e, i) => (
+                    <SpecificFieldWarning key={i} message={e.message} />
+                  ))}
+                  {previewErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
+                    <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
+                      <p className="mb-2 text-[13px] font-medium text-red-300">Can&apos;t build a preview yet:</p>
+                      <ul className="list-inside list-disc space-y-1 text-[13px] text-red-300">
+                        {previewErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
+                          <li key={i}>{e.message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              {previewStatus === "error" && previewMessage && (
+                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[13px] text-red-300">
+                  {previewMessage}
+                </div>
+              )}
+              {previewStatus === "loading" && !data && !comparisonData && (
+                <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] text-dash-ink-secondary">
+                  <Spinner />
+                  Loading preview…
                 </div>
               )}
             </div>
           )}
-          {previewStatus === "error" && previewMessage && (
-            <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[13px] text-red-300">
-              {previewMessage}
-            </div>
-          )}
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(4)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleDatesContinue}
-              disabled={
-                previewStatus === "loading" ||
-                (reportType === "WEEKLY" &&
-                  ((dateMode === "custom" && (!customStart || !customEnd)) || needsLongRangeConfirm)) ||
-                (reportType === "COMPARISON" && !comparisonPeriodsReady())
-              }
-              className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-            >
-              {previewStatus === "loading" ? "Loading preview…" : "Continue"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 6 && (data || comparisonData) && (
-        <div className="space-y-6">
-          {/* Every section of this confirmation screen shares one width —
-              no max-width of its own, same as every other step's container
-              (steps 1-4's card divs, step 5's flat space-y-5 div), so it
-              fills exactly the same width as the rest of the wizard at
-              every screen size. */}
-          <div className="space-y-4">
-            {/* Section 1 — Reporting Period card */}
-            <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
-              <p className="text-[12px] uppercase tracking-wide text-[#94a3b8]">Reporting Period</p>
-              <div className="mt-1 space-y-0.5">
-                {reportSummaryLines().map((line) => (
-                  <p key={line.label} className="text-[14px] text-white">
-                    {line.label}: {line.value}
+          {(data || comparisonData) && (
+            <>
+            <div className="space-y-4">
+              {/* Section 1 — Report summary card, amber left border. Merges
+                  what used to be two separate cards (Reporting Period +
+                  Ready to generate) into the one card the merged Step 3
+                  spec calls for. */}
+              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
+                <h3 className="text-[16px] font-semibold text-white">Ready to generate</h3>
+                <hr className="my-3 border-t border-[#334155]" />
+                <div className="space-y-2">
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Client: <span className="text-[14px] text-white">{clientName}</span>
                   </p>
-                ))}
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Report Type: <span className="text-[14px] text-white">{reportTypeSummaryLabel()}</span>
+                  </p>
+                  <div>
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Campaigns:{" "}
+                      <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
+                    </p>
+                    {summaryCampaignNames().length > 0 && (
+                      <div className="mt-1 space-y-0.5 pl-3">
+                        {summaryCampaignNames().map((name) => (
+                          <p key={name} className="text-[13px] text-[#94a3b8]">
+                            {name}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {reportSummaryLines().length > 0 && (
+                    <div>
+                      <p className="text-[13px] text-[#94a3b8]">Date range:</p>
+                      <div className="mt-1 space-y-0.5 pl-3">
+                        {reportSummaryLines().map((line) => (
+                          <p key={line.label} className="text-[13px] text-[#94a3b8]">
+                            {line.label}: <span className="text-white">{line.value}</span>
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                  </p>
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Platform: <span className="text-[14px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
+                  </p>
+                </div>
               </div>
-            </div>
 
             {previewKind === "normal" && data?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
@@ -1900,65 +2088,39 @@ export function ReportUploadWizard({
               </div>
             )}
 
-            {/* Section 2 — "Ready to generate" confirmation card. Same card
-                styling as Section 1, minus the amber left border. */}
+            {/* Section 2 — Custom title, collapsed behind a small link by default. */}
             <div className="rounded-lg bg-[#1e293b] p-5">
-              <h3 className="text-[16px] font-semibold text-white">Ready to generate</h3>
-              <hr className="my-3 border-t border-[#334155]" />
-              <div className="space-y-2">
-                <p className="text-[13px] text-[#94a3b8]">
-                  Report Type: <span className="text-[14px] text-white">{reportTypeSummaryLabel()}</span>
-                </p>
-                <p className="text-[13px] text-[#94a3b8]">
-                  Client: <span className="text-[14px] text-white">{clientName}</span>
-                </p>
-                <div>
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Campaigns:{" "}
-                    <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
-                  </p>
-                  {summaryCampaignNames().length > 0 && (
-                    <div className="mt-1 space-y-0.5 pl-3">
-                      {summaryCampaignNames().map((name) => (
-                        <p key={name} className="text-[13px] text-[#94a3b8]">
-                          {name}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className="text-[13px] text-[#94a3b8]">
-                  Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
-                </p>
-                <p className="text-[13px] text-[#94a3b8]">
-                  Platform: <span className="text-[14px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
-                </p>
-              </div>
+              {!customTitleExpanded && !reportTitleTouched ? (
+                <button
+                  type="button"
+                  onClick={() => setCustomTitleExpanded(true)}
+                  className="text-[13px] text-dash-accent hover:underline"
+                >
+                  Add custom title +
+                </button>
+              ) : (
+                <>
+                  <label className="mb-1 block text-[13px] text-[#94a3b8]">Custom report title</label>
+                  <input
+                    value={reportTitle}
+                    onChange={(e) => {
+                      setReportTitle(e.target.value);
+                      setReportTitleTouched(true);
+                    }}
+                    placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
+                    maxLength={100}
+                    disabled={generateStatus === "loading" || generateStatus === "done"}
+                    className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
+                  />
+                  <p className="mt-1 text-[12px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
+                </>
+              )}
             </div>
 
-            {/* Section 3 — Custom title, now boxed in the same card style as sections 1/2. */}
-            <div className="rounded-lg bg-[#1e293b] p-5">
-              <label className="mb-1 block text-[13px] text-[#94a3b8]">Custom report title</label>
-              <input
-                value={reportTitle}
-                onChange={(e) => {
-                  setReportTitle(e.target.value);
-                  setReportTitleTouched(true);
-                }}
-                placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
-                maxLength={100}
-                disabled={generateStatus === "loading" || generateStatus === "done"}
-                className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
-              />
-              <p className="mt-1 text-[12px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
-            </div>
-
-            {/* Section 4 — Generate button. Same screen throughout: only
+            {/* Section 3 — Generate button. Same screen throughout: only
                 this changes as generateStatus moves idle -> loading ->
                 done/error, so there's no navigation between "getting ready"
-                and "here's your file". Back-navigation now lives solely in
-                the clickable step indicator above, so there's no separate
-                inline Back button here. */}
+                and "here's your file". */}
             {generateStatus === "idle" && (
               <div>
                 <button
@@ -1984,20 +2146,12 @@ export function ReportUploadWizard({
               <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[13px] text-red-300">
                 {generateMessage}
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(5)}
-                  className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleGenerate}
-                  className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                >
-                  Try Again
-                </button>
-              </div>
+              <button
+                onClick={handleGenerate}
+                className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+              >
+                Try Again
+              </button>
             </div>
           )}
 
@@ -2009,14 +2163,6 @@ export function ReportUploadWizard({
                 className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
               >
                 ← Generate Another Report for {clientName}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleBackToDates}
-                className="block text-[13px] text-dash-ink-secondary hover:text-dash-ink-secondary hover:underline"
-              >
-                ← Back to dates
               </button>
 
               <div className="flex flex-wrap items-start gap-3">
@@ -2220,14 +2366,9 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleBackToDates}
-                className="block text-[13px] text-dash-ink-secondary hover:text-dash-ink-secondary hover:underline"
-              >
-                Change dates and regenerate
-              </button>
             </div>
+          )}
+            </>
           )}
         </div>
       )}
@@ -2288,9 +2429,9 @@ export function ReportUploadWizard({
 
 /**
  * `visitedSteps` (not just "s < step") decides whether a step is completed
- * and clickable — the Google Ads flow jumps straight from step 1 to step 6
- * (dispatchAfterAnalyze), so steps 2-5 are numerically "less than" step 6
- * without ever having been shown; those must stay muted/unclickable rather
+ * and clickable — the Google Ads flow jumps straight from step 1 to step 3
+ * (dispatchAfterAnalyze), so step 2 is numerically "less than" step 3
+ * without ever having been shown; it must stay muted/unclickable rather
  * than falsely offering navigation into a step that was never populated.
  * Clicking a completed step just calls onNavigate(s) — a plain setStep,
  * identical to the wizard's existing per-screen "Back" buttons — so all
@@ -2306,7 +2447,7 @@ function StepIndicator({
   visitedSteps: Set<Step>;
   onNavigate: (s: Step) => void;
 }) {
-  const steps: Step[] = [1, 2, 3, 4, 5, 6];
+  const steps: Step[] = [1, 2, 3];
   return (
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       {steps.map((s, i) => {
