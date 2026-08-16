@@ -1021,6 +1021,62 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
   });
 });
 
+// Real-account bug report: the Previous Month row's PURCHASES column was
+// inflated by secondary/incidental purchases from a campaign whose real
+// objective was Initiate Checkout, because a blank result_type + a
+// non-zero Purchases column used to win unconditionally — Initiate
+// Checkout was never even considered as a competing signal.
+describe("computeTableRow (via periodRow) — Purchases vs Initiate Checkout column disambiguation (Part 6 bug fix)", () => {
+  it("Campaign 1 (blank result_type, IC 4 > Purchases 2 secondary) -> INITIATE CHECKOUT column = 4; Campaign 2 (result_type 'Website purchases', Purchases 1) -> PURCHASES column = 1, never combined", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [
+        {
+          _raw: { "Initiate checkout": "4" },
+          campaign_name: "Purchase_Catalog_BOF",
+          ad_set_name: "Set 1",
+          result_type: "",
+          spend: "300",
+          reach: "5000",
+          impressions: "12000",
+          results: "4",
+          purchases: "2",
+          ctr: "1.5",
+          cpc: "3",
+          date_start: "01-06-2026",
+          date_end: "30-06-2026",
+        },
+        {
+          _raw: {},
+          campaign_name: "Purchase_Remarketing",
+          ad_set_name: "Set 1",
+          result_type: "Website purchases",
+          spend: "60",
+          reach: "1000",
+          impressions: "2500",
+          results: "1",
+          purchases: "1",
+          ctr: "2",
+          cpc: "2",
+          date_start: "01-06-2026",
+          date_end: "30-06-2026",
+        },
+      ],
+      now: NOW,
+    });
+
+    const initiateCheckout = data.periodRow.resultColumns.find((c) => c.label === "INITIATE CHECKOUT");
+    const purchases = data.periodRow.resultColumns.find((c) => c.label === "PURCHASES");
+    expect(initiateCheckout?.value).toBe("4");
+    expect(purchases?.value).toBe("1"); // never 3 — Campaign 1's 2 secondary purchases must not bleed into this bucket.
+    expect(data.periodRow.spend).toBe("$360"); // Ad Spend is still the full combined total of both campaigns.
+  });
+});
+
 // Comprehensive regression test for the exact reported scenario: 3
 // campaigns, 3 objectives, mixed spend — Meta Form Leads' Cost Per Lead
 // must divide only its own $596 spend, never the $751 combined total.
@@ -1357,10 +1413,17 @@ describe("buildReportData — single source of truth for campaign objective dete
     expect(purchases?.cprValue).toBe("$30.00"); // 630 / 21
   });
 
-  it("Previous Month Data resolves its own objective per campaign independently of the current MTD map (separate previousMonthObjectiveMap)", () => {
-    // Same campaign name, but a genuinely DIFFERENT objective last month —
-    // proves periodRow's objective isn't blindly inherited from
-    // campaignObjectiveMap (built from MTD data).
+  // Part 6 bug fix — previously, a continuing campaign's Previous Month row
+  // always re-detected its objective purely from last month's own (often
+  // blanker/staler) data, independently of whatever the current month
+  // resolved — even for the exact same campaign. That let last month's row
+  // disagree with this month's campaign slide/MTD row for one campaign
+  // whose real objective never actually changed, purely because last
+  // month's export happened to have weaker result_type/column signals. Now
+  // a campaign name shared between campaignObjectiveMap (this month,
+  // engine-detected + wizard-confirmed) and Previous Month Data always
+  // takes the current month's resolved objective for BOTH rows.
+  it("a campaign present in both months takes the CURRENT month's resolved objective for its Previous Month row too", () => {
     const periodRows: NreRow[] = buildDailyRows({
       campaign_name: "Seasonal Campaign",
       ad_set_name: "Set 1",
@@ -1399,9 +1462,102 @@ describe("buildReportData — single source of truth for campaign objective dete
       now: NOW,
     });
 
-    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["REACH"]);
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
     expect(data.mtdRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
     expect(data.campaignSlides.find((s) => s.campaignName === "Seasonal Campaign")?.resultLabel).toBe("PURCHASES");
+  });
+
+  // The flip side of the fix above — a campaign that only exists in
+  // Previous Month Data (paused, renamed, or otherwise absent from this
+  // month's MTD CSV) has no current-month entry to prefer, so it still
+  // resolves purely from its own data, exactly as before.
+  it("a campaign present ONLY in Previous Month Data still resolves its own objective independently", () => {
+    const periodRows: NreRow[] = buildDailyRows({
+      campaign_name: "Retired Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Reach",
+      spend: 40,
+      reach: 9000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.5,
+      cpc: 0,
+      frequency: 1,
+    }).map((r) => ({ ...r, date_start: "01-06-2026", date_end: "07-06-2026" }));
+
+    const localMtdDailyRows = buildDailyRows({
+      campaign_name: "Unrelated Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: 60,
+      reach: 5000,
+      impressions: 10000,
+      results: 3,
+      link_clicks: 30,
+      ctr: 1,
+      cpc: 2,
+      frequency: 1,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["REACH"]);
+    expect(data.mtdRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
+  });
+
+  // Part 6 bug fix — the merge is keyed by normalizeCampaignName (trimmed,
+  // lower-cased), same as every other campaignObjectiveMap lookup in this
+  // codebase, so a Previous Month CSV exported with different capitalization
+  // than the current month's still matches.
+  it("matches the current month's campaign name case-insensitively", () => {
+    const periodRows: NreRow[] = buildDailyRows({
+      campaign_name: "seasonal CAMPAIGN", // different casing than the MTD row below
+      ad_set_name: "Set 1",
+      result_type: "Reach",
+      spend: 40,
+      reach: 9000,
+      impressions: 15000,
+      results: 0,
+      link_clicks: 0,
+      ctr: 0.5,
+      cpc: 0,
+      frequency: 1,
+    }).map((r) => ({ ...r, date_start: "01-06-2026", date_end: "07-06-2026" }));
+
+    const localMtdDailyRows = buildDailyRows({
+      campaign_name: "Seasonal Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: 60,
+      reach: 5000,
+      impressions: 10000,
+      results: 3,
+      link_clicks: 30,
+      ctr: 1,
+      cpc: 2,
+      frequency: 1,
+    });
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: localMtdDailyRows,
+      periodRows,
+      now: NOW,
+    });
+
+    expect(data.periodRow.resultColumns.map((c) => c.label)).toEqual(["PURCHASES"]);
   });
 });
 

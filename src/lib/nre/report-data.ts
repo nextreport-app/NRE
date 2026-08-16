@@ -729,19 +729,35 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // table's column grouping all already read from this one map — see the
   // doc comment above). Scoped to THIS month's campaigns only: a campaign
   // absent from campaignObjectives simply keeps its engine-detected
-  // objective, and previousMonthObjectiveMap below is never touched by it
-  // (last month's objective is resolved independently, from that separate
-  // upload's own data, and can genuinely differ from this month's).
+  // objective. See previousMonthObjectiveMap below for how — and how much —
+  // this now also reaches a continuing campaign's Previous Month row.
   if (campaignObjectives) {
     for (const [name, objective] of Object.entries(campaignObjectives)) {
       campaignObjectiveMap.set(normalizeCampaignName(name), objective);
     }
   }
-  // A campaign's Previous Month objective is resolved independently, from
-  // that separate upload's own (different month's) data — a campaign's
-  // objective can genuinely differ month to month, so this stays a SEPARATE
-  // map from campaignObjectiveMap above, never merged into it.
+  // A campaign's Previous Month objective is independently resolved from
+  // that separate upload's own (different month's) raw rows — unaggregated,
+  // same as always; Previous Month Data is one row per campaign/ad-set for
+  // the WHOLE month (a real date_start-to-date_end range per row), not
+  // per-day like the MTD Daily CSV, so it deliberately never goes through
+  // aggregateRows (which assumes one-row-per-day and would collapse that
+  // range down to a single day — see getRowDate/aggregate.ts).
   const previousMonthObjectiveMap = buildCampaignObjectiveMap(filteredPeriodRows as MetricRow[]);
+  // Part 6 bug fix — a campaign that continued from last month into this
+  // one already has a user-reviewed/confirmed objective sitting in
+  // campaignObjectiveMap (engine-detected, and wizard-corrected if the user
+  // touched the Objective Confirmation step); that confirmation is the
+  // single most reliable signal available for this SAME campaign's Previous
+  // Month row too, so it wins over independently re-detecting the objective
+  // from last month's own (often blanker/staler) result_type data. A
+  // campaign present ONLY in Previous Month Data (paused/renamed since)
+  // simply keeps its own independently-resolved objective above — there's
+  // no current-month entry to prefer.
+  for (const name of previousMonthObjectiveMap.keys()) {
+    const confirmed = campaignObjectiveMap.get(name);
+    if (confirmed) previousMonthObjectiveMap.set(name, confirmed);
+  }
 
   // Whether the CSV actually has delivery-status data anywhere at all — a
   // file without that column (the common case) falls back to the original

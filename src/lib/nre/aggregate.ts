@@ -18,7 +18,7 @@
 
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
-import { canonicalResultTypeText, detectObjectiveFromColumns, resolveObjective } from "./objective";
+import { canonicalResultTypeText, detectObjectiveFromColumns, resolveObjective, sumRawColumnByKeywords } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
 
@@ -74,6 +74,9 @@ interface GroupAcc {
   mobile_app_installs: number;
   messaging_conversations_started: number;
   thruplays: number;
+  /** Dedicated "Initiate checkout"/"Adds to cart" column values (Part 6 bug fix) — same "exotic signal, no dedicated NreRow field" treatment as the 3 above, via sumRawColumnByKeywords. */
+  initiate_checkout: number;
+  add_to_cart: number;
   ctrs: number[];
   cpcs: number[];
   freqs: number[];
@@ -83,23 +86,6 @@ interface GroupAcc {
 
 function average(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-}
-
-/**
- * Sums a row's raw CSV column value(s) whose header text contains any of the
- * given keywords — used for the 3 Priority-1 signals that have no dedicated
- * mapped field on NreRow (mobile app installs, messaging conversations
- * started, thruplays), mirroring detectObjectiveFromColumns' own
- * substring-match approach but reading values instead of just presence.
- */
-function sumRawColumnByKeywords(raw: Record<string, string> | undefined, keywords: string[]): number {
-  if (!raw) return 0;
-  let total = 0;
-  for (const [header, value] of Object.entries(raw)) {
-    const h = header.toLowerCase();
-    if (keywords.some((k) => h.includes(k))) total += parseCellNum(value);
-  }
-  return total;
 }
 
 /** Port of the aggregate() closure inside splitMTDDaily_. */
@@ -136,6 +122,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         mobile_app_installs: 0,
         messaging_conversations_started: 0,
         thruplays: 0,
+        initiate_checkout: 0,
+        add_to_cart: 0,
         ctrs: [],
         cpcs: [],
         freqs: [],
@@ -164,6 +152,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     g.mobile_app_installs += sumRawColumnByKeywords(row._raw, ["mobile app install", "app install"]);
     g.messaging_conversations_started += sumRawColumnByKeywords(row._raw, ["messaging conversations started"]);
     g.thruplays += sumRawColumnByKeywords(row._raw, ["thruplay"]);
+    g.initiate_checkout += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
+    g.add_to_cart += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
 
     const ctr = parseCellNum(row.ctr);
     const freq = parseCellNum(row.frequency);
@@ -206,6 +196,9 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         mobile_app_installs: g.mobile_app_installs,
         messaging_conversations_started: g.messaging_conversations_started,
         thruplays: g.thruplays,
+        initiate_checkout: g.initiate_checkout,
+        add_to_cart: g.add_to_cart,
+        ad_set_name: g.ad_set_name,
       },
       columnObjective,
     );
@@ -236,6 +229,12 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       switch (resolution.resultLabel) {
         case "PURCHASES":
           actualResults = g.purchases;
+          break;
+        case "INITIATE CHECKOUT":
+          actualResults = g.initiate_checkout;
+          break;
+        case "ADD TO CART":
+          actualResults = g.add_to_cart;
           break;
         case "WEBSITE LEADS":
           actualResults = g.website_leads;

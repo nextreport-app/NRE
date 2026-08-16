@@ -316,6 +316,11 @@ export interface ObjectiveSignals {
   mobile_app_installs?: number;
   messaging_conversations_started?: number;
   thruplays?: number;
+  /** Dedicated "Initiate checkout"/"Adds to cart" column values (Part 6 bug fix) — summed the same "exotic signal, no dedicated NreRow field" way as mobile_app_installs/messaging_conversations_started/thruplays above, via sumRawColumnByKeywords. See resolveObjective's purchases-vs-initiate-checkout ratio check below. */
+  initiate_checkout?: number;
+  add_to_cart?: number;
+  /** The row's (or aggregate.ts group's) own ad_set_name — last-resort disambiguation signal, consulted only once every numeric/text/column signal above has come up empty for a blank result_type. */
+  ad_set_name?: string | null;
 }
 
 /**
@@ -381,6 +386,8 @@ export function resolveObjective(
   const leads = signals.leads ?? 0;
   const linkClicks = signals.link_clicks ?? 0;
   const purchases = signals.purchases ?? 0;
+  const initiateCheckout = signals.initiate_checkout ?? 0;
+  const addToCart = signals.add_to_cart ?? 0;
   const mobileAppInstalls = signals.mobile_app_installs ?? 0;
   const messaging = signals.messaging_conversations_started ?? 0;
   const thruplays = signals.thruplays ?? 0;
@@ -395,8 +402,24 @@ export function resolveObjective(
   if (leads > 0) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority1" };
   }
-  if (purchases > 0) {
+  // Purchases vs Initiate Checkout (Part 6 bug fix) — a purchase-funnel
+  // campaign's Purchases column can carry secondary/incidental conversions
+  // even when the campaign's real optimization event is further up the
+  // funnel (real-account report: an Initiate-Checkout campaign with 4 ICs
+  // and 2 secondary purchases was misclassified as PURCHASES by the old
+  // unconditional `purchases > 0` check, which never looked at Initiate
+  // Checkout at all). Whichever of the two has the larger count wins; a tie
+  // — or Purchases alone, IC = 0 — keeps the funnel's deepest/most-valuable
+  // event, preserving the original behavior when Initiate Checkout data
+  // isn't present.
+  if (purchases > 0 || initiateCheckout > 0) {
+    if (initiateCheckout > purchases) {
+      return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", source: "priority1" };
+    }
     return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", source: "priority1" };
+  }
+  if (addToCart > 0) {
+    return { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", source: "priority1" };
   }
   if (mobileAppInstalls > 0) {
     return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL", source: "priority1" };
@@ -421,6 +444,25 @@ export function resolveObjective(
     return { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", source: "priority4" };
   }
   if (reach > 0) return { resultLabel: "REACH", costLabel: "COST PER 1K REACH", source: "priority4" };
+
+  // Absolute last resort for a genuinely blank result_type with no
+  // dedicated-column data at all: the ad set's own name often still names
+  // its funnel stage (e.g. "ATC Retargeting", "Purchase - Broad") even when
+  // Meta's own numeric columns don't have anything yet. Weaker evidence
+  // than any real data value above, so this only ever runs once every one
+  // of those has already come up empty.
+  const adSetName = (signals.ad_set_name || "").toLowerCase();
+  if (adSetName) {
+    if (/\batc\b/.test(adSetName)) {
+      return { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", source: "priority4" };
+    }
+    if (/\bic\b|initiate/.test(adSetName)) {
+      return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", source: "priority4" };
+    }
+    if (/purchase|conversion/.test(adSetName)) {
+      return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", source: "priority4" };
+    }
+  }
 
   return { resultLabel: "RESULTS", costLabel: "COST PER RESULT", source: "priority4" };
 }
@@ -455,6 +497,27 @@ function buildResultGroups(groups: Record<string, ObjectiveBucket>): ResultGroup
       return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr, totalSpend: g.totalSpend };
     })
     .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Sums a row's raw CSV column value(s) whose header text contains any of the
+ * given keywords — for the "exotic" ObjectiveSignals that have no dedicated
+ * mapped field on NreRow/MetricRow (mobile app installs, messaging
+ * conversations started, thruplays, and now initiate_checkout/add_to_cart),
+ * mirroring detectObjectiveFromColumns' own substring-match approach but
+ * reading values instead of just presence. Shared by aggregate.ts (per
+ * accumulated ad-set group) and getResultGroups below (per raw row, e.g. the
+ * Objective Confirmation wizard step's own pre-selection, which runs on
+ * unaggregated CSV rows before aggregateRows ever sees them).
+ */
+export function sumRawColumnByKeywords(raw: Record<string, string> | undefined, keywords: string[]): number {
+  if (!raw) return 0;
+  let total = 0;
+  for (const [header, value] of Object.entries(raw)) {
+    const h = header.toLowerCase();
+    if (keywords.some((k) => h.includes(k))) total += parseCellNum(value);
+  }
+  return total;
 }
 
 /**
@@ -502,6 +565,14 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
         leads: parseCellNum(row.leads),
         landing_page_views: parseCellNum(row.landing_page_views),
         link_clicks: parseCellNum(row.link_clicks),
+        // Present on a raw NreRow (via _raw) for the same reason as
+        // detectObjectiveFromColumns' rawHeaders above; absent (→ 0/null,
+        // correctly no-oping both checks) on an already-aggregated AggRow,
+        // which has no _raw and whose result_type aggregateRows already
+        // resolved correctly upstream via these same two signals.
+        initiate_checkout: sumRawColumnByKeywords(row._raw, ["initiate checkout"]),
+        add_to_cart: sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]),
+        ad_set_name: row.ad_set_name,
       },
       columnObjective,
     );

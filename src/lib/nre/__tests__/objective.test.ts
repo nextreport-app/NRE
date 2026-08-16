@@ -374,6 +374,95 @@ describe("resolveObjective — Priority 1 (dedicated metric columns) beats Prior
   });
 });
 
+// Real-account bug report (Combined Total table's Previous Month row): a
+// purchase-funnel campaign's Purchases column can carry secondary/
+// incidental conversions even when the campaign's real optimization event
+// is Initiate Checkout — the old unconditional `purchases > 0 -> PURCHASES`
+// check never looked at Initiate Checkout at all, so a 4-IC/2-secondary-
+// purchase campaign was misclassified as PURCHASES.
+describe("resolveObjective — Purchases vs Initiate Checkout ratio, and Add To Cart (Part 6 bug fix)", () => {
+  it("Initiate Checkout count > Purchases count -> INITIATE CHECKOUT, not PURCHASES", () => {
+    const resolution = resolveObjective({ result_type: "", purchases: 2, initiate_checkout: 4, results: 4 }, null);
+    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
+    expect(resolution.costLabel).toBe("COST PER CHECKOUT");
+    expect(resolution.source).toBe("priority1");
+  });
+
+  it("Purchases count >= Initiate Checkout count -> PURCHASES", () => {
+    expect(resolveObjective({ result_type: "", purchases: 5, initiate_checkout: 5, results: 5 }, null).resultLabel).toBe(
+      "PURCHASES",
+    );
+    expect(resolveObjective({ result_type: "", purchases: 3, initiate_checkout: 1, results: 3 }, null).resultLabel).toBe(
+      "PURCHASES",
+    );
+  });
+
+  it("Purchases alone (no Initiate Checkout data at all) still resolves PURCHASES — original behavior preserved", () => {
+    const resolution = resolveObjective({ result_type: "", purchases: 7, results: 7 }, null);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+  });
+
+  it("Initiate Checkout alone (no Purchases data at all) resolves INITIATE CHECKOUT", () => {
+    const resolution = resolveObjective({ result_type: "", initiate_checkout: 6, results: 6 }, null);
+    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
+  });
+
+  it("Add To Cart, with neither Purchases nor Initiate Checkout data, resolves ADD TO CART", () => {
+    const resolution = resolveObjective({ result_type: "", add_to_cart: 9, results: 9 }, null);
+    expect(resolution.resultLabel).toBe("ADD TO CART");
+    expect(resolution.costLabel).toBe("COST PER ADD TO CART");
+  });
+
+  it("a real result_type still wins over a merely-present Purchases/IC data value — Priority 1 numeric check fires first regardless of blank/non-blank text (existing chain order, unchanged)", () => {
+    // Reach text should never be overridden by an incidental purchases
+    // value the same rows also happen to carry — but since Priority 1 is
+    // checked unconditionally before result_type text, a genuine non-zero
+    // purchases signal here legitimately wins (matches the pre-existing
+    // "purchases > 0 -> PURCHASES" precedence this fix extends).
+    const resolution = resolveObjective({ result_type: "Reach", purchases: 1, results: 1 }, null);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+  });
+
+  describe("ad_set_name fallback — last resort, only for a blank result_type with no numeric funnel-column data at all", () => {
+    it("ad set name containing 'ATC' -> ADD TO CART", () => {
+      const resolution = resolveObjective({ result_type: "", ad_set_name: "Retargeting - ATC Warm" }, null);
+      expect(resolution.resultLabel).toBe("ADD TO CART");
+      expect(resolution.source).toBe("priority4");
+    });
+
+    it("ad set name containing 'IC' or 'initiate' -> INITIATE CHECKOUT", () => {
+      expect(resolveObjective({ result_type: "", ad_set_name: "Prospecting - IC" }, null).resultLabel).toBe(
+        "INITIATE CHECKOUT",
+      );
+      expect(resolveObjective({ result_type: "", ad_set_name: "Initiate Checkout Broad" }, null).resultLabel).toBe(
+        "INITIATE CHECKOUT",
+      );
+    });
+
+    it("ad set name containing 'purchase' or 'conversion' -> PURCHASES", () => {
+      expect(resolveObjective({ result_type: "", ad_set_name: "Purchase - Lookalike" }, null).resultLabel).toBe(
+        "PURCHASES",
+      );
+      expect(resolveObjective({ result_type: "", ad_set_name: "Conversion Campaign Set 1" }, null).resultLabel).toBe(
+        "PURCHASES",
+      );
+    });
+
+    it("a real numeric signal always outranks the name hint, even a contradictory one", () => {
+      const resolution = resolveObjective(
+        { result_type: "", website_leads: 3, ad_set_name: "Purchase - Lookalike" },
+        null,
+      );
+      expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    });
+
+    it("no ad_set_name, no data, blank result_type -> generic RESULTS fallback, unchanged", () => {
+      const resolution = resolveObjective({ result_type: "" }, null);
+      expect(resolution.resultLabel).toBe("RESULTS");
+    });
+  });
+});
+
 describe("getResultGroups — Priority 1 dedicated metric columns (the reported Combined Total table bug)", () => {
   it("Test 1 — website leads column (value 5) beats result_type = 'landing_page_view'", () => {
     const rows: MetricRow[] = [
