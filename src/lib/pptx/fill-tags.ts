@@ -66,8 +66,6 @@ function fillTags(xml: string, values: Record<string, string>, styleOverrides: R
 // the slide.
 const CAMPAIGN_SUMMARY_MAX_CHARS = 300;
 const KEY_INSIGHTS_MAX_CHARS = 400;
-const CARD_TEXT_BASE_FONT_PT = 14;
-const CARD_TEXT_MIN_FONT_PT = 9;
 
 /**
  * True when `text[index]` is a period that reads as a SENTENCE end — at the
@@ -103,18 +101,6 @@ function truncateToSentence(raw: string, maxChars: number): string {
   return cut >= 0 ? text.slice(0, cut + 1) : text.slice(0, maxChars).trim() + ".";
 }
 
-/**
- * Graduated font-size reduction so a long (but within the hard cap above)
- * Campaign Summary/Key Insights never visually overflows its card: -1pt
- * past 250 characters, -2pt past 300, floored at 9pt. Same 250/300
- * thresholds for both fields (per spec) even though Key Insights' higher
- * 400-char cap means it reaches the -2pt tier more often than Campaign
- * Summary's own 300-char cap normally allows.
- */
-function fontSizeForTextLength(length: number): number {
-  const reduction = length > 300 ? 2 : length > 250 ? 1 : 0;
-  return Math.max(CARD_TEXT_BASE_FONT_PT - reduction, CARD_TEXT_MIN_FONT_PT);
-}
 
 export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
@@ -368,15 +354,13 @@ export function buildCampaignOrAdSetSlideXml(
   // buildPausedSlideXml, across all 3 templates (the same template clone).
   const summaryText = truncateToSentence(ai.summary, CAMPAIGN_SUMMARY_MAX_CHARS);
   const insightsText = truncateToSentence(ai.insights, KEY_INSIGHTS_MAX_CHARS);
-  const summarySizePt = fontSizeForTextLength(summaryText.length);
-  // Fix 2 (this round) — Key Insights is always 14pt now, matching Campaign
-  // Summary's own common-case size, instead of shrinking below it whenever
-  // the text ran past 250 characters (Key Insights' looser 400-char cap
-  // made that the common case in practice, so it read as visibly smaller
-  // than Campaign Summary on most real reports). Overflow protection still
-  // comes from the 400-char truncation above and the CAMPAIGN_SUMMARY/
-  // KEY_INSIGHTS text boxes' own normAutofit (shrink-to-fit) setting below,
-  // not from pre-shrinking the requested size here.
+  // Fixed 14pt for both — no longer shrinks below 14pt for longer text (the
+  // previous graduated reduction, -1pt past 250 characters, -2pt past 300,
+  // could land Campaign Summary at 13pt/12pt within its own 300-char cap).
+  // Overflow protection comes from the char-cap truncation above and the
+  // CAMPAIGN_SUMMARY/KEY_INSIGHTS text boxes' own normAutofit (shrink-to-fit)
+  // setting below, not from pre-shrinking the requested size here.
+  const summarySizePt = 14;
   const insightsSizePt = 14;
 
   let xml: string;
@@ -556,10 +540,7 @@ export function buildPausedSlideXml(
     },
     {
       CAMPAIGN_NAME: { sizePt: 18 },
-      CAMPAIGN_SUMMARY: { bold: false, sizePt: fontSizeForTextLength(summaryText.length), fontFamily: "Poppins" },
-      // Fix 2 (this round) — flat 14pt, matching the campaign/ad-set slide
-      // Key Insights treatment above (see buildCampaignOrAdSetSlideXml's own
-      // insightsSizePt comment).
+      CAMPAIGN_SUMMARY: { bold: false, sizePt: 14, fontFamily: "Poppins" },
       KEY_INSIGHTS: { bold: false, sizePt: 14, fontFamily: "Poppins" },
     },
   );

@@ -16,6 +16,7 @@
  */
 
 import type { AiContext } from "../nre/report-data";
+import { parseCellNum } from "../nre/format";
 
 /**
  * A Reach/Awareness campaign has no conversion objective at all — its
@@ -50,6 +51,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
       "Example of correct format: \"This campaign reached 22,170 people with 28,192 impressions at a $8.50 CPM, maintaining a 1.3x average frequency. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting current audience engagement levels.\"\n" +
       "Rules:\n" +
       "- Do NOT mention results, purchases, leads, link clicks, or any conversion count — this campaign has no conversion objective\n" +
+      "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
       "- Use real numbers from the data — never invent or estimate\n" +
       "- Keep total under 60 words\n" +
       "- Professional tone like a senior account manager\n\n" +
@@ -73,6 +75,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
     "Rules:\n" +
     "- ALWAYS mention the primary result count and cost in sentence 1 — this is the most important metric\n" +
     "- If results = 0, say \"recorded no [result label] this week\" in sentence 1\n" +
+    "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
     "- Use real numbers from the data — never invent or estimate\n" +
     "- Keep total under 60 words\n" +
     "- Professional tone like a senior account manager\n\n" +
@@ -93,6 +96,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
     "- Do not use bullet points, headers, dashes, or line breaks\n" +
     "- Keep total length under 75 words\n" +
     "- Do not start with This week or During this period — vary the opening\n" +
+    "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
     "- Sound like a senior account manager giving honest strategic advice\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
@@ -155,10 +159,43 @@ function buildReachSummary(ctx: AiContext): string {
 export function buildZeroResultsSummary(ctx: AiContext): string {
   if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
-    "During " + ctx.dateRange + ", the " + ctx.ctx + " campaign recorded no " + ctx.resultLabel.toLowerCase() +
-    " this week, with " + ctx.spend + " spent reaching " + ctx.reach + " people across " + ctx.impressions +
-    " impressions. The campaign maintained a " + ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
-    " cost per click, with delivery active and results expected as the campaign optimises."
+    "This campaign is active but recorded no " + ctx.resultLabel.toLowerCase() + " this week, with " + ctx.spend +
+    " spent reaching " + ctx.reach + " people across " + ctx.impressions + " impressions. The campaign is in the " +
+    "optimisation phase and performance is expected to improve as the algorithm learns."
+  );
+}
+
+/**
+ * Fix 4 — the OTHER zero-results case: a campaign/ad set the CSV's own
+ * delivery_status column reports as Paused/Inactive (AiContext.isInactive),
+ * not merely one with a zero result count. Never mentions resultLabel at
+ * all (unlike buildZeroResultsSummary above), so this is also the correct
+ * wording for a paused REACH campaign — REACH's own `results` is always
+ * structurally 0 regardless of delivery status, but "paused with no new
+ * results" reads correctly either way since it isn't claiming anything
+ * about a specific results metric. Real spend/reach/impressions are still
+ * substituted in (not hardcoded to zero) since a campaign paused partway
+ * through the week can still have genuine, nonzero numbers to report.
+ */
+export function buildPausedZeroResultsSummary(ctx: AiContext): string {
+  return (
+    "This campaign was paused this week with no new results recorded. During the period " + ctx.spend +
+    " was spent reaching " + ctx.reach + " people across " + ctx.impressions + " impressions."
+  );
+}
+
+/**
+ * Fix 4 — insights companion to buildPausedZeroResultsSummary, for the same
+ * no-AI-call paused/inactive state. Doesn't claim "no spend recorded" the
+ * way the older fixed PAUSED_INSIGHTS_TEXT copy did — that's no longer
+ * always true now that a mid-week pause can leave real, nonzero numbers on
+ * the slide (see buildPausedZeroResultsSummary's own doc comment).
+ */
+export function buildPausedZeroResultsInsights(): string {
+  return (
+    "The campaign was paused this week, so no new performance data is available. Once reactivated, budget will " +
+    "be directed toward the previous top-performing ads while underperformers stay paused, with creatives and " +
+    "targeting refreshed before spend ramps back up."
   );
 }
 
@@ -252,6 +289,41 @@ function lastSentenceEndAtOrBefore(text: string, limit: number): number {
     if (isSentenceEndingPeriod(text, i)) return i;
   }
   return -1;
+}
+
+/**
+ * The first standalone integer in `text` that isn't a currency amount (not
+ * preceded by "$"/similar) or a percentage (not followed by "%") — the
+ * summary prompt's own required structure ("Sentence 1 must mention ALL of
+ * these in order: The primary result count and label ... the cost per
+ * result ... the total spend ... reach and impressions") puts the result
+ * count first, before any dollar or percentage figure, so this is a
+ * reasonable proxy for "the number the AI is claiming as the result count."
+ * Commas inside the number (e.g. "1,234") are tolerated.
+ */
+function extractFirstResultCount(text: string): number | null {
+  const match = text.match(/(?<![$.\d,])(\d[\d,]*)(?!\.\d)(?!%)/);
+  return match ? parseCellNum(match[1]) : null;
+}
+
+/**
+ * True when the AI's own summary text opens with a result-count number that
+ * disagrees with the slide's real, slot-assignment-derived count
+ * (`expectedCount`, i.e. AiContext.resultsNum) by more than 10% — the
+ * validation this fix adds on top of the existing truncation/period checks,
+ * so an AI response that's a complete, well-formed sentence but simply
+ * states the WRONG number (a hallucination, not a truncation) still gets
+ * rejected in favor of the deterministic fallback template, which is always
+ * built from the real number. No number found in the text isn't treated as
+ * a mismatch here — the existing endsComplete/countSentenceEndings checks
+ * already catch a malformed response; this check only fires when a number
+ * IS present and it's simply wrong.
+ */
+export function resultCountMismatch(aiText: string, expectedCount: number): boolean {
+  const found = extractFirstResultCount(aiText);
+  if (found === null) return false;
+  if (expectedCount === 0) return found !== 0;
+  return Math.abs(found - expectedCount) / expectedCount > 0.1;
 }
 
 /**

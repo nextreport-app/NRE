@@ -129,6 +129,7 @@ function buildAiContext(group: GoogleGroupTotals, ctxLabel: string, dateRangeLab
     resultsNum: group.conversions,
     hasResults: group.conversions > 0,
     spendNum: group.cost,
+    isInactive: false, // Google Ads has no delivery-status detection (see AiContext.isInactive's own doc comment)
   };
 }
 
@@ -301,7 +302,10 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
       metrics,
       dateRangeLine: dateRangeLabel,
       avgFreq: 0,
-      ai: buildAiContext(g, `${g.name} (combined ${adGroups.filter((a) => a.name === g.name).length || 1} ad groups)`, dateRangeLabel, currencySymbol),
+      // Fix 3 — no internal grouping detail ("(combined N ad groups)") sent
+      // to the AI; see report-data.ts's own campaign ai.ctx for the Meta
+      // equivalent of this same fix.
+      ai: buildAiContext(g, g.name, dateRangeLabel, currencySymbol),
       statusIndicator: null,
       ...computeGoogleSlideMetrics(metrics, campaignRawGroups.get(g.name) ?? []),
     };

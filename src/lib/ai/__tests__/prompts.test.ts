@@ -3,16 +3,19 @@ import {
   buildFallbackInsights,
   buildFallbackSummary,
   buildInsightPrompt,
+  buildPausedZeroResultsInsights,
+  buildPausedZeroResultsSummary,
   buildSummaryPrompt,
   buildZeroResultsSummary,
   capInsights,
   capSummary,
+  resultCountMismatch,
 } from "../prompts";
 import type { AiContext } from "../../nre/report-data";
 
 function ctx(overrides: Partial<AiContext> = {}): AiContext {
   return {
-    ctx: "Shoes - Purchases (combined 2 ad sets)",
+    ctx: "Shoes - Purchases",
     dateRange: "Jul 13 - Jul 19",
     spend: "₹1,050",
     reach: "12,600",
@@ -28,6 +31,7 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
     resultsNum: 21,
     hasResults: true,
     spendNum: 1050,
+    isInactive: false,
     ...overrides,
   };
 }
@@ -60,7 +64,7 @@ describe("buildSummaryPrompt", () => {
   it("substitutes every {token} in the Data line with the slide's real numbers", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+      "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
     );
   });
 
@@ -93,7 +97,7 @@ describe("buildInsightPrompt", () => {
   it("substitutes every {token} in the Data line — no Date or Impressions field here", () => {
     const prompt = buildInsightPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+      "Data: Campaign: Shoes - Purchases, Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
     );
     expect(prompt).not.toContain("Date:");
     expect(prompt).not.toContain("Impressions:");
@@ -195,13 +199,12 @@ describe("buildFallbackSummary", () => {
 });
 
 describe("buildZeroResultsSummary", () => {
-  it("builds the exact 2-sentence structure from real data, always ending in a period", () => {
+  it("builds the exact 2-sentence structure from real data, always ending in a period (Fix 4 wording)", () => {
     const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, hasResults: false }));
     expect(result).toBe(
-      "During Jul 13 - Jul 19, the Shoes - Purchases (combined 2 ad sets) campaign recorded no purchases this " +
-        "week, with ₹1,050 spent reaching 12,600 people across 45,000 impressions. The campaign maintained a " +
-        "2.00% click-through rate at ₹3.50 cost per click, with delivery active and results expected as the " +
-        "campaign optimises.",
+      "This campaign is active but recorded no purchases this week, with ₹1,050 spent reaching 12,600 people " +
+        "across 45,000 impressions. The campaign is in the optimisation phase and performance is expected to " +
+        "improve as the algorithm learns.",
     );
     expect(result.endsWith(".")).toBe(true);
   });
@@ -211,11 +214,53 @@ describe("buildZeroResultsSummary", () => {
     expect(result).not.toContain("—");
     expect(result).not.toContain("cost per PURCHASES");
   });
+});
 
-  it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
-    const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, ctr: "0.35%" }));
-    expect(result).toContain("maintained a 0.35% click-through rate");
-    expect(result).not.toContain("0.35%%");
+describe("buildPausedZeroResultsSummary (Fix 4)", () => {
+  it("builds the exact wording from the spec, substituting real spend/reach/impressions", () => {
+    const result = buildPausedZeroResultsSummary(ctx());
+    expect(result).toBe(
+      "This campaign was paused this week with no new results recorded. During the period ₹1,050 was spent " +
+        "reaching 12,600 people across 45,000 impressions.",
+    );
+  });
+
+  it("never mentions the result label or cost per result — safe for any objective, including REACH", () => {
+    const result = buildPausedZeroResultsSummary(ctx({ resultLabel: "REACH", costLabel: "COST PER 1K REACH" }));
+    expect(result).not.toContain("REACH");
+    expect(result).not.toContain("recorded no");
+  });
+});
+
+describe("buildPausedZeroResultsInsights (Fix 4)", () => {
+  it("returns a fixed, always-complete paragraph that never claims zero spend", () => {
+    const result = buildPausedZeroResultsInsights();
+    expect(result).not.toContain("no spend");
+    expect(result.endsWith(".")).toBe(true);
+  });
+});
+
+describe("resultCountMismatch (Fix 2)", () => {
+  it("flags a stated result count more than 10% off the real count", () => {
+    expect(resultCountMismatch("This campaign generated 35 leads at $40 cost per lead.", 5)).toBe(true);
+  });
+
+  it("does not flag a stated count within 10% of the real count", () => {
+    expect(resultCountMismatch("This campaign generated 21 purchases at ₹50 cost per purchase.", 21)).toBe(false);
+    expect(resultCountMismatch("This campaign generated 22 purchases at ₹50 cost per purchase.", 21)).toBe(false);
+  });
+
+  it("ignores currency amounts and percentages, only matching the first plain integer", () => {
+    // $1,050 (currency) should never be mistaken for the result count.
+    expect(resultCountMismatch("Spending $1,050 this week, the campaign generated 21 purchases.", 21)).toBe(false);
+  });
+
+  it("does not flag a response with no plain integer at all (other checks handle malformed responses)", () => {
+    expect(resultCountMismatch("Performance was strong this week across the board.", 21)).toBe(false);
+  });
+
+  it("treats any nonzero stated count as a mismatch when the real count is exactly 0", () => {
+    expect(resultCountMismatch("This campaign generated 3 purchases this week.", 0)).toBe(true);
   });
 });
 
@@ -255,7 +300,7 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
     it("substitutes reach/impressions/CPM/frequency/CTR/CPC in the Data line — never the result/cost-per-result tokens", () => {
       const prompt = buildSummaryPrompt(reachCtx());
       expect(prompt).toContain(
-        "Data: Campaign: Shoes - Purchases (combined 2 ad sets), Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, CPM: ₹18.50, Frequency: 1.8x, CTR: 2.00%, CPC: ₹3.50",
+        "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, CPM: ₹18.50, Frequency: 1.8x, CTR: 2.00%, CPC: ₹3.50",
       );
       expect(prompt).not.toContain("REACH: 0");
       expect(prompt).not.toContain("COST PER 1K REACH: ₹4.20");
@@ -315,7 +360,7 @@ describe("buildFallbackInsights", () => {
   it("builds the exact 3-part structure from real data, always ending in a period", () => {
     const result = buildFallbackInsights(ctx());
     expect(result).toBe(
-      "This week Shoes - Purchases (combined 2 ad sets) spent ₹1,050 reaching 12,600 people with a 2.00% CTR. " +
+      "This week Shoes - Purchases spent ₹1,050 reaching 12,600 people with a 2.00% CTR. " +
         "With 21 PURCHASES recorded, the campaign shows strong traction at ₹50.00 per result. To maximise results, " +
         "budget will shift toward top-performing ads while underperformers are paused, with fresh creatives and " +
         "refined targeting planned for the coming week.",

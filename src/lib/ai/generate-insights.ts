@@ -5,14 +5,17 @@
  * constrained by Apps Script's synchronous execution model; each slide's
  * pair of calls is independent and failures are isolated per slide.
  *
- * Zero-spend slides (a paused campaign/ad set — spend under a cent for the
- * week) skip the AI call entirely and get fixed placeholder copy instead:
- * there's nothing real to summarize, and asking an LLM to write about $0 of
- * activity tends to either hallucinate detail or produce an oddly-worded
- * "no data" paragraph — a fixed, deliberately-worded paragraph reads better
- * and costs nothing per campaign. This is a per-slide check (product
- * decision), not account-wide: one paused campaign among several active
- * ones only replaces that one slide's copy.
+ * Paused/inactive slides (Fix 4 — the CSV's own delivery_status column
+ * reports Paused/Inactive, or spend is effectively zero for the week) skip
+ * the AI call entirely (both summary AND insights) and get a fixed,
+ * data-substituted template instead: there's nothing real to summarize, and
+ * asking an LLM to write about a paused campaign tends to either
+ * hallucinate detail or produce an oddly-worded "no data" paragraph — a
+ * fixed, deliberately-worded paragraph reads better and costs nothing per
+ * campaign. This is a per-slide check (product decision), not
+ * account-wide: one paused campaign among several active ones only
+ * replaces that one slide's copy. See isPausedZeroResults's own doc
+ * comment for the exact isInactive/hasResults gating.
  *
  * Separately, a NON-zero-spend slide's AI response can come back truncated
  * mid-sentence (e.g. "...achieved a 4.48% click-through rate and a $2." with
@@ -40,19 +43,18 @@
  *     later — can never silently reintroduce truncation without this
  *     catching it and substituting the same safe fallback.
  *
- * A THIRD case (Fix 6), independent of the two above: a slide with real
- * spend/delivery but exactly zero results this week (a lead-gen campaign
- * that hasn't converted yet, say). CPR is mathematically undefined at zero
- * results, so it always renders as "—" (see report-data.ts/objective.ts),
- * and the AI plugging that dash straight into the summary prompt's "at a
- * [CPR] cost" phrasing produced nonsensical sentences like "generated 0
- * website leads at a — cost" (the actual reported bug). Handled the same
- * way as the zero-spend case — a deterministic sentence, no AI call for the
- * summary — but with its own wording (buildZeroResultsSummary) that never
+ * A THIRD case (Fix 6, extended by Fix 4): a slide with real spend/delivery
+ * but exactly zero results this week (a lead-gen campaign that hasn't
+ * converted yet, say). CPR is mathematically undefined at zero results, so
+ * it always renders as "—" (see report-data.ts/objective.ts), and the AI
+ * plugging that dash straight into the summary prompt's "at a [CPR] cost"
+ * phrasing produced nonsensical sentences like "generated 0 website leads
+ * at a — cost" (the actual reported bug). Handled the same way as the
+ * paused case — a deterministic sentence, no AI call for either summary or
+ * insights — but with its own wording (buildZeroResultsSummary) that never
  * mentions CPR at all, rather than reusing the paused-campaign copy, since
  * "no results yet" and "no delivery at all" are different, both-true-ish-
- * often states that shouldn't read identically to the client. The insights
- * call is unaffected — it doesn't share the summary prompt's CPR phrasing.
+ * often states that shouldn't read identically to the client.
  */
 
 import type { AiContext, Platform, ReportData } from "../nre/report-data";
@@ -64,23 +66,20 @@ import {
   buildFallbackInsights,
   buildFallbackSummary,
   buildInsightPrompt,
+  buildPausedZeroResultsInsights,
+  buildPausedZeroResultsSummary,
   buildSummaryPrompt,
   buildZeroResultsSummary,
   capInsights,
   capSummary,
   countSentenceEndings,
+  resultCountMismatch,
 } from "./prompts";
 
 // Sub-cent spend is treated as zero — CSV/currency rounding can leave a
 // fractional cent on an otherwise-inactive campaign, and that's still
 // "paused," not "spent something."
 const ZERO_SPEND_THRESHOLD = 0.01;
-
-const PAUSED_SUMMARY_TEXT =
-  "This campaign was inactive during the reporting period with no spend, reach, or impressions recorded. The campaign is currently paused pending further instructions.";
-
-const PAUSED_INSIGHTS_TEXT =
-  "The campaign remained inactive this week with no delivery or spend recorded. Once reactivated, budget will be directed toward top-performing creatives while underperformers are paused, with targeting refined to improve overall efficiency.";
 
 // The prompts ask for exactly 2 sentences (summary) / exactly 3 (insights) —
 // the final safety net's "does this actually read as N complete sentences"
@@ -90,6 +89,25 @@ const MIN_INSIGHTS_SENTENCES = 3;
 
 function isZeroSpend(ctx: AiContext): boolean {
   return ctx.spendNum < ZERO_SPEND_THRESHOLD;
+}
+
+/**
+ * Fix 4 — true when this slide should get the PAUSED copy. Two independent
+ * triggers, matched to the two ways a campaign reads as "paused" for the
+ * week:
+ *  - Effectively zero spend (the original, pre-Fix-4 signal) — fires
+ *    unconditionally, same as before. A $0-spend week has nothing to
+ *    report regardless of what `results` happens to hold.
+ *  - The CSV's own delivery_status column reports Paused/Inactive
+ *    (AiContext.isInactive) AND this slide recorded no results this week —
+ *    per the product spec, gated on !hasResults specifically: a campaign
+ *    the CSV marks inactive but that still recorded real results this week
+ *    (e.g. paused partway through, after already converting) has real
+ *    performance worth describing, so THAT case falls through to the
+ *    normal AI flow instead of the paused template.
+ */
+function isPausedZeroResults(ctx: AiContext): boolean {
+  return isZeroSpend(ctx) || (ctx.isInactive && !ctx.hasResults);
 }
 
 /**
@@ -128,20 +146,28 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
     slides.map(async (slide) => {
       const name = slide.campaignName;
 
-      if (isZeroSpend(slide.ai)) {
-        // Fixed copy, used verbatim — not run through capSummary/capInsights,
-        // which exist only to bound unpredictable AI output.
-        results.set(slideAiKey(slide), { summary: PAUSED_SUMMARY_TEXT, insights: PAUSED_INSIGHTS_TEXT });
+      // Fix 4 — paused/inactive (or effectively zero-spend) with no results
+      // this week: fixed copy, used verbatim, never sent to the AI at all
+      // (neither summary nor insights) — see isPausedZeroResults's own doc
+      // comment. Not run through capSummary/capInsights, which exist only
+      // to bound unpredictable AI output.
+      if (isPausedZeroResults(slide.ai)) {
+        results.set(slideAiKey(slide), {
+          summary: buildPausedZeroResultsSummary(slide.ai),
+          insights: buildPausedZeroResultsInsights(),
+        });
         return;
       }
 
       const zeroResults = isZeroResults(slide.ai);
 
+      // Fix 4 — never call the AI for a zero-results slide (either sub-call):
+      // there's no real result to describe, and asking the model to write
+      // around a "—"/undefined cost-per-result invites exactly the kind of
+      // hallucinated or nonsensical phrasing this fix exists to prevent.
       const [rawSummary, rawInsight] = await Promise.all([
-        // Never sent to the AI for a zero-results slide — see this file's
-        // header and buildZeroResultsSummary's own doc comment.
         zeroResults ? Promise.resolve(null) : callAI(buildSummaryPromptFor(slide.ai), keys),
-        callAI(buildInsightPromptFor(slide.ai), keys),
+        zeroResults ? Promise.resolve(null) : callAI(buildInsightPromptFor(slide.ai), keys),
       ]);
 
       // Debug: the exact response the AI returned, BEFORE any period check
@@ -161,7 +187,16 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         // the last character) would otherwise make a complete response look
         // truncated to an endsComplete() check — trim before checking.
         const trimmedSummary = rawSummary!.trim();
-        summaryFallback = !endsComplete(trimmedSummary);
+        // Fix 2 — a complete, well-formed sentence can still be WRONG: the
+        // AI hallucinating a result count that doesn't match what the
+        // slide's own slot 4 card actually shows (the reported "35
+        // purchases" vs. a slide reading 0 bug). resultCountMismatch checks
+        // the number itself, independent of the period/truncation check.
+        const countMismatch = resultCountMismatch(trimmedSummary, slide.ai.resultsNum);
+        summaryFallback = !endsComplete(trimmedSummary) || countMismatch;
+        if (countMismatch) {
+          console.warn(`[ai:generate-insights] AI summary result count mismatch for ${name} — forcing structured fallback`);
+        }
         summary = summaryFallback ? buildFallbackSummary(slide.ai) : capSummary(trimmedSummary);
       }
       console.log(`[ai:generate-insights] Fallback triggered: ${summaryFallback} for ${name}`);
@@ -185,13 +220,19 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         summaryFallback = true;
       }
 
-      const trimmedInsight = rawInsight.trim();
       let insights: string;
-      let insightsFallback = !endsComplete(trimmedInsight);
-      if (insightsFallback) {
+      let insightsFallback: boolean;
+      if (zeroResults) {
+        // Fix 4 — never sent to the AI (rawInsight is null here); the same
+        // data-driven fallback template used for a truncated response is
+        // reused here too, since it already handles a "—"/zero result count
+        // honestly without inventing detail.
         insights = buildFallbackInsights(slide.ai);
+        insightsFallback = false; // deliberate, structured copy — not a truncation recovery
       } else {
-        insights = capInsights(trimmedInsight);
+        const trimmedInsight = rawInsight!.trim();
+        insightsFallback = !endsComplete(trimmedInsight);
+        insights = insightsFallback ? buildFallbackInsights(slide.ai) : capInsights(trimmedInsight);
       }
 
       if (countSentenceEndings(insights) < MIN_INSIGHTS_SENTENCES) {

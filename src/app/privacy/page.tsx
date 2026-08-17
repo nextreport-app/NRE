@@ -53,7 +53,7 @@ export default async function PrivacyPage() {
             </li>
             <li>
               <span className="text-white">Optional third-party API keys</span> —
-              if you choose to enable AI-written insights, the Groq and/or Gemini API
+              if you choose to enable AI-written insights, the Anthropic and/or Gemini API
               keys you provide, stored against your client workspace.
             </li>
           </ul>

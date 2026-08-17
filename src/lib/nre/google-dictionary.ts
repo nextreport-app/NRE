@@ -316,7 +316,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     format: "ratio",
     objectives: ["shopping", "performance_max", "sales"],
     priority: 90,
-    explanation: "Revenue generated for every rupee/dollar spent on ads",
+    explanation: "Return on ad spend — revenue generated for every dollar spent on ads",
   },
   {
     csvName: "value / conv.",
@@ -830,7 +830,7 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     format: "number",
     objectives: ["youtube", "video"],
     priority: 80,
-    explanation: "Number of times your campaign achieved its desired outcome",
+    explanation: "Number of results delivered through your ads",
   },
   {
     csvName: "results value",

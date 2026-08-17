@@ -113,12 +113,9 @@ works without it.
 | `ADMIN_EMAILS` | Optional | Comma-separated email addresses (case-insensitive) that always get full Professional access — no trial countdown, no paywall, no client limit — regardless of that account's real `planId`/`trialEndsAt`. For the product owner's own account(s) to use during testing (and beyond) without hand-editing the database. Checked in `lib/subscription.ts`'s `getSubscriptionStatus`, so it can't be bypassed by hitting an API route directly. Leave blank to disable entirely. |
 | `RESEND_API_KEY` | Yes (for the download screen's "Send Report by Email" button) | From [resend.com/api-keys](https://resend.com/api-keys). Sends from `hello@nextreport.in`, which must be added and verified as a domain in the same Resend account (Domains → Add Domain) before sends will succeed. Read server-side only (`lib/email.ts`, `api/reports/[id]/send-email`); left blank, that endpoint returns "Email sending is not configured." rather than silently failing. |
 
-Groq/Gemini API keys are **not** environment variables — each client profile
-in the app has its own key fields (Client page → "AI insight writing"
-section), matching the spec's "user provides their own keys" v1 design.
-Razorpay keys, by contrast, **are** platform-level environment variables
-(one Razorpay account collects payment for every user's subscription), not
-configured per client or per user.
+`ANTHROPIC_API_KEY`/`GEMINI_API_KEY` (see `.env.example`) are platform-level
+environment variables, like the Razorpay keys above — one set of keys for
+every user's AI-written insights, not configured per client or per user.
 
 ### 2. Database migrations
 
@@ -153,7 +150,7 @@ build log shows `Generated Prisma Client` (from `postinstall`) before
 prisma/schema.prisma       Auth (User/Account/Session) + Client + Report models
 src/lib/nre/                NextReport Engine — the ported business logic
 src/lib/pptx/                OOXML .pptx generation engine (no external deps)
-src/lib/ai/                  Groq-primary/Gemini-fallback insight writing
+src/lib/ai/                  Anthropic-primary/Gemini-fallback insight writing
 src/lib/subscription.ts      Trial/plan status + gating rules (lib/subscription-guard.ts enforces them server-side)
 src/lib/razorpay.ts           Razorpay client + payment signature verification
 src/app/(dashboard)/         Authenticated app (clients, reports, billing)

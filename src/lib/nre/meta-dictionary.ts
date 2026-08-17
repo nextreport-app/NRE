@@ -166,7 +166,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     type: "primary",
     format: "number",
     priority: 85,
-    explanation: "Number of times your campaign achieved its desired outcome",
+    explanation: "Number of results delivered through your ads",
   },
   {
     csvName: "cost per result",
@@ -175,7 +175,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     type: "primary",
     format: "currency",
     priority: 80,
-    explanation: "Average amount spent to achieve each result",
+    explanation: "Average cost to achieve each result through your ads",
     perUnitOf: "results",
   },
   {
@@ -310,7 +310,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "number",
     objectives: ["leads"],
     priority: 85,
-    explanation: "Number of times your campaign achieved its desired outcome",
+    explanation: "Number of results delivered through your ads",
   },
   {
     csvName: "website forms",
@@ -874,7 +874,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "ratio",
     objectives: ["sales"],
     priority: 85,
-    explanation: "Revenue generated for every rupee/dollar spent on ads",
+    explanation: "Return on ad spend — revenue generated for every dollar spent on ads",
   },
   {
     csvName: "average purchases conversion value",
@@ -904,7 +904,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "ratio",
     objectives: ["sales"],
     priority: 88,
-    explanation: "Revenue generated for every rupee/dollar spent on ads",
+    explanation: "Return on ad spend — revenue generated for every dollar spent on ads",
   },
   {
     csvName: "purchase roas",
@@ -914,7 +914,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "ratio",
     objectives: ["sales"],
     priority: 88,
-    explanation: "Revenue generated for every rupee/dollar spent on ads",
+    explanation: "Return on ad spend — revenue generated for every dollar spent on ads",
   },
   {
     csvName: "roas",
@@ -924,7 +924,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "ratio",
     objectives: ["sales"],
     priority: 88,
-    explanation: "Revenue generated for every rupee/dollar spent on ads",
+    explanation: "Return on ad spend — revenue generated for every dollar spent on ads",
   },
   {
     csvName: "add to cart",
@@ -1128,7 +1128,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     format: "ratio",
     objectives: ["app_promotion", "sales"],
     priority: 80,
-    explanation: "Revenue generated for every dollar spent, from in-app purchases",
+    explanation: "Return on ad spend — revenue generated for every dollar spent, from in-app purchases",
   },
 
   // Instagram Profile Visits

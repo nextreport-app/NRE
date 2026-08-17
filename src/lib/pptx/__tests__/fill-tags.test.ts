@@ -56,6 +56,7 @@ function makeCampaignSlide(campaignName: string): CampaignSlideData {
       resultsNum: 2,
       hasResults: true,
       spendNum: 100,
+      isInactive: false,
     },
     statusIndicator: null,
     dynamicMetrics: [],
@@ -306,7 +307,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     expect(longInsights.startsWith(truncated)).toBe(true);
   });
 
-  it("reduces font size by 1pt once text passes 250 characters", () => {
+  it("keeps Campaign Summary at a flat 14pt even for long text (past the old 250-char shrink threshold)", () => {
     const summary = "A".repeat(259) + ".";
     expect(summary.length).toBe(260);
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), {
@@ -314,7 +315,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
       insights: "Short insights.",
     });
     expect(xml).toContain(`<a:t>${summary}</a:t>`); // under the 300 cap — kept verbatim
-    expect(sizeOfRunContaining(xml, summary)).toBe(13);
+    expect(sizeOfRunContaining(xml, summary)).toBe(14);
   });
 
   // Fix 2 (later round) — Key Insights no longer shrinks by length at all;
@@ -349,7 +350,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const summary = "A".repeat(259) + ".";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary, insights: "Short insights." });
-    expect(sizeOfRunContaining(xml, summary)).toBe(13);
+    expect(sizeOfRunContaining(xml, summary)).toBe(14);
     expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
   });
 

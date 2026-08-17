@@ -1,36 +1,38 @@
 /**
- * AI provider calls — port of callAI_/callGroq_/callGemini_ from
- * meta_ads_report_v4.js. Groq is primary, Gemini is fallback, and if both
- * fail (or no keys are configured) the same placeholder string ships in the
- * generated slide, exactly as the source does.
+ * AI provider calls — port of callAI_/callGemini_ from meta_ads_report_v4.js,
+ * with Anthropic Claude swapped in as the primary provider (was Groq).
+ * Anthropic is primary, Gemini is fallback, and if both fail (or no keys are
+ * configured) the same placeholder string ships in the generated slide,
+ * exactly as the source does.
  */
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const GEMINI_MODEL = "gemini-2.5-flash";
 export const AI_UNAVAILABLE_TEXT = "[AI unavailable — check API keys]";
 
-export async function callGroq(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+export async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: GROQ_MODEL,
-      // Bumped from 500 — the actual truncation bug reported turned out to
-      // be capSummary/capInsights's own 220/320-char safety net miscounting
-      // a decimal point (e.g. the "." in "$2.50") as a sentence end and
-      // re-cutting an already-complete response (see generate-insights.ts's
-      // file header), not this limit. Raised anyway as extra headroom.
+      model: ANTHROPIC_MODEL,
+      // Generous headroom, not a tight budget — the old Groq call's own
+      // history here (500 -> 800 tokens) documents a truncation bug that
+      // turned out to be capSummary/capInsights re-truncating a complete
+      // response, not this limit, but there's no reason to reintroduce that
+      // risk by starting Anthropic off tight (a 2-sentence summary /
+      // 3-sentence insights response comfortably fits well under this).
       max_tokens: 800,
-      temperature: 0.4,
       messages: [{ role: "user", content: prompt }],
     }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return String(data.choices[0].message.content).trim();
+  return String(data.content?.[0]?.text ?? "").trim();
 }
 
 export async function callGemini(prompt: string, apiKey: string): Promise<string> {
@@ -46,22 +48,22 @@ export async function callGemini(prompt: string, apiKey: string): Promise<string
 }
 
 export interface AiKeys {
-  groqApiKey?: string | null;
+  anthropicApiKey?: string | null;
   geminiApiKey?: string | null;
 }
 
 /** Platform-level provider keys, configured once (e.g. in Vercel's project env vars) — not per client. */
 export function aiKeysFromEnv(): AiKeys {
   return {
-    groqApiKey: process.env.GROQ_API_KEY || null,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
     geminiApiKey: process.env.GEMINI_API_KEY || null,
   };
 }
 
 export async function callAI(prompt: string, keys: AiKeys): Promise<string> {
-  if (keys.groqApiKey) {
+  if (keys.anthropicApiKey) {
     try {
-      return await callGroq(prompt, keys.groqApiKey);
+      return await callAnthropic(prompt, keys.anthropicApiKey);
     } catch {
       // fall through to Gemini, matching callAI_'s try/catch chain
     }

@@ -87,6 +87,8 @@ export interface AiContext {
   hasResults: boolean;
   /** Raw spend for this slide (same value `spend` formats for display) — drives generate-insights.ts's zero-spend/paused-campaign check, which needs a number, not a currency-formatted string. */
   spendNum: number;
+  /** True when the CSV's own delivery_status column reports this campaign/ad set as Paused/Inactive (see delivery-status.ts) — independent of spendNum, which can still be nonzero for a campaign paused partway through the week. Always false for Google Ads (no delivery-status detection there). Drives generate-insights.ts's Fix 4 paused-vs-active zero-results templates. */
+  isInactive: boolean;
 }
 
 export interface CampaignSlideData {
@@ -1087,8 +1089,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
     const avgFreq = freqRows > 0 ? totalFreq / freqRows : 0;
 
-    const totalResults = campRows.reduce((sum, r) => sum + parseCellNum(r.results), 0);
-
     const statusIndicator = hasDeliveryStatusData
       ? campaignStatusIndicator(campRows.map((r) => r.delivery_status))
       : null;
@@ -1123,12 +1123,24 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       dynamicMetrics,
       additionalMetricsSlide,
       ai: {
-        ctx: campaignName + " (combined " + campRows.length + " ad sets)",
+        // Fix 3 — no internal grouping detail ("(combined N ad sets)") in
+        // what gets sent to the AI: this is bookkeeping about how the
+        // report engine rolled up the data, not something a client-facing
+        // summary should ever mention.
+        ctx: campaignName,
         dateRange: globalWeekDateRange,
         spend: metrics.spend,
         reach: metrics.reach,
         impressions: metrics.impressions,
-        results: fmtNumber(totalResults),
+        // Reuses resultValue/metrics.results — the same objective-aware
+        // count slot 4's own card shows (getGroupedResultDisplayForObjective
+        // above) — never a separately-summed raw r.results total, which can
+        // legitimately disagree with the slide (e.g. it includes rows whose
+        // own resolved objective differs from the campaign's assigned one).
+        // The reported bug: AI text said "35 purchases" while the slide's
+        // own PURCHASES card read 0, because this used to sum raw r.results
+        // regardless of objective.
+        results: resultValue,
         cpr: metrics.cpr, // see file header: reuses the correctly-computed display value
         ctr: metrics.ctr,
         cpc: metrics.cpc,
@@ -1136,9 +1148,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         resultLabel,
         costLabel,
         freq: avgFreq,
-        resultsNum: totalResults,
-        hasResults: totalResults > 0,
+        resultsNum: parseCellNum(resultValue),
+        hasResults: parseCellNum(resultValue) > 0,
         spendNum: totalSpend,
+        isInactive: statusIndicator !== null,
       },
     };
   });
@@ -1235,20 +1248,26 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       ai: {
         ctx: campaignName + (adSetName ? " / " + adSetName : ""),
         dateRange: globalWeekDateRange,
-        spend: fmtCurrency(row.spend, currencySymbol),
-        reach: fmtNumber(row.reach),
-        impressions: fmtNumber(row.impressions),
-        results: fmtNumber(row.results),
-        cpr: fmtCurrency2dp(row.cpr, currencySymbol),
-        ctr: fmtPercent(row.ctr),
-        cpc: fmtCurrency2dp(row.cpc, currencySymbol),
+        // Reuses `metrics`/resultValue/cprValue — the exact same slot 1-6
+        // values this ad set's own card slots show (getSingleRowResultDisplayForObjective
+        // above), never the row's own raw spend/reach/impressions/results/
+        // ctr/cpc fields directly, which can disagree when this row's own
+        // resolved objective differs from the campaign's assigned one.
+        spend: metrics.spend,
+        reach: metrics.reach,
+        impressions: metrics.impressions,
+        results: resultValue,
+        cpr: metrics.cpr,
+        ctr: metrics.ctr,
+        cpc: metrics.cpc,
         cpm: fmtCpm(rowSpend, rowImpr, currencySymbol),
         resultLabel,
         costLabel,
         freq: rowFreq,
-        resultsNum: parseCellNum(row.results),
-        hasResults: parseCellNum(row.results) > 0,
+        resultsNum: parseCellNum(resultValue),
+        hasResults: parseCellNum(resultValue) > 0,
         spendNum: rowSpend,
+        isInactive: statusIndicator !== null,
       },
     });
   });

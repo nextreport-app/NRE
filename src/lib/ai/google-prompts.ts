@@ -19,6 +19,7 @@ export function buildGoogleAdsSummaryPrompt(ctx: AiContext): string {
     "Sentence 2: The CTR and average CPC performance and what it reflects about audience engagement.\n" +
     "Rules:\n" +
     "- Never start with During [date] or The [campaign name] campaign\n" +
+    "- Do NOT mention ad groups, combined ad groups, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
     "- Always use real numbers from the data\n" +
     "- Under 55 words total\n" +
     "- Professional tone\n\n" +
@@ -40,6 +41,7 @@ export function buildGoogleAdsInsightPrompt(ctx: AiContext): string {
     "- Do not use bullet points, headers, dashes, or line breaks\n" +
     "- Keep total length under 75 words\n" +
     "- Do not start with This week or During this period — vary the opening\n" +
+    "- Do NOT mention ad groups, combined ad groups, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
     "- Sound like a senior account manager giving honest strategic advice\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Cost: " + ctx.spend + ", Clicks: " + ctx.reach +
     ", Conversions: " + ctx.results + ", Cost per conversion: " + ctx.cpr +

@@ -19,6 +19,7 @@ const ctx: AiContext = {
   resultsNum: 6,
   hasResults: true,
   spendNum: 100,
+  isInactive: false,
 };
 
 describe("buildGoogleAdsSummaryPrompt", () => {
