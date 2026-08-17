@@ -150,7 +150,7 @@ build log shows `Generated Prisma Client` (from `postinstall`) before
 prisma/schema.prisma       Auth (User/Account/Session) + Client + Report models
 src/lib/nre/                NextReport Engine — the ported business logic
 src/lib/pptx/                OOXML .pptx generation engine (no external deps)
-src/lib/ai/                  Anthropic-primary/Gemini-fallback insight writing
+src/lib/ai/                  Anthropic-primary/Groq/Gemini-fallback insight writing
 src/lib/subscription.ts      Trial/plan status + gating rules (lib/subscription-guard.ts enforces them server-side)
 src/lib/razorpay.ts           Razorpay client + payment signature verification
 src/app/(dashboard)/         Authenticated app (clients, reports, billing)
