@@ -76,8 +76,8 @@ export interface ShareChartCampaignData {
 export interface ShareChartData {
   /** "[Month] Campaign Performance[: date range]" — exactly the PPT chart slide's own title text (see chart-slide.ts's buildChartSlideXml). */
   title: string;
-  /** "Total Month to Date Spend: $12,345 · 3 Active Campaigns" — exactly the PPT chart slide's own subtitle text. */
-  totalSpendLine: string;
+  /** "Total MTD: $12,345 · 48 Quote Requests · $15.09 Cost Per Quote Request" — combined spend/results/cost-per-result across every campaign in the chart, for the account's primary (most common) objective this month — see mtdRow.resultColumns[0], the same figure the Combined Total table's MTD row leads with. */
+  summaryLine: string;
   campaigns: ShareChartCampaignData[];
 }
 
@@ -126,7 +126,16 @@ function adFrequencyLabel(freq: number): string {
   return line ? line.slice(1) : "";
 }
 
-function buildShareChart(chart: ChartSlideData | null, currencySymbol: string): ShareChartData | null {
+/** "COST PER QUOTE REQUEST" -> "Cost Per Quote Request" — the resultColumns labels are stored all-caps (Combined Total table styling), but the chart's summary bar reads as ordinary sentence-style text. */
+function toTitleCase(label: string): string {
+  return label
+    .toLowerCase()
+    .split(" ")
+    .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+function buildShareChart(chart: ChartSlideData | null, mtdRow: TableRowData, currencySymbol: string): ShareChartData | null {
   if (!chart) return null;
 
   const hasSubLabel = chart.periodSubLabel.length > 0;
@@ -135,11 +144,15 @@ function buildShareChart(chart: ChartSlideData | null, currencySymbol: string): 
     : (chart.periodLabel === "MTD" ? "MTD" : "WEEKLY") + " CAMPAIGN PERFORMANCE";
   const title = hasSubLabel ? `${baseTitle}: ${chart.periodSubLabel}` : baseTitle;
 
-  const spendPeriodLabel = chart.periodLabel === "MTD" ? "Month to Date" : chart.periodLabel;
-  const activeCount = chart.activeCampaignCount;
-  const totalSpendLine =
-    `Total ${spendPeriodLabel} Spend: ${fmtCurrency(chart.totalAllSpend, currencySymbol)} · ` +
-    `${activeCount} Active Campaign${activeCount === 1 ? "" : "s"}`;
+  // The account's primary (most common) objective this month — resultColumns
+  // is already sorted count-desc by computeTableRow's own getResultGroups
+  // call, and always has at least one entry (a generic RESULTS/COST PER
+  // RESULT placeholder when there's no data at all).
+  const primary = mtdRow.resultColumns[0] ?? { label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" };
+  const summaryLine =
+    `Total MTD: ${fmtCurrency(chart.totalAllSpend, currencySymbol)} · ` +
+    `${primary.value} ${toTitleCase(primary.label)} · ` +
+    `${primary.cprValue} ${toTitleCase(primary.costLabel)}`;
 
   const campaigns: ShareChartCampaignData[] = chart.campaigns.map((c, i) => ({
     name: c.name,
@@ -150,7 +163,7 @@ function buildShareChart(chart: ChartSlideData | null, currencySymbol: string): 
     statusIndicator: c.statusIndicator,
   }));
 
-  return { title, totalSpendLine, campaigns };
+  return { title, summaryLine, campaigns };
 }
 
 /** Only ever called for the WEEKLY/MONTHLY pipeline (ReportData) — see this file's header. */
@@ -212,7 +225,7 @@ export function buildShareReportData(
     },
     campaigns,
     adSets,
-    chart: buildShareChart(data.chart, currencySymbol),
+    chart: buildShareChart(data.chart, data.mtdRow, currencySymbol),
     tableHeaderLabels: data.tableHeaderLabels,
     periodRow: data.periodRow,
     mtdRow: data.mtdRow,

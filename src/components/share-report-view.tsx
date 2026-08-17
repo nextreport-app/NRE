@@ -211,12 +211,15 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
             transform="rotate(-90 55 55)"
           />
         )}
-        {/* Fix 5 — spend only inside the donut, no percentage; matches the PPT version (chart-slide.ts), which shows spend inside the circle and never a percentage. */}
-        <text x="55" y="58" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" style={{ fontFamily: "inherit" }}>
+        {/* Spend shown once, inside the donut: a small muted label line plus the bold value line — matches the PPT version's own in-circle spend display. */}
+        <text x="55" y="46" textAnchor="middle" fill="#94a3b8" fontSize="9" letterSpacing="0.5" style={{ fontFamily: "inherit" }}>
+          AD SPEND
+        </text>
+        <text x="55" y="62" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" style={{ fontFamily: "inherit" }}>
           {c.spendLabel}
         </text>
       </svg>
-      {/* Fix 5 — campaign name and spend below the donut, no percentage. */}
+      {/* Campaign name only below the donut — spend already shown once, inside the circle. */}
       <div
         style={{
           color: "white",
@@ -234,7 +237,6 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
       >
         {c.name}
       </div>
-      <div style={{ color: "#94a3b8", fontSize: "11px" }}>{c.spendLabel}</div>
     </div>
   );
 }
@@ -252,7 +254,19 @@ function ChartSlide({ chart }: { chart: ShareChartData }) {
         ))}
       </div>
 
-      <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px", color: "#94a3b8" }}>{chart.totalSpendLine}</div>
+      <div
+        style={{
+          marginTop: "16px",
+          backgroundColor: "#1e293b",
+          borderLeft: "3px solid #f6ad55",
+          color: "white",
+          fontSize: "13px",
+          padding: "12px 16px",
+          borderRadius: "6px",
+        }}
+      >
+        {chart.summaryLine}
+      </div>
     </SlideCard>
   );
 }

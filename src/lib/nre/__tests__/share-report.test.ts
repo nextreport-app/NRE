@@ -129,7 +129,12 @@ describe("buildShareReportData", () => {
     expect(c.spendLabel).toBe("₹" + Math.round(data.chart!.campaigns[0].spend).toLocaleString("en-US"));
     expect(c.color).toBe("f6ad55"); // first campaign, real spend -> first palette color (orange)
     expect(share.chart!.title).toContain("Campaign Performance");
-    expect(share.chart!.totalSpendLine).toContain("Total");
+    expect(share.chart!.summaryLine).toContain("Total MTD:");
+  });
+
+  it("summary line combines total spend with the primary objective's results and cost per result", () => {
+    expect(share.chart!.summaryLine).toContain(data.mtdRow.resultColumns[0].value);
+    expect(share.chart!.summaryLine).toContain(data.mtdRow.resultColumns[0].cprValue);
   });
 
   it("collects the same Metric Guide entries the PPT legend slide would show (spend excluded, deduped)", () => {
