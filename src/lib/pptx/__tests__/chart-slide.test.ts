@@ -260,19 +260,19 @@ describe("buildChartSlideXml — light template color awareness", () => {
     expect(holes).toEqual(["0d1b2e"]);
   });
 
-  it("uses dark-navy body text, an amber heading, and a white card-colored hole when isLightTemplate is true", () => {
+  it("uses dark-navy body text and a white card-colored hole when isLightTemplate is true, with the title in the shared muted-grey heading color (round L — same hex on both templates)", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, true);
     expect(xml).toContain('srgbClr val="0D1B2E"');
-    expect(xml).toContain('srgbClr val="C17D0A"');
+    expect(xml).toContain('srgbClr val="94a3b8"');
     const holes = ellipseFillColors(xml).filter((_, i) => i % 2 === 1);
     expect(holes).toEqual(["FFFFFF"]);
   });
 
-  it("gives only the chart title the heading accent color, not the body text", () => {
+  it("gives only the chart title the shared muted-grey heading color, not the body text", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND, true);
     expect(chartTitleText(xml)).toBe("MTD CAMPAIGN PERFORMANCE");
     const titleShape = /<p:sp>(?:(?!<\/p:sp>)[\s\S])*?MTD CAMPAIGN PERFORMANCE[\s\S]*?<\/p:sp>/.exec(xml)![0];
-    expect(titleShape).toContain('srgbClr val="C17D0A"');
+    expect(titleShape).toContain('srgbClr val="94a3b8"');
   });
 
   it("keeps the donut ring palette and the amber inactive-indicator color unchanged between templates", () => {

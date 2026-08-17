@@ -32,6 +32,14 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
     expect((xml.match(/<p:sp>/g) || []).length).toBe((darkTemplate.legend.xml.match(/<p:sp>/g) || []).length);
   });
 
+  it("round L: recolors the slide's own static 'METRIC ABBREVIATION GUIDE' title to the same muted grey every other slide's own main heading uses, across all 3 templates", () => {
+    for (const tpl of [darkTemplate, googleTemplate, lightTemplate]) {
+      const xml = buildLegendSlideXml(tpl.legend.xml, []);
+      const titleRun = /<a:r>(?:(?!<\/a:r>)[\s\S])*?METRIC ABBREVIATION GUIDE[\s\S]*?<\/a:r>/.exec(xml)![0];
+      expect(titleRun).toContain('<a:srgbClr val="94a3b8"/>');
+    }
+  });
+
   it("readability floor (product owner spec): every title/label run at least 12pt, every description run at least 11pt", () => {
     // The real dark.pptx template bakes in a 14pt title run (well above the
     // 12pt floor already), a 10.5pt abbreviation-expansion run (e.g. "(COST

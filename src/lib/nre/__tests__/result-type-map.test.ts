@@ -14,6 +14,24 @@ describe("resolveObjectiveFromResultType — exact machine result_type matching"
     expect(resolveObjectiveFromResultType("some_totally_unknown_event")).toBeNull();
   });
 
+  // Reported bug: Meta's human-readable export text for on-Facebook
+  // lead-form campaigns ("Leads (form)", capital L) had no exact-match
+  // entry — only the machine-readable "onsite_conversion.lead_grouped"
+  // variant did — so it fell through to the fuzzy fallback instead of
+  // resolving to META FORM LEADS.
+  it("maps 'Leads (form)' (both cases) to META FORM LEADS, same as onsite_conversion.lead_grouped", () => {
+    expect(resolveObjectiveFromResultType("Leads (form)")).toEqual({
+      key: "meta_form_leads",
+      resultLabel: "META FORM LEADS",
+      costLabel: "COST PER LEAD",
+      isReach: false,
+    });
+    expect(resolveObjectiveFromResultType("leads (form)")).toEqual(resolveObjectiveFromResultType("Leads (form)"));
+    expect(resolveObjectiveFromResultType("onsite_conversion.lead_grouped")).toEqual(
+      resolveObjectiveFromResultType("Leads (form)"),
+    );
+  });
+
   // Part 8, Test 8 — sales conversion events (purchase, add_to_cart,
   // initiate_checkout, view_content) all correctly mapped, each to its own
   // distinct objective, never collapsing into PURCHASES.

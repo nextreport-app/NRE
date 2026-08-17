@@ -55,7 +55,16 @@ const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [22, 20, 18, 16];
 const TYPE_LABEL_SIZE_PT = 14;
 const CAMPAIGN_LABEL_COLOR = "f6ad55"; // amber — primary accent, matches the donut ring/summary-bar amber elsewhere in the deck
 const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visually distinct from the campaign label at a glance
-const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — "YOUR WEEKLY/MONTHLY PERFORMANCE REPORT" is now secondary information under the campaign/ad-set name
+// Round L — the muted-grey report-type header ("YOUR WEEKLY/MONTHLY
+// PERFORMANCE REPORT") reads at the SAME size as every other slide's own
+// main heading (cover's REPORT_TITLE, the MTD chart title, the Combined
+// Total and Metric Guide slide titles — see the matching color/size
+// overrides in this file, chart-slide.ts, and legend-slide.ts), even
+// though the campaign/ad-set name right below it is a hair smaller (22pt)
+// — this is deliberate: the report-type line is uniform "chrome" repeated
+// on every slide, while the name is the slide's own prominent identifier.
+export const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — used uniformly for every slide type's own main heading
+export const REPORT_HEADER_SIZE_PT = 24;
 
 /**
  * Largest candidate size (checked largest-first) whose estimated width,
@@ -219,6 +228,13 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       REPORT_DATE: { sizePt: 14 },
       ACCOUNT_HEALTH_BADGE: { sizePt: 14, bold: true },
       BUDGET_SUMMARY: { sizePt: 13 },
+      // Round L — recolored to the same muted grey every other slide's own
+      // main heading uses (the campaign/ad-set report-type header, the MTD
+      // chart title, the Combined Total and Metric Guide slide titles),
+      // replacing the template's own theme accent-4 (blue). Size stays the
+      // template's native 20pt — Round L only asked to unify colors here,
+      // not sizes, on the non-campaign slide types.
+      REPORT_TITLE: { color: REPORT_HEADER_COLOR },
     },
   );
 }
@@ -531,14 +547,13 @@ export function buildCampaignOrAdSetSlideXml(
     typeLabelText ? { text: typeLabelText, style: { sizePt: TYPE_LABEL_SIZE_PT, bold: false, color: typeLabelColor } } : null,
     statusSuffix ? { text: statusSuffix, style: { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR } } : null,
   ]).xml;
-  // Fix 6 (round K, heading hierarchy) — the report-type header is now
-  // secondary information relative to the campaign/ad-set name above (or,
-  // reading top-to-bottom, below — this header sits above the name in the
-  // template's own layout), so it shrinks to 14pt muted grey instead of
-  // matching the name's own prominence.
+  // Round L — the report-type header stays muted grey (color is still
+  // secondary to the bold-white campaign/ad-set name below it) but is now
+  // the SAME 24pt size as every other slide's own main heading, not a
+  // shrunken 14pt — see REPORT_HEADER_SIZE_PT's own doc comment.
   const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
-  xml = forceRunStyle(xml, header, { bold: true, sizePt: 14, color: REPORT_HEADER_COLOR });
+  xml = forceRunStyle(xml, header, { bold: true, sizePt: REPORT_HEADER_SIZE_PT, color: REPORT_HEADER_COLOR });
   return xml;
 }
 
@@ -636,9 +651,14 @@ export function buildTableSlideXml(
   // all, only the month itself.
   const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
-  return fillCombinedTotalTable(template.xml, grid, {
+  const xml = fillCombinedTotalTable(template.xml, grid, {
     hideRowIndexes: [...(hidePeriodRow ? [1] : []), ...(hideMtdRow ? [2] : [])],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
   });
+  // Round L — the slide's own static title ("MONTHLY CAMPAIGN PERFORMANCE
+  // OVERVIEW", baked into the template, not a {{TAG}}) recolored to the
+  // same muted grey every other slide's own main heading now uses. Size
+  // stays the template's native 28pt — unrequested, left untouched.
+  return forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", { color: REPORT_HEADER_COLOR });
 }

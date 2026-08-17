@@ -124,7 +124,7 @@ describe("listSelectableMetrics — the wizard's own dropdown pool", () => {
 });
 
 describe("defaultMetaSelection — matches slot-assignment.ts's own automatic picks", () => {
-  it.each(["WEBSITE LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
+  it.each(["WEBSITE LEADS", "META FORM LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
     "produces the same 8 keys, in the same order, as buildMetaSlots for %s (no ADD TO CART column present), when the CSV backs every candidate with real data",
     (resultLabel) => {
       const preview = defaultMetaSelection(resultLabel, "COST PER RESULT", META_HEADERS);
@@ -193,6 +193,41 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     expect(availableWebsiteLeads?.key).toBe("website_leads");
     // Same label, different key — a key-only filter would let this through.
     expect(availableWebsiteLeads?.key).not.toBe(slot4.key);
+  });
+});
+
+describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-column priority", () => {
+  it("with no dedicated 'on-facebook leads' column, both fall back to the Results/Cost per result columns under the META FORM LEADS/COST PER LEAD labels", () => {
+    const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", META_HEADERS);
+    expect(preview[3]).toMatchObject({ key: "results", label: "META FORM LEADS" });
+    expect(preview[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD" });
+
+    const real = buildMetaSlots(
+      { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "5", cprValue: "$40.00" },
+      [{ _raw: { "Amount spent": "500", Reach: "10000", Impressions: "40000", "Link clicks": "800", "Landing page views": "300" } }],
+      "$",
+    );
+    expect(real[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "5" });
+    expect(real[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$40.00" });
+  });
+
+  it("prefers a dedicated 'on-facebook leads'/'cost per on-facebook lead' column over the generic Results fallback when the CSV has one", () => {
+    const headersWithDedicated = [...META_HEADERS, "On-Facebook leads", "Cost per on-facebook lead"];
+    const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headersWithDedicated);
+    expect(preview[3]).toMatchObject({ key: "meta_form_leads" });
+    expect(preview[4]).toMatchObject({ key: "cost_per_meta_form_lead" });
+
+    // cost_per_meta_form_lead is a perUnitOf ("meta_form_leads") metric —
+    // computed as sum(spend) / sum(on-facebook leads), same convention as
+    // every other cost-per-X entry in the dictionary (e.g.
+    // cost_per_website_lead) — not read directly off a "cost per..." column.
+    const real = buildMetaSlots(
+      { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "5", cprValue: "$40.00" },
+      [{ _raw: { "On-Facebook leads": "9", "Amount spent": "198" } }],
+      "$",
+    );
+    expect(real[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", value: "9" });
+    expect(real[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", value: "$22.00" });
   });
 });
 

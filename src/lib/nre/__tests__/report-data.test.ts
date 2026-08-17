@@ -1035,6 +1035,57 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
   });
 });
 
+// Reported bug: a CSV with result_type = "Leads (form)" (Meta's own
+// human-readable export text, capital L) but no dedicated "on-facebook
+// leads"/"leads forms" column used to fall through to a generic RESULTS
+// card instead of META FORM LEADS, because result-type-map.ts only had the
+// machine-readable "onsite_conversion.lead_grouped" variant mapped. Fixed
+// by adding a "leads (form)" entry (case-insensitively matched against
+// both "leads (form)" and "Leads (form)") plus a dedicated-column-first
+// check in slot-assignment.ts's buildMetaSlots — this is the exact
+// campaign-slide card data (slots 4/5) the Metric Review wizard step's
+// pre-selected cards are built from (available-metrics.ts's
+// defaultMetaSelection mirrors this same logic, covered separately in
+// available-metrics.test.ts).
+describe("buildReportData — META FORM LEADS from result_type 'Leads (form)', no dedicated column (reported bug)", () => {
+  it("Results=5, Cost per result=$40 (spend $200 / 5) -> campaign slide cards show META FORM LEADS=5 and COST PER LEAD=$40.00, not a generic RESULTS fallback", () => {
+    // Campaign summary slides (and the Metric Review wizard step's
+    // pre-selected default, which mirrors this same slot logic) are built
+    // from the MTD dataset, not the weekly periodRows — see the existing
+    // "Leads (form) + Website subscriptions campaigns" describe block above
+    // for the same mtdDailyRows-only pattern.
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [
+        {
+          _raw: {},
+          campaign_name: "Form Leads Campaign",
+          ad_set_name: "Set 1",
+          result_type: "Leads (form)",
+          spend: "200",
+          reach: "0",
+          impressions: "9000",
+          results: "5",
+          ctr: "1.5",
+          cpc: "6",
+          date_start: "19-07-2026",
+          date_end: "19-07-2026",
+        },
+      ],
+      now: NOW,
+    });
+
+    const slide = data.campaignSlides.find((s) => s.campaignName === "Form Leads Campaign")!;
+    expect(slide.resultLabel).toBe("META FORM LEADS");
+    expect(slide.costLabel).toBe("COST PER LEAD");
+    expect(slide.dynamicMetrics[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "5" });
+    expect(slide.dynamicMetrics[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$40.00" });
+  });
+});
+
 // Real-account bug report: the Previous Month row's PURCHASES column was
 // inflated by secondary/incidental purchases from a campaign whose real
 // objective was Initiate Checkout, because a blank result_type + a

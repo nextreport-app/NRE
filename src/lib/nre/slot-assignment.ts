@@ -135,6 +135,22 @@ function pickSlot(candidates: SlotCandidate[], already: Set<string>, lookup: (ke
   return null;
 }
 
+/**
+ * Tries each candidate in order and returns the first with real, non-zero
+ * CSV data — unlike pickSlot, never falls through to the global slot 7/8
+ * fallback chain (LINK CLICKS/CLICKS (ALL)/FREQUENCY/CPM): this is used for
+ * the "does a dedicated column exist for this metric at all" check, where
+ * the caller supplies its own non-chain fallback (e.g. the campaign's
+ * Results column) when nothing here has data.
+ */
+function firstAvailable(candidates: SlotCandidate[], lookup: (key: string) => string): DynamicMetricValue | null {
+  for (const c of candidates) {
+    const val = lookup(c.key);
+    if (val !== "—") return slot(c.key, c.label, c.format, val);
+  }
+  return null;
+}
+
 function usedKeys(...slots: (DynamicMetricValue | null)[]): Set<string> {
   return new Set(slots.filter((s): s is DynamicMetricValue => s !== null).map((s) => s.key));
 }
@@ -199,12 +215,32 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
   switch (resultLabel) {
     case "WEBSITE LEADS":
     case "LEADS":
-    case "META FORM LEADS":
       slot4 = slot("results", baseline.resultLabel, "number", baseline.resultValue);
       slot5 = slot("cost_per_result", baseline.costLabel, "currency", baseline.cprValue);
       slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
       slot8 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5, slot7), v);
       break;
+
+    // META FORM LEADS (on-Facebook lead forms, result_type "Leads (form)" /
+    // "onsite_conversion.lead_grouped"): a dedicated "on-Facebook leads" /
+    // "cost per on-facebook lead" column, when the CSV actually has one,
+    // takes priority — otherwise the campaign's own Results/Cost per result
+    // columns ARE the form-leads count/cost for this objective, so they're
+    // reused directly (same mechanism as the WEBSITE LEADS/LEADS case
+    // above), just always under the META FORM LEADS/COST PER LEAD labels
+    // rather than whatever baseline.resultLabel/costLabel happened to say.
+    case "META FORM LEADS": {
+      const dedicatedResult = firstAvailable([{ key: "meta_form_leads", label: "META FORM LEADS", format: "number" }], v);
+      slot4 = dedicatedResult ?? slot("results", "META FORM LEADS", "number", baseline.resultValue);
+      const dedicatedCost = firstAvailable(
+        [{ key: "cost_per_meta_form_lead", label: "COST PER LEAD", format: "currency" }],
+        v,
+      );
+      slot5 = dedicatedCost ?? slot("cost_per_result", "COST PER LEAD", "currency", baseline.cprValue);
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5, slot7), v);
+      break;
+    }
 
     case "LINK CLICKS":
       slot4 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));

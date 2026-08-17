@@ -313,6 +313,16 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Number of results delivered through your ads",
   },
   {
+    csvName: "leads (form)",
+    key: "results",
+    label: "META FORM LEADS",
+    type: "secondary",
+    format: "number",
+    objectives: ["meta_form_leads"],
+    priority: 85,
+    explanation: "Number of leads submitted through an on-Facebook lead form",
+  },
+  {
     csvName: "website forms",
     key: "website_leads",
     label: "WEBSITE LEADS",
@@ -333,15 +343,31 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Average amount spent to acquire each website lead",
     perUnitOf: "website_leads",
   },
+  // The dedicated "on-Facebook leads" column, when present, is the real
+  // form-leads count for a META FORM LEADS objective campaign — preferred
+  // by slot-assignment.ts's buildMetaSlots / available-metrics.ts's
+  // defaultMetaSelection over the generic Results-column fallback whenever
+  // it exists in the CSV (see the "META FORM LEADS" case in both files).
   {
     csvName: "on-facebook leads",
-    key: "on_fb_leads",
-    label: "ON-FB LEADS",
+    key: "meta_form_leads",
+    label: "META FORM LEADS",
     type: "secondary",
     format: "number",
-    objectives: ["leads"],
-    priority: 80,
+    objectives: ["meta_form_leads"],
+    priority: 85,
     explanation: "Number of leads submitted through an on-Facebook lead form",
+  },
+  {
+    csvName: "cost per on-facebook lead",
+    key: "cost_per_meta_form_lead",
+    label: "COST PER LEAD",
+    type: "secondary",
+    format: "currency",
+    objectives: ["meta_form_leads"],
+    priority: 83,
+    explanation: "Average amount spent to acquire each on-Facebook form lead",
+    perUnitOf: "meta_form_leads",
   },
 
   // Awareness / CPM

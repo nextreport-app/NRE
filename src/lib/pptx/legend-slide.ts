@@ -33,7 +33,8 @@
  * objective report often exceeds 12 anyway.
  */
 
-import { enforceMinFontSize, replaceLiteralText } from "./ooxml";
+import { enforceMinFontSize, forceRunStyle, replaceLiteralText } from "./ooxml";
+import { REPORT_HEADER_COLOR } from "./fill-tags";
 
 export interface LegendEntry {
   term: string;
@@ -190,6 +191,13 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   console.log(
     `[legend-slide] converted ${beforeAutofitCount} description text box(es) from spAutoFit (grow shape, can overflow) to normAutofit (shrink text to fit)`,
   );
+
+  // Round L — the slide's own static title ("METRIC ABBREVIATION GUIDE",
+  // baked into the template, identical text across all 3 templates)
+  // recolored to the same muted grey every other slide's own main heading
+  // now uses. Size stays the template's native 28pt — unrequested, left
+  // untouched.
+  xml = forceRunStyle(xml, "METRIC ABBREVIATION GUIDE", { color: REPORT_HEADER_COLOR });
 
   return xml;
 }

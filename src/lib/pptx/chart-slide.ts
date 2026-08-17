@@ -12,6 +12,7 @@
 import { fmtNumber } from "../nre/format";
 import type { ChartCampaignData, ChartSlideData } from "../nre/report-data";
 import type { TemplateBackgroundImage } from "./package";
+import { REPORT_HEADER_COLOR } from "./fill-tags";
 import { backgroundImage, buildBlankSlideXml, ellipse, rectangle, resetShapeIdCounter, textBox } from "./shapes";
 
 /** Relationship id the chart slide's own generated rels (see render.ts) registers the copied background picture under. */
@@ -37,9 +38,10 @@ const TEXT_COLOR_DARK = "FFFFFF";
 // background both become light in the light template (hole/card background:
 // FFFFFF, slide bg: FDF6EC, both set via templates/meta-ads-light.pptx's
 // theme swap) so one dark-navy text color reads fine against both, same as
-// the light template's own metric-card value text. The chart title alone
-// gets the heading accent color, matching the other 3 slide-title-level
-// headings on the deck's static slides (see gen_light_template.py).
+// the light template's own metric-card value text. The chart title itself
+// (see HEADING_COLOR below, round L) is the one literal muted-grey hex
+// shared with every other slide's main heading, so it doesn't need its own
+// per-template light/dark variant here.
 const BG_COLOR_LIGHT = "FFFFFF";
 // Mid navy, matching the pptx template's own metric-card labels
 // (gen_light_template.py's LABEL_TEXT_COLOR) — readability fix v2: the
@@ -47,7 +49,6 @@ const BG_COLOR_LIGHT = "FFFFFF";
 // warm background per user feedback.
 const LABEL_COLOR_LIGHT = "1E3A5F";
 const TEXT_COLOR_LIGHT = "0D1B2E";
-const HEADING_COLOR_LIGHT = "C17D0A";
 
 const INACTIVE_COLOR = "fbbf24"; // amber — "Paused"/"Inactive" indicator under a non-active campaign's name, unchanged across templates (same reasoning as the donut ring palette below: a decorative/status accent, not a background-polarity color)
 
@@ -108,7 +109,12 @@ export function buildChartSlideXml(
   const BG_COLOR = isLightTemplate ? BG_COLOR_LIGHT : BG_COLOR_DARK;
   const LABEL_COLOR = isLightTemplate ? LABEL_COLOR_LIGHT : LABEL_COLOR_DARK;
   const WHITE = isLightTemplate ? TEXT_COLOR_LIGHT : TEXT_COLOR_DARK;
-  const HEADING_COLOR = isLightTemplate ? HEADING_COLOR_LIGHT : TEXT_COLOR_DARK;
+  // Round L — the same muted grey every other slide's own main heading now
+  // uses (was TEXT_COLOR_DARK/HEADING_COLOR_LIGHT — plain white on dark,
+  // amber-brown on light), uniform across both templates since the deck's
+  // other unified headings (report-type header, cover, Combined Total,
+  // Metric Guide) all use this one literal hex regardless of template.
+  const HEADING_COLOR = REPORT_HEADER_COLOR;
   const spendLabel = platform === "GOOGLE" ? "COST" : "AD SPEND";
 
   const W = 960;

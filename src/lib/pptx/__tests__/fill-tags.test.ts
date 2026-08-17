@@ -158,6 +158,11 @@ describe("buildCoverSlideXml — report title", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER, { reportType: "WEEKLY" });
     expect(xml).toContain(`<a:t>${DEFAULT_REPORT_TITLE.toUpperCase()}</a:t>`);
   });
+
+  it("round L: recolors REPORT_TITLE to the same muted grey every other slide's own main heading uses", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER);
+    expect(colorOfRunContaining(xml, DEFAULT_REPORT_TITLE.toUpperCase())).toBe("94a3b8");
+  });
 });
 
 describe("buildCoverSlideXml — Prepared By line", () => {
@@ -279,9 +284,9 @@ describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label +
     expect(colorOfRunContaining(xml, " (Ad Set)")).toBe("63b3ed");
   });
 
-  it("shrinks the 'YOUR WEEKLY PERFORMANCE REPORT' header to 14pt muted grey, now secondary to the name", () => {
+  it("keeps the 'YOUR WEEKLY PERFORMANCE REPORT' header at 24pt muted grey — same size as every other slide's own main heading, still secondary in color to the bold-white name", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(14);
+    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(24);
     expect(colorOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe("94a3b8");
   });
 

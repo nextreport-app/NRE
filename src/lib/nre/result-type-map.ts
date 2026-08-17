@@ -67,6 +67,12 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   onsite_web_lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "offsite_conversion.fb_pixel_lead": { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "onsite_conversion.lead": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
+  // Meta's human-readable result_type export for on-Facebook lead-form
+  // campaigns (as opposed to the machine-readable
+  // "onsite_conversion.lead_grouped" above) — resolveObjectiveFromResultType
+  // already lowercases/trims before lookup, so this one lowercase key
+  // matches both "leads (form)" and "Leads (form)".
+  "leads (form)": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
 
   // MESSAGING
   messaging_conversation_started_7d: { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },

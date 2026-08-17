@@ -117,7 +117,15 @@ describe("Round B — new/aliased Meta dictionary entries", () => {
     expect(findMetaMetric("website forms")?.key).toBe("website_leads");
     expect(findMetaMetric("cost per website lead")?.key).toBe("cost_per_website_lead");
     expect(findMetaMetric("cost per website lead")?.perUnitOf).toBe("website_leads");
-    expect(findMetaMetric("on-facebook leads")?.key).toBe("on_fb_leads");
+    expect(findMetaMetric("on-facebook leads")?.key).toBe("meta_form_leads");
+  });
+
+  it("adds leads (form) / cost per on-facebook lead for the META FORM LEADS objective", () => {
+    expect(findMetaMetric("leads (form)")?.key).toBe("results");
+    expect(findMetaMetric("leads (form)")?.label).toBe("META FORM LEADS");
+    expect(findMetaMetric("on-facebook leads")?.label).toBe("META FORM LEADS");
+    expect(findMetaMetric("cost per on-facebook lead")?.key).toBe("cost_per_meta_form_lead");
+    expect(findMetaMetric("cost per on-facebook lead")?.label).toBe("COST PER LEAD");
   });
 
   it("adds purchases conversion value / purchase roas aliases / add to cart / initiate checkout chain", () => {

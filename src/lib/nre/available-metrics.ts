@@ -176,9 +176,22 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
   switch (upper) {
     case "WEBSITE LEADS":
     case "LEADS":
-    case "META FORM LEADS":
       slot4 = byKey("META", "results", resultLabel)!;
       slot5 = byKey("META", "cost_per_result", resultCostLabel)!;
+      slot7 = byKey("META", "link_clicks")!;
+      slot8 = byKey("META", "landing_page_views")!;
+      break;
+    // META FORM LEADS — mirrors slot-assignment.ts's buildMetaSlots exactly:
+    // a dedicated "on-Facebook leads"/"cost per on-facebook lead" column
+    // takes priority when the CSV has one; otherwise the Results/Cost per
+    // result columns are reused directly under the META FORM LEADS/COST
+    // PER LEAD labels (they ARE the form-leads count/cost for this
+    // objective).
+    case "META FORM LEADS":
+      slot4 = hasHeader(headers, "on-facebook leads") ? byKey("META", "meta_form_leads")! : byKey("META", "results", "META FORM LEADS")!;
+      slot5 = hasHeader(headers, "cost per on-facebook lead")
+        ? byKey("META", "cost_per_meta_form_lead")!
+        : byKey("META", "cost_per_result", "COST PER LEAD")!;
       slot7 = byKey("META", "link_clicks")!;
       slot8 = byKey("META", "landing_page_views")!;
       break;

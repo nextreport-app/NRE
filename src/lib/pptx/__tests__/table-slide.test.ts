@@ -468,6 +468,34 @@ describe("buildTableSlideXml — same-month: hide the MTD row instead of showing
   });
 });
 
+describe("buildTableSlideXml — round L: recolors the slide's own static title", () => {
+  const headers: TableHeaderLabels = { resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT" }] };
+  const periodRow: TableRowData = {
+    hasData: true,
+    monthLabel: "Jun 2026",
+    fullMonthLabel: "Jun 2026",
+    monthName: "June",
+    sameMonthAsCurrentMTD: false,
+    spend: "₹500",
+    reach: "10,000",
+    impressions: "20,000",
+    ctr: "1.00%",
+    cpc: "₹2.00",
+    resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "5", cprValue: "₹100.00" }],
+  };
+  const mtdRow: TableRowData = { ...periodRow, monthLabel: "Jul 2026", fullMonthLabel: "Jul 2026", monthName: "July" };
+
+  it("recolors the static 'MONTHLY CAMPAIGN PERFORMANCE OVERVIEW' title (baked into the template, not a {{TAG}}) to the same muted grey every other slide's own main heading uses", () => {
+    const titleShape =
+      `<p:sp><p:txBody><a:p><a:r><a:rPr sz="2800" b="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr>` +
+      `<a:t>MONTHLY CAMPAIGN PERFORMANCE OVERVIEW</a:t></a:r></a:p></p:txBody></p:sp>`;
+    const xml = titleShape + buildFixtureTable();
+    const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "WEEKLY");
+    const titleRun = /<a:r>(?:(?!<\/a:r>)[\s\S])*?MONTHLY CAMPAIGN PERFORMANCE OVERVIEW[\s\S]*?<\/a:r>/.exec(out)![0];
+    expect(titleRun).toContain('<a:srgbClr val="94a3b8"/>');
+  });
+});
+
 /** A single cell with a realistic <a:tcPr>: a border-line fill (lnB) followed by the cell's own trailing background fill — the same shape as templates/dark.pptx's real cells, needed to test that only the background (not the border) gets overridden. */
 function cellXmlWithFill(placeholder: string, bgColor = "0D1B2E"): string {
   return (
