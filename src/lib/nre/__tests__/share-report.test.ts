@@ -137,6 +137,69 @@ describe("buildShareReportData", () => {
     expect(share.chart!.summaryLine).toContain(data.mtdRow.resultColumns[0].cprValue);
   });
 
+  it("carries this campaign's own results/cost-per-result on the chart entry, matching the PPT donut's own below-circle text", () => {
+    const c = share.chart!.campaigns[0];
+    const campaignChartData = data.chart!.campaigns[0];
+    expect(campaignChartData.results).toBeGreaterThan(0);
+    expect(c.resultsValueLabel).not.toBe("");
+    expect(c.resultsLabel).not.toBe("");
+    expect(c.cprValueLabel).not.toBe("");
+    expect(c.cprLabel).not.toBe("");
+  });
+
+  it("omits results/cost-per-result entirely (not a hollow zero) for a campaign with no results this month", () => {
+    const zeroResultRows = daysInclusive(13, 19).map((day) => ({
+      _raw: { Day: day },
+      campaign_name: "Awareness - Reach",
+      ad_set_name: "Prospecting",
+      result_type: "Purchase",
+      spend: "50",
+      reach: "500",
+      impressions: "1000",
+      results: "0",
+      ctr: "1.2",
+      cpc: "0",
+      date_start: day,
+      date_end: day,
+    })) as NreRow[];
+    const zeroData = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 100000,
+      mtdDailyRows: zeroResultRows,
+      now: NOW,
+    });
+    const zeroShare = buildShareReportData(zeroData, new Map(), NOW, { currencySymbol: "₹" });
+    const c = zeroShare.chart!.campaigns[0];
+    expect(c.resultsValueLabel).toBe("");
+    expect(c.resultsLabel).toBe("");
+    expect(c.cprValueLabel).toBe("");
+    expect(c.cprLabel).toBe("");
+  });
+
+  it("shows every campaign with MTD spend on the chart, not capped at 4", () => {
+    const sixCampaignRows = [
+      ...buildDailyRows("Campaign A"),
+      ...buildDailyRows("Campaign B"),
+      ...buildDailyRows("Campaign C"),
+      ...buildDailyRows("Campaign D"),
+      ...buildDailyRows("Campaign E"),
+      ...buildDailyRows("Campaign F"),
+    ];
+    const sixData = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: 100000,
+      mtdDailyRows: sixCampaignRows,
+      now: NOW,
+    });
+    const sixShare = buildShareReportData(sixData, new Map(), NOW, { currencySymbol: "₹" });
+    expect(sixData.chart!.campaigns.length).toBe(6);
+    expect(sixShare.chart!.campaigns).toHaveLength(6);
+  });
+
   it("collects the same Metric Guide entries the PPT legend slide would show (spend excluded, deduped)", () => {
     expect(share.metricGuide.every((e) => e.term.toUpperCase() !== "AD SPEND")).toBe(true);
     const terms = share.metricGuide.map((e) => e.term);

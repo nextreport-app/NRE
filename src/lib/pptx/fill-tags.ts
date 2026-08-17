@@ -19,14 +19,14 @@ import {
   replaceCardLabel,
   replaceLiteralText,
   replaceTagRun,
-  replaceTagRunWithSuffix,
+  replaceTagRunWithSuffixes,
   setShapeNormAutofit,
   setShapeOffsetY,
   type StyleOverride,
 } from "./ooxml";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
-import { emuToPt, fitCardLabel, fitFontSizePt } from "./text-fit";
+import { emuToPt, estimateTextWidthPt, fitCardLabel, fitFontSizePt } from "./text-fit";
 import { resolveMetricIconId, type MetricIconId } from "./metric-icons";
 
 // Metric card label/value spacing fix — see ensureCardLabelValueGap's own
@@ -43,10 +43,34 @@ const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [28, 24, 20, 18, 16];
 // CAMPAIGN_NAME shape (ppt/slides/slide2.xml, campaign/ad-set template):
 // cx="11433300" lIns="91425" rIns="91425" — keep in sync with the template.
 const CAMPAIGN_NAME_MAX_WIDTH_PT = emuToPt(11433300 - 91425 * 2);
-// Fix 4 (readability pass) — floor raised from 12pt to 16pt: a name long
-// enough to need the smaller candidates now wraps instead of shrinking
-// below the spec's stated minimum heading size.
-const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [18, 16];
+// Fix 6 (round K, heading hierarchy) — ceiling raised from 18pt to 22pt: the
+// campaign/ad-set name is now the single most prominent text on the slide
+// (see buildCampaignOrAdSetSlideXml's own doc comment), out-sizing both the
+// "(Campaign)"/"(Ad Set)" type label next to it and the report-type header
+// above it. Floor stays 16pt (Fix 4, readability pass) — a name long enough
+// to need the smaller candidates wraps instead of shrinking further.
+const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [22, 20, 18, 16];
+// Fixed, not part of the auto-shrink candidates above — the type label
+// always renders at this size regardless of how long the name itself is.
+const TYPE_LABEL_SIZE_PT = 14;
+const CAMPAIGN_LABEL_COLOR = "f6ad55"; // amber — primary accent, matches the donut ring/summary-bar amber elsewhere in the deck
+const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visually distinct from the campaign label at a glance
+const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — "YOUR WEEKLY/MONTHLY PERFORMANCE REPORT" is now secondary information under the campaign/ad-set name
+
+/**
+ * Largest candidate size (checked largest-first) whose estimated width,
+ * PLUS the fixed-size type-label text right after it on the same line,
+ * still fits the shape — same idea as text-fit.ts's own fitFontSizePt, but
+ * accounting for a second run (the type label) that never changes size
+ * alongside the name that does.
+ */
+function fitNameSizePt(name: string, typeLabelText: string | null, maxWidthPt: number, candidateSizesPt: number[]): number {
+  const labelWidthPt = typeLabelText ? estimateTextWidthPt(typeLabelText, TYPE_LABEL_SIZE_PT) : 0;
+  for (const sizePt of candidateSizesPt) {
+    if (estimateTextWidthPt(name, sizePt) + labelWidthPt <= maxWidthPt) return sizePt;
+  }
+  return candidateSizesPt[candidateSizesPt.length - 1];
+}
 
 function fillTags(xml: string, values: Record<string, string>, styleOverrides: Record<string, StyleOverride> = {}): string {
   let out = xml;
@@ -331,17 +355,31 @@ export function buildCampaignOrAdSetSlideXml(
   useAdditionalMetricsSlide = false,
 ): string {
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
-  const heading = useAdditionalMetricsSlide
-    ? (slide.kind === "adset" ? slide.adSetName || slide.campaignName : slide.campaignName) + " — Additional Metrics"
-    : slide.kind === "adset"
-      ? slide.adSetName
-        ? slide.adSetName + adGroupOrSetLabel
-        : slide.campaignName
-      : slide.campaignName + " (Campaign)";
+  const isAdSetKind = slide.kind === "adset";
+  const nameOnly = isAdSetKind ? slide.adSetName || slide.campaignName : slide.campaignName;
+  const heading = useAdditionalMetricsSlide ? nameOnly + " — Additional Metrics" : nameOnly;
 
-  // Small "Paused"/"Inactive" badge right after the name — null (no badge
-  // at all) for active campaigns/ad sets and whenever the CSV has no
-  // delivery-status column to judge it from.
+  // Fix 6 (round K) — the "(Campaign)"/"(Ad Set)"/"(Ad Group)" type label is
+  // its own colored run, not baked into the heading text, so it reads as a
+  // visually distinct badge next to the name rather than part of the name
+  // itself (amber for a campaign slide, blue for an ad-set slide). Never
+  // shown on an "Additional Metrics" continuation slide (its own distinct
+  // "[Name] — Additional Metrics" heading), nor on an ad-set slide that had
+  // no real ad-set name to label (falls back to showing the bare campaign
+  // name, which a "(Ad Set)" badge would misdescribe).
+  const typeLabelText = useAdditionalMetricsSlide
+    ? null
+    : isAdSetKind
+      ? slide.adSetName
+        ? adGroupOrSetLabel
+        : null
+      : " (Campaign)";
+  const typeLabelColor = isAdSetKind ? AD_SET_LABEL_COLOR : CAMPAIGN_LABEL_COLOR;
+
+  // Small "Paused"/"Inactive" badge right after the name (and after the
+  // type label, if present) — null (no badge at all) for active
+  // campaigns/ad sets and whenever the CSV has no delivery-status column to
+  // judge it from.
   const statusSuffix = slide.statusIndicator ? `  (${slide.statusIndicator})` : null;
 
   const dynamicSlots = useAdditionalMetricsSlide ? slide.additionalMetricsSlide : slide.dynamicMetrics;
@@ -488,18 +526,19 @@ export function buildCampaignOrAdSetSlideXml(
     xml = enforceMinFontSize(xml, 12);
   }
 
-  const campaignNameSizePt = fitFontSizePt(heading, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
-  xml = replaceTagRunWithSuffix(
-    xml,
-    "{{CAMPAIGN_NAME}}",
-    heading,
-    statusSuffix,
-    { sizePt: campaignNameSizePt },
-    { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR },
-  ).xml;
+  const campaignNameSizePt = fitNameSizePt(heading, typeLabelText, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
+  xml = replaceTagRunWithSuffixes(xml, "{{CAMPAIGN_NAME}}", heading, { sizePt: campaignNameSizePt, bold: true }, [
+    typeLabelText ? { text: typeLabelText, style: { sizePt: TYPE_LABEL_SIZE_PT, bold: false, color: typeLabelColor } } : null,
+    statusSuffix ? { text: statusSuffix, style: { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR } } : null,
+  ]).xml;
+  // Fix 6 (round K, heading hierarchy) — the report-type header is now
+  // secondary information relative to the campaign/ad-set name above (or,
+  // reading top-to-bottom, below — this header sits above the name in the
+  // template's own layout), so it shrinks to 14pt muted grey instead of
+  // matching the name's own prominence.
   const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
-  xml = forceRunStyle(xml, header, { bold: true });
+  xml = forceRunStyle(xml, header, { bold: true, sizePt: 14, color: REPORT_HEADER_COLOR });
   return xml;
 }
 

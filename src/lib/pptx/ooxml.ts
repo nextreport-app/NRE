@@ -92,21 +92,27 @@ export function replaceTagRun(
   return { xml: xml.slice(0, match.index) + runs + xml.slice(match.index + match[0].length), replaced: true };
 }
 
+export interface SuffixRun {
+  text: string;
+  style?: StyleOverride;
+}
+
 /**
- * Like replaceTagRun, but also inserts a second run directly after the
- * tag's own run, in the same paragraph — e.g. a small "(Inactive)" badge
- * next to a campaign/ad-set name that must render in a different
- * color/size than the name itself. `suffix` is skipped entirely (no run
- * added) when null/empty, so the active case renders exactly like a plain
- * replaceTagRun call.
+ * Like replaceTagRun, but also inserts one or more extra runs directly
+ * after the tag's own run, in the same paragraph, each with its own style —
+ * e.g. a colored "(Campaign)"/"(Ad Set)" type label plus a small
+ * "(Inactive)" status badge, both riding on the same heading line as the
+ * name but each visually distinct from it and from each other. Falsy
+ * entries (null/undefined, or an empty-text run) are skipped entirely, so
+ * a heading with no type label and no status badge renders exactly like a
+ * plain replaceTagRun call.
  */
-export function replaceTagRunWithSuffix(
+export function replaceTagRunWithSuffixes(
   xml: string,
   tag: string,
   value: string,
-  suffix: string | null | undefined,
-  styleOverride?: StyleOverride,
-  suffixStyleOverride?: StyleOverride,
+  styleOverride: StyleOverride | undefined,
+  suffixes: (SuffixRun | null | undefined)[],
 ): { xml: string; replaced: boolean } {
   const escapedTag = escapeRegExp(tag);
   const runRegex = new RegExp(`<a:r>((?:(?!</a:r>)[\\s\\S])*?)<a:t>${escapedTag}</a:t></a:r>`);
@@ -117,14 +123,33 @@ export function replaceTagRunWithSuffix(
   const lines = String(value).split("\n");
   const mainRuns = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
 
-  const suffixRun = suffix
-    ? `<a:r>${applyStyleOverride(match[1] ?? "", suffixStyleOverride)}<a:t>${escapeXmlText(suffix)}</a:t></a:r>`
-    : "";
+  const suffixRuns = suffixes
+    .filter((s): s is SuffixRun => !!s && s.text.length > 0)
+    .map((s) => `<a:r>${applyStyleOverride(match[1] ?? "", s.style)}<a:t>${escapeXmlText(s.text)}</a:t></a:r>`)
+    .join("");
 
   return {
-    xml: xml.slice(0, match.index) + mainRuns + suffixRun + xml.slice(match.index + match[0].length),
+    xml: xml.slice(0, match.index) + mainRuns + suffixRuns + xml.slice(match.index + match[0].length),
     replaced: true,
   };
+}
+
+/**
+ * Single-suffix convenience wrapper over replaceTagRunWithSuffixes — kept
+ * for call sites (and tests) that only ever need one extra run, e.g. a
+ * lone "(Inactive)" badge with no other suffix runs alongside it.
+ */
+export function replaceTagRunWithSuffix(
+  xml: string,
+  tag: string,
+  value: string,
+  suffix: string | null | undefined,
+  styleOverride?: StyleOverride,
+  suffixStyleOverride?: StyleOverride,
+): { xml: string; replaced: boolean } {
+  return replaceTagRunWithSuffixes(xml, tag, value, styleOverride, [
+    suffix ? { text: suffix, style: suffixStyleOverride } : null,
+  ]);
 }
 
 /**

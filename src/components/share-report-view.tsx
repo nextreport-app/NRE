@@ -110,9 +110,21 @@ function MetricGrid({ metrics }: { metrics: DynamicMetricValue[] }) {
 
 function DateAndFrequency({ dateRange, adFrequency }: { dateRange: string; adFrequency: string }) {
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-muted">
-      <span>{dateRange}</span>
-      {adFrequency && <span>{adFrequency}</span>}
+    <div className="mt-1 text-[12px] text-ink-muted">
+      {dateRange}
+      {adFrequency && ` · ${adFrequency}`}
+    </div>
+  );
+}
+
+/** Fix 6 (round K) — secondary, muted, uppercase report-type line above the campaign/ad-set name, matching the PPT's own now-secondary "YOUR WEEKLY/MONTHLY PERFORMANCE REPORT" heading. */
+function CardReportTypeLabel({ label }: { label: string }) {
+  return (
+    <div
+      className="text-[11px] font-semibold text-ink-muted"
+      style={{ letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px" }}
+    >
+      {label}
     </div>
   );
 }
@@ -135,11 +147,27 @@ function SlideCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CampaignCard({ campaign }: { campaign: ShareCampaignData }) {
+/**
+ * Fix 6 (round K) — heading hierarchy: the campaign name is now the most
+ * prominent text on the card (matching the PPT's own campaign/ad-set slide
+ * hierarchy), with the report type ("Weekly/Monthly Performance Report")
+ * demoted to a small muted line above it, and the "(Campaign)" type label
+ * riding the same line as the name in its own smaller amber run.
+ */
+function CampaignCard({ campaign, reportType }: { campaign: ShareCampaignData; reportType: string }) {
   return (
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="line-clamp-2 text-[20px] font-bold text-ink">{campaign.campaignName}</h3>
+        <div>
+          <CardReportTypeLabel label={reportType} />
+          <h3 className="line-clamp-2 text-[20px] font-bold text-ink">
+            {campaign.campaignName}
+            <span className="text-accent-orange" style={{ fontSize: "14px", fontWeight: 400 }}>
+              {" "}
+              (Campaign)
+            </span>
+          </h3>
+        </div>
         <StatusBadge status={campaign.statusIndicator} />
       </div>
       <DateAndFrequency dateRange={campaign.dateRange} adFrequency={campaign.adFrequency} />
@@ -154,13 +182,23 @@ function CampaignCard({ campaign }: { campaign: ShareCampaignData }) {
   );
 }
 
-function AdSetCard({ adSet }: { adSet: ShareAdSetData }) {
+/** Ad-set slides lead with the AD SET name (not the campaign name) as the prominent heading, matching the PPT's own heading logic — the campaign name becomes secondary context underneath. Falls back to the bare campaign name (no colored type label, no secondary line) when there's no real ad-set name to label as one, same fallback the PPT uses. */
+function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; platform: ShareReportData["platform"]; reportType: string }) {
+  const adSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
+  const hasAdSetName = adSet.adSetName.length > 0;
+  const primaryName = hasAdSetName ? adSet.adSetName : adSet.campaignName;
   return (
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="line-clamp-2 text-[20px] font-bold text-ink">{adSet.campaignName}</h3>
-          <p className="mt-0.5 text-[14px] text-ink-muted">{adSet.adSetName}</p>
+          <CardReportTypeLabel label={reportType} />
+          <h3 className="line-clamp-2 text-[20px] font-bold text-ink">
+            {primaryName}
+            {hasAdSetName && (
+              <span style={{ color: "#63b3ed", fontSize: "14px", fontWeight: 400 }}>{adSetLabel}</span>
+            )}
+          </h3>
+          {hasAdSetName && <p className="mt-0.5 text-[13px] text-ink-muted">{adSet.campaignName}</p>}
         </div>
         <StatusBadge status={adSet.statusIndicator} />
       </div>
@@ -219,7 +257,7 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
           {c.spendLabel}
         </text>
       </svg>
-      {/* Campaign name only below the donut — spend already shown once, inside the circle. */}
+      {/* Campaign name below the donut — spend already shown once, inside the circle. Results/cost-per-result (this campaign's own primary objective) follow, omitted entirely for a zero-result campaign rather than showing hollow zeros. */}
       <div
         style={{
           color: "white",
@@ -237,19 +275,28 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
       >
         {c.name}
       </div>
+      {c.resultsValueLabel && (
+        <div style={{ color: "#f6ad55", fontSize: "11px", marginTop: "4px" }}>
+          {c.resultsValueLabel} {c.resultsLabel}
+        </div>
+      )}
+      {c.cprValueLabel && (
+        <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px" }}>
+          {c.cprValueLabel} {c.cprLabel}
+        </div>
+      )}
     </div>
   );
 }
 
-/** SVG donut-circle replica of the PPT's own chart slide (chart-slide.ts's buildChartSlideXml) — same ring/hole form as the deck, capped at 4 campaigns across so the row stays legible at the card's width. */
+/** SVG donut-circle replica of the PPT's own chart slide (chart-slide.ts's buildChartSlideXml) — same ring/hole form as the deck, one donut per campaign with MTD spend, no cap. */
 function ChartSlide({ chart }: { chart: ShareChartData }) {
-  const shown = chart.campaigns.slice(0, 4);
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
 
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px", marginTop: "24px" }}>
-        {shown.map((c, i) => (
+        {chart.campaigns.map((c, i) => (
           <DonutChart key={`${c.name}-${i}`} c={c} />
         ))}
       </div>
@@ -426,14 +473,14 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
         {/* Campaign slide replicas */}
         {data.campaigns.map((c) => (
           <section key={`campaign-${c.campaignName}`} className="mb-6">
-            <CampaignCard campaign={c} />
+            <CampaignCard campaign={c} reportType={reportTypeLabel(data)} />
           </section>
         ))}
 
         {/* Ad set slide replicas */}
         {adSets.map((a, i) => (
           <section key={`adset-${a.campaignName}-${a.adSetName}-${i}`} className="mb-6">
-            <AdSetCard adSet={a} />
+            <AdSetCard adSet={a} platform={data.platform} reportType={reportTypeLabel(data)} />
           </section>
         ))}
 

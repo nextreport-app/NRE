@@ -19,7 +19,7 @@
  * render" rather than an error.
  */
 
-import { fmtCurrency } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber } from "./format";
 import type { AiCopy } from "../pptx/fill-tags";
 import { collectLegendEntries, slideAiKey } from "../pptx/render";
 import { ringColorForCampaign } from "../pptx/chart-slide";
@@ -71,6 +71,18 @@ export interface ShareChartCampaignData {
   /** 6-hex-digit color, no leading "#" — the same per-campaign color (or the shared grey for a genuine $0 month) the PPT donut ring uses; see chart-slide.ts's ringColorForCampaign. */
   color: string;
   statusIndicator: DeliveryStatusIndicator;
+  /**
+   * This campaign's own results/cost-per-result, matching the PPT donut's
+   * own below-circle text exactly (chart-slide.ts's buildChartSlideXml —
+   * same ChartCampaignData.results/resLabel/cpr/cprLabel fields). All four
+   * are "" together when this campaign had zero results this month — the
+   * share page then shows just the campaign name with no metric lines
+   * below it, rather than a hollow "0".
+   */
+  resultsValueLabel: string;
+  resultsLabel: string;
+  cprValueLabel: string;
+  cprLabel: string;
 }
 
 export interface ShareChartData {
@@ -126,12 +138,14 @@ function adFrequencyLabel(freq: number): string {
   return line ? line.slice(1) : "";
 }
 
-/** "COST PER QUOTE REQUEST" -> "Cost Per Quote Request" — the resultColumns labels are stored all-caps (Combined Total table styling), but the chart's summary bar reads as ordinary sentence-style text. */
+/** Metric abbreviations that read as gibberish once lowercased ("Lpv", "Cpm") — kept verbatim by toTitleCase instead of title-cased like an ordinary word. */
+const KNOWN_METRIC_ACRONYMS = new Set(["LPV", "CPM", "1K"]);
+
+/** "COST PER QUOTE REQUEST" -> "Cost Per Quote Request", "COST PER LPV" -> "Cost Per LPV" — the resultColumns/chart labels are stored all-caps (Combined Total table styling), but the chart's summary bar and donuts read as ordinary sentence-style text. */
 function toTitleCase(label: string): string {
   return label
-    .toLowerCase()
     .split(" ")
-    .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1) : w))
+    .map((w) => (KNOWN_METRIC_ACRONYMS.has(w) ? w : w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
     .join(" ");
 }
 
@@ -154,14 +168,21 @@ function buildShareChart(chart: ChartSlideData | null, mtdRow: TableRowData, cur
     `${primary.value} ${toTitleCase(primary.label)} · ` +
     `${primary.cprValue} ${toTitleCase(primary.costLabel)}`;
 
-  const campaigns: ShareChartCampaignData[] = chart.campaigns.map((c, i) => ({
-    name: c.name,
-    spend: c.spend,
-    spendLabel: fmtCurrency(c.spend, currencySymbol),
-    percentage: chart.totalAllSpend > 0 ? Math.round((c.spend / chart.totalAllSpend) * 1000) / 10 : 0,
-    color: ringColorForCampaign(c, i),
-    statusIndicator: c.statusIndicator,
-  }));
+  const campaigns: ShareChartCampaignData[] = chart.campaigns.map((c, i) => {
+    const hasResults = c.results > 0;
+    return {
+      name: c.name,
+      spend: c.spend,
+      spendLabel: fmtCurrency(c.spend, currencySymbol),
+      percentage: chart.totalAllSpend > 0 ? Math.round((c.spend / chart.totalAllSpend) * 1000) / 10 : 0,
+      color: ringColorForCampaign(c, i),
+      statusIndicator: c.statusIndicator,
+      resultsValueLabel: hasResults ? fmtNumber(c.results) : "",
+      resultsLabel: hasResults ? toTitleCase(c.resLabel) : "",
+      cprValueLabel: hasResults && c.cpr > 0 ? fmtCurrency2dp(c.cpr, currencySymbol) : "",
+      cprLabel: hasResults ? toTitleCase(c.cprLabel) : "",
+    };
+  });
 
   return { title, summaryLine, campaigns };
 }

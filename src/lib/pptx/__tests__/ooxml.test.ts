@@ -8,6 +8,7 @@ import {
   replaceCardLabel,
   replaceTagRun,
   replaceTagRunWithSuffix,
+  replaceTagRunWithSuffixes,
 } from "../ooxml";
 
 const SAMPLE_RUN =
@@ -121,6 +122,47 @@ describe("replaceTagRunWithSuffix", () => {
 
   it("reports replaced: false when the tag isn't present", () => {
     const { replaced } = replaceTagRunWithSuffix("<a:p>no tags</a:p>", "{{MISSING}}", "x", "(Inactive)");
+    expect(replaced).toBe(false);
+  });
+});
+
+describe("replaceTagRunWithSuffixes", () => {
+  it("appends multiple differently-styled runs, in order, right after the tag's own run", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
+    const { xml: out, replaced } = replaceTagRunWithSuffixes(xml, "{{METRIC_SPEND}}", "Shoes - Purchases", { sizePt: 22, bold: true }, [
+      { text: " (Campaign)", style: { sizePt: 14, bold: false, color: "f6ad55" } },
+      { text: "  (Paused)", style: { sizePt: 12, bold: true, color: "fbbf24" } },
+    ]);
+    expect(replaced).toBe(true);
+    expect(out).toContain("<a:t>Shoes - Purchases</a:t>");
+    expect(out).toContain("<a:t> (Campaign)</a:t>");
+    expect(out).toContain("<a:t>  (Paused)</a:t>");
+    // Three distinct runs, in the order given: name, then type label, then status.
+    const nameIdx = out.indexOf("<a:t>Shoes - Purchases</a:t>");
+    const labelIdx = out.indexOf("<a:t> (Campaign)</a:t>");
+    const statusIdx = out.indexOf("<a:t>  (Paused)</a:t>");
+    expect(labelIdx).toBeGreaterThan(nameIdx);
+    expect(statusIdx).toBeGreaterThan(labelIdx);
+    expect((out.match(/<a:r>/g) || []).length).toBe(3);
+    expect(out).toContain('sz="2200"'); // name
+    expect(out).toContain('sz="1400"'); // type label
+    expect(out).toContain('sz="1200"'); // status
+    expect(out).toContain('<a:srgbClr val="f6ad55"/>');
+    expect(out).toContain('<a:srgbClr val="fbbf24"/>');
+  });
+
+  it("skips null/undefined/empty-text suffix entries without adding a run for them", () => {
+    const xml = `<a:p>${SAMPLE_RUN}</a:p>`;
+    const { xml: out } = replaceTagRunWithSuffixes(xml, "{{METRIC_SPEND}}", "Brisbane North", { sizePt: 22 }, [
+      null,
+      { text: "", style: { sizePt: 14 } },
+      undefined,
+    ]);
+    expect((out.match(/<a:r>/g) || []).length).toBe(1);
+  });
+
+  it("reports replaced: false when the tag isn't present", () => {
+    const { replaced } = replaceTagRunWithSuffixes("<a:p>no tags</a:p>", "{{MISSING}}", "x", undefined, []);
     expect(replaced).toBe(false);
   });
 });

@@ -73,6 +73,16 @@ function sizeOfRunContaining(xml: string, text: string): number {
   return Number(rPrMatch![1]) / 100;
 }
 
+// Extracts the <a:srgbClr val="..."/> hex of the run containing `text`.
+function colorOfRunContaining(xml: string, text: string): string {
+  const idx = xml.indexOf(`<a:t>${text}</a:t>`);
+  expect(idx).toBeGreaterThan(-1);
+  const runStart = xml.lastIndexOf("<a:r>", idx);
+  const colorMatch = /<a:srgbClr val="([0-9a-fA-F]{6})"\/>/.exec(xml.slice(runStart, idx));
+  expect(colorMatch).not.toBeNull();
+  return colorMatch![1];
+}
+
 describe("buildCoverSlideXml — account name auto-shrink (regression)", () => {
   it("renders a short account name at the maximum 28pt candidate", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
@@ -214,17 +224,18 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
 });
 
 describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression)", () => {
-  it("renders a short campaign name at the maximum 18pt candidate", () => {
+  it("renders a short campaign name at the maximum 22pt candidate, with its own separate ' (Campaign)' label run", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Shoes - Purchases (Campaign)")).toBe(18);
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(22);
+    // The type label is its own run, always 14pt regardless of the name's own size.
+    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(14);
   });
 
-  it("shrinks a very long campaign name below 18pt so it fits on one line, but never below the Fix 4 16pt floor", () => {
+  it("shrinks a very long campaign name below 22pt so it fits on one line, but never below the Fix 4 16pt floor", () => {
     const longCampaignName =
       "Q3 2026 National Brand Awareness and Retargeting Campaign for All Product Lines";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide(longCampaignName));
-    const heading = `${longCampaignName} (Campaign)`;
-    const size = sizeOfRunContaining(xml, heading);
+    const size = sizeOfRunContaining(xml, longCampaignName);
     expect(size).toBe(16);
   });
 });
@@ -248,6 +259,38 @@ describe("buildCampaignOrAdSetSlideXml — readability font sizes (Fix 4)", () =
     for (const sz of sizes) {
       expect(sz).toBeGreaterThanOrEqual(12);
     }
+  });
+});
+
+describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label + heading hierarchy", () => {
+  it("colors a campaign slide's ' (Campaign)' label amber, at 14pt, separate from the 22pt bold name", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(22);
+    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(14);
+    expect(colorOfRunContaining(xml, " (Campaign)")).toBe("f6ad55");
+  });
+
+  it("colors an ad-set slide's ' (Ad Set)' label light blue, distinct from the campaign label's amber", () => {
+    const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Purchases");
+    const adSetSlide = { ...rest, kind: "adset" as const, adSetName: "Brisbane North - broad", rowFreq: 0 };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, adSetSlide);
+    expect(sizeOfRunContaining(xml, "Brisbane North - broad")).toBe(22);
+    expect(sizeOfRunContaining(xml, " (Ad Set)")).toBe(14);
+    expect(colorOfRunContaining(xml, " (Ad Set)")).toBe("63b3ed");
+  });
+
+  it("shrinks the 'YOUR WEEKLY PERFORMANCE REPORT' header to 14pt muted grey, now secondary to the name", () => {
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
+    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(14);
+    expect(colorOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe("94a3b8");
+  });
+
+  it("omits the type label entirely for an ad-set slide that fell back to the bare campaign name (no real ad-set name)", () => {
+    const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Purchases");
+    const adSetSlideNoName = { ...rest, kind: "adset" as const, adSetName: "", rowFreq: 0 };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, adSetSlideNoName);
+    expect(xml).not.toContain("(Ad Set)");
+    expect(xml).not.toContain("(Campaign)");
   });
 });
 
@@ -433,7 +476,8 @@ describe("buildCampaignOrAdSetSlideXml — Google Ads metric card retexting", ()
     const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Search");
     const googleAdGroupSlide = { ...rest, kind: "adset" as const, adSetName: "Prospecting", rowFreq: 0 };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, googleAdGroupSlide, undefined, "WEEKLY", "GOOGLE");
-    expect(xml).toContain("Prospecting (Ad Group)");
+    expect(xml).toContain("<a:t>Prospecting</a:t>");
+    expect(xml).toContain("<a:t> (Ad Group)</a:t>");
     expect(xml).not.toContain("(Ad Set)");
   });
 });
