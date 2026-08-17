@@ -3224,8 +3224,16 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     expect(slots[5]).toMatchObject({ key: "ctr", label: "CTR (ALL)", value: data.campaignSlides[0].metrics.ctr });
   });
 
-  it("assigns slots 4/5/7 for the PURCHASES objective (Results/Cost per Purchase/ROAS)", () => {
-    const purchaseRows = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase", { "Results roas": "3.5" }));
+  it("assigns slots 4/5/7 for the PURCHASES objective (Results/Cost per Purchase/ROAS), calculated from totals — not the CSV's own single-day ROAS column", () => {
+    // ROAS must never be read straight off the CSV's own "Results roas"
+    // column and averaged: only day 1 has a purchase (ROAS 17.62 that day,
+    // 0 every other day), which is exactly the shape that makes a naive
+    // "average of non-zero values" collapse to that one day's number. The
+    // correct weekly ROAS is sum(conversion value)/sum(spend) across all 7
+    // days: 881 / (50 * 7) = 2.517... -> "2.52x", not "17.62x".
+    const purchaseRows = daysInclusive(13, 19).map((day, i) =>
+      dynamicRow(day, 50, 500, 2, "Purchase", i === 0 ? { "Results roas": "17.62", "Purchases conversion value": "881" } : { "Results roas": "0" }),
+    );
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -3237,8 +3245,21 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     const slots = data.campaignSlides[0].dynamicMetrics;
     expect(slots[3]).toMatchObject({ key: "results", label: "PURCHASES" });
     expect(slots[4]).toMatchObject({ key: "cost_per_result", label: "COST PER PURCHASE" });
-    expect(slots[6]).toMatchObject({ key: "results_roas", label: "ROAS" });
-    expect(slots[6]?.value).not.toBe("—");
+    expect(slots[6]).toMatchObject({ key: "results_roas", label: "ROAS", value: "2.52x" });
+  });
+
+  it("never falls back to the raw per-day ROAS figure when the CSV has a ROAS column but no conversion-value column — slot 7 is null (Round I: no metric name shown for data that isn't real), not the wrong 3.5x", () => {
+    const purchaseRows = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase", { "Results roas": "3.5" }));
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: purchaseRows,
+      now: NOW,
+    });
+    const slots = data.campaignSlides[0].dynamicMetrics;
+    expect(slots[6]).toBeNull();
   });
 
   it("assigns slots 4/5/7 for the WEBSITE LEADS objective (Results/Cost per Lead/Link Clicks), reading the extra field straight off the raw CSV via the dictionary", () => {

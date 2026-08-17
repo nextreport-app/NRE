@@ -156,7 +156,10 @@ export function buildChartSlideXml(
     `     ·     ${activeCount} Active Campaign${activeCount === 1 ? "" : "s"}`;
 
   const TITLE_H = 34;
-  const GAP_TITLE_SUBTITLE = 2;
+  // Was 2pt — read as cramped against the heading directly above it (the
+  // "Total Month to Date Spend: ... · N Active Campaigns" line). Bumped by
+  // 12pt.
+  const GAP_TITLE_SUBTITLE = 14;
   const SUBTITLE_H = 24;
 
   const n = chart.campaigns.length;

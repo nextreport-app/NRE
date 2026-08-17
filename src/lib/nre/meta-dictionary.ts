@@ -115,6 +115,15 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Total amount spent on ads during this period",
   },
   {
+    csvName: "amount spent (cad)",
+    key: "spend",
+    label: "AD SPEND",
+    type: "primary",
+    format: "currency",
+    priority: 100,
+    explanation: "Total amount spent on ads during this period",
+  },
+  {
     csvName: "amount spent",
     key: "spend",
     label: "AD SPEND",

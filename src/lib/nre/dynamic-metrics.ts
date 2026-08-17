@@ -103,6 +103,36 @@ function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, 
 }
 
 /**
+ * ROAS bug fix: a CSV's own ROAS/"Purchase ROAS" column is a PER-ROW ratio
+ * (that row's conversion value / that row's spend), not something that can
+ * ever be validly summed or averaged across rows — averaging it, as the
+ * generic ratio branch below does for every other "ratio" metric, produces
+ * nonsense the moment most rows have zero spend/conversions and only one
+ * row (out of e.g. 7 days in a week) has a purchase: the "average of
+ * non-zero values" degenerates to exactly that single day's ROAS, wildly
+ * overstating the week's real performance.
+ *
+ * The only correct weekly/MTD ROAS is sum(conversion value) / sum(spend)
+ * over the whole window — computed here from real totals, and the CSV's own
+ * ROAS column is never read for this at all (see ROAS_METRIC_KEYS below,
+ * checked before the generic per-metric csvName lookup). If no conversion-
+ * value column is present in this CSV, this returns NaN — callers render
+ * NaN as "—" — rather than ever falling back to the wrong per-row column.
+ */
+const ROAS_METRIC_KEYS = new Set(["results_roas", "roas"]);
+const ROAS_CONVERSION_VALUE_HEADER_CANDIDATES = ["purchases conversion value", "purchase conversion value", "conv. value", "conversion value"];
+
+function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
+  for (const candidate of ROAS_CONVERSION_VALUE_HEADER_CANDIDATES) {
+    const header = headerMap.get(candidate);
+    if (!header) continue;
+    const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
+    return totalSpend > 0 ? totalConversionValue / totalSpend : NaN;
+  }
+  return NaN;
+}
+
+/**
  * Sums currency/number metrics; averages non-zero values for
  * percentage/ratio/duration metrics — the same treatment the existing
  * fixed-field pipeline already gives CTR/CPC (a straight sum would be
@@ -150,6 +180,12 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     if (CPC_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
       result[metric.key] = aggregateCpc(rows, headerMap, totalSpend);
+      continue;
+    }
+
+    if (ROAS_METRIC_KEYS.has(metric.key)) {
+      if (totalSpend === null) totalSpend = sumByKey(spendKey);
+      result[metric.key] = aggregateRoas(rows, headerMap, totalSpend);
       continue;
     }
 

@@ -236,7 +236,12 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
         slot7 = hasAddToCart ? byKey("META", "add_to_cart")! : clicksAll;
         slot8 = hasInitiateCheckout ? byKey("META", "initiate_checkout")! : clicksAll;
       } else {
-        slot7 = byKey("META", "results_roas")!;
+        // ROAS is always calculated from conversion value / spend (never
+        // read off the CSV's own ROAS column) — so it only has real data
+        // when a conversion-value column is present too, matching
+        // buildMetaSlots' own pickSlot rejection of a dash-valued candidate.
+        const hasConversionValue = hasHeader(headers, "purchases conversion value", "purchase conversion value", "conversion value", "results value");
+        slot7 = hasConversionValue ? byKey("META", "results_roas")! : byKey("META", "link_clicks")!;
         slot8 = hasHeader(headers, "landing page views") ? byKey("META", "landing_page_views")! : clicksAll;
       }
       break;

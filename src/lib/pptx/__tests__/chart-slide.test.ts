@@ -328,8 +328,11 @@ describe("buildChartSlideXml — Fix 5: vertical centering", () => {
   // as one unit (see the "whole content block" describe block below for
   // the actual top/bottom-margin symmetry check that matters) — this
   // constant is just where that block-only center falls out, not a design
-  // target in itself.
-  const CENTER_PT = 296;
+  // target in itself. GAP_TITLE_SUBTITLE grew from 2pt to 14pt (title/
+  // subtitle spacing fix), which pushes the whole content block down by
+  // half that increase (6pt) since it's the centered content growing
+  // taller, not the block itself moving independently.
+  const CENTER_PT = 302;
   const TOLERANCE_PT = 5;
 
   it("centers the block in the space between the header and the bottom spend bar, for a small campaign count (max circle size)", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregateDynamicMetrics, type MetricRef } from "../dynamic-metrics";
+import { aggregateDynamicMetrics, lookupMetricValue, type MetricRef } from "../dynamic-metrics";
 import type { NreRow } from "../columns";
 
 function row(raw: Record<string, string>): NreRow {
@@ -194,5 +194,64 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     const rows = [row({ "Amount spent": "60" })]; // no CPC column, no clicks column at all
     const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
     expect(Number.isNaN(result.cpc_all)).toBe(true);
+  });
+});
+
+describe("aggregateDynamicMetrics — ROAS is always calculated from totals, never read off the CSV's own ROAS column (ROAS fix)", () => {
+  const roas = (): MetricRef => ({
+    key: "results_roas",
+    format: "ratio",
+    csvName: "results roas",
+  });
+  const googleRoas = (): MetricRef => ({
+    key: "roas",
+    format: "ratio",
+    csvName: "conv. value / cost",
+  });
+
+  it("weekly ROAS is total conversion value / total spend, not the single day that happened to have a purchase", () => {
+    // Only day 1 has a purchase (that day's own ROAS column reads 17.62);
+    // every other day is 0. A naive "average of non-zero raw values" (the
+    // bug) collapses to exactly 17.62 here. The correct weekly figure is
+    // sum(conversion value)/sum(spend) across all 7 days.
+    const rows = [
+      row({ "Amount spent": "50", "Results roas": "17.62", "Purchases conversion value": "881" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+      row({ "Amount spent": "50", "Results roas": "0" }),
+    ];
+    const result = aggregateDynamicMetrics(rows, [{ key: "spend", format: "currency", csvName: "amount spent" }, roas()], "meta");
+    expect(result.results_roas).not.toBe(17.62);
+    expect(result.results_roas).toBeCloseTo(881 / 350, 5);
+  });
+
+  it("formats as '0.46x' for conversion value C$103.95 / spend C$228", () => {
+    const rows = [row({ "Amount spent (CAD)": "228", "Purchases conversion value": "103.95", "Purchase roas (return on ad spend)": "99" })];
+    expect(lookupMetricValue(rows, roas(), "meta", "C$")).toBe("0.46x");
+  });
+
+  it("formats as '0.89x' for conversion value C$103.95 / spend C$117", () => {
+    const rows = [row({ "Amount spent (CAD)": "117", "Purchases conversion value": "103.95", "Purchase roas (return on ad spend)": "99" })];
+    expect(lookupMetricValue(rows, roas(), "meta", "C$")).toBe("0.89x");
+  });
+
+  it("shows '—' when the conversion-value column is missing entirely, even though a ROAS column is present — never falls back to it", () => {
+    const rows = [row({ "Amount spent": "100", "Results roas": "4.5" })]; // no conversion-value column at all
+    const result = aggregateDynamicMetrics(rows, [{ key: "spend", format: "currency", csvName: "amount spent" }, roas()], "meta");
+    expect(Number.isNaN(result.results_roas)).toBe(true);
+    expect(lookupMetricValue(rows, roas(), "meta", "$")).toBe("—");
+  });
+
+  it("also calculates Google's 'roas' key from conv. value / cost totals, not the CSV's own 'Conv. value / cost' column", () => {
+    const rows = [
+      row({ Cost: "100", "Conv. value / cost": "9.0", "Conv. value": "20" }),
+      row({ Cost: "100", "Conv. value / cost": "0" }),
+    ];
+    const result = aggregateDynamicMetrics(rows, [{ key: "cost", format: "currency", csvName: "cost" }, googleRoas()], "google");
+    expect(result.roas).not.toBe(9.0);
+    expect(result.roas).toBeCloseTo(20 / 200, 5);
   });
 });

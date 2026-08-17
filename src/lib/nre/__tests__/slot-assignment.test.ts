@@ -206,8 +206,11 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
   it("PURCHASES: slot 8 falls back to CLICKS (ALL) when neither ADD TO CART nor INITIATE CHECKOUT is in the CSV, but CLICKS (ALL) itself has real data", () => {
     // Results ROAS given real data too, so slot 7 (this case's own primary
     // pick) resolves to it directly rather than reaching into the global
-    // fallback chain and consuming CLICKS (ALL) before slot 8's turn.
-    const rows = [row({ "Amount spent": "100", "Results ROAS": "4.5", "Clicks (all)": "300" })];
+    // fallback chain and consuming CLICKS (ALL) before slot 8's turn. ROAS
+    // is calculated from totals (conversion value / spend), never read off
+    // the CSV's own ROAS column directly — the conversion-value column is
+    // what gives it real, non-dash data here (450 / 100 = 4.5x).
+    const rows = [row({ "Amount spent": "100", "Results ROAS": "4.5", "Purchases conversion value": "450", "Clicks (all)": "300" })];
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
     expect(slots[6]?.key).toBe("results_roas");
     expect(slots[7]?.key).toBe("clicks_all");
@@ -235,7 +238,14 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
 
   it("PURCHASES: slot 8 skips ADD TO CART and INITIATE CHECKOUT when both are zero, falling through to CLICKS (ALL) with real data rather than showing a dash", () => {
     const rows = [
-      row({ "Amount spent": "100", "Results ROAS": "4.5", "Adds to cart": "0", "Initiate checkout": "0", "Clicks (all)": "250" }),
+      row({
+        "Amount spent": "100",
+        "Results ROAS": "4.5",
+        "Purchases conversion value": "450",
+        "Adds to cart": "0",
+        "Initiate checkout": "0",
+        "Clicks (all)": "250",
+      }),
     ];
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "PURCHASES" }), rows, "$");
     expect(slots[7]?.key).toBe("clicks_all");
