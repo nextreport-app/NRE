@@ -49,7 +49,14 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
-import { buildMetaSlots, buildSlotsFromSelection, filterMetricsForCampaignObjective, type CampaignObjectiveRef, type MetaSlotBaseline } from "./slot-assignment";
+import {
+  buildMetaSlots,
+  buildSlotsFromSelection,
+  filterMetricsForCampaignObjective,
+  redistributeCardSlots,
+  type CampaignObjectiveRef,
+  type MetaSlotBaseline,
+} from "./slot-assignment";
 import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
 /** Re-exported from dynamic-metrics.ts (its canonical home) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
@@ -1026,18 +1033,45 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // not a stand-in for results/cost_per_result, so it's deliberately left
     // to resolve via the normal raw-row lookup instead.
     if (campaignObjective) {
-      const { resultKey, costKey } = objectiveMetricKeys(campaignObjective.resultLabel);
-      if (resultKey !== "cpm") {
+      const { resultKey, costKey, dedicated } = objectiveMetricKeys(campaignObjective.resultLabel);
+      if (!dedicated) {
         baselineValues[resultKey] = baseline.resultValue;
         baselineValues[costKey] = baseline.cprValue;
       }
     }
     const relevantMetrics = filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
-    return {
-      dynamicMetrics: buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
-      additionalMetricsSlide: slide2Keys ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol) : undefined,
-    };
+    // Part 4 — a selected metric with no real data for THIS campaign is
+    // nulled out by buildSlotsFromSelection (dashed out downstream by
+    // fill-tags.ts); redistributeCardSlots then compacts the survivors
+    // forward (no gap where a dashed card used to sit) and, if fewer than 4
+    // real cards remain, pads back up from the CSV's own other detected
+    // metrics — checked here against this campaign's own REAL, non-zero
+    // value, not just column presence. usedKeys spans both slides so slide
+    // 2's padding never re-picks a key slide 1 already used (or already
+    // tried and found empty).
+    const usedKeys = new Set<string>([...slide1Keys.map((m) => m.key), ...(slide2Keys?.map((m) => m.key) ?? [])]);
+    const dynamicMetrics = redistributeCardSlots(
+      buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
+      usedKeys,
+      availableMetricsPool,
+      baselineValues,
+      rawRows,
+      "meta",
+      currencySymbol,
+    );
+    const additionalMetricsSlide = slide2Keys
+      ? redistributeCardSlots(
+          buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol),
+          usedKeys,
+          availableMetricsPool,
+          baselineValues,
+          rawRows,
+          "meta",
+          currencySymbol,
+        )
+      : undefined;
+    return { dynamicMetrics, additionalMetricsSlide };
   }
 
   // Ad-set MTD spend, keyed by campaign+ad-set — an individual ad set slide

@@ -3462,7 +3462,7 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
 describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-slide", () => {
   function dynamicRow(day: string, spend: number, reach: number, ctr: number, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
     return {
-      _raw: { Day: day, "Amount spent": String(spend), Reach: String(reach), "CTR (all)": String(ctr), ...extraRaw },
+      _raw: { Day: day, "Amount spent": String(spend), Reach: String(reach), Impressions: "1000", "CTR (all)": String(ctr), ...extraRaw },
       campaign_name: "Shoes",
       ad_set_name: "Set 1",
       result_type: resultType,
@@ -3482,7 +3482,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
       "Link clicks": "10",
       "CPM (cost per 1,000 impressions)": "5",
       "Landing page views": "8",
-      "Video plays": "3",
+      Views: "3",
       Frequency: "1.5",
     }),
   );

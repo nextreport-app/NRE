@@ -4,9 +4,11 @@ import {
   buildMetaSlots,
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
+  redistributeCardSlots,
   type GoogleSlotBaseline,
   type MetaSlotBaseline,
 } from "../slot-assignment";
+import type { AvailableMetric } from "../available-metrics";
 import type { RawMetricRow } from "../dynamic-metrics";
 import type { GoogleObjectiveKey } from "../detect-objective";
 
@@ -507,5 +509,68 @@ describe("filterMetricsForCampaignObjective — Part 8 per-campaign objective fi
     expect(keys).not.toContain("website_leads");
     expect(keys).toContain("spend");
     expect(keys).toContain("link_clicks");
+  });
+});
+
+describe("redistributeCardSlots — Part 4: no dash cards, compact + pad from real data", () => {
+  function av(key: string, csvName: string, priority: number): AvailableMetric {
+    return { key, label: key.toUpperCase(), format: "number", csvName, priority, isAutoCatch: false };
+  }
+
+  it("compacts real (non-null) cards forward, closing the gap a null slot left behind", () => {
+    const slots = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
+      null,
+      { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
+      { key: "ctr", label: "CTR", format: "percentage" as const, value: "2%" },
+    ];
+    const result = redistributeCardSlots(slots, new Set(["spend", "reach", "ctr"]), [], {}, [], "meta", "$");
+    expect(result.map((m) => m.key)).toEqual(["spend", "reach", "ctr"]);
+  });
+
+  it("pads back up to minCount using the highest-priority unused candidate that resolves to real, non-zero data for this campaign", () => {
+    const slots = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
+      { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
+    ];
+    const rows = [{ _raw: { "Link clicks": "40", Frequency: "0" } }];
+    const candidates = [av("frequency", "frequency", 90), av("link_clicks", "link clicks", 70)];
+    const result = redistributeCardSlots(slots, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 3);
+    // frequency has priority 90 (tried first) but resolves to a real 0 ->
+    // dash -> skipped; link_clicks (priority 70) has real data and gets
+    // pulled in instead.
+    expect(result.map((m) => m.key)).toEqual(["spend", "reach", "link_clicks"]);
+  });
+
+  it("never pads with a key already in usedKeys, even if it would otherwise resolve to real data", () => {
+    const slots = [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" }];
+    const rows = [{ _raw: { "Link clicks": "40" } }];
+    const candidates = [av("link_clicks", "link clicks", 70)];
+    const result = redistributeCardSlots(slots, new Set(["spend", "link_clicks"]), candidates, {}, rows, "meta", "$", 2);
+    expect(result.map((m) => m.key)).toEqual(["spend"]);
+  });
+
+  it("does not pad when already at or above minCount, even with real-data candidates available", () => {
+    const slots = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
+      { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
+    ];
+    const rows = [{ _raw: { "Link clicks": "40" } }];
+    const candidates = [av("link_clicks", "link clicks", 70)];
+    const result = redistributeCardSlots(slots, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 2);
+    expect(result.map((m) => m.key)).toEqual(["spend", "reach"]);
+  });
+
+  it("caps the result at maxCount even after padding", () => {
+    const slots = [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" }];
+    const rows = [{ _raw: { A: "1", B: "1", C: "1" } }];
+    const candidates = [av("a", "a", 90), av("b", "b", 80), av("c", "c", 70)];
+    const result = redistributeCardSlots(slots, new Set(["spend"]), candidates, {}, rows, "meta", "$", 10, 2);
+    expect(result.length).toBeLessThanOrEqual(2);
+  });
+
+  it("returns an empty array when nothing has real data and no candidates resolve either", () => {
+    const result = redistributeCardSlots([null, null], new Set(), [], {}, [], "meta", "$");
+    expect(result).toEqual([]);
   });
 });

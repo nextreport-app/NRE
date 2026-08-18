@@ -37,7 +37,7 @@ import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
 import type { GoogleObjectiveKey } from "./detect-objective";
-import { SECONDARY_FILL_KEYS, objectiveMetricKeys, type SelectedMetric } from "./available-metrics";
+import { SECONDARY_FILL_KEYS, objectiveMetricKeys, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
 /** Looks up `key` in the Meta dictionary and aggregates its value over `rawRows` — "—" if the key isn't in the dictionary, the CSV has no matching column, or the aggregated value is zero (per product spec: a slot's label always shows, but a zero/missing value shows a dash, never "0"). */
 function metaSlotValue(rawRows: RawMetricRow[], key: string, currencySymbol: string): string {
@@ -573,4 +573,47 @@ export function filterMetricsForCampaignObjective(
   }
 
   return kept;
+}
+
+/**
+ * Part 4 — a client-facing slide should never show a card with "—" as its
+ * value. buildSlotsFromSelection already nulls out a slot with no real data
+ * for this specific campaign, which fill-tags.ts dashes out — but that
+ * leaves a gap at that slot's own position. This compacts the real (non-
+ * null) cards forward to fill the grid with no gaps and, if fewer than
+ * `minCount` survive, pads back up with the next highest-priority
+ * CSV-detected metric NOT already in this slide that also turns out to have
+ * real, non-zero data for THIS campaign — checked for real here (unlike the
+ * presence-only checks available back at wizard-selection time), by
+ * resolving each candidate through the same baseline-then-raw-row lookup
+ * buildSlotsFromSelection itself uses. Returns only the real (non-null)
+ * cards, compacted — never longer than `maxCount`, and never padded with
+ * trailing nulls beyond what actually has data (fill-tags.ts already treats
+ * a short array's missing trailing indices exactly like an explicit null
+ * slot, so there's no need to pad it back out).
+ */
+export function redistributeCardSlots(
+  slots: (DynamicMetricValue | null)[],
+  usedKeys: Set<string>,
+  candidatePool: AvailableMetric[],
+  baseline: Partial<Record<string, string>>,
+  rawRows: RawMetricRow[],
+  platform: "meta" | "google",
+  currencySymbol: string,
+  minCount = 4,
+  maxCount = 8,
+): DynamicMetricValue[] {
+  const compacted = slots.filter((s): s is DynamicMetricValue => s !== null);
+
+  if (compacted.length < minCount) {
+    const candidates = [...candidatePool].filter((m) => !usedKeys.has(m.key)).sort((a, b) => b.priority - a.priority);
+    for (const candidate of candidates) {
+      if (compacted.length >= minCount) break;
+      usedKeys.add(candidate.key);
+      const [resolved] = buildSlotsFromSelection([candidate], baseline, rawRows, platform, currencySymbol);
+      if (resolved) compacted.push(resolved);
+    }
+  }
+
+  return compacted.slice(0, maxCount);
 }

@@ -327,22 +327,38 @@ export function slugifyObjectiveKey(resultLabel: string): string {
 
 /**
  * Derives the {resultKey, costKey} pair buildMultiObjectiveSelection assigns
- * to a given objective's resultLabel — REACH/UNIQUE REACH special-cased to
- * CPM/COST PER 1K REACHED (see buildMultiObjectiveSelection's own doc
- * comment for why), every other objective slugified from its own
- * resultLabel. Exported so slot-assignment.ts's per-campaign slide filter
- * (filterMetricsForCampaignObjective) can derive the exact same keys this
- * function used to build the mixed-objective selection in the first place —
- * the two must never drift apart, or a campaign's own objective-specific
- * cards would silently fail to match back to themselves.
+ * to a given objective's resultLabel. Three objectives have a REAL dedicated
+ * dictionary metric standing in for "this objective's own result/cost" —
+ * REACH/UNIQUE REACH (CPM/COST PER 1K REACHED, since Meta never populates a
+ * real Results count for a genuine Reach objective — see
+ * buildMultiObjectiveSelection's own doc comment), LINK CLICKS
+ * (LINK CLICKS/COST PER CLICK), and VIDEO VIEWS/THRUPLAYS
+ * (VIDEO VIEWS/COST PER VIEW) — `dedicated: true` for these means the keys
+ * are real dictionary entries, not a renamed generic column, so a caller
+ * must NOT redirect their value through the generic results/cost_per_result
+ * baseline (see report-data.ts's computeMetaSlideMetrics). Every other
+ * objective (META FORM LEADS, WEBSITE LEADS, PURCHASES, etc.) has no such
+ * dedicated column — its own Results/Cost per result column IS its real
+ * number — so it gets a synthetic key slugified from its own resultLabel
+ * (`dedicated: false`). Exported so slot-assignment.ts's per-campaign slide
+ * filter (filterMetricsForCampaignObjective) can derive the exact same keys
+ * this function used to build the mixed-objective selection in the first
+ * place — the two must never drift apart, or a campaign's own
+ * objective-specific cards would silently fail to match back to themselves.
  */
-export function objectiveMetricKeys(resultLabel: string): { resultKey: string; costKey: string } {
+export function objectiveMetricKeys(resultLabel: string): { resultKey: string; costKey: string; dedicated: boolean } {
   const upper = (resultLabel || "").toUpperCase();
   if (upper === "REACH" || upper === "UNIQUE REACH") {
-    return { resultKey: "cpm", costKey: "cost_per_1k_reached" };
+    return { resultKey: "cpm", costKey: "cost_per_1k_reached", dedicated: true };
+  }
+  if (upper === "LINK CLICKS") {
+    return { resultKey: "link_clicks", costKey: "cpc_link_click", dedicated: true };
+  }
+  if (upper === "VIDEO VIEWS" || upper === "THRUPLAYS") {
+    return { resultKey: "video_views", costKey: "cost_per_thruplay", dedicated: true };
   }
   const key = slugifyObjectiveKey(resultLabel);
-  return { resultKey: key, costKey: `cost_per_${key}` };
+  return { resultKey: key, costKey: `cost_per_${key}`, dedicated: false };
 }
 
 /**
@@ -354,121 +370,144 @@ export function objectiveMetricKeys(resultLabel: string): { resultKey: string; c
  */
 export const SECONDARY_FILL_KEYS = ["link_clicks", "cpc_all", "landing_page_views", "cost_per_lpv", "frequency", "clicks_all", "video_views", "thruplays"];
 
-/** Part 3's "never an awkward partial second slide" bounds — a full 2-slide selection tops out at 16 (2x8); 9-12 gets padded up to this or trimmed back down to 8. */
-const MULTI_OBJECTIVE_MAX = 16;
-const MULTI_OBJECTIVE_AWKWARD_MIN = 9;
-const MULTI_OBJECTIVE_AWKWARD_MAX = 12;
-
 /**
- * Mixed-objective accounts (Parts 1-4) — the account-wide counterpart to
- * defaultMetaSelection above: instead of picking ONE objective's own 8-slot
- * default, pre-selects a Results/Cost per result pair for EVERY distinct
- * objective actually detected across the account's campaigns (the /metrics
- * route's own campaignObjectives map), on top of the same 4 always-included
- * base metrics (spend/reach/impressions/ctr).
+ * Mixed-objective accounts — the account-wide counterpart to
+ * defaultMetaSelection above, capped at exactly 8 metrics (one slide,
+ * always) rather than trying to fit every detected objective's own pair in
+ * at once. A second slide is no longer auto-generated here; it only ever
+ * appears when the user consciously adds more than 8 metrics on the Metric
+ * Cards screen (splitMetricsForSlides, unrelated to this function).
  *
- * Part 1 — each objective's own Results/Cost per result column is reused
- * directly, labeled with that objective's own resultLabel/costLabel — the
- * same "the generic column IS this objective's real number" principle
- * defaultMetaSelection's own per-objective cases already use, just applied
- * to every detected objective at once instead of picking one. REACH/UNIQUE
- * REACH is the one deliberate exception: Meta never populates a real
- * Results count for a genuine Reach objective (see slot-assignment.ts's own
- * REACH case), so a literal Results-column card would always show empty
- * and duplicate the base REACH (audience-size) card's own label — CPM/COST
- * PER 1K REACHED are used instead, matching defaultMetaSelection's/
- * slot-assignment.ts's own REACH-specific pair. Each objective's own key is
- * slugified from its resultLabel (e.g. "WEBSITE LEADS" -> "website_leads")
- * rather than reusing a genuinely dedicated column's own dictionary key, so
- * this synthetic pair never collides with — and is still deduplicated
- * against, by label, in report-upload-wizard.tsx's own
- * unselectedAvailableMetrics — a real dedicated column's own addable-pool
- * entry.
+ * Slots 1-3 + 6 are always AD SPEND/REACH/IMPRESSIONS/CTR. Slots 4-5 go to
+ * ONE primary objective pair, chosen by priority — the first of these
+ * actually detected across the account's campaigns wins:
+ *   1. META FORM LEADS      4. LINK CLICKS
+ *   2. WEBSITE LEADS/LEADS  5. VIDEO VIEWS/THRUPLAYS
+ *   3. PURCHASES            6. REACH alone (no other objective detected)
+ * Slots 7-8 go to secondary metrics: LINK CLICKS (unless already in 4-5)
+ * and LANDING PAGE VIEWS, each only if its own column is present in the
+ * CSV (no real aggregated values exist yet at this point in the wizard —
+ * same presence-only limitation defaultMetaSelection's own hasHeader-based
+ * cases already have).
  *
- * Part 2/3 — after the mandatory objective pairs, fills remaining slots (up
- * to MULTI_OBJECTIVE_MAX, 2 full slides) with secondary metrics in
- * SECONDARY_FILL_KEYS' fixed priority order, each only if its own column is
- * present in this CSV (no real aggregated values exist yet at this point in
- * the wizard — same "presence, not a live non-zero check" limitation
- * defaultMetaSelection's own hasHeader-based cases already have). If the
- * count is still awkward (9-12) afterward, pads the rest of the way to 16
- * with any other CSV-present, not-yet-selected metric (priority order) when
- * enough exist; otherwise trims back to 8 by dropping the lowest-priority
- * fill-step secondaries first (the mandatory base 4/ctr/objective pairs are
- * never trimmed — an account with enough distinct objectives to exceed 12
- * on mandatory pairs alone stays at its own natural count).
+ * Two special cases override the plain priority pick:
+ *  - META FORM LEADS + WEBSITE LEADS both detected: both get covered in one
+ *    slide — slots 4-5 = META FORM LEADS/COST PER LEAD, slots 7-8 =
+ *    WEBSITE LEADS/COST PER WEBSITE LEAD (instead of LINK CLICKS/LPV).
+ *  - The chosen primary objective ALSO co-occurs with a REACH objective
+ *    somewhere in the account: slot 7 = LINK CLICKS, slot 8 = CPM (the
+ *    reach signal, as a secondary) instead of the plain LPV fill.
+ *
+ * Whichever objective wins slots 4-5, its own Results/Cost per result
+ * column is reused directly (the same "the generic column IS this
+ * objective's real number" principle defaultMetaSelection's own
+ * per-objective cases use) UNLESS objectiveMetricKeys says it has a real
+ * dedicated dictionary metric instead (REACH/LINK CLICKS/VIDEO VIEWS — see
+ * that function's own doc comment).
+ *
+ * Everything NOT chosen for one of these 8 slots — every other detected
+ * objective's own pair, CPM/COST PER 1K REACHED, FREQUENCY, COST PER LPV,
+ * CPC, and so on — simply never enters this list, so it naturally shows up
+ * in the wizard's "Available" section (listSelectableMetrics) instead,
+ * exactly where a user who wants a second slide would go looking.
  */
 export function buildMultiObjectiveSelection(objectivePairs: ObjectivePair[], headers: string[]): SelectedMetric[] {
   const core = [byKey("META", "spend")!, byKey("META", "reach")!, byKey("META", "impressions")!];
   const ctr = byKey("META", "ctr")!;
   const usedKeys = new Set<string>(["spend", "reach", "impressions", "ctr"]);
 
-  // Part 1 — one Results/Cost per result pair per distinct detected objective.
-  const seenLabels = new Set<string>();
-  const objectiveMetrics: SelectedMetric[] = [];
+  // Distinct detected objective labels, first-seen order, each mapped to
+  // the (possibly campaign-specific) costLabel text it was detected with.
+  const distinctLabels: string[] = [];
+  const costLabelByLabel = new Map<string, string>();
   for (const { resultLabel, costLabel } of objectivePairs) {
     const upper = (resultLabel || "").toUpperCase();
-    if (!upper || seenLabels.has(upper)) continue;
-    seenLabels.add(upper);
+    if (!upper || costLabelByLabel.has(upper)) continue;
+    distinctLabels.push(upper);
+    costLabelByLabel.set(upper, costLabel);
+  }
+  const has = (label: string) => distinctLabels.includes(label);
+  const hasReach = has("REACH") || has("UNIQUE REACH");
 
-    let resultMetric: SelectedMetric;
-    let costMetric: SelectedMetric;
-    const { resultKey, costKey } = objectiveMetricKeys(resultLabel);
-    if (upper === "REACH" || upper === "UNIQUE REACH") {
-      resultMetric = byKey("META", "cpm")!;
-      costMetric = byKey("META", "cost_per_1k_reached")!;
+  function buildPair(label: string): { resultMetric: SelectedMetric; costMetric: SelectedMetric } {
+    const { resultKey, costKey, dedicated } = objectiveMetricKeys(label);
+    if (dedicated) {
+      return { resultMetric: byKey("META", resultKey)!, costMetric: byKey("META", costKey)! };
+    }
+    const costLabel = costLabelByLabel.get(label) ?? `COST PER ${label}`;
+    return {
+      resultMetric: { ...byKey("META", "results", label)!, key: resultKey },
+      costMetric: { ...byKey("META", "cost_per_result", costLabel)!, key: costKey },
+    };
+  }
+
+  function addPair(metric: { resultMetric: SelectedMetric; costMetric: SelectedMetric }): [SelectedMetric, SelectedMetric] {
+    usedKeys.add(metric.resultMetric.key);
+    usedKeys.add(metric.costMetric.key);
+    return [metric.resultMetric, metric.costMetric];
+  }
+
+  let slot4: SelectedMetric | null = null;
+  let slot5: SelectedMetric | null = null;
+  let slot7: SelectedMetric | null = null;
+  let slot8: SelectedMetric | null = null;
+
+  const hasMetaFormLeads = has("META FORM LEADS");
+  const websiteLeadsLabel = has("WEBSITE LEADS") ? "WEBSITE LEADS" : has("LEADS") ? "LEADS" : null;
+
+  if (hasMetaFormLeads && websiteLeadsLabel) {
+    // Special case — both leads objectives detected: cover both in one slide.
+    [slot4, slot5] = addPair(buildPair("META FORM LEADS"));
+    [slot7, slot8] = addPair(buildPair(websiteLeadsLabel));
+  } else {
+    // Plain priority pick for slots 4-5.
+    const primaryLabel =
+      (hasMetaFormLeads && "META FORM LEADS") ||
+      websiteLeadsLabel ||
+      (has("PURCHASES") && "PURCHASES") ||
+      (has("LINK CLICKS") && "LINK CLICKS") ||
+      (has("VIDEO VIEWS") && "VIDEO VIEWS") ||
+      (has("THRUPLAYS") && "THRUPLAYS") ||
+      (hasReach && distinctLabels.every((l) => l === "REACH" || l === "UNIQUE REACH") && "REACH ONLY") ||
+      distinctLabels[0] ||
+      null;
+
+    if (primaryLabel === "REACH ONLY") {
+      [slot4, slot5] = addPair(buildPair("REACH"));
+    } else if (primaryLabel) {
+      [slot4, slot5] = addPair(buildPair(primaryLabel));
+    }
+
+    if (primaryLabel && primaryLabel !== "REACH ONLY" && hasReach) {
+      // Special case — the chosen primary objective co-occurs with a REACH
+      // objective elsewhere in the account: slot 8 carries the reach signal.
+      const linkClicks = byKey("META", "link_clicks")!;
+      if (!usedKeys.has(linkClicks.key)) {
+        slot7 = linkClicks;
+        usedKeys.add(linkClicks.key);
+      }
+      const cpm = byKey("META", "cpm")!;
+      if (!usedKeys.has(cpm.key)) {
+        slot8 = cpm;
+        usedKeys.add(cpm.key);
+      }
     } else {
-      resultMetric = { ...byKey("META", "results", resultLabel)!, key: resultKey };
-      costMetric = { ...byKey("META", "cost_per_result", costLabel)!, key: costKey };
-    }
-
-    if (!usedKeys.has(resultMetric.key)) {
-      objectiveMetrics.push(resultMetric);
-      usedKeys.add(resultMetric.key);
-    }
-    if (!usedKeys.has(costMetric.key)) {
-      objectiveMetrics.push(costMetric);
-      usedKeys.add(costMetric.key);
-    }
-  }
-
-  const mandatory = [...core, ...objectiveMetrics, ctr];
-
-  // Part 2 — fixed-priority secondary fill, capped so the mandatory set is
-  // never pushed past MULTI_OBJECTIVE_MAX.
-  const fillCandidates: SelectedMetric[] = [];
-  for (const key of SECONDARY_FILL_KEYS) {
-    if (usedKeys.has(key)) continue;
-    const metric = byKey("META", key);
-    if (!metric || !hasHeader(headers, metric.csvName)) continue;
-    fillCandidates.push(metric);
-    usedKeys.add(metric.key);
-  }
-  const room = Math.max(0, MULTI_OBJECTIVE_MAX - mandatory.length);
-  const filled = fillCandidates.slice(0, room);
-  let selected = [...mandatory, ...filled];
-
-  // Part 3 — normalize an awkward 9-12 count: pad the rest of the way to 16
-  // with any other CSV-present, unselected metric (priority order) if
-  // enough exist; otherwise trim back to 8, dropping the lowest-priority
-  // fill-step secondaries (the ones added last, above) first. Uses
-  // listSelectableMetrics (not the raw listAvailableMetrics pool) so the
-  // generic results/cost_per_result columns — never claimed by this
-  // function's own synthetic per-objective keys — can't sneak back in as
-  // padding candidates.
-  if (selected.length >= MULTI_OBJECTIVE_AWKWARD_MIN && selected.length <= MULTI_OBJECTIVE_AWKWARD_MAX) {
-    const selectedKeys = new Set(selected.map((m) => m.key));
-    const morePool = listSelectableMetrics(headers, "META").filter((m) => !selectedKeys.has(m.key));
-    const needed = MULTI_OBJECTIVE_MAX - selected.length;
-    if (morePool.length >= needed) {
-      selected = [...selected, ...morePool.slice(0, needed)];
-    } else {
-      const keepFilled = Math.max(0, filled.length - (selected.length - 8));
-      selected = [...mandatory, ...filled.slice(0, keepFilled)];
+      // Plain secondary fill — LINK CLICKS then LANDING PAGE VIEWS, each
+      // only if its own column is present and not already used above.
+      const linkClicks = byKey("META", "link_clicks")!;
+      if (!usedKeys.has(linkClicks.key) && hasHeader(headers, linkClicks.csvName)) {
+        slot7 = linkClicks;
+        usedKeys.add(linkClicks.key);
+      }
+      const lpv = byKey("META", "landing_page_views")!;
+      if (!usedKeys.has(lpv.key) && hasHeader(headers, lpv.csvName)) {
+        slot8 = lpv;
+        usedKeys.add(lpv.key);
+      }
     }
   }
 
-  return selected;
+  return [core[0], core[1], core[2], slot4, slot5, ctr, slot7, slot8].filter((m): m is SelectedMetric => m !== null);
 }
 
 /** The default 8 for a Google report — mirrors slot-assignment.ts's buildGoogleSlots per-campaign-type key choices exactly. */

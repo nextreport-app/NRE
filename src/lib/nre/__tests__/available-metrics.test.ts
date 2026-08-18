@@ -272,34 +272,65 @@ describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-co
   });
 });
 
-describe("buildMultiObjectiveSelection — mixed-objective accounts (Parts 1-4)", () => {
-  // Deliberately "clean" — none of Part 2's secondary-fill columns, no
-  // extra addable metrics beyond the 4 base + Results/Cost per result —
-  // so each test can reason precisely about Part 1's mandatory count
-  // without an incidental fill/pad column changing the total.
+describe("buildMultiObjectiveSelection — mixed-objective accounts, capped at 8 (one slide, always)", () => {
+  // Deliberately "clean" — none of the secondary-fill columns present — so
+  // each test can reason precisely about which of slots 4/5/7/8 got filled
+  // without an incidental extra column changing the outcome.
   const BASE_HEADERS = ["Campaign name", "Amount spent", "Reach", "Impressions", "Results", "Cost per result", "CTR (All)"];
+  const WITH_SECONDARIES = [...BASE_HEADERS, "Link clicks", "Landing page views"];
 
   const metaFormLeads: ObjectivePair = { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
   const websiteLeads: ObjectivePair = { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  const purchases: ObjectivePair = { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  const linkClicksObjective: ObjectivePair = { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK" };
+  const videoViews: ObjectivePair = { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIEW" };
   const reach: ObjectivePair = { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
 
-  it("Part 1 — the worked example: META FORM LEADS + WEBSITE LEADS + REACH pre-selects exactly the 10 metrics listed, in order", () => {
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, reach], BASE_HEADERS);
-    expect(selected.map((m) => m.label)).toEqual([
-      "AD SPEND",
-      "REACH",
-      "IMPRESSIONS",
-      "META FORM LEADS",
-      "COST PER LEAD",
-      "WEBSITE LEADS",
-      "COST PER WEBSITE LEAD",
-      "CPM",
-      "COST PER 1K REACHED",
-      "CTR (ALL)",
-    ]);
+  it("never returns more than 8 metrics, regardless of how many distinct objectives or secondary columns are present", () => {
+    const headers = [...WITH_SECONDARIES, "Frequency", "Clicks (all)", "Views", "Thruplays", "Cost per landing page view"];
+    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, purchases, videoViews, reach], headers);
+    expect(selected.length).toBeLessThanOrEqual(8);
   });
 
-  it("Part 1 — REACH gets CPM/COST PER 1K REACHED, never a literal Results-column card (Meta never populates real Results for a genuine Reach objective, and it would duplicate the base REACH card's own label)", () => {
+  it("slots 1-3 + 6 are always AD SPEND/REACH/IMPRESSIONS/CTR, in physical order", () => {
+    const selected = buildMultiObjectiveSelection([metaFormLeads], BASE_HEADERS);
+    expect(selected[0].label).toBe("AD SPEND");
+    expect(selected[1].label).toBe("REACH");
+    expect(selected[2].label).toBe("IMPRESSIONS");
+    expect(selected[5].label).toBe("CTR (ALL)");
+  });
+
+  it("priority 1 — META FORM LEADS wins slots 4-5 over every other detected objective", () => {
+    const selected = buildMultiObjectiveSelection([websiteLeads, purchases, metaFormLeads], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("META FORM LEADS");
+    expect(selected[4].label).toBe("COST PER LEAD");
+  });
+
+  it("priority 2 — WEBSITE LEADS wins slots 4-5 when META FORM LEADS isn't detected", () => {
+    const selected = buildMultiObjectiveSelection([purchases, websiteLeads], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("WEBSITE LEADS");
+    expect(selected[4].label).toBe("COST PER WEBSITE LEAD");
+  });
+
+  it("priority 3 — PURCHASES wins slots 4-5 when no leads objective is detected", () => {
+    const selected = buildMultiObjectiveSelection([reach, purchases], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("PURCHASES");
+    expect(selected[4].label).toBe("COST PER PURCHASE");
+  });
+
+  it("priority 4 — LINK CLICKS wins slots 4-5 when no leads/purchases objective is detected", () => {
+    const selected = buildMultiObjectiveSelection([videoViews, linkClicksObjective], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("LINK CLICKS");
+    expect(selected[4].label).toBe("COST PER CLICK");
+  });
+
+  it("priority 5 — VIDEO VIEWS wins slots 4-5 when nothing higher-priority is detected", () => {
+    const selected = buildMultiObjectiveSelection([videoViews], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("VIDEO VIEWS");
+    expect(selected[4].label).toBe("COST PER VIEW");
+  });
+
+  it("priority 6 — REACH alone (no other objective detected) fills slots 4-5 with CPM/COST PER 1K REACHED, never a literal Results-column card", () => {
     const selected = buildMultiObjectiveSelection([reach], BASE_HEADERS);
     const labels = selected.map((m) => m.label);
     expect(labels.filter((l) => l === "REACH")).toHaveLength(1); // only the base audience-size card
@@ -307,103 +338,59 @@ describe("buildMultiObjectiveSelection — mixed-objective accounts (Parts 1-4)"
     expect(labels).toContain("COST PER 1K REACHED");
   });
 
-  it("Part 1 — dedupes the same objective appearing on multiple campaigns down to one pair", () => {
-    const selected = buildMultiObjectiveSelection([metaFormLeads, metaFormLeads, metaFormLeads], BASE_HEADERS);
+  it("dedupes the same objective appearing on multiple campaigns down to one pair", () => {
+    const selected = buildMultiObjectiveSelection([metaFormLeads, metaFormLeads, metaFormLeads], WITH_SECONDARIES);
     expect(selected.filter((m) => m.label === "META FORM LEADS")).toHaveLength(1);
     expect(selected.filter((m) => m.label === "COST PER LEAD")).toHaveLength(1);
   });
 
-  it("Part 2 — fills remaining slots in the fixed priority order, each only when its own column is present (kept below the 9-12 awkward range so Part 3 doesn't also engage)", () => {
-    const headers = [...BASE_HEADERS, "Link clicks", "Frequency"]; // priority 1 and 5 — 1 objective (6) + 2 fill = 8, not awkward
-    const selected = buildMultiObjectiveSelection([metaFormLeads], headers);
+  it("normal secondary fill — slot 7 = LINK CLICKS, slot 8 = LANDING PAGE VIEWS, each only if present in the CSV", () => {
+    const selected = buildMultiObjectiveSelection([purchases], WITH_SECONDARIES);
+    expect(selected[6]?.label).toBe("LINK CLICKS");
+    expect(selected[7]?.label).toBe("LANDING PAGE VIEWS");
+  });
+
+  it("normal secondary fill omits a slot entirely when its own column isn't present, rather than showing a metric the CSV never had", () => {
+    const selected = buildMultiObjectiveSelection([purchases], BASE_HEADERS); // no Link clicks/Landing page views columns
     const labels = selected.map((m) => m.label);
-    expect(labels).toEqual(["AD SPEND", "REACH", "IMPRESSIONS", "META FORM LEADS", "COST PER LEAD", "CTR (ALL)", "LINK CLICKS", "FREQUENCY"]);
+    expect(labels).not.toContain("LINK CLICKS");
+    expect(labels).not.toContain("LANDING PAGE VIEWS");
+    expect(selected.length).toBe(6); // core 3 + CTR + purchases pair, no secondaries to fill 7-8
   });
 
-  it("Part 2 — never exceeds 16 total even when every secondary-fill column is present", () => {
-    const headers = [
-      ...BASE_HEADERS,
-      "Link clicks",
-      "CPC (all)",
-      "Landing page views",
-      "Cost per landing page view",
-      "Frequency",
-      "Clicks (all)",
-      "Views",
-      "Thruplays",
-    ];
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, reach], headers);
-    expect(selected.length).toBeLessThanOrEqual(16);
-  });
-
-  it("Part 3 — pads an awkward 9-12 count up to 16 when enough other CSV-present metrics exist", () => {
-    // 3 objectives, no Part 2 secondary-fill columns present -> mandatory
-    // alone is 10 (awkward, the worked example's own count). A pile of
-    // unrelated addable columns lets it pad to the full 16 instead of
-    // staying stuck at 10.
-    const headers = [
-      ...BASE_HEADERS,
-      "Post engagements",
-      "Post reactions",
-      "App events",
-      "New messaging contacts",
-      "Messaging contacts",
-      "Photo views",
-      "Check-ins",
-    ];
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, reach], headers);
-    expect(selected.length).toBe(16);
-  });
-
-  it("Part 3 — trims back to 8 when an awkward count comes from the optional secondary fill (never from the mandatory objective pairs, which are never trimmed)", () => {
-    // 1 objective (mandatory 6, not awkward on its own) + 3 fill columns
-    // present (Link clicks/Frequency/Thruplays) pushes it to 9 — awkward,
-    // and with nothing else in the CSV to pad with, trims back to 8 by
-    // dropping the lowest-priority fill item (Thruplays) first.
-    const headers = [...BASE_HEADERS, "Link clicks", "Frequency", "Thruplays"];
-    const selected = buildMultiObjectiveSelection([metaFormLeads], headers);
+  it("special case — META FORM LEADS + WEBSITE LEADS both detected: covers both in one slide (4-5 = meta form leads, 7-8 = website leads)", () => {
+    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("META FORM LEADS");
+    expect(selected[4].label).toBe("COST PER LEAD");
+    expect(selected[6].label).toBe("WEBSITE LEADS");
+    expect(selected[7].label).toBe("COST PER WEBSITE LEAD");
     expect(selected.length).toBe(8);
-    expect(selected.map((m) => m.label)).toEqual(["AD SPEND", "REACH", "IMPRESSIONS", "META FORM LEADS", "COST PER LEAD", "CTR (ALL)", "LINK CLICKS", "FREQUENCY"]);
-    expect(selected.map((m) => m.label)).not.toContain("THRUPLAYS");
   });
 
-  it("Part 3 — never leaves an awkward 9-12 count when trimming is possible", () => {
-    const headers = [...BASE_HEADERS, "Link clicks", "Frequency", "Thruplays"];
-    const selected = buildMultiObjectiveSelection([metaFormLeads], headers);
-    expect(selected.length === 8 || selected.length >= 13).toBe(true);
+  it("special case — a primary objective co-occurring with REACH puts LINK CLICKS/CPM in slots 7-8 instead of the plain LPV fill", () => {
+    const selected = buildMultiObjectiveSelection([metaFormLeads, reach], WITH_SECONDARIES);
+    expect(selected[3].label).toBe("META FORM LEADS");
+    expect(selected[4].label).toBe("COST PER LEAD");
+    expect(selected[6]?.label).toBe("LINK CLICKS");
+    expect(selected[7]?.label).toBe("CPM");
+    expect(selected.map((m) => m.label)).not.toContain("LANDING PAGE VIEWS");
   });
 
-  it("an awkward count driven purely by mandatory objective pairs (no fill items to trim) is left as-is — the base 4/ctr/objective pairs are never removed", () => {
-    // 3 objectives, BASE_HEADERS only -> mandatory alone is 10, nothing to
-    // fill (Part 2) or pad with (Part 3's own pool is also empty here) —
-    // the awkward count has no fill-step items to trim away, so it stays.
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, reach], BASE_HEADERS);
-    expect(selected.length).toBe(10);
-  });
-
-  it("13-16 mandatory+fill counts are left as-is (already a clean 2-slide count)", () => {
-    const purchases: ObjectivePair = { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
-    const appInstalls: ObjectivePair = { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL" };
-    const headers = [...BASE_HEADERS, "Link clicks", "Frequency"];
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, purchases, appInstalls], headers);
-    expect(selected.length).toBeGreaterThanOrEqual(13);
-    expect(selected.length).toBeLessThanOrEqual(16);
-  });
-
-  it("Part 4 — every pre-selected key/label is excluded from the addable pool (listSelectableMetrics + label match, the wizard's own dedup)", () => {
-    const headers = [...BASE_HEADERS, "Website leads"];
-    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads], headers);
+  it("Part 3 — everything not chosen for one of the 8 slots is left out entirely (never auto-added), so it naturally shows up in the wizard's Available section instead", () => {
+    const headers = [...WITH_SECONDARIES, "CPM (cost per 1,000 impressions)", "Frequency", "Cost per landing page view"];
+    const selected = buildMultiObjectiveSelection([metaFormLeads, websiteLeads, purchases], headers);
     const available = listSelectableMetrics(headers, "META");
     const selectedKeys = new Set(selected.map((m) => m.key));
     const selectedLabels = new Set(selected.map((m) => m.label));
     const stillAddable = available.filter((m) => !selectedKeys.has(m.key) && !selectedLabels.has(m.label));
-    // The real dedicated "Website leads" column never doubles up with the
-    // pre-selected WEBSITE LEADS card — excluded by label even though its
-    // own dictionary key ("website_leads") happens to match here too.
-    expect(stillAddable.some((m) => m.label === "WEBSITE LEADS")).toBe(false);
+    // CPM/FREQUENCY were never chosen for any of the 8 slots (the dual-leads
+    // special case claimed slots 4-5/7-8 instead) — still sitting in the
+    // addable pool, ready for the user to pick up manually.
+    expect(stillAddable.some((m) => m.label === "CPM")).toBe(true);
+    expect(stillAddable.some((m) => m.label === "FREQUENCY")).toBe(true);
   });
 
-  it("always includes the 4 base metrics regardless of which objectives are detected", () => {
+  it("always includes the 4 base metrics regardless of which objective is detected", () => {
     const selected = buildMultiObjectiveSelection([{ resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" }], BASE_HEADERS);
     const labels = selected.map((m) => m.label);
     expect(labels.slice(0, 3)).toEqual(["AD SPEND", "REACH", "IMPRESSIONS"]);
