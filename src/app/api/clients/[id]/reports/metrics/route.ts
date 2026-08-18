@@ -109,8 +109,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }),
     );
 
+    console.log("METRICS ROUTE: resultLabel=", resultLabel, "costLabel=", costLabel, "headers=", mtdParsed.headers.slice(0, 5));
+    const defaultSelection = defaultMetaSelection(resultLabel, costLabel, mtdParsed.headers);
+    console.log("METRICS ROUTE: defaultSelection slots 3-4=", defaultSelection[3], defaultSelection[4]);
+
     return NextResponse.json({
-      defaultSelection: defaultMetaSelection(resultLabel, costLabel, mtdParsed.headers),
+      defaultSelection,
       availableMetrics: listSelectableMetrics(mtdParsed.headers, "META"),
       campaignObjectives,
     });
