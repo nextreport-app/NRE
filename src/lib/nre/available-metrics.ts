@@ -187,14 +187,27 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
     // Results/Cost per result columns are reused directly under the META
     // FORM LEADS/COST PER LEAD labels (they ARE the form-leads count/cost
     // for this objective).
+    //
+    // The no-dedicated-column fallback is classified under the
+    // meta_form_leads/cost_per_meta_form_lead KEYS (not the generic
+    // results/cost_per_result keys) so it reads as a pre-selected Metric
+    // Cards card rather than a candidate in the "add a metric" pool
+    // (listSelectableMetrics already excludes results/cost_per_result
+    // universally — see ALWAYS_EXCLUDED_SELECTABLE_KEYS above). csvName
+    // stays "results"/"cost per result" (spread from the byKey() call
+    // before the key override) so a real aggregation still reads the
+    // actual column that has the data, not the dedicated column's own
+    // (absent) csvName.
     case "META FORM LEADS":
-      slot4 = hasHeader(headers, "on-facebook leads") ? byKey("META", "meta_form_leads")! : byKey("META", "results", "META FORM LEADS")!;
+      slot4 = hasHeader(headers, "on-facebook leads")
+        ? byKey("META", "meta_form_leads")!
+        : { ...byKey("META", "results", "META FORM LEADS")!, key: "meta_form_leads" };
       if (hasHeader(headers, "cost per on-facebook lead")) {
         slot5 = byKey("META", "cost_per_meta_form_lead")!;
       } else if (hasHeader(headers, "cost per lead")) {
         slot5 = byKey("META", "cost_per_lead")!;
       } else {
-        slot5 = byKey("META", "cost_per_result", "COST PER LEAD")!;
+        slot5 = { ...byKey("META", "cost_per_result", "COST PER LEAD")!, key: "cost_per_meta_form_lead" };
       }
       slot7 = byKey("META", "link_clicks")!;
       slot8 = byKey("META", "landing_page_views")!;

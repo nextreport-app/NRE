@@ -124,7 +124,14 @@ describe("listSelectableMetrics — the wizard's own dropdown pool", () => {
 });
 
 describe("defaultMetaSelection — matches slot-assignment.ts's own automatic picks", () => {
-  it.each(["WEBSITE LEADS", "META FORM LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
+  // "META FORM LEADS" is a known, deliberate exception to this parity check
+  // (see its own describe block below): its no-dedicated-column fallback is
+  // classified under the meta_form_leads/cost_per_meta_form_lead KEYS here
+  // (so it reads as a pre-selected Metric Cards card, not an addable one),
+  // while buildMetaSlots — which has no separate "addable pool" concept to
+  // avoid — keeps the plain results/cost_per_result keys. Labels/values
+  // still agree; only the key differs.
+  it.each(["WEBSITE LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
     "produces the same 8 keys, in the same order, as buildMetaSlots for %s (no ADD TO CART column present), when the CSV backs every candidate with real data",
     (resultLabel) => {
       const preview = defaultMetaSelection(resultLabel, "COST PER RESULT", META_HEADERS);
@@ -199,8 +206,13 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
 describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-column priority", () => {
   it("with no dedicated 'on-facebook leads' column, both fall back to the Results/Cost per result columns under the META FORM LEADS/COST PER LEAD labels", () => {
     const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", META_HEADERS);
-    expect(preview[3]).toMatchObject({ key: "results", label: "META FORM LEADS" });
-    expect(preview[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD" });
+    // Classified under the meta_form_leads/cost_per_meta_form_lead keys
+    // (not the generic results/cost_per_result keys) so this reads as a
+    // pre-selected Metric Cards card, not an "add a metric" candidate —
+    // csvName still points at the real "results"/"cost per result" columns
+    // so a live aggregation reads the actual data.
+    expect(preview[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", csvName: "results" });
+    expect(preview[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", csvName: "cost per result" });
 
     const real = buildMetaSlots(
       { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "5", cprValue: "$40.00" },
