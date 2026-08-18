@@ -317,7 +317,7 @@ export interface ObjectivePair {
   costLabel: string;
 }
 
-function slugifyObjectiveKey(resultLabel: string): string {
+export function slugifyObjectiveKey(resultLabel: string): string {
   return resultLabel
     .trim()
     .toLowerCase()
@@ -326,11 +326,33 @@ function slugifyObjectiveKey(resultLabel: string): string {
 }
 
 /**
+ * Derives the {resultKey, costKey} pair buildMultiObjectiveSelection assigns
+ * to a given objective's resultLabel — REACH/UNIQUE REACH special-cased to
+ * CPM/COST PER 1K REACHED (see buildMultiObjectiveSelection's own doc
+ * comment for why), every other objective slugified from its own
+ * resultLabel. Exported so slot-assignment.ts's per-campaign slide filter
+ * (filterMetricsForCampaignObjective) can derive the exact same keys this
+ * function used to build the mixed-objective selection in the first place —
+ * the two must never drift apart, or a campaign's own objective-specific
+ * cards would silently fail to match back to themselves.
+ */
+export function objectiveMetricKeys(resultLabel: string): { resultKey: string; costKey: string } {
+  const upper = (resultLabel || "").toUpperCase();
+  if (upper === "REACH" || upper === "UNIQUE REACH") {
+    return { resultKey: "cpm", costKey: "cost_per_1k_reached" };
+  }
+  const key = slugifyObjectiveKey(resultLabel);
+  return { resultKey: key, costKey: `cost_per_${key}` };
+}
+
+/**
  * Part 2's fixed secondary-fill priority order (mixed-objective accounts):
  * tried in exactly this order after the mandatory per-objective pairs,
  * each only added when its own column is actually present in the CSV.
+ * Exported so slot-assignment.ts's per-campaign slide filter can treat the
+ * same set as "generic, relevant to every campaign regardless of objective".
  */
-const SECONDARY_FILL_KEYS = ["link_clicks", "cpc_all", "landing_page_views", "cost_per_lpv", "frequency", "clicks_all", "video_views", "thruplays"];
+export const SECONDARY_FILL_KEYS = ["link_clicks", "cpc_all", "landing_page_views", "cost_per_lpv", "frequency", "clicks_all", "video_views", "thruplays"];
 
 /** Part 3's "never an awkward partial second slide" bounds — a full 2-slide selection tops out at 16 (2x8); 9-12 gets padded up to this or trimmed back down to 8. */
 const MULTI_OBJECTIVE_MAX = 16;
@@ -391,13 +413,13 @@ export function buildMultiObjectiveSelection(objectivePairs: ObjectivePair[], he
 
     let resultMetric: SelectedMetric;
     let costMetric: SelectedMetric;
+    const { resultKey, costKey } = objectiveMetricKeys(resultLabel);
     if (upper === "REACH" || upper === "UNIQUE REACH") {
       resultMetric = byKey("META", "cpm")!;
       costMetric = byKey("META", "cost_per_1k_reached")!;
     } else {
-      const objKey = slugifyObjectiveKey(resultLabel);
-      resultMetric = { ...byKey("META", "results", resultLabel)!, key: objKey };
-      costMetric = { ...byKey("META", "cost_per_result", costLabel)!, key: `cost_per_${objKey}` };
+      resultMetric = { ...byKey("META", "results", resultLabel)!, key: resultKey };
+      costMetric = { ...byKey("META", "cost_per_result", costLabel)!, key: costKey };
     }
 
     if (!usedKeys.has(resultMetric.key)) {

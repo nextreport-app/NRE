@@ -37,7 +37,7 @@ import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
 import type { GoogleObjectiveKey } from "./detect-objective";
-import type { SelectedMetric } from "./available-metrics";
+import { SECONDARY_FILL_KEYS, objectiveMetricKeys, type SelectedMetric } from "./available-metrics";
 
 /** Looks up `key` in the Meta dictionary and aggregates its value over `rawRows` — "—" if the key isn't in the dictionary, the CSV has no matching column, or the aggregated value is zero (per product spec: a slot's label always shows, but a zero/missing value shows a dash, never "0"). */
 function metaSlotValue(rawRows: RawMetricRow[], key: string, currencySymbol: string): string {
@@ -493,10 +493,84 @@ export function buildSlotsFromSelection(
   rawRows: RawMetricRow[],
   platform: "meta" | "google",
   currencySymbol: string,
-): DynamicMetricValue[] {
+): (DynamicMetricValue | null)[] {
   return selected.map((metric) => {
     const baselineValue = baseline[metric.key];
     const value = baselineValue !== undefined ? baselineValue : lookupMetricValue(rawRows, metric, platform, currencySymbol);
+    // No real data for this metric on this specific campaign/ad set — null
+    // flows through fill-tags.ts's existing null-slot handling (same path
+    // the automatic buildMetaSlots/buildGoogleSlots assignment above already
+    // uses), dashing out both the label and value rather than showing a
+    // labeled card with just a "—" value.
+    if (value === "—") return null;
     return { key: metric.key, label: metric.label, format: metric.format, value, perUnitOf: metric.perUnitOf };
   });
+}
+
+/**
+ * A campaign/ad-set's own objective (its {resultLabel, costLabel} pair, the
+ * same shape report-data.ts's campaignObjectiveMap already carries — see
+ * buildCampaignObjectiveMap) narrowed down to the two SelectedMetric keys
+ * objectiveMetricKeys derives from it, for use by
+ * filterMetricsForCampaignObjective below.
+ */
+export interface CampaignObjectiveRef {
+  resultLabel: string;
+  costLabel: string;
+}
+
+// "results"/"cost_per_result" are the GENERIC keys a single-objective wizard
+// selection (defaultMetaSelection, not the mixed-objective
+// buildMultiObjectiveSelection) uses for a campaign's own primary metric —
+// baseline (see computeMetaSlideMetrics) always resolves them to THIS
+// campaign's own already-objective-aware value (getGroupedResultDisplayForObjective),
+// so they're safe on every campaign regardless of objective and never
+// collide with a mixed-objective selection's own synthetic per-objective
+// keys (which are never literally "results"/"cost_per_result" — see
+// buildMultiObjectiveSelection).
+const ALWAYS_SHOW_BASE_KEYS = ["spend", "reach", "impressions", "ctr", "results", "cost_per_result"];
+
+/**
+ * Part 8 — a mixed-objective account's wizard selection (built once, account
+ * -wide, by buildMultiObjectiveSelection) combines EVERY detected objective's
+ * own result/cost pair into one list; that combined list is wrong to show
+ * unfiltered on every campaign's own slide (a website_leads campaign has no
+ * business showing another campaign's META FORM LEADS card). Filters down to
+ * what's actually relevant to ONE campaign's own objective:
+ *  - the 4 always-show base metrics (spend/reach/impressions/ctr)
+ *  - every generic secondary in SECONDARY_FILL_KEYS (link clicks, LPV,
+ *    frequency, CPC, video views, etc.) — relevant to every campaign
+ *    regardless of its own objective
+ *  - THIS campaign's own objective-specific result/cost pair, derived via
+ *    objectiveMetricKeys (the same REACH-special-cased derivation
+ *    buildMultiObjectiveSelection used to build the pair in the first place)
+ * Every other objective's own result/cost pair is dropped — it was never in
+ * one of the categories above, so it simply never matches. If fewer than
+ * `minCount` metrics survive (an unusual objective mix that barely touches
+ * the CSV's own generic secondaries), pads back up with the next
+ * highest-priority dropped metrics, in their original selection order.
+ */
+export function filterMetricsForCampaignObjective(
+  metrics: SelectedMetric[],
+  campaignObjective: CampaignObjectiveRef | null,
+  minCount = 4,
+): SelectedMetric[] {
+  const { resultKey, costKey } = campaignObjective ? objectiveMetricKeys(campaignObjective.resultLabel) : { resultKey: null, costKey: null };
+  const allowKeys = new Set<string>([...ALWAYS_SHOW_BASE_KEYS, ...SECONDARY_FILL_KEYS]);
+
+  const kept: SelectedMetric[] = [];
+  const dropped: SelectedMetric[] = [];
+  for (const metric of metrics) {
+    if (allowKeys.has(metric.key) || metric.key === resultKey || metric.key === costKey) {
+      kept.push(metric);
+    } else {
+      dropped.push(metric);
+    }
+  }
+
+  if (kept.length < minCount) {
+    kept.push(...dropped.slice(0, minCount - kept.length));
+  }
+
+  return kept;
 }

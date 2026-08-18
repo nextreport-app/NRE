@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { buildGoogleSlots, buildMetaSlots, buildSlotsFromSelection, type GoogleSlotBaseline, type MetaSlotBaseline } from "../slot-assignment";
+import {
+  buildGoogleSlots,
+  buildMetaSlots,
+  buildSlotsFromSelection,
+  filterMetricsForCampaignObjective,
+  type GoogleSlotBaseline,
+  type MetaSlotBaseline,
+} from "../slot-assignment";
 import type { RawMetricRow } from "../dynamic-metrics";
 import type { GoogleObjectiveKey } from "../detect-objective";
 
@@ -367,14 +374,14 @@ describe("buildSlotsFromSelection — Part 3/4 wizard override", () => {
   it("uses the baseline value for a known core key instead of re-deriving it from raw rows", () => {
     const selected = [{ key: "spend", label: "AD SPEND", format: "currency" as const, csvName: "amount spent" }];
     const result = buildSlotsFromSelection(selected, { spend: "$999" }, [], "meta", "$");
-    expect(result[0].value).toBe("$999");
+    expect(result[0]?.value).toBe("$999");
   });
 
   it("aggregates fresh from raw rows for a key not present in baseline", () => {
     const selected = [{ key: "link_clicks", label: "LINK CLICKS", format: "number" as const, csvName: "link clicks" }];
     const rows = [row({ "Link clicks": "42" })];
     const result = buildSlotsFromSelection(selected, {}, rows, "meta", "$");
-    expect(result[0].value).toBe("42");
+    expect(result[0]?.value).toBe("42");
   });
 
   it("preserves selection order and count, independent of the automatic per-objective switch", () => {
@@ -383,6 +390,122 @@ describe("buildSlotsFromSelection — Part 3/4 wizard override", () => {
       { key: "spend", label: "AD SPEND", format: "currency" as const, csvName: "amount spent" },
     ];
     const result = buildSlotsFromSelection(selected, { impressions: "5,000", spend: "$100" }, [], "meta", "$");
-    expect(result.map((r) => r.key)).toEqual(["impressions", "spend"]);
+    expect(result.map((r) => r?.key)).toEqual(["impressions", "spend"]);
+  });
+
+  it("returns null (not a dash-valued card) when the resolved value is the dash placeholder — Part 8 empty-card fix", () => {
+    const selected = [{ key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, csvName: "results" }];
+    const result = buildSlotsFromSelection(selected, {}, [], "meta", "$");
+    expect(result[0]).toBeNull();
+  });
+});
+
+describe("filterMetricsForCampaignObjective — Part 8 per-campaign objective filtering", () => {
+  const spend = { key: "spend", label: "AD SPEND", format: "currency" as const, csvName: "amount spent" };
+  const reach = { key: "reach", label: "REACH", format: "number" as const, csvName: "reach" };
+  const impressions = { key: "impressions", label: "IMPRESSIONS", format: "number" as const, csvName: "impressions" };
+  const ctr = { key: "ctr", label: "CTR", format: "percentage" as const, csvName: "ctr (all)" };
+  const linkClicks = { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, csvName: "link clicks" };
+  const metaFormLeads = { key: "meta_form_leads", label: "META FORM LEADS", format: "number" as const, csvName: "results" };
+  // objectiveMetricKeys("META FORM LEADS") mechanically slugifies the whole
+  // resultLabel, including its own trailing "S" -> "cost_per_meta_form_leads"
+  // (plural) — not the singular "cost_per_meta_form_lead" a genuinely
+  // dedicated CSV column would use (see meta-dictionary.ts); the two never
+  // need to match each other, only to agree with what buildMultiObjectiveSelection
+  // itself derived when it built this synthetic pair in the first place.
+  const costPerLead = { key: "cost_per_meta_form_leads", label: "COST PER LEAD", format: "currency" as const, csvName: "cost per result" };
+  const websiteLeads = { key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, csvName: "results" };
+  const costPerWebsiteLead = { key: "cost_per_website_leads", label: "COST PER WEBSITE LEAD", format: "currency" as const, csvName: "cost per result" };
+  const purchases = { key: "purchases", label: "PURCHASES", format: "number" as const, csvName: "results" };
+  const costPerPurchase = { key: "cost_per_purchases", label: "COST PER PURCHASE", format: "currency" as const, csvName: "cost per result" };
+  const cpm = { key: "cpm", label: "CPM", format: "currency" as const, csvName: "cpm (cost per 1,000 impressions)" };
+  const costPer1kReached = { key: "cost_per_1k_reached", label: "COST PER 1K REACHED", format: "currency" as const, csvName: "cost per 1,000 meta accounts reached" };
+
+  const mixedSelection = [
+    spend,
+    reach,
+    impressions,
+    metaFormLeads,
+    costPerLead,
+    websiteLeads,
+    costPerWebsiteLead,
+    purchases,
+    costPerPurchase,
+    cpm,
+    costPer1kReached,
+    ctr,
+    linkClicks,
+  ];
+
+  it("keeps only META FORM LEADS/COST PER LEAD (plus base + secondaries) for a meta_form_leads campaign", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" });
+    const keys = result.map((m) => m.key);
+    expect(keys).toContain("meta_form_leads");
+    expect(keys).toContain("cost_per_meta_form_leads");
+    expect(keys).not.toContain("website_leads");
+    expect(keys).not.toContain("cost_per_website_leads");
+    expect(keys).not.toContain("purchases");
+    expect(keys).not.toContain("cost_per_purchases");
+    expect(keys).not.toContain("cpm");
+    expect(keys).not.toContain("cost_per_1k_reached");
+    expect(keys).toContain("link_clicks"); // generic secondary, always shown
+  });
+
+  it("keeps only WEBSITE LEADS/COST PER WEBSITE LEAD for a website_leads campaign", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    const keys = result.map((m) => m.key);
+    expect(keys).toContain("website_leads");
+    expect(keys).toContain("cost_per_website_leads");
+    expect(keys).not.toContain("meta_form_leads");
+    expect(keys).not.toContain("purchases");
+    expect(keys).not.toContain("cpm");
+  });
+
+  it("keeps only PURCHASES/COST PER PURCHASE for a purchases campaign", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    const keys = result.map((m) => m.key);
+    expect(keys).toContain("purchases");
+    expect(keys).toContain("cost_per_purchases");
+    expect(keys).not.toContain("website_leads");
+    expect(keys).not.toContain("meta_form_leads");
+    expect(keys).not.toContain("cpm");
+  });
+
+  it("keeps only CPM/COST PER 1K REACHED for a reach campaign", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, { resultLabel: "REACH", costLabel: "COST PER 1K REACHED" });
+    const keys = result.map((m) => m.key);
+    expect(keys).toContain("cpm");
+    expect(keys).toContain("cost_per_1k_reached");
+    expect(keys).not.toContain("website_leads");
+    expect(keys).not.toContain("meta_form_leads");
+    expect(keys).not.toContain("purchases");
+  });
+
+  it("always keeps the base 4 and generic secondaries regardless of objective", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    const keys = result.map((m) => m.key);
+    expect(keys).toEqual(expect.arrayContaining(["spend", "reach", "impressions", "ctr", "link_clicks"]));
+  });
+
+  it("pads back up to minCount with the next highest-priority dropped metrics when pure filtering leaves too few", () => {
+    // No base/secondary metrics at all here — pure filtering on a
+    // meta_form_leads objective only keeps metaFormLeads/costPerLead (2),
+    // below the 4-minimum, so the padding step pulls back in the two
+    // dropped (other-objective) metrics to reach 4.
+    const sparse = [metaFormLeads, costPerLead, websiteLeads, costPerWebsiteLead];
+    const result = filterMetricsForCampaignObjective(sparse, { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }, 4);
+    expect(result).toHaveLength(4);
+    const keys = result.map((m) => m.key);
+    expect(keys).toEqual(expect.arrayContaining(["meta_form_leads", "cost_per_meta_form_leads", "website_leads", "cost_per_website_leads"]));
+  });
+
+  it("passes every metric through unfiltered when no campaignObjective is known (null)", () => {
+    const result = filterMetricsForCampaignObjective(mixedSelection, null);
+    // No objective-specific pair matches, but nothing besides those pairs is excluded either.
+    const keys = result.map((m) => m.key);
+    expect(keys).not.toContain("meta_form_leads");
+    expect(keys).not.toContain("website_leads");
+    expect(keys).toContain("spend");
+    expect(keys).toContain("link_clicks");
   });
 });

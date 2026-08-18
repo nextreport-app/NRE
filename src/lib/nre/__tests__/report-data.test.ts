@@ -3483,6 +3483,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
       "CPM (cost per 1,000 impressions)": "5",
       "Landing page views": "8",
       "Video plays": "3",
+      Frequency: "1.5",
     }),
   );
 
@@ -3532,7 +3533,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
     // the highest-priority unselected metrics the CSV's own headers make
     // available (cpm/landing_page_views/video_views here).
     expect(slide.additionalMetricsSlide).toHaveLength(4);
-    expect(slide.additionalMetricsSlide![0].key).toBe("frequency");
+    expect(slide.additionalMetricsSlide![0]?.key).toBe("frequency");
   });
 
   it("reuses the already-computed baseline value for a core key (spend) rather than re-deriving it from raw rows", () => {
@@ -3547,6 +3548,88 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
     });
     // 7 days * $50 = $350, same total the fixed metrics.spend field itself computes.
     expect(data.campaignSlides[0].dynamicMetrics[0]?.value).toBe(data.campaignSlides[0].metrics.spend);
+  });
+});
+
+describe("buildReportData — Part 8: mixed-objective account, per-campaign metric filtering", () => {
+  function objRow(day: string, campaign: string, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
+    return {
+      _raw: { Day: day, "Amount spent": "50", Reach: "1000", Impressions: "10000", "CTR (all)": "2", ...extraRaw },
+      campaign_name: campaign,
+      ad_set_name: "Set 1",
+      result_type: resultType,
+      spend: "50",
+      reach: "1000",
+      impressions: "10000",
+      results: "10",
+      ctr: "2",
+      cpc: "1",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const days = daysInclusive(13, 19);
+  const rows: NreRow[] = days.flatMap((day) => [
+    objRow(day, "Lead Gen", "Leads (form)", { "Link clicks": "20", "Landing page views": "15" }),
+    objRow(day, "Website Leads Co", "Website leads", { "Link clicks": "25", "Landing page views": "18" }),
+  ]);
+
+  const selectedMetrics: SelectedMetric[] = [
+    { key: "spend", label: "AD SPEND", format: "currency", csvName: "amount spent" },
+    { key: "reach", label: "REACH", format: "number", csvName: "reach" },
+    { key: "impressions", label: "IMPRESSIONS", format: "number", csvName: "impressions" },
+    { key: "meta_form_leads", label: "META FORM LEADS", format: "number", csvName: "results" },
+    { key: "cost_per_meta_form_leads", label: "COST PER LEAD", format: "currency", csvName: "cost per result" },
+    { key: "website_leads", label: "WEBSITE LEADS", format: "number", csvName: "results" },
+    { key: "cost_per_website_leads", label: "COST PER WEBSITE LEAD", format: "currency", csvName: "cost per result" },
+    { key: "ctr", label: "CTR (ALL)", format: "percentage", csvName: "ctr (all)" },
+    { key: "link_clicks", label: "LINK CLICKS", format: "number", csvName: "link clicks" },
+  ];
+
+  function buildMixedData() {
+    return buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives: {
+        "Lead Gen": { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" },
+        "Website Leads Co": { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" },
+      },
+    });
+  }
+
+  it("shows only its own objective's cards on each campaign's slide, never another campaign's", () => {
+    const data = buildMixedData();
+    const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    const websiteLeads = data.campaignSlides.find((s) => s.campaignName === "Website Leads Co")!;
+
+    const leadGenKeys = leadGen.dynamicMetrics.map((m) => m?.key);
+    expect(leadGenKeys).toContain("meta_form_leads");
+    expect(leadGenKeys).toContain("cost_per_meta_form_leads");
+    expect(leadGenKeys).not.toContain("website_leads");
+    expect(leadGenKeys).not.toContain("cost_per_website_leads");
+
+    const websiteLeadsKeys = websiteLeads.dynamicMetrics.map((m) => m?.key);
+    expect(websiteLeadsKeys).toContain("website_leads");
+    expect(websiteLeadsKeys).toContain("cost_per_website_leads");
+    expect(websiteLeadsKeys).not.toContain("meta_form_leads");
+    expect(websiteLeadsKeys).not.toContain("cost_per_meta_form_leads");
+  });
+
+  it("resolves the synthetic per-objective card's own value from the already-objective-aware baseline, not a fresh raw-column re-aggregation", () => {
+    const data = buildMixedData();
+    const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    const card = leadGen.dynamicMetrics.find((m) => m?.key === "meta_form_leads");
+    // Reuses the same already-computed value the RESULTS/CPR display line
+    // itself shows for this campaign — not a dash and not derived by
+    // re-summing the raw "results" CSV column independently.
+    expect(card?.value).toBe(leadGen.metrics.results);
+    expect(card?.value).not.toBe("—");
   });
 });
 

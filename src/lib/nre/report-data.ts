@@ -49,8 +49,8 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
-import { buildMetaSlots, buildSlotsFromSelection, type MetaSlotBaseline } from "./slot-assignment";
-import { listAvailableMetrics, splitMetricsForSlides, type SelectedMetric } from "./available-metrics";
+import { buildMetaSlots, buildSlotsFromSelection, filterMetricsForCampaignObjective, type CampaignObjectiveRef, type MetaSlotBaseline } from "./slot-assignment";
+import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
 /** Re-exported from dynamic-metrics.ts (its canonical home) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
 export type { DynamicMetricValue };
@@ -119,7 +119,7 @@ export interface CampaignSlideData {
    * slide immediately after the main one. Absent (the common case) means no
    * second slide.
    */
-  additionalMetricsSlide?: DynamicMetricValue[];
+  additionalMetricsSlide?: (DynamicMetricValue | null)[];
 }
 
 export interface AdSetSlideData {
@@ -137,7 +137,7 @@ export interface AdSetSlideData {
   /** See CampaignSlideData.dynamicMetrics. */
   dynamicMetrics: (DynamicMetricValue | null)[];
   /** See CampaignSlideData.additionalMetricsSlide. */
-  additionalMetricsSlide?: DynamicMetricValue[];
+  additionalMetricsSlide?: (DynamicMetricValue | null)[];
 }
 
 export type SlideData = CampaignSlideData | AdSetSlideData;
@@ -969,33 +969,39 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     (adSetRawGroups[key] ??= []).push(row);
   });
 
-  // Part 3/4 — the wizard's selectedMetrics (if any) apply the SAME metric
-  // list, in the SAME slide split, to every campaign/ad-set in the report;
-  // only each metric's own aggregated VALUE differs per campaign/ad set
-  // (computed below, per slide, from that slide's own raw rows). Computed
-  // once here rather than per-slide since the key list itself never varies.
-  // `available` (for Part 4's under-4-on-slide-2 padding) is derived from
-  // the CSV's own column headers — every row in one upload shares the same
-  // columns, so the first row's `_raw` keys stand in for the full header
-  // set without needing a separate headers input threaded all the way in.
-  const metricSlideKeyGroups: SelectedMetric[][] | null =
-    selectedMetrics && selectedMetrics.length > 0
-      ? splitMetricsForSlides(selectedMetrics, listAvailableMetrics(Object.keys(primaryRawRows[0]?._raw ?? {}), "META"))
-      : null;
+  // Part 3/4/8 — the wizard's selectedMetrics (if any) is a single
+  // account-wide list (for a mixed-objective account, built by
+  // buildMultiObjectiveSelection, it's every detected objective's own
+  // result/cost pair combined); it is NOT applied as-is to every campaign's
+  // slide — each campaign/ad-set only shows its OWN objective's pair (plus
+  // the always-relevant base/secondary metrics), via
+  // filterMetricsForCampaignObjective below, computed fresh per call since
+  // each campaign has its own objective. `availableMetricsPool` (for Part
+  // 4's under-4-on-slide-2 padding) is derived from the CSV's own column
+  // headers — every row in one upload shares the same columns, so the first
+  // row's `_raw` keys stand in for the full header set without needing a
+  // separate headers input threaded all the way in.
+  const availableMetricsPool: AvailableMetric[] | null =
+    selectedMetrics && selectedMetrics.length > 0 ? listAvailableMetrics(Object.keys(primaryRawRows[0]?._raw ?? {}), "META") : null;
 
   /**
    * One slide's worth of metric cards — the automatic per-objective 8-slot
-   * assignment (no wizard input), or the wizard's own selectedMetrics split
-   * into slide(s) via metricSlideKeyGroups above. `baseline` is reused as-is
-   * for the handful of keys report-data.ts already computes (spend/reach/
-   * impressions/ctr/results/cost_per_result) — see slot-assignment.ts's
-   * buildSlotsFromSelection.
+   * assignment (no wizard input), or the wizard's own selectedMetrics,
+   * filtered down to THIS campaign/ad-set's own objective (Part 8) and split
+   * into slide(s). `baseline` is reused as-is for the handful of keys
+   * report-data.ts already computes (spend/reach/impressions/ctr/results/
+   * cost_per_result) — see slot-assignment.ts's buildSlotsFromSelection.
+   * `campaignObjective` is this specific slide's own {resultLabel,
+   * costLabel} — the ad-set call site passes its PARENT campaign's own
+   * objective, matching Step 0's single source of truth (see the ad-set
+   * loop's own comment below).
    */
   function computeMetaSlideMetrics(
     baseline: MetaSlotBaseline,
     rawRows: NreRow[],
-  ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: DynamicMetricValue[] } {
-    if (!metricSlideKeyGroups) {
+    campaignObjective: CampaignObjectiveRef | null,
+  ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
+    if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
     const baselineValues: Partial<Record<string, string>> = {
@@ -1006,7 +1012,28 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       results: baseline.resultValue,
       cost_per_result: baseline.cprValue,
     };
-    const [slide1Keys, slide2Keys] = metricSlideKeyGroups;
+    // Part 8 — a mixed-objective selection's own per-campaign pair uses a
+    // SYNTHETIC key (e.g. "website_leads"/"cost_per_website_leads", see
+    // objectiveMetricKeys/buildMultiObjectiveSelection), not the generic
+    // "results"/"cost_per_result" keys above. Without this, buildSlotsFromSelection's
+    // baseline lookup would miss on that synthetic key and fall through to
+    // re-aggregating raw CSV rows by column name — which can disagree with
+    // baseline.resultValue, since that value is already correctly filtered
+    // to rows whose own resolved objective matches this campaign's assigned
+    // one (getGroupedResultDisplayForObjective/getSingleRowResultDisplayForObjective),
+    // while a fresh raw-column sum is not. REACH's own pair (CPM/COST PER 1K
+    // REACHED) is a real dictionary metric with its own per-unit aggregation,
+    // not a stand-in for results/cost_per_result, so it's deliberately left
+    // to resolve via the normal raw-row lookup instead.
+    if (campaignObjective) {
+      const { resultKey, costKey } = objectiveMetricKeys(campaignObjective.resultLabel);
+      if (resultKey !== "cpm") {
+        baselineValues[resultKey] = baseline.resultValue;
+        baselineValues[costKey] = baseline.cprValue;
+      }
+    }
+    const relevantMetrics = filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
+    const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
     return {
       dynamicMetrics: buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
       additionalMetricsSlide: slide2Keys ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol) : undefined,
@@ -1109,6 +1136,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       campaignRawGroups[campaignName] ?? [],
+      campaignObjective,
     );
 
     return {
@@ -1231,6 +1259,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
+      campaignObjective,
     );
 
     adSetSlides.push({
