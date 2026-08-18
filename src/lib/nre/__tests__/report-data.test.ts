@@ -10,7 +10,7 @@ import {
 } from "../report-data";
 import { adSetKey } from "../ad-sets";
 import type { NreRow } from "../columns";
-import type { SelectedMetric } from "../available-metrics";
+import { defaultMetaSelection, type SelectedMetric } from "../available-metrics";
 
 beforeAll(() => {
   process.env.TZ = "UTC";
@@ -1083,6 +1083,66 @@ describe("buildReportData — META FORM LEADS from result_type 'Leads (form)', n
     expect(slide.costLabel).toBe("COST PER LEAD");
     expect(slide.dynamicMetrics[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "5" });
     expect(slide.dynamicMetrics[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$40.00" });
+  });
+
+  // Reported follow-up bug: a real InstantForms campaign, spread across a
+  // full weekly window, with a "Cost per lead" column present (column V —
+  // real Meta export) but no "on-facebook leads" column. Before this fix,
+  // the Metric Cards screen's pre-selection could fall back to a generic
+  // objective's own cards (CPM/Frequency/Link Clicks — the REACH case's
+  // slot 4/5/7) instead of META FORM LEADS/COST PER LEAD.
+  it("InstantForms campaign: Results 1,2,6,7,4,3,2 (sum 25) across the week, 'Cost per lead' column present, no 'on-facebook leads' column -> Slot 4 META FORM LEADS=25, Slot 5 COST PER LEAD from spend/leads, never CPM/Frequency/Link Clicks", () => {
+    const dailyResults = [1, 2, 6, 7, 4, 3, 2]; // sums to 25, matching the reported values
+    const days = daysInclusive(13, 19);
+    const rows: NreRow[] = days.map((day, i) => ({
+      _raw: { Day: day, "Cost per lead": "5.60" },
+      campaign_name: "InstantForms Campaign",
+      ad_set_name: "Set 1",
+      result_type: "Leads (form)",
+      spend: "20",
+      reach: "500",
+      impressions: "1000",
+      results: String(dailyResults[i]),
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+    });
+
+    const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
+    expect(slide.resultLabel).toBe("META FORM LEADS");
+    expect(slide.costLabel).toBe("COST PER LEAD");
+    // 7 days x $20 = $140 total spend; 25 total leads -> $5.60 per lead.
+    expect(slide.dynamicMetrics[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "25" });
+    expect(slide.dynamicMetrics[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$5.60" });
+    // Never the generic Reach-objective fallback (CPM/Frequency) that was
+    // the reported symptom.
+    const slotLabels = [slide.dynamicMetrics[3]?.label, slide.dynamicMetrics[4]?.label];
+    expect(slotLabels).not.toContain("CPM");
+    expect(slotLabels).not.toContain("FREQUENCY");
+    expect(slotLabels).not.toContain("LINK CLICKS");
+
+    // The Metric Cards (Metric Review) wizard step's own pre-selected
+    // default mirrors this exact slot logic (available-metrics.ts's
+    // defaultMetaSelection) — same META FORM LEADS/COST PER LEAD pre-
+    // selection, never a generic fallback, at the point in the wizard
+    // before real aggregation exists.
+    const headers = ["Campaign name", "Amount spent", "Reach", "Impressions", "Results", "Cost per lead", "CTR (All)"];
+    const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers);
+    expect(preview[3]).toMatchObject({ label: "META FORM LEADS" });
+    expect(preview[4]).toMatchObject({ label: "COST PER LEAD" });
+    const previewLabels = preview.map((m) => m.label);
+    expect(previewLabels).not.toContain("CPM");
+    expect(previewLabels).not.toContain("FREQUENCY");
   });
 });
 

@@ -229,6 +229,33 @@ describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-co
     expect(real[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", value: "9" });
     expect(real[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", value: "$22.00" });
   });
+
+  // Reported bug: some real InstantForms exports have a plain "Cost per
+  // lead" column (column V) instead of "Cost per on-facebook lead" — the
+  // wizard's Metric Cards preview must recognize it as the slot 5
+  // candidate, second in priority after "cost per on-facebook lead".
+  it("recognizes a plain 'cost per lead' column as the wizard preview's slot 5 pick when 'cost per on-facebook lead' is absent", () => {
+    const headersWithCostPerLead = [...META_HEADERS, "Cost per lead"];
+    const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headersWithCostPerLead);
+    expect(preview[4]).toMatchObject({ key: "cost_per_lead", label: "COST PER LEAD" });
+  });
+
+  // cost_per_lead's own perUnitOf ("website_leads") means buildMetaSlots'
+  // real, value-checked dedicated-column attempt safely evaluates to no
+  // data (a Meta Form Leads CSV has no "Website leads" column) and falls
+  // through to the same Results/Cost-per-result baseline math the no-
+  // dedicated-column case already uses — exactly the "calculated correctly
+  // from spend/leads" result the reported bug asked for, whether or not a
+  // literal "Cost per lead" column happens to be present.
+  it("buildMetaSlots falls through to the Results/Cost-per-result baseline when the CSV has a 'cost per lead' column but no 'website leads' column to divide it by", () => {
+    const real = buildMetaSlots(
+      { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "25", cprValue: "$8.00" },
+      [{ _raw: { "Amount spent": "200", "Cost per lead": "8.33" } }],
+      "$",
+    );
+    expect(real[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "25" });
+    expect(real[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$8.00" });
+  });
 });
 
 describe("defaultGoogleSelection — matches slot-assignment.ts's own automatic picks", () => {

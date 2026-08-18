@@ -223,17 +223,23 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
 
     // META FORM LEADS (on-Facebook lead forms, result_type "Leads (form)" /
     // "onsite_conversion.lead_grouped"): a dedicated "on-Facebook leads" /
-    // "cost per on-facebook lead" column, when the CSV actually has one,
-    // takes priority — otherwise the campaign's own Results/Cost per result
-    // columns ARE the form-leads count/cost for this objective, so they're
-    // reused directly (same mechanism as the WEBSITE LEADS/LEADS case
-    // above), just always under the META FORM LEADS/COST PER LEAD labels
-    // rather than whatever baseline.resultLabel/costLabel happened to say.
+    // "cost per on-facebook lead" / "cost per lead" column, when the CSV
+    // actually has one, takes priority — otherwise the campaign's own
+    // Results/Cost per result columns ARE the form-leads count/cost for
+    // this objective, so they're reused directly (same mechanism as the
+    // WEBSITE LEADS/LEADS case above), just always under the META FORM
+    // LEADS/COST PER LEAD labels rather than whatever baseline.resultLabel/
+    // costLabel happened to say.
     case "META FORM LEADS": {
       const dedicatedResult = firstAvailable([{ key: "meta_form_leads", label: "META FORM LEADS", format: "number" }], v);
       slot4 = dedicatedResult ?? slot("results", "META FORM LEADS", "number", baseline.resultValue);
+      // "cost per lead" is tried second — some real InstantForms exports
+      // use that literal header instead of "cost per on-facebook lead".
       const dedicatedCost = firstAvailable(
-        [{ key: "cost_per_meta_form_lead", label: "COST PER LEAD", format: "currency" }],
+        [
+          { key: "cost_per_meta_form_lead", label: "COST PER LEAD", format: "currency" },
+          { key: "cost_per_lead", label: "COST PER LEAD", format: "currency" },
+        ],
         v,
       );
       slot5 = dedicatedCost ?? slot("cost_per_result", "COST PER LEAD", "currency", baseline.cprValue);

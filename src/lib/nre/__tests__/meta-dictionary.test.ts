@@ -128,6 +128,17 @@ describe("Round B — new/aliased Meta dictionary entries", () => {
     expect(findMetaMetric("cost per on-facebook lead")?.label).toBe("COST PER LEAD");
   });
 
+  // Reported bug: real InstantForms exports sometimes carry a plain "Cost
+  // per lead" column instead of "Cost per on-facebook lead" — this must
+  // also be recognized as an eligible metric for the META FORM LEADS
+  // objective, not just its original WEBSITE LEADS/generic "leads" use.
+  it("'cost per lead' is also eligible for the META FORM LEADS objective, alongside its original leads/website_leads use", () => {
+    const entry = findMetaMetric("cost per lead");
+    expect(entry?.key).toBe("cost_per_lead");
+    expect(entry?.label).toBe("COST PER LEAD");
+    expect(entry?.objectives).toEqual(expect.arrayContaining(["leads", "website_leads", "meta_form_leads"]));
+  });
+
   it("adds purchases conversion value / purchase roas aliases / add to cart / initiate checkout chain", () => {
     expect(findMetaMetric("purchases conversion value")?.key).toBe("purchases_conversion_value");
     expect(findMetaMetric("purchase roas (return on ad spend)")?.key).toBe("results_roas");

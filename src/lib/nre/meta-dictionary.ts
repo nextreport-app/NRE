@@ -297,7 +297,12 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     label: "COST PER LEAD",
     type: "secondary",
     format: "currency",
-    objectives: ["leads", "website_leads"],
+    // Also eligible for META FORM LEADS — this exact column shows up as
+    // "Cost per lead" (rather than "Cost per on-facebook lead") in some
+    // real InstantForms exports; see slot-assignment.ts's/available-
+    // metrics.ts's META FORM LEADS case, which references this key as an
+    // additional slot 5 dedicated-column candidate.
+    objectives: ["leads", "website_leads", "meta_form_leads"],
     priority: 83,
     explanation: "Average amount spent to acquire each lead",
     perUnitOf: "website_leads",
