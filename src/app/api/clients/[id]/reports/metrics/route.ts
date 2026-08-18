@@ -6,10 +6,10 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
-import { buildCampaignObjectiveMapWithConfidence, getResultGroups } from "@/lib/nre/objective";
+import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
-import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics } from "@/lib/nre/available-metrics";
+import { buildMultiObjectiveSelection, defaultGoogleSelection, listSelectableMetrics, type ObjectivePair } from "@/lib/nre/available-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
@@ -70,9 +70,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
-    const topGroup = getResultGroups(rowsForObjective)[0];
-    const resultLabel = topGroup?.label ?? "RESULTS";
-    const costLabel = topGroup?.costLabel ?? "COST PER RESULT";
 
     // Objective Confirmation wizard step — one entry per selected campaign
     // (keyed by objective.ts's own normalizeCampaignName, so the wizard's
@@ -92,29 +89,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // 1/RESULT_TYPE_MAP text match = "resultType", everything else =
     // "columnData") so the wizard can show the right confidence badge.
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
-    const campaignObjectives = Object.fromEntries(
-      Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
-        const cached = lookupCachedObjective(objectiveCache, name);
-        if (cached) {
-          return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" as const }];
-        }
-        return [
-          name,
-          {
-            resultLabel: detected.resultLabel,
-            costLabel: detected.costLabel,
-            source: detected.confidence === "high" ? ("resultType" as const) : ("columnData" as const),
-          },
-        ];
-      }),
-    );
+    const campaignObjectiveEntries: [string, { resultLabel: string; costLabel: string; source: "cached" | "resultType" | "columnData" }][] = Array.from(
+      buildCampaignObjectiveMapWithConfidence(rowsForObjective),
+    ).map(([name, detected]) => {
+      const cached = lookupCachedObjective(objectiveCache, name);
+      if (cached) {
+        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" }];
+      }
+      return [
+        name,
+        {
+          resultLabel: detected.resultLabel,
+          costLabel: detected.costLabel,
+          source: detected.confidence === "high" ? "resultType" : "columnData",
+        },
+      ];
+    });
+    const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
-    console.log("METRICS ROUTE: resultLabel=", resultLabel, "costLabel=", costLabel, "headers=", mtdParsed.headers.slice(0, 5));
-    const defaultSelection = defaultMetaSelection(resultLabel, costLabel, mtdParsed.headers);
-    console.log("METRICS ROUTE: defaultSelection slots 3-4=", defaultSelection[3], defaultSelection[4]);
+    // Mixed-objective accounts (Parts 1-4): pre-select a Results/Cost per
+    // result pair for EVERY distinct objective actually detected across
+    // this report's campaigns (campaignObjectives above), not just one
+    // majority objective — see buildMultiObjectiveSelection's own doc
+    // comment for the smart-fill/never-an-awkward-partial-slide rules.
+    const objectivePairs: ObjectivePair[] = Object.values(campaignObjectives).map((info) => ({
+      resultLabel: info.resultLabel,
+      costLabel: info.costLabel,
+    }));
 
     return NextResponse.json({
-      defaultSelection,
+      defaultSelection: buildMultiObjectiveSelection(objectivePairs, mtdParsed.headers),
       availableMetrics: listSelectableMetrics(mtdParsed.headers, "META"),
       campaignObjectives,
     });

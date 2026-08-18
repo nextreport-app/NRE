@@ -311,6 +311,144 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
   return [...core, slot4, slot5, ctr, slot7, slot8];
 }
 
+/** One detected objective's own {resultLabel, costLabel} text pair — see buildMultiObjectiveSelection below. Matches the shape of each entry in the /metrics route's own campaignObjectives map. */
+export interface ObjectivePair {
+  resultLabel: string;
+  costLabel: string;
+}
+
+function slugifyObjectiveKey(resultLabel: string): string {
+  return resultLabel
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Part 2's fixed secondary-fill priority order (mixed-objective accounts):
+ * tried in exactly this order after the mandatory per-objective pairs,
+ * each only added when its own column is actually present in the CSV.
+ */
+const SECONDARY_FILL_KEYS = ["link_clicks", "cpc_all", "landing_page_views", "cost_per_lpv", "frequency", "clicks_all", "video_views", "thruplays"];
+
+/** Part 3's "never an awkward partial second slide" bounds — a full 2-slide selection tops out at 16 (2x8); 9-12 gets padded up to this or trimmed back down to 8. */
+const MULTI_OBJECTIVE_MAX = 16;
+const MULTI_OBJECTIVE_AWKWARD_MIN = 9;
+const MULTI_OBJECTIVE_AWKWARD_MAX = 12;
+
+/**
+ * Mixed-objective accounts (Parts 1-4) — the account-wide counterpart to
+ * defaultMetaSelection above: instead of picking ONE objective's own 8-slot
+ * default, pre-selects a Results/Cost per result pair for EVERY distinct
+ * objective actually detected across the account's campaigns (the /metrics
+ * route's own campaignObjectives map), on top of the same 4 always-included
+ * base metrics (spend/reach/impressions/ctr).
+ *
+ * Part 1 — each objective's own Results/Cost per result column is reused
+ * directly, labeled with that objective's own resultLabel/costLabel — the
+ * same "the generic column IS this objective's real number" principle
+ * defaultMetaSelection's own per-objective cases already use, just applied
+ * to every detected objective at once instead of picking one. REACH/UNIQUE
+ * REACH is the one deliberate exception: Meta never populates a real
+ * Results count for a genuine Reach objective (see slot-assignment.ts's own
+ * REACH case), so a literal Results-column card would always show empty
+ * and duplicate the base REACH (audience-size) card's own label — CPM/COST
+ * PER 1K REACHED are used instead, matching defaultMetaSelection's/
+ * slot-assignment.ts's own REACH-specific pair. Each objective's own key is
+ * slugified from its resultLabel (e.g. "WEBSITE LEADS" -> "website_leads")
+ * rather than reusing a genuinely dedicated column's own dictionary key, so
+ * this synthetic pair never collides with — and is still deduplicated
+ * against, by label, in report-upload-wizard.tsx's own
+ * unselectedAvailableMetrics — a real dedicated column's own addable-pool
+ * entry.
+ *
+ * Part 2/3 — after the mandatory objective pairs, fills remaining slots (up
+ * to MULTI_OBJECTIVE_MAX, 2 full slides) with secondary metrics in
+ * SECONDARY_FILL_KEYS' fixed priority order, each only if its own column is
+ * present in this CSV (no real aggregated values exist yet at this point in
+ * the wizard — same "presence, not a live non-zero check" limitation
+ * defaultMetaSelection's own hasHeader-based cases already have). If the
+ * count is still awkward (9-12) afterward, pads the rest of the way to 16
+ * with any other CSV-present, not-yet-selected metric (priority order) when
+ * enough exist; otherwise trims back to 8 by dropping the lowest-priority
+ * fill-step secondaries first (the mandatory base 4/ctr/objective pairs are
+ * never trimmed — an account with enough distinct objectives to exceed 12
+ * on mandatory pairs alone stays at its own natural count).
+ */
+export function buildMultiObjectiveSelection(objectivePairs: ObjectivePair[], headers: string[]): SelectedMetric[] {
+  const core = [byKey("META", "spend")!, byKey("META", "reach")!, byKey("META", "impressions")!];
+  const ctr = byKey("META", "ctr")!;
+  const usedKeys = new Set<string>(["spend", "reach", "impressions", "ctr"]);
+
+  // Part 1 — one Results/Cost per result pair per distinct detected objective.
+  const seenLabels = new Set<string>();
+  const objectiveMetrics: SelectedMetric[] = [];
+  for (const { resultLabel, costLabel } of objectivePairs) {
+    const upper = (resultLabel || "").toUpperCase();
+    if (!upper || seenLabels.has(upper)) continue;
+    seenLabels.add(upper);
+
+    let resultMetric: SelectedMetric;
+    let costMetric: SelectedMetric;
+    if (upper === "REACH" || upper === "UNIQUE REACH") {
+      resultMetric = byKey("META", "cpm")!;
+      costMetric = byKey("META", "cost_per_1k_reached")!;
+    } else {
+      const objKey = slugifyObjectiveKey(resultLabel);
+      resultMetric = { ...byKey("META", "results", resultLabel)!, key: objKey };
+      costMetric = { ...byKey("META", "cost_per_result", costLabel)!, key: `cost_per_${objKey}` };
+    }
+
+    if (!usedKeys.has(resultMetric.key)) {
+      objectiveMetrics.push(resultMetric);
+      usedKeys.add(resultMetric.key);
+    }
+    if (!usedKeys.has(costMetric.key)) {
+      objectiveMetrics.push(costMetric);
+      usedKeys.add(costMetric.key);
+    }
+  }
+
+  const mandatory = [...core, ...objectiveMetrics, ctr];
+
+  // Part 2 — fixed-priority secondary fill, capped so the mandatory set is
+  // never pushed past MULTI_OBJECTIVE_MAX.
+  const fillCandidates: SelectedMetric[] = [];
+  for (const key of SECONDARY_FILL_KEYS) {
+    if (usedKeys.has(key)) continue;
+    const metric = byKey("META", key);
+    if (!metric || !hasHeader(headers, metric.csvName)) continue;
+    fillCandidates.push(metric);
+    usedKeys.add(metric.key);
+  }
+  const room = Math.max(0, MULTI_OBJECTIVE_MAX - mandatory.length);
+  const filled = fillCandidates.slice(0, room);
+  let selected = [...mandatory, ...filled];
+
+  // Part 3 — normalize an awkward 9-12 count: pad the rest of the way to 16
+  // with any other CSV-present, unselected metric (priority order) if
+  // enough exist; otherwise trim back to 8, dropping the lowest-priority
+  // fill-step secondaries (the ones added last, above) first. Uses
+  // listSelectableMetrics (not the raw listAvailableMetrics pool) so the
+  // generic results/cost_per_result columns — never claimed by this
+  // function's own synthetic per-objective keys — can't sneak back in as
+  // padding candidates.
+  if (selected.length >= MULTI_OBJECTIVE_AWKWARD_MIN && selected.length <= MULTI_OBJECTIVE_AWKWARD_MAX) {
+    const selectedKeys = new Set(selected.map((m) => m.key));
+    const morePool = listSelectableMetrics(headers, "META").filter((m) => !selectedKeys.has(m.key));
+    const needed = MULTI_OBJECTIVE_MAX - selected.length;
+    if (morePool.length >= needed) {
+      selected = [...selected, ...morePool.slice(0, needed)];
+    } else {
+      const keepFilled = Math.max(0, filled.length - (selected.length - 8));
+      selected = [...mandatory, ...filled.slice(0, keepFilled)];
+    }
+  }
+
+  return selected;
+}
+
 /** The default 8 for a Google report — mirrors slot-assignment.ts's buildGoogleSlots per-campaign-type key choices exactly. */
 export function defaultGoogleSelection(objectiveKey: GoogleObjectiveKey): SelectedMetric[] {
   const core = [byKey("GOOGLE", "spend", "AD SPEND")!, byKey("GOOGLE", "reach", "REACH")!, byKey("GOOGLE", "impressions")!];
