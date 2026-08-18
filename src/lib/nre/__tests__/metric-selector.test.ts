@@ -175,6 +175,33 @@ describe("selectMetrics — general algorithm behavior (uncapped, priority-sorte
   });
 });
 
+describe("selectMetrics — META FORM LEADS fallback (mirrors slot-assignment.ts's buildMetaSlots)", () => {
+  it("classifies Results/Cost per result under the meta_form_leads/cost_per_meta_form_lead keys (not the generic results/cost_per_result keys) when no dedicated form-leads column exists, and prefers a genuinely dedicated 'on-facebook leads' column when one does — never duplicating the key", () => {
+    // No dedicated column at all -> falls back to Results/Cost per result,
+    // reclassified under the META FORM LEADS/COST PER LEAD identity so it
+    // reads as a pre-selected card, not the generic results/cost_per_result
+    // keys getAvailableMetrics's own ALWAYS_EXCLUDED_KEYS always drops from
+    // the addable pool.
+    const fallback = selectMetrics(META_PRIMARY_COLUMNS, "meta", "meta_form_leads");
+    const fallbackKeys = fallback.map((m) => m.key);
+    expect(fallbackKeys).not.toContain("results");
+    expect(fallbackKeys).not.toContain("cost_per_result");
+    expect(fallback.find((m) => m.key === "meta_form_leads")).toMatchObject({ label: "META FORM LEADS", csvName: "results" });
+    expect(fallback.find((m) => m.key === "cost_per_meta_form_lead")).toMatchObject({ label: "COST PER LEAD", csvName: "cost per result" });
+
+    // A genuinely dedicated "on-facebook leads" column takes priority over
+    // the Results fallback — only one "meta_form_leads" entry ever appears.
+    const withDedicated = selectMetrics([...META_PRIMARY_COLUMNS, "on-facebook leads"], "meta", "meta_form_leads");
+    const dedicatedEntries = withDedicated.filter((m) => m.key === "meta_form_leads");
+    expect(dedicatedEntries).toHaveLength(1);
+    expect(dedicatedEntries[0].csvName).toBe("on-facebook leads");
+
+    // Google platform selections never get the Meta-only fallback.
+    const google = selectMetrics(GOOGLE_PRIMARY_COLUMNS, "google", "meta_form_leads");
+    expect(google.some((m) => m.key === "meta_form_leads")).toBe(false);
+  });
+});
+
 describe("getAvailableMetrics — the wizard's full candidate pool", () => {
   it("with no objective argument, returns every matched primary/secondary metric regardless of objective relevance — but never Frequency (Step 6)", () => {
     const columns = [...META_PRIMARY_COLUMNS, "website leads", "cost per lead", "frequency"];

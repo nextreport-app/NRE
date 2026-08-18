@@ -122,11 +122,59 @@ export function getAvailableMetrics(
  * campaigns' relevant metrics at once, not just whichever objective a
  * single account-wide heuristic happened to guess). No cap — see the module
  * doc comment.
+ *
+ * META FORM LEADS fallback (mirrors slot-assignment.ts's buildMetaSlots):
+ * for that objective, when the CSV has no dedicated "on-facebook leads"/
+ * "cost per on-facebook lead"/"cost per lead" column (already surfaced by
+ * getAvailableMetrics above, under key "meta_form_leads"/
+ * "cost_per_meta_form_lead"/"cost_per_lead", whenever one of those columns
+ * IS present), the campaign's own Results/Cost per result columns ARE the
+ * form-leads count/cost for this objective — added here under the
+ * meta_form_leads/cost_per_meta_form_lead keys and the META FORM LEADS/
+ * COST PER LEAD labels (a pre-selected default), never the generic
+ * results/cost_per_result keys getAvailableMetrics's own ALWAYS_EXCLUDED_KEYS
+ * always drops from its addable pool.
  */
 export function selectMetrics(
   detectedColumns: string[],
   platform: "meta" | "google",
   detectedObjectives: string | string[],
 ): SelectedMetric[] {
-  return getAvailableMetrics(detectedColumns, platform, detectedObjectives);
+  const available = getAvailableMetrics(detectedColumns, platform, detectedObjectives);
+  if (platform !== "meta") return available;
+
+  const objectiveSet = new Set(Array.isArray(detectedObjectives) ? detectedObjectives : [detectedObjectives]);
+  if (!objectiveSet.has("meta_form_leads")) return available;
+
+  const normalizedColumns = new Set(detectedColumns.map((c) => c.trim().toLowerCase()));
+  const hasDedicatedResult = available.some((m) => m.key === "meta_form_leads");
+  const hasDedicatedCost = available.some((m) => m.key === "cost_per_meta_form_lead" || m.key === "cost_per_lead");
+
+  const resultsEntry = META_METRIC_DICTIONARY.find((e) => e.key === "results" && e.csvName === "results");
+  const cprEntry = META_METRIC_DICTIONARY.find((e) => e.key === "cost_per_result" && e.csvName === "cost per result");
+
+  const fallback: SelectedMetric[] = [];
+  if (!hasDedicatedResult && normalizedColumns.has("results") && resultsEntry?.format) {
+    fallback.push({
+      key: "meta_form_leads",
+      label: "META FORM LEADS",
+      format: resultsEntry.format,
+      type: "primary",
+      priority: resultsEntry.priority ?? 85,
+      csvName: "results",
+    });
+  }
+  if (!hasDedicatedCost && normalizedColumns.has("cost per result") && cprEntry?.format) {
+    fallback.push({
+      key: "cost_per_meta_form_lead",
+      label: "COST PER LEAD",
+      format: cprEntry.format,
+      type: "primary",
+      priority: cprEntry.priority ?? 80,
+      csvName: "cost per result",
+      perUnitOf: cprEntry.perUnitOf,
+    });
+  }
+
+  return [...fallback, ...available].sort((a, b) => b.priority - a.priority);
 }
