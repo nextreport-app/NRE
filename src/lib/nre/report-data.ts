@@ -1458,6 +1458,89 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   };
 }
 
+// ────────────────────── Previous Month Summary reports ─────────────────────
+//
+// A minimal, parallel data pipeline from buildReportData above — used only
+// when the uploaded MTD Daily CSV has no usable current-period data at all
+// (validate.ts's noCampaignData) but the client has Previous Month Data on
+// file. There is no current-month data to build campaign/ad-set slides, a
+// health score, or an MTD chart from, so this deliberately builds none of
+// that: campaignSlides/adSetSlides stay empty and chart stays null, which
+// render.ts's own campaign/ad-set/chart loop (guarded by `!data.isPaused`)
+// already renders as "nothing" for free — no render.ts changes needed. The
+// Combined Total table's own MTD row is forced hidden by hard-coding the
+// Period row's sameMonthAsCurrentMTD true (see TableRowData's own doc
+// comment on that field: "hides the MTD row entirely... rather than show
+// two near-identical rows" — true here because there IS no current-month
+// row worth showing), and the Metric Guide legend slide falls back to the
+// template's own static content, exactly as it already does for any report
+// with no dynamic metric selection (see collectLegendEntries/
+// buildLegendSlideXml). reportType is left "WEEKLY" purely for
+// buildTableSlideXml's/buildCoverSlideXml's own internal branching (neither
+// treats it specially beyond the "MONTHLY hides the Period row" case, which
+// doesn't apply here) — never written to the database as the stored
+// Report.reportType, which the caller (route.ts) sets independently.
+export interface BuildPreviousMonthSummaryReportDataInput {
+  accountName: string;
+  currencySymbol: string;
+  timezone: string;
+  /** Raw column-mapped rows from the client's Previous Month Data upload — see lib/nre/previous-month-data.ts. Must be non-empty; the caller is responsible for confirming Client.previousMonthDataUrl produced real rows before calling this. */
+  periodRows: NreRow[];
+  now?: Date;
+}
+
+export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSummaryReportDataInput): ReportData {
+  const { accountName, currencySymbol, timezone, periodRows, now = new Date() } = input;
+
+  const objectiveMap = buildCampaignObjectiveMap(periodRows as MetricRow[]);
+  const periodRow: TableRowData = {
+    ...computeTableRow(periodRows as MetricRow[], currencySymbol, false, objectiveMap, now),
+    sameMonthAsCurrentMTD: true,
+  };
+  const mtdRow = computeTableRow([], currencySymbol, true, new Map(), now);
+  const tableHeaderLabels: TableHeaderLabels = {
+    resultColumns: periodRow.resultColumns.map((c) => ({ label: c.label, costLabel: c.costLabel })),
+  };
+
+  // Same "MM-DD-YYYY, in the client's own timezone" computation buildReportData
+  // itself uses for CoverData.reportDate.
+  const reportDateParts = new Intl.DateTimeFormat("en-US", { timeZone: timezone, month: "2-digit", day: "2-digit", year: "numeric" })
+    .formatToParts(now)
+    .reduce(
+      (acc, part) => {
+        if (part.type === "month") acc.month = part.value;
+        if (part.type === "day") acc.day = part.value;
+        if (part.type === "year") acc.year = part.value;
+        return acc;
+      },
+      { month: "", day: "", year: "" } as { month: string; day: string; year: string },
+    );
+  const reportDateStr = `${reportDateParts.month}-${reportDateParts.day}-${reportDateParts.year}`;
+
+  return {
+    isPaused: false,
+    platform: "META",
+    reportType: "WEEKLY",
+    cover: {
+      accountName,
+      reportDate: reportDateStr,
+      dateRange: periodRow.fullMonthLabel,
+      healthBadge: "📅 Previous Month Summary",
+      healthScore: 0,
+      budgetSummary: "",
+    },
+    campaignSlides: [],
+    adSetSlides: [],
+    pausedMessage: null,
+    chart: null,
+    periodRow,
+    mtdRow,
+    tableHeaderLabels,
+    fileDateRange: periodRow.fullMonthLabel,
+    objectiveWarnings: [],
+  };
+}
+
 // ─────────────────────────── Comparison reports ────────────────────────────
 //
 // A separate, parallel data pipeline from buildReportData above — comparison

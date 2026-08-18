@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { buildComparisonReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
+import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
 import { buildShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
@@ -276,6 +276,99 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         });
       } catch (updateErr) {
         console.error("[api:reports:generate] failed to record comparison failure status:", updateErr);
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  // Previous Month Summary — the uploaded CSV had no usable current-period
+  // data (validate.ts's noCampaignData) and the wizard's
+  // PreviousMonthSummaryOption offered this instead of the hard
+  // NO_DATA_ROWS_MESSAGE error; the user clicked through. Deliberately
+  // skips buildMetaData/buildReportData entirely — there's no current-month
+  // CSV data worth parsing or validating here, only Previous Month Data.
+  // The Report row is still stored with reportType "MONTHLY" (the closest
+  // real Prisma enum value) — see reportTypeSchema's own doc comment for
+  // why this request-only routing value is never written to the database
+  // as-is.
+  if (reportType === "PREVIOUS_MONTH_SUMMARY") {
+    if (!client.previousMonthDataUrl) {
+      return NextResponse.json({ error: "This client has no Previous Month Data on file." }, { status: 400 });
+    }
+    const periodRows = await loadPreviousMonthDataRows(client);
+    if (!periodRows || periodRows.length === 0) {
+      return NextResponse.json({ error: "Previous Month Data has no usable rows." }, { status: 400 });
+    }
+
+    const currencySymbol = CURRENCY_SYMBOLS[client.currency];
+    const summaryData = buildPreviousMonthSummaryReportData({
+      accountName: client.accountName,
+      currencySymbol,
+      timezone: client.timezone,
+      periodRows,
+    });
+
+    const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");
+
+    let summaryReport;
+    try {
+      summaryReport = await prisma.report.create({
+        data: {
+          clientId: client.id,
+          status: "GENERATING",
+          reportType: "MONTHLY",
+          platform: "META",
+          fileName,
+          displayName: `Previous Month Summary — ${summaryData.periodRow.fullMonthLabel}`,
+          shareToken: generateShareToken(),
+          summaryJson: JSON.stringify({
+            isPaused: false,
+            previousMonthSummaryOnly: true,
+            healthScore: summaryData.cover.healthScore,
+            healthBadge: summaryData.cover.healthBadge,
+            campaignCount: 0,
+            adSetCount: 0,
+          }),
+        },
+      });
+    } catch (err) {
+      return apiErrorResponse(err, "reports:generate:create-previous-month-summary");
+    }
+
+    try {
+      const [user, clientLogo] = await Promise.all([
+        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
+        loadLogoAsset(client.logoUrl),
+      ]);
+
+      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const pptxBuffer = await renderPptx({
+        templateBuffer,
+        data: summaryData,
+        currencySymbol,
+        reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
+        agencyName: user?.agencyName,
+        clientLogo,
+        isLightTemplate: client.template === "LIGHT",
+      });
+
+      const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
+
+      const shareData = buildShareReportData(summaryData, new Map(), new Date(), { currencySymbol, agencyName: user?.agencyName });
+
+      await prisma.report.update({
+        where: { id: summaryReport.id },
+        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
+      });
+
+      return NextResponse.json({ ok: true, reportId: summaryReport.id, shareToken: summaryReport.shareToken });
+    } catch (err) {
+      console.error("[api:reports:generate] previous month summary failed:", err);
+      const message = err instanceof Error ? err.message : "Report generation failed.";
+      try {
+        await prisma.report.update({ where: { id: summaryReport.id }, data: { status: "FAILED", errorMessage: message } });
+      } catch (updateErr) {
+        console.error("[api:reports:generate] failed to record previous-month-summary failure status:", updateErr);
       }
       return NextResponse.json({ error: message }, { status: 500 });
     }

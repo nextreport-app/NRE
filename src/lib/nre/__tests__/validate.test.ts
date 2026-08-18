@@ -96,6 +96,7 @@ describe("validateMtdDailyCsv", () => {
     const rowsError = result.errors.find((e) => e.field === "rows");
     expect(rowsError).toBeDefined();
     expect(rowsError!.message).toBe(NO_DATA_ROWS_MESSAGE);
+    expect(result.noCampaignData).toBe(true);
   });
 
   it("fails on an empty CSV with a clear, actionable explanation of likely causes", () => {
@@ -107,6 +108,37 @@ describe("validateMtdDailyCsv", () => {
     expect(rowsError!.message).toBe(NO_DATA_ROWS_MESSAGE);
     expect(rowsError!.message).toContain("Your CSV contains no campaign data");
     expect(rowsError!.message).toContain("Check Meta Ads Manager");
+    expect(result.noCampaignData).toBe(true);
+  });
+
+  describe("noCampaignData — Previous Month Summary alternative-path signal", () => {
+    it("is false for a well-formed, fully valid CSV", () => {
+      const { colMap, rows } = parse(
+        ["Campaign name", "Ad set name", "Day", "Amount spent (USD)", "Results", "Result type"],
+        [["Shoes", "Set 1", "19-07-2026", "100", "5", "Purchase"]],
+      );
+      const result = validateMtdDailyCsv(colMap, rows, NOW);
+      expect(result.noCampaignData).toBe(false);
+    });
+
+    it("is false for a genuinely malformed CSV (missing required columns) — never offers the Previous Month Summary alternative for an unrelated failure", () => {
+      const { colMap, rows } = parse(["Some Column"], [["x"]]);
+      const result = validateMtdDailyCsv(colMap, rows, NOW);
+      expect(result.valid).toBe(false);
+      expect(result.noCampaignData).toBe(false);
+    });
+
+    it("is false for a $0-spend but otherwise well-formed CSV — the Campaigns Paused path handles that case on its own, not this flag", () => {
+      const headers = ["Campaign name", "Ad set name", "Day", "Amount spent (USD)", "Reach", "Impressions", "Results", "Result type"];
+      const rows = Array.from({ length: 7 }, (_, i) => {
+        const day = `${String(i + 1).padStart(2, "0")}-07-2026`;
+        return ["Paused Campaign", "Set A", day, "", "", "", "", ""];
+      });
+      const { colMap, rows: parsedRows } = parse(headers, rows);
+      const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-07-23T12:00:00Z"));
+      expect(result.valid).toBe(true);
+      expect(result.noCampaignData).toBe(false);
+    });
   });
 
   it("passes a real-shaped Meta export: ISO 'Day' column plus constant 'Reporting starts/ends' noise (regression)", () => {

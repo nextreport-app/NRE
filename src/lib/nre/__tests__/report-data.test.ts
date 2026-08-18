@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from "vitest";
 import {
   buildCombinedTotalTableGrid,
   buildComparisonReportData,
+  buildPreviousMonthSummaryReportData,
   buildReportData,
   compactSameMonthRangeLabel,
   COMBINED_TOTAL_STATIC_HEADERS,
@@ -3782,5 +3783,83 @@ describe("buildComparisonReportData", () => {
     const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
     expect(shoes.objective).toBe("PURCHASES");
     expect(shoes.costLabel).toBe("COST PER PURCHASE");
+  });
+});
+
+describe("buildPreviousMonthSummaryReportData — no current-period data, Previous Month Data only", () => {
+  const periodRows: NreRow[] = [
+    {
+      _raw: {},
+      campaign_name: "Campaign A",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: "500",
+      reach: "2000",
+      impressions: "4000",
+      results: "10",
+      ctr: "2",
+      cpc: "3",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    },
+    {
+      _raw: {},
+      campaign_name: "Campaign B",
+      ad_set_name: "Set 1",
+      result_type: "Purchase",
+      spend: "300",
+      reach: "1000",
+      impressions: "2000",
+      results: "5",
+      ctr: "1.5",
+      cpc: "2",
+      date_start: "01-06-2026",
+      date_end: "30-06-2026",
+    },
+  ];
+
+  function buildSummary() {
+    return buildPreviousMonthSummaryReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      periodRows,
+      now: NOW,
+    });
+  }
+
+  it("has no campaign/ad-set slides and no chart — only the Period row's data", () => {
+    const data = buildSummary();
+    expect(data.isPaused).toBe(false);
+    expect(data.campaignSlides).toEqual([]);
+    expect(data.adSetSlides).toEqual([]);
+    expect(data.chart).toBeNull();
+    expect(data.pausedMessage).toBeNull();
+  });
+
+  it("the Period row has real data, summed across every Previous Month Data campaign", () => {
+    const data = buildSummary();
+    expect(data.periodRow.hasData).toBe(true);
+    expect(data.periodRow.spend).toBe("$800"); // 500 + 300
+    expect(data.periodRow.reach).toBe("3,000"); // 2000 + 1000
+  });
+
+  it("forces the MTD row to be hidden downstream — sameMonthAsCurrentMTD is always true, and the MTD row itself never has real data", () => {
+    const data = buildSummary();
+    expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
+    expect(data.mtdRow.hasData).toBe(false);
+  });
+
+  it("cover shows the Previous Month date range and a dedicated health badge, not a computed health score", () => {
+    const data = buildSummary();
+    expect(data.cover.dateRange).toBe(data.periodRow.fullMonthLabel);
+    expect(data.cover.healthBadge).toContain("Previous Month Summary");
+    expect(data.cover.healthScore).toBe(0);
+    expect(data.cover.accountName).toBe("Test Agency");
+  });
+
+  it("tableHeaderLabels mirrors the Period row's own resultColumns", () => {
+    const data = buildSummary();
+    expect(data.tableHeaderLabels.resultColumns.map((c) => c.label)).toEqual(data.periodRow.resultColumns.map((c) => c.label));
   });
 });

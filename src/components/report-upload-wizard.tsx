@@ -265,6 +265,17 @@ export function ReportUploadWizard({
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
+
+  // Previous Month Summary — a small, self-contained state machine
+  // independent of the rest of the wizard's step/data/generateStatus
+  // machinery: it's offered right where a NO_DATA_ROWS_MESSAGE error would
+  // otherwise show (Step 1's analyzeErrors, or Step 5's previewErrors),
+  // BEFORE the normal campaign/dates/metrics steps ever run — none of them
+  // apply when there's no current-period data to review. See
+  // PreviousMonthSummaryOption below and handleGeneratePreviousMonthSummary.
+  const [pmsStatus, setPmsStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [pmsError, setPmsError] = useState<string | null>(null);
+  const [pmsResult, setPmsResult] = useState<{ reportId: string; downloadUrl: string; shareToken: string | null } | null>(null);
   const [mismatchWarning, setMismatchWarning] = useState(false);
   const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | null>(null);
   const [platform, setPlatform] = useState<"META" | "GOOGLE">("META");
@@ -1152,6 +1163,37 @@ export function ReportUploadWizard({
     setGenerateStatus("done");
   }
 
+  /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
+  async function handleGeneratePreviousMonthSummary() {
+    if (!mtdFile) return;
+    setPmsStatus("loading");
+    setPmsError(null);
+
+    const res = await fetch(`/api/clients/${clientId}/reports`, {
+      method: "POST",
+      body: buildUploadFormData(mtdFile, { platform, reportType: "PREVIOUS_MONTH_SUMMARY" }),
+    });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json?.ok) {
+      setPmsStatus("error");
+      setPmsError(json?.error || "Report generation failed. Please try again.");
+      return;
+    }
+
+    setPmsResult({
+      reportId: json.reportId,
+      downloadUrl: `/api/reports/${json.reportId}/download`,
+      shareToken: json.shareToken ?? null,
+    });
+    setPmsStatus("done");
+  }
+
+  function handleCancelPreviousMonthSummary() {
+    setPmsStatus("idle");
+    setPmsError(null);
+  }
+
   async function handleCopyShareLink() {
     if (!shareToken) return;
     await navigator.clipboard.writeText(buildShareReportUrl(shareToken));
@@ -1454,9 +1496,20 @@ export function ReportUploadWizard({
 
           {analyzeStatus === "invalid" && (
             <div className="space-y-3">
-              {analyzeErrors.filter(isNoDataRowsError).map((e, i) => (
-                <NoDataRowsWarning key={i} message={e.message} />
-              ))}
+              {analyzeErrors.filter(isNoDataRowsError).map((e, i) =>
+                hasPreviousMonthData ? (
+                  <PreviousMonthSummaryOption
+                    key={i}
+                    status={pmsStatus}
+                    error={pmsError}
+                    result={pmsResult}
+                    onGenerate={handleGeneratePreviousMonthSummary}
+                    onCancel={handleCancelPreviousMonthSummary}
+                  />
+                ) : (
+                  <NoDataRowsWarning key={i} message={e.message} />
+                ),
+              )}
               {analyzeErrors.filter(isSpecificFieldError).map((e, i) => (
                 <SpecificFieldWarning key={i} message={e.message} />
               ))}
@@ -2054,9 +2107,20 @@ export function ReportUploadWizard({
 
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
-                  {previewErrors.filter(isNoDataRowsError).map((e, i) => (
-                    <NoDataRowsWarning key={i} message={e.message} />
-                  ))}
+                  {previewErrors.filter(isNoDataRowsError).map((e, i) =>
+                    hasPreviousMonthData ? (
+                      <PreviousMonthSummaryOption
+                        key={i}
+                        status={pmsStatus}
+                        error={pmsError}
+                        result={pmsResult}
+                        onGenerate={handleGeneratePreviousMonthSummary}
+                        onCancel={handleCancelPreviousMonthSummary}
+                      />
+                    ) : (
+                      <NoDataRowsWarning key={i} message={e.message} />
+                    ),
+                  )}
                   {previewErrors.filter(isSpecificFieldError).map((e, i) => (
                     <SpecificFieldWarning key={i} message={e.message} />
                   ))}
@@ -2663,6 +2727,74 @@ function NoDataRowsWarning({ message }: { message: string }) {
           </p>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Replaces NoDataRowsWarning entirely (not shown alongside it) whenever the
+ * client has Previous Month Data on file — see handleAnalyze/fetchPreview's
+ * own noCampaignData/hasPreviousMonthData checks at each call site. Offers
+ * a Previous Month Summary report (cover + Combined Total table's own
+ * Previous Month row + Metric Guide only, no campaign/ad-set/chart slides —
+ * see report-data.ts's buildPreviousMonthSummaryReportData) as an
+ * alternative to blocking report generation outright.
+ */
+function PreviousMonthSummaryOption({
+  status,
+  error,
+  result,
+  onGenerate,
+  onCancel,
+}: {
+  status: "idle" | "loading" | "done" | "error";
+  error: string | null;
+  result: { downloadUrl: string; shareToken: string | null } | null;
+  onGenerate: () => void;
+  onCancel: () => void;
+}) {
+  if (status === "done" && result) {
+    return (
+      <div className="space-y-3 rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-[13px] text-emerald-200">
+        <p className="font-medium text-emerald-100">Previous Month Summary report generated!</p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href={result.downloadUrl}
+            className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-emerald-500"
+          >
+            Download PPTX
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
+      <p>No active campaigns found in this date range. Your campaigns did not run during this period.</p>
+      <p>
+        However, we found previous month data for this client. You can still generate a report showing your previous
+        month performance summary.
+      </p>
+      {status === "error" && error && <p className="text-red-300">{error}</p>}
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={status === "loading"}
+          className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-white hover:bg-dash-accent-hover disabled:opacity-60"
+        >
+          {status === "loading" ? "Generating…" : "Generate Previous Month Summary Report"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={status === "loading"}
+          className="rounded-md border border-dash-border px-4 py-2 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-60"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

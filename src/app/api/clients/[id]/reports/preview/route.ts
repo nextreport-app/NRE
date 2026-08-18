@@ -78,7 +78,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!validation.valid) {
     return NextResponse.json(
-      { valid: false, errors: validation.errors, warnings: validation.warnings },
+      {
+        valid: false,
+        errors: validation.errors,
+        warnings: validation.warnings,
+        // See analyze/route.ts's own equivalent fields — the wizard's
+        // PreviousMonthSummaryOption reads these the same way at whichever
+        // step surfaces this error.
+        noCampaignData: validation.noCampaignData,
+        hasPreviousMonthData: !!client.previousMonthDataUrl,
+      },
       { status: 200 },
     );
   }
@@ -86,7 +95,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
-  const reportType = (formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined) ?? "WEEKLY";
+  // PREVIOUS_MONTH_SUMMARY never reaches a preview — the wizard's
+  // PreviousMonthSummaryOption calls the generate route directly, skipping
+  // this route entirely (see report-data.ts's own doc comment on
+  // buildPreviousMonthSummaryReportData). Narrow defensively rather than
+  // widening buildReportData's own ReportType to match.
+  const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+  const reportType = parsedReportType === "MONTHLY" ? "MONTHLY" : parsedReportType === "COMPARISON" ? "COMPARISON" : "WEEKLY";
 
   // Comparison reports skip the weekly/monthly date-selection resolution
   // entirely — they split the same MTD Daily CSV into two independent,

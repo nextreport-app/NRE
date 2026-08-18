@@ -41,7 +41,16 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // an entirely separate pipeline (buildComparisonReportData/
 // renderComparisonPptx) rather than buildReportData/renderPptx — see the
 // generate/preview routes, which branch on this value before either path.
-export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "COMPARISON"]);
+//
+// "PREVIOUS_MONTH_SUMMARY" is the one value that does NOT match the Prisma
+// enum — it's a request-only routing signal for the generate route's own
+// dedicated branch (buildPreviousMonthSummaryReportData), used when the
+// uploaded CSV has no usable current-period data but the client has
+// Previous Month Data on file (see validate.ts's noCampaignData and
+// report-upload-wizard.tsx's PreviousMonthSummaryOption). The generated
+// Report row is still stored with reportType "MONTHLY" — the closest real
+// enum value — never this literal; no database/schema change needed.
+export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "COMPARISON", "PREVIOUS_MONTH_SUMMARY"]);
 
 // Matches prisma/schema.prisma's Platform enum. Absent/undefined means the
 // server falls back to auto-detection from the CSV's own headers (see

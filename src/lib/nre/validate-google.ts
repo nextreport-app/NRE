@@ -105,7 +105,10 @@ export function validateGoogleAdsCsv(
 
   if (rows.length === 0) {
     errors.push({ field: "rows", message: GOOGLE_NO_DATA_ROWS_MESSAGE });
-    return { valid: false, errors, warnings };
+    // Google Ads reports never support Previous Month Data (see route.ts's
+    // own "Google Ads path" comment), so there's no alternative-report
+    // option to offer here — noCampaignData is always false.
+    return { valid: false, errors, warnings, noCampaignData: false };
   }
 
   const nonEmptyCampaignRows = rows.filter((r) => (r.campaign_name || "").trim() !== "");
@@ -150,5 +153,5 @@ export function validateGoogleAdsCsv(
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings };
+  return { valid: errors.length === 0, errors, warnings, noCampaignData: false };
 }

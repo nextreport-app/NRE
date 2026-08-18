@@ -22,6 +22,20 @@ export interface ValidationResult {
   valid: boolean;
   errors: ValidationIssue[];
   warnings: ValidationIssue[];
+  /**
+   * True whenever the NO_DATA_ROWS_MESSAGE error above was the reason this
+   * CSV failed validation — as opposed to a genuinely malformed file
+   * (missing columns, bad date range, etc.). Lets callers (the analyze/
+   * preview/generate routes) offer a Previous Month Summary report instead
+   * of the hard error, when the client has Previous Month Data on file —
+   * see report-upload-wizard.tsx's PreviousMonthSummaryOption. Never true
+   * alongside `valid: true` — this is strictly a reason-for-failure flag,
+   * not an independent "campaigns look empty" heuristic (a valid CSV with
+   * real rows but $0 spend everywhere is deliberately NOT flagged here; see
+   * the "Campaigns Paused" cover-slide feature, which already handles that
+   * case on its own terms further downstream in report-data.ts).
+   */
+  noCampaignData: boolean;
 }
 
 const MAX_RANGE_DAYS = 90;
@@ -128,7 +142,7 @@ export function validateMtdDailyCsv(
 
   if (rows.length === 0) {
     errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
-    return { valid: false, errors, warnings };
+    return { valid: false, errors, warnings, noCampaignData: true };
   }
 
   // A row is usable once it has a campaign name and a resolvable date — that
@@ -145,7 +159,8 @@ export function validateMtdDailyCsv(
   }
 
   const usableRows = nonEmptyCampaignRows.filter((r) => !!getRowDate(r));
-  if (nonEmptyCampaignRows.length > 0 && usableRows.length === 0) {
+  const noUsableDatedRows = nonEmptyCampaignRows.length > 0 && usableRows.length === 0;
+  if (noUsableDatedRows) {
     errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
   }
 
@@ -182,5 +197,5 @@ export function validateMtdDailyCsv(
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings };
+  return { valid: errors.length === 0, errors, warnings, noCampaignData: noUsableDatedRows };
 }

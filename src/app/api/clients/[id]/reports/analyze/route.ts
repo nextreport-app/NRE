@@ -87,7 +87,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json(
-        { valid: false, errors: validation.errors, warnings: validation.warnings, detectedPlatform, platform },
+        {
+          valid: false,
+          errors: validation.errors,
+          warnings: validation.warnings,
+          detectedPlatform,
+          platform,
+          // The wizard's PreviousMonthSummaryOption replaces the hard
+          // NO_DATA_ROWS_MESSAGE error with a "generate from Previous Month
+          // Data instead" offer whenever both are true.
+          noCampaignData: validation.noCampaignData,
+          hasPreviousMonthData: !!client.previousMonthDataUrl,
+        },
         { status: 200 },
       );
     }
