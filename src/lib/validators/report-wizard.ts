@@ -102,6 +102,14 @@ export const objectiveInfoSchema = z.object({
 });
 export const campaignObjectivesSchema = z.record(z.string(), objectiveInfoSchema);
 
+// Step 4 Section B (Per Campaign Customisation) — a user-edited campaign's
+// explicit final metric-key list, keyed by normalized campaign name (same
+// convention as campaignObjectivesSchema above; see report-data.ts's
+// campaignMetricOverrides doc comment for the hard-replacement semantics).
+// A campaign absent from this object keeps the automatic per-objective
+// filtering, unchanged.
+export const campaignMetricOverridesSchema = z.record(z.string(), z.array(z.string().trim().min(1)));
+
 // Objective Confirmation memory cache (Part 3) — every campaign shown on
 // the Objective Confirmation step (cached pre-fills, untouched engine
 // detections, and user edits alike), sent only on the final generate

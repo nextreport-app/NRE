@@ -76,8 +76,8 @@ const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
   3: "Objectives",
-  4: "Metric Cards",
-  5: "Period & Generate",
+  4: "Metrics",
+  5: "Generate",
 };
 
 // Fix 2 — context-specific wizard heading per step, replacing the generic
@@ -87,7 +87,17 @@ const STEP_HEADINGS: Record<Step, string> = {
   2: "Select Campaigns",
   3: "Confirm Objectives",
   4: "Review Metric Cards",
-  5: "Report Period & Generate",
+  5: "Report Period and Generate",
+};
+
+// Final 5-step architecture — per-step subtitle shown under the screen
+// heading, replacing the old "always show client name" subtitle slot.
+const STEP_SUBTITLES: Record<Step, string> = {
+  1: "Select your ad platform and upload your CSV export",
+  2: "Choose which campaigns to include in your report",
+  3: "We detected these campaign objectives. Correct any that look wrong.",
+  4: "Your report will show these metrics on each campaign slide",
+  5: "",
 };
 
 const MIN_SELECTED_METRICS = 4;
@@ -170,12 +180,6 @@ function formatIso(iso: string): string {
 
 function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
-}
-
-/** "August 2026" — used by the Report Summary card's Monthly "Full Month" line (Fix 1). */
-function formatIsoMonthYear(iso: string): string {
-  const d = new Date(iso + "T00:00:00Z");
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 }
 
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
@@ -287,6 +291,10 @@ export function ReportUploadWizard({
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
+  // Step 2's spend badge — total spend per campaign from the uploaded CSV
+  // (analyze/route.ts's campaignSpend, keyed by the exact name as it
+  // appears in `campaigns`, already spend-sorted server-side).
+  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
   // Improvement 2 — ad-set selection, collapsible under each campaign row
@@ -337,6 +345,20 @@ export function ReportUploadWizard({
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [metricsTouched, setMetricsTouched] = useState(false);
   const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
+
+  // Step 4 Section A/B — both collapsed by default ("most users just click
+  // Continue without opening either").
+  const [accountMetricsExpanded, setAccountMetricsExpanded] = useState(false);
+  const [perCampaignExpanded, setPerCampaignExpanded] = useState(false);
+  // Per Campaign Customisation — a campaign present here has had at least
+  // one card explicitly removed from ITS OWN slide (report-data.ts's
+  // campaignMetricOverrides: a hard replacement of the automatic
+  // per-objective narrowing for that campaign only). Keyed by normalized
+  // campaign name, same convention as campaignObjectives. Absent = that
+  // campaign still shows the full account-level selectedMetrics list,
+  // narrowed automatically by the engine as before this feature existed.
+  const [campaignMetricOverrides, setCampaignMetricOverrides] = useState<Map<string, string[]>>(new Map());
+  const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -505,6 +527,7 @@ export function ReportUploadWizard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
     setCampaigns(json.campaigns || []);
+    setCampaignSpend(json.campaignSpend || {});
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
@@ -742,6 +765,8 @@ export function ReportUploadWizard({
     setMetricsTouched(false);
     setMetricsLimitMessage(null);
     setTouchedObjectiveCampaigns(new Set());
+    setCampaignMetricOverrides(new Map());
+    setPerCampaignMinWarning(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
@@ -983,6 +1008,36 @@ export function ReportUploadWizard({
     return metricsTouched && selectedMetrics.length > 0 ? selectedMetrics : undefined;
   }
 
+  /** Step 4 Section B — only sent once a user has actually edited at least one campaign's own card list (the common "most users never open this" case sends undefined, same reasoning as currentSelectedMetricsPayload above). */
+  function currentCampaignMetricOverridesPayload(): Record<string, string[]> | undefined {
+    if (campaignMetricOverrides.size === 0) return undefined;
+    return Object.fromEntries(campaignMetricOverrides);
+  }
+
+  /** Section B's per-campaign card list — a campaign's own override once edited, otherwise falls back to the shared account-level selectedMetrics (Section A), which is what the engine narrows automatically per-objective when no override exists. */
+  function campaignMetricKeysFor(normalizedName: string): string[] {
+    return campaignMetricOverrides.get(normalizedName) ?? selectedMetrics.map((m) => m.key);
+  }
+
+  /** Removes one card from a single campaign's own slide (Step 4 Section B) — never affects any other campaign or the shared Section A list. Enforces the same 4-card minimum as Section A, scoped per-campaign. */
+  function removeCampaignMetricCard(normalizedName: string, key: string) {
+    const current = campaignMetricKeysFor(normalizedName);
+    if (current.length <= MIN_SELECTED_METRICS) {
+      setPerCampaignMinWarning(`Each campaign needs at least ${MIN_SELECTED_METRICS} metric cards.`);
+      return;
+    }
+    setPerCampaignMinWarning(null);
+    setCampaignMetricOverrides((prev) => new Map(prev).set(normalizedName, current.filter((k) => k !== key)));
+  }
+
+  /** Objective-colored badge for Step 4 Section B's per-campaign sub-heading — amber for leads/conversions, green for reach/awareness, blue for everything else (traffic/engagement), matching the wizard's design-system palette. */
+  function objectiveBadgeColorClass(resultLabel: string | undefined): string {
+    const label = (resultLabel ?? "").toUpperCase();
+    if (label.includes("LEAD") || label.includes("PURCHASE") || label.includes("SALE")) return "bg-amber-950/30 text-[#f6ad55]";
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL")) return "bg-emerald-950/30 text-[#68d391]";
+    return "bg-blue-950/30 text-[#63b3ed]";
+  }
+
   // ── Step 5: Dates ───────────────────────────────────────────────────────
   function validateCustomRange(): boolean {
     if (dateMode !== "custom") return true;
@@ -1057,6 +1112,7 @@ export function ReportUploadWizard({
         selectedAdSets: Array.from(selectedAdSets),
         selectedMetrics: currentSelectedMetricsPayload(),
         campaignObjectives: currentCampaignObjectivesPayload(),
+        campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
         dateSelection,
         reportType,
         platform,
@@ -1134,6 +1190,7 @@ export function ReportUploadWizard({
         selectedAdSets: Array.from(selectedAdSets),
         selectedMetrics: currentSelectedMetricsPayload(),
         campaignObjectives: currentCampaignObjectivesPayload(),
+        campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
         // Part 3 — every campaign the Objective Confirmation step showed,
         // saved back to this client's objective memory cache once the
         // report actually generates. Only sent here, never on preview.
@@ -1314,6 +1371,10 @@ export function ReportUploadWizard({
     setMetricsStatus("idle");
     setMetricsTouched(false);
     setMetricsLimitMessage(null);
+    setAccountMetricsExpanded(false);
+    setPerCampaignExpanded(false);
+    setCampaignMetricOverrides(new Map());
+    setPerCampaignMinWarning(null);
 
     setDateBounds(null);
     setWeeklyOptions(null);
@@ -1354,34 +1415,9 @@ export function ReportUploadWizard({
    * dropped entirely, and each remaining piece becomes its own labelled
    * "Label: value" line, varying by report type.
    */
-  function reportSummaryLines(): { label: string; value: string }[] {
-    if (previewKind === "comparison" && comparisonData) {
-      return [
-        { label: "Period A", value: comparisonData.periodALabel },
-        { label: "Period B", value: comparisonData.periodBLabel },
-      ];
-    }
-    if (data) {
-      if (reportType === "MONTHLY") {
-        return mtdRange ? [{ label: "Full Month", value: formatIsoMonthYear(mtdRange.startIso) }] : [];
-      }
-      const lines: { label: string; value: string }[] = [];
-      if (reportType === "WEEKLY" && weeklyRangeIso) lines.push({ label: "Week", value: formatIsoRange(weeklyRangeIso) });
-      if (mtdRange) lines.push({ label: "Month till date (MTD)", value: formatIsoRange(mtdRange) });
-      return lines;
-    }
-    return [];
-  }
-
   function reportTypeLabel(): string {
     if (previewKind === "comparison") return "Comparison Report";
     return reportType === "MONTHLY" ? "Monthly Report" : "Weekly Report";
-  }
-
-  /** "Ready to generate" summary card's Report Type line — distinct wording from reportTypeLabel() above (which drives the Drive save label elsewhere), matching this card's own spec literally. */
-  function reportTypeSummaryLabel(): string {
-    if (previewKind === "comparison") return "Comparison Report";
-    return reportType === "MONTHLY" ? "Monthly Performance Report" : "Weekly Performance Report";
   }
 
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
@@ -1407,8 +1443,8 @@ export function ReportUploadWizard({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-1 text-[24px] font-bold text-dash-ink">{STEP_HEADINGS[step]}</h1>
-        <p className="text-[15px] text-dash-ink-secondary">{clientName}</p>
+        <h1 className="mb-1 text-[20px] font-bold text-white">{STEP_HEADINGS[step]}</h1>
+        <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step] || clientName}</p>
       </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
 
@@ -1447,7 +1483,6 @@ export function ReportUploadWizard({
           {selectedPlatformCard && (
             <div className="space-y-3">
               <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
-              <p className="text-[13px] text-dash-ink-secondary">Accepted formats: CSV, Excel, TSV, TXT</p>
               <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
                 Tip:{" "}
                 {selectedPlatformCard === "META"
@@ -1455,18 +1490,13 @@ export function ReportUploadWizard({
                   : "Set date range to Last 30 days and segment by Day"}
               </p>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!mtdFile || analyzeStatus === "loading"}
-                  className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-                >
-                  {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
-                </button>
-                <Link href="/help/download" className="text-[13px] text-dash-accent hover:underline">
-                  Not sure how to download? See our guide
-                </Link>
-              </div>
+              <button
+                onClick={handleAnalyze}
+                disabled={!mtdFile || analyzeStatus === "loading"}
+                className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+              >
+                {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
+              </button>
             </div>
           )}
 
@@ -1538,26 +1568,20 @@ export function ReportUploadWizard({
       {step === 2 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-[16px] font-semibold text-white">Select campaigns to include</h3>
-              <p className="text-[13px] text-dash-ink-secondary">
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={campaigns.length > 0 && selectedCampaigns.size === campaigns.length}
+                ref={(el) => {
+                  if (el) el.indeterminate = selectedCampaigns.size > 0 && selectedCampaigns.size < campaigns.length;
+                }}
+                onChange={(e) => setSelectedCampaigns(e.target.checked ? new Set(campaigns) : new Set())}
+                className="h-4 w-4 flex-shrink-0 accent-accent"
+              />
+              <span className="text-[13px] text-dash-ink-secondary">
                 {selectedCampaigns.size} of {campaigns.length} campaigns selected
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedCampaigns(new Set(campaigns))}
-                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedCampaigns(new Set())}
-                className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-              >
-                Deselect All
-              </button>
-            </div>
+              </span>
+            </label>
           </div>
 
           <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
@@ -1566,8 +1590,10 @@ export function ReportUploadWizard({
               const group = adSetGroups.find((g) => g.campaignName === name);
               const isExpanded = expandedCampaigns.has(name);
               const isMultiAdSet = !!group && group.adSetNames.length >= 2;
+              const isSingleAdSet = !!group && group.adSetNames.length === 1;
               const allAdSetsDeselected =
                 !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
+              const spend = campaignSpend[name] ?? 0;
               return (
                 <li key={name} className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
@@ -1578,10 +1604,16 @@ export function ReportUploadWizard({
                       onChange={() => toggleCampaign(name)}
                       className="h-4 w-4 flex-shrink-0 accent-accent"
                     />
-                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
+                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] font-bold text-white" title={name}>
                       {name}
                     </label>
-                    {group && (
+                    <span className="flex-shrink-0 rounded-md bg-dash-bg px-2 py-0.5 text-[13px] font-medium text-dash-accent">
+                      ${Math.round(spend).toLocaleString()}
+                    </span>
+                    {isSingleAdSet && (
+                      <span className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary">1 ad set</span>
+                    )}
+                    {isMultiAdSet && (
                       <button
                         type="button"
                         onClick={() => toggleCampaignExpanded(name)}
@@ -1594,7 +1626,7 @@ export function ReportUploadWizard({
                     )}
                   </div>
 
-                  {isSelected && group && isExpanded && (
+                  {isSelected && group && isMultiAdSet && isExpanded && (
                     <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-[12px] text-dash-ink-secondary">Ad sets</p>
@@ -1644,6 +1676,24 @@ export function ReportUploadWizard({
                       )}
                     </div>
                   )}
+
+                  {isSelected && group && isSingleAdSet && (
+                    <div className="mt-3 flex items-center gap-2.5 rounded-md border border-dash-border bg-dash-bg p-3">
+                      <input
+                        type="checkbox"
+                        id={`adset-${adSetKey(name, group.adSetNames[0])}`}
+                        checked={selectedAdSets.has(adSetKey(name, group.adSetNames[0]))}
+                        onChange={() => toggleAdSet(name, group.adSetNames[0])}
+                        className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
+                      />
+                      <label
+                        htmlFor={`adset-${adSetKey(name, group.adSetNames[0])}`}
+                        className="text-[12px] text-dash-ink-secondary"
+                      >
+                        Check to include audience slide
+                      </label>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -1675,12 +1725,24 @@ export function ReportUploadWizard({
       {step === 3 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-[#1e293b] p-5">
           <div>
-            <h3 className="text-[16px] font-semibold text-white">Confirm Campaign Objectives</h3>
+            <h3 className="text-[15px] font-semibold text-white">Confirm Campaign Objectives</h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              We&apos;ve detected the objectives for each campaign. Review and correct if needed before generating
-              your report.
+              We detected these campaign objectives. Correct any that look wrong.
             </p>
           </div>
+
+          {(() => {
+            const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
+            const confidenceTiers = shownCampaigns.map((name) => campaignObjectiveConfidence.get(normalizeCampaignName(name)));
+            const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
+            return (
+              allConfirmed && (
+                <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[13px] text-amber-200">
+                  All objectives confirmed from your previous report. Review or click Continue.
+                </div>
+              )
+            );
+          })()}
 
           <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
             {campaigns
@@ -1696,9 +1758,14 @@ export function ReportUploadWizard({
                 const options = OBJECTIVE_DROPDOWN_OPTIONS.some((o) => o.key === currentKey)
                   ? OBJECTIVE_DROPDOWN_OPTIONS
                   : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
-                const badge = objectiveConfidenceBadge(campaignObjectiveConfidence.get(normalized));
+                const tier = campaignObjectiveConfidence.get(normalized);
+                const badge = objectiveConfidenceBadge(tier);
+                const needsVerification = tier === "columnData";
                 return (
-                  <li key={name} className="px-4 py-3">
+                  <li
+                    key={name}
+                    className={`px-4 py-3 ${needsVerification ? "border-l-4 border-l-[#f6ad55] bg-amber-950/10" : ""}`}
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate text-[13px] text-white" title={name}>
                         {name}
@@ -1727,8 +1794,7 @@ export function ReportUploadWizard({
           </ul>
 
           <p className="text-[13px] text-dash-ink-secondary">
-            The detected objective is shown. Change it if incorrect. The objective determines which metrics are
-            highlighted in your report.
+            Objectives determine which metrics appear on each campaign slide.
           </p>
 
           <div className="flex gap-3">
@@ -1751,11 +1817,8 @@ export function ReportUploadWizard({
       {step === 4 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
-            <h3 className="text-[16px] font-semibold text-white">Review Metric Cards</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Your report will show these {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics
-              per campaign slide. Tap any card to change it, or continue with our recommended selection.
-            </p>
+            <h3 className="text-[15px] font-semibold text-white">Review Metric Cards</h3>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">Your report will show these metrics on each campaign slide</p>
           </div>
 
           {metricsStatus === "error" && (
@@ -1764,94 +1827,179 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {selectedMetrics.length > 0 && (
-            <>
-              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                {selectedMetrics.map((metric, i) => (
-                  <div
-                    key={`${metric.key}-${i}`}
-                    className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
-                  >
-                    <span
-                      className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
-                      style={{ letterSpacing: "0.5px" }}
-                    >
-                      {metric.label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeMetricAt(i)}
-                      aria-label={`Remove ${metric.label}`}
-                      className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
-                    >
-                      ✕
-                    </button>
-                  </div>
+          {/* Section A — Account Metrics: collapsed by default, applies to every campaign. */}
+          <div className="space-y-3 rounded-md border border-dash-border p-4">
+            <button
+              type="button"
+              onClick={() => setAccountMetricsExpanded((v) => !v)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <span className="text-[13px] font-medium text-white">
+                {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics selected for all campaigns
+              </span>
+              <span className="flex-shrink-0 text-[13px] text-dash-accent">Customise {accountMetricsExpanded ? "▲" : "▼"}</span>
+            </button>
+
+            {!accountMetricsExpanded && selectedMetrics.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedMetrics.map((m, i) => (
+                  <span key={`${m.key}-${i}`} className="rounded-full bg-dash-bg px-2.5 py-1 text-[12px] text-dash-ink-secondary">
+                    {m.label}
+                  </span>
                 ))}
               </div>
+            )}
 
-              {(() => {
-                const warning = slide2Warning();
-                if (!warning) return null;
-                return (
-                  <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
-                    <p className="font-semibold">⚠️ Adding a second slide</p>
-                    {warning.scenario === "A" ? (
-                      <>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
-                          slide. Adding more creates a second slide for this campaign.
-                        </p>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
-                          currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
-                          fill it properly, or remove a less important metric from slide 1 to keep everything on one
-                          clean slide.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
-                          slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
-                          slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
-                        </p>
-                        <p className="mt-1 text-dash-ink-secondary">
-                          Consider removing a less important metric from slide 1 and swapping it for this one
-                          instead.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {unselectedAvailableMetrics().length > 0 && (
-                <div>
-                  <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {unselectedAvailableMetrics().map((candidate) => {
-                      const disabled = wouldLeaveSlide2TooShort(candidate);
-                      return (
-                        <button
-                          key={candidate.key}
-                          type="button"
-                          onClick={() => addMetric(candidate)}
-                          disabled={disabled}
-                          title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
-                          className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
-                        >
-                          + {candidate.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+            {accountMetricsExpanded && selectedMetrics.length > 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                  {selectedMetrics.map((metric, i) => (
+                    <div
+                      key={`${metric.key}-${i}`}
+                      className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
+                    >
+                      <span
+                        className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
+                        style={{ letterSpacing: "0.5px" }}
+                      >
+                        {metric.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeMetricAt(i)}
+                        aria-label={`Remove ${metric.label}`}
+                        className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              )}
 
-              {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
-            </>
-          )}
+                {(() => {
+                  const warning = slide2Warning();
+                  if (!warning) return null;
+                  return (
+                    <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
+                      <p className="font-semibold">⚠️ Adding a second slide</p>
+                      {warning.scenario === "A" ? (
+                        <>
+                          <p className="mt-1 text-dash-ink-secondary">
+                            Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
+                            slide. Adding more creates a second slide for this campaign.
+                          </p>
+                          <p className="mt-1 text-dash-ink-secondary">
+                            For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
+                            currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
+                            fill it properly, or remove a less important metric from slide 1 to keep everything on one
+                            clean slide.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-1 text-dash-ink-secondary">
+                            Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
+                            slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
+                            slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
+                          </p>
+                          <p className="mt-1 text-dash-ink-secondary">
+                            Consider removing a less important metric from slide 1 and swapping it for this one
+                            instead.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {unselectedAvailableMetrics().length > 0 && (
+                  <div>
+                    <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {unselectedAvailableMetrics().map((candidate) => {
+                        const disabled = wouldLeaveSlide2TooShort(candidate);
+                        return (
+                          <button
+                            key={candidate.key}
+                            type="button"
+                            onClick={() => addMetric(candidate)}
+                            disabled={disabled}
+                            title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
+                            className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
+                          >
+                            + {candidate.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
+                <p className="text-[13px] text-dash-ink-secondary">These metrics apply to all campaigns. Remove any you do not want.</p>
+              </>
+            )}
+          </div>
+
+          <div className="border-t border-dash-border" />
+
+          {/* Section B — Per Campaign Customisation: collapsed by default. */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setPerCampaignExpanded((v) => !v)}
+              className="text-[13px] font-medium text-white hover:text-dash-accent"
+            >
+              Customise per campaign {perCampaignExpanded ? "▲" : "▼"}
+            </button>
+
+            {perCampaignExpanded && (
+              <div className="space-y-3">
+                {campaigns
+                  .filter((name) => selectedCampaigns.has(name))
+                  .map((name) => {
+                    const normalized = normalizeCampaignName(name);
+                    const objective = campaignObjectives.get(normalized);
+                    const keys = new Set(campaignMetricKeysFor(normalized));
+                    const cards = selectedMetrics.filter((m) => keys.has(m.key));
+                    return (
+                      <div key={name} className="space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-[13px] font-semibold text-white" title={name}>
+                            {name}
+                          </span>
+                          {objective && (
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${objectiveBadgeColorClass(objective.resultLabel)}`}>
+                              {objective.resultLabel}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cards.map((m) => (
+                            <span
+                              key={m.key}
+                              className="flex items-center gap-1.5 rounded-full border border-dash-border bg-[#111f35] px-2.5 py-1 text-[12px] text-dash-ink-secondary"
+                            >
+                              {m.label}
+                              <button
+                                type="button"
+                                onClick={() => removeCampaignMetricCard(normalized, m.key)}
+                                aria-label={`Remove ${m.label} from ${name}`}
+                                className="text-white hover:text-[#fc8181]"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                {perCampaignMinWarning && <p className="text-[13px] text-amber-300">{perCampaignMinWarning}</p>}
+                <p className="text-[13px] text-dash-ink-secondary">Changes here only affect this campaign&apos;s slide.</p>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3">
             <button
@@ -1886,8 +2034,8 @@ export function ReportUploadWizard({
               <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
 
               {/* Section 1 — Report Type */}
-              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-            <h4 className="text-[16px] font-semibold text-white">Report Type</h4>
+              <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
+            <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ReportTypeCard
                 icon="📊"
@@ -2158,47 +2306,21 @@ export function ReportUploadWizard({
                   Ready to generate) into the one card the merged Step 3
                   spec calls for. */}
               <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
-                <h3 className="text-[16px] font-semibold text-white">Ready to generate</h3>
+                <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
                   <p className="text-[13px] text-[#94a3b8]">
-                    Client: <span className="text-[14px] text-white">{clientName}</span>
+                    Client: <span className="text-[13px] text-white">{clientName}</span>
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
-                    Report Type: <span className="text-[14px] text-white">{reportTypeSummaryLabel()}</span>
-                  </p>
-                  <div>
-                    <p className="text-[13px] text-[#94a3b8]">
-                      Campaigns:{" "}
-                      <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
-                    </p>
-                    {summaryCampaignNames().length > 0 && (
-                      <div className="mt-1 space-y-0.5 pl-3">
-                        {summaryCampaignNames().map((name) => (
-                          <p key={name} className="text-[13px] text-[#94a3b8]">
-                            {name}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {reportSummaryLines().length > 0 && (
-                    <div>
-                      <p className="text-[13px] text-[#94a3b8]">Date range:</p>
-                      <div className="mt-1 space-y-0.5 pl-3">
-                        {reportSummaryLines().map((line) => (
-                          <p key={line.label} className="text-[13px] text-[#94a3b8]">
-                            {line.label}: <span className="text-white">{line.value}</span>
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                    Campaigns:{" "}
+                    <span className="text-[13px] text-white">{summaryCampaignNames().length} selected</span>
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
-                    Platform: <span className="text-[14px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
+                    Template: <span className="text-[13px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                  </p>
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Platform: <span className="text-[13px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
                   </p>
                 </div>
               </div>
@@ -2591,7 +2713,7 @@ function StepIndicator({
 }) {
   const steps: Step[] = [1, 2, 3, 4, 5];
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[13px]">
+    <div className="flex flex-wrap items-center gap-2 text-[12px]">
       {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
         return (
@@ -2600,8 +2722,9 @@ function StepIndicator({
               <button
                 type="button"
                 onClick={() => onNavigate(s)}
-                className="rounded-full px-3 py-1 font-medium text-dash-accent hover:underline"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-white"
               >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
                 {STEP_LABELS[s]}
               </button>
             ) : (

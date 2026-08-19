@@ -27,6 +27,7 @@ import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
+  campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
   confirmedCampaignObjectivesSchema,
@@ -74,6 +75,7 @@ async function buildMetaData(
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
+  const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
   // caller (POST below) returns early for reportType "COMPARISON" before
@@ -103,6 +105,7 @@ async function buildMetaData(
     reportType,
     selectedMetrics,
     campaignObjectives,
+    campaignMetricOverrides,
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
   });
 

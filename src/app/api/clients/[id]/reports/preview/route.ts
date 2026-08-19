@@ -14,6 +14,7 @@ import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
 import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
+  campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
   dateSelectionSchema,
@@ -95,6 +96,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
+  const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   // PREVIOUS_MONTH_SUMMARY never reaches a preview — the wizard's
   // PreviousMonthSummaryOption calls the generate route directly, skipping
   // this route entirely (see report-data.ts's own doc comment on
@@ -156,6 +158,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reportType,
     selectedMetrics,
     campaignObjectives,
+    campaignMetricOverrides,
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
   });
 

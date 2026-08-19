@@ -367,6 +367,27 @@ export interface BuildReportDataInput {
    * independently-resolved objective, exactly as before this cache existed.
    */
   objectiveCache?: Record<string, ResultLabels>;
+  /**
+   * Step 4's optional Per Campaign Customisation — a user has explicitly
+   * removed one or more cards from a SPECIFIC campaign's own slide (never
+   * shown/editable per-ad-set; an ad-set slide always inherits its PARENT
+   * campaign's own override, same "Step 0 single source of truth" rule
+   * campaignObjectives already follows). Keyed by normalized campaign name
+   * (objective.ts's normalizeCampaignName), each value is the FINAL list of
+   * metric keys (from `selectedMetrics`) to show on that campaign's slide —
+   * a hard override that replaces the automatic
+   * filterMetricsForCampaignObjective narrowing entirely for that campaign,
+   * not an additional filter layered on top of it, so a user's explicit
+   * per-campaign choice is never silently re-narrowed by the objective
+   * logic. A campaign absent from this map keeps the automatic per-objective
+   * filtering, exactly as before this field existed. `undefined`/empty
+   * means the section was never opened — every campaign behaves exactly as
+   * before this field existed. Meta only, matching campaignObjectives'/
+   * selectedMetrics' own scope — Google's simpler, single-objective
+   * pipeline (google-report-data.ts) has no per-campaign concept to
+   * override.
+   */
+  campaignMetricOverrides?: Record<string, string[]>;
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -704,6 +725,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     selectedMetrics,
     campaignObjectives,
     objectiveCache,
+    campaignMetricOverrides,
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
 
@@ -775,6 +797,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignObjectiveMap.set(normalizeCampaignName(name), objective);
     }
   }
+  // Step 4's Per Campaign Customisation — see BuildReportDataInput's
+  // campaignMetricOverrides doc comment for the hard-replacement semantics.
+  // Normalized the same way as campaignObjectiveMap above so lookups inside
+  // computeMetaSlideMetrics use the same key convention as every other
+  // campaign-name map in this function.
+  const campaignMetricOverrideMap = new Map<string, string[]>(
+    Object.entries(campaignMetricOverrides ?? {}).map(([name, keys]) => [normalizeCampaignName(name), keys]),
+  );
   // A campaign's Previous Month objective is independently resolved from
   // that separate upload's own (different month's) raw rows — unaggregated,
   // same as always; Previous Month Data is one row per campaign/ad-set for
@@ -1007,6 +1037,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     baseline: MetaSlotBaseline,
     rawRows: NreRow[],
     campaignObjective: CampaignObjectiveRef | null,
+    campaignName: string,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
@@ -1039,7 +1070,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         baselineValues[costKey] = baseline.cprValue;
       }
     }
-    const relevantMetrics = filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
+    // Step 4 Section B — a user-edited campaign gets its own explicit metric
+    // list as a HARD REPLACEMENT of the automatic per-objective narrowing
+    // below, not an additional filter on top of it (see
+    // BuildReportDataInput.campaignMetricOverrides doc comment). A campaign
+    // absent from the map keeps the automatic filterMetricsForCampaignObjective
+    // behavior, unchanged from before this override existed.
+    const override = campaignMetricOverrideMap.get(normalizeCampaignName(campaignName));
+    const relevantMetrics = override
+      ? selectedMetrics.filter((m) => override.includes(m.key))
+      : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
     // Part 4 — a selected metric with no real data for THIS campaign is
     // nulled out by buildSlotsFromSelection (dashed out downstream by
@@ -1171,6 +1211,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       campaignRawGroups[campaignName] ?? [],
       campaignObjective,
+      campaignName,
     );
 
     return {
@@ -1294,6 +1335,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
       adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
       campaignObjective,
+      campaignName,
     );
 
     adSetSlides.push({

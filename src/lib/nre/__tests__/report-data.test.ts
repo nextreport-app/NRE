@@ -3634,6 +3634,147 @@ describe("buildReportData — Part 8: mixed-objective account, per-campaign metr
   });
 });
 
+describe("buildReportData — Step 4 Section B: campaignMetricOverrides (final 5-step wizard)", () => {
+  function objRow(day: string, campaign: string, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
+    return {
+      _raw: { Day: day, "Amount spent": "50", Reach: "1000", Impressions: "10000", "CTR (all)": "2", ...extraRaw },
+      campaign_name: campaign,
+      ad_set_name: "Set 1",
+      result_type: resultType,
+      spend: "50",
+      reach: "1000",
+      impressions: "10000",
+      results: "10",
+      ctr: "2",
+      cpc: "1",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const days = daysInclusive(13, 19);
+  const rows: NreRow[] = days.flatMap((day) => [
+    objRow(day, "Lead Gen", "Leads (form)", { "Link clicks": "20", "Landing page views": "15" }),
+    objRow(day, "Website Leads Co", "Website leads", { "Link clicks": "25", "Landing page views": "18" }),
+  ]);
+
+  const selectedMetrics: SelectedMetric[] = [
+    { key: "spend", label: "AD SPEND", format: "currency", csvName: "amount spent" },
+    { key: "reach", label: "REACH", format: "number", csvName: "reach" },
+    { key: "impressions", label: "IMPRESSIONS", format: "number", csvName: "impressions" },
+    { key: "meta_form_leads", label: "META FORM LEADS", format: "number", csvName: "results" },
+    { key: "cost_per_meta_form_leads", label: "COST PER LEAD", format: "currency", csvName: "cost per result" },
+    { key: "website_leads", label: "WEBSITE LEADS", format: "number", csvName: "results" },
+    { key: "cost_per_website_leads", label: "COST PER WEBSITE LEAD", format: "currency", csvName: "cost per result" },
+    { key: "ctr", label: "CTR (ALL)", format: "percentage", csvName: "ctr (all)" },
+    { key: "link_clicks", label: "LINK CLICKS", format: "number", csvName: "link clicks" },
+  ];
+
+  const campaignObjectives = {
+    "Lead Gen": { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" },
+    "Website Leads Co": { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" },
+  };
+
+  it("a campaign present in campaignMetricOverrides gets exactly that card list — a hard replacement, not an additional filter on top of the automatic per-objective narrowing", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides: {
+        "Lead Gen": ["spend", "reach", "ctr", "link_clicks"],
+      },
+    });
+    const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    const leadGenKeys = leadGen.dynamicMetrics.map((m) => m?.key);
+    // Exactly the override's own keys — not the automatic filter's
+    // meta_form_leads/cost_per_meta_form_leads pair, even though those would
+    // normally be included for this campaign's own objective.
+    expect(leadGenKeys).toEqual(["spend", "reach", "ctr", "link_clicks"]);
+    expect(leadGenKeys).not.toContain("meta_form_leads");
+    expect(leadGenKeys).not.toContain("cost_per_meta_form_leads");
+  });
+
+  it("a campaign absent from campaignMetricOverrides keeps the automatic per-objective filtering, unchanged", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides: {
+        "Lead Gen": ["spend", "reach", "ctr", "link_clicks"],
+      },
+    });
+    const websiteLeads = data.campaignSlides.find((s) => s.campaignName === "Website Leads Co")!;
+    const websiteLeadsKeys = websiteLeads.dynamicMetrics.map((m) => m?.key);
+    expect(websiteLeadsKeys).toContain("website_leads");
+    expect(websiteLeadsKeys).toContain("cost_per_website_leads");
+    expect(websiteLeadsKeys).not.toContain("meta_form_leads");
+  });
+
+  it("an ad-set slide inherits its PARENT campaign's own override, matching the same single-source-of-truth rule campaignObjectives already follows", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives,
+      selectedAdSets: [adSetKey("Lead Gen", "Set 1")],
+      campaignMetricOverrides: {
+        "Lead Gen": ["spend", "reach", "ctr", "link_clicks"],
+      },
+    });
+    const adSetSlide = data.adSetSlides.find((s) => s.campaignName === "Lead Gen");
+    expect(adSetSlide).toBeDefined();
+    const adSetKeys = adSetSlide!.dynamicMetrics.map((m) => m?.key);
+    expect(adSetKeys).toEqual(["spend", "reach", "ctr", "link_clicks"]);
+  });
+
+  it("normalizes campaign name matching the same way campaignObjectives does (case/whitespace-insensitive)", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides: {
+        "  lead gen  ": ["spend", "reach", "ctr", "link_clicks"],
+      },
+    });
+    const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    expect(leadGen.dynamicMetrics.map((m) => m?.key)).toEqual(["spend", "reach", "ctr", "link_clicks"]);
+  });
+
+  it("an empty/undefined campaignMetricOverrides leaves every campaign on the automatic per-objective filtering", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives,
+    });
+    const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
+    expect(leadGen.dynamicMetrics.map((m) => m?.key)).toContain("meta_form_leads");
+  });
+});
+
 describe("buildComparisonReportData", () => {
   function comparisonDaysInclusive(startIso: string, endIso: string): string[] {
     const days: string[] = [];
