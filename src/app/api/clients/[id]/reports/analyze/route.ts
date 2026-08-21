@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelection, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
+import { extractCampaignNames, resolveCampaignSelection, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { computeCsvDateBounds, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -103,13 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    // Step 2 spec — campaigns sorted by total spend descending, with the
-    // spend value itself returned so the wizard can render each row's
-    // amber spend badge. Sorted BEFORE resolveCampaignSelection so its own
-    // order-preserving filter naturally keeps selectedCampaigns in the same
-    // spend-descending order.
-    const campaignSpend = extractCampaignSpend(mtdParsed.rows);
-    const campaigns = sortCampaignsBySpend(extractCampaignNames(mtdParsed.rows), campaignSpend);
+    const campaigns = extractCampaignNames(mtdParsed.rows);
 
     let campaignMemory: CampaignSelectionMemory | null = null;
     if (client.lastDeselectedCampaigns) {
@@ -148,7 +142,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
       headers: mtdParsed.headers,
       campaigns,
-      campaignSpend,
       selectedCampaigns,
       campaignStepMode,
       adSetGroups,

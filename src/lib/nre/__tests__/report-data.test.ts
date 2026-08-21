@@ -11,7 +11,7 @@ import {
 } from "../report-data";
 import { adSetKey } from "../ad-sets";
 import type { NreRow } from "../columns";
-import { defaultMetaSelection, type SelectedMetric } from "../available-metrics";
+import { defaultMetaSelection, objectiveMetricKeys, type SelectedMetric } from "../available-metrics";
 
 beforeAll(() => {
   process.env.TZ = "UTC";
@@ -3772,6 +3772,92 @@ describe("buildReportData — Step 4 Section B: campaignMetricOverrides (final 5
     });
     const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
     expect(leadGen.dynamicMetrics.map((m) => m?.key)).toContain("meta_form_leads");
+  });
+});
+
+describe("buildReportData — Step 4 rebuild: two campaigns sharing defaultMetaSelection's generic result/cost keys never collide", () => {
+  // defaultMetaSelection reuses the dictionary's own generic "results"/
+  // "cost_per_result" keys (just relabeled) for every NON-dedicated
+  // objective (WEBSITE LEADS, PURCHASES, APP INSTALLS, ...). The /metrics
+  // route remaps these to objectiveMetricKeys' own unique synthetic key
+  // per objective before returning perCampaignSelection — this test proves
+  // that remap is load-bearing: without it, two selected campaigns with
+  // two different non-dedicated objectives would collide once the wizard
+  // unions every campaign's own metric objects into one selectedMetrics
+  // payload (report-data.ts's override resolution is key-based), and one
+  // campaign's card would silently show the OTHER campaign's label.
+  function objRow(day: string, campaign: string, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
+    return {
+      _raw: { Day: day, "Amount spent": "50", Reach: "1000", Impressions: "10000", "CTR (all)": "2", ...extraRaw },
+      campaign_name: campaign,
+      ad_set_name: "Set 1",
+      result_type: resultType,
+      spend: "50",
+      reach: "1000",
+      impressions: "10000",
+      results: "10",
+      ctr: "2",
+      cpc: "1",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const days = daysInclusive(13, 19);
+  const rows: NreRow[] = days.flatMap((day) => [
+    objRow(day, "Website Co", "Website leads", { "Link clicks": "20", "Landing page views": "15" }),
+    objRow(day, "Purchase Co", "Purchase", { "Link clicks": "25", "Landing page views": "18" }),
+  ]);
+
+  /** Mirrors the /metrics route's own per-campaign remap exactly. */
+  function preSelectFor(resultLabel: string, costLabel: string): SelectedMetric[] {
+    const { resultKey, costKey, dedicated } = objectiveMetricKeys(resultLabel);
+    return defaultMetaSelection(resultLabel, costLabel, Object.keys(rows[0]._raw)).map((m) => {
+      if (dedicated) return m;
+      if (m.key === "results") return { ...m, key: resultKey };
+      if (m.key === "cost_per_result") return { ...m, key: costKey };
+      return m;
+    });
+  }
+
+  it("gives each campaign its own distinct result/cost keys, so the wizard's union pool never overwrites one campaign's label with another's", () => {
+    const websiteSelection = preSelectFor("WEBSITE LEADS", "COST PER WEBSITE LEAD");
+    const purchaseSelection = preSelectFor("PURCHASES", "COST PER PURCHASE");
+
+    const byKey = new Map<string, SelectedMetric>();
+    for (const m of [...websiteSelection, ...purchaseSelection]) byKey.set(m.key, m);
+    const selectedMetrics = Array.from(byKey.values());
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: NOW,
+      selectedMetrics,
+      campaignObjectives: {
+        "Website Co": { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" },
+        "Purchase Co": { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" },
+      },
+      campaignMetricOverrides: {
+        "Website Co": websiteSelection.map((m) => m.key),
+        "Purchase Co": purchaseSelection.map((m) => m.key),
+      },
+    });
+
+    const websiteSlide = data.campaignSlides.find((s) => s.campaignName === "Website Co")!;
+    const purchaseSlide = data.campaignSlides.find((s) => s.campaignName === "Purchase Co")!;
+
+    const websiteCard = websiteSlide.dynamicMetrics.find((m) => m?.key === "website_leads");
+    expect(websiteCard?.label).toBe("WEBSITE LEADS");
+
+    const purchaseCard = purchaseSlide.dynamicMetrics.find((m) => m?.key === "purchases");
+    expect(purchaseCard?.label).toBe("PURCHASES");
+
+    // Neither slide shows the other campaign's objective card.
+    expect(websiteSlide.dynamicMetrics.map((m) => m?.key)).not.toContain("purchases");
+    expect(purchaseSlide.dynamicMetrics.map((m) => m?.key)).not.toContain("website_leads");
   });
 });
 

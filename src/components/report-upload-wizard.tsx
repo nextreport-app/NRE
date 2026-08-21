@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
-import { MIN_SECOND_SLIDE_METRICS, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
@@ -101,8 +101,6 @@ const STEP_SUBTITLES: Record<Step, string> = {
 };
 
 const MIN_SELECTED_METRICS = 4;
-const MAX_METRICS_PER_SLIDE = 8;
-const MAX_TOTAL_METRICS = 16;
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -291,10 +289,6 @@ export function ReportUploadWizard({
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
-  // Step 2's spend badge — total spend per campaign from the uploaded CSV
-  // (analyze/route.ts's campaignSpend, keyed by the exact name as it
-  // appears in `campaigns`, already spend-sorted server-side).
-  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
   // Improvement 2 — ad-set selection, collapsible under each campaign row
@@ -334,30 +328,21 @@ export function ReportUploadWizard({
     Map<string, "cached" | "resultType" | "columnData">
   >(new Map());
 
-  // Step 4 — Metrics (Part 3, Meta only — populated by /metrics, called
-  // right after Campaign Selection so the engine's default 8 reflects the
-  // objective of the campaigns actually being reported on). `selectedMetrics`
-  // is the wizard's own ordered pick list (up to MAX_TOTAL_METRICS); empty
-  // means "use the engine's automatic assignment" (never sent to the
-  // generate/preview APIs in that case — see currentSelectedMetricsPayload).
-  const [availableMetrics, setAvailableMetrics] = useState<AvailableMetric[]>([]);
-  const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([]);
+  // Step 4 — Review Metric Cards (Meta only — populated by /metrics, called
+  // right after Campaign Selection so each campaign's own pre-selection
+  // reflects its own confirmed objective). One card group per selected
+  // campaign, both maps keyed by normalized campaign name (objective.ts's
+  // normalizeCampaignName, matching campaignObjectives' own key
+  // convention). `perCampaignMetrics` is that campaign's own current pill
+  // list (pre-filled from /metrics' perCampaignSelection, edited in place
+  // by the ✕/+ pill buttons); `perCampaignAvailablePool` is that campaign's
+  // fixed "could be added" candidate pool (perCampaignAvailable) — the
+  // still-addable subset is computed per render (campaignAvailableMetrics
+  // below) by excluding whatever's currently in perCampaignMetrics, so
+  // removing a pill makes it reappear here automatically.
+  const [perCampaignMetrics, setPerCampaignMetrics] = useState<Map<string, SelectedMetric[]>>(new Map());
+  const [perCampaignAvailablePool, setPerCampaignAvailablePool] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [metricsTouched, setMetricsTouched] = useState(false);
-  const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
-
-  // Step 4 Section A/B — both collapsed by default ("most users just click
-  // Continue without opening either").
-  const [accountMetricsExpanded, setAccountMetricsExpanded] = useState(false);
-  const [perCampaignExpanded, setPerCampaignExpanded] = useState(false);
-  // Per Campaign Customisation — a campaign present here has had at least
-  // one card explicitly removed from ITS OWN slide (report-data.ts's
-  // campaignMetricOverrides: a hard replacement of the automatic
-  // per-objective narrowing for that campaign only). Keyed by normalized
-  // campaign name, same convention as campaignObjectives. Absent = that
-  // campaign still shows the full account-level selectedMetrics list,
-  // narrowed automatically by the engine as before this feature existed.
-  const [campaignMetricOverrides, setCampaignMetricOverrides] = useState<Map<string, string[]>>(new Map());
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
@@ -527,7 +512,6 @@ export function ReportUploadWizard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
     setCampaigns(json.campaigns || []);
-    setCampaignSpend(json.campaignSpend || {});
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
@@ -762,10 +746,7 @@ export function ReportUploadWizard({
   async function fetchObjectivesAndMetrics() {
     if (!mtdFile) return;
     setMetricsStatus("loading");
-    setMetricsTouched(false);
-    setMetricsLimitMessage(null);
     setTouchedObjectiveCampaigns(new Set());
-    setCampaignMetricOverrides(new Map());
     setPerCampaignMinWarning(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
@@ -782,15 +763,19 @@ export function ReportUploadWizard({
       // back to RESULTS for every campaign in that case) and let the user
       // continue past Step 2 regardless.
       setMetricsStatus("error");
-      setAvailableMetrics([]);
-      setSelectedMetrics([]);
+      setPerCampaignMetrics(new Map());
+      setPerCampaignAvailablePool(new Map());
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
       return;
     }
 
-    setAvailableMetrics(json.availableMetrics || []);
-    setSelectedMetrics(json.defaultSelection || []);
+    // Step 4 rebuild — each selected campaign's own pre-selected 8 metrics
+    // and its own "add a metric" pool, both keyed by normalized campaign
+    // name (objective.ts's normalizeCampaignName, matching campaignObjectives'
+    // own key convention below).
+    setPerCampaignMetrics(new Map(Object.entries<SelectedMetric[]>(json.perCampaignSelection || {})));
+    setPerCampaignAvailablePool(new Map(Object.entries<SelectedMetric[]>(json.perCampaignAvailable || {})));
     const { objectives, confidence } = campaignObjectivesFromJson(json.campaignObjectives);
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
@@ -938,103 +923,62 @@ export function ReportUploadWizard({
     return null;
   }
 
-  // ── Step 4: Metrics (Part 3) ────────────────────────────────────────────
-  /**
-   * "Add another metric" pool, minus whatever's already showing as a card.
-   * Filters on both key AND label: the dictionary can map two different CSV
-   * columns to the same display label under different keys (e.g. a
-   * "Website Leads" objective's default slot 4 resolves to the generic
-   * `results` key relabeled "WEBSITE LEADS", while the CSV's own "Website
-   * Leads" column separately maps to dictionary key `website_leads` with
-   * that same label) — a key-only filter misses that case and "WEBSITE
-   * LEADS" would show up as both a card and an add-option (Fix 2).
-   */
-  function unselectedAvailableMetrics(): AvailableMetric[] {
-    const selectedKeys = new Set(selectedMetrics.map((m) => m.key));
-    const selectedLabels = new Set(selectedMetrics.map((m) => m.label));
-    return availableMetrics.filter((m) => !selectedKeys.has(m.key) && !selectedLabels.has(m.label));
+  // ── Step 4: Review Metric Cards ──────────────────────────────────────────
+  /** This campaign's still-addable pool — its fixed perCampaignAvailable candidates minus whatever's currently in its own pill list, so removing a pill makes it reappear here and adding one removes it, entirely computed (no separately-tracked "available" state to drift out of sync). */
+  function campaignAvailableMetrics(normalizedName: string): SelectedMetric[] {
+    const pool = perCampaignAvailablePool.get(normalizedName) ?? [];
+    const selectedKeys = new Set((perCampaignMetrics.get(normalizedName) ?? []).map((m) => m.key));
+    return pool.filter((m) => !selectedKeys.has(m.key));
   }
 
-  function removeMetricAt(index: number) {
-    if (selectedMetrics.length <= MIN_SELECTED_METRICS) {
-      setMetricsLimitMessage(`Keep at least ${MIN_SELECTED_METRICS} metrics.`);
-      return;
-    }
-    setMetricsLimitMessage(null);
-    setMetricsTouched(true);
-    setSelectedMetrics((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function addMetric(metric: AvailableMetric) {
-    if (selectedMetrics.length >= MAX_TOTAL_METRICS) {
-      setMetricsLimitMessage(`Maximum ${MAX_TOTAL_METRICS} metrics (2 slides) per campaign.`);
-      return;
-    }
-    setMetricsLimitMessage(null);
-    setMetricsTouched(true);
-    setSelectedMetrics((prev) => [...prev, metric]);
-  }
-
-  /**
-   * The "Adding a second slide" warning shown once a 9th metric is added.
-   * Only relevant while slide 2 is genuinely thin (1-3 metrics) — once it
-   * reaches MIN_SECOND_SLIDE_METRICS the second slide is already
-   * professional-looking, so there's nothing left to warn about and the
-   * whole box goes away (also true, trivially, once the user removes back
-   * down to 8 or fewer and slide2Count returns to 0).
-   */
-  function slide2Warning(): { scenario: "A" | "B"; slide2Count: number; remaining: number; needed: number } | null {
-    const slide2Count = Math.max(0, selectedMetrics.length - MAX_METRICS_PER_SLIDE);
-    if (slide2Count === 0 || slide2Count >= MIN_SECOND_SLIDE_METRICS) return null;
-    const remaining = unselectedAvailableMetrics().length;
-    return {
-      scenario: remaining >= 3 ? "A" : "B",
-      slide2Count,
-      remaining,
-      needed: MIN_SECOND_SLIDE_METRICS - slide2Count,
-    };
-  }
-
-  /** Fix 1, Scenario C — the single remaining candidate is disabled if adding it can't possibly get slide 2 to a professional length (nothing else left in the CSV to add after it). */
-  function wouldLeaveSlide2TooShort(candidate: AvailableMetric): boolean {
-    const remaining = unselectedAvailableMetrics();
-    if (remaining.length !== 1 || remaining[0].key !== candidate.key) return false;
-    const slide2CountAfter = Math.max(0, selectedMetrics.length + 1 - MAX_METRICS_PER_SLIDE);
-    return slide2CountAfter < MIN_SECOND_SLIDE_METRICS;
-  }
-
-  /** Only sent to the preview/generate APIs once the user actually changes something on the Metric Review step — leaving it untouched (the common case: "Most users will just click Continue") keeps the engine's own true per-campaign automatic assignment, rather than pinning every campaign to the single majority-objective default shown in the wizard. */
-  function currentSelectedMetricsPayload(): SelectedMetric[] | undefined {
-    return metricsTouched && selectedMetrics.length > 0 ? selectedMetrics : undefined;
-  }
-
-  /** Step 4 Section B — only sent once a user has actually edited at least one campaign's own card list (the common "most users never open this" case sends undefined, same reasoning as currentSelectedMetricsPayload above). */
-  function currentCampaignMetricOverridesPayload(): Record<string, string[]> | undefined {
-    if (campaignMetricOverrides.size === 0) return undefined;
-    return Object.fromEntries(campaignMetricOverrides);
-  }
-
-  /** Section B's per-campaign card list — a campaign's own override once edited, otherwise falls back to the shared account-level selectedMetrics (Section A), which is what the engine narrows automatically per-objective when no override exists. */
-  function campaignMetricKeysFor(normalizedName: string): string[] {
-    return campaignMetricOverrides.get(normalizedName) ?? selectedMetrics.map((m) => m.key);
-  }
-
-  /** Removes one card from a single campaign's own slide (Step 4 Section B) — never affects any other campaign or the shared Section A list. Enforces the same 4-card minimum as Section A, scoped per-campaign. */
-  function removeCampaignMetricCard(normalizedName: string, key: string) {
-    const current = campaignMetricKeysFor(normalizedName);
+  /** Removes one metric pill from a single campaign's own list — never affects any other campaign. Enforces the 4-metric minimum, scoped per-campaign. */
+  function removeCampaignMetric(normalizedName: string, key: string) {
+    const current = perCampaignMetrics.get(normalizedName) ?? [];
     if (current.length <= MIN_SELECTED_METRICS) {
-      setPerCampaignMinWarning(`Each campaign needs at least ${MIN_SELECTED_METRICS} metric cards.`);
+      setPerCampaignMinWarning(`Minimum ${MIN_SELECTED_METRICS} metrics required`);
       return;
     }
     setPerCampaignMinWarning(null);
-    setCampaignMetricOverrides((prev) => new Map(prev).set(normalizedName, current.filter((k) => k !== key)));
+    setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, current.filter((m) => m.key !== key)));
   }
 
-  /** Objective-colored badge for Step 4 Section B's per-campaign sub-heading — amber for leads/conversions, green for reach/awareness, blue for everything else (traffic/engagement), matching the wizard's design-system palette. */
+  /** Adds one metric pill to a single campaign's own list — never affects any other campaign. */
+  function addCampaignMetric(normalizedName: string, metric: SelectedMetric) {
+    const current = perCampaignMetrics.get(normalizedName) ?? [];
+    setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
+  }
+
+  /** Every selected campaign's own final metric key list, keyed by normalized campaign name — report-data.ts's campaignMetricOverrides, a hard replacement of the automatic per-objective assignment for that campaign. Always sent once /metrics has responded (every campaign here has a real, engine-derived pre-selection — there's no "untouched" fallback state in this rebuild). */
+  function currentCampaignMetricOverridesPayload(): Record<string, string[]> | undefined {
+    if (perCampaignMetrics.size === 0) return undefined;
+    return Object.fromEntries(Array.from(perCampaignMetrics.entries()).map(([name, metrics]) => [name, metrics.map((m) => m.key)]));
+  }
+
+  /**
+   * report-data.ts resolves each campaignMetricOverrides KEY by looking it
+   * up in this same selectedMetrics list (see computeMetaSlideMetrics) — so
+   * this must be the union of every campaign's own metric objects (not one
+   * shared account-wide pick list), deduped by key, or a campaign's own
+   * objective-specific card (e.g. "meta_form_leads") would have no object
+   * to resolve back to.
+   */
+  function currentSelectedMetricsPayload(): SelectedMetric[] | undefined {
+    const byKey = new Map<string, SelectedMetric>();
+    for (const metrics of perCampaignMetrics.values()) {
+      for (const metric of metrics) byKey.set(metric.key, metric);
+    }
+    return byKey.size > 0 ? Array.from(byKey.values()) : undefined;
+  }
+
+  /** Objective-colored badge for each campaign's header row — amber for leads, coral for purchase/sales, green for reach/awareness, purple for video, blue for everything else (traffic/engagement). */
   function objectiveBadgeColorClass(resultLabel: string | undefined): string {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD") || label.includes("PURCHASE") || label.includes("SALE")) return "bg-amber-950/30 text-[#f6ad55]";
-    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL")) return "bg-emerald-950/30 text-[#68d391]";
+    if (label.includes("LEAD")) return "bg-amber-950/30 text-[#f6ad55]";
+    if (label.includes("PURCHASE") || label.includes("SALE")) return "bg-red-950/30 text-[#fc8181]";
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
+      return "bg-emerald-950/30 text-[#68d391]";
+    }
+    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return "bg-purple-950/30 text-[#b794f4]";
     return "bg-blue-950/30 text-[#63b3ed]";
   }
 
@@ -1366,14 +1310,9 @@ export function ReportUploadWizard({
     setCampaignObjectives(new Map());
     setTouchedObjectiveCampaigns(new Set());
 
-    setAvailableMetrics([]);
-    setSelectedMetrics([]);
+    setPerCampaignMetrics(new Map());
+    setPerCampaignAvailablePool(new Map());
     setMetricsStatus("idle");
-    setMetricsTouched(false);
-    setMetricsLimitMessage(null);
-    setAccountMetricsExpanded(false);
-    setPerCampaignExpanded(false);
-    setCampaignMetricOverrides(new Map());
     setPerCampaignMinWarning(null);
 
     setDateBounds(null);
@@ -1593,7 +1532,6 @@ export function ReportUploadWizard({
               const isSingleAdSet = !!group && group.adSetNames.length === 1;
               const allAdSetsDeselected =
                 !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
-              const spend = campaignSpend[name] ?? 0;
               return (
                 <li key={name} className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
@@ -1604,12 +1542,9 @@ export function ReportUploadWizard({
                       onChange={() => toggleCampaign(name)}
                       className="h-4 w-4 flex-shrink-0 accent-accent"
                     />
-                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] font-bold text-white" title={name}>
+                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
                       {name}
                     </label>
-                    <span className="flex-shrink-0 rounded-md bg-dash-bg px-2 py-0.5 text-[13px] font-medium text-dash-accent">
-                      ${Math.round(spend).toLocaleString()}
-                    </span>
                     {isSingleAdSet && (
                       <span className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary">1 ad set</span>
                     )}
@@ -1818,7 +1753,9 @@ export function ReportUploadWizard({
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <div>
             <h3 className="text-[15px] font-semibold text-white">Review Metric Cards</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">Your report will show these metrics on each campaign slide</p>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">
+              Review the metrics for each campaign slide. Remove or add metrics as needed.
+            </p>
           </div>
 
           {metricsStatus === "error" && (
@@ -1827,178 +1764,80 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {/* Section A — Account Metrics: collapsed by default, applies to every campaign. */}
-          <div className="space-y-3 rounded-md border border-dash-border p-4">
-            <button
-              type="button"
-              onClick={() => setAccountMetricsExpanded((v) => !v)}
-              className="flex w-full items-center justify-between gap-3 text-left"
-            >
-              <span className="text-[13px] font-medium text-white">
-                {Math.min(selectedMetrics.length, MAX_METRICS_PER_SLIDE) || MAX_METRICS_PER_SLIDE} metrics selected for all campaigns
-              </span>
-              <span className="flex-shrink-0 text-[13px] text-dash-accent">Customise {accountMetricsExpanded ? "▲" : "▼"}</span>
-            </button>
+          <div>
+            {campaigns
+              .filter((name) => selectedCampaigns.has(name))
+              .map((name, i, arr) => {
+                const normalized = normalizeCampaignName(name);
+                const objective = campaignObjectives.get(normalized);
+                const selectedForCampaign = perCampaignMetrics.get(normalized) ?? [];
+                const availableForCampaign = campaignAvailableMetrics(normalized);
+                return (
+                  <div key={name}>
+                    <div className="rounded-xl bg-[#1e293b] p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-[15px] font-bold text-white" title={name}>
+                          {name}
+                        </span>
+                        {objective && (
+                          <span
+                            className={`rounded-[20px] text-[11px] font-medium ${objectiveBadgeColorClass(objective.resultLabel)}`}
+                            style={{ padding: "6px 10px" }}
+                          >
+                            {objective.resultLabel}
+                          </span>
+                        )}
+                      </div>
 
-            {!accountMetricsExpanded && selectedMetrics.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedMetrics.map((m, i) => (
-                  <span key={`${m.key}-${i}`} className="rounded-full bg-dash-bg px-2.5 py-1 text-[12px] text-dash-ink-secondary">
-                    {m.label}
-                  </span>
-                ))}
-              </div>
-            )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedForCampaign.map((m) => (
+                          <span
+                            key={m.key}
+                            className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
+                            style={{ padding: "8px 12px" }}
+                          >
+                            <span className="text-[12px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
+                              {m.label}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeCampaignMetric(normalized, m.key)}
+                              aria-label={`Remove ${m.label} from ${name}`}
+                              className="text-[#64748b] hover:text-[#fc8181]"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                      </div>
 
-            {accountMetricsExpanded && selectedMetrics.length > 0 && (
-              <>
-                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                  {selectedMetrics.map((metric, i) => (
-                    <div
-                      key={`${metric.key}-${i}`}
-                      className="relative flex min-h-[70px] cursor-pointer items-center justify-center rounded-lg border border-[#334155] bg-[#0d1b2e] p-3 hover:border-[#f6ad55]"
-                    >
-                      <span
-                        className="line-clamp-2 text-center text-[12px] font-semibold uppercase text-white"
-                        style={{ letterSpacing: "0.5px" }}
-                      >
-                        {metric.label}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeMetricAt(i)}
-                        aria-label={`Remove ${metric.label}`}
-                        className="absolute right-2 top-2 text-[16px] font-bold leading-none text-white hover:text-[#fc8181]"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                      {perCampaignMinWarning && (
+                        <p className="mt-2 text-[13px] text-amber-300">{perCampaignMinWarning}</p>
+                      )}
 
-                {(() => {
-                  const warning = slide2Warning();
-                  if (!warning) return null;
-                  return (
-                    <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
-                      <p className="font-semibold">⚠️ Adding a second slide</p>
-                      {warning.scenario === "A" ? (
-                        <>
-                          <p className="mt-1 text-dash-ink-secondary">
-                            Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics — the recommended maximum for one
-                            slide. Adding more creates a second slide for this campaign.
-                          </p>
-                          <p className="mt-1 text-dash-ink-secondary">
-                            For slide 2 to look professional it needs at least {MIN_SECOND_SLIDE_METRICS} metrics. You
-                            currently have {warning.slide2Count} metric(s) on slide 2 — add {warning.needed} more to
-                            fill it properly, or remove a less important metric from slide 1 to keep everything on one
-                            clean slide.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="mt-1 text-dash-ink-secondary">
-                            Your campaign slide shows {MAX_METRICS_PER_SLIDE} metrics. Adding more creates a second
-                            slide, but you only have {warning.remaining} additional metric(s) available from your CSV —
-                            slide 2 will show {warning.slide2Count} metric(s) which may look incomplete.
-                          </p>
-                          <p className="mt-1 text-dash-ink-secondary">
-                            Consider removing a less important metric from slide 1 and swapping it for this one
-                            instead.
-                          </p>
-                        </>
+                      {availableForCampaign.length > 0 && (
+                        <div className="mt-3">
+                          <p className="mb-1.5 text-[13px] text-dash-ink-secondary">Add metric:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {availableForCampaign.map((candidate) => (
+                              <button
+                                key={candidate.key}
+                                type="button"
+                                onClick={() => addCampaignMetric(normalized, candidate)}
+                                className="rounded-md border border-[#1e3a5f] bg-[#0d1b2e] text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                                style={{ padding: "8px 12px" }}
+                              >
+                                <span className="text-[#68d391]">+</span> {candidate.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  );
-                })()}
-
-                {unselectedAvailableMetrics().length > 0 && (
-                  <div>
-                    <p className="mb-2 text-[13px] text-dash-ink-secondary">Add a metric from your CSV:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {unselectedAvailableMetrics().map((candidate) => {
-                        const disabled = wouldLeaveSlide2TooShort(candidate);
-                        return (
-                          <button
-                            key={candidate.key}
-                            type="button"
-                            onClick={() => addMetric(candidate)}
-                            disabled={disabled}
-                            title={disabled ? "Adding this would create a 1-card slide. Remove a card above and swap it instead." : undefined}
-                            className="rounded-full border border-dash-border bg-[#111f35] px-3 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-dash-border disabled:hover:text-dash-ink-secondary"
-                          >
-                            + {candidate.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {i < arr.length - 1 && <div className="my-4 border-t border-[#1e3a5f]" />}
                   </div>
-                )}
-
-                {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
-                <p className="text-[13px] text-dash-ink-secondary">These metrics apply to all campaigns. Remove any you do not want.</p>
-              </>
-            )}
-          </div>
-
-          <div className="border-t border-dash-border" />
-
-          {/* Section B — Per Campaign Customisation: collapsed by default. */}
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setPerCampaignExpanded((v) => !v)}
-              className="text-[13px] font-medium text-white hover:text-dash-accent"
-            >
-              Customise per campaign {perCampaignExpanded ? "▲" : "▼"}
-            </button>
-
-            {perCampaignExpanded && (
-              <div className="space-y-3">
-                {campaigns
-                  .filter((name) => selectedCampaigns.has(name))
-                  .map((name) => {
-                    const normalized = normalizeCampaignName(name);
-                    const objective = campaignObjectives.get(normalized);
-                    const keys = new Set(campaignMetricKeysFor(normalized));
-                    const cards = selectedMetrics.filter((m) => keys.has(m.key));
-                    return (
-                      <div key={name} className="space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="truncate text-[13px] font-semibold text-white" title={name}>
-                            {name}
-                          </span>
-                          {objective && (
-                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${objectiveBadgeColorClass(objective.resultLabel)}`}>
-                              {objective.resultLabel}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {cards.map((m) => (
-                            <span
-                              key={m.key}
-                              className="flex items-center gap-1.5 rounded-full border border-dash-border bg-[#111f35] px-2.5 py-1 text-[12px] text-dash-ink-secondary"
-                            >
-                              {m.label}
-                              <button
-                                type="button"
-                                onClick={() => removeCampaignMetricCard(normalized, m.key)}
-                                aria-label={`Remove ${m.label} from ${name}`}
-                                className="text-white hover:text-[#fc8181]"
-                              >
-                                ✕
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                {perCampaignMinWarning && <p className="text-[13px] text-amber-300">{perCampaignMinWarning}</p>}
-                <p className="text-[13px] text-dash-ink-secondary">Changes here only affect this campaign&apos;s slide.</p>
-              </div>
-            )}
+                );
+              })}
           </div>
 
           <div className="flex gap-3">
@@ -2010,7 +1849,6 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleMetricsContinue}
-              disabled={selectedMetrics.length > 0 && selectedMetrics.length < MIN_SELECTED_METRICS}
               className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               Continue →

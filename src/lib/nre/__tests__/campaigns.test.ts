@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  extractCampaignNames,
-  extractCampaignSpend,
-  extractSpendingCampaignNames,
-  filterRowsByCampaigns,
-  resolveCampaignSelection,
-  sortCampaignsBySpend,
-} from "../campaigns";
+import { extractCampaignNames, extractSpendingCampaignNames, filterRowsByCampaigns, resolveCampaignSelection } from "../campaigns";
 import type { NreRow } from "../columns";
 
 function row(campaignName: string): NreRow {
@@ -73,45 +66,6 @@ describe("extractSpendingCampaignNames — Fix 1: Previous Month Data's own camp
   it("returns an empty array when no rows have any real spend (the reported 586-campaign case)", () => {
     const rows = Array.from({ length: 586 }, (_, i) => rowWithSpend(`Campaign ${i}`, "0"));
     expect(extractSpendingCampaignNames(rows)).toEqual([]);
-  });
-});
-
-describe("extractCampaignSpend — Step 2's spend badge", () => {
-  it("sums total spend per campaign, keyed by campaign name", () => {
-    const rows = [rowWithSpend("Shoes", "100"), rowWithSpend("Shoes", "50"), rowWithSpend("Boots", "30")];
-    expect(extractCampaignSpend(rows)).toEqual({ Shoes: 150, Boots: 30 });
-  });
-
-  it("ignores blank campaign names", () => {
-    const rows = [rowWithSpend("", "500"), rowWithSpend("Shoes", "10")];
-    expect(extractCampaignSpend(rows)).toEqual({ Shoes: 10 });
-  });
-
-  it("returns an empty object for no rows", () => {
-    expect(extractCampaignSpend([])).toEqual({});
-  });
-});
-
-describe("sortCampaignsBySpend — Step 2's spend-descending campaign order", () => {
-  it("sorts campaign names by total spend descending", () => {
-    const spend = { Shoes: 50, Boots: 200, Hats: 100 };
-    expect(sortCampaignsBySpend(["Shoes", "Boots", "Hats"], spend)).toEqual(["Boots", "Hats", "Shoes"]);
-  });
-
-  it("treats a campaign missing from the spend map as zero", () => {
-    const spend = { Shoes: 50 };
-    expect(sortCampaignsBySpend(["Shoes", "Boots"], spend)).toEqual(["Shoes", "Boots"]);
-  });
-
-  it("preserves first-seen order for tied spend (stable sort)", () => {
-    const spend = { Shoes: 10, Boots: 10 };
-    expect(sortCampaignsBySpend(["Shoes", "Boots"], spend)).toEqual(["Shoes", "Boots"]);
-  });
-
-  it("does not mutate the input array", () => {
-    const names = ["Shoes", "Boots"];
-    sortCampaignsBySpend(names, { Shoes: 1, Boots: 100 });
-    expect(names).toEqual(["Shoes", "Boots"]);
   });
 });
 
