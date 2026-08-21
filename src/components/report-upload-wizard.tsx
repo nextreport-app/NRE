@@ -313,20 +313,30 @@ export function ReportUploadWizard({
   // happened to be pre-filled.
   const [campaignObjectives, setCampaignObjectives] = useState<Map<string, ObjectiveInfo>>(new Map());
   const [touchedObjectiveCampaigns, setTouchedObjectiveCampaigns] = useState<Set<string>>(new Set());
-  // Objective Confirmation memory cache (Part 6) — per-campaign confidence
-  // tag from the /metrics response, keyed the same way campaignObjectives
-  // is (normalizeCampaignName). Drives the badge under each dropdown:
-  // "cached" -> green "Previously confirmed" (this exact client has
-  // confirmed this campaign before, on some earlier report), "resultType"
-  // -> blue "Detected from result type" (the engine found real result_type
-  // text), "columnData" -> grey "Please verify" (the engine had to fall
-  // back to column presence/data values/ad-set name). Cleared the moment a
-  // campaign is touched (see setCampaignObjective) — once the user has
-  // picked a value themselves, a badge describing where the PRE-fill came
-  // from is no longer meaningful.
+  // Objective Confirmation memory cache + Layer 2's 4-tier confidence
+  // (objective-detection rebuild) — per-campaign confidence tag from the
+  // /metrics response, keyed the same way campaignObjectives is
+  // (normalizeCampaignName). Drives the badge under each dropdown: "cached"
+  // -> green "Previously confirmed" (this exact client has confirmed this
+  // campaign before), "high" -> blue "Detected from result type" (Step 2's
+  // RESULT_TYPE_MAP ground truth), "medium" -> grey "Please verify" (Step
+  // 4's column-presence fallback), "low" -> amber "Requires confirmation"
+  // (Step 3's blank-result_type single-lead-column inference), "verify" ->
+  // red "Confirmation required" (Step 3's both-lead-columns-present or
+  // Step 6's generic-fallback ambiguity — Continue is blocked until the
+  // user actively picks a value). Cleared the moment a campaign is touched
+  // (see setCampaignObjective) — once the user has picked a value
+  // themselves, a badge describing where the PRE-fill came from is no
+  // longer meaningful.
   const [campaignObjectiveConfidence, setCampaignObjectiveConfidence] = useState<
-    Map<string, "cached" | "resultType" | "columnData">
+    Map<string, "cached" | "high" | "medium" | "low" | "verify">
   >(new Map());
+  // Layer 2's requiresConfirmation flag, per campaign — true for "verify"
+  // tier (and the generic RESULTS fallback) — the Objective Confirmation
+  // step's Continue button is disabled while any SELECTED campaign still
+  // has this set AND hasn't been touched by the user (see
+  // touchedObjectiveCampaigns).
+  const [campaignRequiresConfirmation, setCampaignRequiresConfirmation] = useState<Map<string, boolean>>(new Map());
 
   // Step 4 — Review Metric Cards (Meta only — populated by /metrics, called
   // right after Campaign Selection so each campaign's own pre-selection
@@ -709,22 +719,30 @@ export function ReportUploadWizard({
     return { key: resultLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_"), resultLabel, costLabel, isReach: false };
   }
 
-  /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel, source}` per normalized campaign name — source is "cached" | "resultType" | "columnData", see objective.ts's ObjectiveConfidence) into the wizard's own Map<string, ObjectiveInfo> + confidence state shapes. */
+  /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel, confidence, requiresConfirmation}` per normalized campaign name — confidence is "cached" | "high" | "medium" | "low" | "verify", see objective.ts's CampaignObjectiveResolution) into the wizard's own Map<string, ObjectiveInfo> + confidence/requiresConfirmation state shapes. */
   function campaignObjectivesFromJson(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     json: Record<string, any> | undefined | null,
-  ): { objectives: Map<string, ObjectiveInfo>; confidence: Map<string, "cached" | "resultType" | "columnData"> } {
+  ): {
+    objectives: Map<string, ObjectiveInfo>;
+    confidence: Map<string, "cached" | "high" | "medium" | "low" | "verify">;
+    requiresConfirmation: Map<string, boolean>;
+  } {
     const objectives = new Map<string, ObjectiveInfo>();
-    const confidence = new Map<string, "cached" | "resultType" | "columnData">();
-    if (!json) return { objectives, confidence };
+    const confidence = new Map<string, "cached" | "high" | "medium" | "low" | "verify">();
+    const requiresConfirmation = new Map<string, boolean>();
+    if (!json) return { objectives, confidence, requiresConfirmation };
     for (const [name, info] of Object.entries(json)) {
       if (!info?.resultLabel || !info?.costLabel) continue;
       objectives.set(name, objectiveInfoForResultLabel(info.resultLabel, info.costLabel));
-      if (info.source === "cached" || info.source === "resultType" || info.source === "columnData") {
-        confidence.set(name, info.source);
+      if (["cached", "high", "medium", "low", "verify"].includes(info.confidence)) {
+        confidence.set(name, info.confidence);
+      }
+      if (typeof info.requiresConfirmation === "boolean") {
+        requiresConfirmation.set(name, info.requiresConfirmation);
       }
     }
-    return { objectives, confidence };
+    return { objectives, confidence, requiresConfirmation };
   }
 
   /**
@@ -767,6 +785,7 @@ export function ReportUploadWizard({
       setPerCampaignAvailablePool(new Map());
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
+      setCampaignRequiresConfirmation(new Map());
       return;
     }
 
@@ -776,9 +795,10 @@ export function ReportUploadWizard({
     // own key convention below).
     setPerCampaignMetrics(new Map(Object.entries<SelectedMetric[]>(json.perCampaignSelection || {})));
     setPerCampaignAvailablePool(new Map(Object.entries<SelectedMetric[]>(json.perCampaignAvailable || {})));
-    const { objectives, confidence } = campaignObjectivesFromJson(json.campaignObjectives);
+    const { objectives, confidence, requiresConfirmation } = campaignObjectivesFromJson(json.campaignObjectives);
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
+    setCampaignRequiresConfirmation(requiresConfirmation);
     setMetricsStatus("idle");
   }
 
@@ -790,7 +810,13 @@ export function ReportUploadWizard({
   }
 
   // ── Step 3 -> 4: Confirm Objectives -> Metric Cards ─────────────────────
+  /** Defense in depth alongside the Continue button's own `disabled` attribute — a selected campaign still requiring confirmation (Layer 2's requiresConfirmation, untouched by the user) blocks advancing past this step regardless of how Continue got triggered. */
   function handleObjectivesContinue() {
+    const blocked = campaigns.some((name) => {
+      const normalized = normalizeCampaignName(name);
+      return selectedCampaigns.has(name) && campaignRequiresConfirmation.get(normalized) === true && !touchedObjectiveCampaigns.has(normalized);
+    });
+    if (blocked) return;
     setStep(4);
   }
 
@@ -849,6 +875,15 @@ export function ReportUploadWizard({
       next.delete(normalized);
       return next;
     });
+    // The user has now actively selected an objective — Layer 2's
+    // requiresConfirmation no longer blocks Continue for this campaign,
+    // regardless of what the engine originally detected.
+    setCampaignRequiresConfirmation((prev) => {
+      if (!prev.has(normalized)) return prev;
+      const next = new Map(prev);
+      next.delete(normalized);
+      return next;
+    });
   }
 
   /**
@@ -899,26 +934,37 @@ export function ReportUploadWizard({
   }
 
   /**
-   * Part 6 — the three confidence tiers the Objective Confirmation step
-   * shows below each campaign's dropdown. "cached" (green check) is the
-   * highest confidence: this exact client has confirmed this exact campaign
-   * before. "resultType" (blue dot) is the engine finding real result_type
-   * text (objective.ts's resolveCampaignObjectiveWithConfidence "high"
-   * tier). "columnData" (grey dot) is everything else the engine had to
-   * fall back to — column presence, data values, or ad-set name — genuinely
-   * lower confidence, worth a second look. Returns null for a campaign with
-   * no confidence tag at all (the user has already touched its dropdown —
-   * see setCampaignObjective — so nothing needs to be shown).
+   * Objective-detection rebuild — the 5 confidence tiers the Objective
+   * Confirmation step shows below each campaign's dropdown. "cached" (green
+   * check) is the highest confidence: this exact client has confirmed this
+   * exact campaign before. "high" (blue dot) is Step 2's RESULT_TYPE_MAP
+   * ground truth (real result_type text). "medium" (grey dot) is Step 4's
+   * column-presence fallback — a real, unambiguous dedicated-column count,
+   * just not explicit result_type text. "low" (amber dot) is Step 3's
+   * blank-result_type single-lead-column inference — a genuine guess, worth
+   * a second look. "verify" (red dot) is a real, unresolved ambiguity (both
+   * lead columns present, or the generic RESULTS fallback) — the Continue
+   * button is disabled for this campaign until the user actively picks a
+   * value (see the Continue button's own disabled logic below). Returns
+   * null for a campaign with no confidence tag at all (the user has already
+   * touched its dropdown — see setCampaignObjective — so nothing needs to
+   * be shown).
    */
-  function objectiveConfidenceBadge(tier: "cached" | "resultType" | "columnData" | undefined) {
+  function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
     if (tier === "cached") {
       return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]" };
     }
-    if (tier === "resultType") {
+    if (tier === "high") {
       return { icon: "●", text: "Detected from result type", className: "text-[#63b3ed]" };
     }
-    if (tier === "columnData") {
+    if (tier === "medium") {
       return { icon: "●", text: "Please verify", className: "text-dash-ink-secondary" };
+    }
+    if (tier === "low") {
+      return { icon: "●", text: "Requires confirmation", className: "text-[#f6ad55]" };
+    }
+    if (tier === "verify") {
+      return { icon: "●", text: "Confirmation required", className: "text-[#fc8181]" };
     }
     return null;
   }
@@ -1679,6 +1725,27 @@ export function ReportUploadWizard({
             );
           })()}
 
+          {/* Objective-detection rebuild — campaigns still blocking Continue: requiresConfirmation is true AND the user hasn't picked a value yet. */}
+          {(() => {
+            const blockingCount = campaigns.filter((name) => {
+              const normalized = normalizeCampaignName(name);
+              return (
+                selectedCampaigns.has(name) &&
+                campaignRequiresConfirmation.get(normalized) === true &&
+                !touchedObjectiveCampaigns.has(normalized)
+              );
+            }).length;
+            return (
+              blockingCount > 0 && (
+                <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[13px] text-[#fc8181]">
+                  {blockingCount === 1
+                    ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
+                    : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
+                </div>
+              )
+            );
+          })()}
+
           <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
             {campaigns
               .filter((name) => selectedCampaigns.has(name))
@@ -1695,12 +1762,15 @@ export function ReportUploadWizard({
                   : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
                 const tier = campaignObjectiveConfidence.get(normalized);
                 const badge = objectiveConfidenceBadge(tier);
-                const needsVerification = tier === "columnData";
+                const blocksContinue = campaignRequiresConfirmation.get(normalized) === true && !touchedObjectiveCampaigns.has(normalized);
+                const needsVerification = tier === "low" || tier === "medium";
+                const rowBorderClass = blocksContinue
+                  ? "border-l-4 border-l-[#fc8181] bg-red-950/10"
+                  : needsVerification
+                    ? "border-l-4 border-l-[#f6ad55] bg-amber-950/10"
+                    : "";
                 return (
-                  <li
-                    key={name}
-                    className={`px-4 py-3 ${needsVerification ? "border-l-4 border-l-[#f6ad55] bg-amber-950/10" : ""}`}
-                  >
+                  <li key={name} className={`px-4 py-3 ${rowBorderClass}`}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate text-[13px] text-white" title={name}>
                         {name}
@@ -1741,7 +1811,15 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleObjectivesContinue}
-              className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+              disabled={campaigns.some((name) => {
+                const normalized = normalizeCampaignName(name);
+                return (
+                  selectedCampaigns.has(name) &&
+                  campaignRequiresConfirmation.get(normalized) === true &&
+                  !touchedObjectiveCampaigns.has(normalized)
+                );
+              })}
+              className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-dash-accent"
             >
               Continue →
             </button>

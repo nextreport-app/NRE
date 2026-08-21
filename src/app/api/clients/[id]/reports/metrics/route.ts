@@ -99,23 +99,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // objective-cache.ts) always wins over a fresh engine re-detection: it's
     // the single most reliable signal available, since it came from a human
     // actually looking at the campaign, not an inference from column data.
-    // Every other campaign keeps the engine's own detection (Priority
-    // 1/RESULT_TYPE_MAP text match = "resultType", everything else =
-    // "columnData") so the wizard can show the right confidence badge.
+    // Every other campaign keeps the engine's own detection — Layer 2's own
+    // 4-tier confidence (high/medium/low/verify — see objective.ts's
+    // CampaignObjectiveResolution) plus requiresConfirmation passes straight
+    // through, so the wizard can show the right badge and block Continue for
+    // a campaign the engine genuinely could not resolve on its own.
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
-    const campaignObjectiveEntries: [string, { resultLabel: string; costLabel: string; source: "cached" | "resultType" | "columnData" }][] = Array.from(
-      buildCampaignObjectiveMapWithConfidence(rowsForObjective),
-    ).map(([name, detected]) => {
+    const campaignObjectiveEntries: [
+      string,
+      { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
+    ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
       const cached = lookupCachedObjective(objectiveCache, name);
       if (cached) {
-        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" }];
+        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, confidence: "cached", requiresConfirmation: false }];
       }
       return [
         name,
         {
           resultLabel: detected.resultLabel,
           costLabel: detected.costLabel,
-          source: detected.confidence === "high" ? "resultType" : "columnData",
+          confidence: detected.confidence,
+          requiresConfirmation: detected.requiresConfirmation,
         },
       ];
     });

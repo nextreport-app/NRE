@@ -36,6 +36,14 @@ export const NRE_METRIC_KEYS = [
   "purchases",
   "website_leads",
   "meta_leads",
+  // Layer 1 (objective-detection rebuild) — a correctly-bound sibling of
+  // meta_leads above, added rather than renaming it in place: meta_leads'
+  // own keyword list ("meta lead") never actually matches Meta's real
+  // column names for this objective ("On-Facebook Leads"/"Leads (form)"),
+  // but resolveObjective/health.ts's getResultGroups already depend on
+  // meta_leads' exact (broken) current behavior and must not change — see
+  // this field's own COLUMN_KEYWORDS entry below for the real bindings.
+  "meta_form_leads",
   "leads",
   "landing_page_views",
 ] as const;
@@ -46,7 +54,13 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   campaign_name: ["campaign name", "campaign"],
   ad_set_name: ["ad set name", "adset name", "ad group name", "ad group"],
   result_type: ["result type", "objective", "conversion type"],
-  results: ["results", "conversions", "leads", "clicks total"],
+  // "leads" removed (objective-detection rebuild, Layer 1) — it used to
+  // match ANY header containing "leads" as a substring, so "Website leads",
+  // "On-Facebook Leads", and "Leads (form)" all double-bound to `results`
+  // as well as their own specific field below. The real "Results" column is
+  // always literally named "Results"/"Conversions" on a real Meta export —
+  // never bare "Leads" — so this narrowing is safe.
+  results: ["results", "conversions", "clicks total"],
   // "cost" was removed deliberately (product owner, real-account bug
   // report): it's a substring of "Cost per Result"/"Cost per Click"/"Cost
   // per Lead"/etc, so a per-result cost column appearing earlier in the
@@ -66,6 +80,14 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   purchases: ["purchases"],
   website_leads: ["website lead"],
   meta_leads: ["meta lead"],
+  // Correctly bound counterpart of meta_leads above — matches Meta's real
+  // on-Facebook-lead-form export column names ("On-Facebook Leads",
+  // "Leads (form)"), which "meta lead" never did. Deliberately does NOT
+  // include a bare "lead" substring, or it would also double-bind "Website
+  // leads" — buildColumnMap's own leads-family exclusivity check below
+  // additionally guarantees a header claimed here never also claims the
+  // generic `leads` field.
+  meta_form_leads: ["on-facebook lead", "on facebook lead", "leads (form)", "form lead"],
   leads: ["leads"],
   landing_page_views: ["landing page view", "lpv"],
 };
@@ -78,9 +100,25 @@ export function buildColumnMap(headers: string[]): ColumnMap {
   headers.forEach((header) => {
     if (!header) return;
     const h = String(header).toLowerCase().trim();
+    // Layer 1 (objective-detection rebuild) — the "leads" family's single
+    // known keyword overlap: website_leads' and meta_form_leads' own
+    // keywords are always substrings of a header the generic `leads`
+    // catch-all would also match (e.g. "website lead" ⊂ "website leads" ⊂
+    // "leads"). A header already claimed by either specific field must
+    // never ALSO double-bind to the generic one, or a "Website leads"/
+    // "On-Facebook leads"/"Leads (form)" column would map to two internal
+    // fields at once and the objective resolver could read the wrong one.
+    // Every other metric's own keyword list has no such overlap, so only
+    // this one case needs special-casing rather than a full rewrite of the
+    // matching algorithm below.
+    const claimedBySpecificLead =
+      COLUMN_KEYWORDS.website_leads.some((kw) => h.includes(kw)) ||
+      COLUMN_KEYWORDS.meta_form_leads.some((kw) => h.includes(kw));
     (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(
       ([metric, keywords]) => {
-        if (!map[metric] && keywords.some((kw) => h.includes(kw))) map[metric] = header;
+        if (map[metric]) return;
+        if (metric === "leads" && claimedBySpecificLead) return;
+        if (keywords.some((kw) => h.includes(kw))) map[metric] = header;
       },
     );
   });

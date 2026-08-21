@@ -9,7 +9,7 @@
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
-import { resolveObjectiveFromResultType } from "./result-type-map";
+import { RESULT_TYPE_MAP, resolveObjectiveFromResultType, type ObjectiveInfo } from "./result-type-map";
 
 export interface ResultLabels {
   resultLabel: string;
@@ -625,264 +625,301 @@ function groupRowsByCampaign(rows: MetricRow[]): Record<string, MetricRow[]> {
   return campaignRowGroups;
 }
 
-/** The "prefer a real objective over a pure-Reach one" selection shared by every campaign-level consumer below — top non-REACH group by count, or the top REACH group if that's genuinely all the campaign ran. Undefined only for an empty group list (a campaign with literally zero rows, which can't happen via groupRowsByCampaign's own grouping). */
-function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | undefined {
-  const nonReach = campaignGroups.filter((g) => g.label !== "REACH");
-  return nonReach[0] || campaignGroups[0];
-}
-
 /**
- * Single source of truth for campaign objective detection (permanent
- * architectural fix for a reported bug: campaign slides and the Combined
- * Total table used to run objective detection independently — e.g. via
- * getGroupedResultDisplay for slides and the old getCampaignLevelResultGroups
- * for the table — and could disagree when fed row sets that overlapped but
- * weren't identical, so the table could show a different objective's column
- * than what a campaign's own slide displayed).
+ * Objective-detection rebuild — Layer 2's own per-campaign resolver, the
+ * ONE deterministic pipeline every campaign-level objective consumer reads
+ * from: campaign/ad-set slides, the Combined Total table (via
+ * buildCampaignObjectiveMap → groupResultsByCampaignObjective below), and
+ * the wizard's Objective Confirmation step (via
+ * buildCampaignObjectiveMapWithConfidence). Replaces the OLD competing
+ * per-campaign chain (an explicit purchase/initiate-checkout text set, a
+ * dominant-result-type-must-outnumber-blanks check, a landing_page_view
+ * special case, and a closest-to-Results funnel tie-break) with a single
+ * fixed step order, run once per campaign, using ONLY that campaign's own
+ * rows.
  *
- * Groups `rows` by campaign_name (normalized via normalizeCampaignName —
- * trimmed, lower-cased, so casing differences never fracture one campaign
- * into two map entries), resolves each campaign's rows via getResultGroups
- * (row-level resolveObjective, then the campaign-level pickPrimaryResultGroup
- * selection above), and returns ONE {resultLabel, costLabel} per normalized
- * campaign name. Every consumer that needs "what objective is this
- * campaign" — campaign slides, ad-set slides, and the Combined Total
- * table's column grouping (groupResultsByCampaignObjective below) — reads
- * from this same map instead of re-deriving its own answer, so they're
- * guaranteed to agree. A caller looking up a display-cased campaign name
- * (e.g. report-data.ts's campaignName, straight off the row) MUST run it
- * through normalizeCampaignName first, or a mixed-case lookup will silently
- * miss the map. Call once per relevant row set (report-data.ts builds one
- * from the current MTD/weekly rows, and a separate one from Previous Month
- * Data — see buildReportData's Step 0) rather than re-building it per
- * consumer.
+ * This does NOT touch resolveObjective/detectObjectiveFromColumns/
+ * getResultGroups/OBJECTIVE_CATALOG above — health.ts's account health
+ * score and aggregate.ts's row-level AggRow.result_type computation both
+ * depend on their exact existing behavior and are explicitly out of scope
+ * for this rebuild; those functions keep running, just for a different
+ * purpose (row-level signals only, never a campaign's own final objective
+ * anymore).
+ *
+ * Step 1 — a cached objective (the Objective Confirmation memory cache,
+ * objective-cache.ts) wins outright: a user already confirmed this exact
+ * campaign on a prior report, the single most reliable signal there is.
+ * The caller does its own name→cache lookup and passes the result in —
+ * this function stays name-agnostic.
+ *
+ * Step 2 — result_type ground truth: this campaign's own DOMINANT
+ * non-blank result_type value (most rows win — a campaign can, in
+ * principle, carry more than one distinct value if the objective genuinely
+ * changed mid-flight), looked up in result-type-map.ts's RESULT_TYPE_MAP
+ * for an EXACT match against Meta's own machine-readable event names. This
+ * is Meta's own declaration of what the campaign is optimized for — ground
+ * truth, and it wins even when some OTHER column (e.g. an incidental
+ * Purchases count on a genuine Reach campaign) might otherwise look like a
+ * signal. A dominant value with no RESULT_TYPE_MAP entry (unrecognized/
+ * custom event text) falls through below, same as no dominant value at
+ * all.
+ *
+ * Step 3 — blank result_type fallback, ONLY when EVERY row's result_type
+ * is blank: the Meta-form-leads-vs-website-leads decision tree, reading
+ * ONLY this campaign's own dedicated columns — never whole-file column
+ * presence, never campaign/ad-set name, never "whichever count is bigger"
+ * as a tie-break. Exactly one lead type present picks that objective
+ * (confidence "low" — an inference, not text Meta wrote down); BOTH
+ * present is a genuine, unresolvable ambiguity, returned as generic LEADS
+ * with requiresConfirmation so the wizard forces a human decision; BOTH
+ * zero means this pair simply has nothing to say (not an ambiguity to
+ * report), so it falls through to Step 4 instead of guessing.
+ *
+ * Step 4 — other objectives, by this campaign's own row totals for each
+ * dedicated column, only reached once Steps 2-3 found nothing to trust.
+ *
+ * Step 5 — Reach, the last resort before giving up entirely.
+ *
+ * Step 6 — the generic RESULTS bucket (confidence "low",
+ * requiresConfirmation) — a campaign with no reliable signal of any kind.
  */
-/**
- * Purchase-variant result_type text (Part 7 bug fix) — every human-readable
- * and machine-readable spelling Meta writes into result_type for a real
- * purchase conversion. Matched with an EXACT (not fuzzy/substring) equality
- * check after lower-casing/trimming, since resolveCampaignObjective below
- * treats even a single occurrence anywhere in a campaign's rows as
- * definitive proof — a loose/fuzzy match here would risk false-positives on
- * unrelated text.
- */
-const PURCHASE_RESULT_TYPE_TEXTS = new Set([
-  "purchase",
-  "purchases",
-  "website purchase",
-  "website purchases",
-  "offsite_conversion.fb_pixel_purchase",
-  "onsite_web_purchase",
-  "product_catalog_sales",
-]);
+export type ObjectiveConfidenceTier = "high" | "medium" | "low" | "verify";
 
-/** Initiate-Checkout-variant result_type text — see PURCHASE_RESULT_TYPE_TEXTS' doc comment; same exact-match reasoning. */
-const INITIATE_CHECKOUT_RESULT_TYPE_TEXTS = new Set([
-  "initiate_checkout",
-  "initiate checkout",
-  "checkouts initiated",
-  "offsite_conversion.fb_pixel_initiate_checkout",
-  "onsite_web_initiate_checkout",
-]);
-
-function isPurchaseResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && PURCHASE_RESULT_TYPE_TEXTS.has(rt);
+export interface CampaignObjectiveResolution extends ResultLabels {
+  /** OBJECTIVE_CARD_PACKS' own lookup key (slot-assignment.ts) — Layer 3 reads this directly, never re-derives it from resultLabel text. */
+  key: string;
+  confidence: ObjectiveConfidenceTier;
+  /** True when this campaign's objective is a genuine guess a user must actively confirm (the blank-result_type "both lead types present" case, and the Step 6 generic fallback) — the wizard's Objective Confirmation step blocks Continue for any selected campaign still in this state. */
+  requiresConfirmation: boolean;
 }
 
-function isInitiateCheckoutResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && INITIATE_CHECKOUT_RESULT_TYPE_TEXTS.has(rt);
+/** Backward-compatible alias — every existing caller of the wizard's "high"/"low" confidence badge type keeps working; new callers should prefer CampaignObjectiveResolution's wider tier set directly. */
+export type ObjectiveConfidence = CampaignObjectiveResolution;
+
+function makeResolution(
+  key: string,
+  resultLabel: string,
+  costLabel: string,
+  confidence: ObjectiveConfidenceTier,
+  requiresConfirmation: boolean,
+): CampaignObjectiveResolution {
+  return { key, resultLabel, costLabel, confidence, requiresConfirmation };
 }
 
-/**
- * Objective Confirmation (permanent objective-detection fix) — per-campaign
- * objective resolution, now the single algorithm buildCampaignObjectiveMap
- * uses instead of getResultGroups + pickPrimaryResultGroup directly.
- *
- * Step 0 (Part 7 bug fix) — an explicit purchase-variant or
- * initiate-checkout result_type appearing on even ONE of this campaign's
- * rows is definitive proof of its real funnel objective, full stop, ahead of
- * every other signal below (including the dominant-result_type majority
- * check in Priority 1) — Meta only ever writes that text on a day the
- * underlying event counted as THE optimization result, so a single such day
- * outweighs every other blank-result_type day's raw Initiate Checkout/
- * Purchases column counts entirely. Real-account bug: a campaign with
- * "Website purchases" result_type on 1 of 30 days (and a blank result_type
- * on the other 29, which carried a bigger Initiate Checkout column total)
- * was misclassified as INITIATE CHECKOUT — Initiate Checkout simply
- * appearing more often is normal mid-funnel drop-off, not evidence of the
- * objective. Purchase text wins over Initiate Checkout text if a campaign
- * somehow has rows with both (deepest funnel event, same tie-break used
- * throughout this file).
- *
- * Priority 1 — the campaign's own DOMINANT result_type (the most common
- * non-empty result_type value across its rows — a campaign can, in
- * principle, carry more than one distinct value across different days if
- * the objective genuinely changed mid-flight; the majority wins), looked up
- * in result-type-map.ts's RESULT_TYPE_MAP for an EXACT match against Meta's
- * own machine-readable event names (e.g. "offsite_conversion.fb_pixel_purchase",
- * "onsite_conversion.lead_grouped"). This is Meta's own declaration of what
- * the campaign is optimized for — ground truth, trusted above every other
- * signal, with one documented exception immediately below.
- *
- * Special case — result_type = "landing_page_view" is Meta's own
- * intermediate/tracking signal, populated both by a genuine Traffic/LPV
- * campaign AND by a Sales campaign that happens to use "Landing Page View"
- * as its optimization event; the two are indistinguishable from result_type
- * text alone. A campaign with real Website Leads/Meta Leads column data is
- * unambiguously a lead-generation campaign using LPV as a mid-funnel
- * signal, not a genuine traffic campaign — so that specific combination
- * defers to Priority 2 below instead of trusting the exact map, letting the
- * existing dedicated-column-value priority correctly pick the real
- * objective. Every other result_type keeps trusting the exact map
- * unconditionally, even when some other column also happens to have data
- * (e.g. an Initiate Checkout campaign that also shows Purchases further
- * down the funnel stays INITIATE CHECKOUT, not PURCHASES).
- *
- * Priority 2 — falls through to the existing row-level priority chain
- * (resolveObjective's dedicated-column/fuzzy-catalog/column-presence/
- * data-value tiers, via getResultGroups + pickPrimaryResultGroup) for any
- * campaign whose dominant result_type has no RESULT_TYPE_MAP entry at all —
- * a blank result_type, or a rare/new event name it doesn't recognize.
- */
-export interface ObjectiveConfidence extends ResultLabels {
-  /**
-   * Objective Confirmation memory cache (Part 6 — confidence display) —
-   * "high" for every branch above backed by real result_type TEXT (Step 0's
-   * explicit purchase/Initiate-Checkout match, or Priority 1's
-   * RESULT_TYPE_MAP dominant-text match); "low" for every branch that had to
-   * fall back to column presence/data values/ad-set name instead (Step 3-4's
-   * Results-column match, or the final getResultGroups/resolveObjective
-   * fallback) — text Meta itself wrote down is inherently more trustworthy
-   * than an inference from which columns happen to be populated. Purely a
-   * UI signal for the wizard's Objective Confirmation step; never affects
-   * which objective is actually returned.
-   */
-  confidence: "high" | "low";
+/** Sums a campaign's own rows for a MetricRow field with a dedicated numeric/string value — never whole-file column presence. */
+function sumMetricField(rows: MetricRow[], field: "purchases" | "website_leads" | "meta_form_leads" | "link_clicks" | "landing_page_views" | "reach"): number {
+  return rows.reduce((sum, r) => sum + parseCellNum(r[field]), 0);
 }
 
-/** Internal implementation shared by resolveCampaignObjective (public, unchanged signature — every existing caller/test keeps working exactly as before) and resolveCampaignObjectiveWithConfidence (new — the Objective Confirmation wizard step's own confidence badge, Part 6). See resolveCampaignObjective's own doc comment above for the full priority-chain writeup. */
-function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
-  if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
-    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" };
+/** Same as sumMetricField, for a signal with no dedicated MetricRow field (video views/thruplays, app installs, messaging) — summed straight from each row's own raw CSV columns, the same "exotic signal" treatment sumRawColumnByKeywords already gives these elsewhere in this file (aggregate.ts, getResultGroups above). */
+function sumRawKeywordsAcrossRows(rows: MetricRow[], keywords: string[]): number {
+  return rows.reduce((sum, r) => sum + sumRawColumnByKeywords(r._raw, keywords), 0);
+}
+
+/** Defensive fallback key for a cached objective passed in without its own `key` (Step 1) — every real CachedObjective (objective-cache.ts) always carries one, so this only ever matters for a bare ResultLabels test fixture. */
+function slugifyResultLabel(resultLabel: string): string {
+  return resultLabel
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/** RESULT_TYPE_MAP's own key for a resultLabel it already recognizes (reverse lookup, for Step 2's fuzzy-text fallback below), else a slugified fallback. */
+function keyForResultLabel(resultLabel: string): string {
+  for (const info of Object.values(RESULT_TYPE_MAP)) {
+    if (info.resultLabel === resultLabel) return info.key;
   }
-  if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
-    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high" };
-  }
+  return slugifyResultLabel(resultLabel);
+}
 
-  const resultTypeCounts = new Map<string, number>();
-  let blankCount = 0;
+/** This campaign's own dominant (most common) non-blank result_type value, or null if every row's result_type is blank. */
+/**
+ * Step 2's own text-signal resolution — every distinct non-blank
+ * result_type value across this campaign's rows, matched EITHER against
+ * RESULT_TYPE_MAP (exact, Meta's own machine-readable ground truth) or the
+ * fuzzy OBJECTIVE_CATALOG fallback (see resolveCampaignObjective's own Step
+ * 2 doc comment for why both are needed). An exact match always outranks a
+ * fuzzy-only one, even when the fuzzy-only value happens to have a higher
+ * row count — real machine text is a stronger signal than an inferred
+ * fuzzy match, never just "whichever text shows up more often". Ties
+ * within the same tier go to whichever value is more common. Returns null
+ * only when every row's result_type is blank, or none of the non-blank
+ * values matches anything at all.
+ */
+function resolveTextObjective(rows: MetricRow[]): CampaignObjectiveResolution | null {
+  const counts = new Map<string, number>();
   for (const row of rows) {
     const rt = (row.result_type || "").toLowerCase().trim();
-    if (rt) resultTypeCounts.set(rt, (resultTypeCounts.get(rt) ?? 0) + 1);
-    else blankCount++;
+    if (rt) counts.set(rt, (counts.get(rt) ?? 0) + 1);
   }
+  if (counts.size === 0) return null;
 
-  let dominantResultType = "";
-  let maxCount = 0;
-  for (const [rt, count] of resultTypeCounts) {
-    if (count > maxCount) {
-      maxCount = count;
-      dominantResultType = rt;
+  let bestExact: { count: number; info: ObjectiveInfo } | null = null;
+  let bestFuzzy: { count: number; labels: ResultLabels } | null = null;
+  for (const [text, count] of counts) {
+    const exact = resolveObjectiveFromResultType(text);
+    if (exact) {
+      if (!bestExact || count > bestExact.count) bestExact = { count, info: exact };
+      continue;
+    }
+    const fuzzy = getResultLabels(text);
+    if (fuzzy.resultLabel !== "RESULTS" && (!bestFuzzy || count > bestFuzzy.count)) {
+      bestFuzzy = { count, labels: fuzzy };
     }
   }
 
-  // A non-blank result_type must genuinely be this campaign's dominant
-  // signal — outnumbering rows with NO result_type opinion at all — before
-  // it's trusted as ground truth. Without this, a single stray/incidental
-  // row that happens to carry SOME result_type (e.g. one Reach-flavored row
-  // in an otherwise blank-result_type Website Leads campaign) would win by
-  // default against a much larger blank-result_type majority that Priority
-  // 2's dedicated-column check would otherwise have resolved correctly —
-  // exactly the "phantom objective from a minority in-campaign signal" bug
-  // this whole map was built to prevent.
-  if (dominantResultType && maxCount > blankCount) {
-    const isLandingPageViewSpecialCase = dominantResultType === "landing_page_view";
-    const hasRealLeadsColumnData =
-      isLandingPageViewSpecialCase &&
-      rows.some(
-        (r) => parseCellNum(r.website_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.meta_leads) > 0,
-      );
-    if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
-      const info = resolveObjectiveFromResultType(dominantResultType);
-      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high" };
-    }
-    // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
-    // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads
-    // column above a plain "LANDING PAGE VIEWS" result.
+  if (bestExact) {
+    return makeResolution(bestExact.info.key, bestExact.info.resultLabel, bestExact.info.costLabel, "high", false);
   }
-
-  // Priority 2, Purchases/Initiate Checkout/Add To Cart case only (Part 7
-  // bug fix, Steps 3-4) — result_type is completely blank on EVERY row (Step
-  // 0 above already ruled out any explicit purchase/IC text, and
-  // resultTypeCounts being empty means no OTHER result_type text exists
-  // either), so there is no text signal left to trust at all. Rather than
-  // falling through to the old per-row race (getResultGroups below, which
-  // would let Initiate Checkout's typically-larger raw count win by the same
-  // flawed reasoning Step 0 exists to override), sum each dedicated column
-  // across the WHOLE campaign and compare each to the campaign's own Results
-  // column total — Meta's own declared primary conversion metric — picking
-  // whichever funnel column sums closest to it. Falls through unchanged to
-  // Priority 2's generic per-row resolution for every other objective
-  // (leads, reach, app installs, ...), which this block never touches.
-  if (resultTypeCounts.size === 0) {
-    let resultsTotal = 0;
-    let purchasesTotal = 0;
-    let icTotal = 0;
-    let atcTotal = 0;
-    for (const row of rows) {
-      resultsTotal += parseCellNum(row.results);
-      purchasesTotal += parseCellNum(row.purchases);
-      icTotal += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
-      atcTotal += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
-    }
-    const funnelCandidates = [
-      { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", value: purchasesTotal },
-      { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", value: icTotal },
-      { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", value: atcTotal },
-    ].filter((c) => c.value > 0);
-    if (funnelCandidates.length > 0) {
-      let best = funnelCandidates[0];
-      let bestDiff = Math.abs(funnelCandidates[0].value - resultsTotal);
-      for (const c of funnelCandidates.slice(1)) {
-        const diff = Math.abs(c.value - resultsTotal);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          best = c;
-        }
-      }
-      return { resultLabel: best.resultLabel, costLabel: best.costLabel, confidence: "low" };
-    }
+  if (bestFuzzy) {
+    return makeResolution(keyForResultLabel(bestFuzzy.labels.resultLabel), bestFuzzy.labels.resultLabel, bestFuzzy.labels.costLabel, "high", false);
   }
-
-  const primary = pickPrimaryResultGroup(getResultGroups(rows));
-  return { resultLabel: primary?.label ?? "RESULTS", costLabel: primary?.costLabel ?? "COST PER RESULT", confidence: "low" };
+  return null;
 }
 
-export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
-  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows);
+/**
+ * Layer 2's pipeline entry point — see the doc comment above for the full
+ * step-by-step rationale. `campaignName` is accepted for API-shape parity
+ * with the spec (e.g. future logging) but is never itself a detection
+ * signal, per Step 3's own "never use campaign/ad-set name" rule.
+ * `cachedObjective` is the CALLER's own already-resolved cache lookup for
+ * this specific campaign (objective-cache.ts's lookupCachedObjective) —
+ * this function does no cache lookup of its own.
+ */
+export function resolveCampaignObjective(
+  campaignRows: MetricRow[],
+  campaignName?: string,
+  cachedObjective?: (ResultLabels & { key?: string }) | null,
+): CampaignObjectiveResolution {
+  void campaignName;
+
+  // Step 1 — cached objective wins outright.
+  if (cachedObjective) {
+    return makeResolution(
+      cachedObjective.key ?? slugifyResultLabel(cachedObjective.resultLabel),
+      cachedObjective.resultLabel,
+      cachedObjective.costLabel,
+      "high",
+      false,
+    );
+  }
+
+  // Step 2 — result_type ground truth (resolveTextObjective above): an
+  // EXACT RESULT_TYPE_MAP match always outranks a merely fuzzy-matched
+  // one, even when the fuzzy-only value has a higher row count — real
+  // machine text is a stronger signal than an inferred fuzzy match. The
+  // fuzzy fallback itself is needed because aggregate.ts (unchanged, out
+  // of scope for this rebuild) still writes ITS OWN synthetic
+  // canonicalResultTypeText result_type back onto an already-aggregated
+  // AggRow whenever ITS OWN column-presence/data-value chain resolved the
+  // objective (e.g. "Meta lead" for META FORM LEADS) — this pipeline must
+  // still recognize that text as real ground truth when reading AggRow
+  // input, not just a fresh raw NreRow. Still purely TEXT-based either
+  // way — never column presence, never a value comparison.
+  const textObjective = resolveTextObjective(campaignRows);
+  if (textObjective) return textObjective;
+
+  // Step 3 — blank result_type fallback (only when EVERY row is blank).
+  const allBlank = campaignRows.every((r) => !(r.result_type || "").toString().trim());
+  if (allBlank) {
+    const formLeads = sumMetricField(campaignRows, "meta_form_leads");
+    const websiteLeads = sumMetricField(campaignRows, "website_leads");
+    if (formLeads > 0 && websiteLeads === 0) {
+      return makeResolution("meta_form_leads", "META FORM LEADS", "COST PER LEAD", "low", false);
+    }
+    if (websiteLeads > 0 && formLeads === 0) {
+      return makeResolution("website_leads", "WEBSITE LEADS", "COST PER WEBSITE LEAD", "low", false);
+    }
+    if (formLeads > 0 && websiteLeads > 0) {
+      return makeResolution("leads", "LEADS", "COST PER LEAD", "verify", true);
+    }
+    // Both zero — no ambiguity to report, just no signal from this specific
+    // pair. Falls through to Step 4 rather than guessing.
+  }
+
+  // Step 4 — other objectives, by this campaign's own row totals.
+  const purchases = sumMetricField(campaignRows, "purchases");
+  if (purchases > 0) return makeResolution("purchases", "PURCHASES", "COST PER PURCHASE", "medium", false);
+
+  const videoViews =
+    sumRawKeywordsAcrossRows(campaignRows, ["thruplay"]) ||
+    sumRawKeywordsAcrossRows(campaignRows, ["video play", "video view"]);
+  if (videoViews > 0) return makeResolution("video_views", "THRUPLAYS", "COST PER THRUPLAY", "medium", false);
+
+  const appInstalls = sumRawKeywordsAcrossRows(campaignRows, ["mobile app install", "app install"]);
+  if (appInstalls > 0) return makeResolution("app_installs", "APP INSTALLS", "COST PER INSTALL", "medium", false);
+
+  const messagingConversations = sumRawKeywordsAcrossRows(campaignRows, ["messaging conversations started"]);
+  if (messagingConversations > 0) {
+    return makeResolution("messaging", "CONVERSATIONS", "COST PER CONVERSATION", "medium", false);
+  }
+
+  const linkClicks = sumMetricField(campaignRows, "link_clicks");
+  const landingPageViews = sumMetricField(campaignRows, "landing_page_views");
+  if (linkClicks > 0 && landingPageViews === 0) {
+    return makeResolution("link_clicks", "LINK CLICKS", "COST PER CLICK", "medium", false);
+  }
+  if (landingPageViews > 0) {
+    return makeResolution("landing_page_views", "LANDING PAGE VIEWS", "COST PER LPV", "medium", false);
+  }
+
+  // Step 5 — Reach, last resort before giving up.
+  const reach = sumMetricField(campaignRows, "reach");
+  if (reach > 0) return makeResolution("reach", "REACH", "COST PER 1K REACH", "medium", false);
+
+  // Step 6 — generic fallback.
+  return makeResolution("results", "RESULTS", "COST PER RESULT", "low", true);
+}
+
+/** ResultLabels-only view of resolveCampaignObjective, for every call site that only needs {resultLabel, costLabel} (the overwhelming majority — report generation itself never reads confidence/requiresConfirmation, only the wizard's own display layer does). */
+export function resolveCampaignObjectiveLabelsOnly(
+  campaignRows: MetricRow[],
+  campaignName?: string,
+  cachedObjective?: (ResultLabels & { key?: string }) | null,
+): ResultLabels {
+  const { resultLabel, costLabel } = resolveCampaignObjective(campaignRows, campaignName, cachedObjective);
   return { resultLabel, costLabel };
 }
 
-/** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a "high"/"low" confidence tag the wizard's Objective Confirmation step uses to show a blue "Detected from result type" vs. grey "Please verify" indicator. Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
-export function resolveCampaignObjectiveWithConfidence(rows: MetricRow[]): ObjectiveConfidence {
-  return resolveCampaignObjectiveDetailed(rows);
+/** Objective Confirmation memory cache — same detection as resolveCampaignObjective, explicit alias kept for every existing "WithConfidence" call site (the wizard's own /metrics route). */
+export function resolveCampaignObjectiveWithConfidence(
+  campaignRows: MetricRow[],
+  campaignName?: string,
+  cachedObjective?: (ResultLabels & { key?: string }) | null,
+): CampaignObjectiveResolution {
+  return resolveCampaignObjective(campaignRows, campaignName, cachedObjective);
 }
 
-export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
+/**
+ * campaignObjectiveMap builder — every campaign-level objective consumer
+ * (campaign/ad-set slides, the Combined Total table via
+ * groupResultsByCampaignObjective below) reads from ONE map built here, so
+ * they're guaranteed to agree. `cachedObjectives`, when passed, is
+ * consulted per-campaign as Step 1 above (keyed by the SAME
+ * normalizeCampaignName convention this map itself uses) — omit it for a
+ * call site with no cache concept (e.g. Previous Month Data, Comparison
+ * Reports), which then just runs Steps 2-6 for every campaign.
+ */
+export function buildCampaignObjectiveMap(
+  rows: MetricRow[],
+  cachedObjectives?: Map<string, ResultLabels & { key?: string }>,
+): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjective(campRows));
+    map.set(name, resolveCampaignObjectiveLabelsOnly(campRows, name, cachedObjectives?.get(name) ?? null));
   });
   return map;
 }
 
-/** Objective Confirmation memory cache (Part 6) — buildCampaignObjectiveMap's confidence-carrying counterpart, for the wizard's own /metrics route (the only consumer that needs the "high"/"low" badge; every other buildCampaignObjectiveMap call site is unaffected). */
-export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<string, ObjectiveConfidence> {
-  const map = new Map<string, ObjectiveConfidence>();
+/** buildCampaignObjectiveMap's confidence-carrying counterpart, for the wizard's own /metrics route (the only consumer that needs the confidence/requiresConfirmation badge; every other buildCampaignObjectiveMap call site is unaffected). */
+export function buildCampaignObjectiveMapWithConfidence(
+  rows: MetricRow[],
+  cachedObjectives?: Map<string, ResultLabels & { key?: string }>,
+): Map<string, CampaignObjectiveResolution> {
+  const map = new Map<string, CampaignObjectiveResolution>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjectiveWithConfidence(campRows));
+    map.set(name, resolveCampaignObjectiveWithConfidence(campRows, name, cachedObjectives?.get(name) ?? null));
   });
   return map;
 }

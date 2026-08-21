@@ -54,6 +54,7 @@ import {
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
   redistributeCardSlots,
+  stripNeverKeys,
   type CampaignObjectiveRef,
   type MetaSlotBaseline,
 } from "./slot-assignment";
@@ -1077,9 +1078,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // absent from the map keeps the automatic filterMetricsForCampaignObjective
     // behavior, unchanged from before this override existed.
     const override = campaignMetricOverrideMap.get(normalizeCampaignName(campaignName));
-    const relevantMetrics = override
-      ? selectedMetrics.filter((m) => override.includes(m.key))
-      : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
+    // Layer 3 (objective-detection rebuild) — stripNeverKeys is applied
+    // AFTER either branch, including the explicit per-campaign override:
+    // "regardless of what the user selected in Metric Review" (the user's
+    // own spec wording) means even a deliberate Step 4 Section B override
+    // can never re-introduce a card this campaign's own objective forbids
+    // (e.g. a website_leads card on a META FORM LEADS campaign's slide).
+    const relevantMetrics = stripNeverKeys(
+      override ? selectedMetrics.filter((m) => override.includes(m.key)) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
+      campaignObjective,
+    );
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
     // Part 4 — a selected metric with no real data for THIS campaign is
     // nulled out by buildSlotsFromSelection (dashed out downstream by

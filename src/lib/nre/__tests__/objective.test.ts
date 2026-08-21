@@ -12,6 +12,7 @@ import {
   groupResultsByCampaignObjective,
   normalizeCampaignName,
   resolveCampaignObjective,
+  resolveCampaignObjectiveLabelsOnly,
   resolveCampaignObjectiveWithConfidence,
   resolveObjective,
 } from "../objective";
@@ -633,7 +634,7 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
         campaign_name: "Meta Leads Campaign",
         _raw: {},
         result_type: "",
-        leads: 14,
+        meta_form_leads: 14,
         results: 14,
         spend: 596,
       }),
@@ -767,24 +768,32 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(display3.costLabel).toBe("COST PER LEAD");
   });
 
-  it("no phantom objectives from secondary metrics — a campaign's minority in-campaign signal never earns its own map entry or table column", () => {
+  // Objective-detection rebuild: Step 2 (Result Type ground truth) is
+  // unconditional — a real result_type value that maps via RESULT_TYPE_MAP
+  // settles the WHOLE campaign's objective outright, regardless of how
+  // small its own spend/row-count is next to the other rows' column data.
+  // This matches the user's own spec Test 6 (explicit result_type beats an
+  // incidental column signal) — under the OLD competing-detector system a
+  // minority signal like this was weighed against the majority-blank rows
+  // and lost; the new deterministic pipeline has no such majority
+  // requirement, so this single "Reach" row now wins.
+  it("a single result_type-tagged row settles the whole campaign's objective, even when it's the minority row by spend — Result Type ground truth (Step 2) always outranks column-based fallbacks (Step 3/4)", () => {
     const rows: MetricRow[] = [
-      // Dominant signal: 30 website leads.
+      // Dominant BY SPEND: 30 website leads, but this row's own result_type is blank.
       metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "", website_leads: 30, results: 30, spend: 600 }),
       // Minority in-campaign signal: some landing page view activity, no
       // website_leads value on this particular row.
       metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "", landing_page_views: 12, results: 0, spend: 20 }),
-      // Another minority signal: a stray reach-only row.
+      // A single row explicitly tagged with a real result_type ("Reach") —
+      // this alone settles the campaign's objective per Step 2.
       metricRow({ campaign_name: "Mixed Campaign", _raw: {}, result_type: "Reach", reach: 5000, results: 0, spend: 5 }),
     ];
     const objectiveMap = buildCampaignObjectiveMap(rows);
     expect(objectiveMap.size).toBe(1);
-    expect(objectiveMap.get(normalizeCampaignName("Mixed Campaign"))).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    expect(objectiveMap.get(normalizeCampaignName("Mixed Campaign"))).toEqual({ resultLabel: "REACH", costLabel: "COST PER 1K REACH" });
 
     const tableGroups = groupResultsByCampaignObjective(rows, objectiveMap);
-    expect(tableGroups.map((g) => g.label)).toEqual(["WEBSITE LEADS"]);
-    expect(tableGroups.find((g) => g.label === "LANDING PAGE VIEWS")).toBeUndefined();
-    expect(tableGroups.find((g) => g.label === "REACH")).toBeUndefined();
+    expect(tableGroups.map((g) => g.label)).toEqual(["REACH"]);
   });
 
   it("case-insensitivity fix — differently-cased occurrences of the same campaign name are treated as ONE campaign, not two", () => {
@@ -957,15 +966,23 @@ describe("resolveCampaignObjective — Objective Confirmation permanent fix (Par
     expect(resolution.costLabel).toBe("COST PER WEBSITE LEAD");
   });
 
-  describe("Test 9 — the landing_page_view special case", () => {
-    it("result_type 'landing_page_view' + real website_leads column data -> WEBSITE LEADS (a lead campaign using LPV as a mid-funnel signal)", () => {
+  describe("Test 9 — result_type 'landing_page_view' is real RESULT_TYPE_MAP ground truth (objective-detection rebuild: Step 2 always wins outright, no column-data override)", () => {
+    // Objective-detection rebuild: 'landing_page_view' has its own exact
+    // RESULT_TYPE_MAP entry (key: landing_page_views), so Step 2 (Result
+    // Type ground truth) settles this campaign's objective unconditionally
+    // — even with a real, non-zero website_leads column alongside it. Under
+    // the OLD system a non-zero dedicated column outranked this exact same
+    // result_type text; the new deterministic pipeline has no such
+    // column-beats-text exception (see report-data.test.ts's matching
+    // "Test 1" rewrite for the identical scenario at the row level).
+    it("result_type 'landing_page_view' + real website_leads column data -> LANDING PAGE VIEWS (Result Type ground truth wins, column data never overrides it)", () => {
       const rows: MetricRow[] = [
         metricRow({ _raw: {}, result_type: "landing_page_view", website_leads: 22, landing_page_views: 340, results: 22, spend: 260 }),
         metricRow({ _raw: {}, result_type: "landing_page_view", website_leads: 14, landing_page_views: 210, results: 14, spend: 190 }),
       ];
       const resolution = resolveCampaignObjective(rows);
-      expect(resolution.resultLabel).toBe("WEBSITE LEADS");
-      expect(resolution.resultLabel).not.toBe("LANDING PAGE VIEWS");
+      expect(resolution.resultLabel).toBe("LANDING PAGE VIEWS");
+      expect(resolution.resultLabel).not.toBe("WEBSITE LEADS");
     });
 
     it("result_type 'landing_page_view' + genuinely zero leads anywhere -> LANDING PAGE VIEWS (a real traffic/LPV campaign)", () => {
@@ -990,14 +1007,22 @@ describe("resolveCampaignObjective — Objective Confirmation permanent fix (Par
     expect(resolveCampaignObjective(rows).resultLabel).toBe("INITIATE CHECKOUT");
   });
 
-  it("outnumbering the blank bucket still requires a real majority — a single stray non-blank result_type among mostly-blank rows never overrides the blank majority's own dedicated-column detection", () => {
+  // Objective-detection rebuild: Step 2 has no majority requirement — a
+  // single non-blank result_type that maps via RESULT_TYPE_MAP settles the
+  // whole campaign outright, even against a much larger blank-result_type
+  // majority whose own column data would otherwise dominate at Step 3/4.
+  // Under the OLD system such a stray signal needed to "outnumber" the
+  // blank bucket to win; the new deterministic pipeline drops that
+  // requirement entirely (see the "no phantom objectives..." test above,
+  // now renamed, for the equivalent scenario).
+  it("a single non-blank result_type among mostly-blank rows still wins outright — no majority requirement in the objective-detection rebuild's Step 2", () => {
     const rows: MetricRow[] = [
       metricRow({ _raw: {}, result_type: "", website_leads: 15, results: 15, spend: 200 }),
       metricRow({ _raw: {}, result_type: "", website_leads: 10, results: 10, spend: 150 }),
       metricRow({ _raw: {}, result_type: "reach", reach: 5000, results: 0, spend: 5 }),
     ];
     const resolution = resolveCampaignObjective(rows);
-    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.resultLabel).toBe("REACH");
   });
 });
 
@@ -1051,14 +1076,22 @@ describe("resolveCampaignObjective — explicit result_type text beats raw colum
     expect(resolution.costLabel).toBe("COST PER PURCHASE");
   });
 
-  it("result_type completely blank for every row, Results total matches Initiate Checkout more closely than Purchases -> INITIATE CHECKOUT", () => {
+  // Objective-detection rebuild: Step 4 (blank-result_type column fallback)
+  // has no Initiate Checkout branch at all — see the user's literal spec,
+  // which lists purchases/videoViews/appInstalls/messagingConversations/
+  // linkClicks/landingPageViews and nothing else. Under the OLD system,
+  // Results (8) matching the Initiate Checkout raw column (8) more closely
+  // than Purchases (3) made IC win via a "closest to Results" tie-break;
+  // the new pipeline drops that tie-break entirely — Purchases is simply
+  // checked first and wins whenever it's non-zero, full stop.
+  it("result_type completely blank for every row — Purchases wins outright regardless of the Results-column total, since Step 4 has no Initiate Checkout branch", () => {
     const rows: MetricRow[] = [
       metricRow({ _raw: {}, result_type: "", purchases: 3, results: 8, spend: 90 }),
       metricRow({ _raw: { "Initiate checkout": "8" }, result_type: "", purchases: 0, results: 0, spend: 40 }),
     ];
     const resolution = resolveCampaignObjective(rows);
-    expect(resolution.resultLabel).toBe("INITIATE CHECKOUT");
-    expect(resolution.costLabel).toBe("COST PER CHECKOUT");
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.costLabel).toBe("COST PER PURCHASE");
   });
 });
 
@@ -1084,14 +1117,19 @@ describe("resolveCampaignObjectiveWithConfidence — confidence tiers for the Ob
     expect(resolution.confidence).toBe("high");
   });
 
-  it("the all-blank Results-column-match fallback -> low confidence (column data, not real result_type text)", () => {
+  // Objective-detection rebuild: Step 4 (other objectives from column
+  // presence) carries "medium" confidence per the user's spec — a step up
+  // from Step 3's blank-lead-columns "low" tier, since Step 4 has a real,
+  // unambiguous dedicated-column count behind it (Purchases, here), not
+  // just an inference between two competing lead columns.
+  it("the all-blank Step 4 column-presence fallback (Purchases) -> medium confidence", () => {
     const rows: MetricRow[] = [
       metricRow({ _raw: {}, result_type: "", purchases: 3, results: 3, spend: 90 }),
       metricRow({ _raw: { "Initiate checkout": "8" }, result_type: "", purchases: 0, results: 0, spend: 40 }),
     ];
     const resolution = resolveCampaignObjectiveWithConfidence(rows);
     expect(resolution.resultLabel).toBe("PURCHASES");
-    expect(resolution.confidence).toBe("low");
+    expect(resolution.confidence).toBe("medium");
   });
 
   it("the final getResultGroups/resolveObjective fallback (column presence/data value/ad-set name) -> low confidence", () => {
@@ -1104,9 +1142,74 @@ describe("resolveCampaignObjectiveWithConfidence — confidence tiers for the Ob
     expect(resolution.confidence).toBe("low");
   });
 
-  it("resolveCampaignObjective (the plain, unconfident version used everywhere else) is completely unaffected — same resultLabel/costLabel, no confidence field", () => {
+  // Objective-detection rebuild: resolveCampaignObjective is now the ONE
+  // pipeline function (Layer 2's single entry point) and always returns the
+  // full CampaignObjectiveResolution shape (key/confidence/
+  // requiresConfirmation included) — there is no longer a separate
+  // "plain, unconfident version" of it. resolveCampaignObjectiveLabelsOnly
+  // is that plain {resultLabel, costLabel}-only view now, used by every
+  // report-generation call site that doesn't need the confidence badge.
+  it("resolveCampaignObjectiveLabelsOnly (the plain, confidence-free view used by report generation) — same resultLabel/costLabel, no confidence field", () => {
     const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
-    expect(resolveCampaignObjective(rows)).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+    expect(resolveCampaignObjectiveLabelsOnly(rows)).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+  });
+});
+
+// The objective-detection rebuild's own required test list, verbatim
+// (scenarios 1-6 — 7/8 live in slot-assignment.test.ts, 9/10 in
+// report-data.test.ts, since they exercise card-pack enforcement and the
+// Combined Total table rather than resolveCampaignObjective directly).
+describe("objective-detection rebuild — required test scenarios", () => {
+  it("1. result_type='Leads (form)', Website leads column present with values -> META FORM LEADS (result_type wins over column presence)", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "Leads (form)", website_leads: 9, results: 5, spend: 100 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("META FORM LEADS");
+    expect(resolution.costLabel).toBe("COST PER LEAD");
+  });
+
+  it("2. result_type blank, On-Facebook leads=5, Website leads=0 -> META FORM LEADS, confidence=low", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", meta_form_leads: 5, website_leads: 0, results: 5, spend: 50 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("META FORM LEADS");
+    expect(resolution.confidence).toBe("low");
+  });
+
+  it("3. result_type blank, Website leads=3, On-Facebook leads=0 -> WEBSITE LEADS, confidence=low", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 3, meta_form_leads: 0, results: 3, spend: 30 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.confidence).toBe("low");
+  });
+
+  it("4. result_type blank, Website leads=5, On-Facebook leads=3 -> LEADS (generic), requiresConfirmation=true, neither wins", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 5, meta_form_leads: 3, results: 8, spend: 80 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("LEADS");
+    expect(resolution.requiresConfirmation).toBe(true);
+  });
+
+  it("5. result_type blank, Website leads=0, On-Facebook leads=0, Purchases=2 -> PURCHASES", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 0, meta_form_leads: 0, purchases: 2, results: 2, spend: 40 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+  });
+
+  it("6. result_type='Reach', Purchases column=1 (incidental) -> REACH (result_type beats incidental purchase column)", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "Reach", reach: 8000, purchases: 1, results: 0, spend: 60 }),
+    ];
+    const resolution = resolveCampaignObjective(rows);
+    expect(resolution.resultLabel).toBe("REACH");
   });
 });
 
@@ -1117,8 +1220,20 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
       metricRow({ campaign_name: "Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
     ];
     const map = buildCampaignObjectiveMapWithConfidence(rows);
-    expect(map.get("purchase campaign")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" });
-    expect(map.get("leads campaign")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", confidence: "low" });
+    expect(map.get("purchase campaign")).toEqual({
+      key: "purchases",
+      resultLabel: "PURCHASES",
+      costLabel: "COST PER PURCHASE",
+      confidence: "high",
+      requiresConfirmation: false,
+    });
+    expect(map.get("leads campaign")).toEqual({
+      key: "website_leads",
+      resultLabel: "WEBSITE LEADS",
+      costLabel: "COST PER WEBSITE LEAD",
+      confidence: "low",
+      requiresConfirmation: false,
+    });
   });
 });
 

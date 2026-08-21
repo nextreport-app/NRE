@@ -384,7 +384,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot8 = pickSlot([LANDING_PAGE_VIEWS, COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
   }
 
-  return dedupeSlots([
+  const built = dedupeSlots([
     slot("spend", "AD SPEND", "currency", baseline.spend),
     slot("reach", "REACH", "number", baseline.reach),
     slot("impressions", "IMPRESSIONS", "number", baseline.impressions),
@@ -394,6 +394,14 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     slot7,
     slot8,
   ]);
+
+  // Layer 3 backstop — none of the switch cases above ever assign another
+  // objective's own dedicated key (verified case-by-case), so this never
+  // actually fires today; it exists as a structural guarantee against a
+  // future case change accidentally reintroducing a forbidden card, same
+  // spirit as dedupeSlots' own "final safety net" above.
+  const never = new Set(neverKeysForObjective(baseline.resultLabel));
+  return never.size === 0 ? built : built.map((s) => (s && never.has(s.key) ? null : s));
 }
 
 /** Slots 1-3, 6, and 7 for a Google Ads campaign — the 5 core fields already formatted by google-report-data.ts's existing aggregation (slots 6-7 are truly fixed for Google, unlike Meta's slot 7, which every objective branch below reassigns). */
@@ -508,6 +516,62 @@ export function buildSlotsFromSelection(
 }
 
 /**
+ * Layer 3 (objective-detection rebuild) — the cross-objective "never" list:
+ * card keys that must NEVER appear on a campaign's slide for a given
+ * objective, enforced as a hard backstop regardless of HOW the card got
+ * there — the automatic per-objective assignment (buildMetaSlots/
+ * defaultMetaSelection), a wizard-driven Metric Review selection
+ * (filterMetricsForCampaignObjective), or an explicit per-campaign override
+ * (report-data.ts's Step 4 Section B, which otherwise replaces the
+ * automatic narrowing entirely). Scoped to the lead family specifically —
+ * META FORM LEADS vs WEBSITE LEADS/LEADS is the exact confusion the whole
+ * objective-detection rebuild exists to stop (see columns.ts/objective.ts's
+ * own doc comments), and the only pair the user's spec gives explicit
+ * required tests for. Every other objective already can't cross-contaminate
+ * structurally: buildMetaSlots'/defaultMetaSelection's own switch cases only
+ * ever offer THAT objective's own dedicated keys as slot 4/5 candidates,
+ * never another objective's.
+ */
+// Both a real dictionary key (singular, e.g. "cost_per_website_lead" — see
+// meta-dictionary.ts) and objectiveMetricKeys' own synthetic multi-objective
+// key (mechanically slugified from the whole resultLabel, e.g.
+// "cost_per_website_leads", plural) can reach a slide's metric list — both
+// forms must be listed so a forbidden card can never sneak through under
+// whichever key happened to produce it.
+const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
+  "META FORM LEADS": ["website_leads", "cost_per_website_lead", "cost_per_website_leads"],
+  "WEBSITE LEADS": ["meta_form_leads", "cost_per_meta_form_lead", "cost_per_meta_form_leads"],
+  LEADS: [
+    "meta_form_leads",
+    "cost_per_meta_form_lead",
+    "cost_per_meta_form_leads",
+    "website_leads",
+    "cost_per_website_lead",
+    "cost_per_website_leads",
+  ],
+};
+
+/** This objective's own never-list (see NEVER_KEYS_FOR_OBJECTIVE above) — empty for any objective with no cross-contamination risk. */
+export function neverKeysForObjective(resultLabel: string | null | undefined): string[] {
+  return NEVER_KEYS_FOR_OBJECTIVE[(resultLabel || "").toUpperCase()] ?? [];
+}
+
+/**
+ * Strips any card whose key is on this objective's own never-list — the
+ * hard backstop Layer 3 requires: a forbidden key can never reach a
+ * campaign's slide no matter which path produced the candidate list.
+ * report-data.ts calls this directly on BOTH the automatic
+ * (filterMetricsForCampaignObjective) and explicit-override branches of its
+ * own per-campaign metric selection, so an override can never re-introduce
+ * a card this campaign's own objective forbids.
+ */
+export function stripNeverKeys<T extends { key: string }>(metrics: T[], campaignObjective: CampaignObjectiveRef | null): T[] {
+  const never = new Set(neverKeysForObjective(campaignObjective?.resultLabel));
+  if (never.size === 0) return metrics;
+  return metrics.filter((m) => !never.has(m.key));
+}
+
+/**
  * A campaign/ad-set's own objective (its {resultLabel, costLabel} pair, the
  * same shape report-data.ts's campaignObjectiveMap already carries — see
  * buildCampaignObjectiveMap) narrowed down to the two SelectedMetric keys
@@ -557,10 +621,14 @@ export function filterMetricsForCampaignObjective(
 ): SelectedMetric[] {
   const { resultKey, costKey } = campaignObjective ? objectiveMetricKeys(campaignObjective.resultLabel) : { resultKey: null, costKey: null };
   const allowKeys = new Set<string>([...ALWAYS_SHOW_BASE_KEYS, ...SECONDARY_FILL_KEYS]);
+  // Layer 3's never-list is excluded up front — it must never enter `kept`
+  // OR `dropped`, or the padding step below could still re-introduce a
+  // forbidden card when too few metrics survive the main filter.
+  const candidateMetrics = stripNeverKeys(metrics, campaignObjective);
 
   const kept: SelectedMetric[] = [];
   const dropped: SelectedMetric[] = [];
-  for (const metric of metrics) {
+  for (const metric of candidateMetrics) {
     if (allowKeys.has(metric.key) || metric.key === resultKey || metric.key === costKey) {
       kept.push(metric);
     } else {
