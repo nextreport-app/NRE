@@ -65,28 +65,24 @@
   --color-dash-error: #fc8181;
 }
 
-html,
-body {
+html {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
-/* Subtle dot-grid texture for the report wizard and the main dashboard
-   pages (My Clients, Client Manage, Report History) — applied to each
-   page's own outer wrapper, never to the solid-background cards/panels
-   sitting on top of it, so the pattern reads as page texture rather than
-   competing with card content. `width: 100%` (rather than relying on the
-   wrapper's own block-level default) plus `background-attachment: fixed`
-   stop the pattern from visibly re-tiling or clipping short of the full
-   viewport width on wide/short pages. */
-.dash-dot-grid {
+/* Fix 3 — dot-grid texture applied directly to `body` instead of a
+   per-page `.dash-dot-grid` wrapper class (the wrapper approach kept
+   clipping short of the full page width on some pages). Painting it on
+   `body` covers 100% of every page's width/height automatically; opaque
+   page-level wrappers (e.g. /light-preview's own solid background) still
+   paint over it as before. */
+body {
+  background-color: #0d1b2e;
   background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
   background-size: 32px 32px;
-  background-color: #0d1b2e;
-  width: 100%;
-  min-height: 100%;
-  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
 
 /* /light-preview (src/app/light-preview/page.tsx) renders its own

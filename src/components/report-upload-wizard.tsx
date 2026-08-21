@@ -1736,8 +1736,8 @@ export function ReportUploadWizard({
           </ul>
 
           <p className="text-[13px] text-dash-ink-secondary">
-            Ad set slides show the same data as their campaign but with the ad set name and audience context. Deselect
-            to exclude from your report.
+            Single ad set campaigns show the same data as their campaign slide. Multiple ad sets can be selected or
+            deselected to control which audience slides appear in your report.
           </p>
 
           <div className="flex gap-3">
@@ -2463,7 +2463,7 @@ export function ReportUploadWizard({
                     href={`https://${buildShareReportUrl(shareToken)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#f6ad55] bg-[#0d1b2e] text-[14px] font-semibold text-white hover:bg-[#132a45]"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f5b45a] text-[14px] font-semibold text-[#0d1b2e] hover:bg-[#ed8936]"
                   >
                     🌐 View Report in Browser →
                   </a>
@@ -2482,7 +2482,8 @@ export function ReportUploadWizard({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <a
                   href={downloadUrl}
-                  className="flex h-10 items-center justify-center rounded-md border border-dash-border text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+                  className="flex h-11 items-center justify-center rounded-md border border-[#f5b45a] text-[13px] font-medium text-white hover:opacity-90"
+                  style={{ backgroundColor: "#1e293b" }}
                 >
                   Download PPTX
                 </a>
@@ -2492,7 +2493,8 @@ export function ReportUploadWizard({
                     <button
                       onClick={handleSaveButtonClick}
                       disabled={driveSaving}
-                      className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-dash-border text-[13px] font-medium text-dash-ink hover:bg-dash-border disabled:opacity-50"
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#68d391] text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: "#1e293b" }}
                     >
                       <DriveIcon />
                       {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
@@ -2536,7 +2538,10 @@ export function ReportUploadWizard({
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
                   >
-                    <span aria-hidden="true" className="text-[18px]">💬</span>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden="true">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
+                    </svg>
                     WhatsApp
                   </a>
                   <button
@@ -2665,7 +2670,8 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleGenerateAnother}
-                className="rounded-md border border-[#f5b45a] bg-transparent px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#f5b45a]/10"
+                className="flex h-11 w-full items-center justify-center rounded-md border border-[#63b3ed] text-[13px] font-medium text-white transition-colors hover:opacity-90"
+                style={{ backgroundColor: "#1e293b" }}
               >
                 ← Generate Another Report for {clientName}
               </button>

@@ -25,7 +25,7 @@ export default async function ClientsPage() {
   }));
 
   return (
-    <div className="dash-dot-grid -mx-4 -my-8 min-h-screen px-4 py-8">
+    <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-[24px] font-bold text-dash-ink">My Clients</h1>
         <Link

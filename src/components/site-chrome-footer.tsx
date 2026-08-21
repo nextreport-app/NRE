@@ -47,6 +47,7 @@ export function SiteChromeFooter() {
               <nav className="mt-3 flex flex-col gap-2 text-sm text-ink-muted">
                 <Link href="/" className="hover:text-white">Home</Link>
                 <Link href="/help/download" className="hover:text-white">How it Works</Link>
+                <Link href="/about" className="hover:text-white">About Us</Link>
                 <Link href="/contact" className="hover:text-white">Contact</Link>
                 <Link href="/privacy" className="hover:text-white">Privacy</Link>
                 <Link href="/terms" className="hover:text-white">Terms</Link>

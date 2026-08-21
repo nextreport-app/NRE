@@ -33,7 +33,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   }
 
   return (
-    <div className="dash-dot-grid -mx-4 -my-8 min-h-screen px-4 py-8">
+    <div>
       <div className="mx-auto max-w-3xl">
         <ReportUploadWizard
           clientId={client.id}

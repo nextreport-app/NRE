@@ -99,7 +99,7 @@ export default async function ClientAllReportsPage({
   const hasActiveFilters = !!(typeFilter || sp.from || sp.to);
 
   return (
-    <div className="dash-dot-grid -mx-4 -my-8 min-h-screen px-4 py-8">
+    <div>
       <div className="mx-auto max-w-4xl">
       <div className="mb-6">
         <Link href={`/clients/${client.id}`} className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
