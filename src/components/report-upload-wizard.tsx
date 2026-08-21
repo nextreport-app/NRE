@@ -93,11 +93,11 @@ const STEP_HEADINGS: Record<Step, string> = {
 // Final 5-step architecture — per-step subtitle shown under the screen
 // heading, replacing the old "always show client name" subtitle slot.
 const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Select your ad platform and upload your CSV export",
-  2: "Choose which campaigns to include in your report",
-  3: "We detected these campaign objectives. Correct any that look wrong.",
-  4: "Your report will show these metrics on each campaign slide",
-  5: "",
+  1: "Upload your Meta Ads or Google Ads CSV export",
+  2: "Select which campaigns to include in your report",
+  3: "Confirm what each campaign was optimising for",
+  4: "Review which metrics appear on each campaign slide",
+  5: "Choose your report period and generate",
 };
 
 const MIN_SELECTED_METRICS = 4;
@@ -949,34 +949,32 @@ export function ReportUploadWizard({
    * Objective-detection rebuild — the 5 confidence tiers the Objective
    * Confirmation step shows below each campaign's dropdown. "cached" (green
    * check) is the highest confidence: this exact client has confirmed this
-   * exact campaign before. "high" (blue dot) is Step 2's RESULT_TYPE_MAP
+   * exact campaign before. "high" (green check) is Step 2's RESULT_TYPE_MAP
    * ground truth (real result_type text). "medium" (grey dot) is Step 4's
    * column-presence fallback — a real, unambiguous dedicated-column count,
-   * just not explicit result_type text. "low" (amber dot) is Step 3's
-   * blank-result_type single-lead-column inference — a genuine guess, worth
-   * a second look. "verify" (red dot) is a real, unresolved ambiguity (both
-   * lead columns present, or the generic RESULTS fallback) — the Continue
-   * button is disabled for this campaign until the user actively picks a
-   * value (see the Continue button's own disabled logic below). Returns
-   * null for a campaign with no confidence tag at all (the user has already
-   * touched its dropdown — see setCampaignObjective — so nothing needs to
-   * be shown).
+   * just not explicit result_type text. "low" and "verify" are both a real,
+   * unresolved ambiguity (a guessed single-lead-column inference, both lead
+   * columns present, or the generic RESULTS fallback) and share one loud red
+   * pill treatment — the Continue button is disabled for a "verify"-driving
+   * campaign until the user actively picks a value (see the Continue
+   * button's own disabled logic below; that blocking uses
+   * campaignRequiresConfirmation, not tier directly, since the two aren't a
+   * perfect 1:1 map). Returns null for a campaign with no confidence tag at
+   * all (the user has already touched its dropdown — see
+   * setCampaignObjective — so nothing needs to be shown).
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
     if (tier === "cached") {
-      return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]" };
+      return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]", pill: false };
     }
     if (tier === "high") {
-      return { icon: "●", text: "Detected from result type", className: "text-[#63b3ed]" };
+      return { icon: "✓", text: "Detected", className: "text-[#68d391]", pill: false };
     }
     if (tier === "medium") {
-      return { icon: "●", text: "Please verify", className: "text-dash-ink-secondary" };
+      return { icon: "●", text: "Please verify", className: "text-dash-ink-secondary", pill: false };
     }
-    if (tier === "low") {
-      return { icon: "●", text: "Requires confirmation", className: "text-[#f6ad55]" };
-    }
-    if (tier === "verify") {
-      return { icon: "●", text: "Confirmation required", className: "text-[#fc8181]" };
+    if (tier === "low" || tier === "verify") {
+      return { icon: "⚠", text: "Confirmation required", className: "bg-[#fc8181] text-[#2d0b0b]", pill: true };
     }
     return null;
   }
@@ -1819,12 +1817,15 @@ export function ReportUploadWizard({
                   : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
                 const tier = campaignObjectiveConfidence.get(normalized);
                 const badge = objectiveConfidenceBadge(tier);
-                const blocksContinue = campaignRequiresConfirmation.get(normalized) === true && !touchedObjectiveCampaigns.has(normalized);
-                const needsVerification = tier === "low" || tier === "medium";
-                const rowBorderClass = blocksContinue
-                  ? "border-l-4 border-l-[#fc8181] bg-red-950/10"
-                  : needsVerification
-                    ? "border-l-4 border-l-[#f6ad55] bg-amber-950/10"
+                // Low and verify tiers share one loud, unmissable treatment
+                // (2px solid red border + red-outlined dropdown) since both
+                // represent a real, unresolved guess. High gets a subtle
+                // green left border; medium/cached get no special border.
+                const isLoudTier = tier === "low" || tier === "verify";
+                const rowBorderClass = isLoudTier
+                  ? "border-2 border-[#fc8181] bg-red-950/10"
+                  : tier === "high"
+                    ? "border-l-2 border-l-[#68d391]"
                     : "";
                 return (
                   <li key={name} className={`px-4 py-3 ${rowBorderClass}`}>
@@ -1835,7 +1836,9 @@ export function ReportUploadWizard({
                       <select
                         value={currentKey}
                         onChange={(e) => setCampaignObjective(name, e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f6ad55]"
+                        className={`rounded-md border px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-[#f5b45a] ${
+                          isLoudTier ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
+                        } bg-dash-bg`}
                       >
                         {options.map((o) => (
                           <option key={o.key} value={o.key}>
@@ -1844,7 +1847,15 @@ export function ReportUploadWizard({
                         ))}
                       </select>
                     </div>
-                    {badge && (
+                    {badge && badge.pill && (
+                      <div className="mt-2 flex justify-end">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${badge.className}`}>
+                          <span aria-hidden="true">{badge.icon}</span>
+                          <span>{badge.text}</span>
+                        </span>
+                      </div>
+                    )}
+                    {badge && !badge.pill && (
                       <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] font-medium ${badge.className}`}>
                         <span aria-hidden="true">{badge.icon}</span>
                         <span>{badge.text}</span>
@@ -2654,7 +2665,7 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleGenerateAnother}
-                className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
+                className="rounded-md border border-[#f5b45a] bg-transparent px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#f5b45a]/10"
               >
                 ← Generate Another Report for {clientName}
               </button>

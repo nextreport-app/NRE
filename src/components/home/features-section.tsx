@@ -1,33 +1,38 @@
+// Homepage copy/structure overhaul — this section replaces the two
+// previous near-duplicate sections ("Everything your agency needs" and
+// "Why agencies choose NextReport"), which listed largely the same
+// capabilities under different headings/icons. One section, 6 items max,
+// no duplicates.
 const FEATURES = [
   {
-    icon: "📊",
-    title: "Auto-detects any CSV",
-    description: "Works with any column layout from Meta or Google Ads exports.",
-  },
-  {
     icon: "🎯",
-    title: "Smart objective detection",
-    description: "Automatically identifies leads, purchases, traffic, reach and more.",
+    title: "Auto-detects campaign objectives",
+    description: "Identifies leads, purchases, traffic, reach and more — for both Meta and Google Ads.",
   },
   {
     icon: "🤖",
-    title: "AI-written insights",
-    description: "Campaign summaries and key insights written by AI for every slide.",
+    title: "AI-written campaign summaries",
+    description: "Every slide gets an AI-written summary and key insights — no manual writing.",
+  },
+  {
+    icon: "📊",
+    title: "Works with any CSV export",
+    description: "Any column layout from a Meta Ads or Google Ads export — no template to configure.",
+  },
+  {
+    icon: "🔀",
+    title: "Comparison reports",
+    description: "Compare any two periods side by side, campaign by campaign — this week vs last week or a custom range.",
+  },
+  {
+    icon: "🌐",
+    title: "Share a browser link",
+    description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
   },
   {
     icon: "☁️",
-    title: "Google Drive sync",
-    description: "Reports save directly to your Drive folder with a shareable link.",
-  },
-  {
-    icon: "📱",
-    title: "Meta and Google Ads",
-    description: "Full support for both platforms in one tool.",
-  },
-  {
-    icon: "⚡",
-    title: "Under 2 minutes",
-    description: "From CSV upload to downloaded report in minutes not hours.",
+    title: "Google Drive integration",
+    description: "Reports save automatically to your Drive folder, with a shareable link ready to send.",
   },
 ];
 
@@ -36,7 +41,7 @@ export function FeaturesSection() {
     <section className="bg-navy-panel px-6 py-20">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center text-2xl font-semibold text-white sm:text-3xl">
-          Everything your agency needs for client reporting
+          Everything you need to send better reports
         </h2>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
