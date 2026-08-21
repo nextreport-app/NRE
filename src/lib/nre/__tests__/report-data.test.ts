@@ -11,7 +11,7 @@ import {
 } from "../report-data";
 import { adSetKey } from "../ad-sets";
 import type { NreRow } from "../columns";
-import { defaultMetaSelection, objectiveMetricKeys, type SelectedMetric } from "../available-metrics";
+import { defaultMetaSelection, type SelectedMetric } from "../available-metrics";
 
 beforeAll(() => {
   process.env.TZ = "UTC";
@@ -904,14 +904,7 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
     };
   }
 
-  // Objective-detection rebuild: 'landing_page_view' has its own exact
-  // RESULT_TYPE_MAP entry — Step 2 (Result Type ground truth) settles this
-  // campaign's objective outright, even with a real, non-zero website_leads
-  // column alongside it. Under the OLD system a non-zero dedicated column
-  // outranked this same result_type text; the new deterministic pipeline
-  // has no such column-beats-text exception (see objective.test.ts's
-  // matching "Test 9" rewrite for the identical scenario).
-  it("Test 1 — result_type = 'landing_page_view' is real ground truth and wins outright, even with a website leads column present", () => {
+  it("Test 1 — website leads column (value 5) beats result_type = 'landing_page_view'", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -923,9 +916,9 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
     });
 
     const labels = data.periodRow.resultColumns.map((c) => c.label);
-    expect(labels).toContain("LANDING PAGE VIEWS");
-    expect(labels).not.toContain("WEBSITE LEADS");
-    expect(data.periodRow.resultColumns.find((c) => c.label === "LANDING PAGE VIEWS")?.value).toBe("5");
+    expect(labels).toContain("WEBSITE LEADS");
+    expect(labels).not.toContain("LANDING PAGE VIEWS");
+    expect(data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("5");
   });
 
   it("Test 2 — leads column (value 14) + result_type 'onsite_conversion.lead_grouped' -> META FORM LEADS", () => {
@@ -978,7 +971,7 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
       mtdDailyRows,
       periodRows: [
         bugRow({ campaign_name: "Awareness", result_type: "Reach", reach: "20000", results: "0", spend: "400" }),
-        bugRow({ campaign_name: "Meta Leads", meta_form_leads: "14", results: "14", spend: "596" }),
+        bugRow({ campaign_name: "Meta Leads", leads: "14", results: "14", spend: "596" }),
         bugRow({ campaign_name: "Website Leads", website_leads: "9", results: "9", spend: "155" }),
       ],
       now: NOW,
@@ -988,17 +981,11 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
     expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
   });
 
-  // Objective-detection rebuild: Step 3's blank-result_type fallback is
-  // pure VALUE-based (sum this campaign's own meta_form_leads/website_leads
-  // fields) — it never falls back to whole-file column PRESENCE the way the
-  // OLD Priority 3 did. A campaign with a real, non-zero lead value still
-  // classifies correctly (Meta Leads below); a campaign whose own lead
-  // columns are genuinely all zero has "nothing to say" at Step 3 (per the
-  // spec's own Rule 3: "both zero" falls through rather than guessing) and
-  // continues down the pipeline to the generic RESULTS fallback instead of
-  // being kept alive as a zero-value WEBSITE LEADS column the way the OLD
-  // column-presence detection did.
-  it("Test 5 — meta form leads at 14 shows its own $42.57 cost per lead; a campaign with genuinely zero leads of either kind falls through to the generic RESULTS bucket instead of guessing WEBSITE LEADS", () => {
+  it("Test 5 — website leads at 0 shows 0/N/A, meta form leads at 14 shows its own $42.57 cost per lead", () => {
+    // A real CSV export carries the same header row for every campaign —
+    // the Website Leads campaign's own "Website leads" column (Priority 3)
+    // is what classifies it even though this period's value is 0.
+    const sharedHeaders = { Leads: "0", "Website leads": "0" };
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -1008,14 +995,14 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
       periodRows: [
         bugRow({
           campaign_name: "Meta Leads",
-          _raw: { "On-Facebook leads": "14" },
-          meta_form_leads: "14",
+          _raw: { ...sharedHeaders, Leads: "14" },
+          leads: "14",
           results: "14",
           spend: "596",
         }),
         bugRow({
           campaign_name: "Website Leads",
-          _raw: { "Website leads": "0" },
+          _raw: { ...sharedHeaders, "Website leads": "0" },
           website_leads: "0",
           results: "0",
           spend: "155",
@@ -1026,16 +1013,8 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
 
     const metaLeads = data.periodRow.resultColumns.find((c) => c.label === "META FORM LEADS");
     const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
-    const results = data.periodRow.resultColumns.find((c) => c.label === "RESULTS");
     expect(metaLeads).toEqual({ label: "META FORM LEADS", costLabel: "COST PER LEAD", value: "14", cprValue: "$42.57" });
-    expect(websiteLeads).toBeUndefined();
-    // Not just absent from WEBSITE LEADS — absent entirely: computeTableRow
-    // already never gives the generic RESULTS bucket its own zero-count
-    // column (a pre-existing, unrelated rule — see its own "stray untagged
-    // row is noise" comment), so the Website Leads campaign's spend is
-    // folded into the row's total spend with no column of its own at all.
-    expect(results).toBeUndefined();
-    expect(data.periodRow.resultColumns).toHaveLength(1);
+    expect(websiteLeads).toEqual({ label: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: "0", cprValue: "N/A" });
   });
 
   it("is deterministic — repeated builds of the same reported-bug CSV input always classify identically", () => {
@@ -1054,76 +1033,6 @@ describe("computeTableRow — objective Priority 1 column-value detection (repor
     for (let i = 0; i < 5; i++) {
       expect(buildOnce()).toEqual(first);
     }
-  });
-});
-
-// The objective-detection rebuild's own required test list, scenarios 9-10
-// (1-6 live in objective.test.ts, 7-8 in slot-assignment.test.ts).
-describe("objective-detection rebuild — required test scenarios 9-10 (Combined Total table)", () => {
-  function reqRow(overrides: Partial<NreRow> = {}): NreRow {
-    return {
-      _raw: {},
-      campaign_name: "Campaign",
-      ad_set_name: "Set 1",
-      result_type: "",
-      spend: "100",
-      reach: "0",
-      impressions: "9000",
-      results: "0",
-      ctr: "1.5",
-      cpc: "6",
-      date_start: "01-06-2026",
-      date_end: "30-06-2026",
-      ...overrides,
-    };
-  }
-
-  it("9. an account with a form-leads campaign and a website-leads campaign shows TWO separate objective columns, never merged", () => {
-    const data = buildReportData({
-      accountName: "Test Agency",
-      currencySymbol: "$",
-      timezone: "Asia/Kolkata",
-      monthlyBudget: null,
-      mtdDailyRows,
-      periodRows: [
-        reqRow({ campaign_name: "Form Leads Campaign", meta_form_leads: "12", results: "12", spend: "300" }),
-        reqRow({ campaign_name: "Website Leads Campaign", website_leads: "7", results: "7", spend: "150" }),
-      ],
-      now: NOW,
-    });
-
-    const labels = data.periodRow.resultColumns.map((c) => c.label).sort();
-    expect(labels).toEqual(["META FORM LEADS", "WEBSITE LEADS"]);
-    const formLeads = data.periodRow.resultColumns.find((c) => c.label === "META FORM LEADS");
-    const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
-    // Each column's own cost = that objective's own spend / own count —
-    // never blended with the other campaign's spend or count.
-    expect(formLeads).toMatchObject({ value: "12", cprValue: "$25.00" });
-    expect(websiteLeads).toMatchObject({ value: "7", cprValue: "$21.43" });
-  });
-
-  it("10. a generic LEADS campaign (both lead columns present, requiresConfirmation=true) shows a LEADS column using the Results column value", () => {
-    const data = buildReportData({
-      accountName: "Test Agency",
-      currencySymbol: "$",
-      timezone: "Asia/Kolkata",
-      monthlyBudget: null,
-      mtdDailyRows,
-      periodRows: [
-        reqRow({
-          campaign_name: "Ambiguous Leads Campaign",
-          website_leads: "5",
-          meta_form_leads: "3",
-          results: "8",
-          spend: "80",
-        }),
-      ],
-      now: NOW,
-    });
-
-    const labels = data.periodRow.resultColumns.map((c) => c.label);
-    expect(labels).toEqual(["LEADS"]);
-    expect(data.periodRow.resultColumns[0]).toMatchObject({ costLabel: "COST PER LEAD", value: "8", cprValue: "$10.00" });
   });
 });
 
@@ -1238,20 +1147,13 @@ describe("buildReportData — META FORM LEADS from result_type 'Leads (form)', n
   });
 });
 
-// Objective-detection rebuild: the OLD Part 6 bug fix's blank-result_type
-// Purchases-vs-Initiate-Checkout disambiguation no longer exists — the
-// user's literal Step 4 spec (blank-result_type column fallback) lists only
-// purchases/videoViews/appInstalls/messagingConversations/linkClicks/
-// landingPageViews, with no Initiate Checkout or Add To Cart branch at all.
-// A blank-result_type campaign with an incidental "Initiate checkout" raw
-// column is therefore no longer detected as Initiate Checkout — it falls
-// straight to whichever Step 4 signal it does have (Purchases here), same
-// as any other campaign. This means a campaign that previously earned its
-// own separate INITIATE CHECKOUT column now shares the PURCHASES bucket
-// with any other Purchases-classified campaign — a deliberate, literal
-// consequence of the rebuild's simplified Step 4, not a bug.
-describe("computeTableRow (via periodRow) — blank-result_type column fallback has no Initiate Checkout branch (objective-detection rebuild)", () => {
-  it("Campaign 1 (blank result_type, incidental Initiate Checkout column, real Purchases=2) and Campaign 2 (result_type 'Website purchases', Purchases=1) both resolve PURCHASES and share one combined column", () => {
+// Real-account bug report: the Previous Month row's PURCHASES column was
+// inflated by secondary/incidental purchases from a campaign whose real
+// objective was Initiate Checkout, because a blank result_type + a
+// non-zero Purchases column used to win unconditionally — Initiate
+// Checkout was never even considered as a competing signal.
+describe("computeTableRow (via periodRow) — Purchases vs Initiate Checkout column disambiguation (Part 6 bug fix)", () => {
+  it("Campaign 1 (blank result_type, IC 4 > Purchases 2 secondary) -> INITIATE CHECKOUT column = 4; Campaign 2 (result_type 'Website purchases', Purchases 1) -> PURCHASES column = 1, never combined", () => {
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
@@ -1295,12 +1197,8 @@ describe("computeTableRow (via periodRow) — blank-result_type column fallback 
 
     const initiateCheckout = data.periodRow.resultColumns.find((c) => c.label === "INITIATE CHECKOUT");
     const purchases = data.periodRow.resultColumns.find((c) => c.label === "PURCHASES");
-    // No separate INITIATE CHECKOUT column exists anymore — Step 4 doesn't
-    // check for it. Both campaigns' own resolved objective is PURCHASES,
-    // each contributing its own row's `results` value (4 + 1 = 5) into the
-    // one shared bucket.
-    expect(initiateCheckout).toBeUndefined();
-    expect(purchases?.value).toBe("5");
+    expect(initiateCheckout?.value).toBe("4");
+    expect(purchases?.value).toBe("1"); // never 3 — Campaign 1's 2 secondary purchases must not bleed into this bucket.
     expect(data.periodRow.spend).toBe("$360"); // Ad Spend is still the full combined total of both campaigns.
   });
 });
@@ -3874,92 +3772,6 @@ describe("buildReportData — Step 4 Section B: campaignMetricOverrides (final 5
     });
     const leadGen = data.campaignSlides.find((s) => s.campaignName === "Lead Gen")!;
     expect(leadGen.dynamicMetrics.map((m) => m?.key)).toContain("meta_form_leads");
-  });
-});
-
-describe("buildReportData — Step 4 rebuild: two campaigns sharing defaultMetaSelection's generic result/cost keys never collide", () => {
-  // defaultMetaSelection reuses the dictionary's own generic "results"/
-  // "cost_per_result" keys (just relabeled) for every NON-dedicated
-  // objective (WEBSITE LEADS, PURCHASES, APP INSTALLS, ...). The /metrics
-  // route remaps these to objectiveMetricKeys' own unique synthetic key
-  // per objective before returning perCampaignSelection — this test proves
-  // that remap is load-bearing: without it, two selected campaigns with
-  // two different non-dedicated objectives would collide once the wizard
-  // unions every campaign's own metric objects into one selectedMetrics
-  // payload (report-data.ts's override resolution is key-based), and one
-  // campaign's card would silently show the OTHER campaign's label.
-  function objRow(day: string, campaign: string, resultType: string, extraRaw: Record<string, string> = {}): NreRow {
-    return {
-      _raw: { Day: day, "Amount spent": "50", Reach: "1000", Impressions: "10000", "CTR (all)": "2", ...extraRaw },
-      campaign_name: campaign,
-      ad_set_name: "Set 1",
-      result_type: resultType,
-      spend: "50",
-      reach: "1000",
-      impressions: "10000",
-      results: "10",
-      ctr: "2",
-      cpc: "1",
-      date_start: day,
-      date_end: day,
-    };
-  }
-
-  const days = daysInclusive(13, 19);
-  const rows: NreRow[] = days.flatMap((day) => [
-    objRow(day, "Website Co", "Website leads", { "Link clicks": "20", "Landing page views": "15" }),
-    objRow(day, "Purchase Co", "Purchase", { "Link clicks": "25", "Landing page views": "18" }),
-  ]);
-
-  /** Mirrors the /metrics route's own per-campaign remap exactly. */
-  function preSelectFor(resultLabel: string, costLabel: string): SelectedMetric[] {
-    const { resultKey, costKey, dedicated } = objectiveMetricKeys(resultLabel);
-    return defaultMetaSelection(resultLabel, costLabel, Object.keys(rows[0]._raw)).map((m) => {
-      if (dedicated) return m;
-      if (m.key === "results") return { ...m, key: resultKey };
-      if (m.key === "cost_per_result") return { ...m, key: costKey };
-      return m;
-    });
-  }
-
-  it("gives each campaign its own distinct result/cost keys, so the wizard's union pool never overwrites one campaign's label with another's", () => {
-    const websiteSelection = preSelectFor("WEBSITE LEADS", "COST PER WEBSITE LEAD");
-    const purchaseSelection = preSelectFor("PURCHASES", "COST PER PURCHASE");
-
-    const byKey = new Map<string, SelectedMetric>();
-    for (const m of [...websiteSelection, ...purchaseSelection]) byKey.set(m.key, m);
-    const selectedMetrics = Array.from(byKey.values());
-
-    const data = buildReportData({
-      accountName: "Test Agency",
-      currencySymbol: "$",
-      timezone: "Asia/Kolkata",
-      monthlyBudget: null,
-      mtdDailyRows: rows,
-      now: NOW,
-      selectedMetrics,
-      campaignObjectives: {
-        "Website Co": { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" },
-        "Purchase Co": { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" },
-      },
-      campaignMetricOverrides: {
-        "Website Co": websiteSelection.map((m) => m.key),
-        "Purchase Co": purchaseSelection.map((m) => m.key),
-      },
-    });
-
-    const websiteSlide = data.campaignSlides.find((s) => s.campaignName === "Website Co")!;
-    const purchaseSlide = data.campaignSlides.find((s) => s.campaignName === "Purchase Co")!;
-
-    const websiteCard = websiteSlide.dynamicMetrics.find((m) => m?.key === "website_leads");
-    expect(websiteCard?.label).toBe("WEBSITE LEADS");
-
-    const purchaseCard = purchaseSlide.dynamicMetrics.find((m) => m?.key === "purchases");
-    expect(purchaseCard?.label).toBe("PURCHASES");
-
-    // Neither slide shows the other campaign's objective card.
-    expect(websiteSlide.dynamicMetrics.map((m) => m?.key)).not.toContain("purchases");
-    expect(purchaseSlide.dynamicMetrics.map((m) => m?.key)).not.toContain("website_leads");
   });
 });
 

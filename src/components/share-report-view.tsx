@@ -233,7 +233,7 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
   const filledLength = (DONUT_CIRCUMFERENCE * percentage) / 100;
   const gapLength = DONUT_CIRCUMFERENCE - filledLength;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "140px", textAlign: "center" }}>
+    <div style={{ textAlign: "center", width: "140px" }}>
       <svg width="110" height="110" viewBox="0 0 110 110">
         <circle cx="55" cy="55" r={DONUT_RADIUS} fill="none" stroke="#1e3a5f" strokeWidth={DONUT_STROKE} />
         {filledLength > 0 && (
@@ -257,15 +257,16 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
           {c.spendLabel}
         </text>
       </svg>
-      {/* Campaign name below the donut — spend already shown once, inside the circle. Results/cost-per-result (this campaign's own primary objective) follow, omitted entirely for a zero-result campaign rather than showing hollow zeros. Each line is centered and full-width under the donut (Fix 6). */}
+      {/* Campaign name below the donut — spend already shown once, inside the circle. Results/cost-per-result (this campaign's own primary objective) follow, omitted entirely for a zero-result campaign rather than showing hollow zeros. */}
       <div
         style={{
           color: "white",
           fontSize: "11px",
           marginTop: "8px",
           lineHeight: "1.4",
-          width: "100%",
-          textAlign: "center",
+          maxWidth: "130px",
+          marginLeft: "auto",
+          marginRight: "auto",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
@@ -275,12 +276,12 @@ function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
         {c.name}
       </div>
       {c.resultsValueLabel && (
-        <div style={{ color: "#f6ad55", fontSize: "11px", marginTop: "4px", width: "100%", textAlign: "center" }}>
+        <div style={{ color: "#f6ad55", fontSize: "11px", marginTop: "4px" }}>
           {c.resultsValueLabel} {c.resultsLabel}
         </div>
       )}
       {c.cprValueLabel && (
-        <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px", width: "100%", textAlign: "center" }}>
+        <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px" }}>
           {c.cprValueLabel} {c.cprLabel}
         </div>
       )}
@@ -416,30 +417,23 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
         backgroundSize: "32px 32px",
       }}
     >
-      {/* Fix 7 — sized to match the main app nav: 40px logo, 60px min height, dark card + amber border on the Download PPTX button (matching the app's download-screen secondary buttons). */}
-      <header
-        className="sticky top-0 z-10 border-b border-navy-border px-4 sm:px-6"
-        style={{ backgroundColor: "#0d1b2e", minHeight: "60px" }}
-      >
-        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3" style={{ minHeight: "60px" }}>
+      <header className="sticky top-0 z-10 border-b border-navy-border bg-navy/95 px-4 py-3 backdrop-blur sm:px-6">
+        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
-            <span className="text-[20px] font-bold text-ink" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-              NextReport
-            </span>
+            <img src="/logo.png" alt="NextReport logo" width={24} height={24} className="block" />
+            <span className="text-[15px] font-bold text-ink">NextReport</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden text-[14px] text-white sm:inline">Powered by NextReport</span>
             {shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
-                className="flex items-center rounded-md border border-accent-orange px-4 text-[13px] font-semibold text-white hover:bg-accent-orange/10"
-                style={{ backgroundColor: "#1e293b", height: "44px" }}
+                className="rounded-md bg-accent-orange px-3.5 py-1.5 text-[12px] font-semibold text-navy hover:bg-accent-orange-hover"
               >
                 Download PPTX
               </a>
             ) : null}
+            <span className="hidden text-[12px] text-ink-muted sm:inline">Powered by NextReport</span>
           </div>
         </div>
       </header>

@@ -22,6 +22,28 @@ export function extractCampaignNames(rows: NreRow[]): string[] {
   return names;
 }
 
+/**
+ * Per-campaign total spend across the uploaded CSV — Step 2's spend badge
+ * ("C$234") and its spend-descending campaign sort. Keyed by the exact
+ * campaign_name string as it appears in the CSV (matches extractCampaignNames'
+ * own output), not normalized, since callers already look this map up by
+ * the same names extractCampaignNames returned.
+ */
+export function extractCampaignSpend(rows: NreRow[]): Record<string, number> {
+  const totalSpendByName = new Map<string, number>();
+  for (const row of rows) {
+    const name = (row.campaign_name || "").trim();
+    if (!name) continue;
+    totalSpendByName.set(name, (totalSpendByName.get(name) ?? 0) + parseCellNum(row.spend));
+  }
+  return Object.fromEntries(totalSpendByName);
+}
+
+/** Campaign names sorted by total spend descending (ties broken by first-seen order, via a stable sort over extractCampaignNames' own list) — Step 2's default campaign row order. */
+export function sortCampaignsBySpend(names: string[], spendByName: Record<string, number>): string[] {
+  return [...names].sort((a, b) => (spendByName[b] ?? 0) - (spendByName[a] ?? 0));
+}
+
 // Sub-cent totals are treated as zero — floating-point/rounding noise on an
 // otherwise-inactive campaign shouldn't count as "real" spend.
 const MIN_CAMPAIGN_SPEND = 0.01;

@@ -54,7 +54,6 @@ import {
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
   redistributeCardSlots,
-  stripNeverKeys,
   type CampaignObjectiveRef,
   type MetaSlotBaseline,
 } from "./slot-assignment";
@@ -1040,8 +1039,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignObjective: CampaignObjectiveRef | null,
     campaignName: string,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
+    // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is done.
+    console.log("SLOT ASSIGN DEBUG campaignName:", campaignName);
+    console.log("SLOT ASSIGN DEBUG campaignObjective (resultLabel/costLabel):", campaignObjective);
+    console.log("SLOT ASSIGN DEBUG objective/resultLabel raw:", baseline.resultLabel);
+    console.log("SLOT ASSIGN DEBUG results raw value:", baseline.resultValue);
+    console.log("SLOT ASSIGN DEBUG spend raw value:", baseline.spend);
+    console.log("SLOT ASSIGN DEBUG cost per result raw:", baseline.cprValue);
+    console.log(
+      "SLOT ASSIGN DEBUG branch:",
+      !selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool ? "buildMetaSlots (automatic, no wizard selection)" : "buildSlotsFromSelection + redistributeCardSlots (wizard/default selection)",
+    );
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
-      return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
+      const autoSlots = buildMetaSlots(baseline, rawRows, currencySymbol);
+      console.log("SLOT ASSIGN DEBUG buildMetaSlots result — slot4:", autoSlots[3], "slot5:", autoSlots[4], "slot7:", autoSlots[6], "slot8:", autoSlots[7]);
+      return { dynamicMetrics: autoSlots };
     }
     const baselineValues: Partial<Record<string, string>> = {
       spend: baseline.spend,
@@ -1078,16 +1090,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // absent from the map keeps the automatic filterMetricsForCampaignObjective
     // behavior, unchanged from before this override existed.
     const override = campaignMetricOverrideMap.get(normalizeCampaignName(campaignName));
-    // Layer 3 (objective-detection rebuild) — stripNeverKeys is applied
-    // AFTER either branch, including the explicit per-campaign override:
-    // "regardless of what the user selected in Metric Review" (the user's
-    // own spec wording) means even a deliberate Step 4 Section B override
-    // can never re-introduce a card this campaign's own objective forbids
-    // (e.g. a website_leads card on a META FORM LEADS campaign's slide).
-    const relevantMetrics = stripNeverKeys(
-      override ? selectedMetrics.filter((m) => override.includes(m.key)) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
-      campaignObjective,
-    );
+    const relevantMetrics = override
+      ? selectedMetrics.filter((m) => override.includes(m.key))
+      : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
     // Part 4 — a selected metric with no real data for THIS campaign is
     // nulled out by buildSlotsFromSelection (dashed out downstream by
@@ -1099,8 +1104,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // 2's padding never re-picks a key slide 1 already used (or already
     // tried and found empty).
     const usedKeys = new Set<string>([...slide1Keys.map((m) => m.key), ...(slide2Keys?.map((m) => m.key) ?? [])]);
+    const slide1Slots = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol);
+    // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is
+    // done. This is the array BEFORE redistributeCardSlots compacts it, so
+    // positions still line up with slide1Keys (e.g. index 3 is whichever key
+    // slide1Keys[3] is, typically slot 4 for the default per-objective
+    // selection) — null here means buildSlotsFromSelection itself found no
+    // real, non-zero value for that key.
+    console.log(
+      "SLOT ASSIGN DEBUG buildSlotsFromSelection result (pre-redistribute, positions match slide1Keys):",
+      slide1Keys.map((m, i) => ({ key: m.key, label: m.label, resolved: slide1Slots[i] })),
+    );
     const dynamicMetrics = redistributeCardSlots(
-      buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
+      slide1Slots,
       usedKeys,
       availableMetricsPool,
       baselineValues,
@@ -1119,6 +1135,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
           currencySymbol,
         )
       : undefined;
+    // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is
+    // done. redistributeCardSlots COMPACTS its output (nulls filtered out),
+    // so a fixed index no longer means "slot N" here — logging the whole
+    // array (key/label/value) is the only honest way to see what actually
+    // survived vs. got dropped/replaced.
+    console.log(
+      "SLOT ASSIGN DEBUG redistributeCardSlots result (compacted, positions may have shifted):",
+      dynamicMetrics.map((m) => ({ key: m.key, label: m.label, value: m.value })),
+    );
     return { dynamicMetrics, additionalMetricsSlide };
   }
 

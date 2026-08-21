@@ -46,13 +46,14 @@ export function BetaBanner() {
     <div
       role="status"
       className="flex items-center justify-center gap-3 px-4 py-2 text-center"
-      style={{ backgroundColor: "#f5b45a", color: "#0d1b2e" }}
+      style={{ backgroundColor: "#f6ad55", color: "#0d1b2e" }}
     >
       <p className="text-[13px] font-medium">
-        🚀 Now in beta — 7-day free trial, no card required ·{" "}
+        🚀 NextReport is in private beta —{" "}
         <a href="mailto:hello@nextreport.in" className="underline hover:no-underline">
           hello@nextreport.in
-        </a>
+        </a>{" "}
+        for early access
       </p>
       <button
         type="button"

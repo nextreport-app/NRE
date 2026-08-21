@@ -41,7 +41,7 @@ function CampaignSummarySlide() {
 
       <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-3">
         <MetricCard label="AD SPEND" value="$284" />
-        <MetricCard label="IMPR." value="48,291" />
+        <MetricCard label="IMPRESSIONS" value="48,291" />
         <MetricCard label="REACH" value="22,403" />
         <MetricCard label="LEADS" value="47" />
         <MetricCard label="COST PER LEAD" value="$6.04" />
@@ -72,7 +72,7 @@ function AdSetSlide() {
 
       <div className="mt-4 grid flex-1 grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
         <MetricCard label="AD SPEND" value="$156" />
-        <MetricCard label="IMPR." value="28,441" />
+        <MetricCard label="IMPRESSIONS" value="28,441" />
         <MetricCard label="REACH" value="14,203" />
         <MetricCard label="LEADS" value="31" />
         <MetricCard label="COST PER LEAD" value="$5.03" />

@@ -210,7 +210,11 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
         slot5 = { ...byKey("META", "cost_per_result", "COST PER LEAD")!, key: "cost_per_meta_form_lead" };
       }
       slot7 = byKey("META", "link_clicks")!;
-      slot8 = byKey("META", "landing_page_views")!;
+      // Meta Instant Form campaigns don't use landing pages (the lead is
+      // captured on-Facebook), so LANDING PAGE VIEWS is irrelevant/
+      // misleading here. LINK CLICKS is the preferred slot 8 pick, but
+      // it's already slot 7 above — COST PER LINK CLICK is the fallback.
+      slot8 = costPerLinkClick;
       break;
     case "LINK CLICKS":
       slot4 = byKey("META", "link_clicks")!;

@@ -107,7 +107,10 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
   it.each([
     ["WEBSITE LEADS", "landing_page_views"],
     ["LEADS", "landing_page_views"],
-    ["META FORM LEADS", "landing_page_views"],
+    // Fix 2 — Meta Instant Form campaigns don't use landing pages, so
+    // LANDING PAGE VIEWS is dropped for this objective; LINK CLICKS (the
+    // preferred slot 8 pick) is already slot 7, so it falls to CPC.
+    ["META FORM LEADS", "cpc_link_click"],
     ["VIDEO VIEWS", "video_p100"],
     ["THRUPLAYS", "video_p100"],
     ["MESSAGING LEADS", "messaging_contacts"],
@@ -492,45 +495,13 @@ describe("filterMetricsForCampaignObjective — Part 8 per-campaign objective fi
   it("pads back up to minCount with the next highest-priority dropped metrics when pure filtering leaves too few", () => {
     // No base/secondary metrics at all here — pure filtering on a
     // meta_form_leads objective only keeps metaFormLeads/costPerLead (2),
-    // below the 4-minimum, so the padding step pulls back in a dropped
-    // (other-objective) metric pair to reach 4. Uses purchases (a
-    // non-lead-family objective) rather than website_leads/cost_per_website_
-    // leads — Layer 3's never-list means a META FORM LEADS campaign can
-    // NEVER pad with WEBSITE LEADS cards, even when nothing else survives
-    // (see the never-list test below for that exact guarantee).
-    const sparse = [metaFormLeads, costPerLead, purchases, costPerPurchase];
+    // below the 4-minimum, so the padding step pulls back in the two
+    // dropped (other-objective) metrics to reach 4.
+    const sparse = [metaFormLeads, costPerLead, websiteLeads, costPerWebsiteLead];
     const result = filterMetricsForCampaignObjective(sparse, { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }, 4);
     expect(result).toHaveLength(4);
     const keys = result.map((m) => m.key);
-    expect(keys).toEqual(expect.arrayContaining(["meta_form_leads", "cost_per_meta_form_leads", "purchases", "cost_per_purchases"]));
-  });
-
-  // Layer 3 (objective-detection rebuild) — Tests 7 & 8 from the user's
-  // required test list: a META FORM LEADS campaign's slide must never
-  // contain website_leads/cost_per_website_lead cards, and vice versa, even
-  // when the wizard selection includes them and nothing else survives to
-  // pad the slot count — the never-list is enforced ahead of, not instead
-  // of, the padding step, so padding can never reach for a forbidden key.
-  it("Test 7 — a META FORM LEADS campaign's slide never contains WEBSITE LEADS cards, even as padding when nothing else survives", () => {
-    const sparse = [metaFormLeads, costPerLead, websiteLeads, costPerWebsiteLead];
-    const result = filterMetricsForCampaignObjective(sparse, { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }, 4);
-    const keys = result.map((m) => m.key);
-    expect(keys).toContain("meta_form_leads");
-    expect(keys).not.toContain("website_leads");
-    expect(keys).not.toContain("cost_per_website_leads");
-    // Padding can't manufacture cards that don't exist — only 2 real,
-    // allowed candidates were available, so the result stays at 2.
-    expect(result).toHaveLength(2);
-  });
-
-  it("Test 8 — a WEBSITE LEADS campaign's slide never contains META FORM LEADS cards, even as padding when nothing else survives", () => {
-    const sparse = [websiteLeads, costPerWebsiteLead, metaFormLeads, costPerLead];
-    const result = filterMetricsForCampaignObjective(sparse, { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" }, 4);
-    const keys = result.map((m) => m.key);
-    expect(keys).toContain("website_leads");
-    expect(keys).not.toContain("meta_form_leads");
-    expect(keys).not.toContain("cost_per_meta_form_leads");
-    expect(result).toHaveLength(2);
+    expect(keys).toEqual(expect.arrayContaining(["meta_form_leads", "cost_per_meta_form_leads", "website_leads", "cost_per_website_leads"]));
   });
 
   it("passes every metric through unfiltered when no campaignObjective is known (null)", () => {

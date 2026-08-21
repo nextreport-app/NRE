@@ -89,8 +89,7 @@ export default async function ClientDetailPage({
   }));
 
   return (
-    <div>
-      <div className="mx-auto max-w-[800px]">
+    <div className="mx-auto max-w-[800px]">
       <div className="mb-4">
         <Link href="/clients" className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
           ← Back to Clients
@@ -159,7 +158,6 @@ export default async function ClientDetailPage({
           <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
           <ReportHistoryList clientId={client.id} initialReports={reportItems} hasMoreReports={reportCount > reportItems.length} />
         </Card>
-      </div>
       </div>
     </div>
   );

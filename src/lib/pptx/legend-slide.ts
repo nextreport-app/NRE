@@ -121,73 +121,6 @@ function parseTemplateLegendSlots(templateXml: string): TemplateLegendSlot[] {
   return slots;
 }
 
-// Fix 8 (items 1, 2, 5) — an overlong dynamic metric name (e.g. an unusual
-// CSV result_type auto-capitalized into a legend term, like "Cost per
-// quote request submitted") wraps to a second line in the template's
-// single-line, fixed-height title box (title boxes use noAutofit at
-// authoring time), visibly overlapping the description text directly
-// below it. Truncating at a word boundary within 28 characters — rather
-// than a mid-word ellipsis cut — keeps the shortened name readable (e.g.
-// "Cost per quote request submitted" -> "Cost per quote request"), and a
-// still-long result (>25 chars, up to the 28-char cap) additionally gets
-// a smaller 9pt title size so the single line fits its box comfortably.
-const MAX_TERM_LENGTH = 28;
-const SMALL_FONT_TERM_LENGTH = 25;
-const SMALL_TERM_FONT_PT = 9;
-
-function truncateTerm(term: string): string {
-  if (term.length <= MAX_TERM_LENGTH) return term;
-  const cut = term.slice(0, MAX_TERM_LENGTH);
-  const lastSpace = cut.lastIndexOf(" ");
-  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
-}
-
-// Fix 8 (item 4) — grows each of the legend's 4 card rows taller so a
-// long (2-3 line) description no longer needs to overflow its card to
-// stay readable. Each row is its own <p:grpSp>; DrawingML scales a
-// group's entire contents (background rect, icon, title, description —
-// every child shape and its descendants) to fill however large the
-// group's own placement <a:ext> is relative to its <a:chExt>, so growing
-// just the row's own ext.cy — while leaving chExt.cy and every child
-// shape's own numbers untouched — makes the whole card proportionally
-// taller with no other edits needed. Each subsequent row's own off.y
-// then shifts down by the same cumulative amount, preserving the
-// original visual gap between rows. The growth (100,000 EMU, ~7.9pt,
-// ~8.8% taller per row) is sized to fit inside the template's own
-// existing slack below the last row — verified identical across all 3
-// templates (dark/light/google): 496,644 EMU of margin to the slide's
-// bottom edge, of which this uses 4 x 100,000 = 400,000, leaving 96,644
-// EMU (~7.6pt) to spare. A no-op (silently skipped) against any template
-// whose legend slide geometry doesn't match these exact baked-in values.
-const ROW_GROWTH_EMU = 100000;
-const LEGEND_ROW_Y = [1257589, 2581459, 3905329, 5229200];
-const LEGEND_ROW_CX = [11261996, 11261996, 11274353, 11261996];
-const LEGEND_ROW_OLD_CY = 1132156;
-const LEGEND_OUTER_OLD_EXT = { cx: 11274353, cy: 5103767 };
-
-function growLegendCardRows(xml: string): string {
-  let out = xml;
-  const newCy = LEGEND_ROW_OLD_CY + ROW_GROWTH_EMU;
-  const newRowGap = LEGEND_ROW_Y[1] - LEGEND_ROW_Y[0] + ROW_GROWTH_EMU;
-  for (let i = 0; i < LEGEND_ROW_Y.length; i++) {
-    const oldY = LEGEND_ROW_Y[i];
-    const cx = LEGEND_ROW_CX[i];
-    const newY = LEGEND_ROW_Y[0] + i * newRowGap;
-    const oldFrag = `<a:off x="460447" y="${oldY}"/><a:ext cx="${cx}" cy="${LEGEND_ROW_OLD_CY}"/><a:chOff x="460447" y="1257589"/><a:chExt cx="${cx}" cy="${LEGEND_ROW_OLD_CY}"/>`;
-    const newFrag = `<a:off x="460447" y="${newY}"/><a:ext cx="${cx}" cy="${newCy}"/><a:chOff x="460447" y="1257589"/><a:chExt cx="${cx}" cy="${LEGEND_ROW_OLD_CY}"/>`;
-    if (out.includes(oldFrag)) out = out.replace(oldFrag, newFrag);
-  }
-  // Cosmetic — keep the outer wrapper group's own stated bounding box
-  // consistent with its (now taller) contents. Both ext and chExt move
-  // together here (unlike the rows above) since this outer group isn't
-  // meant to introduce its own extra scale on top of the rows'.
-  const oldOuter = `<a:off x="460447" y="1257589"/><a:ext cx="${LEGEND_OUTER_OLD_EXT.cx}" cy="${LEGEND_OUTER_OLD_EXT.cy}"/><a:chOff x="460447" y="1257589"/><a:chExt cx="${LEGEND_OUTER_OLD_EXT.cx}" cy="${LEGEND_OUTER_OLD_EXT.cy}"/>`;
-  const newOuterCy = LEGEND_OUTER_OLD_EXT.cy + LEGEND_ROW_Y.length * ROW_GROWTH_EMU;
-  const newOuter = `<a:off x="460447" y="1257589"/><a:ext cx="${LEGEND_OUTER_OLD_EXT.cx}" cy="${newOuterCy}"/><a:chOff x="460447" y="1257589"/><a:chExt cx="${LEGEND_OUTER_OLD_EXT.cx}" cy="${newOuterCy}"/>`;
-  if (out.includes(oldOuter)) out = out.replace(oldOuter, newOuter);
-  return out;
-}
-
 export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[]): string {
   const slots = parseTemplateLegendSlots(templateXml);
   const usedSlotIndex = new Set<number>();
@@ -209,7 +142,6 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   // still-unclaimed slot's shapes, retexted in place.
   let xml = templateXml;
   let cursor = 0;
-  const smallFontTerms: string[] = [];
   for (const entry of unmatchedEntries) {
     while (cursor < slots.length && usedSlotIndex.has(cursor)) cursor++;
     if (cursor >= slots.length) break; // out of slots — the fixed 12-card grid is full
@@ -217,20 +149,10 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
     usedSlotIndex.add(cursor);
     cursor++;
 
-    const truncatedTerm = truncateTerm(entry.term);
-    const upperTerm = truncatedTerm.toUpperCase();
-    if (truncatedTerm.length > SMALL_FONT_TERM_LENGTH) smallFontTerms.push(upperTerm);
-
-    xml = replaceLiteralText(xml, slot.titleRuns[0], upperTerm);
+    xml = replaceLiteralText(xml, slot.titleRuns[0], entry.term.toUpperCase());
     if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], "");
     xml = replaceLiteralText(xml, slot.descText, entry.explanation);
   }
-
-  // Item 4 — grow every card row taller, regardless of which/how many
-  // slots got new text (even an untouched template-default card, like
-  // LEARNING PHASE, benefits — its own long baked-in description is what
-  // originally prompted this fix).
-  xml = growLegendCardRows(xml);
 
   // Readability floor (product owner spec): every card's title/label text
   // at least 12pt, its description text underneath at least 11pt. The
@@ -257,35 +179,18 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   // the shape to fit the text"), which made sense at the template's
   // original 10pt, but at the bumped-up 12pt floor a long description can
   // now grow past its card's fixed background rectangle — visibly
-  // overflowing the card. Swapping it slide-wide for <a:normAutofit/>
-  // ("shrink the TEXT to fit the shape" instead) only ever engages for a
-  // description whose text genuinely doesn't fit its card at the 12pt
-  // floor, leaving every other (shorter) description at the full 12pt
-  // untouched.
+  // overflowing the card. Every <a:spAutoFit/> in this slide belongs to a
+  // description shape (title shapes all use <a:noAutofit/> instead,
+  // confirmed by inspecting the template), so swapping it slide-wide for
+  // <a:normAutofit/> ("shrink the TEXT to fit the shape" instead) is a safe,
+  // targeted fix: it only ever engages for a description whose text
+  // genuinely doesn't fit its card at the 12pt floor, leaving every other
+  // (shorter) description at the full 12pt untouched.
   const beforeAutofitCount = (xml.match(/<a:spAutoFit\/>/g) || []).length;
   xml = xml.replace(/<a:spAutoFit\/>/g, "<a:normAutofit/>");
   console.log(
     `[legend-slide] converted ${beforeAutofitCount} description text box(es) from spAutoFit (grow shape, can overflow) to normAutofit (shrink text to fit)`,
   );
-
-  // Item 3 — the title boxes use <a:noAutofit/> (fixed size, never
-  // shrinks) rather than spAutoFit, so they need their own conversion:
-  // every text box on this slide — title and description alike — now
-  // uses normAutofit, so an overlong title that slips past the 28-char
-  // truncation above still shrinks instead of overflowing.
-  const beforeNoAutofitCount = (xml.match(/<a:noAutofit\/>/g) || []).length;
-  xml = xml.replace(/<a:noAutofit\/>/g, "<a:normAutofit/>");
-  console.log(
-    `[legend-slide] converted ${beforeNoAutofitCount} title text box(es) from noAutofit (fixed size, can overflow) to normAutofit (shrink text to fit)`,
-  );
-
-  // Item 5 — a still-long truncated name (>25 chars, up to the 28-char
-  // cap) gets a smaller 9pt title size so its single line fits its box
-  // comfortably. Applied after the 12pt floor pass above so it isn't
-  // immediately raised back up to the floor.
-  for (const term of smallFontTerms) {
-    xml = forceRunStyle(xml, term, { sizePt: SMALL_TERM_FONT_PT });
-  }
 
   // Round L — the slide's own static title ("METRIC ABBREVIATION GUIDE",
   // baked into the template, identical text across all 3 templates)

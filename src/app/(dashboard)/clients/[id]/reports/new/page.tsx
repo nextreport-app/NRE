@@ -33,18 +33,16 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   }
 
   return (
-    <div>
-      <div className="mx-auto max-w-3xl">
-        <ReportUploadWizard
-          clientId={client.id}
-          clientName={client.accountName}
-          hasGoogleDriveConnected={!!user.googleRefreshToken}
-          initialLastDriveFolderId={client.lastDriveFolderId}
-          initialLastDriveFolderName={client.lastDriveFolderName}
-          hasPreviousMonthData={!!client.previousMonthDataUrl}
-          clientTemplate={client.template}
-        />
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <ReportUploadWizard
+        clientId={client.id}
+        clientName={client.accountName}
+        hasGoogleDriveConnected={!!user.googleRefreshToken}
+        initialLastDriveFolderId={client.lastDriveFolderId}
+        initialLastDriveFolderName={client.lastDriveFolderName}
+        hasPreviousMonthData={!!client.previousMonthDataUrl}
+        clientTemplate={client.template}
+      />
     </div>
   );
 }

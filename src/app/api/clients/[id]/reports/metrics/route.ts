@@ -2,17 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
-import type { NreRow } from "@/lib/nre/columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
-import { buildCampaignObjectiveMapWithConfidence, normalizeCampaignName } from "@/lib/nre/objective";
+import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
-import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics, objectiveMetricKeys, type SelectedMetric } from "@/lib/nre/available-metrics";
-import { filterMetricsForCampaignObjective } from "@/lib/nre/slot-assignment";
-import { aggregateDynamicMetrics } from "@/lib/nre/dynamic-metrics";
+import { buildMultiObjectiveSelection, defaultGoogleSelection, listSelectableMetrics, type ObjectivePair } from "@/lib/nre/available-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
@@ -21,21 +18,10 @@ import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/l
  * Part 3's optional Metric Review wizard step: run AFTER campaign selection
  * (so the engine knows which campaigns are actually being reported on and
  * can pick the right objective-based default), BEFORE dates — no
- * date-filtered data exists yet at this point.
- *
- * Meta's response is entirely per-campaign (Step 4 rebuild): each selected
- * campaign gets its own `defaultMetaSelection` call using THAT campaign's
- * own confirmed objective (never an account-wide union across every
- * objective present), returned as `perCampaignSelection`, plus its own
- * "add a metric" pool (`perCampaignAvailable` — objective-relevant/generic-
- * secondary CSV columns not already pre-selected, filtered to ones with a
- * real non-zero value for THAT campaign specifically). Both are keyed by
- * objective.ts's normalizeCampaignName, matching campaignObjectives' own
- * key convention. `perCampaignAvailable`'s non-zero check is the one place
- * this route aggregates real numbers — everywhere else it only deals in
- * metric LABELS, since no date range is chosen yet at this point in the
- * wizard (see available-metrics.ts's own file header); the full uploaded
- * CSV is the closest available proxy.
+ * date-filtered data exists yet at this point, so this only ever returns
+ * metric LABELS (the wizard's own dropdown pool + the engine's default 8),
+ * never aggregated values; see available-metrics.ts's own file header for
+ * why that's fine — the wizard step doesn't show numbers either.
  *
  * Re-parses the CSV rather than reusing analyze/route.ts's own parse, same
  * stateless-round-trip pattern preview/route.ts and reports/route.ts
@@ -99,100 +85,41 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // objective-cache.ts) always wins over a fresh engine re-detection: it's
     // the single most reliable signal available, since it came from a human
     // actually looking at the campaign, not an inference from column data.
-    // Every other campaign keeps the engine's own detection — Layer 2's own
-    // 4-tier confidence (high/medium/low/verify — see objective.ts's
-    // CampaignObjectiveResolution) plus requiresConfirmation passes straight
-    // through, so the wizard can show the right badge and block Continue for
-    // a campaign the engine genuinely could not resolve on its own.
+    // Every other campaign keeps the engine's own detection (Priority
+    // 1/RESULT_TYPE_MAP text match = "resultType", everything else =
+    // "columnData") so the wizard can show the right confidence badge.
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
-    const campaignObjectiveEntries: [
-      string,
-      { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
-    ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
+    const campaignObjectiveEntries: [string, { resultLabel: string; costLabel: string; source: "cached" | "resultType" | "columnData" }][] = Array.from(
+      buildCampaignObjectiveMapWithConfidence(rowsForObjective),
+    ).map(([name, detected]) => {
       const cached = lookupCachedObjective(objectiveCache, name);
       if (cached) {
-        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, confidence: "cached", requiresConfirmation: false }];
+        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" }];
       }
       return [
         name,
         {
           resultLabel: detected.resultLabel,
           costLabel: detected.costLabel,
-          confidence: detected.confidence,
-          requiresConfirmation: detected.requiresConfirmation,
+          source: detected.confidence === "high" ? "resultType" : "columnData",
         },
       ];
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
-    // Step 4 rebuild — each campaign gets its OWN correct pre-selected 8
-    // metrics, from defaultMetaSelection called with THAT campaign's own
-    // confirmed objective (never an account-wide union) — a campaign whose
-    // objective is META FORM LEADS never sees another campaign's WEBSITE
-    // LEADS pair in its own pre-selected list, and vice versa.
-    const rowsByCampaign = new Map<string, NreRow[]>();
-    for (const row of rowsForObjective) {
-      const name = normalizeCampaignName(row.campaign_name);
-      const group = rowsByCampaign.get(name);
-      if (group) group.push(row);
-      else rowsByCampaign.set(name, [row]);
-    }
-
-    const fullPool = listSelectableMetrics(mtdParsed.headers, "META");
-    const perCampaignSelection: Record<string, SelectedMetric[]> = {};
-    const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
-
-    for (const [normalizedName, info] of Object.entries(campaignObjectives)) {
-      // defaultMetaSelection reuses the dictionary's own generic "results"/
-      // "cost_per_result" keys (just relabeled) for every non-dedicated
-      // objective (WEBSITE LEADS, PURCHASES, APP INSTALLS, ...) — fine when
-      // there's only one flat account-wide selection, but two DIFFERENT
-      // selected campaigns with two different non-dedicated objectives
-      // would then collide under the identical "results" key once the
-      // wizard unions every campaign's own metric objects into one
-      // selectedMetrics payload (report-data.ts's key-based override
-      // resolution needs each distinct label to have its own key — see
-      // currentSelectedMetricsPayload's own comment in the wizard).
-      // objectiveMetricKeys already derives exactly the right unique
-      // synthetic key per objective (report-data.ts's computeMetaSlideMetrics
-      // populates baselineValues under this same key for a non-dedicated
-      // campaignObjective, so this remap needs no report-data.ts change) —
-      // reusing it here keeps every campaign's own pair collision-free. A
-      // "dedicated" objective (REACH/LINK CLICKS/VIDEO VIEWS) already uses a
-      // real, distinct dictionary key from defaultMetaSelection itself, so
-      // it's left untouched.
-      const { resultKey, costKey, dedicated } = objectiveMetricKeys(info.resultLabel);
-      const preSelected = defaultMetaSelection(info.resultLabel, info.costLabel, mtdParsed.headers).map((m) => {
-        if (dedicated) return m;
-        if (m.key === "results") return { ...m, key: resultKey };
-        if (m.key === "cost_per_result") return { ...m, key: costKey };
-        return m;
-      });
-      perCampaignSelection[normalizedName] = preSelected;
-
-      // "Add metric" pool (Step 4 spec): relevant to this campaign's own
-      // objective OR a generic secondary (filterMetricsForCampaignObjective,
-      // minCount 0 — no dropped-metric padding wanted here, just the real
-      // relevance filter), not already pre-selected for this campaign, AND
-      // present with a real non-zero aggregated value across THIS
-      // campaign's own raw rows (no date range chosen yet at this point in
-      // the wizard, so this checks across the full uploaded CSV — the
-      // closest available proxy; see aggregateDynamicMetrics).
-      const selectedKeys = new Set(preSelected.map((m) => m.key));
-      const relevant = filterMetricsForCampaignObjective(fullPool, { resultLabel: info.resultLabel, costLabel: info.costLabel }, 0).filter(
-        (m) => !selectedKeys.has(m.key),
-      );
-      const campaignRows = rowsByCampaign.get(normalizedName) ?? [];
-      const aggregated = aggregateDynamicMetrics(campaignRows, relevant, "meta");
-      perCampaignAvailable[normalizedName] = relevant.filter((m) => {
-        const value = aggregated[m.key];
-        return value !== undefined && !Number.isNaN(value) && value > 0;
-      });
-    }
+    // Mixed-objective accounts (Parts 1-4): pre-select a Results/Cost per
+    // result pair for EVERY distinct objective actually detected across
+    // this report's campaigns (campaignObjectives above), not just one
+    // majority objective — see buildMultiObjectiveSelection's own doc
+    // comment for the smart-fill/never-an-awkward-partial-slide rules.
+    const objectivePairs: ObjectivePair[] = Object.values(campaignObjectives).map((info) => ({
+      resultLabel: info.resultLabel,
+      costLabel: info.costLabel,
+    }));
 
     return NextResponse.json({
-      perCampaignSelection,
-      perCampaignAvailable,
+      defaultSelection: buildMultiObjectiveSelection(objectivePairs, mtdParsed.headers),
+      availableMetrics: listSelectableMetrics(mtdParsed.headers, "META"),
       campaignObjectives,
     });
   } catch (err) {

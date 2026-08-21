@@ -1,47 +1,71 @@
 import Link from "next/link";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
 
-/** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
-function MetricCard({ label, value }: { label: string; value: string }) {
+/** A CSS-only "mock report preview" card — no image asset, matches the PPTX report's own dark/metric-tile look without rendering a real slide. */
+function ReportPreviewCard() {
   return (
-    <div className="rounded-lg border border-[#1e3a5f] bg-[#111f35] px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#f5b45a]">{label}</p>
-      <p className="mt-1 text-base font-bold text-white sm:text-lg">{value}</p>
-    </div>
-  );
-}
-
-const METRICS = [
-  { label: "Ad Spend", value: "$2,847" },
-  { label: "Reach", value: "45,231" },
-  { label: "Impressions", value: "89,456" },
-  { label: "Website Leads", value: "23" },
-  { label: "Cost per Lead", value: "$123.78" },
-  { label: "CTR (All)", value: "2.4%" },
-  { label: "Link Clicks", value: "1,847" },
-  { label: "Cost per Click", value: "$1.54" },
-];
-
-/**
- * A miniature mock of a real NextReport campaign slide — 8 metric cards in
- * a 4x2 grid, dark navy background, amber labels, white bold values — so a
- * visitor sees exactly what the PPTX output looks like before they ever
- * upload a CSV. Static placeholder numbers, deliberately realistic-looking
- * rather than obviously fake round numbers.
- */
-function SlideMockup() {
-  return (
-    <div className="w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
+    <div className="w-full max-w-sm rounded-xl border border-navy-border bg-navy-panel p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Coastal Skin Co. — Lead Gen</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Weekly Performance</span>
         <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          Weekly
+          On Track
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
-        {METRICS.map((m) => (
-          <MetricCard key={m.label} label={m.label} value={m.value} />
-        ))}
+
+      <div className="mt-5 flex items-center gap-4">
+        <div
+          className="h-20 w-20 flex-none rounded-full"
+          style={{
+            background: "conic-gradient(#f6ad55 0% 42%, #63b3ed 42% 74%, #1e3a5f 74% 100%)",
+          }}
+          aria-hidden="true"
+        >
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-navy-panel text-[10px] font-semibold text-white">
+              847
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5 text-xs">
+          <span className="flex items-center gap-1.5 text-ink-secondary">
+            <span className="h-2 w-2 flex-none rounded-full bg-[#f6ad55]" /> Leads
+          </span>
+          <span className="flex items-center gap-1.5 text-ink-secondary">
+            <span className="h-2 w-2 flex-none rounded-full bg-[#63b3ed]" /> Purchases
+          </span>
+          <span className="flex items-center gap-1.5 text-ink-secondary">
+            <span className="h-2 w-2 flex-none rounded-full bg-navy-border" /> Reach only
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-navy-border bg-navy p-3">
+          <p className="text-[11px] text-ink-muted">Spend</p>
+          <p className="mt-0.5 text-lg font-semibold text-white">₹45,230</p>
+        </div>
+        <div className="rounded-lg border border-navy-border bg-navy p-3">
+          <p className="text-[11px] text-ink-muted">Reach</p>
+          <p className="mt-0.5 text-lg font-semibold text-white">1,24,000</p>
+        </div>
+        <div className="rounded-lg border border-navy-border bg-navy p-3">
+          <p className="text-[11px] text-ink-muted">Leads</p>
+          <p className="mt-0.5 text-lg font-semibold text-white">847</p>
+        </div>
+        <div className="rounded-lg border border-navy-border bg-navy p-3">
+          <p className="text-[11px] text-ink-muted">CTR</p>
+          <p className="mt-0.5 text-lg font-semibold text-white">4.2%</p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[11px] text-ink-muted">
+          <span>Budget utilised</span>
+          <span>75%</span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-navy">
+          <div className="h-full w-3/4 rounded-full bg-accent-orange" />
+        </div>
       </div>
     </div>
   );
@@ -57,12 +81,12 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
-            Client-ready Meta and Google Ads reports in under 2 minutes.
+            The next report you send will be fast, smooth, and done before you know it.
           </h1>
 
           <p className="mt-5 text-lg text-ink-muted">
-            Upload your campaign CSV. Get the same PowerPoint your clients already expect — filled with
-            accurate data and AI-written insights. No templates to configure.
+            Upload your campaign CSV. NextReport reads every column, detects your campaign objective
+            automatically, and generates a fully branded PowerPoint report — in under 2 minutes.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
@@ -95,12 +119,12 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </div>
 
           {!loggedIn && (
-            <p className="mt-4 text-xs text-ink-muted">No credit card required.</p>
+            <p className="mt-4 text-xs text-ink-muted">Free 7-day trial. No credit card required.</p>
           )}
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">
-          <SlideMockup />
+          <ReportPreviewCard />
         </div>
       </div>
     </section>

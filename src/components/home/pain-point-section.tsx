@@ -6,7 +6,7 @@ export function PainPointSection() {
         <p className="mt-5 text-base leading-relaxed text-ink-muted">
           The average digital agency spends 25 minutes per client per week manually downloading data,
           formatting slides, and writing campaign summaries. With 10 clients that is 4+ hours every
-          week on work that adds zero strategic value. NextReport does it in under 2 minutes.
+          week on work that adds zero strategic value. NextReport does it in 3 minutes.
         </p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
@@ -25,8 +25,8 @@ export function PainPointSection() {
 
           <div className="rounded-xl border border-accent-orange/50 bg-navy-panel p-6">
             <p className="text-xs uppercase tracking-wide text-ink-muted">With NextReport</p>
-            <p className="mt-2 text-xl font-semibold text-white">10 clients × 2 minutes</p>
-            <p className="mt-1 text-sm font-medium text-accent-orange">= 20 minutes/week</p>
+            <p className="mt-2 text-xl font-semibold text-white">10 clients × 3 minutes</p>
+            <p className="mt-1 text-sm font-medium text-accent-orange">= 30 minutes/week</p>
           </div>
         </div>
       </div>

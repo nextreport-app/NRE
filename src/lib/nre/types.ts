@@ -32,8 +32,6 @@ export interface MetricRow {
   purchases?: unknown;
   website_leads?: unknown;
   meta_leads?: unknown;
-  /** Correctly-bound counterpart of meta_leads (columns.ts's Layer 1 fix) — the objective-detection rebuild's own resolveCampaignObjective pipeline reads this field, never meta_leads (whose keyword binding is deliberately left broken/unchanged since resolveObjective/health.ts still depend on its exact current behavior). */
-  meta_form_leads?: unknown;
   leads?: unknown;
   landing_page_views?: unknown;
   /**

@@ -26,12 +26,12 @@ export function Nav() {
   return (
     <header className="border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
+          <img src="/logo.png" alt="NextReport logo" style={{ height: "32px", width: "32px", display: "block" }} />
           <span
             style={{
               fontWeight: 700,
-              fontSize: "20px",
+              fontSize: "18px",
               color: "white",
               letterSpacing: "-0.3px",
               fontFamily: "var(--font-inter), sans-serif",

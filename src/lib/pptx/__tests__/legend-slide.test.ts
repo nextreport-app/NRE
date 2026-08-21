@@ -154,52 +154,6 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
     expect(openSp).toBeGreaterThan(0);
   });
 
-  it("Fix 8: truncates an overlong term at a word boundary within 28 characters", () => {
-    const xml = buildLegendSlideXml(darkTemplate.legend.xml, [
-      entry({ term: "Cost per quote request submitted", explanation: "Explanation" }),
-    ]);
-    expect(xml).toContain("COST PER QUOTE REQUEST");
-    expect(xml).not.toContain("COST PER QUOTE REQUEST SUBMITTED");
-  });
-
-  it("Fix 8: a truncated term over 25 characters gets a 9pt title size", () => {
-    const xml = buildLegendSlideXml(darkTemplate.legend.xml, [
-      entry({ term: "COSTPERLONGCUSTOMCONVERSIONMETRICXYZ", explanation: "Explanation" }),
-    ]);
-    const inserted = /<a:t>(COSTPER[^<]*)<\/a:t>/.exec(xml)![1];
-    expect(inserted.length).toBeGreaterThan(25);
-    const run = new RegExp(`<a:r>((?:(?!</a:r>)[\\s\\S])*?)<a:t>${inserted}</a:t></a:r>`).exec(xml)![1];
-    expect(run).toContain('sz="900"');
-  });
-
-  it("Fix 8: a short (<=25 char) term is left at the readability floor, not shrunk", () => {
-    const xml = buildLegendSlideXml(darkTemplate.legend.xml, [entry({ term: "PURCHASES", explanation: "Explanation" })]);
-    const run = /<a:r>((?:(?!<\/a:r>)[\s\S])*?)<a:t>PURCHASES<\/a:t><\/a:r>/.exec(xml)![1];
-    expect(run).not.toContain('sz="900"');
-  });
-
-  it("Fix 8: every title text box (noAutofit) is converted to normAutofit alongside descriptions (spAutoFit)", () => {
-    expect(darkTemplate.legend.xml).toContain("<a:noAutofit/>");
-    const xml = buildLegendSlideXml(darkTemplate.legend.xml, []);
-    expect(xml).not.toContain("<a:noAutofit/>");
-    expect(xml).not.toContain("<a:spAutoFit/>");
-  });
-
-  it("Fix 8: grows each of the 4 card rows taller and shifts subsequent rows down, across all 3 templates", () => {
-    for (const tpl of [darkTemplate, lightTemplate, googleTemplate]) {
-      const xml = buildLegendSlideXml(tpl.legend.xml, []);
-      // Every row's own placement ext.cy grows from 1132156 to 1232156 (+100,000 EMU) while its chExt.cy (1132156) stays as the un-scaled child coordinate space.
-      expect((xml.match(/cy="1232156"/g) || []).length).toBe(4);
-      // Rows 2-4 shift down; row 1 (y=1257589) never moves.
-      expect(xml).toContain('y="1257589"');
-      expect(xml).toContain('y="2681459"');
-      expect(xml).toContain('y="4105329"');
-      expect(xml).toContain('y="5529199"');
-      // The last row's new bottom edge (5529199 + 1232156 = 6761355) stays within the 6858000 EMU slide height.
-      expect(5529199 + 1232156).toBeLessThan(6858000);
-    }
-  });
-
   it("works generically against the Google Ads template's own, different 12 entries (COST, CLICKS, etc.)", () => {
     const xml = buildLegendSlideXml(googleTemplate.legend.xml, [entry({ term: "AVG. CPC" })]);
     // The Google template's own AVG. CPC card matches and stays untouched.
