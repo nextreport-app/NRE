@@ -99,7 +99,8 @@ export default async function ClientAllReportsPage({
   const hasActiveFilters = !!(typeFilter || sp.from || sp.to);
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="dash-dot-grid -mx-4 -my-8 min-h-screen px-4 py-8">
+      <div className="mx-auto max-w-4xl">
       <div className="mb-6">
         <Link href={`/clients/${client.id}`} className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
           ← Back to {client.accountName}
@@ -187,6 +188,7 @@ export default async function ClientAllReportsPage({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

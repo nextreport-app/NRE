@@ -52,6 +52,17 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Subtle dot-grid texture for the report wizard and the main dashboard
+   pages (My Clients, Client Manage, Report History) — applied to each
+   page's own outer wrapper, never to the solid-background cards/panels
+   sitting on top of it, so the pattern reads as page texture rather than
+   competing with card content. */
+.dash-dot-grid {
+  background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-color: #0d1b2e;
+}
+
 /* /light-preview (src/app/light-preview/page.tsx) renders its own
    light-themed footer and marks its root element #light-preview-page —
    this hides the real site-wide dark footer (in the root layout, present

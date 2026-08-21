@@ -180,6 +180,18 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
+/** "2026-08-10" -> "Aug 10" (short month name) — used only by the Generate step's Report Summary card, which shows the year explicitly (see formatIsoRangeWithYear) rather than the full month name formatIso/formatIsoRange use everywhere else. */
+function formatIsoShort(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(d);
+}
+
+/** "2026-08-10" .. "2026-08-16" -> "Aug 10 - Aug 16, 2026" — the Report Summary card's own Week period/Month to date lines. */
+function formatIsoRangeWithYear(range: DateRangeIso): string {
+  const year = new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: "UTC" }).format(new Date(range.endIso + "T00:00:00Z"));
+  return `${formatIsoShort(range.startIso)} - ${formatIsoShort(range.endIso)}, ${year}`;
+}
+
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
 function isNoDataRowsError(e: ValidationIssue): boolean {
   return e.field === "rows";
@@ -1016,16 +1028,24 @@ export function ReportUploadWizard({
     return byKey.size > 0 ? Array.from(byKey.values()) : undefined;
   }
 
-  /** Objective-colored badge for each campaign's header row — amber for leads, coral for purchase/sales, green for reach/awareness, purple for video, blue for everything else (traffic/engagement). */
-  function objectiveBadgeColorClass(resultLabel: string | undefined): string {
+  /**
+   * Objective-colored accent for each Metric Review campaign card — amber
+   * for leads, coral for purchase/sales, green for reach/awareness, blue
+   * for everything else (traffic/engagement). Drives both the card's own
+   * top border and its header pill badge, so the two always match. Video
+   * objectives keep their own purple accent (not one of the 4 categories
+   * the redesign spec names, but a pre-existing distinction worth keeping
+   * rather than folding into the generic blue "everything else" bucket).
+   */
+  function objectiveAccent(resultLabel: string | undefined): { badgeClassName: string; borderHex: string } {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD")) return "bg-amber-950/30 text-[#f6ad55]";
-    if (label.includes("PURCHASE") || label.includes("SALE")) return "bg-red-950/30 text-[#fc8181]";
+    if (label.includes("LEAD")) return { badgeClassName: "bg-amber-950/30 text-[#f6ad55]", borderHex: "#f6ad55" };
+    if (label.includes("PURCHASE") || label.includes("SALE")) return { badgeClassName: "bg-red-950/30 text-[#fc8181]", borderHex: "#fc8181" };
     if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
-      return "bg-emerald-950/30 text-[#68d391]";
+      return { badgeClassName: "bg-emerald-950/30 text-[#68d391]", borderHex: "#68d391" };
     }
-    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return "bg-purple-950/30 text-[#b794f4]";
-    return "bg-blue-950/30 text-[#63b3ed]";
+    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return { badgeClassName: "bg-purple-950/30 text-[#b794f4]", borderHex: "#b794f4" };
+    return { badgeClassName: "bg-blue-950/30 text-[#63b3ed]", borderHex: "#63b3ed" };
   }
 
   // ── Step 5: Dates ───────────────────────────────────────────────────────
@@ -1300,9 +1320,17 @@ export function ReportUploadWizard({
     void handleSaveToDrive(folderId, driveFolderNameInput.trim());
   }
 
+  /**
+   * Fix 4 — the tertiary "🔗 Copy Link" action, moved out of the
+   * Drive-success-only block and repointed at the public share link (same
+   * URL the primary "View Report in Browser" button uses) rather than the
+   * Google Drive file URL — the share link is the one thing guaranteed to
+   * exist once a report is generated, regardless of whether the user has
+   * saved it to Drive.
+   */
   async function handleCopyLink() {
-    if (!driveSaveUrl) return;
-    await navigator.clipboard.writeText(driveSaveUrl);
+    if (!shareToken) return;
+    await navigator.clipboard.writeText(`https://${buildShareReportUrl(shareToken)}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -1423,6 +1451,24 @@ export function ReportUploadWizard({
   function driveDisplayLabel(): string {
     const range = driveDateRangeLabel();
     return `📊 ${clientName} — ${reportTypeLabel()}${range ? " " + range : ""}`;
+  }
+
+  /**
+   * Fix 4 — Report Summary card's "Estimated slides" line: the REAL slide
+   * count the loaded preview would produce, not a guess from the raw
+   * campaign/ad-set selection (which can't account for zero-spend
+   * exclusions, single-ad-set opt-outs, etc. — see report-data.ts's own
+   * slide-building rules). Mirrors render.ts's/renderComparisonPptx's own
+   * slide assembly order exactly: cover + campaign slides + ad-set slides +
+   * (chart, if present) + table + legend for a normal report; cover +
+   * one slide per comparison campaign + one summary slide for a comparison
+   * report. Returns null only when no preview has loaded yet (the card
+   * itself is gated on that already, so this should never actually happen).
+   */
+  function estimatedSlideCount(): number | null {
+    if (previewKind === "comparison" && comparisonData) return 1 + comparisonData.campaigns.length + 1;
+    if (data) return 1 + data.campaignSlides.length + data.adSetSlides.length + (data.chart ? 1 : 0) + 1 + 1;
+    return null;
   }
 
   return (
@@ -1599,7 +1645,7 @@ export function ReportUploadWizard({
                         aria-expanded={isExpanded}
                         className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30"
                       >
-                        1 ad set
+                        1 ad set ▼
                       </button>
                     )}
                     {isMultiAdSet && (
@@ -1682,7 +1728,7 @@ export function ReportUploadWizard({
                           onChange={() => toggleAdSet(name, group.adSetNames[0])}
                           className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
                         />
-                        <span className="text-[12px] text-dash-ink-secondary">Include audience slide for this ad set</span>
+                        <span className="text-[12px] text-dash-ink-secondary">Include ad set slide within this campaign</span>
                       </label>
                     </div>
                   )}
@@ -1856,74 +1902,83 @@ export function ReportUploadWizard({
           <div>
             {campaigns
               .filter((name) => selectedCampaigns.has(name))
-              .map((name, i, arr) => {
+              .map((name) => {
                 const normalized = normalizeCampaignName(name);
                 const objective = campaignObjectives.get(normalized);
                 const selectedForCampaign = perCampaignMetrics.get(normalized) ?? [];
                 const availableForCampaign = campaignAvailableMetrics(normalized);
+                const accent = objectiveAccent(objective?.resultLabel);
                 return (
-                  <div key={name}>
-                    <div className="rounded-xl bg-[#1e293b] p-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-[15px] font-bold text-white" title={name}>
-                          {name}
+                  <div
+                    key={name}
+                    className="mb-4 rounded-lg bg-[#1e293b] p-4 last:mb-0"
+                    style={{ borderTop: `3px solid ${accent.borderHex}` }}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="truncate text-[15px] font-bold text-white" title={name}>
+                        {name}
+                      </span>
+                      {objective && (
+                        <span
+                          className={`flex-shrink-0 rounded-[20px] text-[11px] font-medium uppercase ${accent.badgeClassName}`}
+                          style={{ padding: "6px 10px" }}
+                        >
+                          {objective.resultLabel}
                         </span>
-                        {objective && (
-                          <span
-                            className={`rounded-[20px] text-[11px] font-medium ${objectiveBadgeColorClass(objective.resultLabel)}`}
-                            style={{ padding: "6px 10px" }}
-                          >
-                            {objective.resultLabel}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {selectedForCampaign.map((m) => (
-                          <span
-                            key={m.key}
-                            className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
-                            style={{ padding: "8px 12px" }}
-                          >
-                            <span className="text-[12px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
-                              {m.label}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removeCampaignMetric(normalized, m.key)}
-                              aria-label={`Remove ${m.label} from ${name}`}
-                              className="text-[#64748b] hover:text-[#fc8181]"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-
-                      {perCampaignMinWarning && (
-                        <p className="mt-2 text-[13px] text-amber-300">{perCampaignMinWarning}</p>
-                      )}
-
-                      {availableForCampaign.length > 0 && (
-                        <div className="mt-3">
-                          <p className="mb-1.5 text-[13px] text-dash-ink-secondary">Add metric:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {availableForCampaign.map((candidate) => (
-                              <button
-                                key={candidate.key}
-                                type="button"
-                                onClick={() => addCampaignMetric(normalized, candidate)}
-                                className="rounded-md border border-[#1e3a5f] bg-[#0d1b2e] text-[12px] text-dash-ink-secondary hover:text-dash-ink"
-                                style={{ padding: "8px 12px" }}
-                              >
-                                <span className="text-[#68d391]">+</span> {candidate.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
                       )}
                     </div>
-                    {i < arr.length - 1 && <div className="my-4 border-t border-[#1e3a5f]" />}
+                    <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Metrics for this campaign slide</p>
+
+                    <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                      Included metrics
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      {selectedForCampaign.map((m) => (
+                        <span
+                          key={m.key}
+                          className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
+                          style={{ padding: "8px 12px" }}
+                        >
+                          <span className="text-[12px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
+                            {m.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeCampaignMetric(normalized, m.key)}
+                            aria-label={`Remove ${m.label} from ${name}`}
+                            className="text-[#64748b] hover:text-[#fc8181]"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {perCampaignMinWarning && (
+                      <p className="mt-2 text-[13px] text-amber-300">{perCampaignMinWarning}</p>
+                    )}
+
+                    {availableForCampaign.length > 0 && (
+                      <>
+                        <div className="my-3 border-t border-[#334155]" />
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                          Add from your CSV:
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-2">
+                          {availableForCampaign.map((candidate) => (
+                            <button
+                              key={candidate.key}
+                              type="button"
+                              onClick={() => addCampaignMetric(normalized, candidate)}
+                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[12px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
+                              style={{ padding: "8px 12px" }}
+                            >
+                              <span className="text-[#68d391]">+</span> {candidate.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -2239,16 +2294,53 @@ export function ReportUploadWizard({
                   <p className="text-[13px] text-[#94a3b8]">
                     Client: <span className="text-[13px] text-white">{clientName}</span>
                   </p>
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Campaigns:{" "}
-                    <span className="text-[13px] text-white">{summaryCampaignNames().length} selected</span>
-                  </p>
+                  <div>
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Campaigns:{" "}
+                      <span className="text-[13px] text-white">{summaryCampaignNames().length} selected</span>
+                    </p>
+                    <div className="mt-1 space-y-0.5 pl-3">
+                      {summaryCampaignNames().map((name) => (
+                        <p key={name} className="truncate text-[13px] text-[#94a3b8]" title={name}>
+                          {name}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  {previewKind === "comparison" && comparisonData ? (
+                    <>
+                      <p className="text-[13px] text-[#94a3b8]">
+                        Period A: <span className="text-[13px] text-white">{comparisonData.periodALabel}</span>
+                      </p>
+                      <p className="text-[13px] text-[#94a3b8]">
+                        Period B: <span className="text-[13px] text-white">{comparisonData.periodBLabel}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      {reportType === "WEEKLY" && weeklyRangeIso && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Week period: <span className="text-[13px] text-white">{formatIsoRangeWithYear(weeklyRangeIso)}</span>
+                        </p>
+                      )}
+                      {mtdRange && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Month to date: <span className="text-[13px] text-white">{formatIsoRangeWithYear(mtdRange)}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
                   <p className="text-[13px] text-[#94a3b8]">
                     Template: <span className="text-[13px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
                     Platform: <span className="text-[13px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
                   </p>
+                  {estimatedSlideCount() !== null && (
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Estimated slides: <span className="text-[13px] text-white">{estimatedSlideCount()} slides</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2280,14 +2372,14 @@ export function ReportUploadWizard({
             )}
 
             {/* Section 2 — Custom title, collapsed behind a small link by default. */}
-            <div className="rounded-lg bg-[#1e293b] p-5">
+            <div className="rounded-lg bg-[#1e293b] p-3">
               {!customTitleExpanded && !reportTitleTouched ? (
                 <button
                   type="button"
                   onClick={() => setCustomTitleExpanded(true)}
                   className="text-[13px] text-dash-accent hover:underline"
                 >
-                  Add custom title +
+                  + Add custom title
                 </button>
               ) : (
                 <>
@@ -2347,59 +2439,56 @@ export function ReportUploadWizard({
           )}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleGenerateAnother}
-                className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
-              >
-                ← Generate Another Report for {clientName}
-              </button>
+            <div className="space-y-4">
+              <p className="text-center text-[16px] font-semibold text-[#68d391]">✓ Report Generated Successfully</p>
 
-              <div className="flex flex-wrap items-start gap-3">
+              {/* Primary action — the public read-only share page, always
+                  available once the report is generated (see
+                  share-token.ts/share-report.ts), independent of the
+                  Google Drive save flow below. */}
+              {shareToken && (
+                <div>
+                  <a
+                    href={`https://${buildShareReportUrl(shareToken)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#f6ad55] bg-[#0d1b2e] text-[14px] font-semibold text-white hover:bg-[#132a45]"
+                  >
+                    🌐 View Report in Browser →
+                  </a>
+                  <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
+                    {buildShareReportUrl(shareToken)} ·{" "}
+                    <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
+                      Copy
+                    </button>
+                  </p>
+                </div>
+              )}
+
+              {/* Secondary actions — two columns. State 4 (Drive not
+                  connected): the right column simply never renders, so
+                  Download PPTX sits alone. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <a
                   href={downloadUrl}
-                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-emerald-500"
+                  className="flex h-10 items-center justify-center rounded-md border border-dash-border text-[13px] font-medium text-dash-ink hover:bg-dash-border"
                 >
                   Download PPTX
                 </a>
 
-                {/* Public read-only share page — always available once the
-                    report is generated (see share-token.ts/share-report.ts),
-                    independent of the Google Drive save flow below. */}
-                {shareToken && (
-                  <div>
-                    <a
-                      href={`https://${buildShareReportUrl(shareToken)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-                    >
-                      🌐 View Report in Browser
-                    </a>
-                    <p className="mt-1.5 text-[12px] text-dash-ink-secondary">
-                      {buildShareReportUrl(shareToken)} ·{" "}
-                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
-                        Copy
-                      </button>
-                    </p>
-                  </div>
-                )}
-
-                {/* State 4 (not connected): nothing Drive-related renders at all. */}
                 {hasGoogleDriveConnected && driveView === "collapsed" && (
                   <div>
                     <button
                       onClick={handleSaveButtonClick}
                       disabled={driveSaving}
-                      className="inline-flex items-center gap-2 rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                      className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-dash-border text-[13px] font-medium text-dash-ink hover:bg-dash-border disabled:opacity-50"
                     >
                       <DriveIcon />
                       {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
                     </button>
                     {/* State 2: a folder is already remembered for this client. */}
                     {rememberedFolder && (
-                      <p className="mt-1.5 text-[13px] text-dash-ink-secondary">
+                      <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
                         Saving to: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
                         <button
                           type="button"
@@ -2416,6 +2505,39 @@ export function ReportUploadWizard({
                   </div>
                 )}
               </div>
+
+              {/* Tertiary actions — always available off the same share
+                  link the primary button uses, regardless of Google Drive
+                  save state. */}
+              {shareToken && (
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={openEmailModal}
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <span aria-hidden="true" className="text-[18px]">📧</span>
+                    Email
+                  </button>
+                  <a
+                    href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <span aria-hidden="true" className="text-[18px]">💬</span>
+                    WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <span aria-hidden="true" className="text-[18px]">🔗</span>
+                    {copied ? "Copied!" : "Copy Link"}
+                  </button>
+                </div>
+              )}
 
               {/* State 1 (no remembered folder) / "Change" from State 2 — the paste-a-link input, hidden behind the button until clicked. */}
               {hasGoogleDriveConnected && driveView === "editing" && (
@@ -2483,7 +2605,10 @@ export function ReportUploadWizard({
 
               {driveSaveError && <p className="text-[13px] text-red-400">{driveSaveError}</p>}
 
-              {/* State 3: button/input are both gone, replaced by the shareable link + share row. */}
+              {/* State 3: button/input are both gone, replaced by the saved-file
+                  link. The share link + Email/WhatsApp/Copy Link row now live
+                  in the tertiary actions above (Fix 4) — no longer duplicated
+                  here. */}
               {driveView === "success" && driveSaveUrl && (
                 <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
                   <p className="mb-2 text-[13px] uppercase tracking-wide text-emerald-300">
@@ -2493,44 +2618,10 @@ export function ReportUploadWizard({
                     href={driveSaveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mb-3 block break-all text-[13px] text-dash-accent hover:underline"
+                    className="block break-all text-[13px] text-dash-accent hover:underline"
                   >
                     {driveDisplayLabel()}
                   </a>
-                  {shareToken && (
-                    <p className="mb-3 text-[13px] text-dash-ink-secondary">
-                      Share link: {buildShareReportUrl(shareToken)} ·{" "}
-                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
-                        Copy
-                      </button>
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={handleCopyLink}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                    >
-                      <CopyIcon />
-                      {copied ? "Copied!" : "Copy Link"}
-                    </button>
-                    <a
-                      href={buildWhatsAppShareUrl(driveSaveUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                    >
-                      <WhatsAppIcon />
-                      WhatsApp
-                    </a>
-                    <button
-                      type="button"
-                      onClick={openEmailModal}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                    >
-                      <MailIcon />
-                      Email
-                    </button>
-                  </div>
                   <button
                     onClick={() => {
                       setDriveView("editing");
@@ -2557,6 +2648,16 @@ export function ReportUploadWizard({
                 </div>
               )}
 
+              {/* Bottom action — moved here from the top of this section
+                  (Fix 4): the primary/secondary/tertiary share actions above
+                  come first, this is the last thing on the screen. */}
+              <button
+                type="button"
+                onClick={handleGenerateAnother}
+                className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
+              >
+                ← Generate Another Report for {clientName}
+              </button>
             </div>
           )}
             </>
@@ -2679,35 +2780,6 @@ function Spinner() {
     <svg className="h-4 w-4 animate-spin text-dash-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
-
-// Small inline icons for the Drive share row (Copy Link / WhatsApp / Email)
-// — no icon library dependency for three glyphs.
-function CopyIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="9" y="9" width="12" height="12" rx="2" />
-      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M12 3a9 9 0 00-7.75 13.5L3 21l4.65-1.22A9 9 0 1012 3z" />
-      <path d="M8.5 8.5c0 4 3 7 7 7 .8 0 1-.7 1-1.2v-1c0-.3-.2-.5-.5-.6l-1.7-.5c-.3 0-.5 0-.6.3l-.4.7c-1.3-.6-2.3-1.6-2.9-2.9l.7-.4c.2-.1.3-.4.2-.6l-.5-1.7c0-.3-.3-.5-.6-.5h-1c-.5 0-1.2.2-1.2 1z" />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
     </svg>
   );
 }
