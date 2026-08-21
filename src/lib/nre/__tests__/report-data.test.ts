@@ -649,13 +649,11 @@ describe("computeTableRow (via periodRow/mtdRow) — ratio/average metrics recal
       now: NOW,
     });
 
-    // result_type "Lead" is now resolved via result-type-map.ts's exact
-    // machine-string match (Objective Confirmation permanent fix) as the
-    // more specific WEBSITE LEADS, not the old fuzzy-catalog generic LEADS
-    // fallback — the math being tested here (combined-totals CPL, not an
-    // average of the two campaigns' own CPLs) is unaffected either way.
-    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
-    expect(leadsColumn?.costLabel).toBe("COST PER WEBSITE LEAD");
+    // Bare result_type "Lead" is ambiguous Instant Form vs pixel — it must
+    // not be assumed to be Website Leads. Combined-totals CPL math is the
+    // thing under test here.
+    const leadsColumn = data.periodRow.resultColumns.find((c) => c.label === "LEADS");
+    expect(leadsColumn?.costLabel).toBe("COST PER LEAD");
     expect(leadsColumn?.value).toBe("25");
     // (1000 + 300) / (10 + 15) = 52.00, not the $60 simple average.
     expect(leadsColumn?.cprValue).toBe("$52.00");

@@ -242,15 +242,14 @@ describe("detectObjectiveFromColumns", () => {
     });
   });
 
-  it("detects LANDING PAGE VIEWS only when there's no Website leads column", () => {
+  it("detects LANDING PAGE VIEWS only when that's the sole objective-specific column", () => {
     expect(detectObjectiveFromColumns(["Campaign name", "Landing page views"])).toEqual({
       resultLabel: "LANDING PAGE VIEWS",
       costLabel: "COST PER LPV",
     });
-    // Website leads takes priority when both are present.
-    expect(
-      detectObjectiveFromColumns(["Campaign name", "Landing page views", "Website leads"]),
-    ).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+    // A saved-preset export with both families is ambiguous at file level —
+    // per-campaign Result Type must decide, not "Website leads exists first".
+    expect(detectObjectiveFromColumns(["Campaign name", "Landing page views", "Website leads"])).toBeNull();
   });
 
   it("detects the generic LEADS when only a bare 'Leads' header exists", () => {
@@ -260,11 +259,8 @@ describe("detectObjectiveFromColumns", () => {
     });
   });
 
-  it("prioritizes Website leads over Meta leads over generic Leads when several are present", () => {
-    expect(detectObjectiveFromColumns(["Leads", "Meta leads", "Website leads"])).toEqual({
-      resultLabel: "WEBSITE LEADS",
-      costLabel: "COST PER WEBSITE LEAD",
-    });
+  it("returns null when several lead-type columns exist in the same export (does not assume Website Leads)", () => {
+    expect(detectObjectiveFromColumns(["Leads", "Meta leads", "Website leads"])).toBeNull();
     expect(detectObjectiveFromColumns(["Leads", "Meta leads"])).toEqual({
       resultLabel: "META FORM LEADS",
       costLabel: "COST PER LEAD",
@@ -435,14 +431,9 @@ describe("resolveObjective — Purchases vs Initiate Checkout: Results-column ma
     expect(resolution.costLabel).toBe("COST PER ADD TO CART");
   });
 
-  it("a real result_type still wins over a merely-present Purchases/IC data value — Priority 1 numeric check fires first regardless of blank/non-blank text (existing chain order, unchanged)", () => {
-    // Reach text should never be overridden by an incidental purchases
-    // value the same rows also happen to carry — but since Priority 1 is
-    // checked unconditionally before result_type text, a genuine non-zero
-    // purchases signal here legitimately wins (matches the pre-existing
-    // "purchases > 0 -> PURCHASES" precedence this fix extends).
+  it("a real result_type wins over an incidental Purchases column — Reach stays Reach", () => {
     const resolution = resolveObjective({ result_type: "Reach", purchases: 1, results: 1 }, null);
-    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.resultLabel).toBe("REACH");
   });
 
   describe("ad_set_name fallback — last resort, only for a blank result_type with no numeric funnel-column data at all", () => {
@@ -1107,6 +1098,21 @@ describe("resolveCampaignObjectiveWithConfidence — confidence tiers for the Ob
   it("resolveCampaignObjective (the plain, unconfident version used everywhere else) is completely unaffected — same resultLabel/costLabel, no confidence field", () => {
     const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
     expect(resolveCampaignObjective(rows)).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+  });
+
+  it("Instant Form result_type is not overridden by a non-zero Website leads column in the same export", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Form",
+        result_type: "leads (form)",
+        results: 14,
+        website_leads: 2,
+        meta_leads: 14,
+        spend: 100,
+        _raw: {},
+      }),
+    ];
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("META FORM LEADS");
   });
 });
 

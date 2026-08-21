@@ -32,6 +32,13 @@ describe("resolveObjectiveFromResultType — exact machine result_type matching"
     );
   });
 
+  it("does not treat bare 'lead'/'leads' as Website Leads", () => {
+    expect(resolveObjectiveFromResultType("lead")?.resultLabel).toBe("LEADS");
+    expect(resolveObjectiveFromResultType("leads")?.resultLabel).toBe("LEADS");
+    expect(resolveObjectiveFromResultType("website_lead")?.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolveObjectiveFromResultType("offsite_conversion.fb_pixel_lead")?.resultLabel).toBe("WEBSITE LEADS");
+  });
+
   // Part 8, Test 8 — sales conversion events (purchase, add_to_cart,
   // initiate_checkout, view_content) all correctly mapped, each to its own
   // distinct objective, never collapsing into PURCHASES.

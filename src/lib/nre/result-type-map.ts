@@ -58,7 +58,10 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   check_in: { key: "check_ins", resultLabel: "CHECK-INS", costLabel: "COST PER CHECK-IN", isReach: false },
 
   // LEADS
-  lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
+  // Bare "lead"/"leads" is Instant Form vs pixel-ambiguous. Pixel events
+  // use website_lead / offsite_conversion.fb_pixel_lead. Never assume website.
+  lead: { key: "leads", resultLabel: "LEADS", costLabel: "COST PER LEAD", isReach: false },
+  leads: { key: "leads", resultLabel: "LEADS", costLabel: "COST PER LEAD", isReach: false },
   website_lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   contact: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "onsite_conversion.lead_grouped": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },

@@ -266,31 +266,42 @@ export function canonicalResultTypeText(resultLabel: string): string {
  *
  * Checked most-specific-first: "Website leads"/"Meta leads" before the
  * generic "leads" column check would otherwise catch them.
+ *
+ * File-level presence is only trusted when exactly one objective-specific
+ * family is in the export. An agency "save all metrics" CSV contains
+ * Website leads AND Purchases AND Meta leads together — that must NOT
+ * classify every campaign as Website Leads.
  */
 export function detectObjectiveFromColumns(headers: (string | null | undefined)[]): ResultLabels | null {
   const normalized = headers.map((h) => (h || "").toLowerCase().trim());
   const has = (substr: string) => normalized.some((h) => h.includes(substr));
 
-  if (has("website leads")) return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
-  if (has("meta leads")) return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
-  if (has("messaging conversations started"))
-    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION" };
-  if (has("whatsapp conversations started"))
-    return { resultLabel: "WHATSAPP LEADS", costLabel: "COST PER CONVERSATION" };
-  if (has("phone calls") || has("calls")) return { resultLabel: "CALL LEADS", costLabel: "COST PER CALL" };
-  if (has("purchases")) return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
-  if (has("purchase roas")) return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
-  if (has("adds to cart") || has("add to cart"))
-    return { resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART" };
-  if (has("checkouts initiated")) return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT" };
-  if (has("app installs")) return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL" };
-  if (has("video plays") || has("thruplays"))
-    return { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW" };
-  // Reached only once every more-specific column above is confirmed absent
-  // (each of those checks already returned) — so this also satisfies "AND
-  // Website leads column does NOT exist" etc. automatically.
-  if (has("landing page views")) return { resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" };
-  if (has("leads")) return { resultLabel: "LEADS", costLabel: "COST PER LEAD" };
+  const hits: ResultLabels[] = [];
+  if (has("website leads")) hits.push({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" });
+  if (has("meta leads") || has("on-facebook leads") || has("leads (form)")) {
+    hits.push({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" });
+  }
+  if (has("messaging conversations started")) {
+    hits.push({ resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION" });
+  }
+  if (has("whatsapp conversations started")) {
+    hits.push({ resultLabel: "WHATSAPP LEADS", costLabel: "COST PER CONVERSATION" });
+  }
+  if (has("phone calls") || has("calls")) hits.push({ resultLabel: "CALL LEADS", costLabel: "COST PER CALL" });
+  if (has("purchases") || has("purchase roas")) hits.push({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
+  if (has("adds to cart") || has("add to cart")) {
+    hits.push({ resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART" });
+  }
+  if (has("checkouts initiated") || has("initiate checkout")) {
+    hits.push({ resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT" });
+  }
+  if (has("app installs")) hits.push({ resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL" });
+  if (has("video plays") || has("thruplays")) {
+    hits.push({ resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW" });
+  }
+  if (has("landing page views")) hits.push({ resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV" });
+  if (hits.length === 0 && has("leads")) hits.push({ resultLabel: "LEADS", costLabel: "COST PER LEAD" });
+  if (hits.length === 1) return hits[0];
   return null;
 }
 
@@ -396,6 +407,21 @@ export function resolveObjective(
   const reach = signals.reach ?? 0;
   const results = signals.results ?? 0;
 
+  // Result Type is Meta's declared primary event for this row. Dedicated
+  // columns stay in the same export for every campaign when the agency uses
+  // a saved column preset — a non-zero Website leads cell must not relabel
+  // an Instant Form or purchase row. Exception: landing_page_view is an
+  // intermediate signal and yields to a real lead column.
+  const mapped = resolveObjectiveFromResultType(signals.result_type);
+  const rt = mapped
+    ? { resultLabel: mapped.resultLabel, costLabel: mapped.costLabel }
+    : getResultLabels(signals.result_type);
+  const isLpv = rt.resultLabel === "LANDING PAGE VIEWS";
+  const hasLeadColumn = websiteLeads > 0 || leads > 0 || metaLeads > 0;
+  if (rt.resultLabel !== "RESULTS" && !(isLpv && hasLeadColumn)) {
+    return { ...rt, source: "resultType" };
+  }
+
   if (websiteLeads > 0) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", source: "priority1" };
   }
@@ -444,9 +470,6 @@ export function resolveObjective(
   if (thruplays > 0) {
     return { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW", source: "priority1" };
   }
-
-  const rt = getResultLabels(signals.result_type);
-  if (rt.resultLabel !== "RESULTS") return { ...rt, source: "resultType" };
 
   if (columnObjective) return { ...columnObjective, source: "priority3" };
 
@@ -695,6 +718,19 @@ function isInitiateCheckoutResultTypeText(resultType: string | null | undefined)
   return rt !== "" && INITIATE_CHECKOUT_RESULT_TYPE_TEXTS.has(rt);
 }
 
+/** Bare Meta "lead"/"leads" is Instant Form vs pixel. Dedicated columns decide; mixed/empty stays generic LEADS. */
+function disambiguateAmbiguousLeads(rows: MetricRow[]): ResultLabels | null {
+  let website = 0;
+  let form = 0;
+  for (const row of rows) {
+    website += parseCellNum(row.website_leads);
+    form += parseCellNum(row.meta_leads) + parseCellNum(row.leads);
+  }
+  if (form > 0 && website === 0) return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  if (website > 0 && form === 0) return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  return null;
+}
+
 /**
  * Objective Confirmation (permanent objective-detection fix) — per-campaign
  * objective resolution, now the single algorithm buildCampaignObjectiveMap
@@ -806,7 +842,13 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       );
     if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
       const info = resolveObjectiveFromResultType(dominantResultType);
-      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high" };
+      if (info) {
+        if (info.key === "leads") {
+          const disambiguated = disambiguateAmbiguousLeads(rows);
+          if (disambiguated) return { ...disambiguated, confidence: "high" };
+        }
+        return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high" };
+      }
     }
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
     // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads

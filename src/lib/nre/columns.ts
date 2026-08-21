@@ -46,7 +46,11 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   campaign_name: ["campaign name", "campaign"],
   ad_set_name: ["ad set name", "adset name", "ad group name", "ad group"],
   result_type: ["result type", "objective", "conversion type"],
-  results: ["results", "conversions", "leads", "clicks total"],
+  // Never include "leads" here. "Website leads" / "On-Facebook leads" contain
+  // that substring and used to steal the Results mapping whenever they
+  // appeared earlier in the file than the real Results column — which is the
+  // Combined Total (monthly) slide reading the wrong column.
+  results: ["results", "conversions", "clicks total"],
   // "cost" was removed deliberately (product owner, real-account bug
   // report): it's a substring of "Cost per Result"/"Cost per Click"/"Cost
   // per Lead"/etc, so a per-result cost column appearing earlier in the
@@ -65,25 +69,87 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   delivery_status: ["delivery status", "effective status", "ad set delivery", "campaign delivery"],
   purchases: ["purchases"],
   website_leads: ["website lead"],
-  meta_leads: ["meta lead"],
+  meta_leads: ["meta lead", "on-facebook lead", "leads (form)"],
   leads: ["leads"],
   landing_page_views: ["landing page view", "lpv"],
 };
 
+/** Count metrics must never bind to a "Cost per …" header. */
+const COST_HEADER = /^(cost per|cost \/|avg\.?\s*cost|cpc|cpm|cpl|cpa)\b/;
+const COUNT_METRICS = new Set<NreMetricKey>([
+  "results",
+  "reach",
+  "impressions",
+  "link_clicks",
+  "purchases",
+  "website_leads",
+  "meta_leads",
+  "leads",
+  "landing_page_views",
+]);
+
+function headerMatchesKeyword(header: string, keyword: string, metric: NreMetricKey): boolean {
+  const h = header.toLowerCase().trim();
+  const k = keyword.toLowerCase();
+  if (COUNT_METRICS.has(metric) && COST_HEADER.test(h)) return false;
+  if (metric === "leads") {
+    // Bare "Leads" / "Lead" only — never "Website leads" or "Meta leads".
+    return /^(on-facebook\s+)?leads?( \(\s*form\s*\))?$/.test(h);
+  }
+  if (metric === "reach") {
+    return /^reach\b/.test(h) && !COST_HEADER.test(h) && !h.includes("cost per");
+  }
+  return h.includes(k);
+}
+
+function bestKeywordLength(header: string, metric: NreMetricKey, keywords: string[]): number {
+  let best = 0;
+  for (const keyword of keywords) {
+    if (headerMatchesKeyword(header, keyword, metric) && keyword.length > best) best = keyword.length;
+  }
+  return best;
+}
+
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;
 
-/** Port of buildColumnMap_ — first header (in order) to match a metric's keywords wins. */
+/**
+ * Maps each NRE field to at most one CSV header.
+ *
+ * Longest keyword wins per header, so "Website leads" binds to website_leads
+ * (keyword "website lead") instead of results/leads (keyword "leads"). First
+ * header in file order still wins when two headers score equally for the
+ * same metric. This is the universal column binder — do not add per-objective
+ * if-else here.
+ */
 export function buildColumnMap(headers: string[]): ColumnMap {
   const map: ColumnMap = {};
+  const assignedHeaders = new Set<string>();
+
   headers.forEach((header) => {
-    if (!header) return;
-    const h = String(header).toLowerCase().trim();
-    (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(
-      ([metric, keywords]) => {
-        if (!map[metric] && keywords.some((kw) => h.includes(kw))) map[metric] = header;
-      },
-    );
+    if (!header || assignedHeaders.has(header)) return;
+    let winner: NreMetricKey | null = null;
+    let winnerScore = 0;
+    (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(([metric, keywords]) => {
+      if (map[metric]) return;
+      const score = bestKeywordLength(header, metric, keywords);
+      if (score > winnerScore) {
+        winnerScore = score;
+        winner = metric;
+      }
+    });
+    if (winner) {
+      map[winner] = header;
+      assignedHeaders.add(header);
+    }
   });
+
+  if (!map.results) {
+    const dedicated = [map.website_leads, map.meta_leads, map.leads, map.purchases, map.landing_page_views].filter(
+      (h): h is string => Boolean(h),
+    );
+    if (dedicated.length === 1) map.results = dedicated[0];
+  }
+
   return map;
 }
 

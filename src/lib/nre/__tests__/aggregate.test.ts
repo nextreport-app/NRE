@@ -141,7 +141,6 @@ describe("aggregateRows", () => {
         "Ad set name": "Ad Set 1",
         "Result type": "",
         "Link clicks": linkClicks,
-        "Landing page views": "0",
         "Amount spent": spend,
       };
       if (websiteLeads !== undefined) raw["Website leads"] = websiteLeads;
@@ -161,6 +160,8 @@ describe("aggregateRows", () => {
         reach: "0",
         impressions: "0",
         results: resultsValue,
+        website_leads: websiteLeads,
+        purchases,
         link_clicks: linkClicks,
         ctr: "0",
         cpc: "0",

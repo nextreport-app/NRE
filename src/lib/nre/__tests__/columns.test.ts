@@ -66,3 +66,44 @@ describe("buildColumnMap — spend detection (regression)", () => {
     expect(buildColumnMap(["Cost per Click"]).cpc).toBe("Cost per Click");
   });
 });
+
+describe("buildColumnMap — Results vs lead-type columns (monthly-slide regression)", () => {
+  const typicalMetaHeaders = [
+    "Campaign name",
+    "Ad set name",
+    "Day",
+    "Amount spent (USD)",
+    "Reach",
+    "Impressions",
+    "Results",
+    "Result Type",
+    "Cost per result",
+    "Website leads",
+    "On-Facebook leads",
+    "Purchases",
+    "Link clicks",
+    "Landing page views",
+  ];
+
+  it("never maps Results to Website leads / On-Facebook leads / Purchases when a real Results column exists", () => {
+    const map = buildColumnMap(typicalMetaHeaders);
+    expect(map.results).toBe("Results");
+    expect(map.website_leads).toBe("Website leads");
+    expect(map.meta_leads).toBe("On-Facebook leads");
+    expect(map.purchases).toBe("Purchases");
+    expect(map.cpr).toBe("Cost per result");
+  });
+
+  it("does not let 'Website leads' steal Results when it appears first in the file", () => {
+    const map = buildColumnMap(["Website leads", "Results", "Cost per result", "Amount spent"]);
+    expect(map.results).toBe("Results");
+    expect(map.website_leads).toBe("Website leads");
+  });
+
+  it("maps a bare Leads header to leads, not to website_leads", () => {
+    const map = buildColumnMap(["Leads", "Results", "Amount spent"]);
+    expect(map.leads).toBe("Leads");
+    expect(map.results).toBe("Results");
+    expect(map.website_leads).toBeUndefined();
+  });
+});
