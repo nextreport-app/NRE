@@ -1,33 +1,63 @@
-CHANGED_FILES.txt — commit 996f11c "Add debug logging directly in the generate route's POST handler"
+CHANGED_FILES.txt — commit 2109fc1 "Fix cost_per_lead resolving to a dash for META FORM LEADS wizard selections"
 
-src/app/api/clients/[id]/reports/route.ts
-  Two more TEMPORARY DEBUG LOGGING lines, both directly inside POST()
-  itself, not inside buildMetaData (a helper POST calls later):
+src/lib/nre/report-data.ts
+  computeMetaSlideMetrics(): added a 4-line objective-conditional alias
+  right after the existing resultKey/costKey aliasing block:
 
-  1. First statement in the function, before auth/client-lookup/
-     subscription-guard/validation can return early:
-       console.log("REPORT ROUTE POST: handler entered, url:", req.url);
-     If a generate request produces zero output from this route — not
-     even this one line — the request never reached this handler at all
-     (routing/network/deployment issue), not a data issue further down.
+    if (objectiveKeyFor(campaignObjective.resultLabel) === "meta_form_leads") {
+      baselineValues["cost_per_lead"] = baseline.cprValue;
+    }
 
-  2. Right after formData is parsed, before any schema parsing/filtering
-     (parseJsonFormField/campaignMetricOverridesSchema etc. haven't run
-     yet at this point):
-       console.log("REPORT ROUTE POST: raw campaignMetricOverrides field:", formData ? formData.get("campaignMetricOverrides") : "no formData");
-     This is the rawest possible read — straight off the multipart form
-     field the client actually posted, before any validation/parsing
-     could silently drop or reshape it.
+  So when this specific campaign's SelectedMetric list contains the
+  literal key "cost_per_lead" (as produced by available-metrics.ts's
+  defaultMetaSelection when the CSV has a "Cost per lead" column instead
+  of "Cost per on-facebook lead"), buildSlotsFromSelection's baseline
+  lookup now finds a value there instead of falling through to raw-row
+  aggregation.
 
-Combined with the existing "REPORT ROUTE: ..." logs already added inside
-buildMetaData() (previous commit a8539aa), a generate request now logs at
-three points along the way: handler entry, raw form field, and parsed
-field — enough to isolate whether a missing-override symptom is a
-routing issue (log 1 missing), a client-payload issue (log 2 missing/
-empty), or a parsing/schema issue (log 2 present but the existing
-buildMetaData log shows it empty).
+ROOT CAUSE (traced through the actual aggregation code, not the
+originally proposed diagnosis): "cost_per_lead"'s dictionary entry
+(meta-dictionary.ts:293-296) has perUnitOf: "website_leads" —
+aggregateDynamicMetrics (dynamic-metrics.ts) computes it as
+sum(spend) / sum(website_leads column). A META FORM LEADS campaign's CSV
+rows have no website_leads data at all (a different objective's column),
+so the denominator is 0, the aggregate is NaN, and lookupMetricValue
+renders NaN as "—". That dictionary entry is correct as written for the
+OTHER objectives (leads/website_leads) it's also selectable for — the
+bug is that "cost_per_lead" reaches this raw-aggregation path at all,
+because its key doesn't match objectiveMetricKeys' own costKey for META
+FORM LEADS ("cost_per_meta_form_leads", PLURAL, mechanically slugified
+from the resultLabel) — never the literal "cost_per_lead" key
+available-metrics.ts's defaultMetaSelection actually uses in its
+"CSV has a 'Cost per lead' column" branch.
+
+WHY THIS FIX LIVES IN report-data.ts, NOT slot-assignment.ts (as
+originally proposed): buildSlotsFromSelection has no campaignObjective
+parameter — it's shared/objective-agnostic, used for every objective and
+both slide 1 and slide 2. An unconditional "cost_per_lead falls back to
+cost_per_result" rule placed there would also fire for a WEBSITE LEADS
+campaign that manually adds "COST PER LEAD" via the Metric Cards "Add
+from your CSV" pool — where perUnitOf: "website_leads" is CORRECT and
+this fallback would silently show the wrong number instead of the real
+one. report-data.ts's computeMetaSlideMetrics already has
+campaignObjective in scope at exactly the point this needs to be
+conditional (two lines above, for the identical resultKey/costKey
+aliasing reason), so the fix extends that existing mechanism instead of
+adding an unconditional special case somewhere that structurally can't
+scope it correctly.
+
+VERIFICATION: reproduced the real wizard-selection path directly against
+buildReportData (selectedMetrics + campaignMetricOverrides including the
+literal "cost_per_lead" key, matching the exact reported scenario:
+InstantForms campaign, $140 total spend, 25 total leads) — confirmed
+cost_per_lead now resolves to "$5.60" instead of a dash. This ad-hoc
+verification script was run and then deleted; not part of this change.
 
 No other files changed.
 
 Verification: tsc --noEmit clean, eslint clean, npx vitest run —
-1374/1374 tests passing, next build succeeds.
+1374/1374 tests passing unchanged (the one existing "Cost per lead"
+column test, report-data.test.ts's "InstantForms campaign" test, only
+covers the automatic non-wizard path, which uses the generic
+cost_per_result key and was never affected by this bug), next build
+succeeds.

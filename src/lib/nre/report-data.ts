@@ -1076,6 +1076,24 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         baselineValues[resultKey] = baseline.resultValue;
         baselineValues[costKey] = baseline.cprValue;
       }
+      // Bug fix — "cost_per_lead" (meta-dictionary.ts) is a real dedicated
+      // CSV column some Meta InstantForms exports use instead of "Cost per
+      // on-facebook lead", selected by available-metrics.ts's META FORM
+      // LEADS case when the CSV has that exact header. Its own dictionary
+      // entry's perUnitOf is "website_leads" (correct for the OTHER
+      // objectives — leads/website_leads — this same key is also
+      // selectable for), which has no data on a META FORM LEADS campaign's
+      // own rows, so aggregateDynamicMetrics' sum(spend)/sum(perUnitOf)
+      // always resolves to NaN -> "—" for it here. Cost per result IS cost
+      // per lead for this objective (baseline.cprValue is already computed
+      // from this campaign's own objective-matched rows, same as costKey
+      // above), so alias it the same way — scoped to META FORM LEADS only,
+      // never touching a WEBSITE LEADS campaign's own (correct) reading of
+      // this key if a user manually adds it there via the Metric Cards
+      // "Add from your CSV" pool.
+      if (objectiveKeyFor(campaignObjective.resultLabel) === "meta_form_leads") {
+        baselineValues["cost_per_lead"] = baseline.cprValue;
+      }
     }
     // Step 4 Section B — a user-edited campaign gets its own explicit metric
     // list as a HARD REPLACEMENT of the automatic per-objective narrowing
