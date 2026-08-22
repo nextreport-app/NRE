@@ -1108,6 +1108,47 @@ describe("resolveCampaignObjectiveWithConfidence — confidence tiers for the Ob
     const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
     expect(resolveCampaignObjective(rows)).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" });
   });
+
+  // Thing 2 (three-layer objective architecture rebuild) — the finer-grained
+  // medium/low/verify split within what used to be one flat "low" bucket.
+  it("a single non-leads dedicated column (reach) with no result_type -> medium confidence, no confirmation required", () => {
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "", reach: 5000, results: 5000, spend: 60 })];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.confidence).toBe("medium");
+    expect(resolution.requiresConfirmation).toBe(false);
+  });
+
+  it("a single dedicated funnel column (purchases alone) with no result_type -> medium confidence", () => {
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "", purchases: 4, results: 4, spend: 80 })];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.confidence).toBe("medium");
+    expect(resolution.requiresConfirmation).toBe(false);
+  });
+
+  it("BOTH lead columns present with no result_type -> verify confidence, requires confirmation", () => {
+    const rows: MetricRow[] = [
+      metricRow({ _raw: {}, result_type: "", website_leads: 5, leads: 3, results: 8, spend: 100 }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.confidence).toBe("verify");
+    expect(resolution.requiresConfirmation).toBe(true);
+  });
+
+  it("no result_type and no dedicated-column data at all (generic RESULTS fallback) -> verify confidence, requires confirmation", () => {
+    const rows: MetricRow[] = [metricRow({ _raw: {}, result_type: "", results: 0, spend: 10 })];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("RESULTS");
+    expect(resolution.confidence).toBe("verify");
+    expect(resolution.requiresConfirmation).toBe(true);
+  });
+
+  it("requiresConfirmation is false for every high/medium/low tier, matching each tier's own test above", () => {
+    const highRows: MetricRow[] = [metricRow({ _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 })];
+    expect(resolveCampaignObjectiveWithConfidence(highRows).requiresConfirmation).toBe(false);
+    const lowRows: MetricRow[] = [metricRow({ _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 })];
+    expect(resolveCampaignObjectiveWithConfidence(lowRows).requiresConfirmation).toBe(false);
+  });
 });
 
 describe("buildCampaignObjectiveMapWithConfidence", () => {
@@ -1117,8 +1158,18 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
       metricRow({ campaign_name: "Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
     ];
     const map = buildCampaignObjectiveMapWithConfidence(rows);
-    expect(map.get("purchase campaign")).toEqual({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" });
-    expect(map.get("leads campaign")).toEqual({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", confidence: "low" });
+    expect(map.get("purchase campaign")).toEqual({
+      resultLabel: "PURCHASES",
+      costLabel: "COST PER PURCHASE",
+      confidence: "high",
+      requiresConfirmation: false,
+    });
+    expect(map.get("leads campaign")).toEqual({
+      resultLabel: "WEBSITE LEADS",
+      costLabel: "COST PER WEBSITE LEAD",
+      confidence: "low",
+      requiresConfirmation: false,
+    });
   });
 });
 

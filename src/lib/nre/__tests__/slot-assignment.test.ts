@@ -4,11 +4,14 @@ import {
   buildMetaSlots,
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
+  objectiveKeyFor,
   redistributeCardSlots,
+  stripNeverKeys,
+  type CampaignObjectiveRef,
   type GoogleSlotBaseline,
   type MetaSlotBaseline,
 } from "../slot-assignment";
-import type { AvailableMetric } from "../available-metrics";
+import type { AvailableMetric, SelectedMetric } from "../available-metrics";
 import type { RawMetricRow } from "../dynamic-metrics";
 import type { GoogleObjectiveKey } from "../detect-objective";
 
@@ -515,65 +518,144 @@ describe("filterMetricsForCampaignObjective — Part 8 per-campaign objective fi
   });
 });
 
-describe("redistributeCardSlots — Part 4: no dash cards, compact + pad from real data", () => {
+describe("redistributeCardSlots — Part 4: no dash cards for secondaries, compact + pad from real data; Fix 1: base/primary slots never dropped", () => {
   function av(key: string, csvName: string, priority: number): AvailableMetric {
     return { key, label: key.toUpperCase(), format: "number", csvName, priority, isAutoCatch: false };
   }
 
-  it("compacts real (non-null) cards forward, closing the gap a null slot left behind", () => {
+  function sel(key: string, label: string, csvName = key): SelectedMetric {
+    return { key, label, format: "number", csvName };
+  }
+
+  it("Fix 1: never drops the primary objective pair (slot 4/5), even when its value is null for this campaign — shows a dash instead", () => {
+    const selected: SelectedMetric[] = [
+      sel("spend", "AD SPEND"),
+      sel("reach", "REACH"),
+      sel("impressions", "IMPRESSIONS"),
+      sel("meta_form_leads", "META FORM LEADS"),
+      sel("cost_per_meta_form_leads", "COST PER LEAD"),
+      sel("ctr", "CTR (ALL)"),
+      sel("link_clicks", "LINK CLICKS"),
+    ];
+    const slots = [
+      { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$269" },
+      { key: "reach", label: "REACH", format: "number" as const, value: "3,000" },
+      { key: "impressions", label: "IMPRESSIONS", format: "number" as const, value: "10,000" },
+      null, // META FORM LEADS — zero leads this week, no real value
+      null, // COST PER LEAD — undefined for zero leads
+      { key: "ctr", label: "CTR (ALL)", format: "percentage" as const, value: "3%" },
+      { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, value: "80" },
+    ];
+    const campaignObjective: CampaignObjectiveRef = { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+    const result = redistributeCardSlots(slots, selected, campaignObjective, new Set(), [], {}, [], "meta", "$");
+    // Slots 4/5 survive in their own canonical position, dashed rather than
+    // dropped/replaced by an unrelated secondary metric.
+    expect(result.map((m) => m.key)).toEqual(["spend", "reach", "impressions", "meta_form_leads", "cost_per_meta_form_leads", "ctr", "link_clicks"]);
+    expect(result[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", value: "—" });
+    expect(result[4]).toMatchObject({ key: "cost_per_meta_form_leads", label: "COST PER LEAD", value: "—" });
+  });
+
+  it("Fix 1: protects the primary pair under the single-objective selection's literal results/cost_per_result keys too", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND"), sel("results", "META FORM LEADS"), sel("cost_per_result", "COST PER LEAD")];
+    const slots = [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" }, null, null];
+    const result = redistributeCardSlots(slots, selected, null, new Set(), [], {}, [], "meta", "$");
+    expect(result.map((m) => m.key)).toEqual(["spend", "results", "cost_per_result"]);
+    expect(result[1].value).toBe("—");
+    expect(result[2].value).toBe("—");
+  });
+
+  it("compacts real (non-null) SECONDARY cards forward, closing the gap a null slot left behind — base/primary keys unaffected", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND"), sel("frequency", "FREQUENCY"), sel("reach", "REACH"), sel("ctr", "CTR")];
     const slots = [
       { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
-      null,
+      null, // frequency — secondary, genuinely dropped/compacted (not base/primary)
       { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
       { key: "ctr", label: "CTR", format: "percentage" as const, value: "2%" },
     ];
-    const result = redistributeCardSlots(slots, new Set(["spend", "reach", "ctr"]), [], {}, [], "meta", "$");
+    const result = redistributeCardSlots(slots, selected, null, new Set(["spend", "reach", "ctr"]), [], {}, [], "meta", "$");
     expect(result.map((m) => m.key)).toEqual(["spend", "reach", "ctr"]);
   });
 
-  it("pads back up to minCount using the highest-priority unused candidate that resolves to real, non-zero data for this campaign", () => {
+  it("pads the secondary pool back up to minCount using the highest-priority unused candidate that resolves to real, non-zero data for this campaign", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND"), sel("reach", "REACH")];
     const slots = [
       { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
       { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
     ];
     const rows = [{ _raw: { "Link clicks": "40", Frequency: "0" } }];
     const candidates = [av("frequency", "frequency", 90), av("link_clicks", "link clicks", 70)];
-    const result = redistributeCardSlots(slots, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 3);
+    const result = redistributeCardSlots(slots, selected, null, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 3);
     // frequency has priority 90 (tried first) but resolves to a real 0 ->
     // dash -> skipped; link_clicks (priority 70) has real data and gets
-    // pulled in instead.
+    // pulled in instead. Base spend/reach already count toward minCount, so
+    // only 1 secondary is needed to reach 3 total.
     expect(result.map((m) => m.key)).toEqual(["spend", "reach", "link_clicks"]);
   });
 
   it("never pads with a key already in usedKeys, even if it would otherwise resolve to real data", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND")];
     const slots = [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" }];
     const rows = [{ _raw: { "Link clicks": "40" } }];
     const candidates = [av("link_clicks", "link clicks", 70)];
-    const result = redistributeCardSlots(slots, new Set(["spend", "link_clicks"]), candidates, {}, rows, "meta", "$", 2);
+    const result = redistributeCardSlots(slots, selected, null, new Set(["spend", "link_clicks"]), candidates, {}, rows, "meta", "$", 2);
     expect(result.map((m) => m.key)).toEqual(["spend"]);
   });
 
   it("does not pad when already at or above minCount, even with real-data candidates available", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND"), sel("reach", "REACH")];
     const slots = [
       { key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" },
       { key: "reach", label: "REACH", format: "number" as const, value: "1,000" },
     ];
     const rows = [{ _raw: { "Link clicks": "40" } }];
     const candidates = [av("link_clicks", "link clicks", 70)];
-    const result = redistributeCardSlots(slots, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 2);
+    const result = redistributeCardSlots(slots, selected, null, new Set(["spend", "reach"]), candidates, {}, rows, "meta", "$", 2);
     expect(result.map((m) => m.key)).toEqual(["spend", "reach"]);
   });
 
   it("caps the result at maxCount even after padding", () => {
+    const selected: SelectedMetric[] = [sel("spend", "AD SPEND")];
     const slots = [{ key: "spend", label: "AD SPEND", format: "currency" as const, value: "$100" }];
     const rows = [{ _raw: { A: "1", B: "1", C: "1" } }];
     const candidates = [av("a", "a", 90), av("b", "b", 80), av("c", "c", 70)];
-    const result = redistributeCardSlots(slots, new Set(["spend"]), candidates, {}, rows, "meta", "$", 10, 2);
+    const result = redistributeCardSlots(slots, selected, null, new Set(["spend"]), candidates, {}, rows, "meta", "$", 10, 2);
     expect(result.length).toBeLessThanOrEqual(2);
   });
 
-  it("returns an empty array when nothing has real data and no candidates resolve either", () => {
-    const result = redistributeCardSlots([null, null], new Set(), [], {}, [], "meta", "$");
+  it("returns an empty array when nothing has real data, no candidates resolve, and nothing is a protected base/primary key", () => {
+    const selected: SelectedMetric[] = [sel("frequency", "FREQUENCY"), sel("video_views", "VIDEO VIEWS")];
+    const result = redistributeCardSlots([null, null], selected, null, new Set(), [], {}, [], "meta", "$");
     expect(result).toEqual([]);
+  });
+});
+
+describe("objectiveKeyFor + stripNeverKeys — Thing 1: cross-objective never-list backstop", () => {
+  it("slugifies a resultLabel into the never-list's lowercase key form", () => {
+    expect(objectiveKeyFor("META FORM LEADS")).toBe("meta_form_leads");
+    expect(objectiveKeyFor("WEBSITE LEADS")).toBe("website_leads");
+    expect(objectiveKeyFor("REACH")).toBe("reach");
+  });
+
+  it("nulls out any entry whose key is forbidden for the given objective", () => {
+    const items = [{ key: "spend" }, { key: "website_leads" }, { key: "purchases" }];
+    const result = stripNeverKeys(items, "meta_form_leads");
+    expect(result).toEqual([{ key: "spend" }, null, null]);
+  });
+
+  it("is a no-op for an objective with no never-list entry", () => {
+    const items = [{ key: "spend" }, { key: "anything" }];
+    expect(stripNeverKeys(items, "some_unlisted_objective")).toEqual(items);
+  });
+
+  it("buildMetaSlots never produces a card belonging to a different objective's never-list, across every case", () => {
+    const rows = [{ _raw: { "Website leads": "5" } }];
+    const slots = buildMetaSlots(
+      { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "5", cprValue: "$1" },
+      rows,
+      "$",
+    );
+    // Even with a real "Website leads" column present in the CSV, a META
+    // FORM LEADS campaign's own slide never shows a WEBSITE LEADS card.
+    expect(slots.map((s) => s?.key)).not.toContain("website_leads");
   });
 });

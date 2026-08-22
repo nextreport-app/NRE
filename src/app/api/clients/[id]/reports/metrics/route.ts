@@ -9,7 +9,8 @@ import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
-import { buildMultiObjectiveSelection, defaultGoogleSelection, listSelectableMetrics, type ObjectivePair } from "@/lib/nre/available-metrics";
+import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
@@ -84,42 +85,63 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // confirmed on any PRIOR report's Objective Confirmation step (see
     // objective-cache.ts) always wins over a fresh engine re-detection: it's
     // the single most reliable signal available, since it came from a human
-    // actually looking at the campaign, not an inference from column data.
-    // Every other campaign keeps the engine's own detection (Priority
-    // 1/RESULT_TYPE_MAP text match = "resultType", everything else =
-    // "columnData") so the wizard can show the right confidence badge.
+    // actually looking at the campaign, not an inference from column data —
+    // treated as "high" confidence, requiring no further confirmation.
+    // Every other campaign keeps the engine's own 4-tier confidence
+    // (high/medium/low/verify — see objective.ts's ObjectiveConfidence) so
+    // the wizard can show the right badge and block Continue for a "verify"
+    // campaign until the user picks a value.
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
-    const campaignObjectiveEntries: [string, { resultLabel: string; costLabel: string; source: "cached" | "resultType" | "columnData" }][] = Array.from(
-      buildCampaignObjectiveMapWithConfidence(rowsForObjective),
-    ).map(([name, detected]) => {
+    const campaignObjectiveEntries: [
+      string,
+      { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
+    ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
       const cached = lookupCachedObjective(objectiveCache, name);
       if (cached) {
-        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, source: "cached" }];
+        return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, confidence: "cached", requiresConfirmation: false }];
       }
       return [
         name,
         {
           resultLabel: detected.resultLabel,
           costLabel: detected.costLabel,
-          source: detected.confidence === "high" ? "resultType" : "columnData",
+          confidence: detected.confidence,
+          requiresConfirmation: detected.requiresConfirmation,
         },
       ];
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
-    // Mixed-objective accounts (Parts 1-4): pre-select a Results/Cost per
-    // result pair for EVERY distinct objective actually detected across
-    // this report's campaigns (campaignObjectives above), not just one
-    // majority objective — see buildMultiObjectiveSelection's own doc
-    // comment for the smart-fill/never-an-awkward-partial-slide rules.
-    const objectivePairs: ObjectivePair[] = Object.values(campaignObjectives).map((info) => ({
-      resultLabel: info.resultLabel,
-      costLabel: info.costLabel,
-    }));
+    // Thing 3 (three-layer objective architecture rebuild) — each SELECTED
+    // campaign gets its OWN correct pre-selected 8 metrics, from
+    // defaultMetaSelection called with THAT campaign's own confirmed
+    // objective (never an account-wide union across every objective
+    // present) — a campaign whose objective is META FORM LEADS never sees
+    // another campaign's WEBSITE LEADS pair in its own pre-selected list,
+    // and vice versa. Thing 1's stripNeverKeys is the hard backstop on top:
+    // even if defaultMetaSelection's own per-objective switch ever assigned
+    // a forbidden cross-objective key, it's stripped here before the wizard
+    // ever sees it.
+    const fullPool = listSelectableMetrics(mtdParsed.headers, "META");
+    const perCampaignSelection: Record<string, SelectedMetric[]> = {};
+    const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
+
+    for (const [normalizedName, info] of Object.entries(campaignObjectives)) {
+      const objectiveKey = objectiveKeyFor(info.resultLabel);
+      const selection = stripNeverKeys(defaultMetaSelection(info.resultLabel, info.costLabel, mtdParsed.headers), objectiveKey).filter(
+        (m): m is SelectedMetric => m !== null,
+      );
+      perCampaignSelection[normalizedName] = selection;
+
+      const selectedKeys = new Set(selection.map((m) => m.key));
+      perCampaignAvailable[normalizedName] = stripNeverKeys(fullPool, objectiveKey)
+        .filter((m): m is AvailableMetric => m !== null)
+        .filter((m) => !selectedKeys.has(m.key));
+    }
 
     return NextResponse.json({
-      defaultSelection: buildMultiObjectiveSelection(objectivePairs, mtdParsed.headers),
-      availableMetrics: listSelectableMetrics(mtdParsed.headers, "META"),
+      perCampaignSelection,
+      perCampaignAvailable,
       campaignObjectives,
     });
   } catch (err) {

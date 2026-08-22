@@ -37,7 +37,62 @@ import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
 import type { GoogleObjectiveKey } from "./detect-objective";
-import { SECONDARY_FILL_KEYS, objectiveMetricKeys, type AvailableMetric, type SelectedMetric } from "./available-metrics";
+import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type AvailableMetric, type SelectedMetric } from "./available-metrics";
+
+/**
+ * Thing 1 (three-layer objective architecture rebuild) — a hard,
+ * cross-objective backstop: no campaign's slide may EVER show a card whose
+ * key belongs to a DIFFERENT objective's own primary/funnel metrics,
+ * regardless of which path produced the candidate (the automatic
+ * per-objective assignment below, or the wizard/mixed-objective selection
+ * report-data.ts/the metrics route narrow per campaign). Keyed by the same
+ * lowercase, underscore-slugified form objectiveKeyFor derives from a
+ * campaign's own resultLabel (see slugifyObjectiveKey) — e.g. "META FORM
+ * LEADS" -> "meta_form_leads".
+ */
+const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
+  meta_form_leads: ["website_leads", "cost_per_website_lead", "purchases", "cost_per_purchase", "video_views", "thruplays", "app_installs"],
+  website_leads: ["meta_form_leads", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "video_views", "app_installs"],
+  leads: ["purchases", "cost_per_purchase", "video_views", "app_installs"],
+  purchases: ["website_leads", "meta_form_leads", "cost_per_website_lead", "video_views", "app_installs"],
+  initiate_checkout: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
+  add_to_cart: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
+  link_clicks: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
+  landing_page_views: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
+  video_views: ["website_leads", "meta_form_leads", "purchases", "link_clicks", "app_installs"],
+  reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
+  awareness: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
+  messaging: ["website_leads", "purchases", "video_views", "app_installs"],
+  app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
+};
+// A few of buildMetaSlots' own resultLabel cases share one objective under
+// two spellings (its own switch statement literally has two case labels
+// falling into the same block) — aliased to the same never-list rather than
+// duplicated, so updating one always updates both.
+NEVER_KEYS_FOR_OBJECTIVE.unique_reach = NEVER_KEYS_FOR_OBJECTIVE.reach;
+NEVER_KEYS_FOR_OBJECTIVE.mobile_app_installs = NEVER_KEYS_FOR_OBJECTIVE.app_installs;
+NEVER_KEYS_FOR_OBJECTIVE.messaging_leads = NEVER_KEYS_FOR_OBJECTIVE.messaging;
+NEVER_KEYS_FOR_OBJECTIVE.messaging_conversations_started = NEVER_KEYS_FOR_OBJECTIVE.messaging;
+NEVER_KEYS_FOR_OBJECTIVE.conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
+
+/** Lowercase, underscore-slugified objective key NEVER_KEYS_FOR_OBJECTIVE is keyed by, derived from a campaign's own resultLabel the same way objectiveMetricKeys' own synthetic-key fallback does. */
+export function objectiveKeyFor(resultLabel: string | null | undefined): string {
+  return slugifyObjectiveKey(resultLabel || "");
+}
+
+/**
+ * Nulls out any entry whose key is forbidden for `objectiveKey` (see
+ * NEVER_KEYS_FOR_OBJECTIVE) — callers filter/compact afterward (buildMetaSlots
+ * feeds the result straight to dedupeSlots, which already treats null as
+ * "no card here"; a SelectedMetric[] caller filters out the nulls with
+ * `.filter(Boolean)`). A no-op (returns `items` unchanged) for an objective
+ * with no never-list at all.
+ */
+export function stripNeverKeys<T extends { key: string }>(items: (T | null)[], objectiveKey: string): (T | null)[] {
+  const neverKeys = NEVER_KEYS_FOR_OBJECTIVE[objectiveKey] ?? [];
+  if (neverKeys.length === 0) return items;
+  return items.map((item) => (item && neverKeys.includes(item.key) ? null : item));
+}
 
 /** Looks up `key` in the Meta dictionary and aggregates its value over `rawRows` — "—" if the key isn't in the dictionary, the CSV has no matching column, or the aggregated value is zero (per product spec: a slot's label always shows, but a zero/missing value shows a dash, never "0"). */
 function metaSlotValue(rawRows: RawMetricRow[], key: string, currencySymbol: string): string {
@@ -250,19 +305,6 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       // 8 pick, but it's already slot 7 above (pickSlot skips it as
       // already-used) — COST PER LINK CLICK is the fallback.
       slot8 = pickSlot([LINK_CLICKS, COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
-      // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation
-      // is done. Note: this whole buildMetaSlots() function only runs when
-      // report-data.ts has no wizard/default selectedMetrics at all — most
-      // report generations instead go through buildSlotsFromSelection +
-      // redistributeCardSlots (see the SLOT ASSIGN DEBUG logs added there).
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) objective/resultLabel:", baseline.resultLabel);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) results raw value:", baseline.resultValue);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) spend raw value:", baseline.spend);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) cost per result raw:", baseline.cprValue);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) slot4:", slot4);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) slot5:", slot5);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) slot7:", slot7);
-      console.log("SLOT ASSIGN DEBUG (buildMetaSlots) slot8:", slot8);
       break;
     }
 
@@ -402,16 +444,24 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot8 = pickSlot([LANDING_PAGE_VIEWS, COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
   }
 
-  return dedupeSlots([
-    slot("spend", "AD SPEND", "currency", baseline.spend),
-    slot("reach", "REACH", "number", baseline.reach),
-    slot("impressions", "IMPRESSIONS", "number", baseline.impressions),
-    slot4,
-    slot5,
-    slot("ctr", "CTR (ALL)", "percentage", baseline.ctr),
-    slot7,
-    slot8,
-  ]);
+  // Thing 1 — every case above already only ever assigns keys that belong
+  // to ITS OWN objective (verified case-by-case), so this never actually
+  // fires today against slots 4/5/7/8 — it exists as a structural
+  // guarantee against a future case change accidentally introducing a
+  // forbidden card.
+  return stripNeverKeys(
+    dedupeSlots([
+      slot("spend", "AD SPEND", "currency", baseline.spend),
+      slot("reach", "REACH", "number", baseline.reach),
+      slot("impressions", "IMPRESSIONS", "number", baseline.impressions),
+      slot4,
+      slot5,
+      slot("ctr", "CTR (ALL)", "percentage", baseline.ctr),
+      slot7,
+      slot8,
+    ]),
+    objectiveKeyFor(baseline.resultLabel),
+  );
 }
 
 /** Slots 1-3, 6, and 7 for a Google Ads campaign — the 5 core fields already formatted by google-report-data.ts's existing aggregation (slots 6-7 are truly fixed for Google, unlike Meta's slot 7, which every objective branch below reassigns). */
@@ -595,23 +645,40 @@ export function filterMetricsForCampaignObjective(
 
 /**
  * Part 4 — a client-facing slide should never show a card with "—" as its
- * value. buildSlotsFromSelection already nulls out a slot with no real data
- * for this specific campaign, which fill-tags.ts dashes out — but that
- * leaves a gap at that slot's own position. This compacts the real (non-
- * null) cards forward to fill the grid with no gaps and, if fewer than
- * `minCount` survive, pads back up with the next highest-priority
+ * value UNLESS that card is the base metrics (spend/reach/impressions/ctr)
+ * or this campaign's own primary objective pair (e.g. META FORM LEADS /
+ * COST PER LEAD) — those six are never dropped or replaced, regardless of
+ * their value: a genuinely zero/missing value for one of them shows as a
+ * dash in its own fixed slot 1-6 position (never silently swapped for an
+ * unrelated metric, and never compacted away — Fix 1: a real bug report
+ * where a campaign's own COST PER LEAD showed a dash for a zero-lead week,
+ * and redistributeCardSlots replaced it with an unrelated secondary metric
+ * instead of just showing the dash).
+ *
+ * Only the REMAINING slots — in practice slots 7/8, the generic secondary
+ * picks (link clicks, landing page views, frequency, etc.) — are subject to
+ * redistribution: buildSlotsFromSelection already nulls out a slot with no
+ * real data for this specific campaign, which fill-tags.ts dashes out — but
+ * that leaves a gap at that slot's own position. This compacts the real
+ * (non-null) secondary cards forward to fill the grid with no gaps and, if
+ * fewer than `minCount` cards survive in total (base/primary + secondaries),
+ * pads the secondary pool back up with the next highest-priority
  * CSV-detected metric NOT already in this slide that also turns out to have
  * real, non-zero data for THIS campaign — checked for real here (unlike the
  * presence-only checks available back at wizard-selection time), by
  * resolving each candidate through the same baseline-then-raw-row lookup
- * buildSlotsFromSelection itself uses. Returns only the real (non-null)
- * cards, compacted — never longer than `maxCount`, and never padded with
- * trailing nulls beyond what actually has data (fill-tags.ts already treats
- * a short array's missing trailing indices exactly like an explicit null
- * slot, so there's no need to pad it back out).
+ * buildSlotsFromSelection itself uses.
+ *
+ * Returns the base/primary six (dash-filled where needed) followed by the
+ * compacted secondary cards — never longer than `maxCount`, and never
+ * padded with trailing nulls beyond what actually has data (fill-tags.ts
+ * already treats a short array's missing trailing indices exactly like an
+ * explicit null slot, so there's no need to pad it back out).
  */
 export function redistributeCardSlots(
   slots: (DynamicMetricValue | null)[],
+  selected: SelectedMetric[],
+  campaignObjective: CampaignObjectiveRef | null,
   usedKeys: Set<string>,
   candidatePool: AvailableMetric[],
   baseline: Partial<Record<string, string>>,
@@ -621,29 +688,50 @@ export function redistributeCardSlots(
   minCount = 4,
   maxCount = 8,
 ): DynamicMetricValue[] {
-  const compacted = slots.filter((s): s is DynamicMetricValue => s !== null);
-  // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is
-  // done. Shows exactly which incoming slots were dropped (null, no real
-  // data for this campaign) before any backfill runs.
-  console.log(
-    "SLOT ASSIGN DEBUG redistributeCardSlots — incoming slots (null = dashed/dropped):",
-    slots.map((s) => (s ? { key: s.key, label: s.label, value: s.value } : null)),
-  );
-  console.log("SLOT ASSIGN DEBUG redistributeCardSlots — compacted count before backfill:", compacted.length, "minCount:", minCount);
+  const { resultKey, costKey } = campaignObjective ? objectiveMetricKeys(campaignObjective.resultLabel) : { resultKey: null, costKey: null };
+  // Each group is tried in order, first match wins — "results"/
+  // "cost_per_result" is the single-objective selection's own literal key
+  // for its primary pair; resultKey/costKey is the mixed-objective
+  // selection's synthetic per-objective key for the same pair (see
+  // objectiveMetricKeys) — a given campaign's selection only ever uses one
+  // form or the other, never both.
+  const protectedKeyGroups: string[][] = [
+    ["spend"],
+    ["reach"],
+    ["impressions"],
+    [resultKey, "results"].filter((k): k is string => !!k),
+    [costKey, "cost_per_result"].filter((k): k is string => !!k),
+    ["ctr"],
+  ];
 
-  if (compacted.length < minCount) {
+  const byKey = new Map<string, { slot: DynamicMetricValue | null; meta: SelectedMetric }>();
+  selected.forEach((meta, i) => byKey.set(meta.key, { slot: slots[i] ?? null, meta }));
+
+  const protectedSlots: DynamicMetricValue[] = [];
+  for (const group of protectedKeyGroups) {
+    const matchKey = group.find((k) => byKey.has(k));
+    if (!matchKey) continue;
+    const entry = byKey.get(matchKey)!;
+    byKey.delete(matchKey);
+    protectedSlots.push(
+      entry.slot ?? { key: entry.meta.key, label: entry.meta.label, format: entry.meta.format, value: "—", perUnitOf: entry.meta.perUnitOf },
+    );
+  }
+
+  // Everything left (in practice slots 7/8's own secondary candidates) is
+  // the only pool ever compacted/backfilled.
+  const compacted = [...byKey.values()].filter((e) => e.slot !== null).map((e) => e.slot as DynamicMetricValue);
+  const remainingMinCount = Math.max(0, minCount - protectedSlots.length);
+
+  if (compacted.length < remainingMinCount) {
     const candidates = [...candidatePool].filter((m) => !usedKeys.has(m.key)).sort((a, b) => b.priority - a.priority);
     for (const candidate of candidates) {
-      if (compacted.length >= minCount) break;
+      if (compacted.length >= remainingMinCount) break;
       usedKeys.add(candidate.key);
       const [resolved] = buildSlotsFromSelection([candidate], baseline, rawRows, platform, currencySymbol);
-      if (resolved) {
-        // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is done.
-        console.log("SLOT ASSIGN DEBUG redistributeCardSlots — backfilled with:", { key: resolved.key, label: resolved.label, value: resolved.value });
-        compacted.push(resolved);
-      }
+      if (resolved) compacted.push(resolved);
     }
   }
 
-  return compacted.slice(0, maxCount);
+  return [...protectedSlots, ...compacted].slice(0, maxCount);
 }

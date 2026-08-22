@@ -401,32 +401,6 @@ export function buildCampaignOrAdSetSlideXml(
   const dynamicSlots = useAdditionalMetricsSlide ? slide.additionalMetricsSlide : slide.dynamicMetrics;
   const useDynamicSlots = !!dynamicSlots && dynamicSlots.length > 0;
 
-  // TEMP DEBUG — remove once the "meta_form_leads dashes" investigation is
-  // done. dynamicSlots is in physical slot order 1-8 when it comes straight
-  // from buildMetaSlots (index 3/4/6/7 = slots 4/5/7/8) — but when it went
-  // through redistributeCardSlots first (the usual path once a wizard/
-  // default selection exists), that function COMPACTS the array, so a
-  // dropped slot 4/5 shifts everything after it and index 3/4/6/7 no longer
-  // reliably means "slot 4/5/7/8". See the SLOT ASSIGN DEBUG logs in
-  // report-data.ts/slot-assignment.ts, which log the pre-compaction array
-  // (positions still meaningful there) and are the more reliable source for
-  // "did slot 4/5 actually get dropped." There's also no campaignObjectiveMap
-  // accessible from this module — that's a report-data.ts-level concept,
-  // already resolved into slide.resultLabel/costLabel by the time it
-  // reaches here.
-  console.log("SLIDE DEBUG campaign:", slide.campaignName);
-  console.log("SLIDE DEBUG date range:", slide.dateRangeLine);
-  console.log("SLIDE DEBUG resultLabel/costLabel:", slide.resultLabel, "/", slide.costLabel);
-  console.log("SLIDE DEBUG raw spend/results (slide.metrics):", slide.metrics.spend, slide.metrics.results);
-  if (dynamicSlots) {
-    console.log("SLIDE DEBUG slot4 (meta form leads):", dynamicSlots[3]);
-    console.log("SLIDE DEBUG slot5 (cost per lead):", dynamicSlots[4]);
-    console.log("SLIDE DEBUG slot7:", dynamicSlots[6]);
-    console.log("SLIDE DEBUG slot8:", dynamicSlots[7]);
-  } else {
-    console.log("SLIDE DEBUG dynamicSlots: none (fixed-field legacy card path)");
-  }
-
   // Fix 3 (permanent overflow fix) — truncate to the hard char caps (always
   // ending on a complete sentence), so Campaign Summary never touches the
   // Key Insights heading below it and Key Insights never gets cut off at

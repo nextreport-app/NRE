@@ -748,27 +748,86 @@ function isInitiateCheckoutResultTypeText(resultType: string | null | undefined)
  */
 export interface ObjectiveConfidence extends ResultLabels {
   /**
-   * Objective Confirmation memory cache (Part 6 — confidence display) —
-   * "high" for every branch above backed by real result_type TEXT (Step 0's
-   * explicit purchase/Initiate-Checkout match, or Priority 1's
-   * RESULT_TYPE_MAP dominant-text match); "low" for every branch that had to
-   * fall back to column presence/data values/ad-set name instead (Step 3-4's
-   * Results-column match, or the final getResultGroups/resolveObjective
-   * fallback) — text Meta itself wrote down is inherently more trustworthy
-   * than an inference from which columns happen to be populated. Purely a
-   * UI signal for the wizard's Objective Confirmation step; never affects
-   * which objective is actually returned.
+   * Thing 2 (three-layer objective architecture rebuild) — the product's
+   * 4-tier confidence scale, purely a UI signal for the wizard's Objective
+   * Confirmation step; never affects which objective is actually returned
+   * (resolveCampaignObjective/buildCampaignObjectiveMap strip this field
+   * out entirely).
+   *  - "high": result_type text was present and matched a known
+   *    RESULT_TYPE_MAP entry (Step 0's explicit purchase/Initiate-Checkout
+   *    match, or Priority 1's dominant-text match) — Meta's own declared
+   *    objective, trusted completely.
+   *  - "medium": no usable result_type text, but exactly one non-leads
+   *    dedicated column (purchases, initiate checkout, add to cart,
+   *    landing page views, link clicks, reach) has real, non-zero data —
+   *    a single, unambiguous signal.
+   *  - "low": no usable result_type text, and exactly one of the two
+   *    lead-family columns (Website Leads / Meta Form Leads) has real
+   *    data — still a single signal, but this is the pair agencies most
+   *    often confuse, so it gets its own, more cautious tier.
+   *  - "verify": genuinely ambiguous — BOTH lead columns have real data
+   *    (can't tell which is this campaign's real objective), or NOTHING
+   *    in the whole priority chain has real, non-zero data at all (the
+   *    absolute last-resort RESULTS/COST PER RESULT bucket, or a bare
+   *    ad-set-name guess).
    */
-  confidence: "high" | "low";
+  confidence: "high" | "medium" | "low" | "verify";
+  /** True only for "verify" — the wizard blocks Continue for this campaign until the user picks a value explicitly (see requiresConfirmation's own consumers in report-upload-wizard.tsx). */
+  requiresConfirmation: boolean;
+}
+
+/**
+ * Thing 2 (three-layer objective architecture rebuild) — refines the
+ * "no usable result_type text" case into three finer-grained tiers,
+ * re-examining the SAME dedicated-column totals resolveObjective's own
+ * priority chain checks (website leads, meta form leads, purchases,
+ * initiate checkout, add to cart, landing page views, link clicks, reach),
+ * summed across every one of this campaign's rows. See ObjectiveConfidence
+ * for what each returned tier means.
+ */
+function classifyLowConfidenceTier(rows: MetricRow[]): "medium" | "low" | "verify" {
+  let websiteLeadsTotal = 0;
+  let metaLeadsTotal = 0;
+  let purchasesTotal = 0;
+  let icTotal = 0;
+  let atcTotal = 0;
+  let landingPageViewsTotal = 0;
+  let linkClicksTotal = 0;
+  let reachTotal = 0;
+  for (const row of rows) {
+    websiteLeadsTotal += parseCellNum(row.website_leads);
+    metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
+    purchasesTotal += parseCellNum(row.purchases);
+    icTotal += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
+    atcTotal += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
+    landingPageViewsTotal += parseCellNum(row.landing_page_views);
+    linkClicksTotal += parseCellNum(row.link_clicks);
+    reachTotal += parseCellNum(row.reach);
+  }
+
+  const hasWebsiteLeads = websiteLeadsTotal > 0;
+  const hasMetaLeads = metaLeadsTotal > 0;
+  if (hasWebsiteLeads && hasMetaLeads) return "verify";
+  if (hasWebsiteLeads || hasMetaLeads) return "low";
+
+  const funnelSignalCount = [purchasesTotal, icTotal, atcTotal].filter((v) => v > 0).length;
+  if (funnelSignalCount === 1) return "medium";
+  if (funnelSignalCount > 1) return "low"; // ambiguous among funnel candidates — still a real guess, not one clean signal
+
+  if (landingPageViewsTotal > 0 || linkClicksTotal > 0 || reachTotal > 0) return "medium";
+
+  // Nothing at all — the generic RESULTS/COST PER RESULT bucket, or a bare
+  // ad-set-name guess: no real numeric signal to trust.
+  return "verify";
 }
 
 /** Internal implementation shared by resolveCampaignObjective (public, unchanged signature — every existing caller/test keeps working exactly as before) and resolveCampaignObjectiveWithConfidence (new — the Objective Confirmation wizard step's own confidence badge, Part 6). See resolveCampaignObjective's own doc comment above for the full priority-chain writeup. */
 function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
   if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
-    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high" };
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high", requiresConfirmation: false };
   }
   if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
-    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high" };
+    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high", requiresConfirmation: false };
   }
 
   const resultTypeCounts = new Map<string, number>();
@@ -806,7 +865,7 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       );
     if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
       const info = resolveObjectiveFromResultType(dominantResultType);
-      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high" };
+      if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high", requiresConfirmation: false };
     }
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through
     // to Priority 2, which already ranks a nonzero Website Leads/Meta Leads
@@ -852,12 +911,24 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
           best = c;
         }
       }
-      return { resultLabel: best.resultLabel, costLabel: best.costLabel, confidence: "low" };
+      // Thing 2 — a single funnel candidate is a clean, unambiguous signal
+      // ("medium"); more than one competing for the same slot (resolved
+      // above only via the closest-to-Results heuristic) is still a real
+      // guess ("low"), never "verify" — the campaign genuinely optimizes
+      // for one of these three, this is purely which one.
+      const tier = funnelCandidates.length === 1 ? "medium" : "low";
+      return { resultLabel: best.resultLabel, costLabel: best.costLabel, confidence: tier, requiresConfirmation: false };
     }
   }
 
   const primary = pickPrimaryResultGroup(getResultGroups(rows));
-  return { resultLabel: primary?.label ?? "RESULTS", costLabel: primary?.costLabel ?? "COST PER RESULT", confidence: "low" };
+  const fallbackTier = classifyLowConfidenceTier(rows);
+  return {
+    resultLabel: primary?.label ?? "RESULTS",
+    costLabel: primary?.costLabel ?? "COST PER RESULT",
+    confidence: fallbackTier,
+    requiresConfirmation: fallbackTier === "verify",
+  };
 }
 
 export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
