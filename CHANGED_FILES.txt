@@ -1,29 +1,28 @@
-CHANGED_FILES.txt — commit af68287 "Add targeted debug logging to aggregateCpc to check for a real missing column"
+CHANGED_FILES.txt — commit 1c889ab "Replace aggregateCpc debug logging with per-candidate row-value detail"
 
 src/lib/nre/dynamic-metrics.ts
-  aggregateCpc(): added 2 console.log lines as the first statements in
-  the function body, exactly as specified:
-    console.log("aggregateCpc: headerMap keys:", [...headerMap.keys()].filter((k) => k.includes("cpc") || k.includes("click")));
-    console.log("aggregateCpc: totalSpend:", totalSpend);
+  aggregateCpc(): replaced the previous 2-line headerMap/totalSpend log
+  (added last round, already confirmed the "cpc (cost per link click)"
+  header is present with totalSpend $269.08) with a per-candidate log
+  inside the CPC_VALUE_HEADER_CANDIDATES loop:
 
-  This fires once per campaign/ad-set slide that selects cpc_link_click
-  or cpc_all (both route through this function). The filtered headerMap
-  keys list shows exactly which CPC/click-related column headers were
-  actually found in this campaign's own CSV rows, before any of the
-  CPC_VALUE_HEADER_CANDIDATES / CPC_CLICKS_HEADER_CANDIDATES fallback
-  logic runs.
+    const allValues = rows.map((r) => r._raw?.[header]).slice(0, 5);
+    const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
+    console.log("aggregateCpc candidate:", candidate, "allValues(first5):", allValues, "nonZero count:", nonZero.length);
 
-WHAT THE NEXT LOG OUTPUT WILL TELL US: if the filtered headerMap keys
-array is empty for the Specialty Painting campaign's card, the CSV
-genuinely has no CPC or clicks column at all — the dash is correct,
-expected behavior, not a bug, and the real fix (per the user's own
-framing) would be on the wizard side: don't pre-select/offer
-cpc_link_click as a metric when the CSV doesn't have a column for it or
-its fallback. If the array DOES contain a real header (e.g. "cpc (cost
-per link click)") but the card still dashes, that points to the same
-class of key-mismatch bug as the last two fixes (redistributeCardSlots'
-costKey mismatch, cost_per_lead's baseline miss) — worth tracing further
-before deciding on a fix.
+  Fires once per matching candidate header, per campaign/ad-set slide
+  that selects cpc_link_click or cpc_all.
+
+WHAT THE NEXT LOG OUTPUT WILL TELL US: the first 5 raw string values from
+the CSV's own "cpc (cost per link click)" column for this campaign's
+rows, plus how many parsed to a real nonzero number. This settles the
+open question from this round's investigation: is the dash genuinely
+correct (all real values are blank/zero/"0.00" for this campaign — in
+which case redistributeCardSlots already correctly drops it as an empty
+secondary slot, and fill-tags.ts's unused-template-position dash is
+expected, designed behavior, not a bug), or is there a real value in the
+raw CSV that isn't being parsed/matched correctly (a genuine bug,
+somewhere in parseCellNum, header resolution, or elsewhere)?
 
 No other files changed.
 

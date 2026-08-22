@@ -85,14 +85,13 @@ const CPC_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "cpc (cost per lin
 const CPC_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "link clicks", "clicks"];
 
 function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
-  // TEMP DEBUG
-  console.log("aggregateCpc: headerMap keys:", [...headerMap.keys()].filter((k) => k.includes("cpc") || k.includes("click")));
-  console.log("aggregateCpc: totalSpend:", totalSpend);
-
   for (const candidate of CPC_VALUE_HEADER_CANDIDATES) {
     const header = headerMap.get(candidate);
     if (!header) continue;
+    // TEMP DEBUG
+    const allValues = rows.map((r) => r._raw?.[header]).slice(0, 5);
     const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
+    console.log("aggregateCpc candidate:", candidate, "allValues(first5):", allValues, "nonZero count:", nonZero.length);
     if (nonZero.length > 0) return nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length;
   }
 
