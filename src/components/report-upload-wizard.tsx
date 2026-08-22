@@ -1002,13 +1002,24 @@ export function ReportUploadWizard({
     return Object.fromEntries([...perCampaignMetrics].map(([name, metrics]) => [name, metrics.map((m) => m.key)]));
   }
 
-  /** Objective-colored top border + badge for each campaign's own card — amber for leads, coral for sales/purchases, green for reach/awareness, blue for everything else (traffic/engagement/clicks), matching the wizard's design-system palette. */
-  function objectiveColorClasses(resultLabel: string | undefined): { border: string; badge: string } {
+  /**
+   * Objective-colored accent for each Metric Review campaign card — amber
+   * for leads, coral for purchase/sales, green for reach/awareness, blue
+   * for everything else (traffic/engagement). Drives both the card's own
+   * top border and its header pill badge, so the two always match. Video
+   * objectives keep their own purple accent (not one of the 4 categories
+   * the redesign spec names, but a pre-existing distinction worth keeping
+   * rather than folding into the generic blue "everything else" bucket).
+   */
+  function objectiveAccent(resultLabel: string | undefined): { badgeClassName: string; borderHex: string } {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD")) return { border: "border-t-[#f6ad55]", badge: "bg-amber-950/30 text-[#f6ad55]" };
-    if (label.includes("PURCHASE") || label.includes("SALE")) return { border: "border-t-[#fc8181]", badge: "bg-red-950/30 text-[#fc8181]" };
-    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL")) return { border: "border-t-[#68d391]", badge: "bg-emerald-950/30 text-[#68d391]" };
-    return { border: "border-t-[#63b3ed]", badge: "bg-blue-950/30 text-[#63b3ed]" };
+    if (label.includes("LEAD")) return { badgeClassName: "bg-amber-950/30 text-[#f6ad55]", borderHex: "#f6ad55" };
+    if (label.includes("PURCHASE") || label.includes("SALE")) return { badgeClassName: "bg-red-950/30 text-[#fc8181]", borderHex: "#fc8181" };
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
+      return { badgeClassName: "bg-emerald-950/30 text-[#68d391]", borderHex: "#68d391" };
+    }
+    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return { badgeClassName: "bg-purple-950/30 text-[#b794f4]", borderHex: "#b794f4" };
+    return { badgeClassName: "bg-blue-950/30 text-[#63b3ed]", borderHex: "#63b3ed" };
   }
 
   // ── Step 5: Dates ───────────────────────────────────────────────────────
@@ -1573,7 +1584,7 @@ export function ReportUploadWizard({
                       onChange={() => toggleCampaign(name)}
                       className="h-4 w-4 flex-shrink-0 accent-accent"
                     />
-                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] font-bold text-white" title={name}>
+                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
                       {name}
                     </label>
                     {isSingleAdSet && (
@@ -1833,7 +1844,7 @@ export function ReportUploadWizard({
           <div>
             <h3 className="text-[15px] font-semibold text-white">Review Metric Cards</h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Each campaign shows its own objective-relevant metrics. Add or remove cards as needed.
+              Review the metrics for each campaign slide. Remove or add metrics as needed.
             </p>
           </div>
 
@@ -1843,71 +1854,91 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {/* Thing 3 (three-layer objective architecture rebuild) — one section
-              per campaign, each with its OWN independent metric selection —
-              no shared account-wide list, so a campaign never shows another
-              campaign's objective-specific cards. */}
-          <div className="space-y-3">
+          <div>
             {campaigns
               .filter((name) => selectedCampaigns.has(name))
               .map((name) => {
                 const normalized = normalizeCampaignName(name);
                 const objective = campaignObjectives.get(normalized);
-                const cards = perCampaignMetrics.get(normalized) ?? [];
-                const addable = campaignAvailableMetrics(normalized);
-                const colors = objectiveColorClasses(objective?.resultLabel);
+                const selectedForCampaign = perCampaignMetrics.get(normalized) ?? [];
+                const availableForCampaign = campaignAvailableMetrics(normalized);
+                const accent = objectiveAccent(objective?.resultLabel);
                 return (
-                  <div key={name} className={`space-y-2 rounded-md border border-dash-border border-t-4 ${colors.border} bg-dash-bg p-3`}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-[13px] font-semibold text-white" title={name}>
+                  <div
+                    key={name}
+                    className="mb-4 rounded-lg bg-[#1e293b] p-4 last:mb-0"
+                    style={{ borderTop: `3px solid ${accent.borderHex}` }}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="truncate text-[15px] font-bold text-white" title={name}>
                         {name}
                       </span>
                       {objective && (
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${colors.badge}`}>
+                        <span
+                          className={`flex-shrink-0 rounded-[20px] text-[11px] font-medium uppercase ${accent.badgeClassName}`}
+                          style={{ padding: "6px 10px" }}
+                        >
                           {objective.resultLabel}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">Included metrics</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cards.map((m) => (
+                    <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Metrics for this campaign slide</p>
+
+                    <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                      Included metrics
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      {selectedForCampaign.map((m) => (
                         <span
                           key={m.key}
-                          className="flex items-center gap-1.5 rounded-full border border-dash-border bg-[#111f35] px-2.5 py-1 text-[12px] text-dash-ink-secondary"
+                          className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
+                          style={{ padding: "8px 12px" }}
                         >
-                          {m.label}
+                          <span className="text-[12px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
+                            {m.label}
+                          </span>
                           <button
                             type="button"
                             onClick={() => removeCampaignMetric(normalized, m.key)}
                             aria-label={`Remove ${m.label} from ${name}`}
-                            className="text-white hover:text-[#fc8181]"
+                            className="text-[#64748b] hover:text-[#fc8181]"
                           >
                             ✕
                           </button>
                         </span>
                       ))}
                     </div>
-                    {addable.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="w-full text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">Add from your CSV:</span>
-                        {addable.map((m) => (
-                          <button
-                            key={m.key}
-                            type="button"
-                            onClick={() => addCampaignMetric(normalized, m)}
-                            disabled={cards.length >= MAX_METRICS_PER_SLIDE}
-                            className="rounded-full border border-dash-border bg-transparent px-2.5 py-1 text-[12px] text-dash-ink-secondary hover:border-dash-accent hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            + {m.label}
-                          </button>
-                        ))}
-                      </div>
+
+                    {perCampaignMinWarning && (
+                      <p className="mt-2 text-[13px] text-amber-300">{perCampaignMinWarning}</p>
                     )}
+
+                    {availableForCampaign.length > 0 && (
+                      <>
+                        <div className="my-3 border-t border-[#334155]" />
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                          Add from your CSV:
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-2">
+                          {availableForCampaign.map((candidate) => (
+                            <button
+                              key={candidate.key}
+                              type="button"
+                              onClick={() => addCampaignMetric(normalized, candidate)}
+                              disabled={selectedForCampaign.length >= MAX_METRICS_PER_SLIDE}
+                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[12px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40"
+                              style={{ padding: "8px 12px" }}
+                            >
+                              <span className="text-[#68d391]">+</span> {candidate.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {metricsLimitMessage && <p className="mt-2 text-[13px] text-amber-300">{metricsLimitMessage}</p>}
                   </div>
                 );
               })}
-            {perCampaignMinWarning && <p className="text-[13px] text-amber-300">{perCampaignMinWarning}</p>}
-            {metricsLimitMessage && <p className="text-[13px] text-amber-300">{metricsLimitMessage}</p>}
           </div>
 
           <div className="flex gap-3">

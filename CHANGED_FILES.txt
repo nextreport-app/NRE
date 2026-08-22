@@ -1,40 +1,46 @@
-CHANGED_FILES.txt — commit 7e9756f "Restore wizard ad-set UI and Step 4 objective color-coding lost in 5a5f21d"
+CHANGED_FILES.txt — commit 88c6438 "Replace hand-reconstructed wizard Step 2/4 UI with verified 434964d code"
 
 src/components/report-upload-wizard.tsx
-  - Step 2 (campaign/ad-set selection screen):
-    - Removed the per-row spend badge (and its backing campaignSpend state,
-      which became dead code once the badge was removed).
-    - Restored the "1 ad set ▼" toggle button for single-ad-set campaigns
-      (previously a static "1 ad set" span with no arrow/interaction).
-    - Restored the single-ad-set expanded panel (shows the ad set's name +
-      an "Include ad set slide within this campaign" checkbox), gated on
-      isExpanded like the multi-ad-set panel already was.
-    - Multi-ad-set panel now shows "N of M ad sets selected" instead of a
-      static "Ad sets" label.
-    - Restored exact bottom helper text: "Single ad set campaigns show the
-      same data as their campaign slide. Multiple ad sets can be selected
-      or deselected to control which audience slides appear in your
-      report."
-  - Step 4 (metric review screen):
-    - objectiveBadgeColorClass() replaced with objectiveColorClasses(),
-      returning both a badge class and a border class, with sales/
-      purchases split out from leads into its own coral category:
-        amber  -> LEAD
-        coral  -> PURCHASE, SALE
-        green  -> REACH, IMPRESSION, RECALL
-        blue   -> everything else (traffic/engagement/default)
-    - Each per-campaign card now gets a 4px colored top border from the
-      new function, not just colored badge text.
-    - Added an "Included metrics" label above the selected-metric pills.
-    - Added an "Add from your CSV:" label above the addable-metric pills.
+  Source of truth for this change: `git show 434964d:src/components/report-upload-wizard.tsx`
+  (extracted to /tmp/wizard-434964d.tsx and diffed directly against the
+  current file — not reconstructed from memory or description).
+
+  Step 2 (campaign selection):
+    - Fixed one discrepancy left over from the prior manual merge: the
+      campaign name label's className was font-bold/text-white; 434964d's
+      real markup uses plain text-dash-ink (no bold). Everything else in
+      Step 2 already matched 434964d exactly.
+
+  Step 4 (metric review):
+    - objectiveColorClasses() (hand-rolled) replaced with 434964d's real
+      objectiveAccent() function — same amber/coral/green/blue categories,
+      PLUS a purple video/thruplay accent that the hand-rolled version was
+      missing.
+    - Card markup replaced with 434964d's exact layout:
+        - borderTop applied via inline style (`3px solid <hex>`), not a
+          Tailwind border-t-4 class.
+        - Added "Metrics for this campaign slide" subtitle under the
+          name/badge row.
+        - Pills enlarged (8px/12px padding), label uppercase with letter-
+          spacing, remove button color #64748b -> hover #fc8181.
+        - Added a divider (border-t border-[#334155]) before the "Add
+          from your CSV:" section.
+        - Each addable-metric button now shows a green "+" (#68d391)
+          prefix before the label — this was the "green + signs" the
+          request specifically asked for and the hand-rolled version did
+          not have.
+
+  Engine wiring preserved, NOT reverted to 434964d's older version:
+    - MAX_METRICS_PER_SLIDE (8-card cap) — grafted onto the restored
+      "Add from your CSV" button's disabled attribute, since 434964d
+      predates this cap (added later by the three-layer rebuild).
+    - metricsLimitMessage — still displayed per-campaign card.
+    - perCampaignMetrics / perCampaignAvailablePool state, addCampaignMetric
+      / removeCampaignMetric / campaignAvailableMetrics functions — all
+      unchanged, only their JSX callers were touched.
 
 No other files changed. Engine files (src/lib/nre/**, src/app/api/**) were
-not touched — verified present/unchanged in this commit:
-  - NEVER_KEYS_FOR_OBJECTIVE (slot-assignment.ts)
-  - stripNeverKeys (slot-assignment.ts)
-  - requiresConfirmation (objective.ts)
-  - perCampaignSelection (metrics/route.ts)
-  - redistributeCardSlots' slot 4/5 protection (slot-assignment.ts)
+not touched.
 
 Verification: tsc --noEmit clean, eslint clean, npx vitest run — 1374/1374
 tests passing, next build succeeds.
