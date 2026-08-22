@@ -1,63 +1,31 @@
-CHANGED_FILES.txt — commit 2109fc1 "Fix cost_per_lead resolving to a dash for META FORM LEADS wizard selections"
+CHANGED_FILES.txt — commit af68287 "Add targeted debug logging to aggregateCpc to check for a real missing column"
 
-src/lib/nre/report-data.ts
-  computeMetaSlideMetrics(): added a 4-line objective-conditional alias
-  right after the existing resultKey/costKey aliasing block:
+src/lib/nre/dynamic-metrics.ts
+  aggregateCpc(): added 2 console.log lines as the first statements in
+  the function body, exactly as specified:
+    console.log("aggregateCpc: headerMap keys:", [...headerMap.keys()].filter((k) => k.includes("cpc") || k.includes("click")));
+    console.log("aggregateCpc: totalSpend:", totalSpend);
 
-    if (objectiveKeyFor(campaignObjective.resultLabel) === "meta_form_leads") {
-      baselineValues["cost_per_lead"] = baseline.cprValue;
-    }
+  This fires once per campaign/ad-set slide that selects cpc_link_click
+  or cpc_all (both route through this function). The filtered headerMap
+  keys list shows exactly which CPC/click-related column headers were
+  actually found in this campaign's own CSV rows, before any of the
+  CPC_VALUE_HEADER_CANDIDATES / CPC_CLICKS_HEADER_CANDIDATES fallback
+  logic runs.
 
-  So when this specific campaign's SelectedMetric list contains the
-  literal key "cost_per_lead" (as produced by available-metrics.ts's
-  defaultMetaSelection when the CSV has a "Cost per lead" column instead
-  of "Cost per on-facebook lead"), buildSlotsFromSelection's baseline
-  lookup now finds a value there instead of falling through to raw-row
-  aggregation.
-
-ROOT CAUSE (traced through the actual aggregation code, not the
-originally proposed diagnosis): "cost_per_lead"'s dictionary entry
-(meta-dictionary.ts:293-296) has perUnitOf: "website_leads" —
-aggregateDynamicMetrics (dynamic-metrics.ts) computes it as
-sum(spend) / sum(website_leads column). A META FORM LEADS campaign's CSV
-rows have no website_leads data at all (a different objective's column),
-so the denominator is 0, the aggregate is NaN, and lookupMetricValue
-renders NaN as "—". That dictionary entry is correct as written for the
-OTHER objectives (leads/website_leads) it's also selectable for — the
-bug is that "cost_per_lead" reaches this raw-aggregation path at all,
-because its key doesn't match objectiveMetricKeys' own costKey for META
-FORM LEADS ("cost_per_meta_form_leads", PLURAL, mechanically slugified
-from the resultLabel) — never the literal "cost_per_lead" key
-available-metrics.ts's defaultMetaSelection actually uses in its
-"CSV has a 'Cost per lead' column" branch.
-
-WHY THIS FIX LIVES IN report-data.ts, NOT slot-assignment.ts (as
-originally proposed): buildSlotsFromSelection has no campaignObjective
-parameter — it's shared/objective-agnostic, used for every objective and
-both slide 1 and slide 2. An unconditional "cost_per_lead falls back to
-cost_per_result" rule placed there would also fire for a WEBSITE LEADS
-campaign that manually adds "COST PER LEAD" via the Metric Cards "Add
-from your CSV" pool — where perUnitOf: "website_leads" is CORRECT and
-this fallback would silently show the wrong number instead of the real
-one. report-data.ts's computeMetaSlideMetrics already has
-campaignObjective in scope at exactly the point this needs to be
-conditional (two lines above, for the identical resultKey/costKey
-aliasing reason), so the fix extends that existing mechanism instead of
-adding an unconditional special case somewhere that structurally can't
-scope it correctly.
-
-VERIFICATION: reproduced the real wizard-selection path directly against
-buildReportData (selectedMetrics + campaignMetricOverrides including the
-literal "cost_per_lead" key, matching the exact reported scenario:
-InstantForms campaign, $140 total spend, 25 total leads) — confirmed
-cost_per_lead now resolves to "$5.60" instead of a dash. This ad-hoc
-verification script was run and then deleted; not part of this change.
+WHAT THE NEXT LOG OUTPUT WILL TELL US: if the filtered headerMap keys
+array is empty for the Specialty Painting campaign's card, the CSV
+genuinely has no CPC or clicks column at all — the dash is correct,
+expected behavior, not a bug, and the real fix (per the user's own
+framing) would be on the wizard side: don't pre-select/offer
+cpc_link_click as a metric when the CSV doesn't have a column for it or
+its fallback. If the array DOES contain a real header (e.g. "cpc (cost
+per link click)") but the card still dashes, that points to the same
+class of key-mismatch bug as the last two fixes (redistributeCardSlots'
+costKey mismatch, cost_per_lead's baseline miss) — worth tracing further
+before deciding on a fix.
 
 No other files changed.
 
 Verification: tsc --noEmit clean, eslint clean, npx vitest run —
-1374/1374 tests passing unchanged (the one existing "Cost per lead"
-column test, report-data.test.ts's "InstantForms campaign" test, only
-covers the automatic non-wizard path, which uses the generic
-cost_per_result key and was never affected by this bug), next build
-succeeds.
+1374/1374 tests passing, next build succeeds.
