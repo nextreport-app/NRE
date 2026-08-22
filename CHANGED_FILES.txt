@@ -1,43 +1,33 @@
-CHANGED_FILES.txt — commit a8539aa "Add temporary debug logging to trace metrics-screen-to-PPT pipeline"
+CHANGED_FILES.txt — commit 996f11c "Add debug logging directly in the generate route's POST handler"
 
 src/app/api/clients/[id]/reports/route.ts
-  buildMetaData(): added 3 console.log statements right after
-  selectedMetrics/campaignMetricOverrides are parsed from formData
-  (before buildReportData() is called):
-    REPORT ROUTE: selectedMetrics length: <n | "undefined">
-    REPORT ROUTE: campaignMetricOverrides keys: [<campaign names>]
-    REPORT ROUTE: campaignMetricOverrides values: <JSON>
+  Two more TEMPORARY DEBUG LOGGING lines, both directly inside POST()
+  itself, not inside buildMetaData (a helper POST calls later):
 
-src/lib/nre/report-data.ts
-  computeMetaSlideMetrics():
-    - Location 2: 3 console.log statements as the first statements in
-      the function body, before the line-1044 guard
-      (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool):
-        REPORT DATA: selectedMetrics length: <n | "undefined">
-        REPORT DATA: campaignMetricOverrides: <JSON>
-        REPORT DATA: availableMetricsPool length: <n | "undefined">
-    - Location 3: 1 console.log right after slide1Keys is computed
-      (splitMetricsForSlides), inside the per-campaign/ad-set call:
-        CAMPAIGN LOOP: campaign: <name> override: <string[] | undefined> slide1Keys length: <n>
-      Note: the requested snippet referenced `slide.campaignName`, but
-      there is no `slide` variable in this scope — computeMetaSlideMetrics
-      takes `campaignName` directly as its own parameter (it's called
-      once per campaign AND once per ad-set from the surrounding loop),
-      so the log uses `campaignName` instead. `override` and
-      `slide1Keys` are logged exactly as requested.
+  1. First statement in the function, before auth/client-lookup/
+     subscription-guard/validation can return early:
+       console.log("REPORT ROUTE POST: handler entered, url:", req.url);
+     If a generate request produces zero output from this route — not
+     even this one line — the request never reached this handler at all
+     (routing/network/deployment issue), not a data issue further down.
 
-This function runs once per campaign slide and once per ad-set slide, so
-all three of these logs (Location 2/3 especially) will fire multiple
-times per report — once per campaign, then again for each selected ad
-set under it, each with that ad set's own campaignName/override/
-slide1Keys.
+  2. Right after formData is parsed, before any schema parsing/filtering
+     (parseJsonFormField/campaignMetricOverridesSchema etc. haven't run
+     yet at this point):
+       console.log("REPORT ROUTE POST: raw campaignMetricOverrides field:", formData ? formData.get("campaignMetricOverrides") : "no formData");
+     This is the rawest possible read — straight off the multipart form
+     field the client actually posted, before any validation/parsing
+     could silently drop or reshape it.
 
-All log lines are marked "TEMPORARY DEBUG LOGGING — remove after tracing
-the metrics-screen-to-PPT pipeline" for easy removal once the trace is
-done.
+Combined with the existing "REPORT ROUTE: ..." logs already added inside
+buildMetaData() (previous commit a8539aa), a generate request now logs at
+three points along the way: handler entry, raw form field, and parsed
+field — enough to isolate whether a missing-override symptom is a
+routing issue (log 1 missing), a client-payload issue (log 2 missing/
+empty), or a parsing/schema issue (log 2 present but the existing
+buildMetaData log shows it empty).
 
 No other files changed.
 
-Verification: tsc --noEmit clean, eslint clean (no no-console rule in
-this project's config), npx vitest run — 1374/1374 tests passing, next
-build succeeds.
+Verification: tsc --noEmit clean, eslint clean, npx vitest run —
+1374/1374 tests passing, next build succeeds.

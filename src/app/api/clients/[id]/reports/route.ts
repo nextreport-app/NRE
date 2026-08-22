@@ -143,6 +143,12 @@ function buildGoogleData(
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
+  // Placed as the very first statement in the POST handler itself (not a
+  // helper it may or may not call), so this fires on every request that
+  // reaches this route at all, before auth/lookup/validation can return early.
+  console.log("REPORT ROUTE POST: handler entered, url:", req.url);
+
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -162,6 +168,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const formData = await req.formData().catch(() => null);
   const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
+
+  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
+  // Logged directly in the POST handler's own scope, straight off formData,
+  // before this is handed to buildMetaData/buildComparisonReportData/
+  // buildGoogleData or filtered by any schema — the rawest possible read.
+  console.log(
+    "REPORT ROUTE POST: raw campaignMetricOverrides field:",
+    formData ? formData.get("campaignMetricOverrides") : "no formData",
+  );
 
   if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
     return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
