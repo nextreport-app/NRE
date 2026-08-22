@@ -290,10 +290,6 @@ export function ReportUploadWizard({
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
-  // Step 2's spend badge — total spend per campaign from the uploaded CSV
-  // (analyze/route.ts's campaignSpend, keyed by the exact name as it
-  // appears in `campaigns`, already spend-sorted server-side).
-  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
 
   // Improvement 2 — ad-set selection, collapsible under each campaign row
@@ -522,7 +518,6 @@ export function ReportUploadWizard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
     setCampaigns(json.campaigns || []);
-    setCampaignSpend(json.campaignSpend || {});
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
@@ -1007,12 +1002,13 @@ export function ReportUploadWizard({
     return Object.fromEntries([...perCampaignMetrics].map(([name, metrics]) => [name, metrics.map((m) => m.key)]));
   }
 
-  /** Objective-colored badge for each campaign's own sub-heading — amber for leads/conversions, green for reach/awareness, blue for everything else (traffic/engagement), matching the wizard's design-system palette. */
-  function objectiveBadgeColorClass(resultLabel: string | undefined): string {
+  /** Objective-colored top border + badge for each campaign's own card — amber for leads, coral for sales/purchases, green for reach/awareness, blue for everything else (traffic/engagement/clicks), matching the wizard's design-system palette. */
+  function objectiveColorClasses(resultLabel: string | undefined): { border: string; badge: string } {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD") || label.includes("PURCHASE") || label.includes("SALE")) return "bg-amber-950/30 text-[#f6ad55]";
-    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL")) return "bg-emerald-950/30 text-[#68d391]";
-    return "bg-blue-950/30 text-[#63b3ed]";
+    if (label.includes("LEAD")) return { border: "border-t-[#f6ad55]", badge: "bg-amber-950/30 text-[#f6ad55]" };
+    if (label.includes("PURCHASE") || label.includes("SALE")) return { border: "border-t-[#fc8181]", badge: "bg-red-950/30 text-[#fc8181]" };
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL")) return { border: "border-t-[#68d391]", badge: "bg-emerald-950/30 text-[#68d391]" };
+    return { border: "border-t-[#63b3ed]", badge: "bg-blue-950/30 text-[#63b3ed]" };
   }
 
   // ── Step 5: Dates ───────────────────────────────────────────────────────
@@ -1567,7 +1563,6 @@ export function ReportUploadWizard({
               const isSingleAdSet = !!group && group.adSetNames.length === 1;
               const allAdSetsDeselected =
                 !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
-              const spend = campaignSpend[name] ?? 0;
               return (
                 <li key={name} className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
@@ -1581,11 +1576,16 @@ export function ReportUploadWizard({
                     <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] font-bold text-white" title={name}>
                       {name}
                     </label>
-                    <span className="flex-shrink-0 rounded-md bg-dash-bg px-2 py-0.5 text-[13px] font-medium text-dash-accent">
-                      ${Math.round(spend).toLocaleString()}
-                    </span>
                     {isSingleAdSet && (
-                      <span className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary">1 ad set</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleCampaignExpanded(name)}
+                        disabled={!isSelected}
+                        aria-expanded={isExpanded}
+                        className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30"
+                      >
+                        1 ad set ▼
+                      </button>
                     )}
                     {isMultiAdSet && (
                       <button
@@ -1600,71 +1600,74 @@ export function ReportUploadWizard({
                     )}
                   </div>
 
-                  {isSelected && group && isMultiAdSet && isExpanded && (
-                    <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[12px] text-dash-ink-secondary">Ad sets</p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
-                            className="text-[12px] text-dash-accent hover:underline"
-                          >
-                            Select all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
-                            className="text-[12px] text-dash-accent hover:underline"
-                          >
-                            Deselect all
-                          </button>
+                  {isSelected && group && isMultiAdSet && isExpanded && (() => {
+                    const selectedCount = group.adSetNames.filter((n) => selectedAdSets.has(adSetKey(name, n))).length;
+                    return (
+                      <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[12px] text-dash-ink-secondary">
+                            {selectedCount} of {group.adSetNames.length} ad sets selected
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
+                              className="text-[12px] text-dash-accent hover:underline"
+                            >
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
+                              className="text-[12px] text-dash-accent hover:underline"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
                         </div>
+                        <ul className="space-y-1.5">
+                          {group.adSetNames.map((adSetName) => {
+                            const key = adSetKey(name, adSetName);
+                            return (
+                              <li key={key} className="flex items-center gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  id={`adset-${key}`}
+                                  checked={selectedAdSets.has(key)}
+                                  onChange={() => toggleAdSet(name, adSetName)}
+                                  className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
+                                />
+                                <label htmlFor={`adset-${key}`} className="min-w-0 flex-1 cursor-pointer truncate text-[12px] text-dash-ink-secondary" title={adSetName}>
+                                  {adSetName}
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <p className="text-[12px] text-dash-ink-secondary">
+                          Uncheck any ad sets you do not want as separate slides in your report.
+                        </p>
+                        {allAdSetsDeselected && (
+                          <p className="text-[12px] text-amber-300">No ad set slides will be generated for this campaign.</p>
+                        )}
                       </div>
-                      <ul className="space-y-1.5">
-                        {group.adSetNames.map((adSetName) => {
-                          const key = adSetKey(name, adSetName);
-                          return (
-                            <li key={key} className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                id={`adset-${key}`}
-                                checked={selectedAdSets.has(key)}
-                                onChange={() => toggleAdSet(name, adSetName)}
-                                className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
-                              />
-                              <label htmlFor={`adset-${key}`} className="min-w-0 flex-1 cursor-pointer truncate text-[12px] text-dash-ink-secondary" title={adSetName}>
-                                {adSetName}
-                              </label>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <p className="text-[12px] text-dash-ink-secondary">
-                        {isMultiAdSet
-                          ? "Uncheck any ad sets you do not want as separate slides in your report."
-                          : "Check to include an audience slide for this ad set. Data will match the campaign slide."}
-                      </p>
-                      {isMultiAdSet && allAdSetsDeselected && (
-                        <p className="text-[12px] text-amber-300">No ad set slides will be generated for this campaign.</p>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
 
-                  {isSelected && group && isSingleAdSet && (
-                    <div className="mt-3 flex items-center gap-2.5 rounded-md border border-dash-border bg-dash-bg p-3">
-                      <input
-                        type="checkbox"
-                        id={`adset-${adSetKey(name, group.adSetNames[0])}`}
-                        checked={selectedAdSets.has(adSetKey(name, group.adSetNames[0]))}
-                        onChange={() => toggleAdSet(name, group.adSetNames[0])}
-                        className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
-                      />
-                      <label
-                        htmlFor={`adset-${adSetKey(name, group.adSetNames[0])}`}
-                        className="text-[12px] text-dash-ink-secondary"
-                      >
-                        Check to include audience slide
+                  {isSelected && group && isSingleAdSet && isExpanded && (
+                    <div className="mt-3 rounded-md border border-dash-border bg-dash-bg p-3">
+                      <p className="mb-2 truncate text-[12px] font-medium text-dash-ink" title={group.adSetNames[0]}>
+                        {group.adSetNames[0]}
+                      </p>
+                      <label className="flex cursor-pointer items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          id={`adset-${adSetKey(name, group.adSetNames[0])}`}
+                          checked={selectedAdSets.has(adSetKey(name, group.adSetNames[0]))}
+                          onChange={() => toggleAdSet(name, group.adSetNames[0])}
+                          className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
+                        />
+                        <span className="text-[12px] text-dash-ink-secondary">Include ad set slide within this campaign</span>
                       </label>
                     </div>
                   )}
@@ -1674,8 +1677,8 @@ export function ReportUploadWizard({
           </ul>
 
           <p className="text-[13px] text-dash-ink-secondary">
-            Ad set slides show the same data as their campaign but with the ad set name and audience context. Deselect
-            to exclude from your report.
+            Single ad set campaigns show the same data as their campaign slide. Multiple ad sets can be selected or
+            deselected to control which audience slides appear in your report.
           </p>
 
           <div className="flex gap-3">
@@ -1852,18 +1855,20 @@ export function ReportUploadWizard({
                 const objective = campaignObjectives.get(normalized);
                 const cards = perCampaignMetrics.get(normalized) ?? [];
                 const addable = campaignAvailableMetrics(normalized);
+                const colors = objectiveColorClasses(objective?.resultLabel);
                 return (
-                  <div key={name} className="space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
+                  <div key={name} className={`space-y-2 rounded-md border border-dash-border border-t-4 ${colors.border} bg-dash-bg p-3`}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-[13px] font-semibold text-white" title={name}>
                         {name}
                       </span>
                       {objective && (
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${objectiveBadgeColorClass(objective.resultLabel)}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${colors.badge}`}>
                           {objective.resultLabel}
                         </span>
                       )}
                     </div>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">Included metrics</p>
                     <div className="flex flex-wrap gap-1.5">
                       {cards.map((m) => (
                         <span
@@ -1883,7 +1888,8 @@ export function ReportUploadWizard({
                       ))}
                     </div>
                     {addable.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="w-full text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">Add from your CSV:</span>
                         {addable.map((m) => (
                           <button
                             key={m.key}

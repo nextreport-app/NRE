@@ -1,0 +1,40 @@
+CHANGED_FILES.txt — commit 7e9756f "Restore wizard ad-set UI and Step 4 objective color-coding lost in 5a5f21d"
+
+src/components/report-upload-wizard.tsx
+  - Step 2 (campaign/ad-set selection screen):
+    - Removed the per-row spend badge (and its backing campaignSpend state,
+      which became dead code once the badge was removed).
+    - Restored the "1 ad set ▼" toggle button for single-ad-set campaigns
+      (previously a static "1 ad set" span with no arrow/interaction).
+    - Restored the single-ad-set expanded panel (shows the ad set's name +
+      an "Include ad set slide within this campaign" checkbox), gated on
+      isExpanded like the multi-ad-set panel already was.
+    - Multi-ad-set panel now shows "N of M ad sets selected" instead of a
+      static "Ad sets" label.
+    - Restored exact bottom helper text: "Single ad set campaigns show the
+      same data as their campaign slide. Multiple ad sets can be selected
+      or deselected to control which audience slides appear in your
+      report."
+  - Step 4 (metric review screen):
+    - objectiveBadgeColorClass() replaced with objectiveColorClasses(),
+      returning both a badge class and a border class, with sales/
+      purchases split out from leads into its own coral category:
+        amber  -> LEAD
+        coral  -> PURCHASE, SALE
+        green  -> REACH, IMPRESSION, RECALL
+        blue   -> everything else (traffic/engagement/default)
+    - Each per-campaign card now gets a 4px colored top border from the
+      new function, not just colored badge text.
+    - Added an "Included metrics" label above the selected-metric pills.
+    - Added an "Add from your CSV:" label above the addable-metric pills.
+
+No other files changed. Engine files (src/lib/nre/**, src/app/api/**) were
+not touched — verified present/unchanged in this commit:
+  - NEVER_KEYS_FOR_OBJECTIVE (slot-assignment.ts)
+  - stripNeverKeys (slot-assignment.ts)
+  - requiresConfirmation (objective.ts)
+  - perCampaignSelection (metrics/route.ts)
+  - redistributeCardSlots' slot 4/5 protection (slot-assignment.ts)
+
+Verification: tsc --noEmit clean, eslint clean, npx vitest run — 1374/1374
+tests passing, next build succeeds.
