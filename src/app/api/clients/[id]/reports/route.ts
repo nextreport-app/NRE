@@ -77,6 +77,12 @@ async function buildMetaData(
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+
+  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
+  console.log("REPORT ROUTE: selectedMetrics length:", selectedMetrics?.length ?? "undefined");
+  console.log("REPORT ROUTE: campaignMetricOverrides keys:", Object.keys(campaignMetricOverrides ?? {}));
+  console.log("REPORT ROUTE: campaignMetricOverrides values:", JSON.stringify(campaignMetricOverrides));
+
   // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
   // caller (POST below) returns early for reportType "COMPARISON" before
   // ever reaching here — but reportTypeSchema itself now allows all three

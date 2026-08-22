@@ -1041,6 +1041,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignObjective: CampaignObjectiveRef | null,
     campaignName: string,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
+    // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
+    console.log("REPORT DATA: selectedMetrics length:", selectedMetrics?.length ?? "undefined");
+    console.log("REPORT DATA: campaignMetricOverrides:", JSON.stringify(campaignMetricOverrides));
+    console.log("REPORT DATA: availableMetricsPool length:", availableMetricsPool?.length ?? "undefined");
+
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
@@ -1091,6 +1096,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
+    // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
+    console.log("CAMPAIGN LOOP: campaign:", campaignName, "override:", override, "slide1Keys length:", slide1Keys?.length);
     // Part 4 — a selected metric with no real data for THIS campaign is
     // nulled out by buildSlotsFromSelection (dashed out downstream by
     // fill-tags.ts); redistributeCardSlots then compacts the survivors

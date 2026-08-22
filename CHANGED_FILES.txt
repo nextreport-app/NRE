@@ -1,84 +1,43 @@
-CHANGED_FILES.txt — commit 7295461 "Fix redistributeCardSlots dropping the primary cost pair for several objectives"
+CHANGED_FILES.txt — commit a8539aa "Add temporary debug logging to trace metrics-screen-to-PPT pipeline"
 
-src/lib/nre/slot-assignment.ts
-  redistributeCardSlots(): the protectedKeyGroups' result/cost groups now
-  also check a small, objective-conditional set of "real" keys in addition
-  to resultKey/costKey (from objectiveMetricKeys) and the generic
-  "results"/"cost_per_result" fallback:
+src/app/api/clients/[id]/reports/route.ts
+  buildMetaData(): added 3 console.log statements right after
+  selectedMetrics/campaignMetricOverrides are parsed from formData
+  (before buildReportData() is called):
+    REPORT ROUTE: selectedMetrics length: <n | "undefined">
+    REPORT ROUTE: campaignMetricOverrides keys: [<campaign names>]
+    REPORT ROUTE: campaignMetricOverrides values: <JSON>
 
-    extraResultKeys = {
-      messaging_leads: ["messaging_conversations_started"],
-      messaging_conversations_started: ["messaging_conversations_started"],
-      conversations: ["messaging_conversations_started"],
-    }
-    extraCostKeys = {
-      meta_form_leads: ["cost_per_meta_form_lead", "cost_per_lead"],
-      reach: ["frequency"],
-      unique_reach: ["frequency"],
-      landing_page_views: ["cost_per_lpv"],
-      messaging_leads: ["cost_per_conversation"],
-      messaging_conversations_started: ["cost_per_conversation"],
-      conversations: ["cost_per_conversation"],
-    }
+src/lib/nre/report-data.ts
+  computeMetaSlideMetrics():
+    - Location 2: 3 console.log statements as the first statements in
+      the function body, before the line-1044 guard
+      (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool):
+        REPORT DATA: selectedMetrics length: <n | "undefined">
+        REPORT DATA: campaignMetricOverrides: <JSON>
+        REPORT DATA: availableMetricsPool length: <n | "undefined">
+    - Location 3: 1 console.log right after slide1Keys is computed
+      (splitMetricsForSlides), inside the per-campaign/ad-set call:
+        CAMPAIGN LOOP: campaign: <name> override: <string[] | undefined> slide1Keys length: <n>
+      Note: the requested snippet referenced `slide.campaignName`, but
+      there is no `slide` variable in this scope — computeMetaSlideMetrics
+      takes `campaignName` directly as its own parameter (it's called
+      once per campaign AND once per ad-set from the surrounding loop),
+      so the log uses `campaignName` instead. `override` and
+      `slide1Keys` are logged exactly as requested.
 
-  Looked up by the campaign's own slugified objective key (via the
-  already-imported slugifyObjectiveKey), so a key like "frequency" is only
-  ever protected for a Reach-objective campaign, never leaking protected
-  status onto a different objective's slot 7/8 candidate.
+This function runs once per campaign slide and once per ad-set slide, so
+all three of these logs (Location 2/3 especially) will fire multiple
+times per report — once per campaign, then again for each selected ad
+set under it, each with that ad set's own campaignName/override/
+slide1Keys.
 
-WHY: objectiveMetricKeys(resultLabel) mechanically slugifies the whole
-resultLabel to build its synthetic {resultKey, costKey}. For most
-objectives that already matches defaultMetaSelection's own real key (the
-generic "results"/"cost_per_result", already covered by the existing
-fallback strings, or a dedicated key that happens to equal the slugified
-form). For META FORM LEADS specifically it never does: costKey computes
-to the plural "cost_per_meta_form_leads" (inherited from resultLabel's
-own trailing "S"), but defaultMetaSelection (available-metrics.ts) uses
-the singular "cost_per_meta_form_lead" (the real meta-dictionary.ts key)
-in two of its three CSV-column-dependent branches, or "cost_per_lead"
-entirely in the third — matching none of them. That's the exact reported
-bug: a META FORM LEADS campaign's slot 5 showing COST PER LINK CLICK
-instead of COST PER LEAD, because redistributeCardSlots didn't recognize
-the selected metric's own key as the primary pair and treated it as an
-ordinary, replaceable secondary. The same class of mismatch exists for
-REACH/UNIQUE REACH ("frequency" vs. "cost_per_1k_reached"), LANDING PAGE
-VIEWS ("cost_per_lpv" vs. "cost_per_landing_page_views"), and the
-MESSAGING objectives ("messaging_conversations_started"/
-"cost_per_conversation" regardless of which of the three MESSAGING
-labels the campaign resolved to) — found by tracing every branch of
-defaultMetaSelection's switch statement against objectiveMetricKeys'
-synthetic-key derivation, not by guessing.
-
-WHY THE FIX IS OBJECTIVE-CONDITIONAL, NOT A FLAT LIST: the originally
-proposed fix added extra keys as unconditional strings alongside
-"results"/"cost_per_result". That would have been wrong for two of the
-proposed keys specifically: "frequency" and "cost_per_lpv" are both in
-SECONDARY_FILL_KEYS — valid, intentionally-compactable slot 7/8
-candidates for OTHER objectives. An existing test (redistributeCardSlots
-— "compacts real (non-null) SECONDARY cards forward") selects
-"frequency" with campaignObjective: null and asserts it gets compacted
-away, not protected. Adding it unconditionally would have made it
-permanently sticky on every campaign that happens to have it selected,
-not just Reach ones — a new bug in place of the old one. Also dropped
-several keys from the originally proposed list that don't correspond to
-any real key in the codebase (cost_per_website_lead, cost_per_purchase,
-cost_per_install — those objectives already use the generic
-"cost_per_result" key, already protected) or that are slot 7/8
-candidates never meant to be permanently protected (cost_per_atc,
-cost_per_ic — ADD TO CART/INITIATE CHECKOUT are PURCHASES' own secondary
-picks, not its primary pair).
-
-VERIFICATION: reproduced the exact reported scenario directly against
-redistributeCardSlots (META FORM LEADS campaign, "cost per lead" CSV
-column branch, COST PER LINK CLICK present in the candidate pool) —
-confirmed slot 5 now stays COST PER LEAD = $67.27 instead of being
-replaced. This ad-hoc verification script was run and then deleted; it
-is not part of this change (scope was slot-assignment.ts only, no new
-test file was requested or added).
+All log lines are marked "TEMPORARY DEBUG LOGGING — remove after tracing
+the metrics-screen-to-PPT pipeline" for easy removal once the trace is
+done.
 
 No other files changed.
 
-Verification: tsc --noEmit clean, eslint clean, npx vitest run — all
-1374 pre-existing tests still pass unchanged (including the "frequency
-stays compactable when objective is null" test that the originally
-proposed fix would have broken), next build succeeds.
+Verification: tsc --noEmit clean, eslint clean (no no-console rule in
+this project's config), npx vitest run — 1374/1374 tests passing, next
+build succeeds.
