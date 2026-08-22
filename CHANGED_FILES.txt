@@ -1,67 +1,113 @@
-CHANGED_FILES.txt — commit 39589fb "Redesign Report Summary card and download screen; rename custom-title link"
+CHANGED_FILES.txt — commit 2dbcab7 "Marketing and website content improvements (12 fixes)"
 
-src/components/report-upload-wizard.tsx
-  This was new UI work per an explicit design spec, not a restore — no
-  git-history source commit involved (unlike the prior two rounds).
+NEW FILE:
+src/app/how-it-works/page.tsx
+  Fix 1 + Fix 12. New page with: title "How NextReport Works" / sub "From
+  CSV export to client-ready report in under 2 minutes"; Section 1 "What
+  you need" (the two required CSV files — Previous Month Data + Last 30
+  Days Day by Day); Section 2 "Report types available" (Weekly, Monthly,
+  Bi-weekly, Comparison — with the exact "this week vs last week / this
+  month vs last month / any custom date range" wording from Fix 12, and
+  Custom Date Range); Section 3 "The 5 steps" (Upload CSV, Select
+  campaigns, Confirm objectives, Review metric cards, Choose period and
+  generate); Section 4 "What you get" (Download PPTX, View in browser,
+  Save to Drive, Share via WhatsApp/Email).
 
-  1. Fix 1 — Report Summary card (Step 5, before generating):
-     - Campaigns row: campaign names now listed below the "N selected"
-       count, one per line, 12px muted grey (#64748b), indented (pl-4).
-     - New "Week period" row: shown when reportType === "WEEKLY" and a
-       weekly range is available, using the wizard's own weeklyRangeIso
-       state.
-     - New "Month to date" row: shown whenever mtdRange is available.
-     - Comparison reports show a "Comparison periods: A vs B" row instead
-       of Week period/Month to date (comparisonData.periodALabel/
-       periodBLabel).
-     - New "Estimated slides" row via a new estimatedSlideCount()
-       function: cover(1) + campaign count + selectedAdSets.size +
-       chart(1) + table(1) + metric guide(1) for a normal report; for a
-       comparison report (different slide shape — no ad set/chart/table/
-       guide slides), just cover(1) + campaign count.
-     - Added two new date-formatting helpers: formatIsoShort (abbreviated
-       month) and formatSummaryRange ("Aug 14 - Aug 20, 2026"), kept
-       separate from the existing formatIso/formatIsoRange (which use
-       full month names and no year) so this display-only change can't
-       affect date-bounds error messages or anything else that reuses
-       those shared functions.
+MODIFIED:
+src/app/help/download/page.tsx
+  Fix 2. Full content rewrite. Meta Ads section split into two step lists
+  — "For Last 30 Days (weekly reporting CSV)" (7 steps: Campaigns tab,
+  Export Table Data, Last 30 Days, Time Breakdown = Day, the full column
+  list, the lead-gen-specific columns, Export as CSV) and "For Previous
+  Month (monthly comparison CSV)" (4 steps: Last Month, Time Breakdown
+  None-or-Day, same columns, Export as CSV) — plus a callout box on why
+  Result Type matters. Google Ads section rewritten to the 5-step
+  Predefined reports → Basic → Campaign flow with the exact column list
+  given. Title/sub updated to "Download Guide" / "How to export your
+  campaign data from Meta Ads and Google Ads".
 
-  2. Fix 2 — "Add custom title +" renamed to "Add custom PPT report
-     title +" (button label and its doc comment).
+src/components/public-nav.tsx
+  Fix 3. "How It Works" nav link changed from /help/download to the new
+  /how-it-works page.
 
-  3. Fix 3 — download screen redesign (generateStatus === "done"):
-     - Primary CTA ("View Report in Browser"): full width, 48px, solid
-       amber (#f5b45a) background, #0d1b2e text, font-weight 600 — was
-       44px with the same amber fill already but the spec called for the
-       explicit 48px height.
-     - Secondary row (Download PPTX / Save to Google Drive): changed from
-       a CSS grid to an equal-width flex row (flex-1 each), 44px, solid
-       #1e293b background with 1px amber/green borders respectively.
-       Added a leading ⬇ glyph to Download PPTX and switched Save to
-       Drive from the DriveIcon SVG component to a leading ☁ glyph, per
-       the spec's exact button text.
-     - Tertiary row (Email / WhatsApp / Copy Link): changed from a
-       borderless icon-over-label column layout to three equal-width
-       (flex-1) 40px buttons with solid #1e293b background and 1px
-       #334155 borders, icon-beside-label. Email uses a new MailIcon
-       (blue #63b3ed stroke), Copy Link uses a new CopyIcon (grey
-       #94a3b8 stroke), WhatsApp keeps its existing inline SVG but now
-       filled #25D366 instead of inheriting the surrounding text color.
-     - Bottom "Generate Another Report" button: unchanged navy/blue-
-       border style, height set explicitly to 44px with an 8px top
-       margin per spec.
-     - Removed the now-unused DriveIcon component (its only call site was
-       replaced by the ☁ glyph); added MailIcon/CopyIcon in its place —
-       both confirmed used only in this tertiary row before removing/
-       adding.
-     - Verified only one place in the file displays the raw share URL as
-       text: the 11px muted-grey line under "View Report in Browser".
-       Every other reference to buildShareReportUrl() is either an href
-       (not visible text) or the clipboard-copy call — no other section
-       shows a raw URL.
+src/components/site-chrome-footer.tsx
+  Fix 3. Footer "How it Works" link fixed to point at /how-it-works
+  (was pointing at /help/download, the same URL that used to double as
+  both labels); added a separate "Download Guide" link to /help/download
+  right after it, so the footer now has one link per URL, no duplicates.
 
-No other files changed. Engine files (src/lib/nre/**, src/app/api/**)
-were not touched.
+src/app/about/page.tsx
+  Fix 4. Full rewrite. Removed: the duplicated "Monday morning" framing
+  (both the hero subhead and the Story section's opening line repeated
+  it — the hero subhead is gone entirely now), the "25+ hours saved per
+  agency per month" stat, the StoryIllustration component and its
+  favicon-large.png image, the 🇮🇳 flag emoji, and the "— NextReport Team"
+  signature. New Story body is the exact 6-paragraph text given, closing
+  with "— Built with Indian agencies and US client reporting in mind".
+  The old 4-item emoji "What makes us different" grid (DIFFERENTIATORS)
+  is removed entirely; the old numeric Stats section (STATS array) is
+  replaced with three plain-text stat boxes: "Under 2 minutes per
+  report", "Meta Ads and Google Ads supported", "Weekly, monthly and
+  comparison reports". Mission section and CTA section unchanged.
 
-Verification: tsc --noEmit clean, eslint clean, npx vitest run — 1374/1374
-tests passing, next build succeeds.
+src/app/contact/page.tsx
+  Fix 5. Removed the "← Back to NextReport" link (PublicNav already
+  renders on this page) and its now-unused Link import. Changed both
+  text-accent (blue) links to text-[#f5b45a] (amber). Added pb-24 on
+  mobile / sm:pb-16 on larger screens to the main container so the
+  floating WhatsApp button can't cover the form's Send button. Added
+  "We reply on WhatsApp within a few hours. Email replies within one
+  business day." above the form.
+
+src/app/pricing/page.tsx
+  Fix 6. Replaced the BETA_HIDE_PRICING dead-end ("Pricing information
+  coming soon... Contact us at hello@nextreport.in for access") with a
+  proper beta message: "NextReport is in private beta." heading, the
+  onboarding/7-day-trial paragraph, a "Get Early Access →" button linking
+  to /signup, and an email + WhatsApp (wa.me/918882578327, the same
+  number whatsapp-button.tsx already uses site-wide) contact line in
+  amber. Header/footer (BetaBanner/PublicNav/SiteChromeFooter) unchanged
+  — same as every other page. The live (non-beta) pricing branch below it
+  was not touched.
+
+src/components/home/hero-section.tsx
+  Fix 7. Mock metric card numbers: "Website Leads" → "Instant Form
+  Leads", count 23 → 34, "Cost per Lead" $123.78 → $8.42.
+
+src/app/login/page.tsx, src/app/signup/page.tsx
+  Fix 8. Plain-text "NextReport" h1 replaced with the logo image (36px) +
+  "NextReport" Inter Bold wordmark, matching public-nav.tsx's pattern,
+  wrapped in a Link back to "/".
+
+src/components/beta-banner.tsx
+  Fix 9. Mobile (<640px): px-4 py-1 and text-xs instead of the full
+  py-2/text-[13px] size (sm: breakpoint restores the original size), so
+  the banner takes less vertical space above the fold on phones. Dismiss
+  button (×) similarly sized down on mobile.
+
+src/components/home/features-section.tsx
+  Fix 10. "Works with any CSV export" / "Any column layout from a Meta
+  Ads or Google Ads export — no template to configure." changed to
+  "Works with standard CSV exports" / "Works with standard Meta Ads
+  Manager and Google Ads CSV exports when recommended columns are
+  included." — the only other "any CSV"/"any column" occurrence found
+  sitewide was in src/app/light-preview/page.tsx, which per Fix 11 is
+  confirmed not linked from any public nav/footer, so it was left as-is.
+
+VERIFIED, NO CHANGE NEEDED:
+Fix 11 — grepped for `href="/light-preview"` across src/: no matches.
+The page itself still exists at src/app/light-preview/page.tsx (per the
+instruction to leave the page but not link it) but was not linked from
+any nav, footer, or sitemap before this round either — no sitemap.ts/xml
+or robots.ts exists in the repo to check.
+Fix 12 — folded into the new /how-it-works page's Report Types section
+(see above); no separate change needed.
+
+No other files changed. Engine files (src/lib/nre/**), the report wizard
+(src/components/report-upload-wizard.tsx), and API routes were not
+touched.
+
+Verification: tsc --noEmit clean, eslint clean (only pre-existing
+<img>-vs-next/image warnings on files already using plain <img> tags
+elsewhere in the codebase), npx vitest run — 1374/1374 tests passing,
+next build succeeds (new /how-it-works route registered).

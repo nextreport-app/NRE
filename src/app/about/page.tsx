@@ -8,53 +8,20 @@ export const metadata: Metadata = {
   title: "About — NextReport",
 };
 
+const STORY_PARAGRAPHS = [
+  "This started from a simple frustration — the kind every performance marketer knows well.",
+  "Every week, hours disappeared into the same repetitive task: downloading campaign CSVs, copying numbers into PowerPoint slides, writing the same campaign summaries, formatting the same tables. Not strategy. Data entry.",
+  "The tools that existed were built for other markets — dollar pricing, enterprise features, complex setup. Nothing was built for how Indian agencies actually work, or for the reality of managing US client accounts from India.",
+  "So NextReport was built.",
+  "It reads your Meta Ads and Google Ads CSV exports, detects what each campaign was trying to achieve, selects the right metrics automatically, and generates a branded PowerPoint report with AI-written insights — in under 2 minutes.",
+  "The goal is simple: less time on formatting, more time on strategy.",
+];
+
 const STATS = [
-  { stat: "Under 2 minutes", label: "Average time to generate a report" },
-  { stat: "25+ hours", label: "Saved per agency per month" },
-  { stat: "2 platforms", label: "Meta Ads and Google Ads supported" },
+  "Under 2 minutes per report",
+  "Meta Ads and Google Ads supported",
+  "Weekly, monthly and comparison reports",
 ];
-
-const DIFFERENTIATORS = [
-  {
-    icon: "🇮🇳",
-    title: "Built for Indian agencies",
-    description: "INR pricing from day one — not an expensive USD subscription built for Western markets.",
-  },
-  {
-    icon: "⚡",
-    title: "Minutes, not hours",
-    description: "What used to take 30 minutes of copy-pasting now takes under 2 minutes, start to finish.",
-  },
-  {
-    icon: "🤖",
-    title: "AI-written insights",
-    description: "Campaign summaries and key insights are generated automatically, every single time.",
-  },
-  {
-    icon: "🎯",
-    title: "Built by an agency person",
-    description: "Designed around how agency teams actually work day to day, not enterprise assumptions.",
-  },
-];
-
-/**
- * The founder-story visual — the favicon mark shown large. Points at
- * favicon-large.png rather than the shipped favicon.png: that file's a
- * 1048x1048 canvas with the visible mark in a small corner (sized for a
- * browser tab, not a 200px hero image), so displaying it directly here
- * would render as a mostly-blank white rounded square with a tiny icon in
- * the corner. favicon-large.png is the same artwork tightly cropped to
- * the mark itself — see public/favicon-large.png.
- */
-function StoryIllustration() {
-  return (
-    <img
-      src="/favicon-large.png"
-      alt="NextReport"
-      style={{ width: "200px", height: "200px", borderRadius: "24px", display: "block", margin: "0 auto" }}
-    />
-  );
-}
 
 export default async function AboutPage() {
   const session = await auth();
@@ -71,43 +38,17 @@ export default async function AboutPage() {
             <h1 className="text-3xl font-bold text-white sm:text-4xl">
               Built by an agency person, for agency people
             </h1>
-            <p className="mt-5 text-lg text-ink-muted">
-              NextReport was born out of frustration — the same frustration every digital agency feels every
-              Monday morning.
-            </p>
           </div>
         </section>
 
         {/* Founder story */}
-        <section className="mx-auto max-w-5xl px-6 py-16">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div>
-              <h2 className="text-2xl font-semibold text-accent-orange">The Story</h2>
-              <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary">
-                <p>
-                  This started from frustration — the same frustration every digital agency feels every Monday
-                  morning.
-                </p>
-                <p>
-                  Years of managing Meta Ads campaigns for clients across India and the US meant one thing
-                  without fail every week: hours spent downloading CSVs, copying numbers into PowerPoint,
-                  writing the same campaign summaries, formatting the same slides.
-                </p>
-                <p>It was not strategy. It was data entry.</p>
-                <p>
-                  The tools available were expensive, built for Western markets, priced in dollars, and
-                  designed for enterprise teams. None of them understood how Indian agencies actually work.
-                </p>
-                <p>So NextReport was built.</p>
-                <p>
-                  Starting from India, we built a reporting tool that understands Indian agencies — INR
-                  pricing, the platforms Indian clients actually use, and a workflow that fits how agency teams
-                  actually operate. What used to take hours now takes minutes.
-                </p>
-                <p className="pt-2 font-medium text-white">— NextReport Team</p>
-              </div>
-            </div>
-            <StoryIllustration />
+        <section className="mx-auto max-w-3xl px-6 py-16">
+          <h2 className="text-2xl font-semibold text-accent-orange">The Story</h2>
+          <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary">
+            {STORY_PARAGRAPHS.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
+            <p className="pt-2 font-medium text-white">— Built with Indian agencies and US client reporting in mind</p>
           </div>
         </section>
 
@@ -122,36 +63,14 @@ export default async function AboutPage() {
           </div>
         </section>
 
-        {/* Numbers */}
+        {/* Stats */}
         <section className="px-6 py-16">
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3">
             {STATS.map((s) => (
-              <div key={s.stat} className="rounded-xl border border-navy-border bg-navy-panel p-6 text-center">
-                <p className="text-3xl font-bold text-accent-orange">{s.stat}</p>
-                <p className="mt-1.5 text-sm text-ink-muted">{s.label}</p>
+              <div key={s} className="rounded-xl border border-navy-border bg-navy-panel p-6 text-center">
+                <p className="text-base font-semibold text-white">{s}</p>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* What makes us different */}
-        <section className="bg-navy px-6 py-16">
-          <div className="mx-auto max-w-5xl">
-            <h2 className="text-center text-2xl font-semibold text-white sm:text-3xl">What makes us different</h2>
-            <div className="mt-12 grid gap-6 sm:grid-cols-2">
-              {DIFFERENTIATORS.map((d) => (
-                <div key={d.title} className="rounded-xl border border-navy-border bg-navy-panel p-6">
-                  <span
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-xl"
-                    aria-hidden="true"
-                  >
-                    {d.icon}
-                  </span>
-                  <h3 className="mt-4 text-base font-semibold text-white">{d.title}</h3>
-                  <p className="mt-1.5 text-sm text-ink-muted">{d.description}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 

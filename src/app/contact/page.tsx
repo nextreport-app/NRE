@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
@@ -17,12 +16,8 @@ export default async function ContactPage() {
     <>
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
-      <main className="mx-auto w-full max-w-[600px] flex-1 px-6 py-16">
-        <Link href="/" className="text-sm text-accent hover:underline">
-          ← Back to NextReport
-        </Link>
-
-        <div className="mt-6 text-center">
+      <main className="mx-auto w-full max-w-[600px] flex-1 px-6 py-16 pb-24 sm:pb-16">
+        <div className="text-center">
           <h1 className="text-3xl font-semibold text-white">Get in Touch</h1>
           <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
             Have a question, feedback, or need help with your NextReport account? We will respond
@@ -30,13 +25,17 @@ export default async function ContactPage() {
           </p>
           <p className="mt-3 text-sm text-ink-muted">
             Or email us directly:{" "}
-            <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
+            <a href="mailto:hello@nextreport.in" className="text-[#f5b45a] hover:underline">
               hello@nextreport.in
             </a>
           </p>
         </div>
 
-        <div className="mt-10">
+        <p className="mt-10 text-center text-sm text-ink-muted">
+          We reply on WhatsApp within a few hours. Email replies within one business day.
+        </p>
+
+        <div className="mt-6">
           <ContactForm />
         </div>
       </main>

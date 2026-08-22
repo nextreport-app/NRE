@@ -44,8 +44,21 @@ export default function SignupPage() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-4">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold text-white">NextReport</h1>
-        <p className="mt-1 text-sm text-ink-muted">Create your agency workspace</p>
+        <Link href="/" className="inline-flex items-center justify-center gap-2">
+          <img src="/logo.png" alt="NextReport logo" style={{ height: "36px", width: "36px", display: "block" }} />
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: "22px",
+              color: "white",
+              letterSpacing: "-0.3px",
+              fontFamily: "var(--font-inter), sans-serif",
+            }}
+          >
+            NextReport
+          </span>
+        </Link>
+        <p className="mt-2 text-sm text-ink-muted">Create your agency workspace</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

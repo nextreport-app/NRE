@@ -5,123 +5,72 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 
 export const metadata: Metadata = {
-  title: "How to Download Your Ad Report Data — NextReport",
+  title: "Download Guide — NextReport",
+  description: "How to export your campaign data from Meta Ads and Google Ads.",
 };
 
 interface Step {
-  icon: string;
   title: string;
   body: string;
 }
 
-const META_STEPS: Step[] = [
+const META_LAST_30_DAYS_STEPS: Step[] = [
+  { title: "Go to Meta Ads Manager", body: "Open the Campaigns tab." },
+  { title: "Click Reports → Export → Export Table Data", body: "" },
+  { title: "Set date range to Last 30 Days", body: "" },
   {
-    icon: "🔑",
-    title: "Open Meta Ads Manager",
-    body: "Go to business.facebook.com/adsmanager and select your ad account.",
+    title: "Set Time Breakdown to Day",
+    body: "Important — do not use Weekly or Monthly. NextReport needs one row per day.",
   },
   {
-    icon: "📋",
-    title: "Go to Campaigns, Ad Sets or Ads tab",
-    body: "Click on the Campaigns tab to see all your campaigns. Make sure all campaigns are visible.",
+    title: "Include these columns",
+    body: "Campaign name, Day, Result type, Results, Amount spent, Cost per result, Reach, Impressions, CTR (all), CPC (cost per link click), Frequency, Link clicks, Landing page views, Cost per landing page view.",
   },
   {
-    icon: "📅",
-    title: "Set your date range",
-    body: "Click the date picker in the top right. Select Last 30 Days — this works correctly every day of the month and ensures your weekly report always has complete 7-day data. Always use Day as the time increment — not Weekly or Monthly.",
+    title: "For lead generation campaigns, also include",
+    body: "Website leads, On-Facebook leads, Cost per lead.",
   },
-  {
-    icon: "⚙️",
-    title: "Select your columns",
-    body: "Click Columns → Customise Columns. Add these columns: Campaign Name, Ad Set Name, Day, Result Type, Results, Cost per Result, Amount Spent, Reach, Impressions, Frequency, Clicks (All), CTR (All), CPC (All), Link Clicks, Cost per Link Click.",
-  },
-  {
-    icon: "⬇️",
-    title: "Export the CSV",
-    body: "Click the Export button (top right) → Export Table Data → CSV. Save the file to your computer.",
-  },
-  {
-    icon: "⬆️",
-    title: "Upload to NextReport",
-    body: "Go to your client in NextReport, click Generate Report, upload the CSV file you just downloaded.",
-  },
+  { title: "Export as CSV", body: "" },
+];
+
+const META_PREVIOUS_MONTH_STEPS: Step[] = [
+  { title: "Same steps but set date range to Last Month", body: "" },
+  { title: "Time Breakdown", body: "Can be None (monthly totals) or Day." },
+  { title: "Same columns as above", body: "" },
+  { title: "Export as CSV", body: "" },
 ];
 
 const GOOGLE_STEPS: Step[] = [
   {
-    icon: "🔑",
-    title: "Open Google Ads",
-    body: "Go to ads.google.com and select your account.",
+    title: "Go to Google Ads → Reports → Predefined reports → Basic → Campaign",
+    body: "",
   },
+  { title: "Click Segment → add Day", body: "" },
+  { title: "Set date range to Last 30 days", body: "" },
   {
-    icon: "📋",
-    title: "Go to Campaigns",
-    body: "Click Campaigns in the left sidebar to see all your campaigns.",
+    title: "Include columns",
+    body: "Campaign, Day, Cost, Impressions, Clicks, CTR, Avg. CPC, Conversions, Cost per conversion, Conv. rate, Conv. value.",
   },
-  {
-    icon: "📅",
-    title: "Set date range",
-    body: "Click the date range selector in the top right. Select Last 30 days. Make sure segmentation is set to Day.",
-  },
-  {
-    icon: "⬇️",
-    title: "Download the report",
-    body: "Click the Download button (arrow icon) → CSV. Google Ads will export all visible columns.",
-  },
-  {
-    icon: "⬆️",
-    title: "Upload to NextReport",
-    body: "Go to your client in NextReport, click Generate Report, upload the CSV file.",
-  },
+  { title: "Download as CSV", body: "" },
 ];
 
-const COMMON_ISSUES = [
-  {
-    title: "No data rows found",
-    body: "Make sure you selected Day as the time increment, not Weekly or Monthly. The CSV must have one row per day.",
-  },
-  {
-    title: "Wrong objective detected",
-    body: "Add Result Type and Results columns to your Meta Ads export. These help NextReport identify your campaign goal.",
-  },
-  {
-    title: "Missing metrics",
-    body: "If metric cards show dashes, the required column was not included in your export. Re-download with all recommended columns selected.",
-  },
-];
-
-function SectionHeading({ icon, children }: { icon: string; children: React.ReactNode }) {
-  return (
-    <h2 className="flex items-center gap-2.5 text-2xl font-semibold text-accent-orange">
-      <span aria-hidden="true">{icon}</span>
-      {children}
-    </h2>
-  );
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-2xl font-semibold text-accent-orange">{children}</h2>;
 }
 
 function StepCard({ number, step }: { number: number; step: Step }) {
   return (
     <div className="flex gap-4 rounded-lg border border-navy-border border-l-4 border-l-accent-orange bg-navy-panel p-5">
       <div
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy text-xl"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-bold text-accent-orange"
         aria-hidden="true"
       >
-        {step.icon}
+        {number}
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent-orange">Step {number}</p>
-        <h3 className="mt-0.5 text-base font-semibold text-white">{step.title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
+        <h3 className="text-base font-semibold text-white">{step.title}</h3>
+        {step.body && <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{step.body}</p>}
       </div>
-    </div>
-  );
-}
-
-function IssueCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-lg border border-navy-border bg-navy-panel p-5">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p>
     </div>
   );
 }
@@ -137,45 +86,65 @@ export default async function DownloadGuidePage() {
       <main className="flex-1">
         <section className="bg-navy px-6 py-16 text-center">
           <div className="mx-auto max-w-2xl">
-            <Link href={loggedIn ? "/clients" : "/"} className="text-sm text-accent hover:underline">
-              ← Back to {loggedIn ? "Dashboard" : "NextReport"}
-            </Link>
-            <h1 className="mt-6 text-3xl font-bold text-white sm:text-4xl">How to Download Your Ad Report Data</h1>
+            <h1 className="text-3xl font-bold text-white sm:text-4xl">Download Guide</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              Follow these steps to export your campaign data from Meta Ads Manager or Google Ads, then upload it
-              to NextReport.
+              How to export your campaign data from Meta Ads and Google Ads
             </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
           <section>
-            <SectionHeading icon="📘">Meta Ads Manager</SectionHeading>
-            <div className="mt-6 space-y-4">
-              {META_STEPS.map((step, i) => (
+            <SectionHeading>How to download from Meta Ads Manager</SectionHeading>
+
+            <h3 className="mt-8 text-lg font-semibold text-white">For Last 30 Days (weekly reporting CSV)</h3>
+            <div className="mt-4 space-y-4">
+              {META_LAST_30_DAYS_STEPS.map((step, i) => (
                 <StepCard key={step.title} number={i + 1} step={step} />
               ))}
+            </div>
+
+            <h3 className="mt-10 text-lg font-semibold text-white">For Previous Month (monthly comparison CSV)</h3>
+            <div className="mt-4 space-y-4">
+              {META_PREVIOUS_MONTH_STEPS.map((step, i) => (
+                <StepCard key={step.title} number={i + 1} step={step} />
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+              <span className="font-semibold">Note:</span> Result Type column is important — it tells NextReport what
+              each campaign was optimising for (purchases, leads, link clicks etc.)
             </div>
           </section>
 
           <section>
-            <SectionHeading icon="🔵">Google Ads</SectionHeading>
+            <SectionHeading>How to download from Google Ads</SectionHeading>
             <div className="mt-6 space-y-4">
               {GOOGLE_STEPS.map((step, i) => (
                 <StepCard key={step.title} number={i + 1} step={step} />
               ))}
             </div>
           </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white">Common Issues and Fixes</h2>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {COMMON_ISSUES.map((issue) => (
-                <IssueCard key={issue.title} title={issue.title} body={issue.body} />
-              ))}
-            </div>
-          </section>
         </div>
+
+        <section className="bg-navy-panel px-6 py-16 text-center">
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Ready to generate your first report?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-ink-muted">
+            See the full workflow on the{" "}
+            <Link href="/how-it-works" className="text-accent-orange hover:underline">
+              How It Works
+            </Link>{" "}
+            page.
+          </p>
+          <div className="mt-6">
+            <Link
+              href={loggedIn ? "/clients" : "/signup"}
+              className="inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
+            >
+              {loggedIn ? "Go to Dashboard" : "Start free trial"}
+            </Link>
+          </div>
+        </section>
       </main>
     </>
   );

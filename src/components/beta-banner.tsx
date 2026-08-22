@@ -45,10 +45,10 @@ export function BetaBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-3 px-4 py-2 text-center"
+      className="flex items-center justify-center gap-3 px-4 py-1 text-center sm:py-2"
       style={{ backgroundColor: "#f5b45a", color: "#0d1b2e" }}
     >
-      <p className="text-[13px] font-medium">
+      <p className="text-xs font-medium sm:text-[13px]">
         🚀 Now in beta — 7-day free trial, no card required ·{" "}
         <a href="mailto:hello@nextreport.in" className="underline hover:no-underline">
           hello@nextreport.in
@@ -58,7 +58,7 @@ export function BetaBanner() {
         type="button"
         onClick={handleDismiss}
         aria-label="Dismiss beta announcement"
-        className="shrink-0 text-[16px] font-bold leading-none hover:opacity-70"
+        className="shrink-0 text-sm font-bold leading-none hover:opacity-70 sm:text-[16px]"
       >
         ×
       </button>

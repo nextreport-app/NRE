@@ -16,8 +16,8 @@ const FEATURES = [
   },
   {
     icon: "📊",
-    title: "Works with any CSV export",
-    description: "Any column layout from a Meta Ads or Google Ads export — no template to configure.",
+    title: "Works with standard CSV exports",
+    description: "Works with standard Meta Ads Manager and Google Ads CSV exports when recommended columns are included.",
   },
   {
     icon: "🔀",

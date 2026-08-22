@@ -60,15 +60,33 @@ export default async function PricingPage() {
         // (flip BETA_HIDE_PRICING in lib/beta.ts to bring the real pricing
         // content below back instantly, nothing here was deleted).
         <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-24 text-center">
-          <Link href="/" className="self-start text-sm text-accent hover:underline">
-            ← Back to NextReport
-          </Link>
-          <p className="mt-10 text-lg text-white">
-            Pricing information coming soon. NextReport is currently in private beta. Contact us at{" "}
-            <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
+          <h1 className="text-2xl font-semibold text-white sm:text-3xl">NextReport is in private beta.</h1>
+          <p className="mt-4 text-base leading-relaxed text-ink-secondary">
+            We are currently onboarding a small number of agencies before our public launch. Beta access includes
+            a full 7-day free trial with no credit card required.
+          </p>
+          <div className="mt-8">
+            <Link
+              href="/signup"
+              className="inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
+            >
+              Get Early Access →
+            </Link>
+          </div>
+          <p className="mt-6 text-sm text-ink-muted">
+            Or contact us:{" "}
+            <a href="mailto:hello@nextreport.in" className="text-[#f5b45a] hover:underline">
               hello@nextreport.in
             </a>{" "}
-            for access.
+            ·{" "}
+            <a
+              href="https://wa.me/918882578327"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#f5b45a] hover:underline"
+            >
+              WhatsApp
+            </a>
           </p>
         </main>
       ) : (

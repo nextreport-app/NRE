@@ -7,7 +7,7 @@ import { BETA_HIDE_PRICING } from "@/lib/beta";
 const ALL_LINKS = [
   { href: "/", label: "Home" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/help/download", label: "How It Works" },
+  { href: "/how-it-works", label: "How It Works" },
 ];
 
 // BETA: hidden during beta period — restore before public launch (flip
