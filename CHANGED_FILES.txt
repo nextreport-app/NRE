@@ -1,113 +1,84 @@
-CHANGED_FILES.txt — commit 2dbcab7 "Marketing and website content improvements (12 fixes)"
+CHANGED_FILES.txt — commit 7295461 "Fix redistributeCardSlots dropping the primary cost pair for several objectives"
 
-NEW FILE:
-src/app/how-it-works/page.tsx
-  Fix 1 + Fix 12. New page with: title "How NextReport Works" / sub "From
-  CSV export to client-ready report in under 2 minutes"; Section 1 "What
-  you need" (the two required CSV files — Previous Month Data + Last 30
-  Days Day by Day); Section 2 "Report types available" (Weekly, Monthly,
-  Bi-weekly, Comparison — with the exact "this week vs last week / this
-  month vs last month / any custom date range" wording from Fix 12, and
-  Custom Date Range); Section 3 "The 5 steps" (Upload CSV, Select
-  campaigns, Confirm objectives, Review metric cards, Choose period and
-  generate); Section 4 "What you get" (Download PPTX, View in browser,
-  Save to Drive, Share via WhatsApp/Email).
+src/lib/nre/slot-assignment.ts
+  redistributeCardSlots(): the protectedKeyGroups' result/cost groups now
+  also check a small, objective-conditional set of "real" keys in addition
+  to resultKey/costKey (from objectiveMetricKeys) and the generic
+  "results"/"cost_per_result" fallback:
 
-MODIFIED:
-src/app/help/download/page.tsx
-  Fix 2. Full content rewrite. Meta Ads section split into two step lists
-  — "For Last 30 Days (weekly reporting CSV)" (7 steps: Campaigns tab,
-  Export Table Data, Last 30 Days, Time Breakdown = Day, the full column
-  list, the lead-gen-specific columns, Export as CSV) and "For Previous
-  Month (monthly comparison CSV)" (4 steps: Last Month, Time Breakdown
-  None-or-Day, same columns, Export as CSV) — plus a callout box on why
-  Result Type matters. Google Ads section rewritten to the 5-step
-  Predefined reports → Basic → Campaign flow with the exact column list
-  given. Title/sub updated to "Download Guide" / "How to export your
-  campaign data from Meta Ads and Google Ads".
+    extraResultKeys = {
+      messaging_leads: ["messaging_conversations_started"],
+      messaging_conversations_started: ["messaging_conversations_started"],
+      conversations: ["messaging_conversations_started"],
+    }
+    extraCostKeys = {
+      meta_form_leads: ["cost_per_meta_form_lead", "cost_per_lead"],
+      reach: ["frequency"],
+      unique_reach: ["frequency"],
+      landing_page_views: ["cost_per_lpv"],
+      messaging_leads: ["cost_per_conversation"],
+      messaging_conversations_started: ["cost_per_conversation"],
+      conversations: ["cost_per_conversation"],
+    }
 
-src/components/public-nav.tsx
-  Fix 3. "How It Works" nav link changed from /help/download to the new
-  /how-it-works page.
+  Looked up by the campaign's own slugified objective key (via the
+  already-imported slugifyObjectiveKey), so a key like "frequency" is only
+  ever protected for a Reach-objective campaign, never leaking protected
+  status onto a different objective's slot 7/8 candidate.
 
-src/components/site-chrome-footer.tsx
-  Fix 3. Footer "How it Works" link fixed to point at /how-it-works
-  (was pointing at /help/download, the same URL that used to double as
-  both labels); added a separate "Download Guide" link to /help/download
-  right after it, so the footer now has one link per URL, no duplicates.
+WHY: objectiveMetricKeys(resultLabel) mechanically slugifies the whole
+resultLabel to build its synthetic {resultKey, costKey}. For most
+objectives that already matches defaultMetaSelection's own real key (the
+generic "results"/"cost_per_result", already covered by the existing
+fallback strings, or a dedicated key that happens to equal the slugified
+form). For META FORM LEADS specifically it never does: costKey computes
+to the plural "cost_per_meta_form_leads" (inherited from resultLabel's
+own trailing "S"), but defaultMetaSelection (available-metrics.ts) uses
+the singular "cost_per_meta_form_lead" (the real meta-dictionary.ts key)
+in two of its three CSV-column-dependent branches, or "cost_per_lead"
+entirely in the third — matching none of them. That's the exact reported
+bug: a META FORM LEADS campaign's slot 5 showing COST PER LINK CLICK
+instead of COST PER LEAD, because redistributeCardSlots didn't recognize
+the selected metric's own key as the primary pair and treated it as an
+ordinary, replaceable secondary. The same class of mismatch exists for
+REACH/UNIQUE REACH ("frequency" vs. "cost_per_1k_reached"), LANDING PAGE
+VIEWS ("cost_per_lpv" vs. "cost_per_landing_page_views"), and the
+MESSAGING objectives ("messaging_conversations_started"/
+"cost_per_conversation" regardless of which of the three MESSAGING
+labels the campaign resolved to) — found by tracing every branch of
+defaultMetaSelection's switch statement against objectiveMetricKeys'
+synthetic-key derivation, not by guessing.
 
-src/app/about/page.tsx
-  Fix 4. Full rewrite. Removed: the duplicated "Monday morning" framing
-  (both the hero subhead and the Story section's opening line repeated
-  it — the hero subhead is gone entirely now), the "25+ hours saved per
-  agency per month" stat, the StoryIllustration component and its
-  favicon-large.png image, the 🇮🇳 flag emoji, and the "— NextReport Team"
-  signature. New Story body is the exact 6-paragraph text given, closing
-  with "— Built with Indian agencies and US client reporting in mind".
-  The old 4-item emoji "What makes us different" grid (DIFFERENTIATORS)
-  is removed entirely; the old numeric Stats section (STATS array) is
-  replaced with three plain-text stat boxes: "Under 2 minutes per
-  report", "Meta Ads and Google Ads supported", "Weekly, monthly and
-  comparison reports". Mission section and CTA section unchanged.
+WHY THE FIX IS OBJECTIVE-CONDITIONAL, NOT A FLAT LIST: the originally
+proposed fix added extra keys as unconditional strings alongside
+"results"/"cost_per_result". That would have been wrong for two of the
+proposed keys specifically: "frequency" and "cost_per_lpv" are both in
+SECONDARY_FILL_KEYS — valid, intentionally-compactable slot 7/8
+candidates for OTHER objectives. An existing test (redistributeCardSlots
+— "compacts real (non-null) SECONDARY cards forward") selects
+"frequency" with campaignObjective: null and asserts it gets compacted
+away, not protected. Adding it unconditionally would have made it
+permanently sticky on every campaign that happens to have it selected,
+not just Reach ones — a new bug in place of the old one. Also dropped
+several keys from the originally proposed list that don't correspond to
+any real key in the codebase (cost_per_website_lead, cost_per_purchase,
+cost_per_install — those objectives already use the generic
+"cost_per_result" key, already protected) or that are slot 7/8
+candidates never meant to be permanently protected (cost_per_atc,
+cost_per_ic — ADD TO CART/INITIATE CHECKOUT are PURCHASES' own secondary
+picks, not its primary pair).
 
-src/app/contact/page.tsx
-  Fix 5. Removed the "← Back to NextReport" link (PublicNav already
-  renders on this page) and its now-unused Link import. Changed both
-  text-accent (blue) links to text-[#f5b45a] (amber). Added pb-24 on
-  mobile / sm:pb-16 on larger screens to the main container so the
-  floating WhatsApp button can't cover the form's Send button. Added
-  "We reply on WhatsApp within a few hours. Email replies within one
-  business day." above the form.
+VERIFICATION: reproduced the exact reported scenario directly against
+redistributeCardSlots (META FORM LEADS campaign, "cost per lead" CSV
+column branch, COST PER LINK CLICK present in the candidate pool) —
+confirmed slot 5 now stays COST PER LEAD = $67.27 instead of being
+replaced. This ad-hoc verification script was run and then deleted; it
+is not part of this change (scope was slot-assignment.ts only, no new
+test file was requested or added).
 
-src/app/pricing/page.tsx
-  Fix 6. Replaced the BETA_HIDE_PRICING dead-end ("Pricing information
-  coming soon... Contact us at hello@nextreport.in for access") with a
-  proper beta message: "NextReport is in private beta." heading, the
-  onboarding/7-day-trial paragraph, a "Get Early Access →" button linking
-  to /signup, and an email + WhatsApp (wa.me/918882578327, the same
-  number whatsapp-button.tsx already uses site-wide) contact line in
-  amber. Header/footer (BetaBanner/PublicNav/SiteChromeFooter) unchanged
-  — same as every other page. The live (non-beta) pricing branch below it
-  was not touched.
+No other files changed.
 
-src/components/home/hero-section.tsx
-  Fix 7. Mock metric card numbers: "Website Leads" → "Instant Form
-  Leads", count 23 → 34, "Cost per Lead" $123.78 → $8.42.
-
-src/app/login/page.tsx, src/app/signup/page.tsx
-  Fix 8. Plain-text "NextReport" h1 replaced with the logo image (36px) +
-  "NextReport" Inter Bold wordmark, matching public-nav.tsx's pattern,
-  wrapped in a Link back to "/".
-
-src/components/beta-banner.tsx
-  Fix 9. Mobile (<640px): px-4 py-1 and text-xs instead of the full
-  py-2/text-[13px] size (sm: breakpoint restores the original size), so
-  the banner takes less vertical space above the fold on phones. Dismiss
-  button (×) similarly sized down on mobile.
-
-src/components/home/features-section.tsx
-  Fix 10. "Works with any CSV export" / "Any column layout from a Meta
-  Ads or Google Ads export — no template to configure." changed to
-  "Works with standard CSV exports" / "Works with standard Meta Ads
-  Manager and Google Ads CSV exports when recommended columns are
-  included." — the only other "any CSV"/"any column" occurrence found
-  sitewide was in src/app/light-preview/page.tsx, which per Fix 11 is
-  confirmed not linked from any public nav/footer, so it was left as-is.
-
-VERIFIED, NO CHANGE NEEDED:
-Fix 11 — grepped for `href="/light-preview"` across src/: no matches.
-The page itself still exists at src/app/light-preview/page.tsx (per the
-instruction to leave the page but not link it) but was not linked from
-any nav, footer, or sitemap before this round either — no sitemap.ts/xml
-or robots.ts exists in the repo to check.
-Fix 12 — folded into the new /how-it-works page's Report Types section
-(see above); no separate change needed.
-
-No other files changed. Engine files (src/lib/nre/**), the report wizard
-(src/components/report-upload-wizard.tsx), and API routes were not
-touched.
-
-Verification: tsc --noEmit clean, eslint clean (only pre-existing
-<img>-vs-next/image warnings on files already using plain <img> tags
-elsewhere in the codebase), npx vitest run — 1374/1374 tests passing,
-next build succeeds (new /how-it-works route registered).
+Verification: tsc --noEmit clean, eslint clean, npx vitest run — all
+1374 pre-existing tests still pass unchanged (including the "frequency
+stays compactable when objective is null" test that the originally
+proposed fix would have broken), next build succeeds.

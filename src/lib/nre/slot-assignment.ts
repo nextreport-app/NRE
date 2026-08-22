@@ -689,6 +689,48 @@ export function redistributeCardSlots(
   maxCount = 8,
 ): DynamicMetricValue[] {
   const { resultKey, costKey } = campaignObjective ? objectiveMetricKeys(campaignObjective.resultLabel) : { resultKey: null, costKey: null };
+  const objectiveKey = campaignObjective ? slugifyObjectiveKey(campaignObjective.resultLabel) : "";
+  // Bug fix — objectiveMetricKeys mechanically slugifies the whole
+  // resultLabel to build resultKey/costKey, which only ever matches
+  // defaultMetaSelection's own generic "results"/"cost_per_result" pair or
+  // a dedicated metric whose real dictionary key happens to equal that
+  // slugified form (LINK CLICKS, VIDEO VIEWS). For a few objectives,
+  // defaultMetaSelection picks a REAL dedicated column whose key differs
+  // from the synthetic one: META FORM LEADS' cost is "cost_per_meta_form_lead"
+  // (singular, meta-dictionary.ts) or "cost_per_lead" depending on which
+  // CSV column is present, never costKey's own "cost_per_meta_form_leads"
+  // (plural, inherited from resultLabel's own trailing "S" — see
+  // slot-assignment.test.ts's filterMetricsForCampaignObjective suite for
+  // the same distinction documented on the OTHER selection path); REACH's
+  // real slot 5 is "frequency", not costKey's "cost_per_1k_reached";
+  // LANDING PAGE VIEWS' is "cost_per_lpv", not "cost_per_landing_page_views";
+  // MESSAGING LEADS/MESSAGING CONVERSATIONS STARTED/CONVERSATIONS' is
+  // "messaging_conversations_started"/"cost_per_conversation" regardless of
+  // which of those three labels this campaign resolved to. Without this,
+  // redistributeCardSlots fails to recognize the primary pair's own key and
+  // treats it as an ordinary secondary — compacting it away or replacing it
+  // with an unrelated candidate instead of showing it (or its dash).
+  //
+  // Deliberately objective-conditional (looked up by this campaign's own
+  // objectiveKey), not added as flat unconditional strings: "frequency" and
+  // "cost_per_lpv" are also valid SECONDARY_FILL_KEYS candidates for OTHER
+  // objectives' slots 7/8, which must stay compactable/droppable there —
+  // protecting them globally would make them permanently sticky on every
+  // campaign, not just Reach/Landing-Page-Views ones.
+  const extraResultKeys: Record<string, string[]> = {
+    messaging_leads: ["messaging_conversations_started"],
+    messaging_conversations_started: ["messaging_conversations_started"],
+    conversations: ["messaging_conversations_started"],
+  };
+  const extraCostKeys: Record<string, string[]> = {
+    meta_form_leads: ["cost_per_meta_form_lead", "cost_per_lead"],
+    reach: ["frequency"],
+    unique_reach: ["frequency"],
+    landing_page_views: ["cost_per_lpv"],
+    messaging_leads: ["cost_per_conversation"],
+    messaging_conversations_started: ["cost_per_conversation"],
+    conversations: ["cost_per_conversation"],
+  };
   // Each group is tried in order, first match wins — "results"/
   // "cost_per_result" is the single-objective selection's own literal key
   // for its primary pair; resultKey/costKey is the mixed-objective
@@ -699,8 +741,8 @@ export function redistributeCardSlots(
     ["spend"],
     ["reach"],
     ["impressions"],
-    [resultKey, "results"].filter((k): k is string => !!k),
-    [costKey, "cost_per_result"].filter((k): k is string => !!k),
+    [resultKey, "results", ...(extraResultKeys[objectiveKey] ?? [])].filter((k): k is string => !!k),
+    [costKey, "cost_per_result", ...(extraCostKeys[objectiveKey] ?? [])].filter((k): k is string => !!k),
     ["ctr"],
   ];
 
