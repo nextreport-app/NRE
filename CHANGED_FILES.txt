@@ -1,46 +1,62 @@
-CHANGED_FILES.txt — commit 88c6438 "Replace hand-reconstructed wizard Step 2/4 UI with verified 434964d code"
+CHANGED_FILES.txt — commit 835a81e "Restore verified 434964d download screen; fix always-disabled metric pills and duplicate Step 4 heading"
 
 src/components/report-upload-wizard.tsx
-  Source of truth for this change: `git show 434964d:src/components/report-upload-wizard.tsx`
-  (extracted to /tmp/wizard-434964d.tsx and diffed directly against the
-  current file — not reconstructed from memory or description).
+  Source of truth: `git show 434964d:src/components/report-upload-wizard.tsx`
+  for the download-screen restore (extracted to /tmp/wizard-434964d.tsx
+  and applied directly — not reconstructed).
 
-  Step 2 (campaign selection):
-    - Fixed one discrepancy left over from the prior manual merge: the
-      campaign name label's className was font-bold/text-white; 434964d's
-      real markup uses plain text-dash-ink (no bold). Everything else in
-      Step 2 already matched 434964d exactly.
+  1. Download screen (generateStatus === "done" && downloadUrl):
+     - Added back "✓ Report Generated Successfully" heading.
+     - Primary CTA restored: full-width amber (bg-[#f5b45a]) "View Report
+       in Browser →" button — was a plain outlined secondary-styled link
+       with no arrow.
+     - Secondary row restored: Download PPTX | Save to Google Drive as
+       two h-11 outlined buttons side by side — was a plain emerald link
+       plus a differently-styled Drive button, not grid-aligned.
+     - Tertiary row (Email / WhatsApp / Copy Link) moved to sit directly
+       under the primary button, gated on shareToken (always available)
+       instead of only appearing after a successful Drive save. Uses
+       434964d's own emoji + inline-SVG icons.
+     - Deleted CopyIcon, WhatsAppIcon, MailIcon function components —
+       these only existed to back the old duplicate share row inside the
+       Drive-success block, which no longer exists after this restore.
+       Confirmed unreferenced anywhere else in the file before removing.
+     - "← Generate Another Report for {clientName}" moved from the top of
+       the screen to the bottom (below the Fix 1 previous-month-data
+       notice), restyled as the navy/blue-border (#63b3ed) button
+       434964d uses instead of the old top-of-screen #4a90d9 button.
+     - Drive-success ("State 3") block's own duplicate share row (Copy
+       Link / WhatsApp / Email buttons + "Share link:" line) removed —
+       434964d moved that content into the always-visible tertiary row
+       instead of duplicating it here.
+     - driveSaveUrl, handleGenerateAnother, driveDisplayLabel, and every
+       other handler/state in this section were left untouched — nothing
+       here postdated 434964d, so no grafting was needed.
 
-  Step 4 (metric review):
-    - objectiveColorClasses() (hand-rolled) replaced with 434964d's real
-      objectiveAccent() function — same amber/coral/green/blue categories,
-      PLUS a purple video/thruplay accent that the hand-rolled version was
-      missing.
-    - Card markup replaced with 434964d's exact layout:
-        - borderTop applied via inline style (`3px solid <hex>`), not a
-          Tailwind border-t-4 class.
-        - Added "Metrics for this campaign slide" subtitle under the
-          name/badge row.
-        - Pills enlarged (8px/12px padding), label uppercase with letter-
-          spacing, remove button color #64748b -> hover #fc8181.
-        - Added a divider (border-t border-[#334155]) before the "Add
-          from your CSV:" section.
-        - Each addable-metric button now shows a green "+" (#68d391)
-          prefix before the label — this was the "green + signs" the
-          request specifically asked for and the hand-rolled version did
-          not have.
+  2. Issue 1 — "Add from your CSV" pills permanently greyed out:
+     - Root cause: MAX_METRICS_PER_SLIDE (a cap I introduced in the prior
+       restore, commit 88c6438) that 434964d never had. Since the
+       engine's defaultMetaSelection (src/lib/nre/available-metrics.ts,
+       off-limits) pre-fills close to 8 metrics per campaign by default,
+       this cap disabled every "add" pill on first load for nearly every
+       campaign.
+     - Fix: removed MAX_METRICS_PER_SLIDE, the metricsLimitMessage state,
+       its two now-orphaned setMetricsLimitMessage(null) reset call sites
+       (fetchObjectivesAndMetrics, handleGenerateAnother), the disabled
+       attribute on the add button, and the metricsLimitMessage display
+       paragraph. addCampaignMetric is now uncapped, matching 434964d
+       exactly.
 
-  Engine wiring preserved, NOT reverted to 434964d's older version:
-    - MAX_METRICS_PER_SLIDE (8-card cap) — grafted onto the restored
-      "Add from your CSV" button's disabled attribute, since 434964d
-      predates this cap (added later by the three-layer rebuild).
-    - metricsLimitMessage — still displayed per-campaign card.
-    - perCampaignMetrics / perCampaignAvailablePool state, addCampaignMetric
-      / removeCampaignMetric / campaignAvailableMetrics functions — all
-      unchanged, only their JSX callers were touched.
+  3. Issue 2 — duplicate Step 4 heading:
+     - Removed the per-step "Review Metric Cards" / "Review the metrics
+       for each campaign slide. Remove or add metrics as needed." block
+       that duplicated the page-level STEP_HEADINGS[4]/STEP_SUBTITLES[4]
+       already rendered once above every step (line ~1427). Each
+       campaign card is unaffected and still shows its own name,
+       objective badge, and "Metrics for this campaign slide" subtitle.
 
-No other files changed. Engine files (src/lib/nre/**, src/app/api/**) were
-not touched.
+No other files changed. Engine files (src/lib/nre/**, src/app/api/**)
+were not touched.
 
 Verification: tsc --noEmit clean, eslint clean, npx vitest run — 1374/1374
 tests passing, next build succeeds.

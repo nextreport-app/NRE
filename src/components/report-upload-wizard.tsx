@@ -101,7 +101,6 @@ const STEP_SUBTITLES: Record<Step, string> = {
 };
 
 const MIN_SELECTED_METRICS = 4;
-const MAX_METRICS_PER_SLIDE = 8;
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -348,7 +347,6 @@ export function ReportUploadWizard({
   const [perCampaignMetrics, setPerCampaignMetrics] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [perCampaignAvailablePool, setPerCampaignAvailablePool] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [metricsLimitMessage, setMetricsLimitMessage] = useState<string | null>(null);
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
@@ -758,7 +756,6 @@ export function ReportUploadWizard({
   async function fetchObjectivesAndMetrics() {
     if (!mtdFile) return;
     setMetricsStatus("loading");
-    setMetricsLimitMessage(null);
     setTouchedObjectiveCampaigns(new Set());
     setPerCampaignMinWarning(null);
 
@@ -975,14 +972,9 @@ export function ReportUploadWizard({
     setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, current.filter((m) => m.key !== key)));
   }
 
-  /** Adds one metric pill to a single campaign's own list, from that campaign's own available pool — never affects any other campaign. Caps at 8 (one slide's worth of cards) per campaign. */
+  /** Adds one metric pill to a single campaign's own list, from that campaign's own available pool — never affects any other campaign. */
   function addCampaignMetric(normalizedName: string, metric: SelectedMetric) {
     const current = perCampaignMetrics.get(normalizedName) ?? [];
-    if (current.length >= MAX_METRICS_PER_SLIDE) {
-      setMetricsLimitMessage(`Maximum ${MAX_METRICS_PER_SLIDE} metrics per campaign.`);
-      return;
-    }
-    setMetricsLimitMessage(null);
     setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
   }
 
@@ -1353,7 +1345,6 @@ export function ReportUploadWizard({
     setPerCampaignMetrics(new Map());
     setPerCampaignAvailablePool(new Map());
     setMetricsStatus("idle");
-    setMetricsLimitMessage(null);
     setPerCampaignMinWarning(null);
     setCampaignRequiresConfirmation(new Map());
 
@@ -1841,13 +1832,6 @@ export function ReportUploadWizard({
 
       {step === 4 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          <div>
-            <h3 className="text-[15px] font-semibold text-white">Review Metric Cards</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Review the metrics for each campaign slide. Remove or add metrics as needed.
-            </p>
-          </div>
-
           {metricsStatus === "error" && (
             <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[13px] text-amber-200">
               Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
@@ -1925,8 +1909,7 @@ export function ReportUploadWizard({
                               key={candidate.key}
                               type="button"
                               onClick={() => addCampaignMetric(normalized, candidate)}
-                              disabled={selectedForCampaign.length >= MAX_METRICS_PER_SLIDE}
-                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[12px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink disabled:cursor-not-allowed disabled:opacity-40"
+                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[12px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
                               style={{ padding: "8px 12px" }}
                             >
                               <span className="text-[#68d391]">+</span> {candidate.label}
@@ -1935,7 +1918,6 @@ export function ReportUploadWizard({
                         </div>
                       </>
                     )}
-                    {metricsLimitMessage && <p className="mt-2 text-[13px] text-amber-300">{metricsLimitMessage}</p>}
                   </div>
                 );
               })}
@@ -2360,59 +2342,58 @@ export function ReportUploadWizard({
           )}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleGenerateAnother}
-                className="rounded-[6px] border border-[#4a90d9] bg-[#1e3a5f] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2d4f7c]"
-              >
-                ← Generate Another Report for {clientName}
-              </button>
+            <div className="space-y-4">
+              <p className="text-center text-[16px] font-semibold text-[#68d391]">✓ Report Generated Successfully</p>
 
-              <div className="flex flex-wrap items-start gap-3">
+              {/* Primary action — the public read-only share page, always
+                  available once the report is generated (see
+                  share-token.ts/share-report.ts), independent of the
+                  Google Drive save flow below. */}
+              {shareToken && (
+                <div>
+                  <a
+                    href={`https://${buildShareReportUrl(shareToken)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f5b45a] text-[14px] font-semibold text-[#0d1b2e] hover:bg-[#ed8936]"
+                  >
+                    🌐 View Report in Browser →
+                  </a>
+                  <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
+                    {buildShareReportUrl(shareToken)} ·{" "}
+                    <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
+                      Copy
+                    </button>
+                  </p>
+                </div>
+              )}
+
+              {/* Secondary actions — two columns. State 4 (Drive not
+                  connected): the right column simply never renders, so
+                  Download PPTX sits alone. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <a
                   href={downloadUrl}
-                  className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-emerald-500"
+                  className="flex h-11 items-center justify-center rounded-md border border-[#f5b45a] text-[13px] font-medium text-white hover:opacity-90"
+                  style={{ backgroundColor: "#1e293b" }}
                 >
                   Download PPTX
                 </a>
 
-                {/* Public read-only share page — always available once the
-                    report is generated (see share-token.ts/share-report.ts),
-                    independent of the Google Drive save flow below. */}
-                {shareToken && (
-                  <div>
-                    <a
-                      href={`https://${buildShareReportUrl(shareToken)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
-                    >
-                      🌐 View Report in Browser
-                    </a>
-                    <p className="mt-1.5 text-[12px] text-dash-ink-secondary">
-                      {buildShareReportUrl(shareToken)} ·{" "}
-                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
-                        Copy
-                      </button>
-                    </p>
-                  </div>
-                )}
-
-                {/* State 4 (not connected): nothing Drive-related renders at all. */}
                 {hasGoogleDriveConnected && driveView === "collapsed" && (
                   <div>
                     <button
                       onClick={handleSaveButtonClick}
                       disabled={driveSaving}
-                      className="inline-flex items-center gap-2 rounded-md bg-dash-accent px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#68d391] text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: "#1e293b" }}
                     >
                       <DriveIcon />
                       {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
                     </button>
                     {/* State 2: a folder is already remembered for this client. */}
                     {rememberedFolder && (
-                      <p className="mt-1.5 text-[13px] text-dash-ink-secondary">
+                      <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
                         Saving to: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
                         <button
                           type="button"
@@ -2429,6 +2410,42 @@ export function ReportUploadWizard({
                   </div>
                 )}
               </div>
+
+              {/* Tertiary actions — always available off the same share
+                  link the primary button uses, regardless of Google Drive
+                  save state. */}
+              {shareToken && (
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={openEmailModal}
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <span aria-hidden="true" className="text-[18px]">📧</span>
+                    Email
+                  </button>
+                  <a
+                    href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden="true">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
+                    </svg>
+                    WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                  >
+                    <span aria-hidden="true" className="text-[18px]">🔗</span>
+                    {copied ? "Copied!" : "Copy Link"}
+                  </button>
+                </div>
+              )}
 
               {/* State 1 (no remembered folder) / "Change" from State 2 — the paste-a-link input, hidden behind the button until clicked. */}
               {hasGoogleDriveConnected && driveView === "editing" && (
@@ -2496,7 +2513,10 @@ export function ReportUploadWizard({
 
               {driveSaveError && <p className="text-[13px] text-red-400">{driveSaveError}</p>}
 
-              {/* State 3: button/input are both gone, replaced by the shareable link + share row. */}
+              {/* State 3: button/input are both gone, replaced by the saved-file
+                  link. The share link + Email/WhatsApp/Copy Link row now live
+                  in the tertiary actions above (Fix 4) — no longer duplicated
+                  here. */}
               {driveView === "success" && driveSaveUrl && (
                 <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
                   <p className="mb-2 text-[13px] uppercase tracking-wide text-emerald-300">
@@ -2506,44 +2526,10 @@ export function ReportUploadWizard({
                     href={driveSaveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mb-3 block break-all text-[13px] text-dash-accent hover:underline"
+                    className="block break-all text-[13px] text-dash-accent hover:underline"
                   >
                     {driveDisplayLabel()}
                   </a>
-                  {shareToken && (
-                    <p className="mb-3 text-[13px] text-dash-ink-secondary">
-                      Share link: {buildShareReportUrl(shareToken)} ·{" "}
-                      <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
-                        Copy
-                      </button>
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={handleCopyLink}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                    >
-                      <CopyIcon />
-                      {copied ? "Copied!" : "Copy Link"}
-                    </button>
-                    <a
-                      href={buildWhatsAppShareUrl(driveSaveUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                    >
-                      <WhatsAppIcon />
-                      WhatsApp
-                    </a>
-                    <button
-                      type="button"
-                      onClick={openEmailModal}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border"
-                    >
-                      <MailIcon />
-                      Email
-                    </button>
-                  </div>
                   <button
                     onClick={() => {
                       setDriveView("editing");
@@ -2570,6 +2556,17 @@ export function ReportUploadWizard({
                 </div>
               )}
 
+              {/* Bottom action — moved here from the top of this section
+                  (Fix 4): the primary/secondary/tertiary share actions above
+                  come first, this is the last thing on the screen. */}
+              <button
+                type="button"
+                onClick={handleGenerateAnother}
+                className="flex h-11 w-full items-center justify-center rounded-md border border-[#63b3ed] text-[13px] font-medium text-white transition-colors hover:opacity-90"
+                style={{ backgroundColor: "#1e293b" }}
+              >
+                ← Generate Another Report for {clientName}
+              </button>
             </div>
           )}
             </>
@@ -2692,35 +2689,6 @@ function Spinner() {
     <svg className="h-4 w-4 animate-spin text-dash-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
-
-// Small inline icons for the Drive share row (Copy Link / WhatsApp / Email)
-// — no icon library dependency for three glyphs.
-function CopyIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="9" y="9" width="12" height="12" rx="2" />
-      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M12 3a9 9 0 00-7.75 13.5L3 21l4.65-1.22A9 9 0 1012 3z" />
-      <path d="M8.5 8.5c0 4 3 7 7 7 .8 0 1-.7 1-1.2v-1c0-.3-.2-.5-.5-.6l-1.7-.5c-.3 0-.5 0-.6.3l-.4.7c-1.3-.6-2.3-1.6-2.9-2.9l.7-.4c.2-.1.3-.4.2-.6l-.5-1.7c0-.3-.3-.5-.6-.5h-1c-.5 0-1.2.2-1.2 1z" />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
     </svg>
   );
 }
