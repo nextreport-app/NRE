@@ -1,59 +1,64 @@
-CHANGED_FILES.txt — commit 835a81e "Restore verified 434964d download screen; fix always-disabled metric pills and duplicate Step 4 heading"
+CHANGED_FILES.txt — commit 39589fb "Redesign Report Summary card and download screen; rename custom-title link"
 
 src/components/report-upload-wizard.tsx
-  Source of truth: `git show 434964d:src/components/report-upload-wizard.tsx`
-  for the download-screen restore (extracted to /tmp/wizard-434964d.tsx
-  and applied directly — not reconstructed).
+  This was new UI work per an explicit design spec, not a restore — no
+  git-history source commit involved (unlike the prior two rounds).
 
-  1. Download screen (generateStatus === "done" && downloadUrl):
-     - Added back "✓ Report Generated Successfully" heading.
-     - Primary CTA restored: full-width amber (bg-[#f5b45a]) "View Report
-       in Browser →" button — was a plain outlined secondary-styled link
-       with no arrow.
-     - Secondary row restored: Download PPTX | Save to Google Drive as
-       two h-11 outlined buttons side by side — was a plain emerald link
-       plus a differently-styled Drive button, not grid-aligned.
-     - Tertiary row (Email / WhatsApp / Copy Link) moved to sit directly
-       under the primary button, gated on shareToken (always available)
-       instead of only appearing after a successful Drive save. Uses
-       434964d's own emoji + inline-SVG icons.
-     - Deleted CopyIcon, WhatsAppIcon, MailIcon function components —
-       these only existed to back the old duplicate share row inside the
-       Drive-success block, which no longer exists after this restore.
-       Confirmed unreferenced anywhere else in the file before removing.
-     - "← Generate Another Report for {clientName}" moved from the top of
-       the screen to the bottom (below the Fix 1 previous-month-data
-       notice), restyled as the navy/blue-border (#63b3ed) button
-       434964d uses instead of the old top-of-screen #4a90d9 button.
-     - Drive-success ("State 3") block's own duplicate share row (Copy
-       Link / WhatsApp / Email buttons + "Share link:" line) removed —
-       434964d moved that content into the always-visible tertiary row
-       instead of duplicating it here.
-     - driveSaveUrl, handleGenerateAnother, driveDisplayLabel, and every
-       other handler/state in this section were left untouched — nothing
-       here postdated 434964d, so no grafting was needed.
+  1. Fix 1 — Report Summary card (Step 5, before generating):
+     - Campaigns row: campaign names now listed below the "N selected"
+       count, one per line, 12px muted grey (#64748b), indented (pl-4).
+     - New "Week period" row: shown when reportType === "WEEKLY" and a
+       weekly range is available, using the wizard's own weeklyRangeIso
+       state.
+     - New "Month to date" row: shown whenever mtdRange is available.
+     - Comparison reports show a "Comparison periods: A vs B" row instead
+       of Week period/Month to date (comparisonData.periodALabel/
+       periodBLabel).
+     - New "Estimated slides" row via a new estimatedSlideCount()
+       function: cover(1) + campaign count + selectedAdSets.size +
+       chart(1) + table(1) + metric guide(1) for a normal report; for a
+       comparison report (different slide shape — no ad set/chart/table/
+       guide slides), just cover(1) + campaign count.
+     - Added two new date-formatting helpers: formatIsoShort (abbreviated
+       month) and formatSummaryRange ("Aug 14 - Aug 20, 2026"), kept
+       separate from the existing formatIso/formatIsoRange (which use
+       full month names and no year) so this display-only change can't
+       affect date-bounds error messages or anything else that reuses
+       those shared functions.
 
-  2. Issue 1 — "Add from your CSV" pills permanently greyed out:
-     - Root cause: MAX_METRICS_PER_SLIDE (a cap I introduced in the prior
-       restore, commit 88c6438) that 434964d never had. Since the
-       engine's defaultMetaSelection (src/lib/nre/available-metrics.ts,
-       off-limits) pre-fills close to 8 metrics per campaign by default,
-       this cap disabled every "add" pill on first load for nearly every
-       campaign.
-     - Fix: removed MAX_METRICS_PER_SLIDE, the metricsLimitMessage state,
-       its two now-orphaned setMetricsLimitMessage(null) reset call sites
-       (fetchObjectivesAndMetrics, handleGenerateAnother), the disabled
-       attribute on the add button, and the metricsLimitMessage display
-       paragraph. addCampaignMetric is now uncapped, matching 434964d
-       exactly.
+  2. Fix 2 — "Add custom title +" renamed to "Add custom PPT report
+     title +" (button label and its doc comment).
 
-  3. Issue 2 — duplicate Step 4 heading:
-     - Removed the per-step "Review Metric Cards" / "Review the metrics
-       for each campaign slide. Remove or add metrics as needed." block
-       that duplicated the page-level STEP_HEADINGS[4]/STEP_SUBTITLES[4]
-       already rendered once above every step (line ~1427). Each
-       campaign card is unaffected and still shows its own name,
-       objective badge, and "Metrics for this campaign slide" subtitle.
+  3. Fix 3 — download screen redesign (generateStatus === "done"):
+     - Primary CTA ("View Report in Browser"): full width, 48px, solid
+       amber (#f5b45a) background, #0d1b2e text, font-weight 600 — was
+       44px with the same amber fill already but the spec called for the
+       explicit 48px height.
+     - Secondary row (Download PPTX / Save to Google Drive): changed from
+       a CSS grid to an equal-width flex row (flex-1 each), 44px, solid
+       #1e293b background with 1px amber/green borders respectively.
+       Added a leading ⬇ glyph to Download PPTX and switched Save to
+       Drive from the DriveIcon SVG component to a leading ☁ glyph, per
+       the spec's exact button text.
+     - Tertiary row (Email / WhatsApp / Copy Link): changed from a
+       borderless icon-over-label column layout to three equal-width
+       (flex-1) 40px buttons with solid #1e293b background and 1px
+       #334155 borders, icon-beside-label. Email uses a new MailIcon
+       (blue #63b3ed stroke), Copy Link uses a new CopyIcon (grey
+       #94a3b8 stroke), WhatsApp keeps its existing inline SVG but now
+       filled #25D366 instead of inheriting the surrounding text color.
+     - Bottom "Generate Another Report" button: unchanged navy/blue-
+       border style, height set explicitly to 44px with an 8px top
+       margin per spec.
+     - Removed the now-unused DriveIcon component (its only call site was
+       replaced by the ☁ glyph); added MailIcon/CopyIcon in its place —
+       both confirmed used only in this tertiary row before removing/
+       adding.
+     - Verified only one place in the file displays the raw share URL as
+       text: the 11px muted-grey line under "View Report in Browser".
+       Every other reference to buildShareReportUrl() is either an href
+       (not visible text) or the clipboard-copy call — no other section
+       shows a raw URL.
 
 No other files changed. Engine files (src/lib/nre/**, src/app/api/**)
 were not touched.

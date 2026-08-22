@@ -180,6 +180,18 @@ function formatIsoRange(range: DateRangeIso): string {
   return `${formatIso(range.startIso)} - ${formatIso(range.endIso)}`;
 }
 
+/** "2026-07-18" -> "Jul 18" (abbreviated month), for the Report Summary card's Week period/Month to date rows — kept separate from formatIso's full-month format used elsewhere (date-bounds errors, the PPTX itself) so this display-only change can't affect those. */
+function formatIsoShort(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(d);
+}
+
+/** "Aug 14 - Aug 20, 2026" — the year is taken from the range's end date and shown once, at the end. */
+function formatSummaryRange(range: DateRangeIso): string {
+  const year = new Date(range.endIso + "T00:00:00Z").getUTCFullYear();
+  return `${formatIsoShort(range.startIso)} - ${formatIsoShort(range.endIso)}, ${year}`;
+}
+
 /** validate.ts's "no usable data rows at all" error (see NO_DATA_ROWS_MESSAGE) — rendered as its own amber, actionable warning box rather than lumped into the generic red error list, since it's the one validation failure with real "here's what to check" steps for the user. */
 function isNoDataRowsError(e: ValidationIssue): boolean {
   return e.field === "rows";
@@ -390,8 +402,8 @@ export function ReportUploadWizard({
   // text to match; once true, their custom title is left alone regardless
   // of which Report Type is picked.
   const [reportTitleTouched, setReportTitleTouched] = useState(false);
-  // Custom title input starts collapsed behind an "Add custom title +"
-  // link on the merged Step 3 — expanding it once (or having already typed
+  // Custom title input starts collapsed behind an "Add custom PPT report
+  // title +" link on the merged Step 3 — expanding it once (or having already typed
   // a title) keeps it expanded for the rest of the session.
   const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
 
@@ -1406,6 +1418,12 @@ export function ReportUploadWizard({
     return "";
   }
 
+  /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
+  function estimatedSlideCount(): number {
+    if (previewKind === "comparison") return 1 + summaryCampaignNames().length;
+    return 1 + summaryCampaignNames().length + selectedAdSets.size + 1 + 1 + 1;
+  }
+
   /** B3's friendly Drive link label, shown in place of the raw URL. */
   function driveDisplayLabel(): string {
     const range = driveDateRangeLabel();
@@ -2234,15 +2252,48 @@ export function ReportUploadWizard({
                   <p className="text-[13px] text-[#94a3b8]">
                     Client: <span className="text-[13px] text-white">{clientName}</span>
                   </p>
-                  <p className="text-[13px] text-[#94a3b8]">
-                    Campaigns:{" "}
-                    <span className="text-[13px] text-white">{summaryCampaignNames().length} selected</span>
-                  </p>
+                  <div>
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Campaigns:{" "}
+                      <span className="text-[13px] text-white">{summaryCampaignNames().length} selected</span>
+                    </p>
+                    <ul className="mt-1 space-y-0.5 pl-4">
+                      {summaryCampaignNames().map((name) => (
+                        <li key={name} className="truncate text-[12px] text-[#64748b]" title={name}>
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {previewKind === "comparison" && comparisonData ? (
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Comparison periods:{" "}
+                      <span className="text-[13px] text-white">
+                        {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
+                      </span>
+                    </p>
+                  ) : (
+                    <>
+                      {reportType === "WEEKLY" && weeklyRangeIso && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Week period: <span className="text-[13px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                        </p>
+                      )}
+                      {mtdRange && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Month to date: <span className="text-[13px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
                   <p className="text-[13px] text-[#94a3b8]">
                     Template: <span className="text-[13px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
                     Platform: <span className="text-[13px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
+                  </p>
+                  <p className="text-[13px] text-[#94a3b8]">
+                    Estimated slides: <span className="text-[13px] text-white">{estimatedSlideCount()}</span>
                   </p>
                 </div>
               </div>
@@ -2282,7 +2333,7 @@ export function ReportUploadWizard({
                   onClick={() => setCustomTitleExpanded(true)}
                   className="text-[13px] text-dash-accent hover:underline"
                 >
-                  Add custom title +
+                  Add custom PPT report title +
                 </button>
               ) : (
                 <>
@@ -2355,11 +2406,12 @@ export function ReportUploadWizard({
                     href={`https://${buildShareReportUrl(shareToken)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f5b45a] text-[14px] font-semibold text-[#0d1b2e] hover:bg-[#ed8936]"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg text-[15px] font-semibold hover:opacity-90"
+                    style={{ height: "48px", backgroundColor: "#f5b45a", color: "#0d1b2e" }}
                   >
                     🌐 View Report in Browser →
                   </a>
-                  <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
+                  <p className="mt-1.5 text-center text-[11px] text-[#94a3b8]">
                     {buildShareReportUrl(shareToken)} ·{" "}
                     <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
                       Copy
@@ -2368,28 +2420,27 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              {/* Secondary actions — two columns. State 4 (Drive not
-                  connected): the right column simply never renders, so
-                  Download PPTX sits alone. */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Secondary actions — two equal-width columns. State 4
+                  (Drive not connected): the right column simply never
+                  renders, so Download PPTX sits alone at half width. */}
+              <div className="flex gap-3">
                 <a
                   href={downloadUrl}
-                  className="flex h-11 items-center justify-center rounded-md border border-[#f5b45a] text-[13px] font-medium text-white hover:opacity-90"
-                  style={{ backgroundColor: "#1e293b" }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
+                  style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #f5b45a" }}
                 >
-                  Download PPTX
+                  ⬇ Download PPTX
                 </a>
 
                 {hasGoogleDriveConnected && driveView === "collapsed" && (
-                  <div>
+                  <div className="flex-1">
                     <button
                       onClick={handleSaveButtonClick}
                       disabled={driveSaving}
-                      className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#68d391] text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: "#1e293b" }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #68d391" }}
                     >
-                      <DriveIcon />
-                      {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
+                      ☁ {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
                     </button>
                     {/* State 2: a folder is already remembered for this client. */}
                     {rememberedFolder && (
@@ -2415,22 +2466,24 @@ export function ReportUploadWizard({
                   link the primary button uses, regardless of Google Drive
                   save state. */}
               {shareToken && (
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={openEmailModal}
-                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
+                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
                   >
-                    <span aria-hidden="true" className="text-[18px]">📧</span>
+                    <MailIcon />
                     Email
                   </button>
                   <a
                     href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
+                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
                       <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
                     </svg>
@@ -2439,9 +2492,10 @@ export function ReportUploadWizard({
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="flex flex-col items-center gap-1 text-[12px] text-dash-ink-secondary hover:text-dash-ink"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
+                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
                   >
-                    <span aria-hidden="true" className="text-[18px]">🔗</span>
+                    <CopyIcon />
                     {copied ? "Copied!" : "Copy Link"}
                   </button>
                 </div>
@@ -2562,8 +2616,8 @@ export function ReportUploadWizard({
               <button
                 type="button"
                 onClick={handleGenerateAnother}
-                className="flex h-11 w-full items-center justify-center rounded-md border border-[#63b3ed] text-[13px] font-medium text-white transition-colors hover:opacity-90"
-                style={{ backgroundColor: "#1e293b" }}
+                className="flex w-full items-center justify-center rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
+                style={{ height: "44px", backgroundColor: "#0d1b2e", border: "1px solid #63b3ed", marginTop: "8px" }}
               >
                 ← Generate Another Report for {clientName}
               </button>
@@ -2693,12 +2747,22 @@ function Spinner() {
   );
 }
 
-/** Simple triangular drive/folder pictogram for the "Save to Google Drive" button — a generic glyph, not a reproduction of Google's own logo artwork. */
-function DriveIcon() {
+/** Small mail glyph for the download screen's tertiary Email button, colored blue per the design spec. */
+function MailIcon() {
   return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M8.5 3h7l6 10.5-3.5 6h-12l-3.5-6L8.5 3z" fill="currentColor" opacity="0.9" />
-      <path d="M8.5 3h7l6 10.5h-7L8.5 3z" fill="currentColor" opacity="0.55" />
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="#63b3ed" strokeWidth="2" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
+    </svg>
+  );
+}
+
+/** Small copy-to-clipboard glyph for the download screen's tertiary Copy Link button, colored grey per the design spec. */
+function CopyIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" aria-hidden="true">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
     </svg>
   );
 }
