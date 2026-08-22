@@ -10,10 +10,20 @@
   --foreground: #ffffff;
 }
 
+/* Brand lock — button corner radius is 8px everywhere, buttons and cards
+   alike (rounded-md was 6px in Tailwind's own default theme; every button
+   in this codebase already uses rounded-md, so overriding the token here
+   applies the spec'd 8px to all of them in one place instead of hand-
+   editing every button className across the app — the same 8px on a card
+   or input is an acceptable, deliberate side effect, not a bug). */
+@theme {
+  --radius-md: 0.5rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 
   --color-navy: #0d1b2e;
@@ -22,9 +32,18 @@
   --color-ink: #ffffff;
   --color-ink-secondary: #e2e8f0;
   --color-ink-muted: #94a3b8;
-  --color-accent: #4a90d9;
-  --color-accent-hover: #3d7dc0;
-  --color-accent-orange: #f6ad55;
+  /* Brand lock — one accent color, amber only (#f5b45a). Both the public
+     site's own "accent" token (formerly blue, #4a90d9) and the
+     "accent-orange" token (already amber, a slightly different shade)
+     now resolve to the exact same value, so every component already
+     using either token — primary buttons, links, focus rings, pricing
+     toggles — repaints amber automatically with no per-component edits.
+     Blue is deliberately NOT removed from chart colors, the Meta/Google
+     platform badges, or the Google Ads icon — those use their own
+     hardcoded hex values, never this token, and are untouched. */
+  --color-accent: #f5b45a;
+  --color-accent-hover: #ed8936;
+  --color-accent-orange: #f5b45a;
   --color-accent-orange-hover: #ed8936;
 
   /* Dashboard (logged-in product) palette — deliberately distinct from the
@@ -39,17 +58,31 @@
   --color-dash-border: #334155;
   --color-dash-ink: #f1f5f9;
   --color-dash-ink-secondary: #94a3b8;
-  --color-dash-accent: #f6ad55;
+  --color-dash-accent: #f5b45a;
   --color-dash-accent-hover: #ed8936;
   --color-dash-secondary: #1e3a5f;
   --color-dash-success: #68d391;
   --color-dash-error: #fc8181;
 }
 
-body {
+html {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/* Fix 3 — dot-grid texture applied directly to `body` instead of a
+   per-page `.dash-dot-grid` wrapper class (the wrapper approach kept
+   clipping short of the full page width on some pages). Painting it on
+   `body` covers 100% of every page's width/height automatically; opaque
+   page-level wrappers (e.g. /light-preview's own solid background) still
+   paint over it as before. */
+body {
+  background-color: #0d1b2e;
+  background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
 
 /* /light-preview (src/app/light-preview/page.tsx) renders its own
