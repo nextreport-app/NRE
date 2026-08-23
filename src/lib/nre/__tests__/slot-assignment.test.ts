@@ -401,10 +401,11 @@ describe("buildSlotsFromSelection — Part 3/4 wizard override", () => {
     expect(result.map((r) => r?.key)).toEqual(["impressions", "spend"]);
   });
 
-  it("returns null (not a dash-valued card) when the resolved value is the dash placeholder — Part 8 empty-card fix", () => {
-    const selected = [{ key: "website_leads", label: "WEBSITE LEADS", format: "number" as const, csvName: "results" }];
+  it("keeps the selected card (dash value, still labeled) when the resolved value is the dash placeholder — never null, so the PPT cannot fall back to template CPC (All)", () => {
+    const selected = [{ key: "link_clicks", label: "LINK CLICKS", format: "number" as const, csvName: "link clicks" }];
     const result = buildSlotsFromSelection(selected, {}, [], "meta", "$");
-    expect(result[0]).toBeNull();
+    expect(result[0]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS", value: "—" });
+    expect(result[0]).not.toBeNull();
   });
 });
 

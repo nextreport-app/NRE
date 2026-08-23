@@ -59,6 +59,27 @@ import {
   type MetaSlotBaseline,
 } from "./slot-assignment";
 import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type AvailableMetric, type SelectedMetric } from "./available-metrics";
+import { findMetaMetricByKey } from "./meta-dictionary";
+
+/** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
+function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
+  return override
+    .map((key) => {
+      const fromSelection = selected.find((m) => m.key === key);
+      if (fromSelection) return fromSelection;
+      const entry = findMetaMetricByKey(key);
+      if (!entry?.label || !entry.format) return undefined;
+      return {
+        key: entry.key,
+        label: entry.label,
+        format: entry.format,
+        csvName: entry.csvName,
+        perUnitOf: entry.perUnitOf,
+        perUnitScale: entry.perUnitScale,
+      } satisfies SelectedMetric;
+    })
+    .filter((m): m is SelectedMetric => !!m);
+}
 
 /** Re-exported from dynamic-metrics.ts (its canonical home) so existing `import { DynamicMetricValue } from "./report-data"` call sites keep working. */
 export type { DynamicMetricValue };
@@ -1103,8 +1124,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // Review, so even a deliberate override can never re-introduce a card
     // this campaign's own objective forbids (e.g. a website_leads card on
     // a META FORM LEADS campaign's slide).
+    //
+    // Override keys are applied IN OVERRIDE ORDER (the chips on screen),
+    // not `selectedMetrics.filter` union order. The account-wide union can
+    // put cpc_all ahead of link_clicks when another campaign uses CPC (All).
     const relevantMetrics = stripNeverKeys(
-      override ? selectedMetrics.filter((m) => override.includes(m.key)) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
+      override ? metricsInOverrideOrder(override, selectedMetrics) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
@@ -1113,11 +1138,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // filterMetricsForCampaignObjective/stripNeverKeys above) is used
     // exactly as-is, in that exact order: no compaction, no shuffling, no
     // padding from other CSV-detected candidates. A selected metric with no
-    // real data for THIS campaign resolves to null here (buildSlotsFromSelection),
-    // which fill-tags.ts renders as a dash in that metric's own fixed slot
-    // position — never silently dropped or backfilled with an unrelated
-    // metric. The 8 cards shown on the Metric Cards wizard screen are the
-    // 8 cards on the slide.
+    // real data for THIS campaign keeps its label and shows "—" (buildSlotsFromSelection).
+    // fill-tags.ts must still retext that slot so template "CPC (All)" cannot linger.
     const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol);
     const additionalMetricsSlide = slide2Keys
       ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol)
