@@ -663,6 +663,18 @@ describe("buildCampaignOrAdSetSlideXml — Part 1: 8th card slot", () => {
     expect(xml).not.toContain("{{METRIC_8_VALUE}}");
   });
 
+  it("retexts physical slot 7 (template CPC (All)) to LINK CLICKS even when the value is a dash", () => {
+    const slots = [
+      ...sevenSlotMetrics().slice(0, 6),
+      { key: "link_clicks", label: "LINK CLICKS", format: "number" as const, value: "—", type: "secondary" as const },
+      { key: "cpc_link_click", label: "COST PER LINK CLICK", format: "currency" as const, value: "$0.42", type: "secondary" as const },
+    ];
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, { ...makeCampaignSlide("Form - Leads"), dynamicMetrics: slots });
+    expect(xml).toContain("LINK CLICKS");
+    expect(xml).toContain("COST PER LINK CLICK");
+    expect(xml).not.toMatch(/CPC \(All\)/);
+  });
+
   it("shows a dash for both the 8th slot's label and value when only 7 metrics are assigned", () => {
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);

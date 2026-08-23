@@ -1269,6 +1269,62 @@ describe("buildReportData — wizard metric selection reaches the campaign slide
     expect(costPerLead?.value).toBe("$5.60");
     expect(costPerLead?.value).not.toBe("—");
   });
+
+  it("keeps Link clicks (dash) in slot 7 when that column is absent — never null, never cpc_all — even with extra unselected CSV columns", () => {
+    const selectedMetrics = selectionFor();
+    const rowsWithoutLinkClicks = rows.map((r) => {
+      const { "Link clicks": _drop, ...raw } = r._raw;
+      return { ...r, _raw: raw, link_clicks: "" };
+    });
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rowsWithoutLinkClicks,
+      selectedMetrics: [
+        ...selectedMetrics,
+        { key: "cpc_all", label: "CPC (ALL)", format: "currency", csvName: "cpc (all)" },
+        { key: "frequency", label: "FREQUENCY", format: "ratio", csvName: "frequency" },
+        { key: "landing_page_views", label: "LANDING PAGE VIEWS", format: "number", csvName: "landing page views" },
+      ],
+      campaignMetricOverrides: { "instantforms campaign": EXPECTED_KEYS },
+      now: NOW,
+    });
+    const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
+    const keys = slide.dynamicMetrics.map((m) => m?.key ?? null);
+    expect(keys).toEqual(EXPECTED_KEYS);
+    expect(slide.dynamicMetrics[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS", value: "—" });
+    expect(keys).not.toContain("cpc_all");
+    expect(keys).not.toContain("frequency");
+  });
+
+  it("uses campaignMetricOverrides order, not the account-wide selectedMetrics union order", () => {
+    const selectedMetrics = selectionFor();
+    const scrambledUnion = [
+      selectedMetrics[0],
+      selectedMetrics[1],
+      selectedMetrics[2],
+      selectedMetrics[3],
+      selectedMetrics[4],
+      selectedMetrics[5],
+      { key: "cpc_all", label: "CPC (ALL)", format: "currency" as const, csvName: "cpc (all)" },
+      selectedMetrics[7],
+      selectedMetrics[6],
+    ];
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      selectedMetrics: scrambledUnion,
+      campaignMetricOverrides: { "instantforms campaign": EXPECTED_KEYS },
+      now: NOW,
+    });
+    const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
+    expect(slide.dynamicMetrics.map((m) => m?.key)).toEqual(EXPECTED_KEYS);
+  });
 });
 
 // Real-account bug report: the Previous Month row's PURCHASES column was

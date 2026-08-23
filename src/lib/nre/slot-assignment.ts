@@ -565,12 +565,11 @@ export function buildSlotsFromSelection(
   return selected.map((metric) => {
     const baselineValue = baseline[metric.key];
     const value = baselineValue !== undefined ? baselineValue : lookupMetricValue(rawRows, metric, platform, currencySymbol);
-    // No real data for this metric on this specific campaign/ad set — null
-    // flows through fill-tags.ts's existing null-slot handling (same path
-    // the automatic buildMetaSlots/buildGoogleSlots assignment above already
-    // uses), dashing out both the label and value rather than showing a
-    // labeled card with just a "—" value.
-    if (value === "—") return null;
+    // Wizard-selected cards keep their own label even when the number is
+    // missing. Returning null here used to leave the campaign template's
+    // static "CPC (All)" text on physical slot 7 (fill-tags.ts only dashes
+    // the value for null slots whose label is not a {{TAG}}). A dash on
+    // Link clicks must still read LINK CLICKS, never CPC (All).
     return { key: metric.key, label: metric.label, format: metric.format, value, perUnitOf: metric.perUnitOf };
   });
 }
@@ -771,7 +770,7 @@ export function redistributeCardSlots(
       if (compacted.length >= remainingMinCount) break;
       usedKeys.add(candidate.key);
       const [resolved] = buildSlotsFromSelection([candidate], baseline, rawRows, platform, currencySymbol);
-      if (resolved) compacted.push(resolved);
+      if (resolved && resolved.value !== "—") compacted.push(resolved);
     }
   }
 
