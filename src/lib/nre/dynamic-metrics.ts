@@ -88,10 +88,7 @@ function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, 
   for (const candidate of CPC_VALUE_HEADER_CANDIDATES) {
     const header = headerMap.get(candidate);
     if (!header) continue;
-    // TEMP DEBUG
-    const allValues = rows.map((r) => r._raw?.[header]).slice(0, 5);
     const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
-    console.log("aggregateCpc candidate:", candidate, "allValues(first5):", allValues, "nonZero count:", nonZero.length);
     if (nonZero.length > 0) return nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length;
   }
 

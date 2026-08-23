@@ -54,7 +54,6 @@ import {
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
   objectiveKeyFor,
-  redistributeCardSlots,
   stripNeverKeys,
   type CampaignObjectiveRef,
   type MetaSlotBaseline,
@@ -1041,11 +1040,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignObjective: CampaignObjectiveRef | null,
     campaignName: string,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
-    // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
-    console.log("REPORT DATA: selectedMetrics length:", selectedMetrics?.length ?? "undefined");
-    console.log("REPORT DATA: campaignMetricOverrides:", JSON.stringify(campaignMetricOverrides));
-    console.log("REPORT DATA: availableMetricsPool length:", availableMetricsPool?.length ?? "undefined");
-
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
@@ -1114,41 +1108,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
-    // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
-    console.log("CAMPAIGN LOOP: campaign:", campaignName, "override:", override, "slide1Keys length:", slide1Keys?.length);
-    // Part 4 — a selected metric with no real data for THIS campaign is
-    // nulled out by buildSlotsFromSelection (dashed out downstream by
-    // fill-tags.ts); redistributeCardSlots then compacts the survivors
-    // forward (no gap where a dashed card used to sit) and, if fewer than 4
-    // real cards remain, pads back up from the CSV's own other detected
-    // metrics — checked here against this campaign's own REAL, non-zero
-    // value, not just column presence. usedKeys spans both slides so slide
-    // 2's padding never re-picks a key slide 1 already used (or already
-    // tried and found empty).
-    const usedKeys = new Set<string>([...slide1Keys.map((m) => m.key), ...(slide2Keys?.map((m) => m.key) ?? [])]);
-    const dynamicMetrics = redistributeCardSlots(
-      buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol),
-      slide1Keys,
-      campaignObjective,
-      usedKeys,
-      availableMetricsPool,
-      baselineValues,
-      rawRows,
-      "meta",
-      currencySymbol,
-    );
+    // WYSIWYG — the wizard's own selection (per-campaign override or the
+    // engine's own defaultMetaSelection default, narrowed by
+    // filterMetricsForCampaignObjective/stripNeverKeys above) is used
+    // exactly as-is, in that exact order: no compaction, no shuffling, no
+    // padding from other CSV-detected candidates. A selected metric with no
+    // real data for THIS campaign resolves to null here (buildSlotsFromSelection),
+    // which fill-tags.ts renders as a dash in that metric's own fixed slot
+    // position — never silently dropped or backfilled with an unrelated
+    // metric. The 8 cards shown on the Metric Cards wizard screen are the
+    // 8 cards on the slide.
+    const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol);
     const additionalMetricsSlide = slide2Keys
-      ? redistributeCardSlots(
-          buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol),
-          slide2Keys,
-          campaignObjective,
-          usedKeys,
-          availableMetricsPool,
-          baselineValues,
-          rawRows,
-          "meta",
-          currencySymbol,
-        )
+      ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol)
       : undefined;
     return { dynamicMetrics, additionalMetricsSlide };
   }

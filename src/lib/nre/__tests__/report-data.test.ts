@@ -1147,6 +1147,130 @@ describe("buildReportData — META FORM LEADS from result_type 'Leads (form)', n
   });
 });
 
+// WYSIWYG fix — the wizard's own 8-metric Metric Cards selection (per-campaign
+// override or the account-wide default) must reach the campaign slide exactly
+// as shown on screen: same 8 keys, same order, no compaction, no shuffling, no
+// padding from other CSV-detected candidates. A selected metric with no real
+// data for this campaign dashes in its own fixed position rather than being
+// dropped or replaced by an unrelated one (see computeMetaSlideMetrics in
+// report-data.ts, which now calls buildSlotsFromSelection directly instead of
+// redistributeCardSlots for this path).
+describe("buildReportData — wizard metric selection reaches the campaign slide unchanged (WYSIWYG fix)", () => {
+  const days = daysInclusive(13, 19);
+  const dailyResults = [1, 2, 6, 7, 4, 3, 2]; // sums to 25
+  // Real InstantForms export columns: Results, Cost per result, Amount
+  // spent, Reach, Impressions, CTR, Link clicks, CPC (cost per link
+  // click), Cost per lead — deliberately NO Website leads column, so
+  // cost_per_lead's own perUnitOf: "website_leads" denominator has no
+  // data on these rows (the bug computeMetaSlideMetrics' cost_per_lead
+  // baseline alias now works around).
+  const rows: NreRow[] = days.map((day, i) => ({
+    _raw: { Day: day, "Cost per lead": "5.60", "CPC (cost per link click)": "0.85", "Link clicks": "4" },
+    campaign_name: "InstantForms Campaign",
+    ad_set_name: "Set 1",
+    result_type: "Leads (form)",
+    spend: "20",
+    reach: "500",
+    impressions: "1000",
+    results: String(dailyResults[i]),
+    link_clicks: "4",
+    ctr: "1.5",
+    cpc: "3",
+    date_start: day,
+    date_end: day,
+  }));
+
+  const EXPECTED_KEYS = [
+    "spend",
+    "reach",
+    "impressions",
+    "meta_form_leads",
+    "cost_per_lead",
+    "ctr",
+    "link_clicks",
+    "cpc_link_click",
+  ];
+
+  function selectionFor(): SelectedMetric[] {
+    return [
+      { key: "spend", label: "AD SPEND", format: "currency", csvName: "amount spent" },
+      { key: "reach", label: "REACH", format: "number", csvName: "reach" },
+      { key: "impressions", label: "IMPRESSIONS", format: "number", csvName: "impressions" },
+      { key: "meta_form_leads", label: "META FORM LEADS", format: "number", csvName: "results" },
+      { key: "cost_per_lead", label: "COST PER LEAD", format: "currency", csvName: "cost per lead" },
+      { key: "ctr", label: "CTR (ALL)", format: "percentage", csvName: "ctr (all)" },
+      { key: "link_clicks", label: "LINK CLICKS", format: "number", csvName: "link clicks" },
+      { key: "cpc_link_click", label: "COST PER LINK CLICK", format: "currency", csvName: "cpc (cost per link click)" },
+    ];
+  }
+
+  it("campaignMetricOverrides present (per-campaign override, as sent whenever the wizard's Metric Cards step has run) -> exactly these 8 keys, in order, no nulls, no cpc_all, cost_per_lead = spend/results not dash", () => {
+    const selectedMetrics = selectionFor();
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      selectedMetrics,
+      campaignMetricOverrides: { "instantforms campaign": selectedMetrics.map((m) => m.key) },
+      now: NOW,
+    });
+
+    const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
+    const keys = slide.dynamicMetrics.map((m) => m?.key ?? null);
+    expect(keys).toEqual(EXPECTED_KEYS);
+    expect(slide.dynamicMetrics).toHaveLength(8);
+    expect(slide.dynamicMetrics.some((m) => m === null)).toBe(false);
+    expect(keys).not.toContain("cpc_all");
+    // 7 days x $20 = $140 spend, 25 total leads -> $5.60/lead, never a dash.
+    const costPerLead = slide.dynamicMetrics.find((m) => m?.key === "cost_per_lead");
+    expect(costPerLead?.value).toBe("$5.60");
+    expect(costPerLead?.value).not.toBe("—");
+  });
+
+  it("wizard's own untouched default selection (defaultMetaSelection, never edited by the user — the /metrics route auto-populates this for every campaign the moment Step 2 completes, and the wizard always sends it as that campaign's own override on generate, whether or not the user ever opened Step 4) -> the same 8 keys still reach the slide, still no dash", () => {
+    // Deliberately NOT hand-typed — calls the real production function the
+    // wizard's own /metrics route uses to pre-fill Step 4, so this is a
+    // genuine "user clicked Continue without touching anything" selection,
+    // not a stand-in for it.
+    const headers = [
+      "Campaign name",
+      "Amount spent",
+      "Reach",
+      "Impressions",
+      "Results",
+      "Cost per lead",
+      "CTR (All)",
+      "Link clicks",
+      "CPC (cost per link click)",
+    ];
+    const selectedMetrics = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers);
+    expect(selectedMetrics.map((m) => m.key)).toEqual(EXPECTED_KEYS);
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      selectedMetrics,
+      campaignMetricOverrides: { "instantforms campaign": selectedMetrics.map((m) => m.key) },
+      now: NOW,
+    });
+
+    const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
+    const keys = slide.dynamicMetrics.map((m) => m?.key ?? null);
+    expect(keys).toEqual(EXPECTED_KEYS);
+    expect(slide.dynamicMetrics).toHaveLength(8);
+    expect(slide.dynamicMetrics.some((m) => m === null)).toBe(false);
+    expect(keys).not.toContain("cpc_all");
+    const costPerLead = slide.dynamicMetrics.find((m) => m?.key === "cost_per_lead");
+    expect(costPerLead?.value).toBe("$5.60");
+    expect(costPerLead?.value).not.toBe("—");
+  });
+});
+
 // Real-account bug report: the Previous Month row's PURCHASES column was
 // inflated by secondary/incidental purchases from a campaign whose real
 // objective was Initiate Checkout, because a blank result_type + a

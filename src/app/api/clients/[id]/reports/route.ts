@@ -78,11 +78,6 @@ async function buildMetaData(
   const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
 
-  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
-  console.log("REPORT ROUTE: selectedMetrics length:", selectedMetrics?.length ?? "undefined");
-  console.log("REPORT ROUTE: campaignMetricOverrides keys:", Object.keys(campaignMetricOverrides ?? {}));
-  console.log("REPORT ROUTE: campaignMetricOverrides values:", JSON.stringify(campaignMetricOverrides));
-
   // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
   // caller (POST below) returns early for reportType "COMPARISON" before
   // ever reaching here — but reportTypeSchema itself now allows all three
@@ -143,12 +138,6 @@ function buildGoogleData(
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
-  // Placed as the very first statement in the POST handler itself (not a
-  // helper it may or may not call), so this fires on every request that
-  // reaches this route at all, before auth/lookup/validation can return early.
-  console.log("REPORT ROUTE POST: handler entered, url:", req.url);
-
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -168,15 +157,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const formData = await req.formData().catch(() => null);
   const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
-
-  // TEMPORARY DEBUG LOGGING — remove after tracing the metrics-screen-to-PPT pipeline.
-  // Logged directly in the POST handler's own scope, straight off formData,
-  // before this is handed to buildMetaData/buildComparisonReportData/
-  // buildGoogleData or filtered by any schema — the rawest possible read.
-  console.log(
-    "REPORT ROUTE POST: raw campaignMetricOverrides field:",
-    formData ? formData.get("campaignMetricOverrides") : "no formData",
-  );
 
   if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
     return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });

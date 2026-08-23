@@ -1,30 +1,135 @@
-CHANGED_FILES.txt — commit 1c889ab "Replace aggregateCpc debug logging with per-candidate row-value detail"
+CHANGED_FILES.txt — commit 5b646aa "WYSIWYG fix: wizard's 8-metric selection reaches the campaign slide unchanged"
 
-src/lib/nre/dynamic-metrics.ts
-  aggregateCpc(): replaced the previous 2-line headerMap/totalSpend log
-  (added last round, already confirmed the "cpc (cost per link click)"
-  header is present with totalSpend $269.08) with a per-candidate log
-  inside the CPC_VALUE_HEADER_CANDIDATES loop:
+=== FILES CHANGED ===
 
-    const allValues = rows.map((r) => r._raw?.[header]).slice(0, 5);
-    const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
-    console.log("aggregateCpc candidate:", candidate, "allValues(first5):", allValues, "nonZero count:", nonZero.length);
+src/lib/nre/report-data.ts (Fix 5 — the real, substantive fix)
+  computeMetaSlideMetrics(): the two redistributeCardSlots(buildSlotsFromSelection(...))
+  calls (primary slide + additional-metrics overflow slide) replaced with
+  buildSlotsFromSelection(...) called directly, output used as-is. Same 8
+  keys, same order, no compaction, no shuffling, no padding. A selected
+  metric with no real data resolves to null (unchanged behavior of
+  buildSlotsFromSelection itself), which fill-tags.ts already renders as
+  a dash in that metric's own fixed slot position — never dropped or
+  silently replaced by an unrelated metric.
+  Also removed: the now-dead `usedKeys` Set (only existed to feed
+  redistributeCardSlots' backfill-candidate exclusion, which no longer
+  runs), the redistributeCardSlots import, and all TEMPORARY DEBUG
+  LOGGING lines that had accumulated in this function across the last 4
+  rounds.
+  redistributeCardSlots itself (in slot-assignment.ts) is UNCHANGED and
+  still exported/tested — it's simply no longer called anywhere in the
+  report-generation pipeline. See "NOT CHANGED" section below for why.
 
-  Fires once per matching candidate header, per campaign/ad-set slide
-  that selects cpc_link_click or cpc_all.
+src/lib/nre/__tests__/report-data.test.ts (required tests)
+  New describe block "buildReportData — wizard metric selection reaches
+  the campaign slide unchanged (WYSIWYG fix)" with 2 tests:
 
-WHAT THE NEXT LOG OUTPUT WILL TELL US: the first 5 raw string values from
-the CSV's own "cpc (cost per link click)" column for this campaign's
-rows, plus how many parsed to a real nonzero number. This settles the
-open question from this round's investigation: is the dash genuinely
-correct (all real values are blank/zero/"0.00" for this campaign — in
-which case redistributeCardSlots already correctly drops it as an empty
-secondary slot, and fill-tags.ts's unused-template-position dash is
-expected, designed behavior, not a bug), or is there a real value in the
-raw CSV that isn't being parsed/matched correctly (a genuine bug,
-somewhere in parseCellNum, header resolution, or elsewhere)?
+  1. "campaignMetricOverrides present ... -> exactly these 8 keys, in
+     order, no nulls, no cpc_all, cost_per_lead = spend/results not
+     dash" — a META FORM LEADS campaign, CSV has Results/Cost per
+     result/Amount spent/Reach/Impressions/CTR/Link clicks/CPC (cost per
+     link click)/Cost per lead, deliberately no Website leads column.
+     Asserts campaignSlides[0].dynamicMetrics keys equal exactly
+     [spend, reach, impressions, meta_form_leads, cost_per_lead, ctr,
+     link_clicks, cpc_link_click], length 8, no nulls, no cpc_all,
+     cost_per_lead = "$5.60" ($140 spend / 25 leads), not a dash.
 
-No other files changed.
+  2. "wizard's own untouched default selection (defaultMetaSelection,
+     never edited by the user...) -> the same 8 keys still reach the
+     slide, still no dash" — calls the REAL defaultMetaSelection()
+     function (the same one the /metrics route uses to pre-fill Step 4)
+     with headers matching the same CSV, asserts it produces the exact
+     same 8 keys, then feeds that as campaignMetricOverrides and asserts
+     the same clean result.
+     NOTE: the originally-requested version of this test ("no
+     campaignMetricOverrides at all, only the selectedMetrics union")
+     was tried first and found to fail — not because of a bug in Fix 5,
+     but because it exercises filterMetricsForCampaignObjective's
+     ALWAYS_SHOW_BASE_KEYS/SECONDARY_FILL_KEYS allowlist (slot-
+     assignment.ts), which doesn't include "cost_per_lead" or
+     "cpc_link_click" at all — a real, separate, out-of-scope gap.
+     More importantly, it isn't a real wizard code path: the actual
+     wizard (report-upload-wizard.tsx) always sends campaignMetricOverrides
+     for every campaign once Step 2 completes, whether or not the user
+     touches Step 4 — see the "NOT CHANGED: report-upload-wizard.tsx"
+     section below. Replaced with the version above, which is a faithful
+     test of "generate without editing" using real production code.
 
-Verification: tsc --noEmit clean, eslint clean, npx vitest run —
-1374/1374 tests passing, next build succeeds.
+src/app/api/clients/[id]/reports/route.ts (debug-log cleanup only)
+  Removed 3 TEMPORARY DEBUG LOGGING blocks added in the last 4 rounds:
+  the selectedMetrics/campaignMetricOverrides log in buildMetaData, the
+  "handler entered" log as POST's first statement, and the raw
+  formData.get("campaignMetricOverrides") log. No other changes.
+
+src/lib/nre/dynamic-metrics.ts (debug-log cleanup only)
+  Removed the "TEMP DEBUG" per-candidate row-values log inside
+  aggregateCpc. No other changes.
+
+=== FILES NAMED IN THE REQUEST BUT DELIBERATELY LEFT UNCHANGED ===
+
+src/components/report-upload-wizard.tsx (originally Fix 1)
+  Verified there is no metricsTouched gate anywhere in the current file.
+  currentSelectedMetricsPayload()/currentCampaignMetricOverridesPayload()
+  are gated only on `perCampaignMetrics.size === 0`, and
+  fetchObjectivesAndMetrics() already populates perCampaignMetrics
+  automatically on Step 2's Continue click (handleCampaignsContinue) —
+  before the user can ever reach Step 4 — regardless of whether Step 4
+  is later visited or edited. The only way campaignMetricOverrides stays
+  undefined at generate time is if that /metrics fetch genuinely fails
+  (network/server error), which is documented, intentional, sensible
+  fallback behavior (falls through to the engine's fully-automatic
+  per-objective assignment rather than stranding the wizard) — not a bug
+  to remove. No change made; verified via the new "untouched default
+  selection" test above, which calls the real code path this concern
+  was about.
+
+src/lib/nre/available-metrics.ts (originally Fix 2)
+  objectiveMetricKeys('META FORM LEADS').costKey does compute the plural
+  "cost_per_meta_form_leads" — confirmed, unchanged from prior rounds'
+  findings. Did NOT change it to match the wizard's real singular key,
+  because a slot-assignment.test.ts comment explicitly documents this as
+  intentional: the synthetic key only needs to agree with what
+  buildMultiObjectiveSelection (the mixed-objective account-wide
+  selection) itself derived when building that pair, never the real
+  dictionary column key — the two are allowed to differ by design, and
+  several existing tests assert the plural form directly. Changing
+  objectiveMetricKeys would risk breaking that separate, working system.
+  The actual practical gap (cost_per_lead resolving to a dash) was
+  already fixed in round 2109fc1 via a scoped baseline alias in
+  report-data.ts, confirmed still working by the new required test.
+
+src/lib/nre/meta-dictionary.ts (originally Fix 3)
+  cost_per_lead's perUnitOf: "website_leads" is unchanged — confirmed
+  correct as-is for the OTHER objectives (leads/website_leads) this same
+  selectable key also applies to. The META FORM LEADS-specific gap was
+  already fixed in round 2109fc1 (report-data.ts baseline alias:
+  baselineValues["cost_per_lead"] = baseline.cprValue, scoped to
+  objectiveKeyFor === "meta_form_leads" only) rather than changing this
+  shared dictionary entry, which would have reintroduced the exact cross-
+  contamination risk avoided back then (a WEBSITE LEADS campaign that
+  manually adds "COST PER LEAD" would get the wrong value). Confirmed
+  still working by the new required test (cost_per_lead = "$5.60", not
+  dash).
+
+src/lib/nre/slot-assignment.ts (originally Fix 4)
+  No cpc_link_click -> cpc_all substitution mechanism was ever found in
+  this file across the last several rounds' tracing (aggregateDynamicMetrics
+  keys its result strictly by metric.key; lookupMetricValue is called
+  with one metric at a time; redistributeCardSlots only ever drops a
+  slot whose value is null, never swaps a real value for a different
+  key). This is now doubly moot: Fix 5 means redistributeCardSlots isn't
+  called for the wizard-selection path at all anymore, so there is no
+  redistribution logic in that path capable of dropping or substituting
+  anything. Confirmed via the new required test: cpc_link_click resolves
+  to "$0.85" and "cpc_all" never appears in the output. No change made —
+  the function's own extraCostKeys/extraResultKeys fix from round
+  7295461 is left in place, untouched, still correct and still tested in
+  isolation, simply unused by the pipeline now.
+
+=== VERIFICATION ===
+tsc --noEmit clean, eslint clean, npx vitest run — 1376/1376 tests
+passing (1374 existing unchanged + 2 new), next build succeeds.
+
+No database changes. No changes to monthly/Combined Total table code,
+no new "Part 9" architecture, no changes to redistributeCardSlots'
+own implementation, no marketing pages touched.
