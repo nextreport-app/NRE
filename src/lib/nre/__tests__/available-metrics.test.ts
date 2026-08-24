@@ -133,10 +133,33 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
   // while buildMetaSlots — which has no separate "addable pool" concept to
   // avoid — keeps the plain results/cost_per_result keys. Labels/values
   // still agree; only the key differs.
+  // Headers must list every column fullMetaRows actually carries — wizard
+  // defaults are CSV-header-aware and will not pre-select a chip whose
+  // column was never exported, even if buildMetaSlots could compute a
+  // number from fixture row objects.
+  const PARITY_HEADERS = [
+    ...META_HEADERS,
+    "CPC (cost per link click)",
+    "Cost per landing page view",
+    "CPM (cost per 1,000 impressions)",
+    "Frequency",
+    "Views",
+    "Thruplays",
+    "Video plays at 100%",
+    "Messaging conversations started",
+    "Cost per messaging conversation started",
+    "New messaging contacts",
+    "Messaging contacts",
+    "Post engagements",
+    "Post reactions",
+    "App events",
+    "Clicks (all)",
+  ];
+
   it.each(["WEBSITE LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
     "produces the same 8 keys, in the same order, as buildMetaSlots for %s (no ADD TO CART column present), when the CSV backs every candidate with real data",
     (resultLabel) => {
-      const preview = defaultMetaSelection(resultLabel, "COST PER RESULT", META_HEADERS);
+      const preview = defaultMetaSelection(resultLabel, "COST PER RESULT", PARITY_HEADERS);
       const real = buildMetaSlots(
         { resultLabel, costLabel: "COST PER RESULT", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "1", cprValue: "$1" },
         fullMetaRows(),
@@ -157,7 +180,7 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
   // simplified, values-free guess by design (see this module's own file
   // header), not a promise of exact parity in every ambiguous case.
   it("UNKNOWN: slots 1-7 still match buildMetaSlots exactly; slot 8 may legitimately differ (defaultMetaSelection doesn't try multiple candidates in priority order)", () => {
-    const preview = defaultMetaSelection("UNKNOWN", "COST PER RESULT", META_HEADERS);
+    const preview = defaultMetaSelection("UNKNOWN", "COST PER RESULT", PARITY_HEADERS);
     const real = buildMetaSlots(
       { resultLabel: "UNKNOWN", costLabel: "COST PER RESULT", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "1", cprValue: "$1" },
       fullMetaRows(),
@@ -176,8 +199,42 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     expect(preview[6].key).toBe("add_to_cart");
   });
 
-  it("always returns exactly 8 metrics", () => {
+  it("returns 8 metrics when the CSV has a column (or honest compute) for every pack slot", () => {
     expect(defaultMetaSelection("RESULTS", "COST PER RESULT", META_HEADERS)).toHaveLength(8);
+  });
+
+  it("Instant Form without Link clicks / CPC link columns: drops those chips instead of showing a dash card", () => {
+    const headers = ["Campaign name", "Amount spent", "Reach", "Impressions", "Results", "Cost per result", "CTR (All)", "Frequency"];
+    const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers);
+    const keys = preview.map((m) => m.key);
+    expect(keys).toEqual(["spend", "reach", "impressions", "meta_form_leads", "cost_per_meta_form_lead", "ctr"]);
+    expect(keys).not.toContain("link_clicks");
+    expect(keys).not.toContain("cpc_link_click");
+    expect(keys).not.toContain("frequency");
+  });
+
+  it("Instant Form with Link clicks in the export still pre-selects the locked pack 8", () => {
+    const headers = [
+      "Campaign name",
+      "Amount spent",
+      "Reach",
+      "Impressions",
+      "Results",
+      "Cost per lead",
+      "CTR (All)",
+      "Link clicks",
+      "CPC (cost per link click)",
+    ];
+    expect(defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers).map((m) => m.key)).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "meta_form_leads",
+      "cost_per_lead",
+      "ctr",
+      "link_clicks",
+      "cpc_link_click",
+    ]);
   });
 
   // Regression for the Metric Review step's "Website Leads shows as both a
@@ -319,7 +376,8 @@ describe("buildMultiObjectiveSelection — mixed-objective accounts, capped at 8
   });
 
   it("priority 4 — LINK CLICKS wins slots 4-5 when no leads/purchases objective is detected", () => {
-    const selected = buildMultiObjectiveSelection([videoViews, linkClicksObjective], WITH_SECONDARIES);
+    const headers = [...WITH_SECONDARIES, "CPC (cost per link click)"];
+    const selected = buildMultiObjectiveSelection([videoViews, linkClicksObjective], headers);
     expect(selected[3].label).toBe("LINK CLICKS");
     expect(selected[4].label).toBe("COST PER CLICK");
   });

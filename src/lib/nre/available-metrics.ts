@@ -21,6 +21,7 @@
 import { autoClassifyUnknownColumn as autoClassifyMeta, findMetaMetric, findMetaMetricByKey, type MetaMetricDefinition, type MetricFormat } from "./meta-dictionary";
 import { autoClassifyUnknownColumn as autoClassifyGoogle, findGoogleMetric, findGoogleMetricByKey, type GoogleMetricDefinition } from "./google-dictionary";
 import type { GoogleObjectiveKey } from "./detect-objective";
+import { packForResultLabel } from "./packs";
 
 export type MetricPlatform = "META" | "GOOGLE";
 
@@ -152,6 +153,143 @@ function byKey(platform: MetricPlatform, key: string, labelOverride?: string, fo
 function hasHeader(headers: string[], ...csvNames: string[]) {
   const normalized = headers.map((h) => h.toLowerCase().trim());
   return csvNames.some((name) => normalized.includes(name));
+}
+
+/** Keys present as real dictionary columns in this CSV (auto-caught unknowns are ignored — they are addable, not default chips). */
+function csvDictionaryKeys(headers: string[]): Set<string> {
+  return new Set(listAvailableMetrics(headers, "META").filter((m) => !m.isAutoCatch).map((m) => m.key));
+}
+
+/**
+ * Keep in sync with slot-assignment.ts's NEVER_KEYS_FOR_OBJECTIVE.
+ * Duplicated here so this module does not import slot-assignment (that file
+ * already imports this one). Used only to stop CSV backfill from parking a
+ * forbidden cross-objective metric on the default chip list.
+ */
+const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
+  meta_form_leads: ["website_leads", "cost_per_website_lead", "purchases", "cost_per_purchase", "video_views", "thruplays", "app_installs"],
+  website_leads: ["meta_form_leads", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "video_views", "app_installs"],
+  leads: ["purchases", "cost_per_purchase", "video_views", "app_installs"],
+  purchases: ["website_leads", "meta_form_leads", "cost_per_website_lead", "video_views", "app_installs"],
+  initiate_checkout: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
+  add_to_cart: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
+  link_clicks: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
+  landing_page_views: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
+  video_views: ["website_leads", "meta_form_leads", "purchases", "link_clicks", "app_installs"],
+  reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
+  unique_reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
+  awareness: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
+  messaging: ["website_leads", "purchases", "video_views", "app_installs"],
+  messaging_leads: ["website_leads", "purchases", "video_views", "app_installs"],
+  messaging_conversations_started: ["website_leads", "purchases", "video_views", "app_installs"],
+  conversations: ["website_leads", "purchases", "video_views", "app_installs"],
+  app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
+  mobile_app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
+};
+
+/** Frequency stays on the date-range footer unless the pack itself asked for it (Reach). Never auto-backfill it onto leftover card slots. */
+const SKIP_AUTO_BACKFILL_KEYS = new Set(["frequency"]);
+
+function neverBackfillKeysFor(resultLabel: string): Set<string> {
+  const key = slugifyObjectiveKey(resultLabel);
+  return new Set(NEVER_BACKFILL_KEYS[key] ?? []);
+}
+
+/**
+ * True when this chip is backed by a CSV column, or can be computed honestly
+ * from Results / Cost per result / spend for this campaign's objective.
+ * Link clicks / CPC (link) / LPV are never invented from other columns.
+ */
+function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvKeys: Set<string>, resultLabel: string): boolean {
+  if (csvKeys.has(metric.key)) return true;
+  if (metric.csvName && hasHeader(headers, metric.csvName)) return true;
+
+  const upper = (resultLabel || "").toUpperCase();
+  const isForm = upper === "META FORM LEADS";
+  const isWebsite = upper === "WEBSITE LEADS" || upper === "LEADS";
+  const isPurchase = upper === "PURCHASES";
+  const hasResults = csvKeys.has("results") || csvKeys.has("meta_form_leads");
+  const hasSpend = csvKeys.has("spend");
+  const hasCpr =
+    csvKeys.has("cost_per_result") || csvKeys.has("cost_per_lead") || csvKeys.has("cost_per_meta_form_lead") || csvKeys.has("cost_per_website_lead");
+
+  if (isForm && (metric.key === "meta_form_leads" || metric.key === "results") && hasResults) return true;
+  if (
+    isForm &&
+    (metric.key === "cost_per_meta_form_lead" || metric.key === "cost_per_lead" || metric.key === "cost_per_result") &&
+    (hasCpr || (hasSpend && hasResults))
+  ) {
+    return true;
+  }
+  if (isWebsite && (metric.key === "website_leads" || metric.key === "results") && (csvKeys.has("website_leads") || csvKeys.has("results"))) return true;
+  if (
+    isWebsite &&
+    (metric.key === "cost_per_website_lead" || metric.key === "cost_per_lead" || metric.key === "cost_per_result") &&
+    (hasCpr || (hasSpend && csvKeys.has("results")))
+  ) {
+    return true;
+  }
+  if (isPurchase && (metric.key === "purchases" || metric.key === "results") && (csvKeys.has("purchases") || csvKeys.has("results"))) return true;
+  if (
+    isPurchase &&
+    (metric.key === "cost_per_purchase" || metric.key === "cost_per_result") &&
+    (hasCpr || (hasSpend && (csvKeys.has("purchases") || csvKeys.has("results"))))
+  ) {
+    return true;
+  }
+  if (metric.key === "results_roas" && hasSpend && (csvKeys.has("purchase_conversion_value") || csvKeys.has("results_value") || hasHeader(headers, "purchases conversion value", "purchase conversion value", "conversion value", "results value"))) {
+    return true;
+  }
+  // Reach cards: CPM / cost per 1K reached are spend ratios, not extra CSV columns.
+  if (metric.key === "cpm" && hasSpend && csvKeys.has("impressions")) return true;
+  if (metric.key === "cost_per_1k_reached" && hasSpend && csvKeys.has("reach")) return true;
+  const isVideo = upper === "VIDEO VIEWS" || upper === "THRUPLAYS";
+  if (isVideo && metric.key === "video_views" && (csvKeys.has("video_views") || csvKeys.has("results"))) return true;
+  if (isVideo && metric.key === "thruplays" && csvKeys.has("thruplays")) return true;
+  if (isVideo && metric.key === "video_p100" && csvKeys.has("video_p100")) return true;
+  if (isVideo && (metric.key === "cost_per_thruplay" || metric.key === "cost_per_result") && (hasCpr || (hasSpend && csvKeys.has("results")))) return true;
+  const isMessaging = upper === "MESSAGING LEADS" || upper === "MESSAGING CONVERSATIONS STARTED" || upper === "CONVERSATIONS";
+  if (isMessaging && (metric.key === "messaging_conversations_started" || metric.key === "results") && (csvKeys.has("messaging_conversations_started") || csvKeys.has("results"))) return true;
+  if (isMessaging && (metric.key === "cost_per_conversation" || metric.key === "cost_per_result") && (hasCpr || (hasSpend && csvKeys.has("results")))) return true;
+  return false;
+}
+
+/**
+ * Pack (or switch) is a wishlist. Drop chips the export cannot support, then
+ * backfill from extras that ARE in this CSV. Fewer than 8 is allowed — unused
+ * PPT slots must blank both label and value rather than leaving CPC (All).
+ */
+export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: string[], resultLabel: string): SelectedMetric[] {
+  const csvKeys = csvDictionaryKeys(headers);
+  const neverKeys = neverBackfillKeysFor(resultLabel);
+  const kept: SelectedMetric[] = [];
+  const used = new Set<string>();
+
+  for (const metric of wishlist) {
+    if (!metric || used.has(metric.key)) continue;
+    // Never-list applies to backfill only — mixed Form + Website slides
+    // intentionally place both objective pairs on the same 8.
+    if (!metricHonestlyAvailable(metric, headers, csvKeys, resultLabel)) continue;
+    kept.push(metric);
+    used.add(metric.key);
+    if (kept.length >= MAX_METRICS_PER_SLIDE) return kept;
+  }
+
+  const pack = packForResultLabel(resultLabel);
+  const extraKeys = [...(pack?.extraPoolExamples ?? []), ...listSelectableMetrics(headers, "META").map((m) => m.key)];
+
+  for (const key of extraKeys) {
+    if (kept.length >= MAX_METRICS_PER_SLIDE) break;
+    if (used.has(key) || neverKeys.has(key) || SKIP_AUTO_BACKFILL_KEYS.has(key)) continue;
+    if (ALWAYS_EXCLUDED_SELECTABLE_KEYS.has(key)) continue;
+    const candidate = byKey("META", key);
+    if (!candidate) continue;
+    if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
+    kept.push(candidate);
+    used.add(key);
+  }
+
+  return kept;
 }
 
 /**
@@ -312,7 +450,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot8 = costPerLinkClick;
   }
 
-  return [...core, slot4, slot5, ctr, slot7, slot8];
+  return finalizeCsvAwareSelection([...core, slot4, slot5, ctr, slot7, slot8], headers, resultLabel);
 }
 
 /** One detected objective's own {resultLabel, costLabel} text pair — see buildMultiObjectiveSelection below. Matches the shape of each entry in the /metrics route's own campaignObjectives map. */
@@ -511,7 +649,14 @@ export function buildMultiObjectiveSelection(objectivePairs: ObjectivePair[], he
     }
   }
 
-  return [core[0], core[1], core[2], slot4, slot5, ctr, slot7, slot8].filter((m): m is SelectedMetric => m !== null);
+  const wishlist = [core[0], core[1], core[2], slot4, slot5, ctr, slot7, slot8].filter((m): m is SelectedMetric => m !== null);
+  const primaryLabel =
+    (hasMetaFormLeads && websiteLeadsLabel && "META FORM LEADS") ||
+    (hasMetaFormLeads && "META FORM LEADS") ||
+    websiteLeadsLabel ||
+    distinctLabels[0] ||
+    "";
+  return finalizeCsvAwareSelection(wishlist, headers, primaryLabel);
 }
 
 /** The default 8 for a Google report — mirrors slot-assignment.ts's buildGoogleSlots per-campaign-type key choices exactly. */
