@@ -99,6 +99,71 @@ export function listSelectableMetrics(headers: string[], platform: MetricPlatfor
   return listAvailableMetrics(headers, platform).filter((m) => m.priority >= 50 && !ALWAYS_EXCLUDED_SELECTABLE_KEYS.has(m.key));
 }
 
+function normalizeMetricLabel(label: string): string {
+  return label.trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Website Leads chips often use the generic Results column (key `results`,
+ * label WEBSITE LEADS) while the CSV also has a dedicated Website Leads
+ * column (key `website_leads`). Cost-per is the same story: COST PER
+ * WEBSITE LEAD vs COST PER LEAD vs Cost per result. Key-only hiding leaves
+ * those as fake "Add from your CSV" extras.
+ */
+const ADD_POOL_EQUIVALENT_KEYS: readonly (readonly string[])[] = [
+  ["results", "website_leads", "meta_form_leads"],
+  ["cost_per_result", "cost_per_lead", "cost_per_website_lead", "cost_per_meta_form_lead"],
+];
+
+function addPoolLabelFamily(label: string): string {
+  const n = normalizeMetricLabel(label);
+  if (
+    n === "COST PER LEAD" ||
+    n === "COST PER WEBSITE LEAD" ||
+    n === "COST PER RESULT" ||
+    n === "COST PER META FORM LEAD" ||
+    n === "COST PER ON-FACEBOOK LEAD"
+  ) {
+    return "FAMILY:COST_PER_LEAD";
+  }
+  if (n === "WEBSITE LEADS" || n === "META FORM LEADS" || n === "RESULTS" || n === "LEADS") {
+    return "FAMILY:LEADS";
+  }
+  if (n === "COST PER CLICK" || n === "COST PER LINK CLICK" || n === "CPC (COST PER LINK CLICK)") {
+    return "FAMILY:CPC_LINK";
+  }
+  return `LABEL:${n}`;
+}
+
+function addPoolIdentities(metric: { key: string; label: string }): Set<string> {
+  const ids = new Set<string>([`KEY:${metric.key}`, addPoolLabelFamily(metric.label)]);
+  for (const group of ADD_POOL_EQUIVALENT_KEYS) {
+    if (group.includes(metric.key)) {
+      for (const key of group) ids.add(`KEY:${key}`);
+    }
+  }
+  return ids;
+}
+
+/**
+ * "Add from your CSV" must not list a metric that is already a selected
+ * chip — including the same card under a different dictionary key/label.
+ * Removing a chip from the 8 makes its aliases addable again.
+ */
+export function filterAddableMetrics<T extends { key: string; label: string }>(pool: T[], selected: { key: string; label: string }[]): T[] {
+  const occupied = new Set<string>();
+  for (const metric of selected) {
+    for (const id of addPoolIdentities(metric)) occupied.add(id);
+  }
+  return pool.filter((candidate) => {
+    if (occupied.has(`KEY:${candidate.key}`)) return false;
+    for (const id of addPoolIdentities(candidate)) {
+      if (occupied.has(id)) return false;
+    }
+    return true;
+  });
+}
+
 /** Part 4's per-campaign-slide cap — 1-8 selected metrics fit the template's own 8 card slots on one slide; 9-16 spill onto a second "Additional Metrics" slide. */
 export const MAX_METRICS_PER_SLIDE = 8;
 /** Part 4's hard ceiling — the wizard rejects a 17th selection outright ("Maximum 16 metrics (2 slides) per campaign."). */
