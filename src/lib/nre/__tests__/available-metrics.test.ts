@@ -3,6 +3,7 @@ import {
   buildMultiObjectiveSelection,
   defaultGoogleSelection,
   defaultMetaSelection,
+  filterAddableMetrics,
   listAvailableMetrics,
   listSelectableMetrics,
   MAX_TOTAL_METRICS,
@@ -242,10 +243,8 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
   // column (key "results") gets relabeled "WEBSITE LEADS" for this
   // objective, while the CSV's own separate "Website Leads" column maps to
   // a *different* dictionary key ("website_leads") with that same label —
-  // a key-only duplicate check misses this. The wizard's own filter
-  // (report-upload-wizard.tsx's unselectedAvailableMetrics) was fixed to
-  // also check label; this test pins the underlying data collision that
-  // made that necessary, using headers that include both columns.
+  // a key-only duplicate check misses this. filterAddableMetrics hides the
+  // extra by label/equivalent key so Add from CSV does not show it.
   it("produces a label collision with listSelectableMetrics for a CSV that has its own separate Website Leads column", () => {
     const headersWithWebsiteLeadsColumn = [...META_HEADERS, "Website Leads"];
     const selection = defaultMetaSelection("WEBSITE LEADS", "COST PER LEAD", headersWithWebsiteLeadsColumn);
@@ -259,6 +258,49 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     expect(availableWebsiteLeads?.key).toBe("website_leads");
     // Same label, different key — a key-only filter would let this through.
     expect(availableWebsiteLeads?.key).not.toBe(slot4.key);
+  });
+});
+
+describe("filterAddableMetrics — Add from your CSV hides chips already selected", () => {
+  const chip = (key: string, label: string): SelectedMetric => ({
+    key,
+    label,
+    format: "number",
+    csvName: key,
+  });
+
+  it("hides Website Leads / Cost per lead extras when those cards are already in the 8 (different keys, same card)", () => {
+    const selected = [
+      chip("spend", "AD SPEND"),
+      chip("reach", "REACH"),
+      chip("impressions", "IMPRESSIONS"),
+      chip("results", "WEBSITE LEADS"),
+      chip("cost_per_website_lead", "COST PER WEBSITE LEAD"),
+      chip("ctr", "CTR (ALL)"),
+      chip("link_clicks", "LINK CLICKS"),
+      chip("landing_page_views", "LANDING PAGE VIEWS"),
+    ];
+    const pool = [
+      chip("website_leads", "WEBSITE LEADS"),
+      chip("cost_per_lead", "COST PER LEAD"),
+      chip("cost_per_lpv", "COST PER LPV"),
+      chip("cpc_link_click", "COST PER CLICK"),
+      chip("cpc_all", "CPC (ALL)"),
+      chip("frequency", "FREQUENCY"),
+    ];
+    const addable = filterAddableMetrics(pool, selected);
+    expect(addable.map((m) => m.key)).toEqual(["cost_per_lpv", "cpc_link_click", "cpc_all", "frequency"]);
+  });
+
+  it("brings Website Leads back in Add from CSV after the user removes that chip", () => {
+    const selected = [
+      chip("spend", "AD SPEND"),
+      chip("reach", "REACH"),
+      chip("impressions", "IMPRESSIONS"),
+      chip("cost_per_website_lead", "COST PER WEBSITE LEAD"),
+    ];
+    const pool = [chip("website_leads", "WEBSITE LEADS"), chip("frequency", "FREQUENCY")];
+    expect(filterAddableMetrics(pool, selected).map((m) => m.key)).toEqual(["website_leads", "frequency"]);
   });
 });
 

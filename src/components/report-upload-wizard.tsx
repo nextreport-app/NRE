@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
-import { type SelectedMetric } from "@/lib/nre/available-metrics";
+import { filterAddableMetrics, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
@@ -969,8 +969,8 @@ export function ReportUploadWizard({
   /** This campaign's still-addable pool — its fixed perCampaignAvailablePool candidates minus whatever's currently in its own pill list, so removing a pill makes it reappear here and adding one removes it, entirely computed (no separately-tracked "available" state to drift out of sync). */
   function campaignAvailableMetrics(normalizedName: string): SelectedMetric[] {
     const pool = perCampaignAvailablePool.get(normalizedName) ?? [];
-    const selectedKeys = new Set((perCampaignMetrics.get(normalizedName) ?? []).map((m) => m.key));
-    return pool.filter((m) => !selectedKeys.has(m.key));
+    const selected = perCampaignMetrics.get(normalizedName) ?? [];
+    return filterAddableMetrics(pool, selected);
   }
 
   /** Removes one metric pill from a single campaign's own list — never affects any other campaign. Enforces the 4-metric minimum, scoped per-campaign. */

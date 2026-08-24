@@ -9,7 +9,7 @@ import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
 import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
-import { defaultGoogleSelection, defaultMetaSelection, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import { defaultGoogleSelection, defaultMetaSelection, filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
@@ -133,10 +133,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
       perCampaignSelection[normalizedName] = selection;
 
-      const selectedKeys = new Set(selection.map((m) => m.key));
-      perCampaignAvailable[normalizedName] = stripNeverKeys(fullPool, objectiveKey)
-        .filter((m): m is AvailableMetric => m !== null)
-        .filter((m) => !selectedKeys.has(m.key));
+      perCampaignAvailable[normalizedName] = filterAddableMetrics(
+        stripNeverKeys(fullPool, objectiveKey).filter((m): m is AvailableMetric => m !== null),
+        selection,
+      );
     }
 
     return NextResponse.json({
