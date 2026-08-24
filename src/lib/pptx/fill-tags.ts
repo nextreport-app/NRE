@@ -487,8 +487,13 @@ export function buildCampaignOrAdSetSlideXml(
         // still present in the xml to locate the value shape by (it gets
         // consumed by the replaceTagRun call right after).
         xml = ensureCardLabelValueGap(xml, tag, MIN_CARD_LABEL_VALUE_GAP_EMU);
-        xml = replaceTagRun(xml, tag, "—").xml;
+        // Unused physical slots must blank the leftover template label too
+        // (slot 7 is static "CPC (All)"). A dash-only value used to leave
+        // that CPC (All) title on client decks when the CSV had fewer than
+        // 8 honest chips.
         if (labelTag) xml = replaceTagRun(xml, labelTag, "—").xml;
+        else xml = replaceCardLabel(xml, tag, "—");
+        xml = replaceTagRun(xml, tag, "—").xml;
         return;
       }
       // Metric card label overflow fix: shrink long labels by a fixed

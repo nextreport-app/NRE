@@ -1144,6 +1144,11 @@ describe("buildReportData — META FORM LEADS from result_type 'Leads (form)', n
     const previewLabels = preview.map((m) => m.label);
     expect(previewLabels).not.toContain("CPM");
     expect(previewLabels).not.toContain("FREQUENCY");
+    // No Link clicks column in this Instant Form preview — do not pre-select
+    // a Link clicks chip the export never contained.
+    expect(previewLabels).not.toContain("LINK CLICKS");
+    expect(preview.map((m) => m.key)).not.toContain("link_clicks");
+    expect(preview.map((m) => m.key)).not.toContain("cpc_link_click");
   });
 });
 

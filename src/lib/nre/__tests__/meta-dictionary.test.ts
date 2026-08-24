@@ -6,6 +6,13 @@ describe("findMetaMetric", () => {
     expect(findMetaMetric("amount spent")?.key).toBe("spend");
   });
 
+  it("maps Amount spent (INR/GBP/EUR/AUD) to the same spend key as USD/CAD", () => {
+    expect(findMetaMetric("Amount spent (INR)")?.key).toBe("spend");
+    expect(findMetaMetric("Amount spent (GBP)")?.key).toBe("spend");
+    expect(findMetaMetric("Amount spent (EUR)")?.key).toBe("spend");
+    expect(findMetaMetric("Amount spent (AUD)")?.key).toBe("spend");
+  });
+
   it("is case-insensitive and trims whitespace", () => {
     expect(findMetaMetric("  Amount Spent  ")?.key).toBe("spend");
   });

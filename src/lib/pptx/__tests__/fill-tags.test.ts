@@ -663,6 +663,13 @@ describe("buildCampaignOrAdSetSlideXml — Part 1: 8th card slot", () => {
     expect(xml).not.toContain("{{METRIC_8_VALUE}}");
   });
 
+  it("blanks leftover template CPC (All) when fewer than 7 dynamic slots are assigned", () => {
+    const slide = { ...makeCampaignSlide("Form - Leads"), dynamicMetrics: sevenSlotMetrics().slice(0, 6) };
+    const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
+    expect(xml).not.toMatch(/CPC \(All\)/);
+    expect(xml).toContain("—");
+  });
+
   it("retexts physical slot 7 (template CPC (All)) to LINK CLICKS even when the value is a dash", () => {
     const slots = [
       ...sevenSlotMetrics().slice(0, 6),
