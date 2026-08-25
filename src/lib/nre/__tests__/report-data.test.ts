@@ -3566,12 +3566,14 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS", value: "70" }); // 7 days x 10
   });
 
-  it("assigns slots 4/5/7 for the REACH objective (CPM/Frequency/Link Clicks) — Frequency, not Cost Per 1K Reached", () => {
+  it("assigns Reach defaults as frequency/CPM/CTR/CPC (all)/cost-per-1k — not LPV or link clicks", () => {
     const reachRows = daysInclusive(13, 19).map((day) =>
       dynamicRow(day, 50, 500, 2, "Reach", {
         "CPM (Cost per 1,000 Impressions)": "3",
         Frequency: "1.8",
+        "CPC (all)": "0.42",
         "Link clicks": "10",
+        "Landing page views": "1",
       }),
     );
     const data = buildReportData({
@@ -3583,9 +3585,21 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
       now: NOW,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[3]).toMatchObject({ key: "cpm", label: "CPM" });
-    expect(slots[4]).toMatchObject({ key: "frequency", label: "FREQUENCY", value: "1.80x" });
-    expect(slots[6]).toMatchObject({ key: "link_clicks", label: "LINK CLICKS" });
+    expect(slots.map((s) => s?.key)).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "frequency",
+      "cpm",
+      "ctr",
+      "cpc_all",
+      "cost_per_1k_reached",
+    ]);
+    expect(slots[3]).toMatchObject({ key: "frequency", label: "FREQUENCY", value: "1.80x" });
+    expect(slots[4]).toMatchObject({ key: "cpm", label: "CPM" });
+    expect(slots[6]).toMatchObject({ key: "cpc_all", label: "CPC (ALL)" });
+    expect(slots.map((s) => s?.key)).not.toContain("landing_page_views");
+    expect(slots.map((s) => s?.key)).not.toContain("link_clicks");
   });
 
   // Round I bug fix: previously this slot showed the case's own candidate

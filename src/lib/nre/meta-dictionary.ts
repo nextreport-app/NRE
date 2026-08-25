@@ -80,7 +80,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   // Result rate is judged too granular a number for a standalone metric
   // card, so it stays metadata-only. Frequency's own entry lives down in
   // the "Awareness / CPM" section below — it's used as the REACH/UNIQUE
-  // REACH objective's slot 5 (see slot-assignment.ts's buildMetaSlots).
+  // REACH objective's slot 4 (see slot-assignment.ts's buildMetaSlots).
   { csvName: "result rate", key: "result_rate", type: "metadata" },
   { csvName: "quality ranking", key: "quality_ranking", type: "never" },
   { csvName: "engagement rate ranking", key: "engagement_rate_ranking", type: "never" },
@@ -436,7 +436,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     perUnitOf: "reach",
     perUnitScale: 1000,
   },
-  // Used as the REACH/UNIQUE REACH objective's slot 5 (see
+  // Used as the REACH/UNIQUE REACH objective's slot 4 (see
   // slot-assignment.ts's buildMetaSlots) — averaged across rows like CTR,
   // not summed (a frequency of 6.0 across 3 days isn't 2.0+2.0+2.0).
   {

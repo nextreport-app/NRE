@@ -39,6 +39,7 @@ function fullMetaRows(): RawMetricRow[] {
         "Link clicks": "800",
         "CPC (cost per link click)": "0.60",
         "Clicks (all)": "1200",
+        "CPC (all)": "0.42",
         "Landing page views": "300",
         "Cost per landing page view": "1.50",
         "CPM (cost per 1,000 impressions)": "12.50",
@@ -158,6 +159,7 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     "Post reactions",
     "App events",
     "Clicks (all)",
+    "CPC (all)",
   ];
 
   it.each(["WEBSITE LEADS", "LINK CLICKS", "REACH", "VIDEO VIEWS", "MESSAGING LEADS", "PURCHASES", "APP INSTALLS", "PAGE LIKES"])(
@@ -239,6 +241,44 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
       "link_clicks",
       "cpc_link_click",
     ]);
+  });
+
+  it("Reach defaults never pre-select LPV even when Landing page views is in the CSV — Add from CSV still offers it", () => {
+    const headers = [
+      "Campaign name",
+      "Amount spent",
+      "Reach",
+      "Impressions",
+      "CTR (All)",
+      "Frequency",
+      "CPM (cost per 1,000 impressions)",
+      "CPC (all)",
+      "Landing page views",
+      "Cost per landing page view",
+      "Link clicks",
+    ];
+    const keys = defaultMetaSelection("REACH", "COST PER 1K REACH", headers).map((m) => m.key);
+    expect(keys).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "frequency",
+      "cpm",
+      "ctr",
+      "cpc_all",
+      "cost_per_1k_reached",
+    ]);
+    expect(keys).not.toContain("landing_page_views");
+    expect(keys).not.toContain("cost_per_lpv");
+
+    const selectable = listSelectableMetrics(headers, "META").map((m) => m.key);
+    expect(selectable).toContain("landing_page_views");
+    expect(selectable).toContain("cost_per_lpv");
+
+    const selected = defaultMetaSelection("REACH", "COST PER 1K REACH", headers);
+    const addable = filterAddableMetrics(listSelectableMetrics(headers, "META"), selected).map((m) => m.key);
+    expect(addable).toContain("landing_page_views");
+    expect(addable).toContain("cost_per_lpv");
   });
 
   // Regression for the Metric Review step's "Website Leads shows as both a

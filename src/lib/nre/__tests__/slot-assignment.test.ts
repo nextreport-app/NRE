@@ -41,6 +41,7 @@ function fullRows(): RawMetricRow[] {
       "Link clicks": "800",
       "CPC (cost per link click)": "0.60",
       "Clicks (all)": "1200",
+      "CPC (all)": "0.42",
       "Landing page views": "300",
       "Cost per landing page view": "1.50",
       "CPM (cost per 1,000 impressions)": "12.50",
@@ -133,8 +134,8 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
   // slots, so CLICKS (ALL) is still a valid (non-redundant) fallback there.
   it.each([
     ["LINK CLICKS", "cost_per_lpv"],
-    ["REACH", "cpc_link_click"],
-    ["UNIQUE REACH", "cpc_link_click"],
+    ["REACH", "cost_per_1k_reached"],
+    ["UNIQUE REACH", "cost_per_1k_reached"],
     ["LANDING PAGE VIEWS", "cpc_link_click"],
     ["PAGE LIKES", "clicks_all"],
     ["POST ENGAGEMENTS", "post_reactions"],
@@ -148,25 +149,33 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
     expect(slots[7]?.key).toBe(expectedKey);
   });
 
-  it("skips landing page views on a non-LPV campaign when the count is only 1", () => {
+  it("Reach defaults are spend/reach/impressions/frequency/CPM/CTR/CPC/cost-per-1k — never LPV", () => {
     const rows = [
       row({
         "Amount spent": "212",
         Reach: "8000",
         Impressions: "20000",
         "Link clicks": "90",
-        "CPC (cost per link click)": "2.35",
+        "CPC (all)": "2.35",
         "Landing page views": "1",
         "CTR (all)": "1.2",
         Frequency: "1.4",
+        "CPM (cost per 1,000 impressions)": "10.6",
       }),
     ];
     const slots = buildMetaSlots(metaBaseline({ resultLabel: "REACH" }), rows, "$");
+    expect(slots.map((s) => s?.key)).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "frequency",
+      "cpm",
+      "ctr",
+      "cpc_all",
+      "cost_per_1k_reached",
+    ]);
     expect(slots.map((s) => s?.key)).not.toContain("landing_page_views");
     expect(slots.map((s) => s?.key)).not.toContain("cost_per_lpv");
-    const traffic = buildMetaSlots(metaBaseline({ resultLabel: "LINK CLICKS" }), rows, "$");
-    expect(traffic.map((s) => s?.key)).not.toContain("landing_page_views");
-    expect(traffic.map((s) => s?.key)).not.toContain("cost_per_lpv");
   });
 
   it("never selects CLICKS (ALL) for slot 8 when LINK CLICKS is already shown elsewhere in the same card set — Issue 1", () => {

@@ -39,4 +39,22 @@ describe("METRIC_PACKS", () => {
       LEADS_META_FORM_PACK.keys,
     );
   });
+
+  it("Reach pack is frequency/CPM/CPC (all)/cost-per-1k — LPV is not in the default 8", () => {
+    const pack = packForResultLabel("REACH");
+    expect(pack?.id).toBe("awareness_reach");
+    expect(pack?.keys).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "frequency",
+      "cpm",
+      "ctr",
+      "cpc_all",
+      "cost_per_1k_reached",
+    ]);
+    expect(pack?.keys).not.toContain("landing_page_views");
+    expect(pack?.keys).not.toContain("cost_per_lpv");
+    expect(packForResultLabel("UNIQUE REACH")?.keys).toEqual(pack?.keys);
+  });
 });
