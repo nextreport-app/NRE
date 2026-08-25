@@ -408,3 +408,94 @@ export function replaceCardIcon(xml: string, valueLocatorText: string, newRelId:
   const last = matches[matches.length - 1];
   return xml.slice(0, last.index) + `r:embed="${newRelId}"` + xml.slice(last.index! + last[0].length);
 }
+
+const CARD_GROUP_OPEN = "<p:grpSp>";
+const CARD_GROUP_CLOSE = "</p:grpSp>";
+
+function matchingGrpSpEnd(xml: string, groupStart: number): number {
+  let depth = 0;
+  let i = groupStart;
+  while (i < xml.length) {
+    const nextOpen = xml.indexOf(CARD_GROUP_OPEN, i);
+    const nextClose = xml.indexOf(CARD_GROUP_CLOSE, i);
+    if (nextClose === -1) return -1;
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth += 1;
+      i = nextOpen + CARD_GROUP_OPEN.length;
+    } else {
+      depth -= 1;
+      i = nextClose + CARD_GROUP_CLOSE.length;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function markCnvPrHiddenInRange(xml: string, start: number, end: number): string {
+  const slice = xml.slice(start, end).replace(/<p:cNvPr\b([^>]*?)(\/?)>/g, (match, attrs: string, selfClose: string) => {
+    if (/\bhidden="1"/.test(attrs)) return match;
+    return `<p:cNvPr${attrs} hidden="1"${selfClose}>`;
+  });
+  return xml.slice(0, start) + slice + xml.slice(end);
+}
+
+/**
+ * Hides one unused metric card (background, icon, label, value) so a sparse
+ * continuation slide does not show seven dashed empty slots next to the
+ * extras the user actually picked.
+ *
+ * Full cards live in an outer `<p:grpSp>`; pair cards (CTR / cost / CPC)
+ * are sibling shapes. Locates the same way as replaceCardLabel: the value
+ * tag, then its preceding label / icon / background. No-op if the locator
+ * is missing. Call this BEFORE consuming the value tag.
+ */
+export function hideCardSlot(xml: string, valueLocatorText: string, otherValueTags: readonly string[] = []): string {
+  const valueIdx = xml.indexOf(valueLocatorText);
+  if (valueIdx === -1) return xml;
+
+  const groupStarts: number[] = [];
+  let search = 0;
+  while (search < valueIdx) {
+    const start = xml.indexOf(CARD_GROUP_OPEN, search);
+    if (start === -1 || start > valueIdx) break;
+    groupStarts.push(start);
+    search = start + CARD_GROUP_OPEN.length;
+  }
+
+  const containing: Array<[number, number]> = [];
+  for (const start of groupStarts) {
+    const end = matchingGrpSpEnd(xml, start);
+    if (end > valueIdx) containing.push([start, end]);
+  }
+  for (let i = containing.length - 1; i >= 0; i--) {
+    const [start, end] = containing[i];
+    const slice = xml.slice(start, end);
+    if (otherValueTags.every((tag) => !slice.includes(tag))) {
+      return markCnvPrHiddenInRange(xml, start, end);
+    }
+  }
+
+  const valueSpStart = xml.lastIndexOf("<p:sp>", valueIdx);
+  if (valueSpStart === -1) return xml;
+  const valueSpEnd = xml.indexOf("</p:sp>", valueIdx);
+  if (valueSpEnd === -1) return xml;
+  const valueEnd = valueSpEnd + "</p:sp>".length;
+
+  const labelSpEnd = xml.lastIndexOf("</p:sp>", valueSpStart);
+  if (labelSpEnd === -1) return markCnvPrHiddenInRange(xml, valueSpStart, valueEnd);
+  const labelSpStart = xml.lastIndexOf("<p:sp>", labelSpEnd);
+  if (labelSpStart === -1) return markCnvPrHiddenInRange(xml, valueSpStart, valueEnd);
+
+  let rangeStart = labelSpStart;
+  const picStart = xml.lastIndexOf("<p:pic>", labelSpStart);
+  if (picStart !== -1) {
+    const picEnd = xml.indexOf("</p:pic>", picStart);
+    if (picEnd !== -1 && picEnd < labelSpStart) {
+      rangeStart = picStart;
+      const bgEnd = xml.lastIndexOf("</p:sp>", picStart);
+      const bgStart = bgEnd === -1 ? -1 : xml.lastIndexOf("<p:sp>", bgEnd);
+      if (bgStart !== -1 && bgEnd > bgStart) rangeStart = bgStart;
+    }
+  }
+  return markCnvPrHiddenInRange(xml, rangeStart, valueEnd);
+}

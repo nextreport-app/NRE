@@ -9,10 +9,10 @@ import {
   additionalMetricsHeading,
   evaluateAddMetric,
   filterAddableMetrics,
-  incompleteSecondSlide,
+  findPrimaryResultCostPair,
   MAX_METRICS_PER_SLIDE,
   MAX_TOTAL_METRICS,
-  MIN_SECOND_SLIDE_METRICS,
+  SPARSE_CONTINUATION_EXTRAS,
   type SelectedMetric,
 } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
@@ -114,6 +114,13 @@ const ADSET_CHIP_CLASS =
   "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[12px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
 
 const MIN_SELECTED_METRICS = 4;
+
+function joinMetricLabels(metrics: SelectedMetric[]): string {
+  const labels = metrics.map((item) => item.label);
+  if (labels.length <= 1) return labels[0] ?? "";
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -401,7 +408,7 @@ export function ReportUploadWizard({
     campaignName: string;
     normalized: string;
     metric: SelectedMetric;
-    mode: "blocked_cap8" | "confirm_second_slide" | "blocked_max";
+    mode: "confirm_second_slide" | "blocked_max";
   } | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
@@ -859,16 +866,6 @@ export function ReportUploadWizard({
 
   // ── Step 4 -> 5: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
-    const incomplete = campaigns.filter((name) => {
-      const metrics = perCampaignMetrics.get(normalizeCampaignName(name));
-      return metrics ? incompleteSecondSlide(metrics.length) : false;
-    });
-    if (incomplete.length > 0) {
-      setPerCampaignMinWarning(
-        `A second slide needs at least ${MIN_SECOND_SLIDE_METRICS} extra metrics (12 total chips), or stay at 8. Right now ${incomplete.join(", ")} would leave a nearly empty extra slide. Replace a chip on slide 1, or add more extras.`,
-      );
-      return;
-    }
     setPerCampaignMinWarning(null);
     setStep(5);
   }
@@ -1038,11 +1035,10 @@ export function ReportUploadWizard({
     setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, current.filter((m) => m.key !== key)));
   }
 
-  /** Adds one metric pill, with the 8/12/16 overflow policy (no lonely 9th card). */
+  /** Adds one metric pill. 8 → 9 confirms a continuation slide; 9–16 add freely. */
   function addCampaignMetric(normalizedName: string, metric: SelectedMetric, campaignName: string) {
     const current = perCampaignMetrics.get(normalizedName) ?? [];
-    const addableRemaining = campaignAvailableMetrics(normalizedName).length;
-    const decision = evaluateAddMetric(current.length, addableRemaining);
+    const decision = evaluateAddMetric(current.length);
     if (decision === "allow") {
       setPerCampaignMinWarning(null);
       setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
@@ -1055,9 +1051,7 @@ export function ReportUploadWizard({
     if (!overflowDialog) return;
     const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
     setPerCampaignMetrics((prev) => new Map(prev).set(overflowDialog.normalized, [...current, overflowDialog.metric]));
-    setPerCampaignMinWarning(
-      `Extra chips go on a second slide. Add at least ${MIN_SECOND_SLIDE_METRICS} extras (12 total) so that slide is not empty, or remove back to 8.`,
-    );
+    setPerCampaignMinWarning(null);
     setOverflowDialog(null);
   }
 
@@ -1980,19 +1974,34 @@ export function ReportUploadWizard({
                         ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
                         : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on ${additionalMetricsHeading(name)}`}
                     </p>
-                    {incompleteSecondSlide(selectedForCampaign.length) && (
-                      <p className="mt-2 rounded-md border border-amber-800 bg-amber-950/40 p-2 text-[12px] text-amber-200">
-                        A second slide with only {selectedForCampaign.length - MAX_METRICS_PER_SLIDE} metric
-                        {selectedForCampaign.length - MAX_METRICS_PER_SLIDE === 1 ? "" : "s"} looks empty. Add extras until
-                        you have at least {MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS} chips, or remove extras back to{" "}
-                        {MAX_METRICS_PER_SLIDE} and replace one of the current 8 instead.
-                      </p>
-                    )}
-                    {selectedForCampaign.length >= MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS && (
-                      <p className="mt-2 text-[12px] text-dash-ink-secondary">
-                        Extra chips go onto a continuation slide. Ad-set slides use this same list.
-                      </p>
-                    )}
+                    {selectedForCampaign.length > MAX_METRICS_PER_SLIDE && (() => {
+                      const extraCount = selectedForCampaign.length - MAX_METRICS_PER_SLIDE;
+                      const fillers = findPrimaryResultCostPair(
+                        selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE),
+                        objective?.resultLabel,
+                      );
+                      const sparse = extraCount <= SPARSE_CONTINUATION_EXTRAS && fillers.length > 0;
+                      return (
+                        <p className="mt-2 rounded-md border border-amber-800 bg-amber-950/40 p-2 text-[12px] text-amber-200">
+                          {sparse ? (
+                            <>
+                              Slide 1 keeps the first {MAX_METRICS_PER_SLIDE} chips. Slide 2 will show your {extraCount} extra
+                              {extraCount === 1 ? "" : "s"} plus {joinMetricLabels(fillers)} from this campaign so the
+                              continuation is not a single empty-looking card
+                              {extraCount < SPARSE_CONTINUATION_EXTRAS
+                                ? " — add more extras from your CSV if you want those on the second slide too"
+                                : ""}
+                              . Unused slots stay hidden. Ad-set slides use the same list.
+                            </>
+                          ) : (
+                            <>
+                              Extra chips go onto a continuation slide ({extraCount} extra
+                              {extraCount === 1 ? "" : "s"}). Ad-set slides use this same list.
+                            </>
+                          )}
+                        </p>
+                      );
+                    })()}
 
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
@@ -2076,8 +2085,7 @@ export function ReportUploadWizard({
             <button
               onClick={handleMetricsContinue}
               disabled={[...perCampaignMetrics.values()].some(
-                (metrics) =>
-                  (metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS) || incompleteSecondSlide(metrics.length),
+                (metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS,
               )}
               className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
@@ -2096,33 +2104,33 @@ export function ReportUploadWizard({
                     </p>
                   </>
                 )}
-                {overflowDialog.mode === "blocked_cap8" && (
-                  <>
-                    <p className="text-[15px] font-semibold text-dash-ink">Stay on one slide — this export has too few extra columns</p>
-                    <p className="mt-2 text-[13px] text-dash-ink-secondary">
-                      Eight chips already fill the campaign slide. This CSV does not have {MIN_SECOND_SLIDE_METRICS} extra
-                      metrics to fill a second slide honestly, so adding only {overflowDialog.metric.label} would leave a
-                      nearly empty continuation slide. Replace one of the current 8 instead.
-                    </p>
-                  </>
-                )}
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <>
-                    <p className="text-[15px] font-semibold text-dash-ink">This 9th metric opens a second slide</p>
+                    <p className="text-[15px] font-semibold text-dash-ink">This extra opens a second slide</p>
                     <p className="mt-2 text-[13px] text-dash-ink-secondary">
-                      Eight chips fill one slide. Adding {overflowDialog.metric.label} alone would look sparse on the extra
-                      slide. Prefer replacing a less important chip below so everything stays on one slide. If you still
-                      want a second slide, continue — then add extras until you have at least{" "}
-                      {MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS} chips ({MIN_SECOND_SLIDE_METRICS} on the extra
-                      slide). Ad-set slides use the same list.
+                      {(() => {
+                        const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
+                        const objective = campaignObjectives.get(overflowDialog.normalized);
+                        const fillers = findPrimaryResultCostPair(current.slice(0, MAX_METRICS_PER_SLIDE), objective?.resultLabel);
+                        const fillText = fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
+                        return (
+                          <>
+                            Slide 1 will keep the first {MAX_METRICS_PER_SLIDE} chips. Adding {overflowDialog.metric.label}{" "}
+                            alone would leave the continuation looking empty, so we will also repeat {fillText} on that
+                            slide — at least 3 cards (your extra plus this campaign&apos;s result and cost). Add more extras
+                            from your CSV after this if you want those on the second slide too. Or replace a chip below
+                            to keep everything on one slide. Ad-set slides use the same list.
+                          </>
+                        );
+                      })()}
                     </p>
                   </>
                 )}
 
-                {(overflowDialog.mode === "blocked_cap8" || overflowDialog.mode === "confirm_second_slide") && (
+                {overflowDialog.mode === "confirm_second_slide" && (
                   <div className="mt-3">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
-                      Replace one of the current 8
+                      Optional — replace one of the current {MAX_METRICS_PER_SLIDE} instead
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
                       {(perCampaignMetrics.get(overflowDialog.normalized) ?? []).slice(0, MAX_METRICS_PER_SLIDE).map((m) => (
@@ -2146,7 +2154,7 @@ export function ReportUploadWizard({
                       onClick={confirmOpenSecondSlide}
                       className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink"
                     >
-                      Add it — I&apos;ll fill the extra slide
+                      Add anyway
                     </button>
                   )}
                   <button

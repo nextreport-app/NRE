@@ -4,6 +4,7 @@ import {
   escapeXmlText,
   findCardIconRelId,
   forceRunStyle,
+  hideCardSlot,
   replaceCardIcon,
   replaceCardLabel,
   replaceTagRun,
@@ -256,6 +257,25 @@ describe("findCardIconRelId / replaceCardIcon", () => {
 
   it("is a no-op when the value locator text isn't found", () => {
     expect(replaceCardIcon(FULL_CARD_XML, "{{METRIC_NOPE}}", "rId9")).toBe(FULL_CARD_XML);
+  });
+});
+
+describe("hideCardSlot", () => {
+  it("marks the enclosing full-card group hidden so unused chrome does not render", () => {
+    const out = hideCardSlot(FULL_CARD_XML, "{{METRIC_SPEND}}");
+    expect(out).toContain('name="Card" hidden="1"');
+    expect(out).toContain("{{METRIC_SPEND}}");
+  });
+
+  it("hides pair-card siblings (background, icon, label, value)", () => {
+    const out = hideCardSlot(PAIR_CARD_XML, "{{METRIC_CTR}}");
+    expect(out).toContain('name="Bg" hidden="1"');
+    expect(out).toContain('name="Label" hidden="1"');
+    expect(out).toContain('name="Value" hidden="1"');
+  });
+
+  it("is a no-op when the value locator text isn't found", () => {
+    expect(hideCardSlot(FULL_CARD_XML, "{{METRIC_NOPE}}")).toBe(FULL_CARD_XML);
   });
 });
 
