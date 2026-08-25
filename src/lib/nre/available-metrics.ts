@@ -175,9 +175,9 @@ export type AddMetricDecision = "allow" | "confirm_second_slide" | "blocked_max"
  * What should happen when the user clicks + on an Add-from-CSV chip.
  *
  * The 9th chip is never blocked because the CSV has only 1–3 extras left.
- * 8 → 9 asks once (continuation slide), then 10–16 add freely. Unused
- * slots on a sparse second slide are hidden at render time — we do not
- * invent padding metrics, shrink the primary 8, or duplicate slide 1.
+ * 8 → 9 asks once (continuation slide), then 10–16 add freely. A sparse
+ * continuation (1–3 extras) is padded with that campaign's result + cost
+ * pair from slide 1 so clients never see a one-card slide.
  */
 export function evaluateAddMetric(selectedCount: number, _addableRemaining = 0): AddMetricDecision {
   if (selectedCount >= MAX_TOTAL_METRICS) return "blocked_max";
@@ -190,16 +190,75 @@ export function additionalMetricsHeading(name: string): string {
   return `${name} — Additional Metrics (continued from previous slide)`;
 }
 
+/** Pad the continuation when the user added this many extras or fewer (1–3). Four extras already fill the slide honestly. */
+export const SPARSE_CONTINUATION_EXTRAS = 3;
+
+/**
+ * The campaign's own result + cost-per-result chips from slide 1 (leads /
+ * cost per lead, purchases / cost per purchase, CPM / cost per 1k, …).
+ * Engine default packs put this pair in slots 4–5 (indices 3–4).
+ */
+export function findPrimaryResultCostPair(slide1: SelectedMetric[], resultLabel?: string): SelectedMetric[] {
+  const found: SelectedMetric[] = [];
+  const take = (key: string | undefined) => {
+    if (!key) return;
+    const metric = slide1.find((item) => item.key === key);
+    if (metric && !found.some((item) => item.key === metric.key)) found.push(metric);
+  };
+
+  if (resultLabel) {
+    const { resultKey, costKey, dedicated } = objectiveMetricKeys(resultLabel);
+    take(resultKey);
+    take(costKey);
+    if (!dedicated) {
+      take("results");
+      take("cost_per_result");
+    }
+  }
+  if (found.length < 2) {
+    take("results");
+    take("cost_per_result");
+  }
+  if (found.length < 2 && slide1.length >= 5) {
+    take(slide1[3]?.key);
+    take(slide1[4]?.key);
+  }
+  return found.slice(0, 2);
+}
+
+/**
+ * User extras first (the chips they added), then the slide-1 result/cost
+ * pair when extras are sparse — so 1 extra becomes at least 3 cards.
+ * Never invents CSV columns the user did not pick; only repeats chips
+ * already on slide 1. 4+ extras are left as-is.
+ */
+export function padSparseContinuationSlide(
+  slide1: SelectedMetric[],
+  extras: SelectedMetric[],
+  resultLabel?: string,
+): SelectedMetric[] {
+  if (extras.length === 0 || extras.length > SPARSE_CONTINUATION_EXTRAS) return extras;
+  const extraKeys = new Set(extras.map((item) => item.key));
+  const fillers = findPrimaryResultCostPair(slide1, resultLabel).filter((item) => !extraKeys.has(item.key));
+  return [...extras, ...fillers].slice(0, MAX_METRICS_PER_SLIDE);
+}
+
 /**
  * Splits a wizard selection into one slide (≤8) or two (9–16). Slide 1 is
- * the first 8 in the user's order; slide 2 is the rest, never padded with
- * unselected CSV columns. 9–11 is a valid sparse continuation. Selections
+ * the first 8 in the user's order; slide 2 is the extras, padded with the
+ * campaign's result + cost pair when those extras are 1–3. Selections
  * beyond MAX_TOTAL_METRICS are dropped.
  */
-export function splitMetricsForSlides(selected: SelectedMetric[], _available: AvailableMetric[] = []): SelectedMetric[][] {
+export function splitMetricsForSlides(
+  selected: SelectedMetric[],
+  _available: AvailableMetric[] = [],
+  resultLabel?: string,
+): SelectedMetric[][] {
   const capped = selected.slice(0, MAX_TOTAL_METRICS);
   if (capped.length <= MAX_METRICS_PER_SLIDE) return [capped];
-  return [capped.slice(0, MAX_METRICS_PER_SLIDE), capped.slice(MAX_METRICS_PER_SLIDE)];
+  const slide1 = capped.slice(0, MAX_METRICS_PER_SLIDE);
+  const extras = capped.slice(MAX_METRICS_PER_SLIDE);
+  return [slide1, padSparseContinuationSlide(slide1, extras, resultLabel)];
 }
 
 function byKey(platform: MetricPlatform, key: string, labelOverride?: string, formatOverride?: MetricFormat): SelectedMetric | null {

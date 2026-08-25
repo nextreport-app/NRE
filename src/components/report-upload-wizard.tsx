@@ -9,8 +9,10 @@ import {
   additionalMetricsHeading,
   evaluateAddMetric,
   filterAddableMetrics,
+  findPrimaryResultCostPair,
   MAX_METRICS_PER_SLIDE,
   MAX_TOTAL_METRICS,
+  SPARSE_CONTINUATION_EXTRAS,
   type SelectedMetric,
 } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
@@ -112,6 +114,13 @@ const ADSET_CHIP_CLASS =
   "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[12px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
 
 const MIN_SELECTED_METRICS = 4;
+
+function joinMetricLabels(metrics: SelectedMetric[]): string {
+  const labels = metrics.map((item) => item.label);
+  if (labels.length <= 1) return labels[0] ?? "";
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -1965,17 +1974,34 @@ export function ReportUploadWizard({
                         ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
                         : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on ${additionalMetricsHeading(name)}`}
                     </p>
-                    {selectedForCampaign.length > MAX_METRICS_PER_SLIDE && (
-                      <p className="mt-2 text-[12px] text-dash-ink-secondary">
-                        Extra chips go onto a continuation slide
-                        {selectedForCampaign.length - MAX_METRICS_PER_SLIDE < MAX_METRICS_PER_SLIDE
-                          ? ` (${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} extra${
-                              selectedForCampaign.length - MAX_METRICS_PER_SLIDE === 1 ? "" : "s"
-                            } — unused slots on that slide stay hidden)`
-                          : ""}
-                        . Ad-set slides use this same list.
-                      </p>
-                    )}
+                    {selectedForCampaign.length > MAX_METRICS_PER_SLIDE && (() => {
+                      const extraCount = selectedForCampaign.length - MAX_METRICS_PER_SLIDE;
+                      const fillers = findPrimaryResultCostPair(
+                        selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE),
+                        objective?.resultLabel,
+                      );
+                      const sparse = extraCount <= SPARSE_CONTINUATION_EXTRAS && fillers.length > 0;
+                      return (
+                        <p className="mt-2 rounded-md border border-amber-800 bg-amber-950/40 p-2 text-[12px] text-amber-200">
+                          {sparse ? (
+                            <>
+                              Slide 1 keeps the first {MAX_METRICS_PER_SLIDE} chips. Slide 2 will show your {extraCount} extra
+                              {extraCount === 1 ? "" : "s"} plus {joinMetricLabels(fillers)} from this campaign so the
+                              continuation is not a single empty-looking card
+                              {extraCount < SPARSE_CONTINUATION_EXTRAS
+                                ? " — add more extras from your CSV if you want those on the second slide too"
+                                : ""}
+                              . Unused slots stay hidden. Ad-set slides use the same list.
+                            </>
+                          ) : (
+                            <>
+                              Extra chips go onto a continuation slide ({extraCount} extra
+                              {extraCount === 1 ? "" : "s"}). Ad-set slides use this same list.
+                            </>
+                          )}
+                        </p>
+                      );
+                    })()}
 
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
@@ -2080,12 +2106,23 @@ export function ReportUploadWizard({
                 )}
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <>
-                    <p className="text-[15px] font-semibold text-dash-ink">This metric opens a continuation slide</p>
+                    <p className="text-[15px] font-semibold text-dash-ink">This extra opens a second slide</p>
                     <p className="mt-2 text-[13px] text-dash-ink-secondary">
-                      Adding {overflowDialog.metric.label} keeps the first {MAX_METRICS_PER_SLIDE} chips on slide 1 and
-                      puts extras on a second slide — even if that is only one, two, or three cards. Unused slots on
-                      that slide stay hidden. You can add more extras after this, or replace one of the current chips
-                      below if you would rather stay on a single slide. Ad-set slides use the same list.
+                      {(() => {
+                        const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
+                        const objective = campaignObjectives.get(overflowDialog.normalized);
+                        const fillers = findPrimaryResultCostPair(current.slice(0, MAX_METRICS_PER_SLIDE), objective?.resultLabel);
+                        const fillText = fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
+                        return (
+                          <>
+                            Slide 1 will keep the first {MAX_METRICS_PER_SLIDE} chips. Adding {overflowDialog.metric.label}{" "}
+                            alone would leave the continuation looking empty, so we will also repeat {fillText} on that
+                            slide — at least 3 cards (your extra plus this campaign&apos;s result and cost). Add more extras
+                            from your CSV after this if you want those on the second slide too. Or replace a chip below
+                            to keep everything on one slide. Ad-set slides use the same list.
+                          </>
+                        );
+                      })()}
                     </p>
                   </>
                 )}

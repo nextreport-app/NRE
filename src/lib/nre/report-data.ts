@@ -1157,14 +1157,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       override ? metricsInOverrideOrder(override, selectedMetrics) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
-    const [slide1Keys, slide2Keys] = splitMetricsForSlides(relevantMetrics, availableMetricsPool);
-    // WYSIWYG — the wizard's own selection (per-campaign override or the
-    // engine's own defaultMetaSelection default, narrowed by
-    // filterMetricsForCampaignObjective/stripNeverKeys above) is used
-    // exactly as-is, in that exact order: no compaction, no shuffling, no
-    // padding from other CSV-detected candidates. A selected metric with no
-    // real data for THIS campaign keeps its label and shows "—" (buildSlotsFromSelection).
-    // fill-tags.ts must still retext that slot so template "CPC (All)" cannot linger.
+    const [slide1Keys, slide2Keys] = splitMetricsForSlides(
+      relevantMetrics,
+      availableMetricsPool,
+      campaignObjective?.resultLabel,
+    );
+    // Slide 1 is the wizard selection in chip order. Slide 2 is extras;
+    // if those extras are 1–3, padSparseContinuationSlide repeats this
+    // campaign's result + cost pair from slide 1 so the continuation is
+    // never a single lonely card. No invented CSV columns. A selected
+    // metric with no real data for THIS campaign keeps its label and
+    // shows "—" (buildSlotsFromSelection). fill-tags.ts must still retext
+    // that slot so template "CPC (All)" cannot linger.
     const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol);
     const additionalMetricsSlide = slide2Keys
       ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol)

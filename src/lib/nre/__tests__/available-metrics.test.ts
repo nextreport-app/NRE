@@ -9,6 +9,8 @@ import {
   MAX_TOTAL_METRICS,
   additionalMetricsHeading,
   evaluateAddMetric,
+  findPrimaryResultCostPair,
+  padSparseContinuationSlide,
   splitMetricsForSlides,
   type AvailableMetric,
   type ObjectivePair,
@@ -537,12 +539,54 @@ describe("splitMetricsForSlides — Part 4", () => {
     expect(slide2.map((m) => m.key)).toEqual(["m8", "m9", "m10", "m11"]);
   });
 
-  it("does not invent padding metrics the user never selected", () => {
+  it("does not invent padding from unselected CSV columns", () => {
     const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`));
     const available = [metric("pad_low", 40), metric("pad_high", 90), metric("pad_mid", 60)];
     const [, slide2] = splitMetricsForSlides(sel, available);
-    expect(slide2.map((m) => m.key)).toEqual(["m8"]);
-    expect(slide2).toHaveLength(1);
+    expect(slide2.map((m) => m.key)).not.toContain("pad_low");
+    expect(slide2.map((m) => m.key)).not.toContain("pad_high");
+  });
+
+  it("pads a single extra with slide 1's result + cost pair so the continuation has at least 3 cards", () => {
+    const slide1 = [
+      selected("spend"),
+      selected("reach"),
+      selected("impressions"),
+      selected("results"),
+      selected("cost_per_result"),
+      selected("ctr"),
+      selected("link_clicks"),
+      selected("cpc_all"),
+    ];
+    const extras = [selected("frequency")];
+    expect(padSparseContinuationSlide(slide1, extras, "WEBSITE LEADS").map((m) => m.key)).toEqual([
+      "frequency",
+      "results",
+      "cost_per_result",
+    ]);
+    const [first, second] = splitMetricsForSlides([...slide1, selected("frequency")], [], "WEBSITE LEADS");
+    expect(first.map((m) => m.key)).toEqual(slide1.map((m) => m.key));
+    expect(second.map((m) => m.key)).toEqual(["frequency", "results", "cost_per_result"]);
+  });
+
+  it("findPrimaryResultCostPair prefers the objective pair, then results/cost_per_result, then slots 4–5", () => {
+    const slide1 = [
+      selected("spend"),
+      selected("reach"),
+      selected("impressions"),
+      selected("purchases"),
+      selected("cost_per_purchases"),
+      selected("ctr"),
+      selected("link_clicks"),
+      selected("cpc_all"),
+    ];
+    expect(findPrimaryResultCostPair(slide1, "PURCHASES").map((m) => m.key)).toEqual(["purchases", "cost_per_purchases"]);
+  });
+
+  it("does not pad when the user already added 4 extras", () => {
+    const slide1 = Array.from({ length: 8 }, (_, i) => selected(`m${i}`));
+    const extras = [selected("a"), selected("b"), selected("c"), selected("d")];
+    expect(padSparseContinuationSlide(slide1, extras).map((m) => m.key)).toEqual(["a", "b", "c", "d"]);
   });
 
   it("evaluateAddMetric never blocks a 9th chip when extras are sparse — Add anyway opens a continuation", () => {
