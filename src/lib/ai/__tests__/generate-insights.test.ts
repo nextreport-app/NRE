@@ -3,6 +3,7 @@ import { generateInsights } from "../generate-insights";
 import { callAI } from "../client";
 import { slideAiKey } from "../../pptx/render";
 import type { ReportData } from "../../nre/report-data";
+import { buildFallbackInsights, buildFallbackSummary, buildPausedZeroResultsInsights, buildZeroResultsSummary } from "../prompts";
 
 // Realistic-shaped default: 2 sentence-endings for the summary prompt, 3 for
 // the insights prompt — matching MIN_SUMMARY_SENTENCES/MIN_INSIGHTS_SENTENCES
@@ -16,9 +17,13 @@ const { DEFAULT_AI_MOCK } = vi.hoisted(() => ({
       : Promise.resolve(`AI:${prompt.slice(0, 10)} insight sentence one. AI insight sentence two. AI insight sentence three.`),
 }));
 
-vi.mock("../client", () => ({
-  callAI: vi.fn(DEFAULT_AI_MOCK),
-}));
+vi.mock("../client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../client")>();
+  return {
+    ...actual,
+    callAI: vi.fn(DEFAULT_AI_MOCK),
+  };
+});
 
 // Fix 4 — the paused-copy summary now substitutes real spend/reach/
 // impressions rather than a fully fixed string; makeReportData's fixture
@@ -28,10 +33,7 @@ vi.mock("../client", () => ({
 function pausedSummaryText(spend: string): string {
   return `This campaign was paused this week with no new results recorded. During the period ${spend} was spent reaching 1,000 people across 2,000 impressions.`;
 }
-const PAUSED_INSIGHTS_TEXT =
-  "The campaign was paused this week, so no new performance data is available. Once reactivated, budget will " +
-  "be directed toward the previous top-performing ads while underperformers stay paused, with creatives and " +
-  "targeting refreshed before spend ramps back up.";
+const PAUSED_INSIGHTS_TEXT = buildPausedZeroResultsInsights();
 
 function makeReportData(
   opts: {
@@ -235,9 +237,7 @@ describe("generateInsights", () => {
 
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
       expect(campaignCopy.summary).toBe(
-        "This campaign is active but recorded no leads this week, with $100 spent reaching 1,000 people across " +
-          "2,000 impressions. The campaign is in the optimisation phase and performance is expected to improve " +
-          "as the algorithm learns.",
+        buildZeroResultsSummary(data.campaignSlides[0].ai),
       );
       expect(campaignCopy.summary).not.toContain("—"); // the exact malformed-phrase bug this fix targets
     });
@@ -295,11 +295,7 @@ describe("generateInsights", () => {
       const result = await generateInsights(data, { anthropicApiKey: "k" });
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
-      expect(campaignCopy.summary).toBe(
-        "This campaign generated 5 LEADS at $20.00 COST PER LEAD, spending $100 to reach 1,000 people across " +
-          "2,000 impressions. The campaign achieved a 1.00% click-through rate at $2.00 cost per click, " +
-          "reflecting current audience engagement levels.",
-      );
+      expect(campaignCopy.summary).toBe(buildFallbackSummary(data.campaignSlides[0].ai));
       expect(campaignCopy.insights).toBe("AI insight sentence one. AI insight sentence two. AI insight sentence three.");
 
       vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK);
@@ -317,12 +313,7 @@ describe("generateInsights", () => {
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
       expect(campaignCopy.summary).toBe("AI summary sentence one. AI summary sentence two.");
-      expect(campaignCopy.insights).toBe(
-        "This week Campaign A spent $100 reaching 1,000 people with a 1.00% CTR. With 5 LEADS recorded, " +
-          "the campaign shows developing traction at $20.00 per result. To maximise results, budget will shift " +
-          "toward top-performing ads while underperformers are paused, with fresh creatives and refined targeting " +
-          "planned for the coming week.",
-      );
+      expect(campaignCopy.insights).toBe(buildFallbackInsights(data.campaignSlides[0].ai));
 
       vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK);
     });
@@ -357,8 +348,8 @@ describe("generateInsights", () => {
       const result = await generateInsights(data, { anthropicApiKey: "k" });
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
-      expect(campaignCopy.summary.endsWith("audience engagement levels.")).toBe(true);
-      expect(campaignCopy.insights.endsWith("planned for the coming week.")).toBe(true);
+      expect(campaignCopy.summary).toBe(buildFallbackSummary(data.campaignSlides[0].ai));
+      expect(campaignCopy.insights).toBe(buildFallbackInsights(data.campaignSlides[0].ai));
 
       warnSpy.mockRestore();
       vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK);
@@ -380,7 +371,7 @@ describe("generateInsights", () => {
       const result = await generateInsights(data, { anthropicApiKey: "k" });
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
-      expect(campaignCopy.summary.endsWith("audience engagement levels.")).toBe(true);
+      expect(campaignCopy.summary).toBe(buildFallbackSummary(data.campaignSlides[0].ai));
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("Final summary text for Campaign A was incomplete"),
       );
@@ -407,7 +398,7 @@ describe("generateInsights", () => {
       const campaignCopy = result.get(slideAiKey(data.campaignSlides[0]))!;
 
       expect(campaignCopy.summary).not.toContain("35");
-      expect(campaignCopy.summary.endsWith("audience engagement levels.")).toBe(true); // the structured fallback
+      expect(campaignCopy.summary).toBe(buildFallbackSummary(data.campaignSlides[0].ai));
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("result count mismatch"));
 
       warnSpy.mockRestore();

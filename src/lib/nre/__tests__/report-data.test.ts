@@ -1677,7 +1677,7 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
     expect(data.periodRow.resultColumns).toHaveLength(2);
   });
 
-  it("caps at 3 objective column pairs, keeping the top 3 by spend, when more than 3 objectives are present", () => {
+  it("keeps every distinct objective column pair, never dropping a live objective", () => {
     const periodRows: NreRow[] = [
       { _raw: {}, campaign_name: "A", ad_set_name: "Set 1", result_type: "Meta lead", spend: "596", reach: "1000", impressions: "2000", results: "14", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
       { _raw: {}, campaign_name: "B", ad_set_name: "Set 1", result_type: "Website lead", spend: "155", reach: "1000", impressions: "2000", results: "0", ctr: "1", cpc: "1", date_start: "01-06-2026", date_end: "30-06-2026" },
@@ -1695,13 +1695,9 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
       now: NOW,
     });
 
-    // 4 objectives present (Meta Form Leads $596, Reach $300, Website Leads
-    // $155, Purchases $50) — capped at the top 3 by spend; Purchases (the
-    // lowest-spend objective) is dropped.
-    expect(data.periodRow.resultColumns).toHaveLength(3);
+    expect(data.periodRow.resultColumns).toHaveLength(4);
     const labels = data.periodRow.resultColumns.map((c) => c.label);
-    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS"]);
-    expect(labels).not.toContain("PURCHASES");
+    expect(labels).toEqual(["META FORM LEADS", "REACH", "WEBSITE LEADS", "PURCHASES"]);
   });
 });
 
@@ -1894,15 +1890,10 @@ describe("buildReportData — single source of truth for campaign objective dete
     expect(slideLabels.get("Campaign 4")).toBe("WEBSITE LEADS");
     expect(slideLabels.get("Campaign 5")).toBe("LANDING PAGE VIEWS");
 
-    // The Combined Total table's MTD row: 4 distinct objectives detected,
-    // capped at the top 3 by combined spend — Purchases ($630 = ($50+$40)×7
-    // days), Meta Form Leads ($210 = $30×7), Website Leads ($140 = $20×7);
-    // Landing Page Views ($70 = $10×7, the lowest-spend objective) is
-    // dropped, exactly the same "top 3 by spend" rule a 4th-objective
-    // scenario already exercises elsewhere in this file.
+    // The Combined Total table's MTD row keeps every distinct reported
+    // objective (4 here), including the lowest-spend Landing Page Views.
     const tableLabels = data.mtdRow.resultColumns.map((c) => c.label);
-    expect(tableLabels).toEqual(["PURCHASES", "META FORM LEADS", "WEBSITE LEADS"]);
-    expect(tableLabels).not.toContain("LANDING PAGE VIEWS");
+    expect(tableLabels).toEqual(["PURCHASES", "META FORM LEADS", "WEBSITE LEADS", "LANDING PAGE VIEWS"]);
 
     // No phantom objective: every column label the table actually shows is
     // also some campaign's own slide-level objective — the table never
@@ -3715,10 +3706,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
     const slide = data.campaignSlides[0];
     expect(slide.dynamicMetrics).toHaveLength(8);
     expect(slide.additionalMetricsSlide).toBeDefined();
-    // Padded from 1 (just "frequency") up to the 4-metric minimum, using
-    // the highest-priority unselected metrics the CSV's own headers make
-    // available (cpm/landing_page_views/video_views here).
-    expect(slide.additionalMetricsSlide).toHaveLength(4);
+    expect(slide.additionalMetricsSlide).toHaveLength(1);
     expect(slide.additionalMetricsSlide![0]?.key).toBe("frequency");
   });
 

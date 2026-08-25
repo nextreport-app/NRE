@@ -89,7 +89,7 @@ export function listAvailableMetrics(headers: string[], platform: MetricPlatform
  * raw generic label as a SEPARATE, addable "Add a metric" option is always
  * redundant and reads as unclear next to the specific one already on the
  * slide. Excluded by key (not from listAvailableMetrics itself, which still
- * needs the full pool for Part 4's slide-2 padding and defaultMetaSelection's
+ * needs the full pool for defaultMetaSelection's
  * own byKey lookups) so only the wizard's own addable dropdown is affected.
  */
 const ALWAYS_EXCLUDED_SELECTABLE_KEYS = new Set(["results", "cost_per_result"]);
@@ -168,38 +168,58 @@ export function filterAddableMetrics<T extends { key: string; label: string }>(p
 export const MAX_METRICS_PER_SLIDE = 8;
 /** Part 4's hard ceiling — the wizard rejects a 17th selection outright ("Maximum 16 metrics (2 slides) per campaign."). */
 export const MAX_TOTAL_METRICS = 16;
-/** Part 4 — a second slide with fewer than this many metrics gets padded with the next highest-priority available (but unselected) metrics, so it never reads as a near-empty afterthought. */
+/**
+ * A second slide with fewer than this many chips looks empty. The wizard
+ * never opens a second slide unless the user can (and does) put at least
+ * this many extras on it — we do not invent padding metrics the user did
+ * not select.
+ */
 export const MIN_SECOND_SLIDE_METRICS = 4;
 
+/** Smallest honest selection that can fill slide 1 (8) plus a non-empty slide 2 (4). */
+export const MIN_SELECTION_FOR_SECOND_SLIDE = MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS;
+
+export type AddMetricDecision = "allow" | "confirm_second_slide" | "blocked_cap8" | "blocked_max";
+
 /**
- * Part 4 — splits a wizard selection into one slide's worth of metrics (≤8,
- * the common case — returns a single-element array) or two (9-16 selected):
- * slide 1 gets the first 8 in the user's own order, slide 2 gets the rest,
- * padded up to MIN_SECOND_SLIDE_METRICS with the highest-priority metrics
- * from `available` that weren't already selected, if the remainder alone
- * would be fewer than that. Selections beyond MAX_TOTAL_METRICS are dropped
- * (the wizard itself is expected to block a 17th pick before this ever
- * runs, but this stays defensive rather than trusting that at the data
- * layer too).
+ * What should happen when the user clicks + on an Add-from-CSV chip.
+ * `addableRemaining` includes the chip they just clicked.
+ *
+ * If this export cannot honestly fill 4 chips on a second slide
+ * (`selected + addable < 12`), the 9th add is blocked: replace one of the 8
+ * instead of shipping a lonely extra card. If 12+ honest chips exist,
+ * opening a second slide is allowed — but Continue stays blocked until the
+ * selection is either back at 8 or at least 12 (and at most 16).
  */
-export function splitMetricsForSlides(selected: SelectedMetric[], available: AvailableMetric[]): SelectedMetric[][] {
+export function evaluateAddMetric(selectedCount: number, addableRemaining: number): AddMetricDecision {
+  if (selectedCount >= MAX_TOTAL_METRICS) return "blocked_max";
+  if (selectedCount < MAX_METRICS_PER_SLIDE) return "allow";
+  const totalPossible = selectedCount + addableRemaining;
+  if (totalPossible < MIN_SELECTION_FOR_SECOND_SLIDE) return "blocked_cap8";
+  if (selectedCount === MAX_METRICS_PER_SLIDE) return "confirm_second_slide";
+  return "allow";
+}
+
+/** True when this campaign's chips would land 1–3 metrics on a near-empty extra slide. */
+export function incompleteSecondSlide(selectedCount: number): boolean {
+  return selectedCount > MAX_METRICS_PER_SLIDE && selectedCount < MIN_SELECTION_FOR_SECOND_SLIDE;
+}
+
+export function additionalMetricsHeading(name: string): string {
+  return `${name} — Additional Metrics (continued from previous slide)`;
+}
+
+/**
+ * Splits a wizard selection into one slide (≤8) or two (12–16). Slide 1 is
+ * the first 8 in the user's order; slide 2 is the rest, never padded with
+ * unselected CSV columns. 9–11 should not reach here (wizard Continue
+ * blocks it); if they do, they still split WYSIWYG rather than inventing
+ * chips. Selections beyond MAX_TOTAL_METRICS are dropped.
+ */
+export function splitMetricsForSlides(selected: SelectedMetric[], _available: AvailableMetric[] = []): SelectedMetric[][] {
   const capped = selected.slice(0, MAX_TOTAL_METRICS);
   if (capped.length <= MAX_METRICS_PER_SLIDE) return [capped];
-
-  const slide1 = capped.slice(0, MAX_METRICS_PER_SLIDE);
-  const slide2 = capped.slice(MAX_METRICS_PER_SLIDE);
-
-  if (slide2.length < MIN_SECOND_SLIDE_METRICS) {
-    const usedKeys = new Set(capped.map((m) => m.key));
-    const padding = available.filter((m) => !usedKeys.has(m.key)).sort((a, b) => b.priority - a.priority);
-    for (const candidate of padding) {
-      if (slide2.length >= MIN_SECOND_SLIDE_METRICS) break;
-      slide2.push(candidate);
-      usedKeys.add(candidate.key);
-    }
-  }
-
-  return [slide1, slide2];
+  return [capped.slice(0, MAX_METRICS_PER_SLIDE), capped.slice(MAX_METRICS_PER_SLIDE)];
 }
 
 function byKey(platform: MetricPlatform, key: string, labelOverride?: string, formatOverride?: MetricFormat): SelectedMetric | null {

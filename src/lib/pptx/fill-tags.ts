@@ -5,6 +5,7 @@
  * appearance (see the long comment above buildCampaignOrAdSetSlideXml).
  */
 
+import { additionalMetricsHeading } from "../nre/available-metrics";
 import { buildCombinedTotalTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
@@ -24,6 +25,7 @@ import {
   setShapeOffsetY,
   type StyleOverride,
 } from "./ooxml";
+import { textBox } from "./shapes";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, estimateTextWidthPt, fitCardLabel, fitFontSizePt } from "./text-fit";
@@ -245,8 +247,8 @@ export interface AiCopy {
 }
 
 const FALLBACK_AI_COPY: AiCopy = {
-  summary: "[AI unavailable — check API keys]",
-  insights: "[AI unavailable — check API keys]",
+  summary: "Campaign performance for this period is shown on the metric cards.",
+  insights: "Use the numbers on this slide to decide the one next change worth making.",
 };
 
 /** Same amber used for the MTD chart's "Paused"/"Inactive" indicator — one consistent color for "not active" across the whole deck. */
@@ -373,7 +375,7 @@ export function buildCampaignOrAdSetSlideXml(
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const isAdSetKind = slide.kind === "adset";
   const nameOnly = isAdSetKind ? slide.adSetName || slide.campaignName : slide.campaignName;
-  const heading = useAdditionalMetricsSlide ? nameOnly + " — Additional Metrics" : nameOnly;
+  const heading = useAdditionalMetricsSlide ? additionalMetricsHeading(nameOnly) : nameOnly;
 
   // Fix 6 (round K) — the "(Campaign)"/"(Ad Set)"/"(Ad Group)" type label is
   // its own colored run, not baked into the heading text, so it reads as a
@@ -639,6 +641,7 @@ export function buildTableSlideXml(
   reportType: ReportType = "WEEKLY",
   isLightTemplate = false,
   platform: Platform = "META",
+  combinedTotalStory = "",
 ): string {
   // Google Ads reports have their own static header words (Cost/Clicks/
   // Avg. CPC instead of Meta's Ad Spend/Reach/CPC (All)) — see
@@ -661,9 +664,21 @@ export function buildTableSlideXml(
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
   });
-  // Round L — the slide's own static title ("MONTHLY CAMPAIGN PERFORMANCE
-  // OVERVIEW", baked into the template, not a {{TAG}}) recolored to the
-  // same muted grey every other slide's own main heading now uses. Size
-  // stays the template's native 28pt — unrequested, left untouched.
-  return forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", { color: REPORT_HEADER_COLOR });
+  let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", { color: REPORT_HEADER_COLOR });
+  if (combinedTotalStory.trim()) {
+    out = insertShapeBeforeSpTreeClose(
+      out,
+      textBox({
+        x: 40,
+        y: 58,
+        w: 880,
+        h: 22,
+        text: combinedTotalStory.trim(),
+        sizePt: 12,
+        colorHex: REPORT_HEADER_COLOR,
+        align: "l",
+      }),
+    );
+  }
+  return out;
 }

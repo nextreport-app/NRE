@@ -60,7 +60,7 @@
 import type { AiContext, Platform, ReportData } from "../nre/report-data";
 import type { AiCopy } from "../pptx/fill-tags";
 import { slideAiKey } from "../pptx/render";
-import { callAI, type AiKeys } from "./client";
+import { AI_UNAVAILABLE_TEXT, callAI, type AiKeys } from "./client";
 import { buildGoogleAdsInsightPrompt, buildGoogleAdsSummaryPrompt } from "./google-prompts";
 import {
   buildFallbackInsights,
@@ -73,6 +73,7 @@ import {
   capInsights,
   capSummary,
   countSentenceEndings,
+  insightsLooksLikeLaundryList,
   resultCountMismatch,
 } from "./prompts";
 
@@ -85,7 +86,7 @@ const ZERO_SPEND_THRESHOLD = 0.01;
 // the final safety net's "does this actually read as N complete sentences"
 // check uses these as its threshold.
 const MIN_SUMMARY_SENTENCES = 2;
-const MIN_INSIGHTS_SENTENCES = 3;
+const MIN_INSIGHTS_SENTENCES = 2;
 
 function isZeroSpend(ctx: AiContext): boolean {
   return ctx.spendNum < ZERO_SPEND_THRESHOLD;
@@ -126,6 +127,11 @@ function isZeroResults(ctx: AiContext): boolean {
 }
 
 /** True when `text` (already trimmed) reads as a complete sentence rather than one cut off mid-word/mid-number. */
+function isUnusableAi(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim();
+  return !t || t === AI_UNAVAILABLE_TEXT || t.includes("[AI unavailable");
+}
+
 function endsComplete(trimmedText: string): boolean {
   return trimmedText.endsWith(".");
 }
@@ -183,17 +189,9 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         summary = buildZeroResultsSummary(slide.ai);
         summaryFallback = false; // deliberate, structured copy — not a truncation recovery
       } else {
-        // Trailing whitespace (the AI sometimes appends a stray space after
-        // the last character) would otherwise make a complete response look
-        // truncated to an endsComplete() check — trim before checking.
         const trimmedSummary = rawSummary!.trim();
-        // Fix 2 — a complete, well-formed sentence can still be WRONG: the
-        // AI hallucinating a result count that doesn't match what the
-        // slide's own slot 4 card actually shows (the reported "35
-        // purchases" vs. a slide reading 0 bug). resultCountMismatch checks
-        // the number itself, independent of the period/truncation check.
         const countMismatch = resultCountMismatch(trimmedSummary, slide.ai.resultsNum);
-        summaryFallback = !endsComplete(trimmedSummary) || countMismatch;
+        summaryFallback = isUnusableAi(trimmedSummary) || !endsComplete(trimmedSummary) || countMismatch;
         if (countMismatch) {
           console.warn(`[ai:generate-insights] AI summary result count mismatch for ${name} — forcing structured fallback`);
         }
@@ -231,7 +229,8 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         insightsFallback = false; // deliberate, structured copy — not a truncation recovery
       } else {
         const trimmedInsight = rawInsight!.trim();
-        insightsFallback = !endsComplete(trimmedInsight);
+        insightsFallback =
+          isUnusableAi(trimmedInsight) || !endsComplete(trimmedInsight) || insightsLooksLikeLaundryList(trimmedInsight);
         insights = insightsFallback ? buildFallbackInsights(slide.ai) : capInsights(trimmedInsight);
       }
 

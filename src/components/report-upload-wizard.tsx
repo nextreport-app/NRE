@@ -5,11 +5,21 @@ import Link from "next/link";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
-import { filterAddableMetrics, type SelectedMetric } from "@/lib/nre/available-metrics";
+import {
+  additionalMetricsHeading,
+  evaluateAddMetric,
+  filterAddableMetrics,
+  incompleteSecondSlide,
+  MAX_METRICS_PER_SLIDE,
+  MAX_TOTAL_METRICS,
+  MIN_SECOND_SLIDE_METRICS,
+  type SelectedMetric,
+} from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { useToast } from "@/components/toast";
+import { ReportCopyReview } from "@/components/report-copy-review";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
 // crammed campaign checkboxes + ad-set expand sections + the objective
@@ -387,6 +397,12 @@ export function ReportUploadWizard({
   const [perCampaignAvailablePool, setPerCampaignAvailablePool] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
+  const [overflowDialog, setOverflowDialog] = useState<{
+    campaignName: string;
+    normalized: string;
+    metric: SelectedMetric;
+    mode: "blocked_cap8" | "confirm_second_slide" | "blocked_max";
+  } | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
@@ -843,6 +859,17 @@ export function ReportUploadWizard({
 
   // ── Step 4 -> 5: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
+    const incomplete = campaigns.filter((name) => {
+      const metrics = perCampaignMetrics.get(normalizeCampaignName(name));
+      return metrics ? incompleteSecondSlide(metrics.length) : false;
+    });
+    if (incomplete.length > 0) {
+      setPerCampaignMinWarning(
+        `A second slide needs at least ${MIN_SECOND_SLIDE_METRICS} extra metrics (12 total chips), or stay at 8. Right now ${incomplete.join(", ")} would leave a nearly empty extra slide. Replace a chip on slide 1, or add more extras.`,
+      );
+      return;
+    }
+    setPerCampaignMinWarning(null);
     setStep(5);
   }
 
@@ -1011,10 +1038,40 @@ export function ReportUploadWizard({
     setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, current.filter((m) => m.key !== key)));
   }
 
-  /** Adds one metric pill to a single campaign's own list, from that campaign's own available pool — never affects any other campaign. */
-  function addCampaignMetric(normalizedName: string, metric: SelectedMetric) {
+  /** Adds one metric pill, with the 8/12/16 overflow policy (no lonely 9th card). */
+  function addCampaignMetric(normalizedName: string, metric: SelectedMetric, campaignName: string) {
     const current = perCampaignMetrics.get(normalizedName) ?? [];
-    setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
+    const addableRemaining = campaignAvailableMetrics(normalizedName).length;
+    const decision = evaluateAddMetric(current.length, addableRemaining);
+    if (decision === "allow") {
+      setPerCampaignMinWarning(null);
+      setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
+      return;
+    }
+    setOverflowDialog({ campaignName, normalized: normalizedName, metric, mode: decision });
+  }
+
+  function confirmOpenSecondSlide() {
+    if (!overflowDialog) return;
+    const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
+    setPerCampaignMetrics((prev) => new Map(prev).set(overflowDialog.normalized, [...current, overflowDialog.metric]));
+    setPerCampaignMinWarning(
+      `Extra chips go on a second slide. Add at least ${MIN_SECOND_SLIDE_METRICS} extras (12 total) so that slide is not empty, or remove back to 8.`,
+    );
+    setOverflowDialog(null);
+  }
+
+  function replaceCampaignMetric(removeKey: string) {
+    if (!overflowDialog) return;
+    const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
+    setPerCampaignMetrics((prev) =>
+      new Map(prev).set(
+        overflowDialog.normalized,
+        current.filter((m) => m.key !== removeKey).concat(overflowDialog.metric),
+      ),
+    );
+    setPerCampaignMinWarning(null);
+    setOverflowDialog(null);
   }
 
   /** Sent to the preview/generate APIs as the account-wide "wizard is driving metric selection at all" signal and the padding candidate pool's own baseline (report-data.ts's redistributeCardSlots) — the union of every selected campaign's own current metrics, deduped by key. Each campaign's OWN exact list is what actually reaches its slide, via currentCampaignMetricOverridesPayload below; this union only ever matters as a fallback padding source. */
@@ -1919,10 +1976,23 @@ export function ReportUploadWizard({
                       )}
                     </div>
                     <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-                      {selectedForCampaign.length <= 8
-                        ? `${selectedForCampaign.length} of 8 chips on this campaign slide`
-                        : `${selectedForCampaign.length} chips · first 8 on slide 1`}
+                      {selectedForCampaign.length <= MAX_METRICS_PER_SLIDE
+                        ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
+                        : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on ${additionalMetricsHeading(name)}`}
                     </p>
+                    {incompleteSecondSlide(selectedForCampaign.length) && (
+                      <p className="mt-2 rounded-md border border-amber-800 bg-amber-950/40 p-2 text-[12px] text-amber-200">
+                        A second slide with only {selectedForCampaign.length - MAX_METRICS_PER_SLIDE} metric
+                        {selectedForCampaign.length - MAX_METRICS_PER_SLIDE === 1 ? "" : "s"} looks empty. Add extras until
+                        you have at least {MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS} chips, or remove extras back to{" "}
+                        {MAX_METRICS_PER_SLIDE} and replace one of the current 8 instead.
+                      </p>
+                    )}
+                    {selectedForCampaign.length >= MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS && (
+                      <p className="mt-2 text-[12px] text-dash-ink-secondary">
+                        Extra chips go onto a continuation slide. Ad-set slides use this same list.
+                      </p>
+                    )}
 
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
@@ -1972,7 +2042,7 @@ export function ReportUploadWizard({
                             <button
                               key={candidate.key}
                               type="button"
-                              onClick={() => addCampaignMetric(normalized, candidate)}
+                              onClick={() => addCampaignMetric(normalized, candidate, name)}
                               className="rounded-md border border-[#1e3a5f] bg-transparent text-[12px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
                               style={{ padding: "8px 12px" }}
                             >
@@ -2005,12 +2075,91 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleMetricsContinue}
-              disabled={[...perCampaignMetrics.values()].some((metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS)}
+              disabled={[...perCampaignMetrics.values()].some(
+                (metrics) =>
+                  (metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS) || incompleteSecondSlide(metrics.length),
+              )}
               className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               Continue to dates
             </button>
           </div>
+
+          {overflowDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-dash-border bg-dash-card p-5">
+                {overflowDialog.mode === "blocked_max" && (
+                  <>
+                    <p className="text-[15px] font-semibold text-dash-ink">Maximum {MAX_TOTAL_METRICS} metrics (2 slides)</p>
+                    <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                      Remove a chip before adding {overflowDialog.metric.label}.
+                    </p>
+                  </>
+                )}
+                {overflowDialog.mode === "blocked_cap8" && (
+                  <>
+                    <p className="text-[15px] font-semibold text-dash-ink">Stay on one slide — this export has too few extra columns</p>
+                    <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                      Eight chips already fill the campaign slide. This CSV does not have {MIN_SECOND_SLIDE_METRICS} extra
+                      metrics to fill a second slide honestly, so adding only {overflowDialog.metric.label} would leave a
+                      nearly empty continuation slide. Replace one of the current 8 instead.
+                    </p>
+                  </>
+                )}
+                {overflowDialog.mode === "confirm_second_slide" && (
+                  <>
+                    <p className="text-[15px] font-semibold text-dash-ink">This 9th metric opens a second slide</p>
+                    <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                      Eight chips fill one slide. Adding {overflowDialog.metric.label} alone would look sparse on the extra
+                      slide. Prefer replacing a less important chip below so everything stays on one slide. If you still
+                      want a second slide, continue — then add extras until you have at least{" "}
+                      {MAX_METRICS_PER_SLIDE + MIN_SECOND_SLIDE_METRICS} chips ({MIN_SECOND_SLIDE_METRICS} on the extra
+                      slide). Ad-set slides use the same list.
+                    </p>
+                  </>
+                )}
+
+                {(overflowDialog.mode === "blocked_cap8" || overflowDialog.mode === "confirm_second_slide") && (
+                  <div className="mt-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                      Replace one of the current 8
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      {(perCampaignMetrics.get(overflowDialog.normalized) ?? []).slice(0, MAX_METRICS_PER_SLIDE).map((m) => (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => replaceCampaignMetric(m.key)}
+                          className="rounded-md border border-dash-border px-3 py-1.5 text-[12px] text-dash-ink hover:border-dash-accent"
+                        >
+                          Replace {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {overflowDialog.mode === "confirm_second_slide" && (
+                    <button
+                      type="button"
+                      onClick={confirmOpenSecondSlide}
+                      className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink"
+                    >
+                      Add it — I&apos;ll fill the extra slide
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setOverflowDialog(null)}
+                    className="rounded-md border border-dash-border px-4 py-2 text-[13px] text-dash-ink-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2449,6 +2598,8 @@ export function ReportUploadWizard({
           {generateStatus === "done" && downloadUrl && (
             <div className="space-y-4">
               <p className="text-center text-[16px] font-semibold text-[#68d391]">✓ Report Generated Successfully</p>
+
+              {reportId && <ReportCopyReview clientId={clientId} reportId={reportId} />}
 
               {/* Primary action — the public read-only share page, always
                   available once the report is generated (see

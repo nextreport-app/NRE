@@ -714,7 +714,7 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
       additionalMetricsSlide: [{ key: "frequency", label: "FREQUENCY", format: "ratio" as const, value: "2.3" }],
     };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "WEEKLY", "META", true);
-    expect(xml).toContain("Shoes - Search — Additional Metrics");
+    expect(xml).toContain("Shoes - Search — Additional Metrics (continued from previous slide)");
     expect(xml).not.toContain("(Campaign)");
     expect(xml).toContain("FREQUENCY");
     expect(xml).toContain("2.3");

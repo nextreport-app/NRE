@@ -13,7 +13,7 @@
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
-import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
+import { buildChartSlideXml, chunkChartCampaigns, CHART_BG_REL_ID, CHART_CAMPAIGNS_PER_SLIDE } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
@@ -194,9 +194,22 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       }
     }
     if (data.chart) {
-      slides.push({
-        xml: buildChartSlideXml(data.chart, currencySymbol, template.background, isLightTemplate, data.platform),
-        rels: buildChartSlideRels(template.background.mediaTarget),
+      const pages = chunkChartCampaigns(data.chart.campaigns);
+      pages.forEach((slice, pageIndex) => {
+        slides.push({
+          xml: buildChartSlideXml(
+            { ...data.chart!, campaigns: slice },
+            currencySymbol,
+            template.background,
+            isLightTemplate,
+            data.platform,
+            {
+              continuation: pageIndex > 0,
+              colorStartIndex: pageIndex * CHART_CAMPAIGNS_PER_SLIDE,
+            },
+          ),
+          rels: buildChartSlideRels(template.background.mediaTarget),
+        });
       });
     }
   }
@@ -210,6 +223,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       data.reportType,
       isLightTemplate,
       data.platform,
+      data.combinedTotalStory ?? "",
     ),
     rels: template.table.rels,
   });

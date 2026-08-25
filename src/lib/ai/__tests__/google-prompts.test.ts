@@ -46,10 +46,10 @@ describe("buildGoogleAdsSummaryPrompt", () => {
 });
 
 describe("buildGoogleAdsInsightPrompt", () => {
-  it("mentions Google Ads and asks for exactly 3 sentences, same structure as Meta's", () => {
+  it("asks for exactly 2 sentences and bans a four-action laundry list", () => {
     const prompt = buildGoogleAdsInsightPrompt(ctx);
     expect(prompt).toContain("Google Ads");
-    expect(prompt).toContain("exactly 3 sentences");
-    expect(prompt).toContain("Sentence 3");
+    expect(prompt).toContain("exactly 2 sentences");
+    expect(prompt).not.toContain("Sentence 3");
   });
 });
