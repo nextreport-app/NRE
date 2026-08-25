@@ -569,7 +569,7 @@ describe("splitMetricsForSlides — Part 4", () => {
     expect(second.map((m) => m.key)).toEqual(["frequency", "results", "cost_per_result"]);
   });
 
-  it("findPrimaryResultCostPair prefers the objective pair, then results/cost_per_result, then slots 4–5", () => {
+  it("findPrimaryResultCostPair uses the objective result + cost keys, never a neighbour chip like CTR", () => {
     const slide1 = [
       selected("spend"),
       selected("reach"),
@@ -581,6 +581,28 @@ describe("splitMetricsForSlides — Part 4", () => {
       selected("cpc_all"),
     ];
     expect(findPrimaryResultCostPair(slide1, "PURCHASES").map((m) => m.key)).toEqual(["purchases", "cost_per_purchases"]);
+  });
+
+  it("LINK CLICKS pair is link clicks + cost per click even when CTR sits where cost would be", () => {
+    const slide1 = [
+      selected("spend"),
+      selected("reach"),
+      selected("impressions"),
+      selected("link_clicks"),
+      selected("ctr"),
+      selected("landing_page_views"),
+      selected("cost_per_lpv"),
+      selected("cpc_all"),
+    ];
+    expect(findPrimaryResultCostPair(slide1, "LINK CLICKS", "COST PER CLICK").map((m) => m.key)).toEqual([
+      "link_clicks",
+      "cpc_link_click",
+    ]);
+    expect(padSparseContinuationSlide(slide1, [selected("frequency")], "LINK CLICKS").map((m) => m.key)).toEqual([
+      "frequency",
+      "link_clicks",
+      "cpc_link_click",
+    ]);
   });
 
   it("does not pad when the user already added 4 extras", () => {

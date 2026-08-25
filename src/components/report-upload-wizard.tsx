@@ -1979,6 +1979,7 @@ export function ReportUploadWizard({
                       const fillers = findPrimaryResultCostPair(
                         selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE),
                         objective?.resultLabel,
+                        objective?.costLabel,
                       );
                       const sparse = extraCount <= SPARSE_CONTINUATION_EXTRAS && fillers.length > 0;
                       return (
@@ -1991,12 +1992,12 @@ export function ReportUploadWizard({
                               {extraCount < SPARSE_CONTINUATION_EXTRAS
                                 ? " — add more extras from your CSV if you want those on the second slide too"
                                 : ""}
-                              . Unused slots stay hidden. Ad-set slides use the same list.
+                              . Unused slots stay hidden.
                             </>
                           ) : (
                             <>
                               Extra chips go onto a continuation slide ({extraCount} extra
-                              {extraCount === 1 ? "" : "s"}). Ad-set slides use this same list.
+                              {extraCount === 1 ? "" : "s"}).
                             </>
                           )}
                         </p>
@@ -2111,7 +2112,11 @@ export function ReportUploadWizard({
                       {(() => {
                         const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
                         const objective = campaignObjectives.get(overflowDialog.normalized);
-                        const fillers = findPrimaryResultCostPair(current.slice(0, MAX_METRICS_PER_SLIDE), objective?.resultLabel);
+                        const fillers = findPrimaryResultCostPair(
+                          current.slice(0, MAX_METRICS_PER_SLIDE),
+                          objective?.resultLabel,
+                          objective?.costLabel,
+                        );
                         const fillText = fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
                         return (
                           <>
@@ -2119,7 +2124,7 @@ export function ReportUploadWizard({
                             alone would leave the continuation looking empty, so we will also repeat {fillText} on that
                             slide — at least 3 cards (your extra plus this campaign&apos;s result and cost). Add more extras
                             from your CSV after this if you want those on the second slide too. Or replace a chip below
-                            to keep everything on one slide. Ad-set slides use the same list.
+                            to keep everything on one slide.
                           </>
                         );
                       })()}
@@ -2152,7 +2157,7 @@ export function ReportUploadWizard({
                     <button
                       type="button"
                       onClick={confirmOpenSecondSlide}
-                      className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink"
+                      className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                     >
                       Add anyway
                     </button>

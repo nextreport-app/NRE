@@ -194,34 +194,41 @@ export function additionalMetricsHeading(name: string): string {
 export const SPARSE_CONTINUATION_EXTRAS = 3;
 
 /**
- * The campaign's own result + cost-per-result chips from slide 1 (leads /
- * cost per lead, purchases / cost per purchase, CPM / cost per 1k, …).
- * Engine default packs put this pair in slots 4–5 (indices 3–4).
+ * The campaign's own result + cost-per-result chips (leads / cost per lead,
+ * link clicks / cost per click, purchases / cost per purchase, …).
+ *
+ * Prefer the chips already on slide 1; if the cost card is missing from the
+ * first 8 (CSV-aware packs often put CTR in that slot), build it from the
+ * dictionary so we never fall back to CTR or another neighbour chip.
  */
-export function findPrimaryResultCostPair(slide1: SelectedMetric[], resultLabel?: string): SelectedMetric[] {
-  const found: SelectedMetric[] = [];
-  const take = (key: string | undefined) => {
-    if (!key) return;
-    const metric = slide1.find((item) => item.key === key);
-    if (metric && !found.some((item) => item.key === metric.key)) found.push(metric);
-  };
+export function findPrimaryResultCostPair(
+  slide1: SelectedMetric[],
+  resultLabel?: string,
+  costLabel?: string,
+): SelectedMetric[] {
+  const fromSlide = (key: string) => slide1.find((item) => item.key === key) ?? null;
 
-  if (resultLabel) {
-    const { resultKey, costKey, dedicated } = objectiveMetricKeys(resultLabel);
-    take(resultKey);
-    take(costKey);
-    if (!dedicated) {
-      take("results");
-      take("cost_per_result");
-    }
+  if (!resultLabel) {
+    return [fromSlide("results"), fromSlide("cost_per_result")].filter((item): item is SelectedMetric => !!item);
   }
-  if (found.length < 2) {
-    take("results");
-    take("cost_per_result");
-  }
-  if (found.length < 2 && slide1.length >= 5) {
-    take(slide1[3]?.key);
-    take(slide1[4]?.key);
+
+  const { resultKey, costKey, dedicated } = objectiveMetricKeys(resultLabel);
+  const result =
+    fromSlide(resultKey) ||
+    (!dedicated ? fromSlide("results") : null) ||
+    (dedicated ? byKey("META", resultKey) : { ...byKey("META", "results", resultLabel)!, key: resultKey }) ||
+    null;
+  const cost =
+    fromSlide(costKey) ||
+    (!dedicated ? fromSlide("cost_per_result") : null) ||
+    (dedicated
+      ? byKey("META", costKey)
+      : { ...byKey("META", "cost_per_result", costLabel ?? `COST PER ${resultLabel}`)!, key: costKey }) ||
+    null;
+
+  const found: SelectedMetric[] = [];
+  for (const item of [result, cost]) {
+    if (item && !found.some((existing) => existing.key === item.key)) found.push(item);
   }
   return found.slice(0, 2);
 }
@@ -236,10 +243,11 @@ export function padSparseContinuationSlide(
   slide1: SelectedMetric[],
   extras: SelectedMetric[],
   resultLabel?: string,
+  costLabel?: string,
 ): SelectedMetric[] {
   if (extras.length === 0 || extras.length > SPARSE_CONTINUATION_EXTRAS) return extras;
   const extraKeys = new Set(extras.map((item) => item.key));
-  const fillers = findPrimaryResultCostPair(slide1, resultLabel).filter((item) => !extraKeys.has(item.key));
+  const fillers = findPrimaryResultCostPair(slide1, resultLabel, costLabel).filter((item) => !extraKeys.has(item.key));
   return [...extras, ...fillers].slice(0, MAX_METRICS_PER_SLIDE);
 }
 
@@ -253,12 +261,13 @@ export function splitMetricsForSlides(
   selected: SelectedMetric[],
   _available: AvailableMetric[] = [],
   resultLabel?: string,
+  costLabel?: string,
 ): SelectedMetric[][] {
   const capped = selected.slice(0, MAX_TOTAL_METRICS);
   if (capped.length <= MAX_METRICS_PER_SLIDE) return [capped];
   const slide1 = capped.slice(0, MAX_METRICS_PER_SLIDE);
   const extras = capped.slice(MAX_METRICS_PER_SLIDE);
-  return [slide1, padSparseContinuationSlide(slide1, extras, resultLabel)];
+  return [slide1, padSparseContinuationSlide(slide1, extras, resultLabel, costLabel)];
 }
 
 function byKey(platform: MetricPlatform, key: string, labelOverride?: string, formatOverride?: MetricFormat): SelectedMetric | null {
