@@ -90,15 +90,18 @@ const STEP_HEADINGS: Record<Step, string> = {
   5: "Report Period and Generate",
 };
 
-// Final 5-step architecture — per-step subtitle shown under the screen
-// heading, replacing the old "always show client name" subtitle slot.
 const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Select your ad platform and upload your CSV export",
-  2: "Choose which campaigns to include in your report",
-  3: "We detected these campaign objectives. Correct any that look wrong.",
-  4: "Your report will show these metrics on each campaign slide",
-  5: "",
+  1: "Upload the day-wise last-30-days export from Ads Manager.",
+  2: "Unchecked campaigns stay out of the deck. Ad-set slides are extra; campaign totals still include them.",
+  3: "Wrong objective means wrong cards and Combined Total. Fix it here.",
+  4: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
+  5: "Pick weekly, monthly, or comparison, check the summary, then generate.",
 };
+
+const LAST_PLATFORM_STORAGE_KEY = "nre.lastAdPlatform";
+const ADD_FROM_CSV_VISIBLE = 8;
+const ADSET_CHIP_CLASS =
+  "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[12px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
 
 const MIN_SELECTED_METRICS = 4;
 
@@ -263,6 +266,28 @@ export function ReportUploadWizard({
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
   const { showToast } = useToast();
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
+      if (stored === "META" || stored === "GOOGLE") setSelectedPlatformCard(stored);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  function choosePlatform(next: "META" | "GOOGLE") {
+    setSelectedPlatformCard(next);
+    setMismatchWarning(false);
+    setAnalyzeStatus("idle");
+    setAnalyzeErrors([]);
+    setAnalyzeMessage(null);
+    try {
+      localStorage.setItem(LAST_PLATFORM_STORAGE_KEY, next);
+    } catch {
+      /* private mode */
+    }
+  }
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
       ? { id: initialLastDriveFolderId, name: initialLastDriveFolderName }
@@ -274,7 +299,7 @@ export function ReportUploadWizard({
   // ultimately sent to the server). A mismatch between the two pauses on
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
-  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | null>(null);
+  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | null>("META");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
@@ -302,6 +327,8 @@ export function ReportUploadWizard({
   // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
+  const [campaignSearch, setCampaignSearch] = useState("");
+  const [expandedCsvExtras, setExpandedCsvExtras] = useState<Set<string>>(new Set());
 
   // Improvement 2 — ad-set selection, collapsible under each campaign row
   // (populated by /analyze's adSetGroups, only ad sets with real spend —
@@ -1336,7 +1363,13 @@ export function ReportUploadWizard({
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
-    setSelectedPlatformCard(null);
+    setSelectedPlatformCard("META");
+    try {
+      const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
+      if (stored === "META" || stored === "GOOGLE") setSelectedPlatformCard(stored);
+    } catch {
+      /* private mode */
+    }
     setMtdFile(null);
     setAnalyzeStatus("idle");
     setAnalyzeErrors([]);
@@ -1347,6 +1380,8 @@ export function ReportUploadWizard({
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
+    setCampaignSearch("");
+    setExpandedCsvExtras(new Set());
     setAdSetGroups([]);
     setSelectedAdSets(new Set());
     setExpandedCampaigns(new Set());
@@ -1434,7 +1469,7 @@ export function ReportUploadWizard({
     <div className="space-y-6">
       <div>
         <h1 className="mb-1 text-[20px] font-bold text-white">{STEP_HEADINGS[step]}</h1>
-        <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step] || clientName}</p>
+        <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step]}</p>
       </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
 
@@ -1447,26 +1482,14 @@ export function ReportUploadWizard({
               heading="Meta Ads"
               description="Upload your Meta Ads Manager CSV export"
               selected={selectedPlatformCard === "META"}
-              onSelect={() => {
-                setSelectedPlatformCard("META");
-                setMismatchWarning(false);
-                setAnalyzeStatus("idle");
-                setAnalyzeErrors([]);
-                setAnalyzeMessage(null);
-              }}
+              onSelect={() => choosePlatform("META")}
             />
             <ReportTypeCard
               icon={<GoogleAdsIcon />}
               heading="Google Ads"
               description="Upload your Google Ads CSV export"
               selected={selectedPlatformCard === "GOOGLE"}
-              onSelect={() => {
-                setSelectedPlatformCard("GOOGLE");
-                setMismatchWarning(false);
-                setAnalyzeStatus("idle");
-                setAnalyzeErrors([]);
-                setAnalyzeMessage(null);
-              }}
+              onSelect={() => choosePlatform("GOOGLE")}
             />
           </div>
 
@@ -1476,8 +1499,11 @@ export function ReportUploadWizard({
               <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
                 Tip:{" "}
                 {selectedPlatformCard === "META"
-                  ? "Set date range to Last 30 Days and Time Increment to Day (Day-Wise Breakdown Sheet)"
-                  : "Set date range to Last 30 days and segment by Day"}
+                  ? "Set date range to Last 30 Days and Time Increment to Day (Day-Wise Breakdown Sheet)."
+                  : "Set date range to Last 30 days and segment by Day."}{" "}
+                <Link href="/help/download" className="text-dash-accent hover:underline">
+                  How to export this CSV
+                </Link>
               </p>
 
               <button
@@ -1572,10 +1598,29 @@ export function ReportUploadWizard({
                 {selectedCampaigns.size} of {campaigns.length} campaigns selected
               </span>
             </label>
+            {campaigns.length > 8 && (
+              <input
+                type="search"
+                value={campaignSearch}
+                onChange={(e) => setCampaignSearch(e.target.value)}
+                placeholder="Search campaigns"
+                className="w-full max-w-xs rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[13px] text-dash-ink outline-none focus:border-dash-accent sm:w-56"
+              />
+            )}
           </div>
 
           <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-            {campaigns.map((name) => {
+            {(() => {
+              const query = campaignSearch.trim().toLowerCase();
+              const visible = query ? campaigns.filter((name) => name.toLowerCase().includes(query)) : campaigns;
+              if (visible.length === 0) {
+                return (
+                  <li className="px-4 py-3 text-[13px] text-dash-ink-secondary">
+                    No campaigns match “{campaignSearch.trim()}”.
+                  </li>
+                );
+              }
+              return visible.map((name) => {
               const isSelected = selectedCampaigns.has(name);
               const group = adSetGroups.find((g) => g.campaignName === name);
               const isExpanded = expandedCampaigns.has(name);
@@ -1602,9 +1647,9 @@ export function ReportUploadWizard({
                         onClick={() => toggleCampaignExpanded(name)}
                         disabled={!isSelected}
                         aria-expanded={isExpanded}
-                        className="flex-shrink-0 rounded-full bg-dash-bg px-2 py-0.5 text-[12px] text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30"
+                        className={ADSET_CHIP_CLASS}
                       >
-                        1 ad set ▼
+                        1 ad set {isExpanded ? "▲" : "▼"}
                       </button>
                     )}
                     {isMultiAdSet && (
@@ -1613,9 +1658,9 @@ export function ReportUploadWizard({
                         onClick={() => toggleCampaignExpanded(name)}
                         disabled={!isSelected}
                         aria-expanded={isExpanded}
-                        className="flex-shrink-0 rounded-md px-2 py-1 text-[12px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30"
+                        className={ADSET_CHIP_CLASS}
                       >
-                        Ad Sets {isExpanded ? "▲" : "▼"}
+                        {group.adSetNames.length} ad sets {isExpanded ? "▲" : "▼"}
                       </button>
                     )}
                   </div>
@@ -1693,12 +1738,12 @@ export function ReportUploadWizard({
                   )}
                 </li>
               );
-            })}
+              });
+            })()}
           </ul>
 
           <p className="text-[13px] text-dash-ink-secondary">
-            Single ad set campaigns show the same data as their campaign slide. Multiple ad sets can be selected or
-            deselected to control which audience slides appear in your report.
+            A single-ad-set slide repeats the campaign slide — turn it on only if you want both.
           </p>
 
           <div className="flex gap-3">
@@ -1720,14 +1765,7 @@ export function ReportUploadWizard({
       )}
 
       {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-[#1e293b] p-5">
-          <div>
-            <h3 className="text-[15px] font-semibold text-white">Confirm Campaign Objectives</h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              We detected these campaign objectives. Correct any that look wrong.
-            </p>
-          </div>
-
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           {(() => {
             const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
             const confidenceTiers = shownCampaigns.map((name) => campaignObjectiveConfidence.get(normalizeCampaignName(name)));
@@ -1819,10 +1857,6 @@ export function ReportUploadWizard({
               })}
           </ul>
 
-          <p className="text-[13px] text-dash-ink-secondary">
-            Objectives determine which metrics appear on each campaign slide.
-          </p>
-
           <div className="flex gap-3">
             <button
               onClick={() => setStep(2)}
@@ -1884,7 +1918,11 @@ export function ReportUploadWizard({
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Metrics for this campaign slide</p>
+                    <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+                      {selectedForCampaign.length <= 8
+                        ? `${selectedForCampaign.length} of 8 chips on this campaign slide`
+                        : `${selectedForCampaign.length} chips · first 8 on slide 1`}
+                    </p>
 
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
@@ -1915,14 +1953,22 @@ export function ReportUploadWizard({
                       <p className="mt-2 text-[13px] text-amber-300">{perCampaignMinWarning}</p>
                     )}
 
-                    {availableForCampaign.length > 0 && (
+                    <div className="my-3 border-t border-[#334155]" />
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                      Add from your CSV
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+                      Columns in this file that are not already chips.
+                    </p>
+                    {availableForCampaign.length === 0 ? (
+                      <p className="mt-1.5 text-[12px] text-dash-ink-secondary">No extra columns in this export.</p>
+                    ) : (
                       <>
-                        <div className="my-3 border-t border-[#334155]" />
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
-                          Add from your CSV:
-                        </p>
                         <div className="mt-1.5 flex flex-wrap gap-2">
-                          {availableForCampaign.map((candidate) => (
+                          {(expandedCsvExtras.has(normalized)
+                            ? availableForCampaign
+                            : availableForCampaign.slice(0, ADD_FROM_CSV_VISIBLE)
+                          ).map((candidate) => (
                             <button
                               key={candidate.key}
                               type="button"
@@ -1934,6 +1980,15 @@ export function ReportUploadWizard({
                             </button>
                           ))}
                         </div>
+                        {availableForCampaign.length > ADD_FROM_CSV_VISIBLE && !expandedCsvExtras.has(normalized) && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedCsvExtras((prev) => new Set(prev).add(normalized))}
+                            className="mt-2 text-[12px] text-dash-accent hover:underline"
+                          >
+                            Show {availableForCampaign.length - ADD_FROM_CSV_VISIBLE} more
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -1953,7 +2008,7 @@ export function ReportUploadWizard({
               disabled={[...perCampaignMetrics.values()].some((metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS)}
               className="rounded-md bg-dash-accent px-6 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
-              Continue →
+              Continue to dates
             </button>
           </div>
         </div>
@@ -1961,19 +2016,17 @@ export function ReportUploadWizard({
 
       {step === 5 && (
         <div className="space-y-6">
-          <button
-            type="button"
-            onClick={() => setStep(4)}
-            className="inline-block text-[13px] text-dash-ink-secondary hover:text-dash-ink hover:underline"
-          >
-            ← Back
-          </button>
-
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStep(platform === "GOOGLE" ? 1 : 4)}
+              className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+            >
+              Back
+            </button>
+          </div>
           {platform === "META" && (
             <div className="space-y-5">
-              <h3 className="text-[13px] font-medium text-dash-ink-secondary">Reporting period</h3>
-
-              {/* Section 1 — Report Type */}
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1999,9 +2052,10 @@ export function ReportUploadWizard({
                 onSelect={() => handleReportTypeChange("COMPARISON")}
               />
             </div>
+            {reportType === "MONTHLY" && (
+              <p className="mt-4 text-[13px] text-dash-ink-secondary">Uses the full CSV month — no week picker.</p>
+            )}
           </section>
-
-          <div className="border-t border-dash-border" />
 
           {/* Section 2 — Date Range (Weekly only) */}
           {reportType === "WEEKLY" && (
@@ -2362,7 +2416,7 @@ export function ReportUploadWizard({
               <div>
                 <button
                   onClick={handleGenerate}
-                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-white hover:bg-dash-accent-hover"
+                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                 >
                   Generate Report
                 </button>
