@@ -217,20 +217,41 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
 function SpendBar({ c, maxSpend }: { c: ShareChartData["campaigns"][number]; maxSpend: number }) {
   const widthPct = maxSpend > 0 ? Math.max((c.spend / maxSpend) * 100, c.spend > 0 ? 4 : 2) : 2;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(90px, 0.7fr)", gap: "12px", alignItems: "center" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(140px, 1.1fr) minmax(0, 1.8fr) minmax(110px, 0.7fr) minmax(140px, 0.9fr)",
+        gap: "14px",
+        alignItems: "center",
+        backgroundColor: "#152033",
+        borderRadius: "8px",
+        padding: "12px 14px",
+        borderLeft: `4px solid #${c.color}`,
+      }}
+    >
       <div>
-        <div style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>{c.name}</div>
-        {c.statusIndicator ? <div style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 700 }}>{c.statusIndicator}</div> : null}
+        <div style={{ color: "white", fontSize: "16px", fontWeight: 700 }}>{c.name}</div>
+        {c.statusIndicator ? <div style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 700 }}>{c.statusIndicator}</div> : null}
       </div>
-      <div style={{ backgroundColor: "#1e293b", borderRadius: "4px", height: "16px", overflow: "hidden" }}>
-        <div style={{ width: `${widthPct}%`, height: "100%", backgroundColor: `#${c.color}`, borderRadius: "4px" }} />
+      <div style={{ backgroundColor: "#1e293b", borderRadius: "6px", height: "22px", overflow: "hidden" }}>
+        <div style={{ width: `${widthPct}%`, height: "100%", backgroundColor: `#${c.color}`, borderRadius: "6px" }} />
       </div>
       <div>
-        <div style={{ color: "white", fontSize: "13px", fontWeight: 700 }}>{c.spendLabel}</div>
+        <div style={{ color: "white", fontSize: "16px", fontWeight: 700 }}>{c.spendLabel}</div>
+        <div style={{ color: "#7ab0cc", fontSize: "12px" }}>Ad spend</div>
+      </div>
+      <div>
         {c.resultsValueLabel ? (
-          <div style={{ color: "#f6ad55", fontSize: "11px" }}>
-            {c.resultsValueLabel} {c.resultsLabel}
-          </div>
+          <>
+            <div style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>
+              {c.resultsValueLabel} {c.resultsLabel}
+            </div>
+            {c.cprValueLabel ? (
+              <div style={{ color: "#7ab0cc", fontSize: "12px" }}>
+                {c.cprValueLabel} {c.cprLabel}
+              </div>
+            ) : null}
+          </>
         ) : null}
       </div>
     </div>
@@ -244,7 +265,8 @@ function ChartSlide({ chart }: { chart: ShareChartData }) {
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "24px" }}>
+      <p className="mt-2 text-center text-[15px] text-ink-muted">{chart.summaryLine}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
         {firstPage.map((c, i) => (
           <SpendBar key={`${c.name}-${i}`} c={c} maxSpend={maxSpend} />
         ))}
@@ -262,19 +284,6 @@ function ChartSlide({ chart }: { chart: ShareChartData }) {
           </div>
         </>
       )}
-      <div
-        style={{
-          marginTop: "16px",
-          backgroundColor: "#1e293b",
-          borderLeft: "3px solid #f6ad55",
-          color: "white",
-          fontSize: "13px",
-          padding: "12px 16px",
-          borderRadius: "6px",
-        }}
-      >
-        {chart.summaryLine}
-      </div>
     </SlideCard>
   );
 }
@@ -306,7 +315,11 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
 
   return (
     <div className="space-y-2">
-      {data.combinedTotalStory ? <p className="text-[13px] text-ink-muted">{data.combinedTotalStory}</p> : null}
+      {data.combinedTotalStory ? (
+        <p className="text-center text-[16px] leading-snug text-ink" style={{ marginBottom: "12px" }}>
+          {data.combinedTotalStory}
+        </p>
+      ) : null}
     <div className="overflow-x-auto rounded-lg border border-navy-border">
       <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
         <thead>

@@ -499,6 +499,8 @@ export function buildCampaignOrAdSetSlideXml(
             tag,
             CARD_SLOT_TAGS.filter((other) => other !== tag),
           );
+          // Card XML is gone — do not dash leftover tags that no longer exist.
+          if (!xml.includes(tag)) return;
         }
         // Unused physical slots must blank the leftover template label too
         // (slot 7 is static "CPC (All)"). A dash-only value used to leave
@@ -682,13 +684,13 @@ export function buildTableSlideXml(
       out,
       textBox({
         x: 40,
-        y: 58,
+        y: 82,
         w: 880,
-        h: 22,
+        h: 28,
         text: combinedTotalStory.trim(),
-        sizePt: 12,
+        sizePt: 16,
         colorHex: REPORT_HEADER_COLOR,
-        align: "l",
+        align: "ctr",
       }),
     );
   }

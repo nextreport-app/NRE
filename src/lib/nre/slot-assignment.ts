@@ -36,6 +36,7 @@
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
+import { parseCellNum } from "./format";
 import type { GoogleObjectiveKey } from "./detect-objective";
 import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
@@ -78,6 +79,31 @@ NEVER_KEYS_FOR_OBJECTIVE.conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 /** Lowercase, underscore-slugified objective key NEVER_KEYS_FOR_OBJECTIVE is keyed by, derived from a campaign's own resultLabel the same way objectiveMetricKeys' own synthetic-key fallback does. */
 export function objectiveKeyFor(resultLabel: string | null | undefined): string {
   return slugifyObjectiveKey(resultLabel || "");
+}
+
+/** Funnel volume below this is noise (1 landing page view against $200 spend is not a client-ready card). */
+export const MIN_FUNNEL_VOLUME = 2;
+
+export function landingPageViewCount(rawRows: RawMetricRow[]): number {
+  return rawRows.reduce((sum, row) => {
+    const fromField = parseCellNum((row as { landing_page_views?: unknown }).landing_page_views);
+    if (fromField > 0) return sum + fromField;
+    for (const [header, value] of Object.entries(row._raw ?? {})) {
+      if (header.toLowerCase().trim() === "landing page views") return sum + parseCellNum(value);
+    }
+    return sum;
+  }, 0);
+}
+
+/**
+ * Drop LPV / cost-per-LPV when the campaign (or ad set) only has 0–1 landing
+ * page views — unless that IS the campaign objective. A Reach slide should
+ * not show “1 landing page view” / “$212 cost per LPV”.
+ */
+export function isThinFunnelNoise(key: string, landingPageViews: number, resultLabel?: string | null): boolean {
+  if ((resultLabel || "").toUpperCase() === "LANDING PAGE VIEWS") return false;
+  if (landingPageViews >= MIN_FUNNEL_VOLUME) return false;
+  return key === "landing_page_views" || key === "cost_per_lpv";
 }
 
 /**
@@ -259,8 +285,12 @@ export interface MetaSlotBaseline {
  * branch) so the mapping fires correctly against real data.
  */
 export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow[], currencySymbol: string): (DynamicMetricValue | null)[] {
-  const v = (key: string) => metaSlotValue(rawRows, key, currencySymbol);
   const resultLabel = (baseline.resultLabel || "").toUpperCase();
+  const lpvCount = landingPageViewCount(rawRows);
+  const v = (key: string) => {
+    if (isThinFunnelNoise(key, lpvCount, baseline.resultLabel)) return "—";
+    return metaSlotValue(rawRows, key, currencySymbol);
+  };
 
   let slot4: DynamicMetricValue;
   let slot5: DynamicMetricValue;
