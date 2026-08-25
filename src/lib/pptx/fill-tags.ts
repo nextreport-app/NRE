@@ -14,6 +14,7 @@ import {
   enforceMinFontSize,
   findCardIconRelId,
   forceRunStyle,
+  hideCardSlot,
   insertShapeBeforeSpTreeClose,
   ptToEmu,
   replaceCardIcon,
@@ -489,10 +490,21 @@ export function buildCampaignOrAdSetSlideXml(
         // still present in the xml to locate the value shape by (it gets
         // consumed by the replaceTagRun call right after).
         xml = ensureCardLabelValueGap(xml, tag, MIN_CARD_LABEL_VALUE_GAP_EMU);
+        // Continuation slides hide unused card chrome so 1–3 extras do not
+        // sit next to seven dashed empty slots. Primary slides still dash
+        // unused slots (the default 8-card pack layout).
+        if (useAdditionalMetricsSlide) {
+          xml = hideCardSlot(
+            xml,
+            tag,
+            CARD_SLOT_TAGS.filter((other) => other !== tag),
+          );
+        }
         // Unused physical slots must blank the leftover template label too
         // (slot 7 is static "CPC (All)"). A dash-only value used to leave
         // that CPC (All) title on client decks when the CSV had fewer than
-        // 8 honest chips.
+        // 8 honest chips. Hidden continuation slots still consume the tags
+        // so no raw {{TAG}} leaks if a viewer ignores hidden="1".
         if (labelTag) xml = replaceTagRun(xml, labelTag, "—").xml;
         else xml = replaceCardLabel(xml, tag, "—");
         xml = replaceTagRun(xml, tag, "—").xml;

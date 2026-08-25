@@ -7,11 +7,8 @@ import {
   listAvailableMetrics,
   listSelectableMetrics,
   MAX_TOTAL_METRICS,
-  MIN_SECOND_SLIDE_METRICS,
-  MIN_SELECTION_FOR_SECOND_SLIDE,
   additionalMetricsHeading,
   evaluateAddMetric,
-  incompleteSecondSlide,
   splitMetricsForSlides,
   type AvailableMetric,
   type ObjectivePair,
@@ -548,20 +545,14 @@ describe("splitMetricsForSlides — Part 4", () => {
     expect(slide2).toHaveLength(1);
   });
 
-  it("evaluateAddMetric blocks a 9th chip when the CSV cannot fill 4 extras", () => {
-    expect(evaluateAddMetric(8, 2)).toBe("blocked_cap8");
+  it("evaluateAddMetric never blocks a 9th chip when extras are sparse — Add anyway opens a continuation", () => {
+    expect(evaluateAddMetric(8, 2)).toBe("confirm_second_slide");
     expect(evaluateAddMetric(8, 4)).toBe("confirm_second_slide");
+    expect(evaluateAddMetric(8, 1)).toBe("confirm_second_slide");
     expect(evaluateAddMetric(7, 1)).toBe("allow");
+    expect(evaluateAddMetric(9, 1)).toBe("allow");
+    expect(evaluateAddMetric(15, 1)).toBe("allow");
     expect(evaluateAddMetric(16, 1)).toBe("blocked_max");
-    expect(MIN_SELECTION_FOR_SECOND_SLIDE).toBe(12);
-  });
-
-  it("incompleteSecondSlide is true only for 9–11 chips", () => {
-    expect(incompleteSecondSlide(8)).toBe(false);
-    expect(incompleteSecondSlide(9)).toBe(true);
-    expect(incompleteSecondSlide(11)).toBe(true);
-    expect(incompleteSecondSlide(12)).toBe(false);
-    expect(MIN_SECOND_SLIDE_METRICS).toBe(4);
   });
 
   it("additionalMetricsHeading names the continuation", () => {
