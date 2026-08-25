@@ -68,7 +68,7 @@ export const LEADS_META_FORM_PACK = pack(
 );
 
 export const METRIC_PACKS: readonly MetricPack[] = [
-  pack("awareness_reach", "AWARENESS", "Maximise reach of ads", "frequency", "cpm", "link_clicks", "cpc_link_click", ["video_thruplay"]),
+  pack("awareness_reach", "AWARENESS", "Maximise reach of ads", "frequency", "cpm", "cpc_all", "cost_per_1k_reached", ["video_thruplay", "link_clicks", "cpc_link_click"]),
   pack("awareness_impressions", "AWARENESS", "Maximise number of impressions", "cpm", "frequency", "link_clicks", "cpc_link_click", ["video_thruplay"]),
   pack("traffic_link_clicks", "TRAFFIC", "Maximise link clicks", "link_clicks", "cpc_link_click", "landing_page_views", "cost_per_lpv", ["cpc_all", "frequency", "clicks_all"]),
   pack("traffic_landing_page_views", "TRAFFIC", "Maximise landing page views", "landing_page_views", "cost_per_lpv", "link_clicks", "cpc_link_click", ["cpc_all", "frequency"]),

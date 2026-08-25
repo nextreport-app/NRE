@@ -53,8 +53,6 @@ import {
   buildMetaSlots,
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
-  isThinFunnelNoise,
-  landingPageViewCount,
   objectiveKeyFor,
   stripNeverKeys,
   type CampaignObjectiveRef,
@@ -1155,13 +1153,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // Override keys are applied IN OVERRIDE ORDER (the chips on screen),
     // not `selectedMetrics.filter` union order. The account-wide union can
     // put cpc_all ahead of link_clicks when another campaign uses CPC (All).
-    const lpvCount = landingPageViewCount(rawRows);
     const relevantMetrics = stripNeverKeys(
       override ? metricsInOverrideOrder(override, selectedMetrics) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
       objectiveKeyFor(campaignObjective?.resultLabel),
-    )
-      .filter((m): m is SelectedMetric => m !== null)
-      .filter((m) => !isThinFunnelNoise(m.key, lpvCount, campaignObjective?.resultLabel));
+    ).filter((m): m is SelectedMetric => m !== null);
     const [slide1Keys, slide2Keys] = splitMetricsForSlides(
       relevantMetrics,
       availableMetricsPool,

@@ -36,7 +36,6 @@
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
-import { parseCellNum } from "./format";
 import type { GoogleObjectiveKey } from "./detect-objective";
 import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
@@ -79,31 +78,6 @@ NEVER_KEYS_FOR_OBJECTIVE.conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 /** Lowercase, underscore-slugified objective key NEVER_KEYS_FOR_OBJECTIVE is keyed by, derived from a campaign's own resultLabel the same way objectiveMetricKeys' own synthetic-key fallback does. */
 export function objectiveKeyFor(resultLabel: string | null | undefined): string {
   return slugifyObjectiveKey(resultLabel || "");
-}
-
-/** Funnel volume below this is noise (1 landing page view against $200 spend is not a client-ready card). */
-export const MIN_FUNNEL_VOLUME = 2;
-
-export function landingPageViewCount(rawRows: RawMetricRow[]): number {
-  return rawRows.reduce((sum, row) => {
-    const fromField = parseCellNum((row as { landing_page_views?: unknown }).landing_page_views);
-    if (fromField > 0) return sum + fromField;
-    for (const [header, value] of Object.entries(row._raw ?? {})) {
-      if (header.toLowerCase().trim() === "landing page views") return sum + parseCellNum(value);
-    }
-    return sum;
-  }, 0);
-}
-
-/**
- * Drop LPV / cost-per-LPV when the campaign (or ad set) only has 0–1 landing
- * page views — unless that IS the campaign objective. A Reach slide should
- * not show “1 landing page view” / “$212 cost per LPV”.
- */
-export function isThinFunnelNoise(key: string, landingPageViews: number, resultLabel?: string | null): boolean {
-  if ((resultLabel || "").toUpperCase() === "LANDING PAGE VIEWS") return false;
-  if (landingPageViews >= MIN_FUNNEL_VOLUME) return false;
-  return key === "landing_page_views" || key === "cost_per_lpv";
 }
 
 /**
@@ -285,12 +259,8 @@ export interface MetaSlotBaseline {
  * branch) so the mapping fires correctly against real data.
  */
 export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow[], currencySymbol: string): (DynamicMetricValue | null)[] {
+  const v = (key: string) => metaSlotValue(rawRows, key, currencySymbol);
   const resultLabel = (baseline.resultLabel || "").toUpperCase();
-  const lpvCount = landingPageViewCount(rawRows);
-  const v = (key: string) => {
-    if (isThinFunnelNoise(key, lpvCount, baseline.resultLabel)) return "—";
-    return metaSlotValue(rawRows, key, currencySymbol);
-  };
 
   let slot4: DynamicMetricValue;
   let slot5: DynamicMetricValue;
@@ -363,13 +333,10 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
 
     case "REACH":
     case "UNIQUE REACH":
-      slot4 = slot("cpm", "CPM", "currency", v("cpm"));
-      slot5 = slot("frequency", "FREQUENCY", "ratio", v("frequency"));
-      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
-      // Product spec's "Reach/Awareness: CPM" would duplicate this case's
-      // own slot 4, and CLICKS (ALL) would duplicate slot 7's own LINK
-      // CLICKS (Issue 1) — COST PER LINK CLICK pairs with it instead.
-      slot8 = pickSlot([COST_PER_LINK_CLICK, CLICKS_ALL], usedKeys(slot4, slot5, slot7), v);
+      slot4 = slot("frequency", "FREQUENCY", "ratio", v("frequency"));
+      slot5 = slot("cpm", "CPM", "currency", v("cpm"));
+      slot7 = slot("cpc_all", "CPC (ALL)", "currency", v("cpc_all"));
+      slot8 = slot("cost_per_1k_reached", "COST PER 1K REACHED", "currency", v("cost_per_1k_reached"));
       break;
 
     case "VIDEO VIEWS":
@@ -731,7 +698,7 @@ export function redistributeCardSlots(
   // (plural, inherited from resultLabel's own trailing "S" — see
   // slot-assignment.test.ts's filterMetricsForCampaignObjective suite for
   // the same distinction documented on the OTHER selection path); REACH's
-  // real slot 5 is "frequency", not costKey's "cost_per_1k_reached";
+  // real slot 4 is "frequency", not costKey's "cost_per_1k_reached";
   // LANDING PAGE VIEWS' is "cost_per_lpv", not "cost_per_landing_page_views";
   // MESSAGING LEADS/MESSAGING CONVERSATIONS STARTED/CONVERSATIONS' is
   // "messaging_conversations_started"/"cost_per_conversation" regardless of

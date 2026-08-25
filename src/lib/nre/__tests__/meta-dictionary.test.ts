@@ -81,7 +81,7 @@ describe("Fix 6 — dictionary objective tags", () => {
     );
   });
 
-  it("classifies FREQUENCY as a secondary metric used for the REACH objective's slot 5 (see slot-assignment.ts)", () => {
+  it("classifies FREQUENCY as a secondary metric used for the REACH objective's slot 4 (see slot-assignment.ts)", () => {
     expect(findMetaMetric("frequency")?.type).toBe("secondary");
     expect(findMetaMetric("frequency")?.format).toBe("ratio");
   });

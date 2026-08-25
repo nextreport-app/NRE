@@ -410,11 +410,15 @@ export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: s
 
   const pack = packForResultLabel(resultLabel);
   const extraKeys = [...(pack?.extraPoolExamples ?? []), ...listSelectableMetrics(headers, "META").map((m) => m.key)];
+  const reachObjective = (resultLabel || "").toUpperCase() === "REACH" || (resultLabel || "").toUpperCase() === "UNIQUE REACH";
 
   for (const key of extraKeys) {
     if (kept.length >= MAX_METRICS_PER_SLIDE) break;
     if (used.has(key) || neverKeys.has(key) || SKIP_AUTO_BACKFILL_KEYS.has(key)) continue;
     if (ALWAYS_EXCLUDED_SELECTABLE_KEYS.has(key)) continue;
+    // Reach defaults never auto-fill LPV / cost-per-LPV. Those stay in
+    // Add-from-CSV so the user can opt in; they are not pre-selected.
+    if (reachObjective && (key === "landing_page_views" || key === "cost_per_lpv")) continue;
     const candidate = byKey("META", key);
     if (!candidate) continue;
     if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
@@ -506,11 +510,10 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       break;
     case "REACH":
     case "UNIQUE REACH":
-      slot4 = byKey("META", "cpm")!;
-      slot5 = byKey("META", "frequency")!;
-      slot7 = byKey("META", "link_clicks")!;
-      // CLICKS (ALL) would duplicate slot 7's own LINK CLICKS (Issue 1).
-      slot8 = costPerLinkClick;
+      slot4 = byKey("META", "frequency")!;
+      slot5 = byKey("META", "cpm")!;
+      slot7 = byKey("META", "cpc_all")!;
+      slot8 = byKey("META", "cost_per_1k_reached")!;
       break;
     case "VIDEO VIEWS":
     case "THRUPLAYS":
