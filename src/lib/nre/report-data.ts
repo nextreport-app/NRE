@@ -1161,6 +1161,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       relevantMetrics,
       availableMetricsPool,
       campaignObjective?.resultLabel,
+      campaignObjective?.costLabel,
     );
     // Slide 1 is the wizard selection in chip order. Slide 2 is extras;
     // if those extras are 1–3, padSparseContinuationSlide repeats this
