@@ -14,12 +14,13 @@ import type { AiContext } from "../nre/report-data";
 /** Fix 3 — same "don't repeat the date/campaign name already on the slide" instruction as prompts.ts's own buildSummaryPrompt, with Google Ads metric wording (conversions/cost per conversion/avg. CPC instead of results/CPR/CPC). */
 export function buildGoogleAdsSummaryPrompt(ctx: AiContext): string {
   return (
-    "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide. Start directly with what the campaign achieved. For example start with: This campaign generated... or Campaign delivery showed... or Performance this week showed...\n" +
-    "Sentence 1: What the campaign achieved in terms of conversions, clicks and impressions.\n" +
-    "Sentence 2: The CTR and average CPC performance and what it reflects about audience engagement.\n" +
+    "Write a campaign performance summary. Write exactly 2 sentences. Do NOT start with the date range or campaign name — those are already shown on the slide.\n" +
+    "Do NOT re-list every card metric unless you are comparing two figures.\n" +
+    "Sentence 1: What the campaign is for and the one conversion or click result that matters.\n" +
+    "Sentence 2: One efficiency read (cost per conversion, CTR, or avg. CPC).\n" +
     "Rules:\n" +
     "- Never start with During [date] or The [campaign name] campaign\n" +
-    "- Do NOT mention ad groups, combined ad groups, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
+    "- Do NOT mention ad groups or delivery status\n" +
     "- Always use real numbers from the data\n" +
     "- Under 55 words total\n" +
     "- Professional tone\n\n" +
@@ -29,20 +30,18 @@ export function buildGoogleAdsSummaryPrompt(ctx: AiContext): string {
   );
 }
 
-/** Same 3-sentence structure as Meta's buildInsightPrompt (per spec: "Same structure as Meta"), with Google Ads metric wording. */
 export function buildGoogleAdsInsightPrompt(ctx: AiContext): string {
   return (
-    "Write the Key Insights and Next Strategy section for a Google Ads weekly client report. Write exactly 3 sentences following this structure:\n" +
-    "Sentence 1: One specific insight about what performed well or what the data shows this week — cite a real metric number.\n" +
-    "Sentence 2: One specific insight about what needs attention or a notable trend — cite a real metric number.\n" +
-    "Sentence 3: The recommended next actions — always include: allocating budget toward top-performing keywords/ads, pausing underperformers, testing new ad copy, and refining targeting or bidding strategy.\n" +
+    "Write the Key Insights section for a Google Ads weekly client report. Write exactly 2 sentences.\n" +
+    "Sentence 1: One data read — cite at most one or two real figures.\n" +
+    "Sentence 2: One next step that follows from that read. Do not list four generic actions (budget, pause, new copy, targeting) as a laundry list.\n" +
     "Rules:\n" +
-    "- Always cite actual numbers from the data provided\n" +
+    "- Always use actual numbers from the data when you cite them\n" +
     "- Do not use bullet points, headers, dashes, or line breaks\n" +
-    "- Keep total length under 75 words\n" +
-    "- Do not start with This week or During this period — vary the opening\n" +
-    "- Do NOT mention ad groups, combined ad groups, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
-    "- Sound like a senior account manager giving honest strategic advice\n\n" +
+    "- Keep total length under 60 words\n" +
+    "- Do not start with This week or During this period\n" +
+    "- Do NOT mention ad groups or delivery status\n" +
+    "- Sound like a senior account manager giving honest advice\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Cost: " + ctx.spend + ", Clicks: " + ctx.reach +
     ", Conversions: " + ctx.results + ", Cost per conversion: " + ctx.cpr +
     ", CTR: " + ctx.ctr + ", Avg. CPC: " + ctx.cpc

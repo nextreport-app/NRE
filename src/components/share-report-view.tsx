@@ -214,92 +214,54 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
   );
 }
 
-const DONUT_RADIUS = 45;
-const DONUT_STROKE = 12;
-const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
-
-/**
- * One campaign's donut — the arc is drawn via an SVG presentation-attribute
- * `transform` on the `<circle>` itself (supported since SVG 1.1) rather
- * than a CSS `transform` on the outer `<svg>`, and the spend/percentage
- * labels are real `<text>` nodes instead of an absolutely-positioned HTML
- * overlay stacked on top of the SVG — both changes make this render
- * reliably in contexts (older WebViews, link-preview crawlers) that don't
- * fully support CSS transforms on a root `<svg>` element or exact
- * absolute-position stacking.
- */
-function DonutChart({ c }: { c: ShareChartData["campaigns"][number] }) {
-  const percentage = Math.min(Math.max(c.percentage, 0), 100);
-  const filledLength = (DONUT_CIRCUMFERENCE * percentage) / 100;
-  const gapLength = DONUT_CIRCUMFERENCE - filledLength;
+function SpendBar({ c, maxSpend }: { c: ShareChartData["campaigns"][number]; maxSpend: number }) {
+  const widthPct = maxSpend > 0 ? Math.max((c.spend / maxSpend) * 100, c.spend > 0 ? 4 : 2) : 2;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "140px", textAlign: "center" }}>
-      <svg width="110" height="110" viewBox="0 0 110 110">
-        <circle cx="55" cy="55" r={DONUT_RADIUS} fill="none" stroke="#1e3a5f" strokeWidth={DONUT_STROKE} />
-        {filledLength > 0 && (
-          <circle
-            cx="55"
-            cy="55"
-            r={DONUT_RADIUS}
-            fill="none"
-            stroke={`#${c.color}`}
-            strokeWidth={DONUT_STROKE}
-            strokeDasharray={`${filledLength} ${gapLength}`}
-            strokeLinecap="round"
-            transform="rotate(-90 55 55)"
-          />
-        )}
-        {/* Spend shown once, inside the donut: a small muted label line plus the bold value line — matches the PPT version's own in-circle spend display. */}
-        <text x="55" y="46" textAnchor="middle" fill="#94a3b8" fontSize="9" letterSpacing="0.5" style={{ fontFamily: "inherit" }}>
-          AD SPEND
-        </text>
-        <text x="55" y="62" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" style={{ fontFamily: "inherit" }}>
-          {c.spendLabel}
-        </text>
-      </svg>
-      {/* Campaign name below the donut — spend already shown once, inside the circle. Results/cost-per-result (this campaign's own primary objective) follow, omitted entirely for a zero-result campaign rather than showing hollow zeros. Each line is centered and full-width under the donut (Fix 6). */}
-      <div
-        style={{
-          color: "white",
-          fontSize: "11px",
-          marginTop: "8px",
-          lineHeight: "1.4",
-          width: "100%",
-          textAlign: "center",
-          overflow: "hidden",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-        }}
-      >
-        {c.name}
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(90px, 0.7fr)", gap: "12px", alignItems: "center" }}>
+      <div>
+        <div style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>{c.name}</div>
+        {c.statusIndicator ? <div style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 700 }}>{c.statusIndicator}</div> : null}
       </div>
-      {c.resultsValueLabel && (
-        <div style={{ color: "#f6ad55", fontSize: "11px", marginTop: "4px", width: "100%", textAlign: "center" }}>
-          {c.resultsValueLabel} {c.resultsLabel}
-        </div>
-      )}
-      {c.cprValueLabel && (
-        <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px", width: "100%", textAlign: "center" }}>
-          {c.cprValueLabel} {c.cprLabel}
-        </div>
-      )}
+      <div style={{ backgroundColor: "#1e293b", borderRadius: "4px", height: "16px", overflow: "hidden" }}>
+        <div style={{ width: `${widthPct}%`, height: "100%", backgroundColor: `#${c.color}`, borderRadius: "4px" }} />
+      </div>
+      <div>
+        <div style={{ color: "white", fontSize: "13px", fontWeight: 700 }}>{c.spendLabel}</div>
+        {c.resultsValueLabel ? (
+          <div style={{ color: "#f6ad55", fontSize: "11px" }}>
+            {c.resultsValueLabel} {c.resultsLabel}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-/** SVG donut-circle replica of the PPT's own chart slide (chart-slide.ts's buildChartSlideXml) — same ring/hole form as the deck, one donut per campaign with MTD spend, no cap. */
 function ChartSlide({ chart }: { chart: ShareChartData }) {
+  const maxSpend = Math.max(...chart.campaigns.map((c) => c.spend), 1);
+  const firstPage = chart.campaigns.slice(0, 8);
+  const rest = chart.campaigns.slice(8);
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
-
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px", marginTop: "24px" }}>
-        {chart.campaigns.map((c, i) => (
-          <DonutChart key={`${c.name}-${i}`} c={c} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "24px" }}>
+        {firstPage.map((c, i) => (
+          <SpendBar key={`${c.name}-${i}`} c={c} maxSpend={maxSpend} />
         ))}
       </div>
-
+      {rest.length > 0 && (
+        <>
+          <h3 className="mt-8 text-center text-[18px] font-semibold text-ink">
+            {chart.title} (continued from previous slide)
+          </h3>
+          <p className="mt-1 text-center text-[12px] text-ink-muted">In continuation from previous slide</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "16px" }}>
+            {rest.map((c, i) => (
+              <SpendBar key={`${c.name}-c-${i}`} c={c} maxSpend={maxSpend} />
+            ))}
+          </div>
+        </>
+      )}
       <div
         style={{
           marginTop: "16px",
@@ -343,6 +305,8 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
   if (bodyRows.length === 0) return null;
 
   return (
+    <div className="space-y-2">
+      {data.combinedTotalStory ? <p className="text-[13px] text-ink-muted">{data.combinedTotalStory}</p> : null}
     <div className="overflow-x-auto rounded-lg border border-navy-border">
       <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
         <thead>
@@ -372,6 +336,7 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

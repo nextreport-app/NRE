@@ -38,69 +38,60 @@ function isReachCampaign(ctx: Pick<AiContext, "resultLabel">): boolean {
 export function buildSummaryPrompt(ctx: AiContext): string {
   if (isReachCampaign(ctx)) {
     return (
-      "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions. Focus only on reach, impressions, frequency, CPM, CTR and CPC.\n" +
+      "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions.\n" +
       "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
-      "Sentence 1 must mention ALL of these in order:\n" +
-      "- Reach (people reached) and impressions\n" +
-      "- The CPM (cost per 1,000 impressions)\n" +
-      "- The average frequency\n" +
-      "Sentence 2 must mention:\n" +
-      "- CTR percentage\n" +
-      "- CPC value\n" +
-      "- A brief audience-engagement observation\n" +
-      "Example of correct format: \"This campaign reached 22,170 people with 28,192 impressions at a $8.50 CPM, maintaining a 1.3x average frequency. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting current audience engagement levels.\"\n" +
+      "Do NOT re-list every number already on the metric cards unless you are comparing two figures.\n" +
+      "Sentence 1: What this campaign is for (reach/awareness) and the one reach result that matters this period.\n" +
+      "Sentence 2: One efficiency read (CPM, frequency, or CTR) — interpret, do not dump the scorecard.\n" +
       "Rules:\n" +
-      "- Do NOT mention results, purchases, leads, link clicks, or any conversion count — this campaign has no conversion objective\n" +
-      "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
+      "- Do NOT mention results, purchases, leads, link clicks, or any conversion count\n" +
+      "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
       "- Use real numbers from the data — never invent or estimate\n" +
-      "- Keep total under 60 words\n" +
+      "- Do not start with the campaign name or date range — those are already on the slide\n" +
+      "- Keep total under 55 words\n" +
       "- Professional tone like a senior account manager\n\n" +
       "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
       ", Impressions: " + ctx.impressions + ", CPM: " + ctx.cpm + ", Frequency: " + ctx.freq.toFixed(1) + "x" +
       ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
     );
   }
+  const resultLabel = ctx.resultLabel;
   return (
     "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
-    "Sentence 1 must mention ALL of these in order:\n" +
-    "- The primary result count and label (e.g. 20 leads, 47 website leads, 312 link clicks, 5 purchases)\n" +
-    "- The cost per result (e.g. at $40 per lead, at $6.04 cost per lead)\n" +
-    "- The total spend (e.g. spending $800 this week)\n" +
-    "- Reach and impressions\n" +
-    "Sentence 2 must mention:\n" +
-    "- CTR percentage\n" +
-    "- CPC value\n" +
-    "- A brief engagement observation\n" +
-    "Example of correct format: \"This campaign generated 20 leads at $40 cost per lead, spending $800 to reach 22,170 people across 28,192 impressions. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting moderate audience engagement this week.\"\n" +
+    "Do NOT re-list every card metric. The slide already shows the numbers.\n" +
+    "Sentence 1: What this campaign is for, using the result label \"" + resultLabel + "\" exactly as given, and the one result that matters this period.\n" +
+    "Sentence 2: One efficiency read (cost per result, CTR, or spend vs results) — interpret or compare, do not dump the full scorecard.\n" +
     "Rules:\n" +
-    "- ALWAYS mention the primary result count and cost in sentence 1 — this is the most important metric\n" +
-    "- If results = 0, say \"recorded no [result label] this week\" in sentence 1\n" +
-    "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
+    "- Use the same result label as the chips: " + resultLabel + "\n" +
+    "- If results = 0, say the campaign recorded no " + resultLabel.toLowerCase() + " this week — do not claim the algorithm is learning unless this is clearly a brand-new campaign (it is not, unless the data says so)\n" +
+    "- Do NOT mention ad sets, combined ad sets, delivery status, or technical implementation details\n" +
     "- Use real numbers from the data — never invent or estimate\n" +
-    "- Keep total under 60 words\n" +
+    "- Do not start with the campaign name or date range — those are already on the slide\n" +
+    "- Keep total under 55 words\n" +
     "- Professional tone like a senior account manager\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", Impressions: " + ctx.impressions + ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
-    ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
+    ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
   );
 }
 
 export function buildInsightPrompt(ctx: AiContext): string {
   return (
-    "Write the Key Insights and Next Strategy section for a Meta Ads weekly client report. Write exactly 3 sentences following this structure:\n" +
-    "Sentence 1: One specific insight about what performed well or what the data shows this week — cite a real metric number.\n" +
-    "Sentence 2: One specific insight about what needs attention or a notable trend — cite a real metric number.\n" +
-    "Sentence 3: The recommended next actions — always include: allocating budget toward top-performing ads, pausing underperformers, testing new creatives, and refining targeting or bidding strategy.\n" +
+    "Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+    "Sentence 1: One data read from the numbers — cite at most one or two real figures. Do not re-list the cards.\n" +
+    "Sentence 2: One next step that follows from that read. Examples: high frequency (about 3.5x+) → creative fatigue; spend with 0 results → check the form, pixel, or conversion setup; strong CTR with an expensive cost per result → landing page; paused → do not invent a strategy.\n" +
+    "FORBIDDEN: do not list four generic actions (shift budget, pause underperformers, test new creatives, and refine targeting) as a laundry list. Give one specific next step only.\n" +
     "Rules:\n" +
-    "- Always cite actual numbers from the data provided\n" +
+    "- Always use actual numbers from the data when you cite them\n" +
+    "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
     "- Do not use bullet points, headers, dashes, or line breaks\n" +
-    "- Keep total length under 75 words\n" +
+    "- Keep total length under 60 words\n" +
     "- Do not start with This week or During this period — vary the opening\n" +
-    "- Do NOT mention ad sets, combined ad sets, delivery status, or any technical implementation details. Write only about campaign performance metrics as if presenting to a client.\n" +
-    "- Sound like a senior account manager giving honest strategic advice\n\n" +
+    "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
+    "- Sound like a senior account manager giving honest advice\n\n" +
     "Data: Campaign: " + ctx.ctx + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
-    ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
+    ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
   );
 }
 
@@ -159,9 +150,8 @@ function buildReachSummary(ctx: AiContext): string {
 export function buildZeroResultsSummary(ctx: AiContext): string {
   if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
-    "This campaign is active but recorded no " + ctx.resultLabel.toLowerCase() + " this week, with " + ctx.spend +
-    " spent reaching " + ctx.reach + " people across " + ctx.impressions + " impressions. The campaign is in the " +
-    "optimisation phase and performance is expected to improve as the algorithm learns."
+    "This campaign is running for " + ctx.resultLabel.toLowerCase() + " but recorded none this week, with " +
+    ctx.spend + " spent. Check the conversion path (form, pixel, or landing page) before increasing spend."
   );
 }
 
@@ -193,9 +183,7 @@ export function buildPausedZeroResultsSummary(ctx: AiContext): string {
  */
 export function buildPausedZeroResultsInsights(): string {
   return (
-    "The campaign was paused this week, so no new performance data is available. Once reactivated, budget will " +
-    "be directed toward the previous top-performing ads while underperformers stay paused, with creatives and " +
-    "targeting refreshed before spend ramps back up."
+    "The campaign was paused this week, so treat these numbers as historical only. Reactivate once the conversion path and creatives are ready — do not invent a live optimisation plan from a paused campaign."
   );
 }
 
@@ -220,37 +208,42 @@ export function buildPausedZeroResultsInsights(): string {
 export function buildFallbackSummary(ctx: AiContext): string {
   if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
-    "This campaign generated " + ctx.results + " " + ctx.resultLabel + " at " + ctx.cpr + " " + ctx.costLabel +
-    ", spending " + ctx.spend + " to reach " + ctx.reach + " people across " + ctx.impressions +
-    " impressions. The campaign achieved a " + ctrNumberOnly(ctx.ctr) + "% click-through rate at " + ctx.cpc +
-    " cost per click, reflecting current audience engagement levels."
+    "This campaign is running for " + ctx.resultLabel.toLowerCase() + " and produced " + ctx.results + " " +
+    ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + " " + ctx.costLabel.toLowerCase() + ", on " + ctx.spend +
+    " spend. Efficiency this period sits at a " + ctrNumberOnly(ctx.ctr) + "% CTR."
   );
 }
 
-// Results-volume wording for buildFallbackInsights — no explicit thresholds
-// were specified for this hardcoded fallback (unlike the numeric rules
-// elsewhere in this app), so these are a reasonable, documented judgment
-// call: "early" mirrors health.ts's own learning-phase results<3 threshold,
-// "strong" is a round double-digit result count, "developing" is everything
-// in between.
-function tractionWord(resultsNum: number): string {
-  if (resultsNum < 3) return "early";
-  if (resultsNum < 10) return "developing";
-  return "strong";
+function nextStepFromData(ctx: AiContext): string {
+  if (ctx.freq >= 3.5) {
+    return "Frequency is " + ctx.freq.toFixed(1) + "x, so refresh creatives before adding budget.";
+  }
+  if (ctx.resultsNum === 0 && ctx.spendNum > 0 && !isReachCampaign(ctx)) {
+    return "Spend landed with no " + ctx.resultLabel.toLowerCase() + " — check the form, pixel, or landing page before scaling.";
+  }
+  const ctrNum = parseFloat(ctrNumberOnly(ctx.ctr));
+  if (!Number.isNaN(ctrNum) && ctrNum >= 2 && ctx.hasResults) {
+    return "CTR is holding at " + ctrNumberOnly(ctx.ctr) + "% while " + ctx.costLabel.toLowerCase() + " is " + ctx.cpr +
+      " — inspect the landing page before changing targeting.";
+  }
+  return "Keep spend on the ads that produced " + ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + ".";
 }
 
 /**
  * Deterministic, always-complete replacement for buildInsightPrompt's AI
- * output when that output comes back truncated — same role as
- * buildFallbackSummary above, for the Key Insights section instead.
+ * output when that output comes back truncated or generic — two sentences,
+ * one data read and one next step. Never the four-action laundry list.
  */
 export function buildFallbackInsights(ctx: AiContext): string {
+  if (isReachCampaign(ctx)) {
+    return (
+      "Reach delivery sits at " + ctx.reach + " people with a " + ctx.freq.toFixed(1) + "x frequency. " +
+      nextStepFromData(ctx)
+    );
+  }
   return (
-    "This week " + ctx.ctx + " spent " + ctx.spend + " reaching " + ctx.reach + " people with a " +
-    ctrNumberOnly(ctx.ctr) + "% CTR. With " + ctx.results + " " + ctx.resultLabel + " recorded, the campaign shows " +
-    tractionWord(ctx.resultsNum) + " traction at " + ctx.cpr + " per result. To maximise results, budget will shift " +
-    "toward top-performing ads while underperformers are paused, with fresh creatives and refined targeting planned " +
-    "for the coming week."
+    "Delivery produced " + ctx.results + " " + ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + " on " +
+    ctx.spend + " spend. " + nextStepFromData(ctx)
   );
 }
 
@@ -333,6 +326,14 @@ export function resultCountMismatch(aiText: string, expectedCount: number): bool
  * Deliberately the same decimal-point-aware logic as the cut point above,
  * so a $-amount or percentage never gets miscounted as an extra sentence.
  */
+export function insightsLooksLikeLaundryList(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hits = ["pausing underperform", "testing new creative", "refining targeting", "allocating budget", "top-performing ads"].filter((p) =>
+    lower.includes(p),
+  );
+  return hits.length >= 2;
+}
+
 export function countSentenceEndings(text: string): number {
   let count = 0;
   for (let i = 0; i < text.length; i++) {

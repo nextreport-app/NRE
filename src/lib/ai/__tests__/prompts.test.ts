@@ -37,41 +37,29 @@ function ctx(overrides: Partial<AiContext> = {}): AiContext {
 }
 
 describe("buildSummaryPrompt", () => {
-  it("uses the exact fixed structure from the product owner's spec (permanent fix — primary result count/cost per result must always be mentioned)", () => {
+  it("asks for 2 sentences that interpret, without dumping every card metric", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
       "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.",
     );
-    expect(prompt).toContain("Sentence 1 must mention ALL of these in order:");
-    expect(prompt).toContain("- The primary result count and label (e.g. 20 leads, 47 website leads, 312 link clicks, 5 purchases)");
-    expect(prompt).toContain("- The cost per result (e.g. at $40 per lead, at $6.04 cost per lead)");
-    expect(prompt).toContain("- The total spend (e.g. spending $800 this week)");
-    expect(prompt).toContain("- Reach and impressions");
-    expect(prompt).toContain("Sentence 2 must mention:");
-    expect(prompt).toContain("- CTR percentage");
-    expect(prompt).toContain("- CPC value");
-    expect(prompt).toContain("- A brief engagement observation");
-    expect(prompt).toContain(
-      "Example of correct format: \"This campaign generated 20 leads at $40 cost per lead, spending $800 to reach 22,170 people across 28,192 impressions. The campaign achieved a 2.0% click-through rate at $1.23 cost per click, reflecting moderate audience engagement this week.\"",
-    );
-    expect(prompt).toContain("- ALWAYS mention the primary result count and cost in sentence 1 — this is the most important metric");
-    expect(prompt).toContain("- If results = 0, say \"recorded no [result label] this week\" in sentence 1");
+    expect(prompt).toContain("Do NOT re-list every card metric");
+    expect(prompt).toContain('using the result label "PURCHASES" exactly as given');
     expect(prompt).toContain("- Use real numbers from the data — never invent or estimate");
-    expect(prompt).toContain("- Keep total under 60 words");
-    expect(prompt).toContain("- Professional tone like a senior account manager");
+    expect(prompt).toContain("- Keep total under 55 words");
+    expect(prompt).not.toContain("Sentence 1 must mention ALL of these in order:");
   });
 
   it("substitutes every {token} in the Data line with the slide's real numbers", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+      "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
     );
   });
 
-  it("never mentions frequency — dropped from the fixed structure", () => {
+  it("includes frequency in the data line so insights can detect fatigue, but does not dump a card recipe", () => {
     const prompt = buildSummaryPrompt(ctx({ freq: 5 }));
-    expect(prompt).not.toContain("frequency");
-    expect(prompt).not.toContain("creative fatigue");
+    expect(prompt).toContain("Frequency: 5.0x");
+    expect(prompt).not.toContain("Sentence 1 must mention ALL of these in order:");
   });
 
   it("produces the identical prompt regardless of hasResults — no separate zero-results branch", () => {
@@ -82,31 +70,29 @@ describe("buildSummaryPrompt", () => {
 });
 
 describe("buildInsightPrompt", () => {
-  it("uses the exact fixed structure from the product owner's spec", () => {
+  it("asks for exactly 2 sentences and bans the four-action laundry list", () => {
     const prompt = buildInsightPrompt(ctx());
-    expect(prompt).toContain("Write the Key Insights and Next Strategy section for a Meta Ads weekly client report. Write exactly 3 sentences following this structure:");
-    expect(prompt).toContain("Sentence 1: One specific insight about what performed well or what the data shows this week — cite a real metric number.");
-    expect(prompt).toContain("Sentence 2: One specific insight about what needs attention or a notable trend — cite a real metric number.");
-    expect(prompt).toContain(
-      "Sentence 3: The recommended next actions — always include: allocating budget toward top-performing ads, pausing underperformers, testing new creatives, and refining targeting or bidding strategy.",
-    );
+    expect(prompt).toContain("Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.");
+    expect(prompt).toContain("Sentence 1: One data read from the numbers");
+    expect(prompt).toContain("Sentence 2: One next step that follows from that read");
+    expect(prompt).toContain("FORBIDDEN: do not list four generic actions");
     expect(prompt).toContain("Do not start with This week or During this period — vary the opening");
-    expect(prompt).toContain("Keep total length under 75 words");
+    expect(prompt).toContain("Keep total length under 60 words");
+    expect(prompt).not.toContain("exactly 3 sentences");
   });
 
   it("substitutes every {token} in the Data line — no Date or Impressions field here", () => {
     const prompt = buildInsightPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases, Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50",
+      "Data: Campaign: Shoes - Purchases, Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
     );
     expect(prompt).not.toContain("Date:");
     expect(prompt).not.toContain("Impressions:");
   });
 
-  it("never mentions frequency — dropped from the new fixed structure", () => {
+  it("includes frequency so a high-freq campaign can be called out as creative fatigue", () => {
     const prompt = buildInsightPrompt(ctx({ freq: 5 }));
-    expect(prompt).not.toContain("frequency");
-    expect(prompt).not.toContain("creative refresh");
+    expect(prompt).toContain("Frequency: 5.0x");
   });
 
   it("produces the identical prompt regardless of hasResults — no separate zero-results branch", () => {
@@ -168,9 +154,8 @@ describe("buildFallbackSummary", () => {
   it("builds the exact 2-sentence structure from real data, always ending in a period, results/cost per result always in sentence 1 (Fix 3 — no longer opens with the date/campaign name; permanent fix — spend is now always included)", () => {
     const result = buildFallbackSummary(ctx());
     expect(result).toBe(
-      "This campaign generated 21 PURCHASES at ₹50.00 COST PER PURCHASE, spending ₹1,050 to reach 12,600 people " +
-        "across 45,000 impressions. The campaign achieved a 2.00% click-through rate at ₹3.50 cost per click, " +
-        "reflecting current audience engagement levels.",
+      "This campaign is running for purchases and produced 21 purchases at ₹50.00 cost per purchase, on ₹1,050 " +
+        "spend. Efficiency this period sits at a 2.00% CTR.",
     );
     expect(result.endsWith(".")).toBe(true);
     expect(result).not.toContain("During");
@@ -181,19 +166,19 @@ describe("buildFallbackSummary", () => {
     const result = buildFallbackSummary(ctx());
     const firstSentence = result.split(". ")[0];
     expect(firstSentence).toContain("21");
-    expect(firstSentence).toContain("PURCHASES");
+    expect(firstSentence).toContain("purchases");
     expect(firstSentence).toContain("₹50.00");
-    expect(firstSentence).toContain("COST PER PURCHASE");
+    expect(firstSentence).toContain("cost per purchase");
   });
 
   it("always includes total spend (previously missing from the fallback)", () => {
     const result = buildFallbackSummary(ctx());
-    expect(result).toContain("spending ₹1,050");
+    expect(result).toContain("on ₹1,050 spend");
   });
 
   it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
     const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
-    expect(result).toContain("achieved a 0.35% click-through rate");
+    expect(result).toContain("sits at a 0.35% CTR");
     expect(result).not.toContain("0.35%%");
   });
 });
@@ -202,9 +187,7 @@ describe("buildZeroResultsSummary", () => {
   it("builds the exact 2-sentence structure from real data, always ending in a period (Fix 4 wording)", () => {
     const result = buildZeroResultsSummary(ctx({ results: "0", cpr: "—", resultsNum: 0, hasResults: false }));
     expect(result).toBe(
-      "This campaign is active but recorded no purchases this week, with ₹1,050 spent reaching 12,600 people " +
-        "across 45,000 impressions. The campaign is in the optimisation phase and performance is expected to " +
-        "improve as the algorithm learns.",
+      "This campaign is running for purchases but recorded none this week, with ₹1,050 spent. Check the conversion path (form, pixel, or landing page) before increasing spend.",
     );
     expect(result.endsWith(".")).toBe(true);
   });
@@ -291,7 +274,7 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
     it("switches to the Reach-specific prompt, with the explicit instruction line, when resultLabel is REACH", () => {
       const prompt = buildSummaryPrompt(reachCtx());
       expect(prompt).toContain(
-        "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions. Focus only on reach, impressions, frequency, CPM, CTR and CPC.",
+        "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions.",
       );
       expect(prompt).not.toContain("primary result count and label");
       expect(prompt).not.toContain("47 website leads, 312 link clicks, 5 purchases");
@@ -309,7 +292,7 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
     it("still uses the generic prompt for a non-Reach objective (e.g. PURCHASES)", () => {
       const prompt = buildSummaryPrompt(ctx());
       expect(prompt).not.toContain("REACH/AWARENESS campaign");
-      expect(prompt).toContain("Sentence 1 must mention ALL of these in order:");
+      expect(prompt).toContain("Sentence 1: What this campaign is for, using the result label \"PURCHASES\"");
     });
   });
 
@@ -344,45 +327,36 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
 
   it("never shows 'no purchases' for a non-purchase campaign — the fallback dynamically lower-cases whatever the real resultLabel is", () => {
     expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", results: "0", resultsNum: 0 }))).toContain(
-      "recorded no website leads",
+      "running for website leads but recorded none",
     );
     expect(buildZeroResultsSummary(ctx({ resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", results: "0", resultsNum: 0 }))).toContain(
-      "recorded no link clicks",
+      "running for link clicks but recorded none",
     );
     expect(buildZeroResultsSummary(ctx({ resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", results: "0", resultsNum: 0 }))).toContain(
-      "recorded no purchases",
+      "running for purchases but recorded none",
     );
-    expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", results: "0", resultsNum: 0 }))).not.toContain("no purchases");
+    expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", results: "0", resultsNum: 0 }))).not.toContain("purchases");
   });
 });
 
 describe("buildFallbackInsights", () => {
-  it("builds the exact 3-part structure from real data, always ending in a period", () => {
+  it("builds 2 sentences from real data, with one next step and no laundry list", () => {
     const result = buildFallbackInsights(ctx());
     expect(result).toBe(
-      "This week Shoes - Purchases spent ₹1,050 reaching 12,600 people with a 2.00% CTR. " +
-        "With 21 PURCHASES recorded, the campaign shows strong traction at ₹50.00 per result. To maximise results, " +
-        "budget will shift toward top-performing ads while underperformers are paused, with fresh creatives and " +
-        "refined targeting planned for the coming week.",
+      "Delivery produced 21 purchases at ₹50.00 on ₹1,050 spend. CTR is holding at 2.00% while cost per purchase is ₹50.00 — inspect the landing page before changing targeting.",
     );
     expect(result.endsWith(".")).toBe(true);
+    expect(result).not.toContain("pausing underperformers");
+    expect(result).not.toContain("testing new creatives");
   });
 
-  it.each([
-    [0, "early"],
-    [2, "early"],
-    [3, "developing"],
-    [9, "developing"],
-    [10, "strong"],
-    [50, "strong"],
-  ])("describes %i results as '%s' traction", (resultsNum, expectedWord) => {
-    const result = buildFallbackInsights(ctx({ resultsNum }));
-    expect(result).toContain(`shows ${expectedWord} traction`);
+  it("calls out high frequency as creative fatigue", () => {
+    const result = buildFallbackInsights(ctx({ freq: 4.2 }));
+    expect(result).toContain("Frequency is 4.2x, so refresh creatives before adding budget.");
   });
 
   it("never double-appends a percent sign", () => {
     const result = buildFallbackInsights(ctx({ ctr: "0.35%" }));
-    expect(result).toContain("with a 0.35% CTR");
     expect(result).not.toContain("0.35%%");
   });
 });

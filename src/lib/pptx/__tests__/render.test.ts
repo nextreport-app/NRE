@@ -293,7 +293,7 @@ describe("renderPptx — real template end-to-end", () => {
     const zip = await JSZip.loadAsync(buffer);
     const campaignSlideXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
     const aiRunRegex =
-      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1400"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>\[AI unavailable/;
+      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1400"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>Campaign performance for this period/;
     expect(campaignSlideXml).toMatch(aiRunRegex);
 
     fs.unlinkSync(outPath);
@@ -728,7 +728,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       // chart slide always precedes the table slide in render.ts's fixed
       // slide order, so matching loosely here can't accidentally pick up
       // the table slide's own "CAMPAIGN PERFORMANCE OVERVIEW" heading first.
-      if (xml.toLowerCase().includes("campaign performance")) {
+      if (xml.toLowerCase().includes("total month to date spend") || xml.toLowerCase().includes("mtd campaign performance")) {
         chartSlidePath = f;
         chartXml = xml;
         break;
@@ -1077,7 +1077,6 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const zip = await JSZip.loadAsync(buffer);
     const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
     expect(slidePaths.length).toBeGreaterThan(0);
-    const chartCampaignCount = data.chart?.campaigns.length ?? 0;
     for (const path of slidePaths) {
       const xml = await zip.file(path)!.async("string");
       const isTableSlide = xml.includes("CAMPAIGN PERFORMANCE OVERVIEW");
@@ -1094,7 +1093,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       // this fixture's Brand campaign its own Cost Per 1K Reach column
       // (real spend, even though its own "count" is always 0), so the
       // table is the full 10 columns wide (6 static + 2 objective pairs).
-      const expected = isTableSlide ? 20 : isChartSlide ? chartCampaignCount : isLegendSlide ? legendEntryCount : 0;
+      const expected = isTableSlide ? 20 : isChartSlide ? 0 : isLegendSlide ? legendEntryCount : 0;
       expect(whiteCount).toBe(expected);
     }
 

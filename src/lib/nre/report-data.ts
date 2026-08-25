@@ -142,11 +142,10 @@ export interface CampaignSlideData {
    */
   dynamicMetrics: (DynamicMetricValue | null)[];
   /**
-   * Part 4 — present only when the wizard's selectedMetrics exceeded 8 for
-   * this report; this campaign's own remaining metrics (padded up to 4 if
-   * fewer), rendered as a second "[Campaign Name] — Additional Metrics"
-   * slide immediately after the main one. Absent (the common case) means no
-   * second slide.
+   * Part 4 — present only when this campaign's selected chips exceeded 8;
+   * the remaining selected metrics (never padded with unselected extras),
+   * rendered as a second "[Name] — Additional Metrics (continued from
+   * previous slide)" slide immediately after the main one.
    */
   additionalMetricsSlide?: (DynamicMetricValue | null)[];
 }
@@ -303,6 +302,8 @@ export interface ReportData {
   periodRow: TableRowData;
   mtdRow: TableRowData;
   tableHeaderLabels: TableHeaderLabels;
+  /** One-line Previous-month vs this-period read for the Combined Total slide / share page. */
+  combinedTotalStory?: string;
   fileDateRange: string;
   objectiveWarnings: ObjectiveWarning[];
 }
@@ -605,11 +606,10 @@ function computeTableRow(
   // leaving the table with zero result-column pairs, which
   // fillCombinedTotalTable requires at least one of (see table-slide.ts).
   const groupsToShow = activeGroups.length > 0 ? activeGroups : allGroupsRaw;
-  // Cap at 3 objective column pairs — a real PPT table can't grow
-  // unbounded; when more than 3 objectives are running simultaneously, the
-  // 3 with the most spend behind them are the ones worth a client's
-  // attention.
-  const allGroups = [...groupsToShow].sort((a, b) => b.totalSpend - a.totalSpend).slice(0, 3);
+  // Every distinct reported objective keeps a column pair. The Combined
+  // Total table grows past the template's native width rather than dropping
+  // a live objective (see table-slide.ts).
+  const allGroups = [...groupsToShow].sort((a, b) => b.totalSpend - a.totalSpend);
 
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
@@ -703,6 +703,29 @@ export const COMBINED_TOTAL_STATIC_HEADERS = [
   "CTR (All)",
   "CPC (All)",
 ] as const;
+
+export function buildCombinedTotalStory(
+  periodRow: TableRowData,
+  mtdRow: TableRowData,
+  headers: TableHeaderLabels,
+  reportType: ReportType,
+): string {
+  const n = headers.resultColumns.length;
+  const objWord = n === 1 ? "1 reported objective" : `${n} reported objectives`;
+  if (periodRow.hasData && periodRow.sameMonthAsCurrentMTD) {
+    return `Previous month ${periodRow.spend} across ${objWord}.`;
+  }
+  if (periodRow.hasData && mtdRow.hasData && reportType !== "MONTHLY") {
+    return `Previous month ${periodRow.spend} vs this period ${mtdRow.spend}, across ${objWord}.`;
+  }
+  if (mtdRow.hasData) {
+    return `This period ${mtdRow.spend} across ${objWord}.`;
+  }
+  if (periodRow.hasData) {
+    return `Previous month ${periodRow.spend} across ${objWord}.`;
+  }
+  return "";
+}
 
 export function buildCombinedTotalTableGrid(
   periodRow: TableRowData,
@@ -915,13 +938,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   } else {
     const { score, badge } = calculateAccountHealth(primaryRows, isMonthlyReport ? "Monthly" : "Weekly");
     const mtdSpend = mtdRows.reduce((sum, r) => sum + parseCellNum(r.spend), 0);
+    const coverCampaignCount = new Set(primaryRows.map((r) => String(r.campaign_name || "").trim()).filter(Boolean)).size;
+    const budgetLine = budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now);
     cover = {
       accountName,
       reportDate: reportDateStr,
       dateRange: globalWeekDateRange,
       healthBadge: badge,
       healthScore: score,
-      budgetSummary: budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now),
+      budgetSummary:
+        budgetLine ||
+        (coverCampaignCount > 0
+          ? `${coverCampaignCount} campaign${coverCampaignCount === 1 ? "" : "s"} in this report`
+          : ""),
     };
   }
 
@@ -956,13 +985,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // empty. When BOTH rows have real data, though, their objective mixes can
   // genuinely differ (e.g. Period ran an objective MTD no longer does) — Fix
   // 1 unions both rows' labels rather than picking one exclusively, so an
-  // objective present in either row always gets a column, never dropped —
-  // capped at 3 overall (column-overflow fix): each row's own resultColumns
-  // is already sorted by that row's own spend descending and capped at 3
-  // (see computeTableRow above), so taking MTD's own top objectives first,
-  // then filling any remaining slots from Period's own additional ones in
-  // its own spend order, is already a "top 3 by spend" pick — just never
-  // more than 3 header pairs total, however many objectives either row has.
+  // objective present in either row always gets a column, never dropped.
   const headerSource = mtdRow.hasData ? mtdRow : periodRow;
   const otherSource = headerSource === mtdRow ? periodRow : mtdRow;
   const seenLabels = new Set<string>();
@@ -974,7 +997,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       unionColumnHeaders.push({ label: col.label, costLabel: col.costLabel });
     }
   }
-  const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders.slice(0, 3) };
+  const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders };
+  const combinedTotalStory = buildCombinedTotalStory(periodRow, mtdRow, tableHeaderLabels, reportType);
 
   // ── Paused case: single message slide, no campaign/ad-set/chart slides ──
   if (isPaused) {
@@ -995,6 +1019,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       periodRow,
       mtdRow,
       tableHeaderLabels,
+      combinedTotalStory,
       fileDateRange,
       objectiveWarnings: [],
     };
@@ -1528,6 +1553,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     periodRow,
     mtdRow,
     tableHeaderLabels,
+    combinedTotalStory,
     fileDateRange,
     objectiveWarnings,
   };
@@ -1611,6 +1637,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
     periodRow,
     mtdRow,
     tableHeaderLabels,
+    combinedTotalStory: buildCombinedTotalStory(periodRow, mtdRow, tableHeaderLabels, "WEEKLY"),
     fileDateRange: periodRow.fullMonthLabel,
     objectiveWarnings: [],
   };

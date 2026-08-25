@@ -8,6 +8,10 @@ import {
   listSelectableMetrics,
   MAX_TOTAL_METRICS,
   MIN_SECOND_SLIDE_METRICS,
+  MIN_SELECTION_FOR_SECOND_SLIDE,
+  additionalMetricsHeading,
+  evaluateAddMetric,
+  incompleteSecondSlide,
   splitMetricsForSlides,
   type AvailableMetric,
   type ObjectivePair,
@@ -529,27 +533,41 @@ describe("splitMetricsForSlides — Part 4", () => {
   });
 
   it("splits into slide 1 (first 8) + slide 2 (the rest) for 9-16 selected", () => {
-    const sel = Array.from({ length: 10 }, (_, i) => selected(`m${i}`));
+    const sel = Array.from({ length: 12 }, (_, i) => selected(`m${i}`));
     const [slide1, slide2] = splitMetricsForSlides(sel, []);
     expect(slide1).toHaveLength(8);
     expect(slide1.map((m) => m.key)).toEqual(["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7"]);
-    expect(slide2.map((m) => m.key)).toEqual(["m8", "m9"]);
+    expect(slide2.map((m) => m.key)).toEqual(["m8", "m9", "m10", "m11"]);
   });
 
-  it("pads slide 2 up to MIN_SECOND_SLIDE_METRICS with the highest-priority unselected available metrics", () => {
-    const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`)); // slide 2 would be just ["m8"]
+  it("does not invent padding metrics the user never selected", () => {
+    const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`));
     const available = [metric("pad_low", 40), metric("pad_high", 90), metric("pad_mid", 60)];
     const [, slide2] = splitMetricsForSlides(sel, available);
-    expect(slide2).toHaveLength(MIN_SECOND_SLIDE_METRICS);
-    expect(slide2.map((m) => m.key)).toEqual(["m8", "pad_high", "pad_mid", "pad_low"]);
+    expect(slide2.map((m) => m.key)).toEqual(["m8"]);
+    expect(slide2).toHaveLength(1);
   });
 
-  it("never pads with a metric that's already selected", () => {
-    const sel = Array.from({ length: 9 }, (_, i) => selected(`m${i}`));
-    const available = [metric("m0", 99), metric("pad", 50)];
-    const [, slide2] = splitMetricsForSlides(sel, available);
-    expect(slide2.map((m) => m.key)).not.toContain("m0");
-    expect(slide2.map((m) => m.key)).toContain("pad");
+  it("evaluateAddMetric blocks a 9th chip when the CSV cannot fill 4 extras", () => {
+    expect(evaluateAddMetric(8, 2)).toBe("blocked_cap8");
+    expect(evaluateAddMetric(8, 4)).toBe("confirm_second_slide");
+    expect(evaluateAddMetric(7, 1)).toBe("allow");
+    expect(evaluateAddMetric(16, 1)).toBe("blocked_max");
+    expect(MIN_SELECTION_FOR_SECOND_SLIDE).toBe(12);
+  });
+
+  it("incompleteSecondSlide is true only for 9–11 chips", () => {
+    expect(incompleteSecondSlide(8)).toBe(false);
+    expect(incompleteSecondSlide(9)).toBe(true);
+    expect(incompleteSecondSlide(11)).toBe(true);
+    expect(incompleteSecondSlide(12)).toBe(false);
+    expect(MIN_SECOND_SLIDE_METRICS).toBe(4);
+  });
+
+  it("additionalMetricsHeading names the continuation", () => {
+    expect(additionalMetricsHeading("Shoes - Search")).toBe(
+      "Shoes - Search — Additional Metrics (continued from previous slide)",
+    );
   });
 
   it("caps at MAX_TOTAL_METRICS, dropping anything beyond it", () => {
