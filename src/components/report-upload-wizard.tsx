@@ -6,20 +6,17 @@ import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import {
-  additionalMetricsHeading,
   evaluateAddMetric,
   filterAddableMetrics,
   findPrimaryResultCostPair,
   MAX_METRICS_PER_SLIDE,
   MAX_TOTAL_METRICS,
-  SPARSE_CONTINUATION_EXTRAS,
   type SelectedMetric,
 } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { useToast } from "@/components/toast";
-import { ReportCopyReview } from "@/components/report-copy-review";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
 // crammed campaign checkboxes + ad-set expand sections + the objective
@@ -1972,37 +1969,8 @@ export function ReportUploadWizard({
                     <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
                       {selectedForCampaign.length <= MAX_METRICS_PER_SLIDE
                         ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
-                        : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on ${additionalMetricsHeading(name)}`}
+                        : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on a continuation slide`}
                     </p>
-                    {selectedForCampaign.length > MAX_METRICS_PER_SLIDE && (() => {
-                      const extraCount = selectedForCampaign.length - MAX_METRICS_PER_SLIDE;
-                      const fillers = findPrimaryResultCostPair(
-                        selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE),
-                        objective?.resultLabel,
-                        objective?.costLabel,
-                      );
-                      const sparse = extraCount <= SPARSE_CONTINUATION_EXTRAS && fillers.length > 0;
-                      return (
-                        <p className="mt-2 rounded-md border border-amber-800 bg-amber-950/40 p-2 text-[12px] text-amber-200">
-                          {sparse ? (
-                            <>
-                              Slide 1 keeps the first {MAX_METRICS_PER_SLIDE} chips. Slide 2 will show your {extraCount} extra
-                              {extraCount === 1 ? "" : "s"} plus {joinMetricLabels(fillers)} from this campaign so the
-                              continuation is not a single empty-looking card
-                              {extraCount < SPARSE_CONTINUATION_EXTRAS
-                                ? " — add more extras from your CSV if you want those on the second slide too"
-                                : ""}
-                              . Unused slots stay hidden.
-                            </>
-                          ) : (
-                            <>
-                              Extra chips go onto a continuation slide ({extraCount} extra
-                              {extraCount === 1 ? "" : "s"}).
-                            </>
-                          )}
-                        </p>
-                      );
-                    })()}
 
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
@@ -2117,14 +2085,19 @@ export function ReportUploadWizard({
                           objective?.resultLabel,
                           objective?.costLabel,
                         );
-                        const fillText = fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
+                        const remainingAfter = Math.max(0, campaignAvailableMetrics(overflowDialog.normalized).length - 1);
+                        const fillText =
+                          fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
                         return (
                           <>
-                            Slide 1 will keep the first {MAX_METRICS_PER_SLIDE} chips. Adding {overflowDialog.metric.label}{" "}
-                            alone would leave the continuation looking empty, so we will also repeat {fillText} on that
-                            slide — at least 3 cards (your extra plus this campaign&apos;s result and cost). Add more extras
-                            from your CSV after this if you want those on the second slide too. Or replace a chip below
-                            to keep everything on one slide.
+                            Slide 1 will keep the first {MAX_METRICS_PER_SLIDE} chips. Adding{" "}
+                            {overflowDialog.metric.label} would leave the continuation looking empty, so we will also
+                            repeat {fillText}
+                            {" "}on that slide — at least 3 cards (your extra plus this campaign&apos;s result and cost).
+                            {remainingAfter > 0
+                              ? " Add more extras from your CSV after this if you want those on the second slide too."
+                              : ""}{" "}
+                            Or replace a chip below to keep everything on one slide.
                           </>
                         );
                       })()}
@@ -2611,8 +2584,6 @@ export function ReportUploadWizard({
           {generateStatus === "done" && downloadUrl && (
             <div className="space-y-4">
               <p className="text-center text-[16px] font-semibold text-[#68d391]">✓ Report Generated Successfully</p>
-
-              {reportId && <ReportCopyReview clientId={clientId} reportId={reportId} />}
 
               {/* Primary action — the public read-only share page, always
                   available once the report is generated (see

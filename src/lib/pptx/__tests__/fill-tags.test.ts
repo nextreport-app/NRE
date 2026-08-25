@@ -728,7 +728,7 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
     expect(xml).toContain("Jul 13 - Jul 19");
   });
 
-  it("hides unused card chrome on a sparse continuation slide instead of leaving seven empty slots visible", () => {
+  it("removes unused card chrome on a sparse continuation slide instead of leaving blank icon chips", () => {
     const slide = {
       ...makeCampaignSlide("Shoes - Search"),
       dynamicMetrics: eightSlotMetrics(),
@@ -737,7 +737,8 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "WEEKLY", "META", true);
     expect(xml).toContain("FREQUENCY");
     expect(xml).toContain("2.3");
-    expect(xml).toMatch(/hidden="1"/);
+    expect(xml).not.toMatch(/hidden="1"/);
     expect(xml).not.toMatch(/CPC \(All\)/);
+    expect(xml).not.toContain("{{METRIC_REACH}}");
   });
 });

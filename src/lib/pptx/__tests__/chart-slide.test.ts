@@ -49,14 +49,15 @@ function chartTitleText(xml: string): string {
   return /<a:t>([^<]*)<\/a:t>/.exec(xml)![1];
 }
 
-/** 16pt-tall filled spend bars (cy=203200), excluding the grey/navy track behind each one. */
+/** Filled spend bars (excluding the grey/navy track behind each one). */
 function campaignBarFillColors(xml: string): string[] {
   const tracks = new Set([TRACK_DARK, "e2e8f0"]);
+  const rowFill = new Set(["152033", "f8fafc"]);
   const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
   return shapes
-    .filter((s) => s.includes('<a:prstGeom prst="rect">') && s.includes("<a:p/>") && s.includes('cy="203200"'))
+    .filter((s) => s.includes('<a:prstGeom prst="rect">') && s.includes("<a:p/>") && (s.includes('cy="279400"') || s.includes('h="22"')))
     .map((s) => /<a:srgbClr val="([0-9a-fA-F]+)"\/>/.exec(s)![1].toLowerCase())
-    .filter((c) => !tracks.has(c));
+    .filter((c) => !tracks.has(c) && !rowFill.has(c));
 }
 
 describe("chunkChartCampaigns", () => {

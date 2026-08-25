@@ -261,17 +261,17 @@ describe("findCardIconRelId / replaceCardIcon", () => {
 });
 
 describe("hideCardSlot", () => {
-  it("marks the enclosing full-card group hidden so unused chrome does not render", () => {
+  it("removes the enclosing full-card group so unused chrome does not render", () => {
     const out = hideCardSlot(FULL_CARD_XML, "{{METRIC_SPEND}}");
-    expect(out).toContain('name="Card" hidden="1"');
-    expect(out).toContain("{{METRIC_SPEND}}");
+    expect(out).not.toContain("{{METRIC_SPEND}}");
+    expect(out).not.toContain('name="Card"');
   });
 
-  it("hides pair-card siblings (background, icon, label, value)", () => {
+  it("removes pair-card siblings (background, icon, label, value)", () => {
     const out = hideCardSlot(PAIR_CARD_XML, "{{METRIC_CTR}}");
-    expect(out).toContain('name="Bg" hidden="1"');
-    expect(out).toContain('name="Label" hidden="1"');
-    expect(out).toContain('name="Value" hidden="1"');
+    expect(out).not.toContain("{{METRIC_CTR}}");
+    expect(out).not.toContain('name="Bg"');
+    expect(out).not.toContain("CTR (All)");
   });
 
   it("is a no-op when the value locator text isn't found", () => {

@@ -148,6 +148,27 @@ describe("buildMetaSlots — Part 1: 8-slot assignment", () => {
     expect(slots[7]?.key).toBe(expectedKey);
   });
 
+  it("skips landing page views on a non-LPV campaign when the count is only 1", () => {
+    const rows = [
+      row({
+        "Amount spent": "212",
+        Reach: "8000",
+        Impressions: "20000",
+        "Link clicks": "90",
+        "CPC (cost per link click)": "2.35",
+        "Landing page views": "1",
+        "CTR (all)": "1.2",
+        Frequency: "1.4",
+      }),
+    ];
+    const slots = buildMetaSlots(metaBaseline({ resultLabel: "REACH" }), rows, "$");
+    expect(slots.map((s) => s?.key)).not.toContain("landing_page_views");
+    expect(slots.map((s) => s?.key)).not.toContain("cost_per_lpv");
+    const traffic = buildMetaSlots(metaBaseline({ resultLabel: "LINK CLICKS" }), rows, "$");
+    expect(traffic.map((s) => s?.key)).not.toContain("landing_page_views");
+    expect(traffic.map((s) => s?.key)).not.toContain("cost_per_lpv");
+  });
+
   it("never selects CLICKS (ALL) for slot 8 when LINK CLICKS is already shown elsewhere in the same card set — Issue 1", () => {
     for (const resultLabel of ["LINK CLICKS", "LANDING PAGE VIEWS", "REACH", "UNIQUE REACH", "POST ENGAGEMENTS", "ENGAGEMENT", "SOMETHING UNRECOGNIZED"]) {
       const slots = buildMetaSlots(metaBaseline({ resultLabel }), fullRows(), "$");

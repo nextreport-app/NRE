@@ -431,27 +431,9 @@ function matchingGrpSpEnd(xml: string, groupStart: number): number {
   return -1;
 }
 
-function markCnvPrHiddenInRange(xml: string, start: number, end: number): string {
-  const slice = xml.slice(start, end).replace(/<p:cNvPr\b([^>]*?)(\/?)>/g, (match, attrs: string, selfClose: string) => {
-    if (/\bhidden="1"/.test(attrs)) return match;
-    return `<p:cNvPr${attrs} hidden="1"${selfClose}>`;
-  });
-  return xml.slice(0, start) + slice + xml.slice(end);
-}
-
-/**
- * Hides one unused metric card (background, icon, label, value) so a sparse
- * continuation slide does not show seven dashed empty slots next to the
- * extras the user actually picked.
- *
- * Full cards live in an outer `<p:grpSp>`; pair cards (CTR / cost / CPC)
- * are sibling shapes. Locates the same way as replaceCardLabel: the value
- * tag, then its preceding label / icon / background. No-op if the locator
- * is missing. Call this BEFORE consuming the value tag.
- */
-export function hideCardSlot(xml: string, valueLocatorText: string, otherValueTags: readonly string[] = []): string {
+function cardSlotRange(xml: string, valueLocatorText: string, otherValueTags: readonly string[]): { start: number; end: number } | null {
   const valueIdx = xml.indexOf(valueLocatorText);
-  if (valueIdx === -1) return xml;
+  if (valueIdx === -1) return null;
 
   const groupStarts: number[] = [];
   let search = 0;
@@ -471,20 +453,20 @@ export function hideCardSlot(xml: string, valueLocatorText: string, otherValueTa
     const [start, end] = containing[i];
     const slice = xml.slice(start, end);
     if (otherValueTags.every((tag) => !slice.includes(tag))) {
-      return markCnvPrHiddenInRange(xml, start, end);
+      return { start, end };
     }
   }
 
   const valueSpStart = xml.lastIndexOf("<p:sp>", valueIdx);
-  if (valueSpStart === -1) return xml;
+  if (valueSpStart === -1) return null;
   const valueSpEnd = xml.indexOf("</p:sp>", valueIdx);
-  if (valueSpEnd === -1) return xml;
+  if (valueSpEnd === -1) return null;
   const valueEnd = valueSpEnd + "</p:sp>".length;
 
   const labelSpEnd = xml.lastIndexOf("</p:sp>", valueSpStart);
-  if (labelSpEnd === -1) return markCnvPrHiddenInRange(xml, valueSpStart, valueEnd);
+  if (labelSpEnd === -1) return { start: valueSpStart, end: valueEnd };
   const labelSpStart = xml.lastIndexOf("<p:sp>", labelSpEnd);
-  if (labelSpStart === -1) return markCnvPrHiddenInRange(xml, valueSpStart, valueEnd);
+  if (labelSpStart === -1) return { start: valueSpStart, end: valueEnd };
 
   let rangeStart = labelSpStart;
   const picStart = xml.lastIndexOf("<p:pic>", labelSpStart);
@@ -497,5 +479,16 @@ export function hideCardSlot(xml: string, valueLocatorText: string, otherValueTa
       if (bgStart !== -1 && bgEnd > bgStart) rangeStart = bgStart;
     }
   }
-  return markCnvPrHiddenInRange(xml, rangeStart, valueEnd);
+  return { start: rangeStart, end: valueEnd };
+}
+
+/**
+ * Removes one unused metric card (background, icon, label, value) from a
+ * sparse continuation slide. `hidden="1"` is ignored by Google Drive / Slides
+ * preview, which left blank icon chips. Call BEFORE consuming the value tag.
+ */
+export function hideCardSlot(xml: string, valueLocatorText: string, otherValueTags: readonly string[] = []): string {
+  const range = cardSlotRange(xml, valueLocatorText, otherValueTags);
+  if (!range) return xml;
+  return xml.slice(0, range.start) + xml.slice(range.end);
 }
