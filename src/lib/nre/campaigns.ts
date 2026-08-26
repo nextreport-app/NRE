@@ -135,7 +135,7 @@ export function resolveCampaignSelection(
   return { selectedCampaigns, stepMode: "returning" };
 }
 
-/** Campaigns below this MTD spend (from the uploaded CSV) default unchecked on Step 2. */
+/** Campaigns below this last-30-days spend (from the uploaded CSV) default unchecked on Step 2. */
 export const LOW_SPEND_CAMPAIGN_THRESHOLD = 10;
 
 export function isLowSpendCampaign(name: string, campaignSpend: Record<string, number>, threshold = LOW_SPEND_CAMPAIGN_THRESHOLD): boolean {

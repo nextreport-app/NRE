@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  clearWizardGenerateSnapshot,
+  loadWizardGenerateSnapshot,
+  saveWizardGenerateSnapshot,
+  type WizardGenerateSnapshot,
+} from "@/lib/nre/wizard-generate-snapshot";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
@@ -499,38 +505,7 @@ export function ReportUploadWizard({
   const [emailSending, setEmailSending] = useState(false);
 
   const resumeReportId = searchParams.get("resumeReport");
-
-  // Return from "Review before sharing" — reopen the Generate screen for an existing report.
-  useEffect(() => {
-    if (!resumeReportId) return;
-
-    let cancelled = false;
-    async function resumeGenerateScreen() {
-      const res = await fetch(`/api/clients/${clientId}/reports/${resumeReportId}`);
-      const json = await res.json().catch(() => null);
-      if (cancelled) return;
-      if (!res.ok || !json?.ok) {
-        showToast("Could not reopen that report. Generate a new one or pick it from report history.", "error");
-        router.replace(`/clients/${clientId}/reports/new`);
-        return;
-      }
-
-      setReportId(resumeReportId);
-      setDownloadUrl(`/api/reports/${resumeReportId}/download`);
-      setShareToken(json.shareToken ?? null);
-      setGenerateStatus("done");
-      setGenerateMessage(null);
-      setStep(5);
-      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
-      router.replace(`/clients/${clientId}/reports/new`);
-      showToast("Back on the Generate screen — download, share, or save to Drive.");
-    }
-
-    void resumeGenerateScreen();
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId, resumeReportId, router, showToast]);
+  const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
@@ -613,6 +588,124 @@ export function ReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
   }
+
+  function buildGenerateSnapshot(
+    core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
+    extras?: Partial<
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder">
+    >,
+  ): WizardGenerateSnapshot {
+    return {
+      version: 1,
+      ...core,
+      platform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      dateBounds,
+      weeklyOptions,
+      mtdRange,
+      monthComparisonOptions,
+      comparisonPreset,
+      comparisonPeriodA,
+      comparisonPeriodB,
+      previewKind,
+      previewStatus,
+      data,
+      comparisonData,
+      reportTitle,
+      reportTitleTouched,
+      customTitleExpanded,
+      selectedCampaigns: Array.from(selectedCampaigns),
+      driveView: extras?.driveView ?? driveView,
+      driveSaveUrl: extras?.driveSaveUrl ?? driveSaveUrl,
+      rememberedFolder: extras?.rememberedFolder ?? rememberedFolder,
+    };
+  }
+
+  function applyGenerateSnapshot(snapshot: WizardGenerateSnapshot) {
+    setReportId(snapshot.reportId);
+    setDownloadUrl(snapshot.downloadUrl);
+    setShareToken(snapshot.shareToken);
+    setPlatform(snapshot.platform);
+    setReportType(snapshot.reportType);
+    setDateMode(snapshot.dateMode);
+    setCustomStart(snapshot.customStart);
+    setCustomEnd(snapshot.customEnd);
+    setDateBounds(snapshot.dateBounds);
+    setWeeklyOptions(snapshot.weeklyOptions);
+    setMtdRange(snapshot.mtdRange);
+    setMonthComparisonOptions(snapshot.monthComparisonOptions);
+    setComparisonPreset(snapshot.comparisonPreset);
+    setComparisonPeriodA(snapshot.comparisonPeriodA);
+    setComparisonPeriodB(snapshot.comparisonPeriodB);
+    setPreviewKind(snapshot.previewKind);
+    setPreviewStatus(snapshot.previewStatus);
+    setData(snapshot.data);
+    setComparisonData(snapshot.comparisonData);
+    setReportTitle(snapshot.reportTitle);
+    setReportTitleTouched(snapshot.reportTitleTouched);
+    setCustomTitleExpanded(snapshot.customTitleExpanded);
+    setSelectedCampaigns(new Set(snapshot.selectedCampaigns));
+    setDriveView(snapshot.driveView);
+    setDriveSaveUrl(snapshot.driveSaveUrl);
+    setRememberedFolder(snapshot.rememberedFolder);
+    setGenerateStatus("done");
+    setGenerateMessage(null);
+  }
+
+  function persistGenerateSnapshot(
+    core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
+    extras?: Partial<
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder">
+    >,
+  ) {
+    saveWizardGenerateSnapshot(clientId, buildGenerateSnapshot(core, extras));
+  }
+
+  // Return from "Review before sharing" — restore the exact post-generate screen via session snapshot.
+  useLayoutEffect(() => {
+    if (!resumeReportId) return;
+
+    const snapshot = loadWizardGenerateSnapshot(clientId, resumeReportId);
+    if (snapshot) {
+      applyGenerateSnapshot(snapshot);
+      setStepState(5);
+      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
+      router.replace(`/clients/${clientId}/reports/new`);
+      setResumeBootstrapping(false);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch(`/api/clients/${clientId}/reports/${resumeReportId}`);
+      const json = await res.json().catch(() => null);
+      if (cancelled) return;
+      if (!res.ok || !json?.ok) {
+        showToast("Could not reopen that report. Generate a new one or pick it from report history.", "error");
+        router.replace(`/clients/${clientId}/reports/new`);
+        setResumeBootstrapping(false);
+        return;
+      }
+
+      setReportId(resumeReportId);
+      setDownloadUrl(`/api/reports/${resumeReportId}/download`);
+      setShareToken(json.shareToken ?? null);
+      setGenerateStatus("done");
+      setGenerateMessage(null);
+      setStepState(5);
+      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
+      router.replace(`/clients/${clientId}/reports/new`);
+      setResumeBootstrapping(false);
+      showToast("Download links restored — open this report from history if the full screen looks incomplete.");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, resumeReportId, router, showToast]);
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1326,6 +1419,11 @@ export function ReportUploadWizard({
     // this naturally stays null and the Share Report button never renders.
     setShareToken(json.shareToken ?? null);
     setGenerateStatus("done");
+    persistGenerateSnapshot({
+      reportId: json.reportId,
+      downloadUrl: `/api/reports/${json.reportId}/download`,
+      shareToken: json.shareToken ?? null,
+    });
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -1387,11 +1485,18 @@ export function ReportUploadWizard({
     // json.folderName is whatever the user typed, or the server's
     // DEFAULT_DRIVE_FOLDER_NAME fallback if they left it blank — never a
     // raw folder id (see the "Folder name" field below).
-    setRememberedFolder({ id: folderId, name: json.folderName });
+    const nextFolder = { id: folderId, name: json.folderName };
+    setRememberedFolder(nextFolder);
     setDriveFolderLinkInput("");
     setDriveFolderNameInput("");
     setDriveSaving(false);
     setDriveView("success");
+    if (downloadUrl) {
+      persistGenerateSnapshot(
+        { reportId, downloadUrl, shareToken },
+        { driveView: "success", driveSaveUrl: json.url, rememberedFolder: nextFolder },
+      );
+    }
   }
 
   /** The main "Save to Google Drive" button (collapsed view): one click straight to the remembered folder if there is one, otherwise expands to the paste-a-link input. */
@@ -1513,6 +1618,7 @@ export function ReportUploadWizard({
     setCustomTitleExpanded(false);
 
     resetGenerateState();
+    clearWizardGenerateSnapshot(clientId);
     setStep(1);
   }
 
@@ -1556,6 +1662,17 @@ export function ReportUploadWizard({
   function driveDisplayLabel(): string {
     const range = driveDateRangeLabel();
     return `📊 ${clientName} — ${reportTypeLabel()}${range ? " " + range : ""}`;
+  }
+
+  if (resumeBootstrapping) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="mb-1 text-[20px] font-bold text-white">Report Period and Generate</h1>
+          <p className="text-[13px] text-dash-ink-secondary">Loading your report…</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -1706,7 +1823,7 @@ export function ReportUploadWizard({
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12px] text-dash-ink">
               <strong>{lowSpendCampaigns.length} campaign{lowSpendCampaigns.length === 1 ? "" : "s"}</strong> had less than{" "}
               {currencySymbol}
-              {LOW_SPEND_CAMPAIGN_THRESHOLD} MTD spend and {lowSpendCampaigns.length === 1 ? "was" : "were"} excluded by default.
+              {LOW_SPEND_CAMPAIGN_THRESHOLD} last-30-days spend and {lowSpendCampaigns.length === 1 ? "was" : "were"} excluded by default.
               Check any you still want in the report.
             </div>
           )}
@@ -1746,10 +1863,9 @@ export function ReportUploadWizard({
                       {name}
                     </label>
                     <span
-                      className={`shrink-0 text-[11px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-ink-secondary"}`}
-                      title="Month-to-date spend in your uploaded CSV"
+                      className={`shrink-0 text-[11px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-accent"}`}
                     >
-                      MTD {currencySymbol}
+                      Last 30d {currencySymbol}
                       {Math.round(spend).toLocaleString("en-US")}
                       {lowSpend ? " · low" : ""}
                     </span>
@@ -2675,6 +2791,11 @@ export function ReportUploadWizard({
                       <Link
                         href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
                         className="text-dash-accent hover:underline"
+                        onClick={() => {
+                          if (reportId && downloadUrl) {
+                            persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+                          }
+                        }}
                       >
                         Review before sharing
                       </Link>
