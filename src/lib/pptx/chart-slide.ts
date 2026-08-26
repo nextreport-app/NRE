@@ -9,7 +9,7 @@
 import type { ChartCampaignData, ChartSlideData } from "../nre/report-data";
 import type { TemplateBackgroundImage } from "./package";
 import { REPORT_HEADER_COLOR } from "./fill-tags";
-import { backgroundImage, blockArc, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
+import { backgroundImage, buildBlankSlideXml, donutRing, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
 
 /** Relationship id the chart slide's own generated rels (see render.ts) registers the copied background picture under. */
 export const CHART_BG_REL_ID = "rId2";
@@ -33,6 +33,9 @@ const CARD_STROKE_LIGHT = "cbd5e1";
 const CAMPAIGN_COLOR_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4", "76e4f7", "f6e05e"];
 const EMPTY_RING_COLOR = "9ca3af";
 const OTHER_COLOR = "64748b";
+/** Inner hole size — matches share-report-view conic-gradient mask (52%). */
+const DONUT_HOLE_RATIO = 0.52;
+const DONUT_HOLE_FILL_DARK = "0d1b2e";
 
 function campaignRingColor(index: number): string {
   return CAMPAIGN_COLOR_PALETTE[index % CAMPAIGN_COLOR_PALETTE.length];
@@ -192,21 +195,24 @@ export function buildChartSlideXml(
   }
 
   let angle = -90;
+  const ringSegments: { startDeg: number; endDeg: number; fillHex: string }[] = [];
   for (const seg of segments) {
     const sweep = (seg.percentage / 100) * 360;
     if (sweep <= 0) continue;
-    shapes.push(
-      blockArc({
-        x: DONUT_X,
-        y: DONUT_Y,
-        d: DONUT_D,
-        startDeg: angle,
-        endDeg: angle + sweep,
-        fillHex: seg.color,
-      }),
-    );
+    ringSegments.push({ startDeg: angle, endDeg: angle + sweep, fillHex: seg.color });
     angle += sweep;
   }
+  const holeFill = isLightTemplate ? CARD_FILL_LIGHT : DONUT_HOLE_FILL_DARK;
+  shapes.push(
+    ...donutRing({
+      x: DONUT_X,
+      y: DONUT_Y,
+      d: DONUT_D,
+      segments: ringSegments,
+      holeRatio: DONUT_HOLE_RATIO,
+      holeFillHex: holeFill,
+    }),
+  );
 
   shapes.push(
     textBox({

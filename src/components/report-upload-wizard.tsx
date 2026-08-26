@@ -2816,7 +2816,7 @@ export function ReportUploadWizard({
                   ⬇ Download PPTX
                 </a>
 
-                {hasGoogleDriveConnected && driveView === "collapsed" && (
+                {hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success") && (
                   <div className="flex-1">
                     <button
                       onClick={handleSaveButtonClick}
@@ -2824,7 +2824,12 @@ export function ReportUploadWizard({
                       className="flex w-full items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
                       style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #68d391" }}
                     >
-                      ☁ {driveSaving ? "Saving to Drive…" : "Save to Google Drive"}
+                      ☁{" "}
+                      {driveSaving
+                        ? "Saving to Drive…"
+                        : driveSaveUrl
+                          ? "Save updated PPTX to Drive"
+                          : "Save to Google Drive"}
                     </button>
                     {/* State 2: a folder is already remembered for this client. */}
                     {rememberedFolder && (

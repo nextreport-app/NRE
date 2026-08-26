@@ -73,3 +73,14 @@ export function clearWizardGenerateSnapshot(clientId: string): void {
     /* private mode */
   }
 }
+
+/** After publish regenerates the PPTX, allow saving the updated deck to Drive again. */
+export function invalidateGenerateSnapshotDrive(clientId: string, reportId: string): void {
+  const snapshot = loadWizardGenerateSnapshot(clientId, reportId);
+  if (!snapshot) return;
+  saveWizardGenerateSnapshot(clientId, {
+    ...snapshot,
+    driveView: "collapsed",
+    driveSaveUrl: null,
+  });
+}

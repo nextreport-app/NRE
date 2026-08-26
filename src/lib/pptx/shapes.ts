@@ -91,6 +91,83 @@ export function ellipse(opts: EllipseOptions): string {
   );
 }
 
+/** Degrees → DrawingML angle adjust (60 000 per degree, 0° = 3 o'clock). */
+function degToAdj(deg: number): number {
+  return Math.round((((deg % 360) + 360) % 360) * 60000);
+}
+
+export interface PieWedgeOptions {
+  x: number;
+  y: number;
+  d: number;
+  /** Start angle in degrees, 0 = 3 o'clock, clockwise. */
+  startDeg: number;
+  /** End angle in degrees. */
+  endDeg: number;
+  fillHex: string;
+}
+
+/** One filled pie slice — building block for cross-app donut rings. */
+export function pieWedge(opts: PieWedgeOptions): string {
+  const id = nextShapeId();
+  return (
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="PieWedge ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${ptToEmu(opts.x)}" y="${ptToEmu(opts.y)}"/><a:ext cx="${ptToEmu(opts.d)}" cy="${ptToEmu(opts.d)}"/></a:xfrm>` +
+    `<a:prstGeom prst="pie"><a:avLst><a:gd fmla="val ${degToAdj(opts.startDeg)}" name="adj1"/><a:gd fmla="val ${degToAdj(opts.endDeg)}" name="adj2"/></a:avLst></a:prstGeom>` +
+    `<a:solidFill><a:srgbClr val="${opts.fillHex}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>` +
+    `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`
+  );
+}
+
+export interface DonutRingSegment {
+  startDeg: number;
+  endDeg: number;
+  fillHex: string;
+}
+
+export interface DonutRingOptions {
+  x: number;
+  y: number;
+  d: number;
+  segments: DonutRingSegment[];
+  /** Inner hole diameter as a fraction of outer diameter — matches browser mask (52%). */
+  holeRatio?: number;
+  holeFillHex: string;
+}
+
+/**
+ * Donut ring built from pie wedges + a center cover disc. Renders reliably in
+ * PowerPoint and Google Slides; blockArc often distorts in Slides.
+ */
+export function donutRing(opts: DonutRingOptions): string[] {
+  const parts: string[] = [];
+  for (const seg of opts.segments) {
+    if (seg.endDeg <= seg.startDeg) continue;
+    parts.push(
+      pieWedge({
+        x: opts.x,
+        y: opts.y,
+        d: opts.d,
+        startDeg: seg.startDeg,
+        endDeg: seg.endDeg,
+        fillHex: seg.fillHex,
+      }),
+    );
+  }
+  const holeRatio = opts.holeRatio ?? 0.52;
+  const innerD = opts.d * holeRatio;
+  const inset = (opts.d - innerD) / 2;
+  parts.push(
+    ellipse({
+      x: opts.x + inset,
+      y: opts.y + inset,
+      d: innerD,
+      fillHex: opts.holeFillHex,
+    }),
+  );
+  return parts;
+}
+
 export interface BlockArcOptions {
   x: number;
   y: number;
@@ -108,8 +185,8 @@ export interface BlockArcOptions {
 export function blockArc(opts: BlockArcOptions): string {
   const id = nextShapeId();
   const inner = opts.innerRadius ?? 0.58;
-  const startAdj = Math.round((((opts.startDeg % 360) + 360) % 360) * 60000);
-  const endAdj = Math.round((((opts.endDeg % 360) + 360) % 360) * 60000);
+  const startAdj = degToAdj(opts.startDeg);
+  const endAdj = degToAdj(opts.endDeg);
   const innerAdj = Math.round(Math.min(0.95, Math.max(0.05, inner)) * 50000);
   return (
     `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="DonutArc ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
