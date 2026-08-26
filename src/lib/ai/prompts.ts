@@ -183,7 +183,8 @@ export function buildPausedZeroResultsSummary(ctx: AiContext): string {
  */
 export function buildPausedZeroResultsInsights(): string {
   return (
-    "The campaign was paused this week, so treat these numbers as historical only. Reactivate once the conversion path and creatives are ready — do not invent a live optimisation plan from a paused campaign."
+    "This campaign was paused during the reporting week, so these figures reflect delivery before the pause rather than current performance. " +
+    "When you reactivate, confirm tracking and the landing experience are working before increasing budget."
   );
 }
 

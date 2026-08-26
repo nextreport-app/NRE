@@ -216,38 +216,50 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
 
 function SpendBar({ c, maxSpend }: { c: ShareChartData["campaigns"][number]; maxSpend: number }) {
   const widthPct = maxSpend > 0 ? Math.max((c.spend / maxSpend) * 100, c.spend > 0 ? 4 : 2) : 2;
+  const showMetrics = c.spend > 0 || c.resultsValueLabel.length > 0;
   return (
     <div
-      className="grid grid-cols-1 gap-3 min-[800px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1.5fr)_auto_auto] min-[800px]:items-center"
+      className="grid grid-cols-1 gap-3 min-[800px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1.55fr)_auto_auto] min-[800px]:items-center min-[800px]:gap-4"
       style={{
-        backgroundColor: "#152033",
-        borderRadius: "8px",
-        padding: "12px 14px",
+        backgroundColor: "#131d30",
+        borderRadius: "10px",
+        padding: "14px 16px",
+        border: "1px solid #2a4365",
         borderLeft: `4px solid #${c.color}`,
       }}
     >
-      <div className="min-w-0" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
-        <div style={{ color: "white", fontSize: "15px", fontWeight: 700, lineHeight: 1.35 }}>{c.name}</div>
-        {c.statusIndicator ? <div style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 700 }}>{c.statusIndicator}</div> : null}
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
+          <div style={{ color: "white", fontSize: "15px", fontWeight: 700, lineHeight: 1.35 }}>{c.name}</div>
+        </div>
+        {c.statusIndicator ? <StatusBadge status={c.statusIndicator} /> : null}
       </div>
-      <div className="min-w-0" style={{ backgroundColor: "#1e293b", borderRadius: "6px", height: "22px", overflow: "hidden" }}>
-        <div style={{ width: `${widthPct}%`, maxWidth: "100%", height: "100%", backgroundColor: `#${c.color}`, borderRadius: "6px" }} />
+      <div className="min-w-0">
+        <div style={{ backgroundColor: "#1e293b", borderRadius: "999px", height: "12px", overflow: "hidden" }}>
+          <div
+            style={{
+              width: `${widthPct}%`,
+              maxWidth: "100%",
+              height: "100%",
+              backgroundColor: `#${c.color}`,
+              borderRadius: "999px",
+            }}
+          />
+        </div>
       </div>
       <div className="shrink-0">
-        <div style={{ color: "white", fontSize: "16px", fontWeight: 700 }}>{c.spendLabel}</div>
-        <div style={{ color: "#7ab0cc", fontSize: "12px" }}>Ad spend</div>
+        <div style={{ color: "white", fontSize: "17px", fontWeight: 700 }}>{c.spendLabel}</div>
+        <div style={{ color: "#7ab0cc", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Ad spend</div>
       </div>
       <div className="min-w-0 shrink-0">
-        {c.resultsValueLabel ? (
+        {showMetrics ? (
           <>
             <div style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>
               {c.resultsValueLabel} {c.resultsLabel}
             </div>
-            {c.cprValueLabel ? (
-              <div style={{ color: "#7ab0cc", fontSize: "12px" }}>
-                {c.cprValueLabel} {c.cprLabel}
-              </div>
-            ) : null}
+            <div style={{ color: "#7ab0cc", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              {c.cprValueLabel} {c.cprLabel}
+            </div>
           </>
         ) : null}
       </div>

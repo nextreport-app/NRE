@@ -62,6 +62,55 @@ function cprShortForChart(label: string): string {
   return label.replace("COST PER 1K ", "CP 1K ");
 }
 
+/** Shared PPT + share-page wording for the results column on a chart row. */
+export function chartCampaignMetricLines(
+  d: ChartCampaignData,
+  currencySymbol: string,
+): { resultsLine: string; cprLine: string } {
+  const shortCpr = cprShortForChart(d.cprLabel);
+  if (d.spend <= 0 && d.results <= 0) {
+    return { resultsLine: "", cprLine: "" };
+  }
+  if (d.results > 0) {
+    return {
+      resultsLine: `${fmtNumber(d.results)} ${d.resLabel}`,
+      cprLine: d.cpr > 0 ? `${currencySymbol}${d.cpr.toFixed(2)} ${shortCpr}` : `N/A ${shortCpr}`,
+    };
+  }
+  return {
+    resultsLine: `0 ${d.resLabel}`,
+    cprLine: `N/A ${shortCpr}`,
+  };
+}
+
+function statusPillShapes(x: number, y: number, text: string): string[] {
+  const PILL_W = 60;
+  const PILL_H = 18;
+  return [
+    roundedCard({
+      x,
+      y,
+      w: PILL_W,
+      h: PILL_H,
+      fillHex: "3d2e14",
+      strokeHex: INACTIVE_COLOR,
+      radiusPt: 9,
+    }),
+    textBox({
+      x,
+      y,
+      w: PILL_W,
+      h: PILL_H,
+      text,
+      sizePt: 9,
+      bold: true,
+      colorHex: INACTIVE_COLOR,
+      align: "ctr",
+      anchor: "ctr",
+    }),
+  ];
+}
+
 export interface ChartSlideRenderOptions {
   /** True on page 2+ when campaigns overflow one visual slide. */
   continuation?: boolean;
@@ -151,10 +200,10 @@ export function buildChartSlideXml(
   const NAME_W = 248;
   const VALUE_W = 128;
   const META_W = 220;
-  const BAR_H = 22;
-  const ROW_GAP = 8;
+  const BAR_H = 12;
+  const ROW_GAP = 10;
   const areaH = H - HEADER_BOTTOM - BOTTOM_MARGIN;
-  const ROW_H = Math.min(56, Math.max(48, Math.floor(areaH / n)));
+  const ROW_H = Math.min(60, Math.max(52, Math.floor(areaH / n)));
   const rowsBlockH = n * ROW_H;
   const blockTopY = HEADER_BOTTOM + Math.max(0, Math.floor((areaH - rowsBlockH) / 2));
   const TRACK_W = W - MARGIN_X * 2 - NAME_W - VALUE_W - META_W - 28;
@@ -182,64 +231,59 @@ export function buildChartSlideXml(
         y: rowY,
         w: W - (MARGIN_X - 8) * 2,
         h: cardH,
-        fillHex: isLightTemplate ? "f8fafc" : "152033",
-        strokeHex: isLightTemplate ? "cbd5e1" : "1e3a5f",
+        fillHex: isLightTemplate ? "f8fafc" : "131d30",
+        strokeHex: isLightTemplate ? "cbd5e1" : "2a4365",
         radiusPt: 8,
       }),
     );
     shapes.push(rectangle({ x: MARGIN_X - 8, y: rowY, w: 4, h: cardH, fillHex: col }));
 
-    const displayName = d.name.length > 32 ? d.name.slice(0, 32) + "…" : d.name;
+    const displayName = d.name.length > 28 ? d.name.slice(0, 28) + "…" : d.name;
+    const nameTextW = d.statusIndicator ? NAME_W - 68 : NAME_W;
+    shapes.push(
+      textBox({
+        x: nameX,
+        y: textTop,
+        w: nameTextW,
+        h: textH,
+        text: displayName,
+        sizePt: d.statusIndicator ? 14 : 15,
+        bold: true,
+        colorHex: WHITE,
+        align: "l",
+        anchor: "ctr",
+        clipOverflow: true,
+      }),
+    );
     if (d.statusIndicator) {
+      shapes.push(...statusPillShapes(nameX + NAME_W - 62, rowY + Math.max(8, Math.floor((cardH - 18) / 2)), d.statusIndicator));
+    }
+
+    shapes.push(
+      roundedCard({
+        x: barX,
+        y: barY,
+        w: TRACK_W,
+        h: BAR_H,
+        fillHex: TRACK,
+        strokeHex: TRACK,
+        radiusPt: BAR_H / 2,
+      }),
+    );
+    const fillW = Math.max(d.spend > 0 ? Math.round((d.spend / maxSpend) * TRACK_W) : 8, 8);
+    if (fillW > 0) {
       shapes.push(
-        textBox({
-          x: nameX,
-          y: textTop,
-          w: NAME_W,
-          h: 20,
-          text: displayName,
-          sizePt: 14,
-          bold: true,
-          colorHex: WHITE,
-          align: "l",
-          clipOverflow: true,
-        }),
-      );
-      shapes.push(
-        textBox({
-          x: nameX,
-          y: textTop + 20,
-          w: NAME_W,
-          h: 14,
-          text: d.statusIndicator,
-          sizePt: 11,
-          bold: true,
-          colorHex: INACTIVE_COLOR,
-          align: "l",
-          clipOverflow: true,
-        }),
-      );
-    } else {
-      shapes.push(
-        textBox({
-          x: nameX,
-          y: textTop,
-          w: NAME_W,
-          h: textH,
-          text: displayName,
-          sizePt: 16,
-          bold: true,
-          colorHex: WHITE,
-          align: "l",
-          anchor: "ctr",
-          clipOverflow: true,
+        roundedCard({
+          x: barX,
+          y: barY,
+          w: fillW,
+          h: BAR_H,
+          fillHex: col,
+          strokeHex: col,
+          radiusPt: BAR_H / 2,
         }),
       );
     }
-
-    shapes.push(rectangle({ x: barX, y: barY, w: TRACK_W, h: BAR_H, fillHex: TRACK }));
-    const fillW = Math.max(d.spend > 0 ? Math.round((d.spend / maxSpend) * TRACK_W) : 6, 6);
-    shapes.push(rectangle({ x: barX, y: barY, w: fillW, h: BAR_H, fillHex: col }));
 
     shapes.push(
       textBox({
@@ -267,8 +311,7 @@ export function buildChartSlideXml(
       }),
     );
 
-    const resultsLine = d.results > 0 ? `${fmtNumber(d.results)} ${d.resLabel}` : "";
-    const cprTxt = d.cpr > 0 ? `${currencySymbol}${d.cpr.toFixed(2)} ${cprShortForChart(d.cprLabel)}` : "";
+    const { resultsLine, cprLine } = chartCampaignMetricLines(d, currencySymbol);
     if (resultsLine) {
       shapes.push(
         textBox({
@@ -285,15 +328,15 @@ export function buildChartSlideXml(
         }),
       );
     }
-    if (cprTxt) {
+    if (cprLine) {
       shapes.push(
         textBox({
           x: metaX,
           y: pairY + 20,
           w: META_W,
           h: 16,
-          text: cprTxt,
-          sizePt: 12,
+          text: cprLine,
+          sizePt: 11,
           colorHex: LABEL_COLOR,
           align: "l",
           clipOverflow: true,

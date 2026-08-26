@@ -216,9 +216,10 @@ describe("buildPausedZeroResultsSummary (Fix 4)", () => {
 });
 
 describe("buildPausedZeroResultsInsights (Fix 4)", () => {
-  it("returns a fixed, always-complete paragraph that never claims zero spend", () => {
+  it("returns client-facing copy that never claims zero spend", () => {
     const result = buildPausedZeroResultsInsights();
     expect(result).not.toContain("no spend");
+    expect(result).not.toContain("do not invent");
     expect(result.endsWith(".")).toBe(true);
   });
 });

@@ -1464,8 +1464,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const chartCampaigns: ChartCampaignData[] = chartCampaignNames.map((name) => {
     const rows = chartGroups[name] || [];
     const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
-    const results = rows.reduce((s, r) => s + parseCellNum(r.results), 0);
-    const reach = rows.reduce((s, r) => s + parseCellNum(r.reach), 0);
     const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
     const avgCtr = average(ctrs);
     // Single source of truth (reported bug: the donut chart showed "ADD TO
@@ -1484,16 +1482,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     };
     const resLabel = chartObjective.resultLabel;
     const cprLabel = chartObjective.costLabel;
-    // Same REACH fix as getResultGroups (objective.ts): a real Reach
-    // objective typically has 0 in the results column, so cost-per-1K-reach
-    // is computed from reach directly instead of showing a dash/0.
-    let cpr: number;
-    if (resLabel === "REACH" && results === 0) {
-      cpr = reach > 0 ? (spend * 1000) / reach : 0;
-    } else {
-      const rawCpr = results > 0 ? spend / results : 0;
-      cpr = resLabel === "REACH" ? rawCpr * 1000 : rawCpr;
-    }
+    const { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
     totalAllSpend += spend;
 
     const isActive = hasDeliveryStatusData
