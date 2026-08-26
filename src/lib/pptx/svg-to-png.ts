@@ -3,12 +3,12 @@
  * parts (shows a broken-image triangle); PNG is universally supported.
  */
 
-import { Resvg } from "@resvg/resvg-js";
+import sharp from "sharp";
 
 /** Slide is 960×540pt — render at 2× for crisp Slides conversion. */
 const CHART_OVERVIEW_PNG_WIDTH_PX = 1920;
 
-export function rasterizeSvgToPng(svg: string, widthPx = CHART_OVERVIEW_PNG_WIDTH_PX): Uint8Array {
-  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: widthPx } });
-  return resvg.render().asPng();
+export async function rasterizeSvgToPng(svg: string, widthPx = CHART_OVERVIEW_PNG_WIDTH_PX): Promise<Uint8Array> {
+  const png = await sharp(Buffer.from(svg)).resize(widthPx).png().toBuffer();
+  return new Uint8Array(png);
 }

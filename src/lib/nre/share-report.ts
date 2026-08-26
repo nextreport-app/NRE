@@ -20,7 +20,8 @@
  */
 
 import type { AiCopy } from "../pptx/fill-tags";
-import { collectLegendEntries, slideAiKey } from "../pptx/render";
+import { collectLegendEntries } from "../pptx/legend-collect";
+import { slideAiKey } from "../pptx/slide-keys";
 import type { LegendEntry } from "../pptx/legend-slide";
 import { projectChartSlideToShareChart } from "./share-chart-projection";
 import type {

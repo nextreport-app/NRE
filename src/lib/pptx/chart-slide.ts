@@ -1,25 +1,11 @@
 /**
- * MTD overview slide — combined account snapshot KPI tiles (Option A) and a
- * spend-mix donut with legend (Option B). All figures are MTD-only from the
- * current month CSV; never weekly or previous-month data.
+ * MTD overview slide utilities — donut segments, colors, and shared helpers.
+ * Server-side slide assembly (PNG rasterization) lives in chart-slide-render.ts.
  *
  * Coordinates in points. Page is 960×540pt.
  */
 
-import type { ChartCampaignData, ChartSlideData } from "../nre/report-data";
-import { projectChartSlideToShareChart } from "../nre/share-chart-projection";
-import type { TemplateBackgroundImage } from "./package";
-import { buildPictureShapeXml } from "./embed-image";
-import { buildMtdOverviewSvg } from "./chart-overview-svg";
-import { rasterizeSvgToPng } from "./svg-to-png";
-import { ptToEmu } from "./ooxml";
-import { backgroundImage, buildBlankSlideXml, nextShapeId, resetShapeIdCounter } from "./shapes";
-
-/** Relationship id the chart slide's own generated rels (see render.ts) registers the copied background picture under. */
-export const CHART_BG_REL_ID = "rId2";
-/** Embedded browser-matching overview PNG (rasterized from SVG for Slides compat). */
-export const CHART_OVERVIEW_REL_ID = "rId3";
-export const CHART_OVERVIEW_MEDIA_FILE = "chart-overview.png";
+import type { ChartCampaignData } from "../nre/report-data";
 
 /** Legacy export — overview is always one slide now; kept for tests/imports. */
 export const CHART_CAMPAIGNS_PER_SLIDE = 8;
@@ -103,54 +89,4 @@ export interface ChartSlideRenderOptions {
   colorStartIndex?: number;
 }
 
-export interface ChartSlideBundle {
-  xml: string;
-  mediaPath: string;
-  mediaBytes: Uint8Array;
-}
-
-/** Builds chart slide with template background + embedded PNG overview (matches browser). */
-export async function buildChartSlideBundle(
-  chart: ChartSlideData,
-  currencySymbol: string,
-  background: TemplateBackgroundImage,
-  _isLightTemplate = false,
-  _platform: "META" | "GOOGLE" = "META",
-  _options: ChartSlideRenderOptions = {},
-): Promise<ChartSlideBundle> {
-  resetShapeIdCounter();
-  const shareChart = projectChartSlideToShareChart(chart, currencySymbol);
-  const svg = buildMtdOverviewSvg(shareChart);
-  const mediaBytes = rasterizeSvgToPng(svg);
-
-  const shapes: string[] = [
-    backgroundImage({ relId: CHART_BG_REL_ID, ...background }),
-    buildPictureShapeXml({
-      id: nextShapeId(),
-      name: "MTD Overview",
-      relId: CHART_OVERVIEW_REL_ID,
-      x: 0,
-      y: 0,
-      cx: ptToEmu(960),
-      cy: ptToEmu(540),
-    }),
-  ];
-
-  return {
-    xml: buildBlankSlideXml(shapes),
-    mediaPath: `ppt/media/${CHART_OVERVIEW_MEDIA_FILE}`,
-    mediaBytes,
-  };
-}
-
-/** @deprecated Prefer buildChartSlideBundle — kept for tests that only need slide XML. */
-export async function buildChartSlideXml(
-  chart: ChartSlideData,
-  currencySymbol: string,
-  background: TemplateBackgroundImage,
-  isLightTemplate = false,
-  platform: "META" | "GOOGLE" = "META",
-  options: ChartSlideRenderOptions = {},
-): Promise<string> {
-  return (await buildChartSlideBundle(chart, currencySymbol, background, isLightTemplate, platform, options)).xml;
-}
+export { CHART_BG_REL_ID, CHART_OVERVIEW_REL_ID, CHART_OVERVIEW_MEDIA_FILE } from "./chart-slide-constants";

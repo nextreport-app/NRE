@@ -13,14 +13,17 @@
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { ShareVisibility } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
-import { findMetaMetricByKey } from "../nre/meta-dictionary";
-import { findGoogleMetricByKey } from "../nre/google-dictionary";
-import { buildChartSlideBundle, CHART_BG_REL_ID, CHART_OVERVIEW_MEDIA_FILE, CHART_OVERVIEW_REL_ID } from "./chart-slide";
+import { CHART_BG_REL_ID, CHART_OVERVIEW_MEDIA_FILE, CHART_OVERVIEW_REL_ID } from "./chart-slide-constants";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
-import { buildLegendSlideXml, type LegendEntry } from "./legend-slide";
+import { buildLegendSlideXml } from "./legend-slide";
 import { buildComparisonCampaignSlideXml, buildComparisonCoverSlideXml, buildComparisonSummarySlideXml, COMPARISON_BG_REL_ID } from "./comparison-slides";
+import { collectLegendEntries } from "./legend-collect";
+import { slideAiKey } from "./slide-keys";
+
+export { collectLegendEntries } from "./legend-collect";
+export { slideAiKey } from "./slide-keys";
 
 // The chart slide is built from scratch (no template slide part behind it),
 // so unlike the cover/campaign/table slides it needs its own explicit rels:
@@ -35,24 +38,6 @@ function buildChartSlideRels(backgroundMediaTarget: string): string {
     `<Relationship Id="${CHART_OVERVIEW_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${CHART_OVERVIEW_MEDIA_FILE}"/>` +
     "</Relationships>"
   );
-}
-
-/** Collects every distinct metric key used across a report's dynamicMetrics (the automatic 7-slot assignment — see slot-assignment.ts), in first-seen order, and resolves each to a term + one-line explanation from the platform's own dictionary. Excludes "spend" — Ad Spend is always slot 1 but is a plain currency figure with nothing to abbreviate, matching the Meta template's own legend (which has no such entry); the Google template's legend does explain its own "COST" card, so that slot simply keeps its own default copy instead (see legend-slide.ts's leftover-slot fallback). */
-/** Exported for share-report.ts, which reuses this exact same collection so the public share page's Metric Guide section lists precisely the same terms/explanations as the PPT's own legend slide. */
-export function collectLegendEntries(data: ReportData): LegendEntry[] {
-  const seen = new Set<string>();
-  const entries: LegendEntry[] = [];
-  const findByKey = data.platform === "GOOGLE" ? findGoogleMetricByKey : findMetaMetricByKey;
-
-  for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
-    for (const metric of [...(slide.dynamicMetrics ?? []), ...(slide.additionalMetricsSlide ?? [])]) {
-      if (!metric || metric.key === "spend" || seen.has(metric.key)) continue;
-      seen.add(metric.key);
-      const dictEntry = findByKey(metric.key);
-      entries.push({ term: metric.label, explanation: dictEntry?.explanation ?? metric.label });
-    }
-  }
-  return entries;
 }
 
 // Client logo: cover slide only, LEFT-aligned directly above the
@@ -121,10 +106,6 @@ export interface RenderPptxInput {
   isLightTemplate?: boolean;
   /** Pre-share editor visibility — omitted means include every slide (initial generation). */
   shareVisibility?: ShareVisibility;
-}
-
-export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: string; adSetName?: string }): string {
-  return slide.kind === "campaign" ? `campaign:${slide.campaignName}` : `adset:${slide.campaignName}/${slide.adSetName}`;
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
@@ -219,6 +200,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       }
     }
     if (data.chart && showOverview) {
+      const { buildChartSlideBundle } = await import("./chart-slide-render");
       const chartBundle = await buildChartSlideBundle(
         data.chart,
         currencySymbol,

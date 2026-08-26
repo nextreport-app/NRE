@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildChartSlideBundle,
   buildDonutSegments,
   CHART_OVERVIEW_MEDIA_FILE,
   CHART_OVERVIEW_REL_ID,
@@ -8,6 +7,7 @@ import {
   ringColorForCampaign,
   chartCampaignMetricLines,
 } from "../chart-slide";
+import { buildChartSlideBundle } from "../chart-slide-render";
 import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";

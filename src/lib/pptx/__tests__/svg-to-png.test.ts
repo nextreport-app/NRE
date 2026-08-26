@@ -3,7 +3,7 @@ import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { rasterizeSvgToPng } from "../svg-to-png";
 
 describe("rasterizeSvgToPng", () => {
-  it("produces a valid PNG from chart overview SVG", () => {
+  it("produces a valid PNG from chart overview SVG", async () => {
     const svg = buildMtdOverviewSvg({
       title: "August MTD Overview",
       subtitle: "Month-to-date performance",
@@ -19,7 +19,7 @@ describe("rasterizeSvgToPng", () => {
       donutSegments: [{ name: "A", spendLabel: "$100", percentage: 100, color: "f6ad55" }],
       totalSpendLabel: "$100",
     });
-    const png = rasterizeSvgToPng(svg);
+    const png = await rasterizeSvgToPng(svg);
     expect(png[0]).toBe(0x89);
     expect(png[1]).toBe(0x50);
     expect(png.length).toBeGreaterThan(1000);
