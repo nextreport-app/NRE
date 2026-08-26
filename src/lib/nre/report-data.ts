@@ -37,7 +37,7 @@ import {
 } from "./delivery-status";
 import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
-import { calculateAccountHealth, budgetSummaryLine } from "./health";
+import { calculateAccountHealth, budgetSummaryLine, budgetPctUsed } from "./health";
 import {
   buildCampaignObjectiveMap,
   getGroupedResultDisplayForObjective,
@@ -183,11 +183,25 @@ export interface ChartCampaignData {
   statusIndicator: DeliveryStatusIndicator;
 }
 
+/** Account-level KPI row on the combined MTD overview slide (Option A). All values are MTD-only. */
+export interface ChartSnapshotKpis {
+  mtdSpendFormatted: string;
+  primaryResultsValue: string;
+  primaryResultsLabel: string;
+  primaryCprValue: string;
+  primaryCprLabel: string;
+  /** e.g. "19%" — empty when the client has no monthly budget set. */
+  budgetPctUsed: string;
+  activeCampaignCount: number;
+}
+
 export interface ChartSlideData {
   periodLabel: "MTD" | "Weekly";
   campaigns: ChartCampaignData[];
   totalAllSpend: number;
   activeCampaignCount: number;
+  /** Option A account snapshot tiles — always MTD, never weekly or previous-month figures. */
+  snapshot: ChartSnapshotKpis;
   /** Drives the chart slide's title — see mtdMonthName. */
   reportType: ReportType;
   /** Calendar month name of the MTD data (e.g. "July"), from mtdRow.monthName. Whenever available, the chart title reads "[mtdMonthName] Campaign Performance" instead of the all-caps "MTD/WEEKLY CAMPAIGN PERFORMANCE" fallback — "MTD" is jargon clients don't recognize, and the actual month name reads clearly regardless of report type. */
@@ -1525,11 +1539,27 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         ? `${mtdRow.fullMonthLabel}, ${periodYear}`
         : mtdRow.fullMonthLabel;
 
+  const primaryMtd = mtdRow.resultColumns[0] ?? {
+    label: "RESULTS",
+    costLabel: "COST PER RESULT",
+    value: "0",
+    cprValue: "—",
+  };
+  const pctUsed = budgetPctUsed(totalAllSpend, monthlyBudget);
   const chart: ChartSlideData = {
     periodLabel: "MTD",
     campaigns: chartCampaigns,
     totalAllSpend,
     activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
+    snapshot: {
+      mtdSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
+      primaryResultsValue: primaryMtd.value,
+      primaryResultsLabel: primaryMtd.label,
+      primaryCprValue: primaryMtd.cprValue,
+      primaryCprLabel: primaryMtd.costLabel,
+      budgetPctUsed: pctUsed !== null ? `${pctUsed}%` : "",
+      activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
+    },
     reportType,
     mtdMonthName: mtdRow.monthName,
     periodSubLabel,

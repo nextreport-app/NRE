@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelection, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
+import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { computeCsvDateBounds, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -116,7 +116,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const parsed = campaignSelectionMemorySchema.safeParse(JSON.parse(client.lastDeselectedCampaigns));
       if (parsed.success) campaignMemory = parsed.data;
     }
-    const { selectedCampaigns, stepMode: campaignStepMode } = resolveCampaignSelection(campaigns, campaignMemory);
+    const { selectedCampaigns, stepMode: campaignStepMode, lowSpendCampaigns } = resolveCampaignSelectionWithLowSpend(
+      campaigns,
+      campaignMemory,
+      campaignSpend,
+    );
 
     // Improvement 2 — the Campaigns step's per-campaign expandable ad-set
     // checklist. Every qualifying ad set (spend > 0) starts pre-checked;
@@ -151,6 +155,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignSpend,
       selectedCampaigns,
       campaignStepMode,
+      lowSpendCampaigns,
       adSetGroups,
       dateBounds,
       weeklyOptions,

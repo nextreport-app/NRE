@@ -15,6 +15,7 @@ import {
 } from "@/lib/nre/available-metrics";
 import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
+import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { useToast } from "@/components/toast";
 
@@ -247,6 +248,7 @@ function buildShareReportUrl(shareToken: string): string {
 export function ReportUploadWizard({
   clientId,
   clientName,
+  currencySymbol,
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
   initialLastDriveFolderName,
@@ -256,6 +258,8 @@ export function ReportUploadWizard({
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
   clientName: string;
+  /** Client currency symbol for campaign spend badges on Step 2. */
+  currencySymbol: string;
   /** Whether the account has a Google Drive account connected — gates showing the "Save to Google Drive" button on the download screen at all. */
   hasGoogleDriveConnected: boolean;
   /** Client.lastDriveFolderId/lastDriveFolderName — the folder this client's reports were last saved to, if any. Pre-navigates the folder picker into it as a convenience. */
@@ -340,6 +344,8 @@ export function ReportUploadWizard({
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
   const [campaigns, setCampaigns] = useState<string[]>([]);
+  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
+  const [lowSpendCampaigns, setLowSpendCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [campaignSearch, setCampaignSearch] = useState("");
   const [expandedCsvExtras, setExpandedCsvExtras] = useState<Set<string>>(new Set());
@@ -575,6 +581,8 @@ export function ReportUploadWizard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
     setCampaigns(json.campaigns || []);
+    setCampaignSpend(json.campaignSpend || {});
+    setLowSpendCampaigns(json.lowSpendCampaigns || []);
     setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
@@ -1657,6 +1665,15 @@ export function ReportUploadWizard({
             )}
           </div>
 
+          {lowSpendCampaigns.length > 0 && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12px] text-dash-ink">
+              <strong>{lowSpendCampaigns.length} campaign{lowSpendCampaigns.length === 1 ? "" : "s"}</strong> had less than{" "}
+              {currencySymbol}
+              {LOW_SPEND_CAMPAIGN_THRESHOLD} MTD spend and {lowSpendCampaigns.length === 1 ? "was" : "were"} excluded by default.
+              Check any you still want in the report.
+            </div>
+          )}
+
           <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
             {(() => {
               const query = campaignSearch.trim().toLowerCase();
@@ -1676,6 +1693,8 @@ export function ReportUploadWizard({
               const isSingleAdSet = !!group && group.adSetNames.length === 1;
               const allAdSetsDeselected =
                 !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
+              const spend = campaignSpend[name] ?? 0;
+              const lowSpend = isLowSpendCampaign(name, campaignSpend);
               return (
                 <li key={name} className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
@@ -1689,6 +1708,14 @@ export function ReportUploadWizard({
                     <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
                       {name}
                     </label>
+                    <span
+                      className={`shrink-0 text-[12px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-accent"}`}
+                      title="MTD spend in uploaded CSV"
+                    >
+                      {currencySymbol}
+                      {Math.round(spend).toLocaleString("en-US")}
+                      {lowSpend ? " · low" : ""}
+                    </span>
                     {isSingleAdSet && (
                       <button
                         type="button"
@@ -2609,7 +2636,7 @@ export function ReportUploadWizard({
                   {reportId ? (
                     <p className="mt-2 text-center text-[12px] text-[#94a3b8]">
                       <Link href={`/clients/${clientId}/reports/${reportId}/copy`} className="text-dash-accent hover:underline">
-                        Review or edit summary copy before sharing
+                        Review before sharing
                       </Link>
                     </p>
                   ) : null}

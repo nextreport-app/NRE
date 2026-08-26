@@ -354,6 +354,15 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
         reportType: "WEEKLY",
         mtdMonthName: null,
         periodSubLabel,
+        snapshot: {
+          mtdSpendFormatted: fmtCurrency(totalCost, currencySymbol),
+          primaryResultsValue: String(totalConversions),
+          primaryResultsLabel: RESULT_LABEL,
+          primaryCprValue: totalConversions > 0 ? fmtCurrency2dp(totalCost / totalConversions, currencySymbol) : "—",
+          primaryCprLabel: COST_LABEL,
+          budgetPctUsed: "",
+          activeCampaignCount: chartCampaigns.filter((c) => c.isActive).length,
+        },
       };
 
   const emptyPeriodRow: TableRowData = {

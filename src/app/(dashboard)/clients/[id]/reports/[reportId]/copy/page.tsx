@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ReportCopyReview } from "@/components/report-copy-review";
+import { ReportShareReview } from "@/components/report-share-review";
 import Link from "next/link";
 
 export default async function ReportCopyPage({ params }: { params: Promise<{ id: string; reportId: string }> }) {
@@ -12,12 +12,12 @@ export default async function ReportCopyPage({ params }: { params: Promise<{ id:
   if (!report || report.client.userId !== session.user.id || report.clientId !== id) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
+    <div className="mx-auto max-w-6xl space-y-4 p-6">
       <Link href={`/clients/${id}`} className="text-[13px] text-dash-accent hover:underline">
         ← Back to client
       </Link>
-      <h1 className="text-[20px] font-semibold text-dash-ink">Review report copy</h1>
-      <ReportCopyReview clientId={id} reportId={reportId} />
+      <h1 className="text-[20px] font-semibold text-dash-ink">Review before sharing</h1>
+      <ReportShareReview clientId={id} reportId={reportId} shareToken={report.shareToken} />
     </div>
   );
 }

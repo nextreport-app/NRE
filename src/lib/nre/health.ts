@@ -210,3 +210,9 @@ export function budgetSummaryLine(
     " days remaining"
   );
 }
+
+/** Whole-number budget-used percentage for MTD overview KPI tiles — null when no budget is set. */
+export function budgetPctUsed(mtdSpend: number, monthlyBudget: number | null | undefined): number | null {
+  if (!monthlyBudget || monthlyBudget <= 0) return null;
+  return Math.round((mtdSpend / monthlyBudget) * 100);
+}

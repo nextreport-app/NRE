@@ -2,9 +2,30 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteReportFile } from "@/lib/storage";
+import { deleteReportFile, saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
-import type { ShareReportData } from "@/lib/nre/share-report";
+import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
+import { defaultShareVisibility } from "@/lib/nre/share-report";
+import { regeneratePptxFromShare, type ShareReportWithArchive } from "@/lib/nre/regenerate-report";
+import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
+import { detectLogoFormat, readLogoDimensions, extensionForLogoFormat, contentTypeForLogoFormat } from "@/lib/logo-processing";
+import type { ImageAsset } from "@/lib/pptx/embed-image";
+
+async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
+  if (!url) return null;
+  const bytes = await readLogoFile(url);
+  const format = detectLogoFormat(bytes);
+  if (!format) return null;
+  const dimensions = readLogoDimensions(bytes, format);
+  if (!dimensions) return null;
+  return {
+    bytes,
+    widthPx: dimensions.width,
+    heightPx: dimensions.height,
+    extension: extensionForLogoFormat(format),
+    contentType: contentTypeForLogoFormat(format),
+  };
+}
 
 const MAX_DISPLAY_NAME_LENGTH = 200;
 const MAX_COPY_CHARS = 800;
@@ -16,17 +37,28 @@ const copySlideSchema = z.object({
   aiInsights: z.string().max(MAX_COPY_CHARS),
 });
 
-const copyReviewSchema = z.object({
+const visibilitySchema = z.object({
+  cover: z.boolean(),
+  overview: z.boolean(),
+  combinedTotal: z.boolean(),
+  metricGuide: z.boolean(),
+  campaigns: z.record(z.string(), z.boolean()),
+  adSets: z.record(z.string(), z.boolean()),
+});
+
+const shareReviewSchema = z.object({
+  publish: z.boolean().optional(),
+  visibility: visibilitySchema,
   campaigns: z.array(copySlideSchema),
   adSets: z.array(copySlideSchema).optional(),
 });
 
-function parseShareJson(raw: string | null): ShareReportData | null {
+function parseShareJson(raw: string | null): ShareReportWithArchive | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
     if (parsed?.version !== 1 || !Array.isArray(parsed.campaigns)) return null;
-    return parsed as ShareReportData;
+    return parsed as ShareReportWithArchive;
   } catch {
     return null;
   }
@@ -44,10 +76,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
     const share = parseShareJson(report.summaryJson);
     if (!share) {
-      return NextResponse.json({ ok: true, campaigns: [], adSets: [] });
+      return NextResponse.json({ ok: true, share: null, campaigns: [], adSets: [], visibility: null });
     }
+    const visibility = share.visibility ?? defaultShareVisibility(share);
     return NextResponse.json({
       ok: true,
+      share,
+      visibility,
+      publishedAt: share.publishedAt ?? null,
       campaigns: share.campaigns.map((c) => ({
         campaignName: c.campaignName,
         aiSummary: c.aiSummary,
@@ -90,8 +126,55 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: true, displayName: updated.displayName });
     }
 
+    if (body.shareReview) {
+      const parsed = shareReviewSchema.safeParse(body.shareReview);
+      if (!parsed.success) {
+        return NextResponse.json({ error: "shareReview is invalid." }, { status: 400 });
+      }
+      const share = parseShareJson(report.summaryJson);
+      if (!share) {
+        return NextResponse.json({ error: "This report has no live-link data to edit." }, { status: 400 });
+      }
+
+      const campaignCopy = new Map(parsed.data.campaigns.map((c) => [c.campaignName, c]));
+      share.campaigns = share.campaigns.map((c) => {
+        const next = campaignCopy.get(c.campaignName);
+        return next ? { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights } : c;
+      });
+      if (parsed.data.adSets) {
+        share.adSets = share.adSets.map((c) => {
+          const next = parsed.data.adSets!.find((a) => a.campaignName === c.campaignName && a.adSetName === c.adSetName);
+          return next ? { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights } : c;
+        });
+      }
+      share.visibility = parsed.data.visibility as ShareVisibility;
+      if (parsed.data.publish) {
+        share.publishedAt = new Date().toISOString();
+      }
+
+      let filePath = report.filePath;
+      if (parsed.data.publish && share._renderArchive) {
+        const templateBuffer = await loadTemplateBufferForPlatform(report.platform, report.client.template);
+        const clientLogo = await loadLogoAsset(report.client.logoUrl);
+        const pptxBuffer = await regeneratePptxFromShare(share, templateBuffer, clientLogo);
+        if (filePath) await deleteReportFile(filePath).catch(() => undefined);
+        filePath = await saveReportFile(reportId, pptxBuffer);
+      }
+
+      await prisma.report.update({
+        where: { id: reportId },
+        data: { summaryJson: JSON.stringify(share), ...(filePath ? { filePath } : {}) },
+      });
+      return NextResponse.json({ ok: true, publishedAt: share.publishedAt ?? null });
+    }
+
+    // Legacy copy-only PATCH
     if (body.copyReview) {
-      const parsed = copyReviewSchema.safeParse(body.copyReview);
+      const legacySchema = z.object({
+        campaigns: z.array(copySlideSchema),
+        adSets: z.array(copySlideSchema).optional(),
+      });
+      const parsed = legacySchema.safeParse(body.copyReview);
       if (!parsed.success) {
         return NextResponse.json({ error: "copyReview is invalid." }, { status: 400 });
       }
@@ -117,9 +200,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ error: "Provide displayName or copyReview." }, { status: 400 });
+    return NextResponse.json({ error: "Provide displayName or shareReview." }, { status: 400 });
   } catch (err) {
-    return apiErrorResponse(err, "reports:rename");
+    return apiErrorResponse(err, "reports:share-review");
   }
 }
 

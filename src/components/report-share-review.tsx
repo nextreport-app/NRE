@@ -1,0 +1,335 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useToast } from "@/components/toast";
+import { ShareReportView } from "@/components/share-report-view";
+import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
+import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
+import { countVisibleSlides } from "@/lib/nre/regenerate-report";
+
+interface CopySlide {
+  campaignName: string;
+  adSetName?: string;
+  aiSummary: string;
+  aiInsights: string;
+}
+
+interface SlideListItem {
+  id: string;
+  label: string;
+  sublabel?: string;
+  kind: "campaign" | "adset" | "overview" | "combinedTotal" | "metricGuide";
+  visible: boolean;
+}
+
+function buildSlideList(share: ShareReportData, visibility: ShareVisibility): SlideListItem[] {
+  const items: SlideListItem[] = [];
+  for (const c of share.campaigns) {
+    items.push({
+      id: `c:${c.campaignName}`,
+      kind: "campaign",
+      label: c.campaignName,
+      sublabel: "Campaign",
+      visible: visibility.campaigns[c.campaignName] !== false,
+    });
+  }
+  for (const a of share.adSets) {
+    const key = adSetVisibilityKey(a.campaignName, a.adSetName);
+    items.push({
+      id: `a:${key}`,
+      kind: "adset",
+      label: a.adSetName || a.campaignName,
+      sublabel: a.adSetName ? a.campaignName : "Ad set",
+      visible: visibility.adSets[key] !== false,
+    });
+  }
+  if (share.chart?.donutSegments?.length) {
+    items.push({
+      id: "overview",
+      kind: "overview",
+      label: "MTD Overview",
+      sublabel: "KPI tiles + spend mix",
+      visible: visibility.overview !== false,
+    });
+  }
+  items.push({
+    id: "combinedTotal",
+    kind: "combinedTotal",
+    label: "Monthly Performance Overview",
+    sublabel: "Combined Total table",
+    visible: visibility.combinedTotal !== false,
+  });
+  if ((share.metricGuide?.length ?? 0) > 0) {
+    items.push({
+      id: "metricGuide",
+      kind: "metricGuide",
+      label: "Metric Abbreviation Guide",
+      visible: visibility.metricGuide !== false,
+    });
+  }
+  return items;
+}
+
+function applyVisibilityToShare(share: ShareReportData, visibility: ShareVisibility): ShareReportData {
+  return { ...share, visibility };
+}
+
+/**
+ * Pre-share editor — toggle slides, edit copy, publish to live link + sync PPT.
+ */
+export function ReportShareReview({
+  clientId,
+  reportId,
+  shareToken,
+}: {
+  clientId: string;
+  reportId: string;
+  shareToken: string | null;
+}) {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [share, setShare] = useState<ShareReportData | null>(null);
+  const [campaigns, setCampaigns] = useState<CopySlide[]>([]);
+  const [adSets, setAdSets] = useState<CopySlide[]>([]);
+  const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
+  const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const res = await fetch(`/api/clients/${clientId}/reports/${reportId}`);
+      const json = await res.json().catch(() => null);
+      if (cancelled) return;
+      if (!res.ok || !json?.ok || !json.share) {
+        setError(json?.error || "Could not load this report for editing.");
+        setLoading(false);
+        return;
+      }
+      const loaded = json.share as ShareReportData;
+      setShare(loaded);
+      setCampaigns(json.campaigns ?? []);
+      setAdSets(json.adSets ?? []);
+      setVisibility(json.visibility ?? defaultShareVisibility(loaded));
+      setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
+      setError(null);
+      setLoading(false);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, reportId]);
+
+  const draftShare = useMemo(() => {
+    if (!share || !visibility) return null;
+    const merged: ShareReportData = {
+      ...share,
+      visibility,
+      campaigns: share.campaigns.map((c) => {
+        const edited = campaigns.find((x) => x.campaignName === c.campaignName);
+        return edited ? { ...c, aiSummary: edited.aiSummary, aiInsights: edited.aiInsights } : c;
+      }),
+      adSets: share.adSets.map((a) => {
+        const edited = adSets.find((x) => x.campaignName === a.campaignName && x.adSetName === a.adSetName);
+        return edited ? { ...a, aiSummary: edited.aiSummary, aiInsights: edited.aiInsights } : a;
+      }),
+    };
+    return applyVisibilityToShare(merged, visibility);
+  }, [share, visibility, campaigns, adSets]);
+
+  const slideList = useMemo(
+    () => (draftShare && visibility ? buildSlideList(draftShare, visibility) : []),
+    [draftShare, visibility],
+  );
+
+  function toggleSlide(item: SlideListItem) {
+    if (!visibility) return;
+    const next = { ...visibility, campaigns: { ...visibility.campaigns }, adSets: { ...visibility.adSets } };
+    if (item.kind === "campaign") {
+      const name = item.label;
+      next.campaigns[name] = !item.visible;
+    } else if (item.kind === "adset") {
+      const ad = share?.adSets.find((a) => (a.adSetName || a.campaignName) === item.label);
+      if (ad) next.adSets[adSetVisibilityKey(ad.campaignName, ad.adSetName)] = !item.visible;
+    } else if (item.kind === "overview") next.overview = !item.visible;
+    else if (item.kind === "combinedTotal") next.combinedTotal = !item.visible;
+    else if (item.kind === "metricGuide") next.metricGuide = !item.visible;
+    setVisibility(next);
+  }
+
+  async function publish() {
+    if (!visibility) return;
+    setSaving(true);
+    const res = await fetch(`/api/clients/${clientId}/reports/${reportId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shareReview: {
+          publish: true,
+          visibility,
+          campaigns: campaigns.map((c) => ({
+            campaignName: c.campaignName,
+            aiSummary: c.aiSummary,
+            aiInsights: c.aiInsights,
+          })),
+          adSets: adSets.map((c) => ({
+            campaignName: c.campaignName,
+            adSetName: c.adSetName,
+            aiSummary: c.aiSummary,
+            aiInsights: c.aiInsights,
+          })),
+        },
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      showToast("Could not publish changes. Try again.", "error");
+      return;
+    }
+    showToast("Live link and downloadable PPT updated.");
+    setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: new Date().toISOString() } : prev));
+  }
+
+  if (loading) {
+    return <p className="text-[13px] text-dash-ink-secondary">Loading report…</p>;
+  }
+  if (error || !draftShare || !visibility) {
+    return <p className="text-[13px] text-amber-300">{error ?? "Report unavailable."}</p>;
+  }
+
+  const visibleCount = countVisibleSlides(draftShare);
+  const selectedCampaign = selectedSlideId?.startsWith("c:")
+    ? campaigns.find((c) => `c:${c.campaignName}` === selectedSlideId)
+    : null;
+  const selectedAdSet = selectedSlideId?.startsWith("a:")
+    ? adSets.find((a) => `a:${adSetVisibilityKey(a.campaignName, a.adSetName ?? "")}` === selectedSlideId)
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
+          <p className="mt-1 text-[12px] text-dash-ink-secondary">
+            {visibleCount} slides will appear on the live link. Publish when ready — this updates the browser report and
+            downloadable PPT.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {shareToken ? (
+            <Link
+              href={`https://nextreport.in/r/${shareToken}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"
+            >
+              Preview live link
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void publish()}
+            disabled={saving}
+            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink disabled:opacity-50"
+          >
+            {saving ? "Publishing…" : "Publish to live link"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr]">
+        <aside className="max-h-[70vh] overflow-y-auto rounded-lg border border-dash-border bg-dash-card p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Slides</p>
+          <ul className="space-y-1">
+            {slideList.map((item) => (
+              <li key={item.id}>
+                <div className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-dash-bg">
+                  <input
+                    type="checkbox"
+                    checked={item.visible}
+                    onChange={() => toggleSlide(item)}
+                    className="mt-1 h-3.5 w-3.5 accent-accent"
+                    aria-label={`Include ${item.label}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSlideId(item.id)}
+                    className={`min-w-0 flex-1 text-left ${selectedSlideId === item.id ? "text-dash-accent" : "text-dash-ink"}`}
+                  >
+                    <p className="truncate text-[12px] font-medium">{item.label}</p>
+                    {item.sublabel ? <p className="truncate text-[10px] text-dash-ink-secondary">{item.sublabel}</p> : null}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        <div className="space-y-4">
+          {(selectedCampaign || selectedAdSet) && (
+            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-[13px] font-semibold text-dash-ink">
+                {selectedCampaign?.campaignName ?? selectedAdSet?.adSetName}
+              </p>
+              {selectedAdSet ? (
+                <p className="text-[11px] text-dash-ink-secondary">{selectedAdSet.campaignName}</p>
+              ) : null}
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Summary</label>
+              <textarea
+                value={selectedCampaign?.aiSummary ?? selectedAdSet?.aiSummary ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (selectedCampaign) {
+                    setCampaigns((prev) =>
+                      prev.map((row) => (row.campaignName === selectedCampaign.campaignName ? { ...row, aiSummary: v } : row)),
+                    );
+                  } else if (selectedAdSet) {
+                    setAdSets((prev) =>
+                      prev.map((row) =>
+                        row.campaignName === selectedAdSet.campaignName && row.adSetName === selectedAdSet.adSetName
+                          ? { ...row, aiSummary: v }
+                          : row,
+                      ),
+                    );
+                  }
+                }}
+                rows={3}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Key insights</label>
+              <textarea
+                value={selectedCampaign?.aiInsights ?? selectedAdSet?.aiInsights ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (selectedCampaign) {
+                    setCampaigns((prev) =>
+                      prev.map((row) => (row.campaignName === selectedCampaign.campaignName ? { ...row, aiInsights: v } : row)),
+                    );
+                  } else if (selectedAdSet) {
+                    setAdSets((prev) =>
+                      prev.map((row) =>
+                        row.campaignName === selectedAdSet.campaignName && row.adSetName === selectedAdSet.adSetName
+                          ? { ...row, aiInsights: v }
+                          : row,
+                      ),
+                    );
+                  }
+                }}
+                rows={3}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-lg border border-dash-border">
+            <ShareReportView data={draftShare} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

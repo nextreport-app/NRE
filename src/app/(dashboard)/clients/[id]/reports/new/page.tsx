@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { ReportUploadWizard } from "@/components/report-upload-wizard";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
@@ -37,6 +38,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
       <ReportUploadWizard
         clientId={client.id}
         clientName={client.accountName}
+        currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
         hasGoogleDriveConnected={!!user.googleRefreshToken}
         initialLastDriveFolderId={client.lastDriveFolderId}
         initialLastDriveFolderName={client.lastDriveFolderName}
