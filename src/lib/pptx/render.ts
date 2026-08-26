@@ -15,7 +15,7 @@ import type { ShareVisibility } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
-import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
+import { buildChartSlideBundle, CHART_BG_REL_ID, CHART_OVERVIEW_MEDIA_FILE, CHART_OVERVIEW_REL_ID } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
@@ -32,6 +32,7 @@ function buildChartSlideRels(backgroundMediaTarget: string): string {
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>' +
     `<Relationship Id="${CHART_BG_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${backgroundMediaTarget}"/>` +
+    `<Relationship Id="${CHART_OVERVIEW_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${CHART_OVERVIEW_MEDIA_FILE}"/>` +
     "</Relationships>"
   );
 }
@@ -218,8 +219,17 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       }
     }
     if (data.chart && showOverview) {
+      const chartBundle = buildChartSlideBundle(
+        data.chart,
+        currencySymbol,
+        template.background,
+        isLightTemplate,
+        data.platform,
+      );
+      template.staticFiles.set(chartBundle.mediaPath, chartBundle.mediaBytes);
+      template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, "svg", "image/svg+xml");
       slides.push({
-        xml: buildChartSlideXml(data.chart, currencySymbol, template.background, isLightTemplate, data.platform),
+        xml: chartBundle.xml,
         rels: buildChartSlideRels(template.background.mediaTarget),
       });
     }

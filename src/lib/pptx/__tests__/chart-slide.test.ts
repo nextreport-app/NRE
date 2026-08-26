@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildChartSlideXml,
+  buildChartSlideBundle,
   buildDonutSegments,
+  CHART_OVERVIEW_MEDIA_FILE,
+  CHART_OVERVIEW_REL_ID,
   chunkChartCampaigns,
   ringColorForCampaign,
   chartCampaignMetricLines,
 } from "../chart-slide";
+import { buildMtdOverviewSvg } from "../chart-overview-svg";
+import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";
 import type { TemplateBackgroundImage } from "../package";
 
@@ -83,30 +87,38 @@ describe("buildDonutSegments", () => {
 });
 
 describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
-  it("uses MTD Overview in the title, not weekly wording", () => {
-    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(xml).toContain("August MTD Overview");
-    expect(xml).toContain("Month-to-date performance");
+  it("slide XML embeds overview image; title lives in the SVG media part", () => {
+    const bundle = buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
+    expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
+    const svg = new TextDecoder().decode(bundle.mediaBytes);
+    expect(svg).toContain("August MTD Overview");
+    expect(svg).toContain("Month-to-date performance");
   });
 
-  it("renders four KPI tiles and a donut arc", () => {
-    const xml = buildChartSlideXml(
+  it("embeds browser-matching overview SVG instead of native OOXML chart shapes", () => {
+    const bundle = buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
       "C$",
       BACKGROUND,
     );
-    expect(xml).toContain("MTD AD SPEND");
-    expect(xml).toContain("PURCHASES");
-    expect(xml).toContain('prst="pie"');
-    expect(xml).toContain("TOTAL MTD");
-    expect(xml).toContain("A  ·");
-    expect(xml).toContain("B  ·");
+    expect(bundle.mediaPath).toBe(`ppt/media/${CHART_OVERVIEW_MEDIA_FILE}`);
+    expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
+    const svg = new TextDecoder().decode(bundle.mediaBytes);
+    expect(svg).toContain("MTD AD SPEND");
+    expect(svg).toContain("PURCHASES");
+    expect(svg).toContain("TOTAL MTD");
+    expect(svg).toContain("A ·");
+    expect(svg).toContain("B ·");
+    expect(bundle.xml).not.toContain('prst="pie"');
   });
 
-  it("uses pie wedges and a center cover instead of horizontal spend bars", () => {
-    const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(xml).toContain('prst="pie"');
-    expect(xml).not.toContain('cy="152400"');
+  it("buildMtdOverviewSvg includes title and KPI labels from share projection", () => {
+    const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
+    const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
+    expect(svg).toContain("August MTD Overview");
+    expect(svg).toContain("MTD AD SPEND");
+    expect(svg).toContain("TOTAL MTD");
+    expect(svg).toContain("A ·");
   });
 
   it("chartCampaignMetricLines still formats zero-result rows", () => {

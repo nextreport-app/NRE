@@ -23,6 +23,39 @@ const TEMPLATE_PATH = path.resolve(__dirname, "../../../../reference/templates/A
 /** The actual production template (templates.ts's loadTemplateBuffer target) — used where the exact shipped file's structure matters, not just an equivalent reference copy. */
 const PRODUCTION_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const NOW = new Date("2026-07-20T12:00:00Z");
+const CHART_OVERVIEW_MEDIA = "chart-overview.svg";
+
+async function readChartOverviewSvgFromZip(zip: JSZip): Promise<string> {
+  const media = zip.file(`ppt/media/${CHART_OVERVIEW_MEDIA}`);
+  expect(media).not.toBeNull();
+  return media!.async("string");
+}
+
+async function findChartSlideXml(zip: JSZip): Promise<string> {
+  const relPaths = Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p));
+  for (const relPath of relPaths) {
+    const rels = await zip.file(relPath)!.async("string");
+    if (rels.includes(CHART_OVERVIEW_MEDIA)) {
+      const slidePath = relPath.replace("/_rels/", "/").replace(".rels", "");
+      return zip.file(slidePath)!.async("string");
+    }
+  }
+  throw new Error("Chart slide not found");
+}
+
+async function chartSlideRelPath(zip: JSZip): Promise<string> {
+  const relPaths = Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p));
+  for (const relPath of relPaths) {
+    const rels = await zip.file(relPath)!.async("string");
+    if (rels.includes(CHART_OVERVIEW_MEDIA)) return relPath;
+  }
+  throw new Error("Chart slide rels not found");
+}
+
+async function chartSlideXmlPath(zip: JSZip): Promise<string> {
+  const relPath = await chartSlideRelPath(zip);
+  return relPath.replace("/_rels/", "/").replace(".rels", "");
+}
 
 function daysInclusive(startDay: number, endDay: number): string[] {
   const days: string[] = [];
@@ -253,11 +286,13 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — KPI tiles + spend-mix donut (MTD-only).
-    expect(chart).toContain("July MTD Overview");
-    expect(chart).toContain("July 13 - July 19, 2026");
-    expect(chart).toContain("Brand - Reach");
-    expect(chart).toContain("Shoes - Purchases");
+    // Combined MTD overview slide — KPI tiles + spend-mix donut (embedded SVG).
+    const zipForChart = await JSZip.loadAsync(buffer);
+    const chartSvg = await readChartOverviewSvgFromZip(zipForChart);
+    expect(chartSvg).toContain("July MTD Overview");
+    expect(chartSvg).toContain("July 13 - July 19, 2026");
+    expect(chartSvg).toContain("Brand - Reach");
+    expect(chartSvg).toContain("Shoes - Purchases");
 
     // reference/templates/ADS_TEMPLATE_V2.pptx (this describe block's own
     // TEMPLATE_PATH) is a legacy, pre-existing fixture kept for broad
@@ -530,8 +565,10 @@ describe("renderPptx — real template end-to-end", () => {
     }
 
     // NOW is 2026-07-20, so the MTD start date falls in July.
-    expect(chart).toContain("July MTD Overview");
-    expect(chart).not.toContain("MTD CAMPAIGN PERFORMANCE");
+    const zipForChart = await JSZip.loadAsync(buffer);
+    const chartSvg = await readChartOverviewSvgFromZip(zipForChart);
+    expect(chartSvg).toContain("July MTD Overview");
+    expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
   }, 30000);
@@ -715,35 +752,16 @@ describe("renderPptx — client logo + agency name branding (real production tem
     expect(masterTarget).toBeDefined();
     const backgroundMediaFile = masterTarget!.split("/").pop();
 
-    // Find the chart slide by content, since its position in the deck shifts with the fixture data.
-    const slideFiles = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
-    let chartSlidePath: string | undefined;
-    let chartXml = "";
-    for (const f of slideFiles) {
-      const xml = await zip.file(f)!.async("string");
-      // Case-insensitive: the chart title is now title-case ("July Campaign
-      // Performance") whenever a month name is available, not always the
-      // old all-caps "MTD/WEEKLY CAMPAIGN PERFORMANCE" fallback text — the
-      // chart slide always precedes the table slide in render.ts's fixed
-      // slide order, so matching loosely here can't accidentally pick up
-      // the table slide's own "CAMPAIGN PERFORMANCE OVERVIEW" heading first.
-      if (xml.toLowerCase().includes("mtd overview") || xml.toLowerCase().includes("month-to-date performance")) {
-        chartSlidePath = f;
-        chartXml = xml;
-        break;
-      }
-    }
-    expect(chartSlidePath).toBeDefined();
-
-    const chartRelsPath = chartSlidePath!.replace(/slide(\d+)\.xml$/, "_rels/slide$1.xml.rels");
+    // Find the chart slide via its embedded overview SVG relationship.
+    const chartRelsPath = await chartSlideRelPath(zip);
+    const chartXml = await findChartSlideXml(zip);
     const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
     expect(chartRelsXml).toContain(`Target="../media/${backgroundMediaFile}"`);
 
-    // Full-slide-sized <p:pic>, matching the master's own coverage, drawn first (behind all chart content).
+    // Full-slide background pic + full-slide overview SVG pic — no native OOXML shapes.
     expect(chartXml).toContain('<a:ext cx="12192001" cy="6858000"/>');
-    const picIdx = chartXml.indexOf("<p:pic>");
-    expect(picIdx).toBeGreaterThan(-1);
-    expect(chartXml.indexOf("<p:sp>")).toBeGreaterThan(picIdx);
+    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(2);
+    expect(chartXml).not.toContain("<p:sp>");
   });
 
   it("renders with a client logo only — media added to the cover, nowhere else", async () => {
@@ -1074,15 +1092,19 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     // text regardless of template (see legend-slide.ts), one white run per
     // metric entry shown.
     const zip = await JSZip.loadAsync(buffer);
+    const chartSlideRelPaths = new Set<string>();
+    for (const relPath of Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p))) {
+      const rels = await zip.file(relPath)!.async("string");
+      if (rels.includes(CHART_OVERVIEW_MEDIA)) {
+        chartSlideRelPaths.add(relPath.replace("/_rels/", "/").replace(".rels", ""));
+      }
+    }
     const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
     expect(slidePaths.length).toBeGreaterThan(0);
     for (const path of slidePaths) {
       const xml = await zip.file(path)!.async("string");
       const isTableSlide = xml.includes("CAMPAIGN PERFORMANCE OVERVIEW");
-      // Case-insensitive for the same reason as the locator above — isTableSlide
-      // is still checked first in the ternary below, so overlap with the table
-      // slide's own heading here is harmless.
-      const isChartSlide = xml.toLowerCase().includes("mtd overview");
+      const isChartSlide = chartSlideRelPaths.has(path);
       const isLegendSlide = xml.includes("METRIC ABBREVIATION GUIDE");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
       // The legend slide's own white-run count should match its own amber
@@ -1097,13 +1119,11 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     }
 
     const { slideTexts } = inspectWithPythonPptx(outPath);
-    const [cover, campaign1, , , , chart, table] = slideTexts;
+    const [cover, campaign1, , , , , table] = slideTexts;
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
-    // Case-insensitive: the title is title-case ("[Month] Campaign
-    // Performance") whenever a month name is available, not always the
-    // all-caps fallback.
-    expect(chart.toLowerCase()).toContain("mtd overview");
+    const chartSvg = await readChartOverviewSvgFromZip(zip);
+    expect(chartSvg.toLowerCase()).toContain("mtd overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
     // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
     expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");

@@ -6,6 +6,7 @@
 import type { ReportData } from "./report-data";
 import type { ShareReportData, ShareVisibility } from "./share-report";
 import { adSetVisibilityKey, defaultShareVisibility } from "./share-report";
+import { applyShareEditsToReportData } from "./apply-share-edits";
 import type { AiCopy } from "../pptx/fill-tags";
 import { renderPptx, slideAiKey } from "../pptx/render";
 import type { ImageAsset } from "../pptx/embed-image";
@@ -43,9 +44,10 @@ export async function regeneratePptxFromShare(
   }
   const visibility: ShareVisibility = share.visibility ?? defaultShareVisibility(share);
   const aiCopyBySlideKey = mergeShareCopyIntoAiMap(share, archive.aiCopy);
+  const data = applyShareEditsToReportData(archive.reportData, share);
   return renderPptx({
     templateBuffer,
-    data: archive.reportData,
+    data,
     currencySymbol: archive.currencySymbol,
     aiCopyBySlideKey,
     reportTitle: archive.reportTitle,
