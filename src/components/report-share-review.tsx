@@ -7,6 +7,7 @@ import { ShareReportView } from "@/components/share-report-view";
 import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
 import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
 import { countVisibleSlides } from "@/lib/nre/regenerate-report";
+import { invalidateGenerateSnapshotDrive } from "@/lib/nre/wizard-generate-snapshot";
 
 interface CopySlide {
   campaignName: string;
@@ -203,6 +204,7 @@ export function ReportShareReview({
     setPublishedAt(ts);
     setJustPublished(true);
     setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
+    invalidateGenerateSnapshotDrive(clientId, reportId);
     showToast("Published — live link and downloadable PPT are updated.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

@@ -97,15 +97,15 @@ describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
     );
     expect(xml).toContain("MTD AD SPEND");
     expect(xml).toContain("PURCHASES");
-    expect(xml).toContain('prst="blockArc"');
+    expect(xml).toContain('prst="pie"');
     expect(xml).toContain("TOTAL MTD");
     expect(xml).toContain("A  ·");
     expect(xml).toContain("B  ·");
   });
 
-  it("uses donut arcs instead of horizontal spend bars", () => {
+  it("uses pie wedges and a center cover instead of horizontal spend bars", () => {
     const xml = buildChartSlideXml(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(xml).toContain('prst="blockArc"');
+    expect(xml).toContain('prst="pie"');
     expect(xml).not.toContain('cy="152400"');
   });
 

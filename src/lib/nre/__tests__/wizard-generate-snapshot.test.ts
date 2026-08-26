@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import {
   clearWizardGenerateSnapshot,
+  invalidateGenerateSnapshotDrive,
   loadWizardGenerateSnapshot,
   saveWizardGenerateSnapshot,
   type WizardGenerateSnapshot,
@@ -65,5 +66,17 @@ describe("wizard-generate-snapshot", () => {
     saveWizardGenerateSnapshot(clientId, snapshot);
     clearWizardGenerateSnapshot(clientId);
     expect(loadWizardGenerateSnapshot(clientId, "report-1")).toBeNull();
+  });
+
+  it("invalidateGenerateSnapshotDrive clears drive success so save can run again", () => {
+    saveWizardGenerateSnapshot(clientId, {
+      ...snapshot,
+      driveView: "success",
+      driveSaveUrl: "https://drive.google.com/file/d/abc/view",
+    });
+    invalidateGenerateSnapshotDrive(clientId, "report-1");
+    const loaded = loadWizardGenerateSnapshot(clientId, "report-1");
+    expect(loaded?.driveView).toBe("collapsed");
+    expect(loaded?.driveSaveUrl).toBeNull();
   });
 });
