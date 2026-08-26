@@ -171,7 +171,7 @@ function buildShareChart(chart: ChartSlideData | null, mtdRow: TableRowData, cur
     `${primary.cprValue} ${toTitleCase(primary.costLabel)}`;
 
   const campaigns: ShareChartCampaignData[] = chart.campaigns.map((c, i) => {
-    const hasResults = c.results > 0;
+    const showMetrics = c.spend > 0 || c.results > 0;
     return {
       name: c.name,
       spend: c.spend,
@@ -179,10 +179,10 @@ function buildShareChart(chart: ChartSlideData | null, mtdRow: TableRowData, cur
       percentage: chart.totalAllSpend > 0 ? Math.round((c.spend / chart.totalAllSpend) * 1000) / 10 : 0,
       color: ringColorForCampaign(c, i),
       statusIndicator: c.statusIndicator,
-      resultsValueLabel: hasResults ? fmtNumber(c.results) : "",
-      resultsLabel: hasResults ? toTitleCase(c.resLabel) : "",
-      cprValueLabel: hasResults && c.cpr > 0 ? fmtCurrency2dp(c.cpr, currencySymbol) : "",
-      cprLabel: hasResults ? toTitleCase(c.cprLabel) : "",
+      resultsValueLabel: showMetrics ? (c.results > 0 ? fmtNumber(c.results) : "0") : "",
+      resultsLabel: showMetrics ? toTitleCase(c.resLabel) : "",
+      cprValueLabel: showMetrics ? (c.results > 0 && c.cpr > 0 ? fmtCurrency2dp(c.cpr, currencySymbol) : "N/A") : "",
+      cprLabel: showMetrics ? toTitleCase(c.cprLabel) : "",
     };
   });
 

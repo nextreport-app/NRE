@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildChartSlideXml, chunkChartCampaigns, CHART_CAMPAIGNS_PER_SLIDE } from "../chart-slide";
+import { buildChartSlideXml, chunkChartCampaigns, CHART_CAMPAIGNS_PER_SLIDE, chartCampaignMetricLines } from "../chart-slide";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";
 import type { TemplateBackgroundImage } from "../package";
 
@@ -49,15 +49,14 @@ function chartTitleText(xml: string): string {
   return /<a:t>([^<]*)<\/a:t>/.exec(xml)![1];
 }
 
-/** Filled spend bars (excluding the grey/navy track behind each one). */
+/** Filled spend-bar roundRects (palette + grey for $0). Excludes track shapes (dark navy). */
 function campaignBarFillColors(xml: string): string[] {
-  const tracks = new Set([TRACK_DARK, "e2e8f0"]);
-  const rowFill = new Set(["152033", "f8fafc"]);
+  const allowed = new Set([...PALETTE, EMPTY_RING]);
   const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
   return shapes
-    .filter((s) => s.includes('<a:prstGeom prst="rect">') && s.includes("<a:p/>") && (s.includes('cy="279400"') || s.includes('h="22"')))
-    .map((s) => /<a:srgbClr val="([0-9a-fA-F]+)"\/>/.exec(s)![1].toLowerCase())
-    .filter((c) => !tracks.has(c) && !rowFill.has(c));
+    .filter((s) => s.includes('prst="roundRect"') && s.includes('cy="152400"'))
+    .map((s) => /<a:solidFill><a:srgbClr val="([0-9a-fA-F]+)"\/>/.exec(s)?.[1]?.toLowerCase())
+    .filter((c): c is string => !!c && allowed.has(c));
 }
 
 describe("chunkChartCampaigns", () => {
@@ -227,10 +226,15 @@ describe("buildChartSlideXml — light template and platform labels", () => {
   });
 });
 
+/** Y positions of campaign row cards (tall roundRects), not pill-shaped bar track/fill shapes. */
 function roundRectYsPt(xml: string): number[] {
   const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
   return shapes
-    .filter((s) => s.includes('prst="roundRect"'))
+    .filter((s) => {
+      if (!s.includes('prst="roundRect"')) return false;
+      const cy = Number(/cy="(\d+)"/.exec(s)?.[1]);
+      return cy > 300000;
+    })
     .map((s) => Number(/<a:off x="\d+" y="(\d+)"\/>/.exec(s)![1]) / 12700);
 }
 
@@ -258,10 +262,38 @@ describe("buildChartSlideXml — vertical centering and name clip", () => {
       "$",
       BACKGROUND,
     );
-    expect(xml).toContain("SouthavenRV&amp;Marine_LeadGen_Insta…");
+    expect(xml).toContain("SouthavenRV&amp;Marine_LeadGen_I…");
     expect(xml).not.toContain("InstantForm_ExtraLong");
     expect(xml).toContain('horzOverflow="clip"');
     expect(xml).toContain('vertOverflow="clip"');
     expect(xml).toContain('anchor="ctr"');
+  });
+
+  it("inactive campaigns use a status pill beside the name, not a second line under it", () => {
+    const xml = buildChartSlideXml(
+      buildChart([campaign("Paused Co", { statusIndicator: "Inactive" })]),
+      "$",
+      BACKGROUND,
+    );
+    expect(xml).toContain('srgbClr val="3d2e14"');
+    expect(xml).toContain("Inactive");
+  });
+
+  it("chartCampaignMetricLines shows zero results and N/A cost when spend exists but count is zero", () => {
+    const lines = chartCampaignMetricLines(
+      {
+        name: "Catalog",
+        spend: 45,
+        results: 0,
+        cpr: 0,
+        avgCtr: 0,
+        resLabel: "PURCHASES",
+        cprLabel: "COST PER PURCHASE",
+        isActive: false,
+        statusIndicator: "Inactive",
+      },
+      "C$",
+    );
+    expect(lines).toEqual({ resultsLine: "0 PURCHASES", cprLine: "N/A COST PER PURCHASE" });
   });
 });

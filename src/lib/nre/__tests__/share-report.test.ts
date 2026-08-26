@@ -147,7 +147,7 @@ describe("buildShareReportData", () => {
     expect(c.cprLabel).not.toBe("");
   });
 
-  it("omits results/cost-per-result entirely (not a hollow zero) for a campaign with no results this month", () => {
+  it("shows 0 results and N/A cost for a campaign with spend but no conversions this month", () => {
     const zeroResultRows = daysInclusive(13, 19).map((day) => ({
       _raw: { Day: day },
       campaign_name: "Awareness - Reach",
@@ -172,10 +172,10 @@ describe("buildShareReportData", () => {
     });
     const zeroShare = buildShareReportData(zeroData, new Map(), NOW, { currencySymbol: "₹" });
     const c = zeroShare.chart!.campaigns[0];
-    expect(c.resultsValueLabel).toBe("");
-    expect(c.resultsLabel).toBe("");
-    expect(c.cprValueLabel).toBe("");
-    expect(c.cprLabel).toBe("");
+    expect(c.resultsValueLabel).toBe("0");
+    expect(c.resultsLabel).not.toBe("");
+    expect(c.cprValueLabel).toBe("N/A");
+    expect(c.cprLabel).not.toBe("");
   });
 
   it("shows every campaign with MTD spend on the chart, not capped at 4", () => {

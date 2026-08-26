@@ -1522,6 +1522,50 @@ describe("chart slide — reads resultLabel/costLabel from campaignObjectiveMap,
     const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Purchase Campaign");
     expect(campaignSlide?.resultLabel).toBe(chartCampaign?.resLabel);
   });
+
+  it("per-campaign purchase counts use objective-specific totals, not summed generic results", () => {
+    const icAdSetRows: NreRow[] = daysInclusive(13, 19).map((day, i) => ({
+      _raw: { Day: day, "Initiate checkout": String(i < 5 ? 2 : 1) },
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "TOF | Broad",
+      result_type: "",
+      spend: "10",
+      reach: "200",
+      impressions: "400",
+      results: String(i < 5 ? 2 : 1),
+      purchases: "0",
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+    const purchaseAdSetRows: NreRow[] = daysInclusive(13, 19).map((day, i) => ({
+      _raw: {},
+      campaign_name: "Purchase Campaign",
+      ad_set_name: "Retargeting",
+      result_type: "Website purchases",
+      spend: "20",
+      reach: "300",
+      impressions: "600",
+      results: String(i < 3 ? 1 : 0),
+      purchases: String(i < 3 ? 1 : 0),
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    }));
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: [...icAdSetRows, ...purchaseAdSetRows],
+      now: NOW,
+    });
+    const chartCampaign = data.chart!.campaigns.find((c) => c.name === "Purchase Campaign");
+    expect(chartCampaign?.resLabel).toBe("PURCHASES");
+    expect(chartCampaign?.results).toBe(3);
+  });
 });
 
 // Comparison Reports had their own separate objective-detection logic
