@@ -87,23 +87,30 @@ describe("buildDonutSegments", () => {
 });
 
 describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
-  it("slide XML embeds overview image; title lives in the SVG media part", () => {
-    const bundle = buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
+  it("slide XML embeds overview image; title lives in the SVG source", async () => {
+    const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
     expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
-    const svg = new TextDecoder().decode(bundle.mediaBytes);
+    const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(buildChart([campaign("A")]), "$"));
     expect(svg).toContain("August MTD Overview");
     expect(svg).toContain("Month-to-date performance");
   });
 
-  it("embeds browser-matching overview SVG instead of native OOXML chart shapes", () => {
-    const bundle = buildChartSlideBundle(
+  it("embeds browser-matching overview PNG instead of native OOXML chart shapes", async () => {
+    const bundle = await buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
       "C$",
       BACKGROUND,
     );
     expect(bundle.mediaPath).toBe(`ppt/media/${CHART_OVERVIEW_MEDIA_FILE}`);
     expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
-    const svg = new TextDecoder().decode(bundle.mediaBytes);
+    expect(bundle.mediaBytes[0]).toBe(0x89);
+    expect(bundle.mediaBytes[1]).toBe(0x50);
+    const svg = buildMtdOverviewSvg(
+      projectChartSlideToShareChart(
+        buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
+        "C$",
+      ),
+    );
     expect(svg).toContain("MTD AD SPEND");
     expect(svg).toContain("PURCHASES");
     expect(svg).toContain("TOTAL MTD");

@@ -11,14 +11,15 @@ import { projectChartSlideToShareChart } from "../nre/share-chart-projection";
 import type { TemplateBackgroundImage } from "./package";
 import { buildPictureShapeXml } from "./embed-image";
 import { buildMtdOverviewSvg } from "./chart-overview-svg";
+import { rasterizeSvgToPng } from "./svg-to-png";
 import { ptToEmu } from "./ooxml";
 import { backgroundImage, buildBlankSlideXml, nextShapeId, resetShapeIdCounter } from "./shapes";
 
 /** Relationship id the chart slide's own generated rels (see render.ts) registers the copied background picture under. */
 export const CHART_BG_REL_ID = "rId2";
-/** Embedded browser-matching overview SVG (see buildChartSlideBundle). */
+/** Embedded browser-matching overview PNG (rasterized from SVG for Slides compat). */
 export const CHART_OVERVIEW_REL_ID = "rId3";
-export const CHART_OVERVIEW_MEDIA_FILE = "chart-overview.svg";
+export const CHART_OVERVIEW_MEDIA_FILE = "chart-overview.png";
 
 /** Legacy export — overview is always one slide now; kept for tests/imports. */
 export const CHART_CAMPAIGNS_PER_SLIDE = 8;
@@ -108,19 +109,19 @@ export interface ChartSlideBundle {
   mediaBytes: Uint8Array;
 }
 
-/** Builds chart slide with template background + embedded SVG overview (matches browser). */
-export function buildChartSlideBundle(
+/** Builds chart slide with template background + embedded PNG overview (matches browser). */
+export async function buildChartSlideBundle(
   chart: ChartSlideData,
   currencySymbol: string,
   background: TemplateBackgroundImage,
   _isLightTemplate = false,
   _platform: "META" | "GOOGLE" = "META",
   _options: ChartSlideRenderOptions = {},
-): ChartSlideBundle {
+): Promise<ChartSlideBundle> {
   resetShapeIdCounter();
   const shareChart = projectChartSlideToShareChart(chart, currencySymbol);
   const svg = buildMtdOverviewSvg(shareChart);
-  const mediaBytes = new TextEncoder().encode(svg);
+  const mediaBytes = rasterizeSvgToPng(svg);
 
   const shapes: string[] = [
     backgroundImage({ relId: CHART_BG_REL_ID, ...background }),
@@ -143,13 +144,13 @@ export function buildChartSlideBundle(
 }
 
 /** @deprecated Prefer buildChartSlideBundle — kept for tests that only need slide XML. */
-export function buildChartSlideXml(
+export async function buildChartSlideXml(
   chart: ChartSlideData,
   currencySymbol: string,
   background: TemplateBackgroundImage,
   isLightTemplate = false,
   platform: "META" | "GOOGLE" = "META",
   options: ChartSlideRenderOptions = {},
-): string {
-  return buildChartSlideBundle(chart, currencySymbol, background, isLightTemplate, platform, options).xml;
+): Promise<string> {
+  return (await buildChartSlideBundle(chart, currencySymbol, background, isLightTemplate, platform, options)).xml;
 }

@@ -219,7 +219,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       }
     }
     if (data.chart && showOverview) {
-      const chartBundle = buildChartSlideBundle(
+      const chartBundle = await buildChartSlideBundle(
         data.chart,
         currencySymbol,
         template.background,
@@ -227,7 +227,6 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         data.platform,
       );
       template.staticFiles.set(chartBundle.mediaPath, chartBundle.mediaBytes);
-      template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, "svg", "image/svg+xml");
       slides.push({
         xml: chartBundle.xml,
         rels: buildChartSlideRels(template.background.mediaTarget),
