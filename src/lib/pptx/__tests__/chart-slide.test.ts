@@ -226,3 +226,42 @@ describe("buildChartSlideXml — light template and platform labels", () => {
     expect(xml).not.toContain("AD SPEND");
   });
 });
+
+function roundRectYsPt(xml: string): number[] {
+  const shapes = xml.match(/<p:sp>(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g) ?? [];
+  return shapes
+    .filter((s) => s.includes('prst="roundRect"'))
+    .map((s) => Number(/<a:off x="\d+" y="(\d+)"\/>/.exec(s)![1]) / 12700);
+}
+
+describe("buildChartSlideXml — vertical centering and name clip", () => {
+  it("drops a short campaign list into the middle of the remaining slide area, not against the title", () => {
+    const xml = buildChartSlideXml(buildChart([campaign("A"), campaign("B"), campaign("C")]), "$", BACKGROUND);
+    const ys = roundRectYsPt(xml);
+    expect(ys).toHaveLength(3);
+    expect(ys[0]).toBeGreaterThan(160);
+    expect(ys[0]).toBeLessThan(250);
+  });
+
+  it("keeps an 8-campaign page inside the 540pt slide", () => {
+    const campaigns = Array.from({ length: 8 }, (_, i) => campaign(`Campaign ${i + 1}`));
+    const xml = buildChartSlideXml(buildChart(campaigns), "$", BACKGROUND);
+    const ys = roundRectYsPt(xml);
+    expect(ys).toHaveLength(8);
+    expect(ys[0]).toBeLessThan(120);
+    expect(ys[7]! + 56).toBeLessThan(540);
+  });
+
+  it("clips campaign-name text so an unbreakable label cannot paint over the bar", () => {
+    const xml = buildChartSlideXml(
+      buildChart([campaign("SouthavenRV&Marine_LeadGen_InstantForm_ExtraLong")]),
+      "$",
+      BACKGROUND,
+    );
+    expect(xml).toContain("SouthavenRV&amp;Marine_LeadGen_Insta…");
+    expect(xml).not.toContain("InstantForm_ExtraLong");
+    expect(xml).toContain('horzOverflow="clip"');
+    expect(xml).toContain('vertOverflow="clip"');
+    expect(xml).toContain('anchor="ctr"');
+  });
+});

@@ -218,29 +218,26 @@ function SpendBar({ c, maxSpend }: { c: ShareChartData["campaigns"][number]; max
   const widthPct = maxSpend > 0 ? Math.max((c.spend / maxSpend) * 100, c.spend > 0 ? 4 : 2) : 2;
   return (
     <div
+      className="grid grid-cols-1 gap-3 min-[800px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1.5fr)_auto_auto] min-[800px]:items-center"
       style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 1.1fr) minmax(0, 1.8fr) minmax(110px, 0.7fr) minmax(140px, 0.9fr)",
-        gap: "14px",
-        alignItems: "center",
         backgroundColor: "#152033",
         borderRadius: "8px",
         padding: "12px 14px",
         borderLeft: `4px solid #${c.color}`,
       }}
     >
-      <div>
-        <div style={{ color: "white", fontSize: "16px", fontWeight: 700 }}>{c.name}</div>
+      <div className="min-w-0" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
+        <div style={{ color: "white", fontSize: "15px", fontWeight: 700, lineHeight: 1.35 }}>{c.name}</div>
         {c.statusIndicator ? <div style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 700 }}>{c.statusIndicator}</div> : null}
       </div>
-      <div style={{ backgroundColor: "#1e293b", borderRadius: "6px", height: "22px", overflow: "hidden" }}>
-        <div style={{ width: `${widthPct}%`, height: "100%", backgroundColor: `#${c.color}`, borderRadius: "6px" }} />
+      <div className="min-w-0" style={{ backgroundColor: "#1e293b", borderRadius: "6px", height: "22px", overflow: "hidden" }}>
+        <div style={{ width: `${widthPct}%`, maxWidth: "100%", height: "100%", backgroundColor: `#${c.color}`, borderRadius: "6px" }} />
       </div>
-      <div>
+      <div className="shrink-0">
         <div style={{ color: "white", fontSize: "16px", fontWeight: 700 }}>{c.spendLabel}</div>
         <div style={{ color: "#7ab0cc", fontSize: "12px" }}>Ad spend</div>
       </div>
-      <div>
+      <div className="min-w-0 shrink-0">
         {c.resultsValueLabel ? (
           <>
             <div style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>
@@ -264,26 +261,28 @@ function ChartSlide({ chart }: { chart: ShareChartData }) {
   const rest = chart.campaigns.slice(8);
   return (
     <SlideCard>
-      <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
-      <p className="mt-2 text-center text-[15px] text-ink-muted">{chart.summaryLine}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
-        {firstPage.map((c, i) => (
-          <SpendBar key={`${c.name}-${i}`} c={c} maxSpend={maxSpend} />
-        ))}
+      <div className="flex min-h-[280px] flex-col justify-center sm:min-h-[360px]">
+        <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
+        <p className="mt-2 text-center text-[15px] text-ink-muted">{chart.summaryLine}</p>
+        <div className="mt-5 flex flex-col gap-2.5">
+          {firstPage.map((c, i) => (
+            <SpendBar key={`${c.name}-${i}`} c={c} maxSpend={maxSpend} />
+          ))}
+        </div>
+        {rest.length > 0 && (
+          <>
+            <h3 className="mt-8 text-center text-[18px] font-semibold text-ink">
+              {chart.title} (continued from previous slide)
+            </h3>
+            <p className="mt-1 text-center text-[12px] text-ink-muted">In continuation from previous slide</p>
+            <div className="mt-4 flex flex-col gap-2.5">
+              {rest.map((c, i) => (
+                <SpendBar key={`${c.name}-c-${i}`} c={c} maxSpend={maxSpend} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
-      {rest.length > 0 && (
-        <>
-          <h3 className="mt-8 text-center text-[18px] font-semibold text-ink">
-            {chart.title} (continued from previous slide)
-          </h3>
-          <p className="mt-1 text-center text-[12px] text-ink-muted">In continuation from previous slide</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "16px" }}>
-            {rest.map((c, i) => (
-              <SpendBar key={`${c.name}-c-${i}`} c={c} maxSpend={maxSpend} />
-            ))}
-          </div>
-        </>
-      )}
     </SlideCard>
   );
 }

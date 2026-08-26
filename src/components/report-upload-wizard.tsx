@@ -2606,6 +2606,13 @@ export function ReportUploadWizard({
                       Copy
                     </button>
                   </p>
+                  {reportId ? (
+                    <p className="mt-2 text-center text-[12px] text-[#94a3b8]">
+                      <Link href={`/clients/${clientId}/reports/${reportId}/copy`} className="text-dash-accent hover:underline">
+                        Review or edit summary copy before sharing
+                      </Link>
+                    </p>
+                  ) : null}
                 </div>
               )}
 
