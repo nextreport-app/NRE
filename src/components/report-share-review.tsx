@@ -6,7 +6,7 @@ import { useToast } from "@/components/toast";
 import { ShareReportView } from "@/components/share-report-view";
 import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
 import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
-import { countVisibleSlides } from "@/lib/nre/regenerate-report";
+import { countVisibleSlides } from "@/lib/nre/share-visibility";
 import { invalidateGenerateSnapshotDrive } from "@/lib/nre/wizard-generate-snapshot";
 
 interface CopySlide {

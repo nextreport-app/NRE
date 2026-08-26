@@ -59,7 +59,7 @@
 
 import type { AiContext, Platform, ReportData } from "../nre/report-data";
 import type { AiCopy } from "../pptx/fill-tags";
-import { slideAiKey } from "../pptx/render";
+import { slideAiKey } from "../pptx/slide-keys";
 import { AI_UNAVAILABLE_TEXT, callAI, type AiKeys } from "./client";
 import { buildGoogleAdsInsightPrompt, buildGoogleAdsSummaryPrompt } from "./google-prompts";
 import {

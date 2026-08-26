@@ -5,10 +5,10 @@
 
 import type { ReportData } from "./report-data";
 import type { ShareReportData, ShareVisibility } from "./share-report";
-import { adSetVisibilityKey, defaultShareVisibility } from "./share-report";
+import { defaultShareVisibility } from "./share-report";
 import { applyShareEditsToReportData } from "./apply-share-edits";
 import type { AiCopy } from "../pptx/fill-tags";
-import { renderPptx, slideAiKey } from "../pptx/render";
+import { renderPptx } from "../pptx/render";
 import type { ImageAsset } from "../pptx/embed-image";
 
 export interface RenderArchive {
@@ -59,14 +59,4 @@ export async function regeneratePptxFromShare(
 }
 
 /** Slide counts the client will see after visibility is applied — for the pre-share editor summary line. */
-export function countVisibleSlides(share: ShareReportData): number {
-  const vis = share.visibility ?? defaultShareVisibility(share);
-  let n = 1; // cover
-  if (share.isPaused) return n + 1;
-  n += share.campaigns.filter((c) => vis.campaigns[c.campaignName] !== false).length;
-  n += share.adSets.filter((a) => vis.adSets[adSetVisibilityKey(a.campaignName, a.adSetName)] !== false).length;
-  if (vis.overview !== false && share.chart?.donutSegments?.length) n += 1;
-  if (vis.combinedTotal !== false) n += 1;
-  if (vis.metricGuide !== false && (share.metricGuide?.length ?? 0) > 0) n += 1;
-  return n;
-}
+export { countVisibleSlides } from "./share-visibility";

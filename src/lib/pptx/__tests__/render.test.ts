@@ -14,6 +14,9 @@ import {
   processLogoUpload,
 } from "../../logo-processing";
 import JSZip from "jszip";
+import { buildMtdOverviewSvg } from "../chart-overview-svg";
+import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
+import type { ChartSlideData } from "../../nre/report-data";
 
 beforeAll(() => {
   process.env.TZ = "UTC";
@@ -23,12 +26,20 @@ const TEMPLATE_PATH = path.resolve(__dirname, "../../../../reference/templates/A
 /** The actual production template (templates.ts's loadTemplateBuffer target) — used where the exact shipped file's structure matters, not just an equivalent reference copy. */
 const PRODUCTION_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const NOW = new Date("2026-07-20T12:00:00Z");
-const CHART_OVERVIEW_MEDIA = "chart-overview.svg";
+const CHART_OVERVIEW_MEDIA = "chart-overview.png";
 
-async function readChartOverviewSvgFromZip(zip: JSZip): Promise<string> {
+async function assertChartOverviewPngInZip(zip: JSZip): Promise<Uint8Array> {
   const media = zip.file(`ppt/media/${CHART_OVERVIEW_MEDIA}`);
   expect(media).not.toBeNull();
-  return media!.async("string");
+  const bytes = new Uint8Array(await media!.async("arraybuffer"));
+  expect(bytes[0]).toBe(0x89);
+  expect(bytes[1]).toBe(0x50);
+  expect(bytes.length).toBeGreaterThan(1000);
+  return bytes;
+}
+
+function chartOverviewSvgForFixture(chart: ChartSlideData, currencySymbol: string): string {
+  return buildMtdOverviewSvg(projectChartSlideToShareChart(chart, currencySymbol));
 }
 
 async function findChartSlideXml(zip: JSZip): Promise<string> {
@@ -286,9 +297,11 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — KPI tiles + spend-mix donut (embedded SVG).
+    // Combined MTD overview slide — KPI tiles + spend-mix donut (embedded PNG).
     const zipForChart = await JSZip.loadAsync(buffer);
-    const chartSvg = await readChartOverviewSvgFromZip(zipForChart);
+    await assertChartOverviewPngInZip(zipForChart);
+    expect(data.chart).toBeTruthy();
+    const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July MTD Overview");
     expect(chartSvg).toContain("July 13 - July 19, 2026");
     expect(chartSvg).toContain("Brand - Reach");
@@ -566,7 +579,9 @@ describe("renderPptx — real template end-to-end", () => {
 
     // NOW is 2026-07-20, so the MTD start date falls in July.
     const zipForChart = await JSZip.loadAsync(buffer);
-    const chartSvg = await readChartOverviewSvgFromZip(zipForChart);
+    await assertChartOverviewPngInZip(zipForChart);
+    expect(data.chart).toBeTruthy();
+    const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July MTD Overview");
     expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
@@ -1122,8 +1137,9 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const [cover, campaign1, , , , , table] = slideTexts;
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
-    const chartSvg = await readChartOverviewSvgFromZip(zip);
-    expect(chartSvg.toLowerCase()).toContain("mtd overview");
+    await assertChartOverviewPngInZip(zip);
+    expect(data.chart).toBeTruthy();
+    expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("mtd overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
     // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
     expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");
