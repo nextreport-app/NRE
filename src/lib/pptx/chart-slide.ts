@@ -114,6 +114,8 @@ export function buildChartSlideXml(
   const TITLE_H = 36;
   const SUBTITLE_Y = 56;
   const SUBTITLE_H = 22;
+  const HEADER_BOTTOM = 86;
+  const BOTTOM_MARGIN = 28;
 
   const n = chart.campaigns.length;
   shapes.push(
@@ -151,9 +153,10 @@ export function buildChartSlideXml(
   const META_W = 220;
   const BAR_H = 22;
   const ROW_GAP = 8;
-  const blockTopY = 88;
-  const availableH = H - blockTopY - 20;
-  const ROW_H = Math.min(56, Math.max(44, Math.floor(availableH / n)));
+  const areaH = H - HEADER_BOTTOM - BOTTOM_MARGIN;
+  const ROW_H = Math.min(56, Math.max(48, Math.floor(areaH / n)));
+  const rowsBlockH = n * ROW_H;
+  const blockTopY = HEADER_BOTTOM + Math.max(0, Math.floor((areaH - rowsBlockH) / 2));
   const TRACK_W = W - MARGIN_X * 2 - NAME_W - VALUE_W - META_W - 28;
 
   const maxSpend = Math.max(...chart.campaigns.map((c) => c.spend), 1);
@@ -162,45 +165,50 @@ export function buildChartSlideXml(
     const globalIndex = colorStartIndex + ci;
     const col = ringColorForCampaign(d, globalIndex);
     const rowY = blockTopY + ci * ROW_H;
-    const innerY = rowY + 4;
-    const barY = innerY + Math.floor((ROW_H - 8 - BAR_H) / 2);
+    const cardH = ROW_H - ROW_GAP;
+    const barY = rowY + Math.floor((cardH - BAR_H) / 2);
     const nameX = MARGIN_X;
     const barX = nameX + NAME_W + 10;
     const valueX = barX + TRACK_W + 10;
     const metaX = valueX + VALUE_W + 6;
+    const textTop = rowY + 6;
+    const textH = cardH - 12;
+    const pairH = 36;
+    const pairY = rowY + Math.max(6, Math.floor((cardH - pairH) / 2));
 
     shapes.push(
       roundedCard({
         x: MARGIN_X - 8,
         y: rowY,
         w: W - (MARGIN_X - 8) * 2,
-        h: ROW_H - ROW_GAP,
+        h: cardH,
         fillHex: isLightTemplate ? "f8fafc" : "152033",
         strokeHex: isLightTemplate ? "cbd5e1" : "1e3a5f",
         radiusPt: 8,
       }),
     );
-    shapes.push(rectangle({ x: MARGIN_X - 8, y: rowY, w: 4, h: ROW_H - ROW_GAP, fillHex: col }));
+    shapes.push(rectangle({ x: MARGIN_X - 8, y: rowY, w: 4, h: cardH, fillHex: col }));
 
-    const displayName = d.name.length > 36 ? d.name.slice(0, 36) + "…" : d.name;
-    shapes.push(
-      textBox({
-        x: nameX,
-        y: innerY + 6,
-        w: NAME_W,
-        h: 22,
-        text: displayName,
-        sizePt: 16,
-        bold: true,
-        colorHex: WHITE,
-        align: "l",
-      }),
-    );
+    const displayName = d.name.length > 32 ? d.name.slice(0, 32) + "…" : d.name;
     if (d.statusIndicator) {
       shapes.push(
         textBox({
           x: nameX,
-          y: innerY + 28,
+          y: textTop,
+          w: NAME_W,
+          h: 20,
+          text: displayName,
+          sizePt: 14,
+          bold: true,
+          colorHex: WHITE,
+          align: "l",
+          clipOverflow: true,
+        }),
+      );
+      shapes.push(
+        textBox({
+          x: nameX,
+          y: textTop + 20,
           w: NAME_W,
           h: 14,
           text: d.statusIndicator,
@@ -208,6 +216,23 @@ export function buildChartSlideXml(
           bold: true,
           colorHex: INACTIVE_COLOR,
           align: "l",
+          clipOverflow: true,
+        }),
+      );
+    } else {
+      shapes.push(
+        textBox({
+          x: nameX,
+          y: textTop,
+          w: NAME_W,
+          h: textH,
+          text: displayName,
+          sizePt: 16,
+          bold: true,
+          colorHex: WHITE,
+          align: "l",
+          anchor: "ctr",
+          clipOverflow: true,
         }),
       );
     }
@@ -219,9 +244,9 @@ export function buildChartSlideXml(
     shapes.push(
       textBox({
         x: valueX,
-        y: innerY + 4,
+        y: pairY,
         w: VALUE_W,
-        h: 22,
+        h: 20,
         text: currencySymbol + Math.round(d.spend).toLocaleString("en-US"),
         sizePt: 16,
         bold: true,
@@ -232,9 +257,9 @@ export function buildChartSlideXml(
     shapes.push(
       textBox({
         x: valueX,
-        y: innerY + 26,
+        y: pairY + 20,
         w: VALUE_W,
-        h: 14,
+        h: 16,
         text: spendLabel,
         sizePt: 11,
         colorHex: LABEL_COLOR,
@@ -248,7 +273,7 @@ export function buildChartSlideXml(
       shapes.push(
         textBox({
           x: metaX,
-          y: innerY + 4,
+          y: pairY,
           w: META_W,
           h: 20,
           text: resultsLine,
@@ -256,6 +281,7 @@ export function buildChartSlideXml(
           bold: true,
           colorHex: WHITE,
           align: "l",
+          clipOverflow: true,
         }),
       );
     }
@@ -263,13 +289,14 @@ export function buildChartSlideXml(
       shapes.push(
         textBox({
           x: metaX,
-          y: innerY + 24,
+          y: pairY + 20,
           w: META_W,
           h: 16,
           text: cprTxt,
           sizePt: 12,
           colorHex: LABEL_COLOR,
           align: "l",
+          clipOverflow: true,
         }),
       );
     }
