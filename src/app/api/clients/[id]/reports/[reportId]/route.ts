@@ -76,7 +76,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
     const share = parseShareJson(report.summaryJson);
     if (!share) {
-      return NextResponse.json({ ok: true, share: null, campaigns: [], adSets: [], visibility: null });
+      return NextResponse.json({ ok: true, share: null, campaigns: [], adSets: [], visibility: null, shareToken: report.shareToken, reportStatus: report.status, canSyncPpt: false });
     }
     const visibility = share.visibility ?? defaultShareVisibility(share);
     return NextResponse.json({
@@ -84,6 +84,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       share,
       visibility,
       publishedAt: share.publishedAt ?? null,
+      shareToken: report.shareToken,
+      reportStatus: report.status,
+      canSyncPpt: !!(share as ShareReportWithArchive)._renderArchive,
       campaigns: share.campaigns.map((c) => ({
         campaignName: c.campaignName,
         aiSummary: c.aiSummary,

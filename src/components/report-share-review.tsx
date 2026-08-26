@@ -82,10 +82,13 @@ export function ReportShareReview({
   clientId,
   reportId,
   shareToken,
+  returnToGenerateHref,
 }: {
   clientId: string;
   reportId: string;
   shareToken: string | null;
+  /** When set, show a post-publish link back to the wizard Generate screen. */
+  returnToGenerateHref?: string | null;
 }) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,9 @@ export function ReportShareReview({
   const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [canSyncPpt, setCanSyncPpt] = useState(true);
+  const [justPublished, setJustPublished] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,6 +120,8 @@ export function ReportShareReview({
       setCampaigns(json.campaigns ?? []);
       setAdSets(json.adSets ?? []);
       setVisibility(json.visibility ?? defaultShareVisibility(loaded));
+      setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
+      setCanSyncPpt(json.canSyncPpt !== false);
       setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
       setError(null);
       setLoading(false);
@@ -190,8 +198,13 @@ export function ReportShareReview({
       showToast("Could not publish changes. Try again.", "error");
       return;
     }
-    showToast("Live link and downloadable PPT updated.");
-    setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: new Date().toISOString() } : prev));
+    const json = await res.json().catch(() => ({}));
+    const ts = (json.publishedAt as string | undefined) ?? new Date().toISOString();
+    setPublishedAt(ts);
+    setJustPublished(true);
+    setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
+    showToast("Published — live link and downloadable PPT are updated.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   if (loading) {
@@ -211,12 +224,29 @@ export function ReportShareReview({
 
   return (
     <div className="space-y-4">
+      {(justPublished || publishedAt) && (
+        <div className="rounded-lg border border-[#68d391]/40 bg-[#68d391]/10 px-4 py-3">
+          <p className="text-[14px] font-semibold text-[#68d391]">
+            {justPublished ? "✓ Published successfully" : "✓ Last published"}
+          </p>
+          <p className="mt-1 text-[12px] text-dash-ink-secondary">
+            Your live browser link{canSyncPpt ? " and Download PPTX file" : ""} now match this review.
+            {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
+          </p>
+          {returnToGenerateHref ? (
+            <Link href={returnToGenerateHref} className="mt-2 inline-block text-[13px] font-semibold text-dash-accent hover:underline">
+              Return to Generate screen →
+            </Link>
+          ) : null}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            {visibleCount} slides will appear on the live link. Publish when ready — this updates the browser report and
-            downloadable PPT.
+            {visibleCount} slides on the live link. <strong>Publish</strong> updates the browser report
+            {canSyncPpt ? " and the Download PPTX button" : ""} — not a Google Slides file already in Drive.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -234,9 +264,9 @@ export function ReportShareReview({
             type="button"
             onClick={() => void publish()}
             disabled={saving}
-            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink disabled:opacity-50"
+            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-dash-accent"
           >
-            {saving ? "Publishing…" : "Publish to live link"}
+            {saving ? "Publishing…" : publishedAt ? "Publish again" : "Publish to live link"}
           </button>
         </div>
       </div>

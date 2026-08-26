@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -35,16 +36,18 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="mx-auto max-w-3xl">
-      <ReportUploadWizard
-        clientId={client.id}
-        clientName={client.accountName}
-        currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
-        hasGoogleDriveConnected={!!user.googleRefreshToken}
-        initialLastDriveFolderId={client.lastDriveFolderId}
-        initialLastDriveFolderName={client.lastDriveFolderName}
-        hasPreviousMonthData={!!client.previousMonthDataUrl}
-        clientTemplate={client.template}
-      />
+      <Suspense fallback={<p className="p-6 text-[13px] text-dash-ink-secondary">Loading…</p>}>
+        <ReportUploadWizard
+          clientId={client.id}
+          clientName={client.accountName}
+          currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
+          hasGoogleDriveConnected={!!user.googleRefreshToken}
+          initialLastDriveFolderId={client.lastDriveFolderId}
+          initialLastDriveFolderName={client.lastDriveFolderName}
+          hasPreviousMonthData={!!client.previousMonthDataUrl}
+          clientTemplate={client.template}
+        />
+      </Suspense>
     </div>
   );
 }
