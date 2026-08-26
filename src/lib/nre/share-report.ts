@@ -19,11 +19,10 @@
  * render" rather than an error.
  */
 
-import { fmtCurrency } from "./format";
 import type { AiCopy } from "../pptx/fill-tags";
 import { collectLegendEntries, slideAiKey } from "../pptx/render";
-import { buildDonutSegments, type DonutSegment } from "../pptx/chart-slide";
 import type { LegendEntry } from "../pptx/legend-slide";
+import { projectChartSlideToShareChart } from "./share-chart-projection";
 import type {
   AdSetSlideData,
   CampaignSlideData,
@@ -206,49 +205,9 @@ function adFrequencyLabel(freq: number): string {
   return line ? line.slice(1) : "";
 }
 
-/** Metric abbreviations that read as gibberish once lowercased ("Lpv", "Cpm") — kept verbatim by toTitleCase instead of title-cased like an ordinary word. */
-const KNOWN_METRIC_ACRONYMS = new Set(["LPV", "CPM", "1K"]);
-
-/** "COST PER QUOTE REQUEST" -> "Cost Per Quote Request", "COST PER LPV" -> "Cost Per LPV" — the resultColumns/chart labels are stored all-caps (Combined Total table styling), but the chart's summary bar and donuts read as ordinary sentence-style text. */
-function toTitleCase(label: string): string {
-  return label
-    .split(" ")
-    .map((w) => (KNOWN_METRIC_ACRONYMS.has(w) ? w : w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
-    .join(" ");
-}
-
 function buildShareChart(chart: ChartSlideData | null, _mtdRow: TableRowData, currencySymbol: string): ShareChartData | null {
   if (!chart) return null;
-
-  const rangeSuffix = chart.periodSubLabel.length > 0 ? `: ${chart.periodSubLabel}` : "";
-  const title = `${chart.mtdMonthName ?? "MTD"} MTD Overview${rangeSuffix}`;
-  const subtitle = "Month-to-date performance · Where your budget went";
-
-  const snap = chart.snapshot;
-  const snapshot: ShareChartSnapshot = {
-    mtdSpendLabel: snap.mtdSpendFormatted,
-    primaryResultsValue: snap.primaryResultsValue,
-    primaryResultsLabel: toTitleCase(snap.primaryResultsLabel),
-    primaryCprValue: snap.primaryCprValue,
-    primaryCprLabel: toTitleCase(snap.primaryCprLabel),
-    budgetPctUsed: snap.budgetPctUsed,
-    activeCampaignCount: snap.activeCampaignCount,
-  };
-
-  const donutSegments: ShareDonutSegment[] = buildDonutSegments(chart.campaigns, chart.totalAllSpend).map((seg: DonutSegment) => ({
-    name: seg.name,
-    spendLabel: fmtCurrency(seg.spend, currencySymbol),
-    percentage: seg.percentage,
-    color: seg.color,
-  }));
-
-  return {
-    title,
-    subtitle,
-    snapshot,
-    donutSegments,
-    totalSpendLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
-  };
+  return projectChartSlideToShareChart(chart, currencySymbol);
 }
 
 /** Only ever called for the WEEKLY/MONTHLY pipeline (ReportData) — see this file's header. */

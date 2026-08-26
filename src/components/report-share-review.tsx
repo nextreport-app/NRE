@@ -14,6 +14,15 @@ interface CopySlide {
   adSetName?: string;
   aiSummary: string;
   aiInsights: string;
+  metrics: { key: string; label: string; value: string }[];
+}
+
+function mergeEditedMetrics<T extends { key: string; label: string; value: string }>(
+  original: T[],
+  edited: { key: string; value: string }[],
+): T[] {
+  const byKey = new Map(edited.map((m) => [m.key, m.value]));
+  return original.map((m) => (byKey.has(m.key) ? { ...m, value: byKey.get(m.key)! } : m));
 }
 
 interface SlideListItem {
@@ -140,11 +149,25 @@ export function ReportShareReview({
       visibility,
       campaigns: share.campaigns.map((c) => {
         const edited = campaigns.find((x) => x.campaignName === c.campaignName);
-        return edited ? { ...c, aiSummary: edited.aiSummary, aiInsights: edited.aiInsights } : c;
+        return edited
+          ? {
+              ...c,
+              aiSummary: edited.aiSummary,
+              aiInsights: edited.aiInsights,
+              metrics: mergeEditedMetrics(c.metrics, edited.metrics),
+            }
+          : c;
       }),
       adSets: share.adSets.map((a) => {
         const edited = adSets.find((x) => x.campaignName === a.campaignName && x.adSetName === a.adSetName);
-        return edited ? { ...a, aiSummary: edited.aiSummary, aiInsights: edited.aiInsights } : a;
+        return edited
+          ? {
+              ...a,
+              aiSummary: edited.aiSummary,
+              aiInsights: edited.aiInsights,
+              metrics: mergeEditedMetrics(a.metrics, edited.metrics),
+            }
+          : a;
       }),
     };
     return applyVisibilityToShare(merged, visibility);
@@ -184,12 +207,14 @@ export function ReportShareReview({
             campaignName: c.campaignName,
             aiSummary: c.aiSummary,
             aiInsights: c.aiInsights,
+            metrics: c.metrics.map((m) => ({ key: m.key, value: m.value })),
           })),
           adSets: adSets.map((c) => ({
             campaignName: c.campaignName,
             adSetName: c.adSetName,
             aiSummary: c.aiSummary,
             aiInsights: c.aiInsights,
+            metrics: c.metrics.map((m) => ({ key: m.key, value: m.value })),
           })),
         },
       }),
@@ -354,6 +379,52 @@ export function ReportShareReview({
                 rows={3}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
+              {(selectedCampaign?.metrics.length ?? selectedAdSet?.metrics.length ?? 0) > 0 ? (
+                <>
+                  <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Metric tiles</p>
+                  <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
+                    Edits here update the live link, Download PPTX, and Google Drive after you publish and re-save.
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {(selectedCampaign?.metrics ?? selectedAdSet?.metrics ?? []).map((metric) => (
+                      <label key={metric.key} className="block">
+                        <span className="text-[11px] font-medium text-dash-ink-secondary">{metric.label}</span>
+                        <input
+                          type="text"
+                          value={metric.value}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (selectedCampaign) {
+                              setCampaigns((prev) =>
+                                prev.map((row) =>
+                                  row.campaignName === selectedCampaign.campaignName
+                                    ? {
+                                        ...row,
+                                        metrics: row.metrics.map((m) => (m.key === metric.key ? { ...m, value: v } : m)),
+                                      }
+                                    : row,
+                                ),
+                              );
+                            } else if (selectedAdSet) {
+                              setAdSets((prev) =>
+                                prev.map((row) =>
+                                  row.campaignName === selectedAdSet.campaignName && row.adSetName === selectedAdSet.adSetName
+                                    ? {
+                                        ...row,
+                                        metrics: row.metrics.map((m) => (m.key === metric.key ? { ...m, value: v } : m)),
+                                      }
+                                    : row,
+                                ),
+                              );
+                            }
+                          }}
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
 

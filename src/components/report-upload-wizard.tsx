@@ -1865,7 +1865,7 @@ export function ReportUploadWizard({
                     <span
                       className={`shrink-0 text-[11px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-accent"}`}
                     >
-                      Last 30d {currencySymbol}
+                      Last 30 days spend detected · {currencySymbol}
                       {Math.round(spend).toLocaleString("en-US")}
                       {lowSpend ? " · low" : ""}
                     </span>

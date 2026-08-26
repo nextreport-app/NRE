@@ -35,6 +35,9 @@ const copySlideSchema = z.object({
   adSetName: z.string().optional(),
   aiSummary: z.string().max(MAX_COPY_CHARS),
   aiInsights: z.string().max(MAX_COPY_CHARS),
+  metrics: z
+    .array(z.object({ key: z.string(), value: z.string().max(64) }))
+    .optional(),
 });
 
 const visibilitySchema = z.object({
@@ -91,12 +94,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         campaignName: c.campaignName,
         aiSummary: c.aiSummary,
         aiInsights: c.aiInsights,
+        metrics: c.metrics.map((m) => ({ key: m.key, label: m.label, value: m.value })),
       })),
       adSets: share.adSets.map((c) => ({
         campaignName: c.campaignName,
         adSetName: c.adSetName,
         aiSummary: c.aiSummary,
         aiInsights: c.aiInsights,
+        metrics: c.metrics.map((m) => ({ key: m.key, label: m.label, value: m.value })),
       })),
     });
   } catch (err) {
@@ -142,12 +147,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const campaignCopy = new Map(parsed.data.campaigns.map((c) => [c.campaignName, c]));
       share.campaigns = share.campaigns.map((c) => {
         const next = campaignCopy.get(c.campaignName);
-        return next ? { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights } : c;
+        if (!next) return c;
+        let metrics = c.metrics;
+        if (next.metrics?.length) {
+          const byKey = new Map(next.metrics.map((m) => [m.key, m.value]));
+          metrics = c.metrics.map((m) => (byKey.has(m.key) ? { ...m, value: byKey.get(m.key)! } : m));
+        }
+        return { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights, metrics };
       });
       if (parsed.data.adSets) {
         share.adSets = share.adSets.map((c) => {
           const next = parsed.data.adSets!.find((a) => a.campaignName === c.campaignName && a.adSetName === c.adSetName);
-          return next ? { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights } : c;
+          if (!next) return c;
+          let metrics = c.metrics;
+          if (next.metrics?.length) {
+            const byKey = new Map(next.metrics.map((m) => [m.key, m.value]));
+            metrics = c.metrics.map((m) => (byKey.has(m.key) ? { ...m, value: byKey.get(m.key)! } : m));
+          }
+          return { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights, metrics };
         });
       }
       share.visibility = parsed.data.visibility as ShareVisibility;
