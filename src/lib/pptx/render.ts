@@ -11,9 +11,11 @@
  */
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
+import type { ShareVisibility } from "../nre/share-report";
+import { adSetVisibilityKey } from "../nre/share-report";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
-import { buildChartSlideXml, chunkChartCampaigns, CHART_BG_REL_ID, CHART_CAMPAIGNS_PER_SLIDE } from "./chart-slide";
+import { buildChartSlideXml, CHART_BG_REL_ID } from "./chart-slide";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
@@ -116,6 +118,8 @@ export interface RenderPptxInput {
    * light template's own light surfaces.
    */
   isLightTemplate?: boolean;
+  /** Pre-share editor visibility — omitted means include every slide (initial generation). */
+  shareVisibility?: ShareVisibility;
 }
 
 export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: string; adSetName?: string }): string {
@@ -123,7 +127,25 @@ export function slideAiKey(slide: { kind: "campaign" | "adset"; campaignName: st
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, currencySymbol, aiCopyBySlideKey, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
+  const {
+    templateBuffer,
+    data,
+    currencySymbol,
+    aiCopyBySlideKey,
+    reportTitle,
+    agencyName,
+    clientLogo,
+    isLightTemplate = false,
+    shareVisibility,
+  } = input;
+  const vis = shareVisibility;
+  const showOverview = vis?.overview !== false;
+  const showCombinedTotal = vis?.combinedTotal !== false;
+  const showMetricGuide = vis?.metricGuide !== false;
+  const campaignVisible = (name: string) => vis?.campaigns[name] !== false;
+  const adSetVisible = (campaignName: string, adSetName: string) =>
+    vis?.adSets[adSetVisibilityKey(campaignName, adSetName)] !== false;
+
   const template = await loadTemplate(templateBuffer);
 
   const hasAgencyName = !!agencyName?.trim();
@@ -166,6 +188,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     });
   } else {
     for (const slide of data.campaignSlides) {
+      if (!campaignVisible(slide.campaignName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
         xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
@@ -181,6 +204,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       }
     }
     for (const slide of data.adSetSlides) {
+      if (!adSetVisible(slide.campaignName, slide.adSetName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
         xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
@@ -193,27 +217,15 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         });
       }
     }
-    if (data.chart) {
-      const pages = chunkChartCampaigns(data.chart.campaigns);
-      pages.forEach((slice, pageIndex) => {
-        slides.push({
-          xml: buildChartSlideXml(
-            { ...data.chart!, campaigns: slice },
-            currencySymbol,
-            template.background,
-            isLightTemplate,
-            data.platform,
-            {
-              continuation: pageIndex > 0,
-              colorStartIndex: pageIndex * CHART_CAMPAIGNS_PER_SLIDE,
-            },
-          ),
-          rels: buildChartSlideRels(template.background.mediaTarget),
-        });
+    if (data.chart && showOverview) {
+      slides.push({
+        xml: buildChartSlideXml(data.chart, currencySymbol, template.background, isLightTemplate, data.platform),
+        rels: buildChartSlideRels(template.background.mediaTarget),
       });
     }
   }
 
+  if (showCombinedTotal) {
   slides.push({
     xml: buildTableSlideXml(
       template.table,
@@ -227,10 +239,13 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     ),
     rels: template.table.rels,
   });
+  }
+  if (showMetricGuide) {
   slides.push({
     xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data)),
     rels: template.legend.rels,
   });
+  }
 
   return assemblePptx(template, slides);
 }

@@ -91,6 +91,35 @@ export function ellipse(opts: EllipseOptions): string {
   );
 }
 
+export interface BlockArcOptions {
+  x: number;
+  y: number;
+  d: number;
+  /** Start angle in degrees, 0 = 3 o'clock, clockwise. */
+  startDeg: number;
+  /** End angle in degrees. */
+  endDeg: number;
+  fillHex: string;
+  /** Inner radius as fraction of outer (0–1). Default 0.58 for a donut hole. */
+  innerRadius?: number;
+}
+
+/** One wedge of a donut ring — used by the MTD spend-mix overview slide. */
+export function blockArc(opts: BlockArcOptions): string {
+  const id = nextShapeId();
+  const inner = opts.innerRadius ?? 0.58;
+  const startAdj = Math.round((((opts.startDeg % 360) + 360) % 360) * 60000);
+  const endAdj = Math.round((((opts.endDeg % 360) + 360) % 360) * 60000);
+  const innerAdj = Math.round(Math.min(0.95, Math.max(0.05, inner)) * 50000);
+  return (
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="DonutArc ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${ptToEmu(opts.x)}" y="${ptToEmu(opts.y)}"/><a:ext cx="${ptToEmu(opts.d)}" cy="${ptToEmu(opts.d)}"/></a:xfrm>` +
+    `<a:prstGeom prst="blockArc"><a:avLst><a:gd fmla="val ${startAdj}" name="adj1"/><a:gd fmla="val ${endAdj}" name="adj2"/><a:gd fmla="val ${innerAdj}" name="adj3"/></a:avLst></a:prstGeom>` +
+    `<a:solidFill><a:srgbClr val="${opts.fillHex}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>` +
+    `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`
+  );
+}
+
 export interface BackgroundImageOptions {
   relId: string;
   blipXml: string;

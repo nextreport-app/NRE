@@ -253,9 +253,8 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Title names the actual month + a sub-line with the exact date range,
-    // not the old all-caps "MTD CAMPAIGN PERFORMANCE" jargon — see chart-slide.ts.
-    expect(chart).toContain("July Campaign Performance");
+    // Combined MTD overview slide — KPI tiles + spend-mix donut (MTD-only).
+    expect(chart).toContain("July MTD Overview");
     expect(chart).toContain("July 13 - July 19, 2026");
     expect(chart).toContain("Brand - Reach");
     expect(chart).toContain("Shoes - Purchases");
@@ -531,7 +530,7 @@ describe("renderPptx — real template end-to-end", () => {
     }
 
     // NOW is 2026-07-20, so the MTD start date falls in July.
-    expect(chart).toContain("July Campaign Performance");
+    expect(chart).toContain("July MTD Overview");
     expect(chart).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
@@ -728,7 +727,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       // chart slide always precedes the table slide in render.ts's fixed
       // slide order, so matching loosely here can't accidentally pick up
       // the table slide's own "CAMPAIGN PERFORMANCE OVERVIEW" heading first.
-      if (xml.toLowerCase().includes("total month to date spend") || xml.toLowerCase().includes("mtd campaign performance")) {
+      if (xml.toLowerCase().includes("mtd overview") || xml.toLowerCase().includes("month-to-date performance")) {
         chartSlidePath = f;
         chartXml = xml;
         break;
@@ -1083,7 +1082,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       // Case-insensitive for the same reason as the locator above — isTableSlide
       // is still checked first in the ternary below, so overlap with the table
       // slide's own heading here is harmless.
-      const isChartSlide = xml.toLowerCase().includes("campaign performance");
+      const isChartSlide = xml.toLowerCase().includes("mtd overview");
       const isLegendSlide = xml.includes("METRIC ABBREVIATION GUIDE");
       const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
       // The legend slide's own white-run count should match its own amber
@@ -1104,7 +1103,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     // Case-insensitive: the title is title-case ("[Month] Campaign
     // Performance") whenever a month name is available, not always the
     // all-caps fallback.
-    expect(chart.toLowerCase()).toContain("campaign performance");
+    expect(chart.toLowerCase()).toContain("mtd overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
     // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
     expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");

@@ -454,10 +454,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       currencySymbol,
       agencyName: user?.agencyName,
     });
+    const shareWithArchive = {
+      ...shareData,
+      _renderArchive: {
+        reportData: data,
+        aiCopy: Object.fromEntries(aiCopyBySlideKey),
+        currencySymbol,
+        isLightTemplate: platform === "META" && client.template === "LIGHT",
+        reportTitle,
+        agencyName: user?.agencyName ?? null,
+      },
+    };
 
     await prisma.report.update({
       where: { id: report.id },
-      data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
+      data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive) },
     });
 
     // Saving to Google Drive is a separate, explicit action the user takes

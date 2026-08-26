@@ -134,3 +134,26 @@ export function resolveCampaignSelection(
   const selectedCampaigns = campaigns.filter((name) => !deselectedSet.has(name));
   return { selectedCampaigns, stepMode: "returning" };
 }
+
+/** Campaigns below this MTD spend (from the uploaded CSV) default unchecked on Step 2. */
+export const LOW_SPEND_CAMPAIGN_THRESHOLD = 10;
+
+export function isLowSpendCampaign(name: string, campaignSpend: Record<string, number>, threshold = LOW_SPEND_CAMPAIGN_THRESHOLD): boolean {
+  return (campaignSpend[name] ?? 0) < threshold;
+}
+
+/**
+ * Applies saved selection memory, then drops campaigns under the low-spend
+ * threshold so tiny test/paused campaigns do not inflate slide count by default.
+ */
+export function resolveCampaignSelectionWithLowSpend(
+  campaigns: string[],
+  memory: CampaignSelectionMemory | null,
+  campaignSpend: Record<string, number>,
+  threshold = LOW_SPEND_CAMPAIGN_THRESHOLD,
+): ResolvedCampaignSelection & { lowSpendCampaigns: string[] } {
+  const base = resolveCampaignSelection(campaigns, memory);
+  const lowSpendCampaigns = campaigns.filter((name) => isLowSpendCampaign(name, campaignSpend, threshold));
+  const selectedCampaigns = base.selectedCampaigns.filter((name) => !isLowSpendCampaign(name, campaignSpend, threshold));
+  return { selectedCampaigns, stepMode: base.stepMode, lowSpendCampaigns };
+}

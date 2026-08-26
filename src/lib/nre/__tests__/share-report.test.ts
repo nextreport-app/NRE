@@ -120,65 +120,23 @@ describe("buildShareReportData", () => {
     expect(a.metrics).toEqual(realDynamicMetrics);
   });
 
-  it("projects the MTD chart into bar-chart-friendly campaign entries, colored the same way as the PPT donut ring", () => {
+  it("projects the MTD overview with KPI snapshot and donut segments", () => {
     expect(data.chart).not.toBeNull();
     expect(share.chart).not.toBeNull();
-    expect(share.chart!.campaigns).toHaveLength(data.chart!.campaigns.length);
-    const c = share.chart!.campaigns[0];
-    expect(c.name).toBe(data.chart!.campaigns[0].name);
-    expect(c.spendLabel).toBe("₹" + Math.round(data.chart!.campaigns[0].spend).toLocaleString("en-US"));
-    expect(c.color).toBe("f6ad55"); // first campaign, real spend -> first palette color (orange)
-    expect(share.chart!.title).toContain("Campaign Performance");
-    expect(share.chart!.summaryLine).toContain("Total MTD:");
+    expect(share.chart!.title).toContain("MTD Overview");
+    expect(share.chart!.subtitle).toContain("Month-to-date");
+    expect(share.chart!.snapshot.mtdSpendLabel).toContain("₹");
+    expect(share.chart!.donutSegments.length).toBeGreaterThan(0);
+    expect(share.chart!.donutSegments[0]?.color).toBe("f6ad55");
   });
 
-  it("summary line combines total spend with the primary objective's results and cost per result", () => {
-    expect(share.chart!.summaryLine).toContain(data.mtdRow.resultColumns[0].value);
-    expect(share.chart!.summaryLine).toContain(data.mtdRow.resultColumns[0].cprValue);
+  it("includes default visibility flags for the pre-share editor", () => {
+    expect(share.visibility?.overview).toBe(true);
+    expect(share.visibility?.campaigns["Shoes - Purchases"]).toBe(true);
+    expect(share.publishedAt).toBeNull();
   });
 
-  it("carries this campaign's own results/cost-per-result on the chart entry, matching the PPT donut's own below-circle text", () => {
-    const c = share.chart!.campaigns[0];
-    const campaignChartData = data.chart!.campaigns[0];
-    expect(campaignChartData.results).toBeGreaterThan(0);
-    expect(c.resultsValueLabel).not.toBe("");
-    expect(c.resultsLabel).not.toBe("");
-    expect(c.cprValueLabel).not.toBe("");
-    expect(c.cprLabel).not.toBe("");
-  });
-
-  it("shows 0 results and N/A cost for a campaign with spend but no conversions this month", () => {
-    const zeroResultRows = daysInclusive(13, 19).map((day) => ({
-      _raw: { Day: day },
-      campaign_name: "Awareness - Reach",
-      ad_set_name: "Prospecting",
-      result_type: "Purchase",
-      spend: "50",
-      reach: "500",
-      impressions: "1000",
-      results: "0",
-      ctr: "1.2",
-      cpc: "0",
-      date_start: day,
-      date_end: day,
-    })) as NreRow[];
-    const zeroData = buildReportData({
-      accountName: "Test Agency",
-      currencySymbol: "₹",
-      timezone: "Asia/Kolkata",
-      monthlyBudget: 100000,
-      mtdDailyRows: zeroResultRows,
-      now: NOW,
-    });
-    const zeroShare = buildShareReportData(zeroData, new Map(), NOW, { currencySymbol: "₹" });
-    const c = zeroShare.chart!.campaigns[0];
-    expect(c.resultsValueLabel).toBe("0");
-    expect(c.resultsLabel).not.toBe("");
-    expect(c.cprValueLabel).toBe("N/A");
-    expect(c.cprLabel).not.toBe("");
-  });
-
-  it("shows every campaign with MTD spend on the chart, not capped at 4", () => {
+  it("rollup donut includes every campaign with MTD spend (top slices + Other)", () => {
     const sixCampaignRows = [
       ...buildDailyRows("Campaign A"),
       ...buildDailyRows("Campaign B"),
@@ -197,7 +155,8 @@ describe("buildShareReportData", () => {
     });
     const sixShare = buildShareReportData(sixData, new Map(), NOW, { currencySymbol: "₹" });
     expect(sixData.chart!.campaigns.length).toBe(6);
-    expect(sixShare.chart!.campaigns).toHaveLength(6);
+    expect(sixShare.chart!.donutSegments.length).toBe(6);
+    expect(sixShare.chart!.donutSegments.some((s) => s.name === "Other")).toBe(true);
   });
 
   it("collects the same Metric Guide entries the PPT legend slide would show (spend excluded, deduped)", () => {
@@ -212,9 +171,9 @@ describe("buildShareReportData", () => {
     expect(withAgency.agencyName).toBe("Acme Agency");
   });
 
-  it("defaults chart spend formatting to '$' when no currencySymbol is passed", () => {
+  it("defaults chart total spend formatting to '$' when no currencySymbol is passed", () => {
     const noCurrency = buildShareReportData(data, aiCopy, NOW);
-    expect(noCurrency.chart!.campaigns[0].spendLabel.startsWith("$")).toBe(true);
+    expect(noCurrency.chart!.totalSpendLabel.startsWith("$")).toBe(true);
   });
 
   it("only includes campaign slides, never leaks ad-set data into the campaigns array", () => {

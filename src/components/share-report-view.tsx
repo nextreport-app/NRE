@@ -1,6 +1,7 @@
 import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
+import { applyShareVisibility } from "@/lib/nre/share-report";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
@@ -214,87 +215,75 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
   );
 }
 
-function SpendBar({ c, maxSpend }: { c: ShareChartData["campaigns"][number]; maxSpend: number }) {
-  const widthPct = maxSpend > 0 ? Math.max((c.spend / maxSpend) * 100, c.spend > 0 ? 4 : 2) : 2;
-  const showMetrics = c.spend > 0 || c.resultsValueLabel.length > 0;
-  return (
-    <div
-      className="grid grid-cols-1 gap-3 min-[800px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1.55fr)_auto_auto] min-[800px]:items-center min-[800px]:gap-4"
-      style={{
-        backgroundColor: "#131d30",
-        borderRadius: "10px",
-        padding: "14px 16px",
-        border: "1px solid #2a4365",
-        borderLeft: `4px solid #${c.color}`,
-      }}
-    >
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
-          <div style={{ color: "white", fontSize: "15px", fontWeight: 700, lineHeight: 1.35 }}>{c.name}</div>
-        </div>
-        {c.statusIndicator ? <StatusBadge status={c.statusIndicator} /> : null}
-      </div>
-      <div className="min-w-0">
-        <div style={{ backgroundColor: "#1e293b", borderRadius: "999px", height: "12px", overflow: "hidden" }}>
-          <div
-            style={{
-              width: `${widthPct}%`,
-              maxWidth: "100%",
-              height: "100%",
-              backgroundColor: `#${c.color}`,
-              borderRadius: "999px",
-            }}
-          />
-        </div>
-      </div>
-      <div className="shrink-0">
-        <div style={{ color: "white", fontSize: "17px", fontWeight: 700 }}>{c.spendLabel}</div>
-        <div style={{ color: "#7ab0cc", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Ad spend</div>
-      </div>
-      <div className="min-w-0 shrink-0">
-        {showMetrics ? (
-          <>
-            <div style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>
-              {c.resultsValueLabel} {c.resultsLabel}
-            </div>
-            <div style={{ color: "#7ab0cc", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-              {c.cprValueLabel} {c.cprLabel}
-            </div>
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
+  const donutGradient =
+    chart.donutSegments.length > 0
+      ? `conic-gradient(${chart.donutSegments
+          .map((seg, i) => {
+            const start = chart.donutSegments.slice(0, i).reduce((s, x) => s + x.percentage, 0);
+            return `#${seg.color} ${start}% ${start + seg.percentage}%`;
+          })
+          .join(", ")})`
+      : "#1e293b";
 
-function ChartSlide({ chart }: { chart: ShareChartData }) {
-  const maxSpend = Math.max(...chart.campaigns.map((c) => c.spend), 1);
-  const firstPage = chart.campaigns.slice(0, 8);
-  const rest = chart.campaigns.slice(8);
+  const kpiTiles = [
+    { value: chart.snapshot.mtdSpendLabel, label: "MTD AD SPEND" },
+    { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel },
+    { value: chart.snapshot.primaryCprValue, label: chart.snapshot.primaryCprLabel },
+    { value: chart.snapshot.budgetPctUsed || "—", label: chart.snapshot.budgetPctUsed ? "BUDGET USED" : "BUDGET" },
+  ];
+
   return (
     <SlideCard>
-      <div className="flex min-h-[280px] flex-col justify-center sm:min-h-[360px]">
-        <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
-        <p className="mt-2 text-center text-[15px] text-ink-muted">{chart.summaryLine}</p>
-        <div className="mt-5 flex flex-col gap-2.5">
-          {firstPage.map((c, i) => (
-            <SpendBar key={`${c.name}-${i}`} c={c} maxSpend={maxSpend} />
-          ))}
-        </div>
-        {rest.length > 0 && (
-          <>
-            <h3 className="mt-8 text-center text-[18px] font-semibold text-ink">
-              {chart.title} (continued from previous slide)
-            </h3>
-            <p className="mt-1 text-center text-[12px] text-ink-muted">In continuation from previous slide</p>
-            <div className="mt-4 flex flex-col gap-2.5">
-              {rest.map((c, i) => (
-                <SpendBar key={`${c.name}-c-${i}`} c={c} maxSpend={maxSpend} />
-              ))}
-            </div>
-          </>
-        )}
+      <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
+      <p className="mt-1 text-center text-[14px] text-ink-muted">{chart.subtitle}</p>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {kpiTiles.map((tile) => (
+          <div
+            key={tile.label}
+            className="rounded-lg border border-navy-border px-3 py-4 text-center"
+            style={{ backgroundColor: "#131d30" }}
+          >
+            <p className="text-[22px] font-bold text-ink">{tile.value}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
+          </div>
+        ))}
       </div>
+
+      {chart.donutSegments.length > 0 ? (
+        <div className="mt-6 grid grid-cols-1 items-center gap-6 min-[720px]:grid-cols-[220px_1fr]">
+          <div className="relative mx-auto h-[220px] w-[220px] shrink-0">
+            <div
+              className="h-full w-full rounded-full"
+              style={{ background: donutGradient, mask: "radial-gradient(circle, transparent 52%, black 53%)" }}
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <p className="text-[22px] font-bold text-ink">{chart.totalSpendLabel}</p>
+              <p className="text-[10px] uppercase tracking-wide text-ink-muted">Total MTD</p>
+            </div>
+          </div>
+          <ul className="space-y-2.5">
+            {chart.donutSegments.map((seg) => (
+              <li key={seg.name} className="flex items-start gap-2.5 text-[13px] text-ink">
+                <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
+                <span className="min-w-0 break-words">
+                  <span className="font-semibold">{seg.name}</span>
+                  {" · "}
+                  {seg.percentage}% · {seg.spendLabel}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="mt-6 text-center text-[14px] text-ink-muted">No MTD spend recorded this month.</p>
+      )}
+
+      <p className="mt-5 text-center text-[12px] text-ink-muted">
+        {chart.snapshot.activeCampaignCount} active campaign{chart.snapshot.activeCampaignCount === 1 ? "" : "s"} MTD
+        {chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : ""}
+      </p>
     </SlideCard>
   );
 }
@@ -383,16 +372,18 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
 }
 
 export function ShareReportView({ data, shareToken }: { data: ShareReportData; shareToken?: string }) {
-  const generatedDate = new Date(data.generatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  // A summaryJson blob written before Round J (ad sets/chart/metricGuide/
-  // agencyName) still validates as version 1 — those fields are additive,
-  // not a breaking change — but are simply absent on the parsed object at
-  // runtime despite TypeScript believing them required. Defaulting here
-  // (rather than widening the type to optional everywhere) keeps every
-  // component below able to assume the full shape it's typed for.
-  const adSets = data.adSets ?? [];
-  const chart = data.chart ?? null;
-  const metricGuide = data.metricGuide ?? [];
+  const visibleData = applyShareVisibility(data);
+  const generatedDate = new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const adSets = visibleData.adSets ?? [];
+  const chart = visibleData.chart ?? null;
+  const metricGuide = visibleData.metricGuide ?? [];
+  const showCombinedTotal = visibleData.visibility?.combinedTotal !== false;
+  const showMetricGuide = visibleData.visibility?.metricGuide !== false;
+  const showOverview = visibleData.visibility?.overview !== false;
 
   return (
     <div
@@ -444,60 +435,59 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: data.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
+                  style={{ backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
                 />
                 <span className="text-[11px] font-semibold uppercase" style={{ color: "#94a3b8", letterSpacing: "2px" }}>
-                  {data.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
+                  {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
                 </span>
               </div>
-              <h1 className="mt-4 line-clamp-2 text-[32px] font-bold text-ink">{data.accountName}</h1>
-              <p className="mt-2 text-[16px] tracking-wide text-ink-muted">{reportTypeLabel(data).toUpperCase()}</p>
-              <p className="mt-2 text-[14px] text-ink-muted">{data.cover.dateRange}</p>
+              <h1 className="mt-4 line-clamp-2 text-[32px] font-bold text-ink">{visibleData.accountName}</h1>
+              <p className="mt-2 text-[16px] tracking-wide text-ink-muted">{reportTypeLabel(visibleData).toUpperCase()}</p>
+              <p className="mt-2 text-[14px] text-ink-muted">{visibleData.cover.dateRange}</p>
               <div className="my-5 h-px w-24 bg-navy-border" />
-              <p className="text-[14px] font-medium text-ink">{data.cover.healthBadge}</p>
-              {data.cover.budgetSummary && <p className="mt-2 text-[13px] text-ink-muted">{data.cover.budgetSummary}</p>}
+              <p className="text-[14px] font-medium text-ink">{visibleData.cover.healthBadge}</p>
+              {visibleData.cover.budgetSummary && <p className="mt-2 text-[13px] text-ink-muted">{visibleData.cover.budgetSummary}</p>}
             </div>
           </div>
-          {data.isPaused && data.pausedMessage && (
+          {visibleData.isPaused && visibleData.pausedMessage && (
             <p className="mx-auto mt-4 max-w-2xl rounded-md border border-navy-border bg-navy-panel px-4 py-3 text-center text-[13px] text-ink-muted">
-              {data.pausedMessage}
+              {visibleData.pausedMessage}
             </p>
           )}
         </section>
 
-        {/* Campaign slide replicas */}
-        {data.campaigns.map((c) => (
+        {visibleData.campaigns.map((c) => (
           <section key={`campaign-${c.campaignName}`} className="mb-6">
-            <CampaignCard campaign={c} reportType={reportTypeLabel(data)} />
+            <CampaignCard campaign={c} reportType={reportTypeLabel(visibleData)} />
           </section>
         ))}
 
-        {/* Ad set slide replicas */}
         {adSets.map((a, i) => (
           <section key={`adset-${a.campaignName}-${a.adSetName}-${i}`} className="mb-6">
-            <AdSetCard adSet={a} platform={data.platform} reportType={reportTypeLabel(data)} />
+            <AdSetCard adSet={a} platform={visibleData.platform} reportType={reportTypeLabel(visibleData)} />
           </section>
         ))}
 
-        {/* MTD/Weekly chart slide replica */}
-        {chart && chart.campaigns.length > 0 && (
+        {showOverview && chart && chart.donutSegments && (
           <section className="mb-6">
-            <ChartSlide chart={chart} />
+            <MtdOverviewSlide chart={chart} />
           </section>
         )}
 
-        {/* Combined Total table */}
+        {showCombinedTotal && (
         <section className="mb-6">
           <SlideCard>
             <h2 className="mb-4 text-[22px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
-            <CombinedTotalTable data={data} />
+            <CombinedTotalTable data={visibleData} />
           </SlideCard>
         </section>
+        )}
 
-        {/* Metric Guide */}
+        {showMetricGuide && (
         <section className="mb-6">
           <MetricGuideSection metricGuide={metricGuide} />
         </section>
+        )}
       </main>
 
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
