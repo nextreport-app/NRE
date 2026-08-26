@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
@@ -284,6 +285,8 @@ export function ReportUploadWizard({
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -494,6 +497,40 @@ export function ReportUploadWizard({
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+
+  const resumeReportId = searchParams.get("resumeReport");
+
+  // Return from "Review before sharing" — reopen the Generate screen for an existing report.
+  useEffect(() => {
+    if (!resumeReportId) return;
+
+    let cancelled = false;
+    async function resumeGenerateScreen() {
+      const res = await fetch(`/api/clients/${clientId}/reports/${resumeReportId}`);
+      const json = await res.json().catch(() => null);
+      if (cancelled) return;
+      if (!res.ok || !json?.ok) {
+        showToast("Could not reopen that report. Generate a new one or pick it from report history.", "error");
+        router.replace(`/clients/${clientId}/reports/new`);
+        return;
+      }
+
+      setReportId(resumeReportId);
+      setDownloadUrl(`/api/reports/${resumeReportId}/download`);
+      setShareToken(json.shareToken ?? null);
+      setGenerateStatus("done");
+      setGenerateMessage(null);
+      setStep(5);
+      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
+      router.replace(`/clients/${clientId}/reports/new`);
+      showToast("Back on the Generate screen — download, share, or save to Drive.");
+    }
+
+    void resumeGenerateScreen();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, resumeReportId, router, showToast]);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
@@ -1709,10 +1746,10 @@ export function ReportUploadWizard({
                       {name}
                     </label>
                     <span
-                      className={`shrink-0 text-[12px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-accent"}`}
-                      title="MTD spend in uploaded CSV"
+                      className={`shrink-0 text-[11px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-ink-secondary"}`}
+                      title="Month-to-date spend in your uploaded CSV"
                     >
-                      {currencySymbol}
+                      MTD {currencySymbol}
                       {Math.round(spend).toLocaleString("en-US")}
                       {lowSpend ? " · low" : ""}
                     </span>
@@ -2635,7 +2672,10 @@ export function ReportUploadWizard({
                   </p>
                   {reportId ? (
                     <p className="mt-2 text-center text-[12px] text-[#94a3b8]">
-                      <Link href={`/clients/${clientId}/reports/${reportId}/copy`} className="text-dash-accent hover:underline">
+                      <Link
+                        href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                        className="text-dash-accent hover:underline"
+                      >
                         Review before sharing
                       </Link>
                     </p>
