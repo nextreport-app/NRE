@@ -11,6 +11,8 @@ const ACCENT_ORANGE = "#f6ad55";
 const KPI_BG = "#131d30";
 const KPI_BORDER = "#1e293b";
 const HOLE_FILL = "#0d1b2e";
+/** Matches share page SlideCard / bg-navy — full opaque slide background for PNG embed. */
+const SLIDE_BG = "#0d1b2e";
 
 function escapeXml(text: string): string {
   return text
@@ -51,13 +53,13 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
-    `<rect width="${W}" height="${H}" fill="none"/>`,
+    `<rect width="${W}" height="${H}" fill="${SLIDE_BG}"/>`,
   );
 
   // Title + subtitle (match browser hierarchy)
   parts.push(
-    `<text x="${W / 2}" y="48" text-anchor="middle" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
-    `<text x="${W / 2}" y="72" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins, Arial, sans-serif" font-size="14">${escapeXml(chart.subtitle)}</text>`,
+    `<text x="${W / 2}" y="48" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
+    `<text x="${W / 2}" y="72" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="14">${escapeXml(chart.subtitle)}</text>`,
   );
 
   // KPI tiles — 4 across
@@ -76,8 +78,8 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     const x = kpiStartX + i * (kpiW + kpiGap);
     parts.push(
       `<rect x="${x}" y="${kpiY}" width="${kpiW}" height="${kpiH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-      `<text x="${x + kpiW / 2}" y="${kpiY + 38}" text-anchor="middle" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
-      `<text x="${x + kpiW / 2}" y="${kpiY + 62}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins, Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="0.5">${escapeXml(tile.label)}</text>`,
+      `<text x="${x + kpiW / 2}" y="${kpiY + 38}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
+      `<text x="${x + kpiW / 2}" y="${kpiY + 62}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label)}</text>`,
     );
   });
 
@@ -102,8 +104,8 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   // Center hole cover (matches browser mask)
   parts.push(`<circle cx="${donutCx}" cy="${donutCy}" r="${innerR}" fill="${HOLE_FILL}"/>`);
   parts.push(
-    `<text x="${donutCx}" y="${donutCy - 4}" text-anchor="middle" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="22" font-weight="700">${escapeXml(chart.totalSpendLabel)}</text>`,
-    `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins, Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="0.5">TOTAL MTD</text>`,
+    `<text x="${donutCx}" y="${donutCy - 4}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(chart.totalSpendLabel)}</text>`,
+    `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="10" font-weight="600">TOTAL MTD</text>`,
   );
 
   // Legend
@@ -112,7 +114,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   for (const seg of chart.donutSegments) {
     parts.push(
       `<rect x="${legendX}" y="${legendY}" width="14" height="14" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendX + 22}" y="${legendY + 12}" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="13">${escapeXml(`${seg.name} · ${seg.percentage}% · ${seg.spendLabel}`)}</text>`,
+      `<text x="${legendX + 22}" y="${legendY + 12}" fill="${INK}" font-family="Poppins" font-size="13">${escapeXml(`${seg.name} · ${seg.percentage}% · ${seg.spendLabel}`)}</text>`,
     );
     legendY += 28;
   }
@@ -121,7 +123,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `${chart.snapshot.activeCampaignCount} active campaign${chart.snapshot.activeCampaignCount === 1 ? "" : "s"} MTD` +
     (chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : "");
   parts.push(
-    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins, Arial, sans-serif" font-size="12">${escapeXml(insight)}</text>`,
+    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="12">${escapeXml(insight)}</text>`,
   );
 
   parts.push("</svg>");
