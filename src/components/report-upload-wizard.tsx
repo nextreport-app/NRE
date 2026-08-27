@@ -1862,13 +1862,12 @@ export function ReportUploadWizard({
                     <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink" title={name}>
                       {name}
                     </label>
-                    <span
-                      className={`shrink-0 text-[11px] font-semibold tabular-nums ${lowSpend ? "text-amber-400" : "text-dash-accent"}`}
-                    >
-                      Last 30 days spend detected · {currencySymbol}
-                      {Math.round(spend).toLocaleString("en-US")}
-                      {lowSpend ? " · low" : ""}
-                    </span>
+                    {lowSpend ? (
+                      <span className="shrink-0 text-[11px] font-semibold tabular-nums text-amber-400">
+                        Last 30 days spend detected · {currencySymbol}
+                        {Math.round(spend).toLocaleString("en-US")}
+                      </span>
+                    ) : null}
                     {isSingleAdSet && (
                       <button
                         type="button"
