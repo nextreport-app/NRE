@@ -23,11 +23,18 @@ function entry(overrides: Partial<LegendEntry> = {}): LegendEntry {
 }
 
 describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, no from-scratch design", () => {
-  it("leaves all text content unchanged when no entries are passed — only the readability font floor may differ", () => {
+  it("leaves all text content unchanged when no entries are passed — except shortened descriptions that prevent card overflow", () => {
     const xml = buildLegendSlideXml(darkTemplate.legend.xml, []);
     const origTexts = [...darkTemplate.legend.xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => m[1]);
     const newTexts = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => m[1]);
-    expect(newTexts).toEqual(origTexts);
+    const overflowSafeReplacements = new Set([
+      "When Meta's system is still learning the best way to deliver your ads.",
+      "Clicks on links in your ad that go to your website or app.",
+    ]);
+    for (let i = 0; i < origTexts.length; i++) {
+      if (overflowSafeReplacements.has(newTexts[i] ?? "")) continue;
+      expect(newTexts[i]).toBe(origTexts[i]);
+    }
     // Shape count, structure, and everything else non-font-size is untouched.
     expect((xml.match(/<p:sp>/g) || []).length).toBe((darkTemplate.legend.xml.match(/<p:sp>/g) || []).length);
   });
@@ -144,6 +151,21 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
     const xml = buildLegendSlideXml(darkTemplate.legend.xml, [entry({ term: "PURCHASES" }), entry({ term: "ROAS" })]);
     const after = [...xml.matchAll(/r:embed="([^"]*)"/g)].map((m) => m[1]);
     expect(after).toEqual(before);
+  });
+
+  it("splits a long unmatched metric name across two title runs like the template abbreviations", () => {
+    const xml = buildLegendSlideXml(darkTemplate.legend.xml, [
+      entry({ term: "COST PER WEBSITE SUBMISSION", explanation: "Average cost per website lead form submission." }),
+    ]);
+    expect(xml).toContain("CPWS");
+    expect(xml).not.toContain("COST PER WEBSITE SUBMISSION");
+    expect(xml).toContain("Average cost per website lead form submission.");
+  });
+
+  it("shortens the Learning Phase card description so it stays inside the card at 12pt", () => {
+    const xml = buildLegendSlideXml(darkTemplate.legend.xml, []);
+    expect(xml).toContain("When Meta's system is still learning the best way to deliver your ads.");
+    expect(xml).not.toContain("Facebook's algorithm is learning the best ways");
   });
 
   it("produces well-formed XML with balanced shape tags", () => {

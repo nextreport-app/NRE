@@ -14,8 +14,6 @@ import { initWasm, Resvg } from "@resvg/resvg-wasm";
 /** Slide is 960×540pt — render at 2× for crisp Slides conversion. */
 export const CHART_OVERVIEW_PNG_WIDTH_PX = 1920;
 
-const SLIDE_BG = "#0d1b2e";
-
 let wasmReady: Promise<void> | null = null;
 let fontBuffers: Uint8Array[] | null = null;
 
@@ -48,7 +46,6 @@ export async function rasterizeSvgToPng(svg: string, widthPx = CHART_OVERVIEW_PN
   await ensureResvgWasm();
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: widthPx },
-    background: SLIDE_BG,
     font: {
       loadSystemFonts: false,
       fontBuffers: loadFontBuffers(),

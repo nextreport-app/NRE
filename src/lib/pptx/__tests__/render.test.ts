@@ -302,7 +302,7 @@ describe("renderPptx — real template end-to-end", () => {
     await assertChartOverviewPngInZip(zipForChart);
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("July MTD Overview");
+    expect(chartSvg).toContain("July · Month to date overview");
     expect(chartSvg).toContain("July 13 - July 19, 2026");
     expect(chartSvg).toContain("Brand - Reach");
     expect(chartSvg).toContain("Shoes - Purchases");
@@ -582,7 +582,7 @@ describe("renderPptx — real template end-to-end", () => {
     await assertChartOverviewPngInZip(zipForChart);
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("July MTD Overview");
+    expect(chartSvg).toContain("July · Month to date overview");
     expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
@@ -758,13 +758,13 @@ describe("renderPptx — client logo + agency name branding (real production tem
     const chartXml = await findChartSlideXml(zip);
     const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
     expect(chartRelsXml).toContain(`Target="../media/${CHART_OVERVIEW_MEDIA}"`);
-    expect(chartRelsXml).not.toContain("background");
+    expect(chartRelsXml).toContain('Id="rId2"');
 
     const pngBytes = await assertChartOverviewPngInZip(zip);
     expect(pngBytes.length).toBeGreaterThan(50_000);
 
     expect(chartXml).toContain('<a:ext cx="12192000" cy="6858000"/>');
-    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
+    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(2);
     expect(chartXml).not.toContain("<p:sp>");
   });
 
@@ -1128,7 +1128,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     expect(campaign1).not.toContain("{{");
     await assertChartOverviewPngInZip(zip);
     expect(data.chart).toBeTruthy();
-    expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("mtd overview");
+    expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("month to date overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
     // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
     expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");

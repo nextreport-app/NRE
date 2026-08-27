@@ -91,8 +91,8 @@ describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
     expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(buildChart([campaign("A")]), "$"));
-    expect(svg).toContain("August MTD Overview");
-    expect(svg).toContain("Month-to-date performance");
+    expect(svg).toContain("August · Month to date overview");
+    expect(svg).toContain("Month to date performance");
   });
 
   it("embeds browser-matching overview PNG instead of native OOXML chart shapes", async () => {
@@ -111,9 +111,9 @@ describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
         "C$",
       ),
     );
-    expect(svg).toContain("MTD AD SPEND");
+    expect(svg).toContain("AD SPEND THIS MONTH");
     expect(svg).toContain("PURCHASES");
-    expect(svg).toContain("TOTAL MTD");
+    expect(svg).toContain("TOTAL SPEND");
     expect(svg).toContain("A ·");
     expect(svg).toContain("B ·");
     expect(bundle.xml).not.toContain('prst="pie"');
@@ -122,10 +122,17 @@ describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
   it("buildMtdOverviewSvg includes title and KPI labels from share projection", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain("August MTD Overview");
-    expect(svg).toContain("MTD AD SPEND");
-    expect(svg).toContain("TOTAL MTD");
+    expect(svg).toContain("August · Month to date overview");
+    expect(svg).toContain("AD SPEND THIS MONTH");
+    expect(svg).toContain("TOTAL SPEND");
     expect(svg).toContain("A ·");
+  });
+
+  it("renders a full-ring donut when one campaign owns 100% of spend", () => {
+    const chart = buildChart([campaign("Only campaign", { spend: 500 })]);
+    const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "$"));
+    const pathCount = (svg.match(/<path d="/g) || []).length;
+    expect(pathCount).toBeGreaterThanOrEqual(2);
   });
 
   it("chartCampaignMetricLines still formats zero-result rows", () => {

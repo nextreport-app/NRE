@@ -5,8 +5,8 @@ import { rasterizeSvgToPng } from "../svg-to-png";
 describe("rasterizeSvgToPng", () => {
   it("produces a substantial PNG with readable text when fonts are bundled", async () => {
     const svg = buildMtdOverviewSvg({
-      title: "August MTD Overview",
-      subtitle: "Month-to-date performance",
+      title: "August · Month to date overview",
+      subtitle: "Month to date performance",
       snapshot: {
         mtdSpendLabel: "$100",
         primaryResultsValue: "10",

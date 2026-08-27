@@ -374,7 +374,7 @@ function buildSlides({
       key: "chart",
       render: () => (
         <ChartSlide
-          heading={`${chart.mtdMonthName ?? "MTD"} Campaign Performance`}
+          heading={`${chart.mtdMonthName ?? "This month"} · Month to date overview`}
           subLabel={chart.periodSubLabel}
           campaignNames={chart.campaigns.map((c) => c.name)}
         />
