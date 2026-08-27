@@ -1,18 +1,18 @@
 /**
- * SVG renderer for the MTD Overview slide — mirrors share-report-view.tsx's
- * MtdOverviewSlide layout so PPT/Google Slides match the live browser link.
+ * SVG renderer for the month-to-date overview slide — mirrors
+ * share-report-view.tsx's MtdOverviewSlide layout so PPT/Google Slides match
+ * the live browser link. Background is transparent; the template grid shows
+ * through from the slide layer beneath this PNG overlay.
  */
 
 import type { ShareChartData } from "../nre/share-report";
 
 const INK = "#ffffff";
-const INK_MUTED = "#94a3b8";
+/** Brighter than browser muted — reads clearly on Slides after PNG rasterization. */
+const INK_SUBTITLE = "#e2e8f0";
 const ACCENT_ORANGE = "#f6ad55";
 const KPI_BG = "#131d30";
 const KPI_BORDER = "#1e293b";
-const HOLE_FILL = "#0d1b2e";
-/** Matches share page SlideCard / bg-navy — full opaque slide background for PNG embed. */
-const SLIDE_BG = "#0d1b2e";
 
 function escapeXml(text: string): string {
   return text
@@ -46,6 +46,28 @@ function donutSegmentPath(
   ].join(" ");
 }
 
+/** A single 360° arc is degenerate in SVG — draw two semicircles instead. */
+function appendDonutSegment(
+  parts: string[],
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  startDeg: number,
+  sweepDeg: number,
+  color: string,
+): void {
+  if (sweepDeg <= 0) return;
+  if (sweepDeg >= 359.9) {
+    parts.push(`<path d="${donutSegmentPath(cx, cy, outerR, innerR, 0, 180)}" fill="#${color}"/>`);
+    parts.push(`<path d="${donutSegmentPath(cx, cy, outerR, innerR, 180, 360)}" fill="#${color}"/>`);
+    return;
+  }
+  parts.push(
+    `<path d="${donutSegmentPath(cx, cy, outerR, innerR, startDeg, startDeg + sweepDeg)}" fill="#${color}"/>`,
+  );
+}
+
 export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const W = 960;
   const H = 540;
@@ -53,13 +75,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
-    `<rect width="${W}" height="${H}" fill="${SLIDE_BG}"/>`,
   );
 
-  // Title + subtitle (match browser hierarchy)
+  // Title + subtitle (match browser hierarchy; brighter/larger for Slides readability)
   parts.push(
     `<text x="${W / 2}" y="48" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
-    `<text x="${W / 2}" y="72" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="14">${escapeXml(chart.subtitle)}</text>`,
+    `<text x="${W / 2}" y="74" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="16" font-weight="500">${escapeXml(chart.subtitle)}</text>`,
   );
 
   // KPI tiles — 4 across
@@ -69,7 +90,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const kpiGap = 16;
   const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
   const kpiTiles = [
-    { value: chart.snapshot.mtdSpendLabel, label: "MTD AD SPEND" },
+    { value: chart.snapshot.mtdSpendLabel, label: "AD SPEND THIS MONTH" },
     { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel.toUpperCase() },
     { value: chart.snapshot.primaryCprValue, label: chart.snapshot.primaryCprLabel.toUpperCase() },
     { value: chart.snapshot.budgetPctUsed || "—", label: chart.snapshot.budgetPctUsed ? "BUDGET USED" : "BUDGET" },
@@ -92,20 +113,13 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let angle = 0;
   for (const seg of chart.donutSegments) {
     const sweep = (seg.percentage / 100) * 360;
-    if (sweep <= 0) continue;
-    const start = angle;
-    const end = angle + sweep;
-    parts.push(
-      `<path d="${donutSegmentPath(donutCx, donutCy, outerR, innerR, start, end)}" fill="#${seg.color}"/>`,
-    );
-    angle = end;
+    appendDonutSegment(parts, donutCx, donutCy, outerR, innerR, angle, sweep, seg.color);
+    angle += sweep;
   }
 
-  // Center hole cover (matches browser mask)
-  parts.push(`<circle cx="${donutCx}" cy="${donutCy}" r="${innerR}" fill="${HOLE_FILL}"/>`);
   parts.push(
     `<text x="${donutCx}" y="${donutCy - 4}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(chart.totalSpendLabel)}</text>`,
-    `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="10" font-weight="600">TOTAL MTD</text>`,
+    `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="11" font-weight="600">TOTAL SPEND</text>`,
   );
 
   // Legend
@@ -120,10 +134,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   }
 
   const insight =
-    `${chart.snapshot.activeCampaignCount} active campaign${chart.snapshot.activeCampaignCount === 1 ? "" : "s"} MTD` +
+    `${chart.snapshot.activeCampaignCount} active campaign${chart.snapshot.activeCampaignCount === 1 ? "" : "s"} this month` +
     (chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : "");
   parts.push(
-    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_MUTED}" font-family="Poppins" font-size="12">${escapeXml(insight)}</text>`,
+    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(insight)}</text>`,
   );
 
   parts.push("</svg>");

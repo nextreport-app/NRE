@@ -15,8 +15,8 @@ function toTitleCase(label: string): string {
 /** Shared projection from ChartSlideData → share-page chart shape (browser + PPT SVG). */
 export function projectChartSlideToShareChart(chart: ChartSlideData, currencySymbol: string): ShareChartData {
   const rangeSuffix = chart.periodSubLabel.length > 0 ? `: ${chart.periodSubLabel}` : "";
-  const title = `${chart.mtdMonthName ?? "MTD"} MTD Overview${rangeSuffix}`;
-  const subtitle = "Month-to-date performance · Where your budget went";
+  const title = `${chart.mtdMonthName ?? "This month"} · Month to date overview${rangeSuffix}`;
+  const subtitle = "Month to date performance · Where your budget went";
   const snap = chart.snapshot;
   const snapshot: ShareChartSnapshot = {
     mtdSpendLabel: snap.mtdSpendFormatted,

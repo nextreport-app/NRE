@@ -58,7 +58,7 @@ function buildSlideList(share: ShareReportData, visibility: ShareVisibility): Sl
     items.push({
       id: "overview",
       kind: "overview",
-      label: "MTD Overview",
+      label: "Month to date overview",
       sublabel: "KPI tiles + spend mix",
       visible: visibility.overview !== false,
     });

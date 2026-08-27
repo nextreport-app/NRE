@@ -148,10 +148,16 @@ describe("buildCoverSlideXml — report title", () => {
     expect(xml).not.toContain(DEFAULT_REPORT_TITLE.toUpperCase());
   });
 
-  it("Fix 8: an explicit reportTitle always wins over reportType's default, even when MONTHLY", () => {
+  it("Fix 8: a truly custom reportTitle wins over reportType's default, even when MONTHLY", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER, { reportTitle: "Q3 Performance Review", reportType: "MONTHLY" });
     expect(xml).toContain("<a:t>Q3 PERFORMANCE REVIEW</a:t>");
     expect(xml).not.toContain("MONTHLY PERFORMANCE REPORT");
+  });
+
+  it("Fix 8b: a stale generic default title follows reportType instead of sticking on Weekly", () => {
+    const xml = buildCoverSlideXml(template.cover, BASE_COVER, { reportTitle: "Weekly Performance Report", reportType: "MONTHLY" });
+    expect(xml).toContain("<a:t>MONTHLY PERFORMANCE REPORT</a:t>");
+    expect(xml).not.toContain("WEEKLY PERFORMANCE REPORT");
   });
 
   it("Fix 8: reportType WEEKLY (or omitted) still falls back to WEEKLY PERFORMANCE REPORT", () => {

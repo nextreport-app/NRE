@@ -75,6 +75,40 @@ function normalize(s: string): string {
     .trim();
 }
 
+/** Splits long metric names into the template's abbreviation + expansion pattern. */
+function splitLegendTitle(term: string, slot: TemplateLegendSlot): { primary: string; secondary: string } {
+  const upper = term.toUpperCase();
+  if (slot.titleRuns.length < 2) {
+    const words = upper.split(/\s+/);
+    if (words.length >= 4 || upper.length > 18) {
+      return { primary: words.map((w) => w[0]).join("").slice(0, 6), secondary: "" };
+    }
+    return { primary: upper, secondary: "" };
+  }
+
+  const paren = upper.match(/^(.+?)\s*\((.+)\)$/);
+  if (paren) {
+    return { primary: `${paren[1].trim()} `, secondary: `(${paren[2].trim()})` };
+  }
+
+  const words = upper.split(/\s+/);
+  if (words.length >= 4 || upper.length > 22) {
+    const acronym = words.map((w) => w[0]).join("").slice(0, 5);
+    return { primary: `${acronym} `, secondary: `(${upper})` };
+  }
+  if (words.length === 3 && !/^\d+$/.test(words[2] ?? "")) {
+    return { primary: `${words.slice(0, 2).join(" ")} `, secondary: `(${words[2]})` };
+  }
+  return { primary: upper, secondary: "" };
+}
+
+const LEGEND_DESC_OVERRIDES: Record<string, string> = {
+  "The period during which Facebook's algorithm is learning the best ways to  achieve your campaign objective.":
+    "When Meta's system is still learning the best way to deliver your ads.",
+  "The actual number of clicks on links within the ad, leading to your chosen destination.":
+    "Clicks on links in your ad that go to your website or app.",
+};
+
 // A handful of known wording gaps between slot-assignment.ts's own labels
 // and the template's static copy — everything else is expected to line up
 // via normalize() alone (both sides ultimately come from the same "Meta/
@@ -149,9 +183,14 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
     usedSlotIndex.add(cursor);
     cursor++;
 
-    xml = replaceLiteralText(xml, slot.titleRuns[0], entry.term.toUpperCase());
-    if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], "");
+    const { primary, secondary } = splitLegendTitle(entry.term, slot);
+    xml = replaceLiteralText(xml, slot.titleRuns[0], primary);
+    if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], secondary);
     xml = replaceLiteralText(xml, slot.descText, entry.explanation);
+  }
+
+  for (const [original, replacement] of Object.entries(LEGEND_DESC_OVERRIDES)) {
+    xml = replaceLiteralText(xml, original, replacement);
   }
 
   // Readability floor (product owner spec): every card's title/label text
@@ -174,18 +213,11 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
     `[legend-slide] font sizes after 12pt floor: ${[...new Set(after)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
   );
 
-  // Overflow guard for the longer descriptions (e.g. "Learning Phase"'s):
-  // every description text box in the template uses <a:spAutoFit/> ("grow
-  // the shape to fit the text"), which made sense at the template's
-  // original 10pt, but at the bumped-up 12pt floor a long description can
-  // now grow past its card's fixed background rectangle — visibly
-  // overflowing the card. Every <a:spAutoFit/> in this slide belongs to a
-  // description shape (title shapes all use <a:noAutofit/> instead,
-  // confirmed by inspecting the template), so swapping it slide-wide for
-  // <a:normAutofit/> ("shrink the TEXT to fit the shape" instead) is a safe,
-  // targeted fix: it only ever engages for a description whose text
-  // genuinely doesn't fit its card at the 12pt floor, leaving every other
-  // (shorter) description at the full 12pt untouched.
+  // Overflow guard: every card text box uses spAutoFit ("grow the shape to
+  // fit the text"), which at the bumped-up 12pt floor lets long titles or
+  // descriptions grow past their card background. Swap slide-wide for
+  // normAutofit ("shrink the text to fit the shape") so nothing escapes its
+  // card border — titles and descriptions alike.
   const beforeAutofitCount = (xml.match(/<a:spAutoFit\/>/g) || []).length;
   xml = xml.replace(/<a:spAutoFit\/>/g, "<a:normAutofit/>");
   console.log(

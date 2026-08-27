@@ -169,6 +169,28 @@ export function presentedToTopY(hasAgencyName: boolean): number {
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 
+const GENERIC_REPORT_TITLES = new Set(
+  [DEFAULT_REPORT_TITLE, DEFAULT_MONTHLY_REPORT_TITLE, DEFAULT_COMPARISON_REPORT_TITLE].map((t) => t.toUpperCase()),
+);
+
+/** Resolves the cover subtitle — custom titles win; generic defaults follow reportType. */
+export function resolveCoverReportTitle(
+  reportTitle: string | null | undefined,
+  reportType?: ReportType | "COMPARISON",
+): string {
+  const defaultTitle =
+    reportType === "MONTHLY"
+      ? DEFAULT_MONTHLY_REPORT_TITLE
+      : reportType === "COMPARISON"
+        ? DEFAULT_COMPARISON_REPORT_TITLE
+        : DEFAULT_REPORT_TITLE;
+  const trimmed = reportTitle?.trim() ?? "";
+  if (!trimmed || GENERIC_REPORT_TITLES.has(trimmed.toUpperCase())) {
+    return defaultTitle.toUpperCase();
+  }
+  return trimmed.toUpperCase();
+}
+
 export interface CoverSlideOptions {
   /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE (or DEFAULT_MONTHLY_REPORT_TITLE/DEFAULT_COMPARISON_REPORT_TITLE — see `reportType`) when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
   reportTitle?: string | null;
@@ -176,8 +198,9 @@ export interface CoverSlideOptions {
   agencyName?: string | null;
   /**
    * Fix 8 — only affects the DEFAULT title text used when `reportTitle` is
-   * blank/absent ("MONTHLY PERFORMANCE REPORT" instead of "WEEKLY
-   * PERFORMANCE REPORT"); an explicit reportTitle always wins regardless.
+   * blank/absent or still set to another report type's generic default
+   * ("MONTHLY PERFORMANCE REPORT" instead of "WEEKLY PERFORMANCE REPORT");
+   * a truly custom reportTitle always wins regardless.
    * Defaults to "WEEKLY". "COMPARISON" is a distinct, wizard/DB-level
    * report-type concept (see comparison-slides.ts's buildComparisonCoverSlideXml,
    * its only caller with this value) — separate from report-data.ts's own
@@ -199,13 +222,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     xml = insertShapeBeforeSpTreeClose(xml, preparedByShape);
   }
 
-  const defaultTitle =
-    options.reportType === "MONTHLY"
-      ? DEFAULT_MONTHLY_REPORT_TITLE
-      : options.reportType === "COMPARISON"
-        ? DEFAULT_COMPARISON_REPORT_TITLE
-        : DEFAULT_REPORT_TITLE;
-  const reportTitle = (options.reportTitle?.trim() || defaultTitle).toUpperCase();
+  const reportTitle = resolveCoverReportTitle(options.reportTitle, options.reportType);
 
   return fillTags(
     xml,

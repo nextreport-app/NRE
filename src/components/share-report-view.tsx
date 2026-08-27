@@ -227,16 +227,16 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
       : "#1e293b";
 
   const kpiTiles = [
-    { value: chart.snapshot.mtdSpendLabel, label: "MTD AD SPEND" },
+    { value: chart.snapshot.mtdSpendLabel, label: "Ad spend this month" },
     { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel },
     { value: chart.snapshot.primaryCprValue, label: chart.snapshot.primaryCprLabel },
-    { value: chart.snapshot.budgetPctUsed || "—", label: chart.snapshot.budgetPctUsed ? "BUDGET USED" : "BUDGET" },
+    { value: chart.snapshot.budgetPctUsed || "—", label: chart.snapshot.budgetPctUsed ? "Budget used" : "Budget" },
   ];
 
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
-      <p className="mt-1 text-center text-[14px] text-ink-muted">{chart.subtitle}</p>
+      <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpiTiles.map((tile) => (
@@ -260,7 +260,7 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-[22px] font-bold text-ink">{chart.totalSpendLabel}</p>
-              <p className="text-[10px] uppercase tracking-wide text-ink-muted">Total MTD</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#e2e8f0]">Total spend</p>
             </div>
           </div>
           <ul className="space-y-2.5">
@@ -277,11 +277,11 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           </ul>
         </div>
       ) : (
-        <p className="mt-6 text-center text-[14px] text-ink-muted">No MTD spend recorded this month.</p>
+        <p className="mt-6 text-center text-[14px] text-[#e2e8f0]">No spend recorded this month yet.</p>
       )}
 
-      <p className="mt-5 text-center text-[12px] text-ink-muted">
-        {chart.snapshot.activeCampaignCount} active campaign{chart.snapshot.activeCampaignCount === 1 ? "" : "s"} MTD
+      <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
+        {chart.snapshot.activeCampaignCount} active campaign{chart.snapshot.activeCampaignCount === 1 ? "" : "s"} this month
         {chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : ""}
       </p>
     </SlideCard>

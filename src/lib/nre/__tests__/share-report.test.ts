@@ -123,8 +123,8 @@ describe("buildShareReportData", () => {
   it("projects the MTD overview with KPI snapshot and donut segments", () => {
     expect(data.chart).not.toBeNull();
     expect(share.chart).not.toBeNull();
-    expect(share.chart!.title).toContain("MTD Overview");
-    expect(share.chart!.subtitle).toContain("Month-to-date");
+    expect(share.chart!.title).toContain("Month to date overview");
+    expect(share.chart!.subtitle).toContain("Month to date");
     expect(share.chart!.snapshot.mtdSpendLabel).toContain("₹");
     expect(share.chart!.donutSegments.length).toBeGreaterThan(0);
     expect(share.chart!.donutSegments[0]?.color).toBe("f6ad55");
