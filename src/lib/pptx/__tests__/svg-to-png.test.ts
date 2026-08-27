@@ -3,7 +3,7 @@ import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { rasterizeSvgToPng } from "../svg-to-png";
 
 describe("rasterizeSvgToPng", () => {
-  it("produces a valid PNG from chart overview SVG", async () => {
+  it("produces a substantial PNG with readable text when fonts are bundled", async () => {
     const svg = buildMtdOverviewSvg({
       title: "August MTD Overview",
       subtitle: "Month-to-date performance",
@@ -22,6 +22,7 @@ describe("rasterizeSvgToPng", () => {
     const png = await rasterizeSvgToPng(svg);
     expect(png[0]).toBe(0x89);
     expect(png[1]).toBe(0x50);
-    expect(png.length).toBeGreaterThan(1000);
+    // Without bundled fonts PNGs are ~30KB and mostly empty; with fonts ~80KB+.
+    expect(png.length).toBeGreaterThan(50_000);
   });
 });

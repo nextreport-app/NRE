@@ -749,33 +749,22 @@ describe("renderPptx — client logo + agency name branding (real production tem
     expect(coverXml).not.toContain("{{");
   });
 
-  it("MTD chart slide: copies the template's own decorative background (grid + gradient) instead of a plain fill", async () => {
+  it("MTD chart slide: one full-slide browser-matching PNG with bundled fonts", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
     const zip = await JSZip.loadAsync(buffer);
 
-    // The template's grid/gradient background isn't on any individual slide
-    // — it's a full-slide picture baked into slideMaster1.xml and inherited
-    // by every template slide. That's the source of truth for what the
-    // chart slide (built from scratch, with no master/layout inheritance of
-    // its own) needs to replicate.
-    const masterXml = await zip.file("ppt/slideMasters/slideMaster1.xml")!.async("string");
-    const masterRelsXml = await zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels")!.async("string");
-    const masterRelId = masterXml.match(/<p:pic>[\s\S]*?<a:blip r:embed="(rId\d+)"/)?.[1];
-    expect(masterRelId).toBeDefined();
-    const masterTarget = new RegExp(`Id="${masterRelId}"[^>]*Target="([^"]+)"`).exec(masterRelsXml)?.[1];
-    expect(masterTarget).toBeDefined();
-    const backgroundMediaFile = masterTarget!.split("/").pop();
-
-    // Find the chart slide via its embedded overview SVG relationship.
     const chartRelsPath = await chartSlideRelPath(zip);
     const chartXml = await findChartSlideXml(zip);
     const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
-    expect(chartRelsXml).toContain(`Target="../media/${backgroundMediaFile}"`);
+    expect(chartRelsXml).toContain(`Target="../media/${CHART_OVERVIEW_MEDIA}"`);
+    expect(chartRelsXml).not.toContain("background");
 
-    // Full-slide background pic + full-slide overview SVG pic — no native OOXML shapes.
-    expect(chartXml).toContain('<a:ext cx="12192001" cy="6858000"/>');
-    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(2);
+    const pngBytes = await assertChartOverviewPngInZip(zip);
+    expect(pngBytes.length).toBeGreaterThan(50_000);
+
+    expect(chartXml).toContain('<a:ext cx="12192000" cy="6858000"/>');
+    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
     expect(chartXml).not.toContain("<p:sp>");
   });
 
