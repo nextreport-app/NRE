@@ -51,6 +51,7 @@ export function SiteChromeFooter() {
                 <Link href="/about" className="hover:text-white">About Us</Link>
                 <Link href="/contact" className="hover:text-white">Contact</Link>
                 <Link href="/privacy" className="hover:text-white">Privacy</Link>
+                <Link href="/data-deletion" className="hover:text-white">Data Deletion</Link>
                 <Link href="/terms" className="hover:text-white">Terms</Link>
                 {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
                 {!BETA_HIDE_PRICING && (
