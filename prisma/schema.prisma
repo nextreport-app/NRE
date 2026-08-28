@@ -90,6 +90,17 @@ model User {
   // their NextReport login email at all.
   googleConnectedEmail String?
 
+  // Meta Ads connection (account settings) — separate OAuth grant from
+  // NextAuth login, same pattern as googleDrive* above. Used for read-only
+  // Marketing API access (ads_read) so NextReport can list ad accounts and,
+  // in a future release, pull campaign insights automatically. Tokens are
+  // obtained via /api/meta/connect + /api/meta/callback, not Facebook Login.
+  metaAdsEnabled       Boolean   @default(false)
+  metaAccessToken      String?   @db.Text
+  metaTokenExpiresAt   DateTime?
+  metaConnectedUserId  String?
+  metaConnectedName    String?
+
   accounts Account[]
   sessions Session[]
   clients  Client[]

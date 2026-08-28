@@ -47,7 +47,10 @@ export default auth((req) => {
     pathname === "/api/waitlist" ||
     // The /contact form (public page) is filled out by anonymous visitors
     // too — same reasoning as /api/waitlist above.
-    pathname === "/api/contact";
+    pathname === "/api/contact" ||
+    // Meta-required data deletion callback — server-to-server POST with
+    // signed_request, no NextAuth session (see api/meta/data-deletion).
+    pathname === "/api/meta/data-deletion";
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
