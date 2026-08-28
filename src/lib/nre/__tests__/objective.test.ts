@@ -893,20 +893,6 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     // NOT 25 (20 + 5) — Set 2's 5 purchases are not Initiate Checkouts.
     expect(tableGroups[0]).toMatchObject({ label: "INITIATE CHECKOUT", count: 20 });
   });
-
-  it("groupResultsByCampaignObjective's debugLabel parameter prints per-campaign diagnostics without changing the returned result", () => {
-    const rows: MetricRow[] = [
-      metricRow({ campaign_name: "Debug Campaign", _raw: {}, result_type: "Purchase", purchases: 4, results: 4, spend: 40 }),
-    ];
-    const objectiveMap = buildCampaignObjectiveMap(rows);
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const withDebug = groupResultsByCampaignObjective(rows, objectiveMap, "TEST");
-    const withoutDebug = groupResultsByCampaignObjective(rows, objectiveMap);
-    expect(withDebug).toEqual(withoutDebug);
-    expect(logSpy).toHaveBeenCalled();
-    expect(logSpy.mock.calls.some((call) => String(call[0]).includes("[TEST]"))).toBe(true);
-    logSpy.mockRestore();
-  });
 });
 
 // Objective Confirmation — the permanent objective-detection fix (Part 8's

@@ -79,12 +79,6 @@ function setRunFontSize(rPrXml: string, sizeHundredths: number): string {
   return rPrXml.slice(0, openTagMatch.index) + newOpenTag + rPrXml.slice(openTagMatch.index + openTag.length);
 }
 
-/** Extracts the numeric sz="..." value (hundredths of a point) from an <a:rPr> block, or null when absent (inherited/default size). */
-function readRunFontSize(rPrXml: string): number | null {
-  const m = /<a:rPr\b[^>]*\bsz="(\d+)"/.exec(rPrXml);
-  return m ? parseInt(m[1], 10) : null;
-}
-
 function setCellText(
   cellXml: string,
   value: string,
@@ -101,17 +95,6 @@ function setCellText(
   }
   const originalRPrBlock = match[1] ?? "";
   const rPrBlock = fontSizeHundredths ? setRunFontSize(originalRPrBlock, fontSizeHundredths) : originalRPrBlock;
-  // Verification logging (product owner explicitly asked to confirm the
-  // actual before/after sz values being written, since a previous round's
-  // font-size change reportedly didn't visibly take effect) — only logs
-  // when this call is actually overriding the size, so a normal fill isn't
-  // spammed for cells the font-size floors don't apply to.
-  if (fontSizeHundredths) {
-    const oldSize = readRunFontSize(originalRPrBlock);
-    console.log(
-      `[table-slide] font size [row ${rowIndex}, col ${colIndex}]: ${oldSize !== null ? oldSize / 100 + "pt" : "inherited/default"} -> ${fontSizeHundredths / 100}pt`,
-    );
-  }
   const lines = String(value).split("\n");
   const runs = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
   return cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
@@ -292,9 +275,6 @@ export function fillCombinedTotalTable(
   const DATA_VALUE_FONT_SIZE = 1200; // 12pt — data rows' numeric/currency cells
   const objectivePairCount = (targetCols - STATIC_COLS) / 2;
   const headerFontSizeHundredths = objectivePairCount >= 3 ? HEADER_FONT_SIZE_OVERFLOW : HEADER_FONT_SIZE;
-  console.log(
-    `[table-slide] fillCombinedTotalTable: ${objectivePairCount} objective pair(s) -> header ${headerFontSizeHundredths / 100}pt, row label ${ROW_LABEL_FONT_SIZE / 100}pt, data values ${DATA_VALUE_FONT_SIZE / 100}pt`,
-  );
   const validShape =
     grid.length === EXPECTED_ROWS &&
     grid.every((row) => row.length === targetCols) &&

@@ -1036,44 +1036,22 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
  * RESULTS bucket for a campaign name absent from objectiveMap (defensive
  * only: every call site below passes the same rows the map was itself built
  * from, so this should never actually trigger).
- *
- * `debugLabel`, when passed (report-data.ts's computeTableRow passes "MTD"
- * or "Previous Month"), prints one console.log line per campaign — its
- * assigned objective, the value actually read for that objective, and the
- * running total for that objective's bucket — so a reported "wrong number"
- * bug can be traced to the exact campaign/row producing it without a
- * debugger. No-op (nothing printed) when omitted, same as before this
- * existed.
  */
 export function groupResultsByCampaignObjective(
   rows: MetricRow[],
   objectiveMap: Map<string, ResultLabels>,
-  debugLabel?: string,
 ): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
     const objective = objectiveMap.get(name) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
     const label = objective.resultLabel;
     if (!groups[label]) groups[label] = { costLabel: objective.costLabel, count: 0, totalSpend: 0, totalReach: 0 };
-    let campaignValueSum = 0;
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label);
       groups[label].count += value;
       groups[label].totalSpend += parseCellNum(row.spend);
       groups[label].totalReach += parseCellNum(row.reach);
-      campaignValueSum += value;
-      if (debugLabel) {
-        console.log(
-          `[${debugLabel}] campaign="${name}" ad_set="${row.ad_set_name ?? ""}" objective=${label} ` +
-            `ownLabel=${resolveCampaignObjective([row]).resultLabel} row.result_type="${row.result_type ?? ""}" ` +
-            `row.purchases=${row.purchases ?? "undefined"} row.results=${String(row.results ?? "undefined")} ` +
-            `valueUsed=${value} runningCampaignTotal=${campaignValueSum}`,
-        );
-      }
     });
-    if (debugLabel) {
-      console.log(`[${debugLabel}] campaign="${name}" TOTAL for objective=${label}: ${campaignValueSum} (bucket running total: ${groups[label].count})`);
-    }
   });
 
   return buildResultGroups(groups);
