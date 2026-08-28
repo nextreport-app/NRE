@@ -102,7 +102,11 @@ export default async function PrivacyPage() {
             <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
               hello@nextreport.in
             </a>
-            .
+            , or by following the instructions on our{" "}
+            <Link href="/data-deletion" className="text-accent hover:underline">
+              User Data Deletion
+            </Link>{" "}
+            page.
           </p>
         </section>
 
