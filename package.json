@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "meta:tier-qualification": "node scripts/meta-tier-qualification.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

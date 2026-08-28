@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountSettingsForm } from "@/components/account-settings-form";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
+import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -22,19 +23,35 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 export default async function AccountSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ google_drive_connected?: string; google_drive_error?: string }>;
+  searchParams: Promise<{
+    google_drive_connected?: string;
+    google_drive_error?: string;
+    meta_ads_connected?: string;
+    meta_ads_error?: string;
+  }>;
 }) {
   const session = await auth();
   if (!session?.user) notFound();
 
-  const [user, { google_drive_connected, google_drive_error }] = await Promise.all([
+  const [user, params] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { email: true, agencyName: true, googleConnectedEmail: true, planId: true, trialEndsAt: true },
+      select: {
+        email: true,
+        agencyName: true,
+        googleConnectedEmail: true,
+        metaConnectedName: true,
+        metaConnectedUserId: true,
+        planId: true,
+        trialEndsAt: true,
+      },
     }),
     searchParams,
   ]);
   if (!user) notFound();
+
+  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error } = params;
+  const metaConfigured = !!(process.env.META_APP_ID?.trim() && process.env.META_APP_SECRET?.trim());
 
   const status = getSubscriptionStatus(user);
 
@@ -56,6 +73,17 @@ export default async function AccountSettingsPage({
           initialConnectedEmail={user.googleConnectedEmail}
           justConnected={google_drive_connected === "1"}
           connectError={google_drive_error ?? null}
+        />
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading>Meta Ads</SectionHeading>
+        <MetaAdsSettings
+          initialConnectedName={user.metaConnectedName}
+          initialConnectedUserId={user.metaConnectedUserId}
+          justConnected={meta_ads_connected === "1"}
+          connectError={meta_ads_error ?? null}
+          metaConfigured={metaConfigured}
         />
       </section>
 

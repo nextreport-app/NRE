@@ -40,8 +40,7 @@ export default async function DataDeletionPage() {
             <ul className="mt-2 list-inside list-disc space-y-1.5">
               <li>
                 <span className="text-white">Account information</span> — your name, email address,
-                and login details (including Facebook Login profile information, if you sign in with
-                Facebook).
+                and login details (email/password or Google sign-in).
               </li>
               <li>
                 <span className="text-white">Meta Marketing API data</span> — identifiers and
@@ -63,7 +62,12 @@ export default async function DataDeletionPage() {
             <h2 className="mb-2 text-lg font-medium text-white">How to delete your data</h2>
             <p>You can remove your data from NextReport in either of the following ways:</p>
 
-            <h3 className="mb-2 mt-4 font-medium text-white">Option 1 — Disconnect NextReport in Facebook</h3>
+            <h3 className="mb-2 mt-4 font-medium text-white">Option 1 — Disconnect in NextReport or Facebook</h3>
+            <p className="mb-2">
+              In NextReport, open <span className="text-white">Account settings → Meta Ads → Disconnect</span>{" "}
+              to revoke our access tokens immediately.
+            </p>
+            <p className="mb-2">You can also remove NextReport from Facebook directly:</p>
             <ol className="list-inside list-decimal space-y-1.5">
               <li>Go to your Facebook account and open Settings &amp; privacy → Settings.</li>
               <li>Open Business integrations (or Apps and websites, depending on your Facebook view).</li>
@@ -86,7 +90,7 @@ export default async function DataDeletionPage() {
             </p>
             <ul className="mt-2 list-inside list-disc space-y-1.5">
               <li>the email address associated with your NextReport account;</li>
-              <li>your Facebook user ID or the email used for Facebook Login, if applicable; and</li>
+              <li>your connected Meta user name or ID, if applicable; and</li>
               <li>any Meta ad account names or IDs you connected, if known.</li>
             </ul>
             <p className="mt-2">
