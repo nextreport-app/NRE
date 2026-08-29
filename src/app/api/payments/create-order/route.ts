@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { amountForCurrency, isPlanId, isPricingCurrency, razorpayClient } from "@/lib/razorpay";
+import { amountForCurrency, isBillingInterval, isPlanId, isPricingCurrency, razorpayClient } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(req: Request) {
@@ -15,15 +15,14 @@ export async function POST(req: Request) {
   // Defaults to INR for older clients that don't send a currency yet —
   // every current caller (SubscribeButton) always sends one explicitly.
   const currency = isPricingCurrency(body?.currency) ? body.currency : "INR";
+  const interval = isBillingInterval(body?.interval) ? body.interval : "monthly";
 
   try {
     const order = await razorpayClient().orders.create({
-      amount: amountForCurrency(planId, currency),
+      amount: amountForCurrency(planId, currency, interval),
       currency,
-      // Razorpay caps receipt at 40 chars — truncate defensively even
-      // though userId (cuid) + planId + timestamp normally fits.
       receipt: `${planId}_${session.user.id}_${Date.now()}`.slice(0, 40),
-      notes: { userId: session.user.id, planId, currency },
+      notes: { userId: session.user.id, planId, currency, interval },
     });
 
     return NextResponse.json({
@@ -31,6 +30,7 @@ export async function POST(req: Request) {
       amount: order.amount,
       currency: order.currency,
       planId,
+      interval,
     });
   } catch (err) {
     return apiErrorResponse(err, "payments:create-order");

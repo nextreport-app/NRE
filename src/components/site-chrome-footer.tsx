@@ -48,6 +48,8 @@ export function SiteChromeFooter() {
                 <Link href="/" className="hover:text-white">Home</Link>
                 <Link href="/how-it-works" className="hover:text-white">How It Works</Link>
                 <Link href="/help/download" className="hover:text-white">Download Guide</Link>
+                <Link href="/case-studies" className="hover:text-white">Case studies</Link>
+                <Link href="/refer" className="hover:text-white">Refer an agency</Link>
                 <Link href="/about" className="hover:text-white">About Us</Link>
                 <Link href="/contact" className="hover:text-white">Contact</Link>
                 <Link href="/privacy" className="hover:text-white">Privacy</Link>

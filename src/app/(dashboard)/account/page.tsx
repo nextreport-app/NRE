@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountSettingsForm } from "@/components/account-settings-form";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
 import { MetaAdsSettings } from "@/components/meta-ads-settings";
+import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -42,6 +43,8 @@ export default async function AccountSettingsPage({
         googleConnectedEmail: true,
         metaConnectedName: true,
         metaConnectedUserId: true,
+        slackWebhookUrl: true,
+        automationWebhookUrl: true,
         planId: true,
         trialEndsAt: true,
       },
@@ -84,6 +87,14 @@ export default async function AccountSettingsPage({
           justConnected={meta_ads_connected === "1"}
           connectError={meta_ads_error ?? null}
           metaConfigured={metaConfigured}
+        />
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading>Slack &amp; automation</SectionHeading>
+        <IntegrationSettings
+          initialSlackWebhookUrl={user.slackWebhookUrl}
+          initialAutomationWebhookUrl={user.automationWebhookUrl}
         />
       </section>
 

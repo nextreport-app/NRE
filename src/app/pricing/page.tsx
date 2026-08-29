@@ -42,6 +42,14 @@ const FAQS = [
     a: "Both use the same dark navy branded template and AI-written insights. The metrics shown adapt automatically to the platform — Meta shows reach, frequency, leads and link clicks while Google shows clicks, impressions, conversions and quality score.",
   },
   {
+    q: "Do you offer annual billing?",
+    a: "Yes. Switch to Annual on the pricing page and save 20% compared to paying monthly (one payment for 12 months of access).",
+  },
+  {
+    q: "Can I connect Slack or Zapier?",
+    a: "Yes. In Account settings, add a Slack incoming webhook URL or an automation webhook (Zapier, Make, etc.). When a report finishes generating, NextReport posts a summary and share link automatically.",
+  },
+  {
     q: "Is my client data secure?",
     a: "Yes. Your CSV data is processed on our servers and used only to generate your report. We do not store your raw campaign data after the report is generated. All data is transmitted over encrypted HTTPS connections.",
   },

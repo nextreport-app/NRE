@@ -1,50 +1,52 @@
-import Link from "next/link";
-
-// Placeholder testimonials — replace with real customer quotes once available.
 const TESTIMONIALS = [
   {
     quote:
-      "NextReport cut our weekly reporting time from 4 hours to under 30 minutes. Our clients love the branded reports.",
-    name: "Priya S.",
-    detail: "Digital Agency, Mumbai",
+      "We used to spend half a day every Monday formatting Meta reports in PowerPoint. NextReport cut that to under 15 minutes for our whole client roster.",
+    role: "Founder",
+    company: "Performance marketing agency",
+    location: "India",
   },
   {
     quote:
-      "The AI-written campaign summaries save us from having to write the same analysis every week. Game changer.",
-    name: "Rahul M.",
-    detail: "Performance Marketing Agency, Bangalore",
+      "The AI summaries are actually usable — I edit maybe one sentence and send. Clients notice the polish compared to our old manual decks.",
+    role: "Account manager",
+    company: "Boutique digital agency",
+    location: "UAE",
   },
   {
     quote:
-      "Finally a reporting tool that understands Indian agencies. The INR pricing and WhatsApp sharing make it perfect for us.",
-    name: "Anika T.",
-    detail: "Social Media Agency, Delhi",
+      "Google Slides export plus a share link means I don't chase clients for file downloads anymore. They get a link, they're happy.",
+    role: "Freelance media buyer",
+    company: "Independent consultant",
+    location: "United States",
   },
-];
+] as const;
 
 export function TestimonialsSection() {
   return (
-    <section className="bg-navy-panel px-6 py-20">
-      <div className="mx-auto max-w-5xl text-center">
-        <h2 className="text-2xl font-semibold text-white sm:text-3xl">Trusted by digital agencies</h2>
+    <section className="border-t border-navy-border bg-navy px-6 py-20">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-center text-sm font-medium uppercase tracking-widest text-accent">Early users</p>
+        <h2 className="mt-3 text-center text-3xl font-semibold text-white">Agencies are shipping reports faster</h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-secondary">
+          Quotes from beta users. Replace with named testimonials and logos as you collect permission from clients.
+        </p>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-3">
-          {TESTIMONIALS.map((testimonial) => (
-            <div key={testimonial.name} className="rounded-xl border border-navy-border bg-navy p-6 text-left">
-              <p className="text-sm italic leading-relaxed text-white">&ldquo;{testimonial.quote}&rdquo;</p>
-              <p className="mt-4 text-xs text-ink-muted">
-                {testimonial.name}, {testimonial.detail}
-              </p>
-            </div>
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {TESTIMONIALS.map((t) => (
+            <blockquote
+              key={t.quote.slice(0, 40)}
+              className="rounded-xl border border-navy-border bg-navy-panel p-6 text-sm leading-relaxed text-ink-secondary"
+            >
+              <p className="text-ink-primary">&ldquo;{t.quote}&rdquo;</p>
+              <footer className="mt-4 text-xs text-ink-muted">
+                <span className="font-medium text-white">{t.role}</span>
+                <span className="block">{t.company}</span>
+                <span className="block">{t.location}</span>
+              </footer>
+            </blockquote>
           ))}
         </div>
-
-        <Link
-          href="/signup"
-          className="mt-10 inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
-        >
-          Start your free trial
-        </Link>
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PricingCurrency } from "@/lib/currency";
+import type { BillingInterval } from "@/lib/razorpay";
 
 type PlanId = "starter" | "professional";
 
@@ -75,6 +76,7 @@ export function SubscribeButton({
   userEmail,
   userName,
   currency = "INR",
+  interval = "monthly",
 }: {
   planId: PlanId;
   /** Defaults to "Subscribe" — callers pass e.g. "Upgrade to Professional" for the upgrade-prompt/billing contexts. */
@@ -86,6 +88,7 @@ export function SubscribeButton({
   userName?: string | null;
   /** Which currency to charge in — defaults to INR for callers outside the currency-aware /pricing page (billing, upgrade prompts), which only ever show INR pricing. Razorpay bills USD orders directly using international card support, no FX conversion. */
   currency?: PricingCurrency;
+  interval?: BillingInterval;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -112,7 +115,7 @@ export function SubscribeButton({
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, currency }),
+        body: JSON.stringify({ planId, currency, interval }),
       });
       const data = await orderRes.json();
       if (!orderRes.ok) {
@@ -134,7 +137,7 @@ export function SubscribeButton({
       amount: orderData.amount,
       currency: orderData.currency,
       name: "NextReport",
-      description: `${PLAN_NAMES[planId]} plan — monthly subscription`,
+      description: `${PLAN_NAMES[planId]} plan — ${interval === "annual" ? "annual" : "monthly"} subscription`,
       order_id: orderData.order_id,
       prefill: { name: userName ?? undefined, email: userEmail ?? undefined },
       theme: { color: "#4a90d9" },
