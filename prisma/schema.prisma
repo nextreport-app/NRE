@@ -101,6 +101,13 @@ model User {
   metaConnectedUserId  String?
   metaConnectedName    String?
 
+  // Report delivery integrations (account settings) — optional incoming
+  // webhooks fired after each report reaches COMPLETE status.
+  // slackWebhookUrl: Slack incoming webhook (hooks.slack.com/...).
+  // automationWebhookUrl: generic HTTPS endpoint for Zapier/Make/custom tools.
+  slackWebhookUrl      String? @db.Text
+  automationWebhookUrl String? @db.Text
+
   accounts Account[]
   sessions Session[]
   clients  Client[]

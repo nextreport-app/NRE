@@ -1,0 +1,98 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Arial;}{\f1 Courier New;}}
+\f0\fs22
+
+\b Google Ads API Design Documentation\b0\fs20\par
+\par
+\b Application:\b0  NextReport\par
+\b Website:\b0  https://nextreport.in\par
+\b Company / Developer:\b0  Mohit Sharma (NextReport Digital Services)\par
+\b Document date:\b0  August 29, 2026\par
+\par
+\b Note:\b0  NextReport is an externally accessible SaaS application. Screenshots of the live product should be attached when submitting this document (homepage, report upload wizard, sample generated report, account settings).\par
+\par
+\line\par
+
+\b 1. Company Name\b0\par
+NextReport (https://nextreport.in)\par
+\par
+
+\b 2. Business Model\b0\par
+NextReport is a subscription-based SaaS reporting platform for digital marketing agencies and in-house advertisers. Customers pay monthly subscription fees (Starter and Professional plans) to automate client-ready ad performance reports.\par
+\par
+Revenue is generated solely from software subscriptions. We do not sell advertising, resell Google Ads data, operate an ad network, or manage ads on behalf of unauthorized third parties. Each customer connects and reports on Google Ads accounts they own or legitimately manage.\par
+\par
+Today, Google Ads reporting in NextReport works via manual CSV export upload from Google Ads UI. The Google Ads API integration will automate this same read-only reporting workflow.\par
+\par
+
+\b 3. Tool Access / Use\b0\par
+\b Who can access the tool:\b0  External paying subscribers (agencies, freelancers, in-house marketing teams). Users sign up at nextreport.in with email/password or Google sign-in.\par
+\par
+\b How Google Ads data is accessed:\b0  Each user explicitly connects their own Google Ads account through OAuth 2.0 consent. NextReport never accesses Google Ads accounts without the authenticated user's authorization.\par
+\par
+\b What users do with the data:\b0  Users generate branded PowerPoint (.pptx) and Google Slides performance reports for their own clients. Reports include metrics such as cost, clicks, impressions, CTR, average CPC, and conversions for user-selected date ranges (e.g., month-to-date, custom weekly windows).\par
+\par
+\b What the tool does NOT do:\b0  NextReport does not create, edit, pause, enable, or bid on ads. It does not modify budgets, keywords, campaigns, or account settings. It is read-only reporting only.\par
+\par
+\b Internal vs external use:\b0  This is an external, customer-facing product — not an internal-only tool.\par
+\par
+
+\b 4. Tool Design\b0\par
+\b Architecture overview:\b0\par
+1. User logs into NextReport (nextreport.in).\par
+2. User opens Account Settings and clicks "Connect Google Ads."\par
+3. User is redirected to Google OAuth consent screen and grants read-only access to their Google Ads account.\par
+4. NextReport stores OAuth refresh token securely on the server (encrypted at rest, associated with the user's account only).\par
+5. When generating a report, NextReport calls the Google Ads API using GAQL (GoogleAdsService.Search or SearchStream) to fetch campaign and ad group performance metrics for the date range selected by the user.\par
+6. Retrieved metrics are transformed into the same internal report format already used for CSV uploads (NextReport Engine / NRE).\par
+7. The app generates a PowerPoint report with AI-written insights. User may download PPTX or save to Google Drive as Google Slides.\par
+8. API data is used transiently for report generation. We do not build a public data marketplace or share Google Ads data with unrelated third parties.\par
+\par
+\b Data storage:\b0  OAuth tokens are stored server-side on NextReport's PostgreSQL database, tied to the user account. Campaign performance metrics may be cached temporarily as part of generated report records. Users can disconnect Google Ads access and request data deletion via https://nextreport.in/data-deletion.\par
+\par
+\b Security:\b0  HTTPS everywhere. Server-side token storage. OAuth state parameter for CSRF protection. Users can revoke access by disconnecting in Account Settings or removing the app from their Google account.\par
+\par
+
+\b 5. API Services Called\b0\par
+\b Read-only operations only (no mutate/write operations):\b0\par
+\par
+\f1
+- CustomerService.ListAccessibleCustomers — list Google Ads accounts the authorized user can access\par
+- GoogleAdsService.Search / GoogleAdsService.SearchStream — fetch reporting metrics via GAQL queries\par
+\f0
+\par
+\b Example GAQL queries (reporting only):\b0\par
+\par
+\f1
+- Campaign performance: campaign.id, campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.ctr, metrics.average_cpc\par
+- Ad group performance: ad_group.id, ad_group.name, campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions\par
+\f0
+\par
+\b Metrics retrieved:\b0  Cost, clicks, impressions, CTR, average CPC, conversions, conversion rate (as available in account).\par
+\par
+\b API services NOT used:\b0  We will NOT call mutate operations. We will NOT create, update, pause, enable, or remove campaigns, ad groups, ads, keywords, budgets, or bids.\par
+\par
+
+\b 6. Expected API Volume\b0\par
+Basic Access (15,000 operations/day) is sufficient for our initial launch. We estimate a small number of API calls per report generation (typically 1–5 Search/SearchStream requests per client report). With hundreds of reports per day at peak, we remain well under Basic Access limits.\par
+\par
+
+\b 7. Tool Mockups / Screenshots\b0\par
+Please attach screenshots of the live application when submitting:\par
+- https://nextreport.in — homepage\par
+- Report upload wizard — Google Ads CSV upload flow (current workflow)\par
+- Generated sample PowerPoint / report preview\par
+- Account settings page — where "Connect Google Ads" will appear (same pattern as existing Connect Google Drive and Connect Meta Ads features)\par
+\par
+\b Planned UI flow for Google Ads API:\b0  Account Settings → Connect Google Ads → OAuth consent → Select client/account → Generate report (API fetch replaces manual CSV upload).\par
+\par
+
+\b 8. Privacy & Compliance\b0\par
+- Privacy Policy: https://nextreport.in/privacy\par
+- Terms of Service: https://nextreport.in/terms\par
+- Data deletion instructions: https://nextreport.in/data-deletion\par
+- Contact: hello@nextreport.in\par
+\par
+We comply with Google Ads API Terms of Service and Required Minimum Functionality (RMF) requirements applicable to read-only reporting tools at Basic Access level.\par
+\par
+}

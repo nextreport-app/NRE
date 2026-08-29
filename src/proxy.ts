@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   "/about",
   "/pricing",
   "/help/download",
+  "/case-studies",
+  "/refer",
   // Internal design preview, not linked from anywhere — accessible directly
   // by URL without logging in, same as the other public marketing pages.
   "/light-preview",

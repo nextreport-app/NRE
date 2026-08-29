@@ -41,6 +41,7 @@ import {
   selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
 import type { Client } from "@/generated/prisma/client";
+import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
 
 /** Downloads a stored logo and reads its pixel dimensions + format back from its own bytes — see logo-processing.ts for why this is a header-only read, never a decode. */
 async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
@@ -57,6 +58,36 @@ async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset
     extension: extensionForLogoFormat(format),
     contentType: contentTypeForLogoFormat(format),
   };
+}
+
+function dispatchReportNotifications(params: {
+  userId: string;
+  integrations: { slackWebhookUrl: string | null; automationWebhookUrl: string | null } | null;
+  client: Client;
+  report: {
+    id: string;
+    shareToken: string | null;
+    reportType: string;
+    platform: "META" | "GOOGLE";
+    displayName: string | null;
+  };
+  healthScore?: number | null;
+  healthBadge?: string | null;
+}) {
+  void notifyReportGeneratedForUser({
+    userId: params.userId,
+    integrationSelect: params.integrations,
+    reportId: params.report.id,
+    shareToken: params.report.shareToken,
+    clientName: params.client.accountName,
+    platform: params.report.platform,
+    reportType: params.report.reportType,
+    displayName: params.report.displayName,
+    healthScore: params.healthScore,
+    healthBadge: params.healthBadge,
+  }).catch((err) => {
+    console.error("[api:reports:generate] report notification failed:", err);
+  });
 }
 
 /** Meta path: full campaign/ad-set selection + weekly/monthly date-range resolution + Previous Month Data comparison. Returns an error message on invalid input, or the built ReportData. */
@@ -154,6 +185,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const guardResponse = await requireActiveSubscription(session.user.id);
   if (guardResponse) return guardResponse;
+
+  const userIntegrations = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { slackWebhookUrl: true, automationWebhookUrl: true },
+  });
 
   const formData = await req.formData().catch(() => null);
   const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
@@ -269,6 +305,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         data: { status: "COMPLETE", filePath },
       });
 
+      dispatchReportNotifications({
+        userId: session.user.id,
+        integrations: userIntegrations,
+        client,
+        report: {
+          id: comparisonReport.id,
+          shareToken: null,
+          reportType: "COMPARISON",
+          platform: "META",
+          displayName: comparisonReport.displayName,
+        },
+      });
+
       return NextResponse.json({ ok: true, reportId: comparisonReport.id });
     } catch (err) {
       console.error("[api:reports:generate] comparison report failed:", err);
@@ -363,6 +412,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await prisma.report.update({
         where: { id: summaryReport.id },
         data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
+      });
+
+      dispatchReportNotifications({
+        userId: session.user.id,
+        integrations: userIntegrations,
+        client,
+        report: {
+          id: summaryReport.id,
+          shareToken: summaryReport.shareToken,
+          reportType: "MONTHLY",
+          platform,
+          displayName: summaryReport.displayName,
+        },
+        healthScore: shareData.cover?.healthScore,
+        healthBadge: shareData.cover?.healthBadge,
       });
 
       return NextResponse.json({ ok: true, reportId: summaryReport.id, shareToken: summaryReport.shareToken });
@@ -469,6 +533,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await prisma.report.update({
       where: { id: report.id },
       data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive) },
+    });
+
+    dispatchReportNotifications({
+      userId: session.user.id,
+      integrations: userIntegrations,
+      client,
+      report: {
+        id: report.id,
+        shareToken: report.shareToken,
+        reportType: data.reportType,
+        platform,
+        displayName: report.displayName,
+      },
+      healthScore: data.cover.healthScore,
+      healthBadge: data.cover.healthBadge,
     });
 
     // Saving to Google Drive is a separate, explicit action the user takes

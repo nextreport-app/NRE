@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
 import { countryCodeToCurrency, readCachedCountry, writeCachedCountry, type PricingCurrency } from "@/lib/currency";
+import type { BillingInterval } from "@/lib/razorpay";
+
+const ANNUAL_PRICES = {
+  starter: { inr: "₹9,590", usd: "$115" },
+  professional: { inr: "₹23,990", usd: "$278" },
+} as const;
 
 interface Plan {
   id: "starter" | "professional";
@@ -29,6 +35,7 @@ const PLANS: Plan[] = [
       "AI-written campaign summaries",
       "PowerPoint and Google Slides export",
       "Google Drive auto-save",
+      "Slack & Zapier webhooks",
       "Email support within 24 hours",
     ],
   },
@@ -45,7 +52,7 @@ const PLANS: Plan[] = [
       "Priority email support",
       "Early access to new features",
       "Google Ads advanced reporting",
-      "LinkedIn Ads reporting",
+      "Slack & Zapier webhooks on report generation",
     ],
   },
 ];
@@ -86,16 +93,21 @@ function CheckIcon() {
 function PlanCard({
   plan,
   currency,
+  interval,
   loggedIn,
   userEmail,
   userName,
 }: {
   plan: Plan;
   currency: PricingCurrency;
+  interval: BillingInterval;
   loggedIn: boolean;
   userEmail?: string | null;
   userName?: string | null;
 }) {
+  const monthlyPrice = currency === "INR" ? plan.priceInr : plan.priceUsd;
+  const annualPrice = currency === "INR" ? ANNUAL_PRICES[plan.id].inr : ANNUAL_PRICES[plan.id].usd;
+  const displayPrice = interval === "annual" ? annualPrice : monthlyPrice;
   const ctaClassName = `mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
     plan.highlighted
       ? "bg-accent text-white hover:bg-accent-hover"
@@ -120,11 +132,12 @@ function PlanCard({
       <p className="mt-1 text-sm text-ink-muted">{plan.bestFor}</p>
 
       <div className="mt-6 flex items-baseline gap-1">
-        <span className="text-4xl font-semibold text-white">
-          {currency === "INR" ? plan.priceInr : plan.priceUsd}
-        </span>
-        <span className="text-sm text-ink-muted">/month</span>
+        <span className="text-4xl font-semibold text-white">{displayPrice}</span>
+        <span className="text-sm text-ink-muted">{interval === "annual" ? "/year" : "/month"}</span>
       </div>
+      {interval === "annual" && (
+        <p className="mt-1 text-xs font-medium text-emerald-400">Save 20% vs paying monthly</p>
+      )}
       <p className="mt-1 text-xs text-ink-muted">{PAYMENT_METHOD_LINE[currency]}</p>
 
       <ul className="mt-8 space-y-3 text-sm text-ink-secondary">
@@ -139,6 +152,7 @@ function PlanCard({
       <SubscribeButton
         planId={plan.id}
         currency={currency}
+        interval={interval}
         loggedIn={loggedIn}
         userEmail={userEmail}
         userName={userName}
@@ -163,6 +177,7 @@ export function CurrencyPricing({
   // before the detection below (cached or freshly fetched) switches them
   // to USD. This is also what's left in place if detection fails entirely.
   const [currency, setCurrency] = useState<PricingCurrency>("INR");
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -203,12 +218,38 @@ export function CurrencyPricing({
 
   return (
     <>
-      <div className="mt-12 grid gap-8 sm:grid-cols-2">
+      <div className="mx-auto mb-8 flex max-w-xl justify-center">
+        <div className="flex items-center gap-1 rounded-full border border-navy-border bg-navy-panel p-1 text-sm">
+          <button
+            type="button"
+            onClick={() => setInterval("monthly")}
+            aria-pressed={interval === "monthly"}
+            className={`rounded-full px-4 py-1 transition-colors ${
+              interval === "monthly" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setInterval("annual")}
+            aria-pressed={interval === "annual"}
+            className={`rounded-full px-4 py-1 transition-colors ${
+              interval === "annual" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
+            }`}
+          >
+            Annual (save 20%)
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-8 sm:grid-cols-2">
         {PLANS.map((plan) => (
           <PlanCard
             key={plan.name}
             plan={plan}
             currency={currency}
+            interval={interval}
             loggedIn={loggedIn}
             userEmail={userEmail}
             userName={userName}

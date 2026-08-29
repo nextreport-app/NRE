@@ -22,6 +22,9 @@ import crypto from "node:crypto";
 import type { PricingCurrency } from "@/lib/currency";
 
 export type PlanId = "starter" | "professional";
+export type BillingInterval = "monthly" | "annual";
+
+const ANNUAL_DISCOUNT = 0.8;
 
 export interface PlanDefinition {
   name: string;
@@ -50,21 +53,21 @@ export function isPricingCurrency(value: unknown): value is PricingCurrency {
 }
 
 /** The real, server-trusted charge amount for a plan in a given currency — see PLANS' file header for why the client never gets to supply this. */
-export function amountForCurrency(planId: PlanId, currency: PricingCurrency): number {
-  return currency === "INR" ? PLANS[planId].amountPaise : PLANS[planId].amountUsdCents;
+export function amountForCurrency(planId: PlanId, currency: PricingCurrency, interval: BillingInterval = "monthly"): number {
+  const base = currency === "INR" ? PLANS[planId].amountPaise : PLANS[planId].amountUsdCents;
+  if (interval === "monthly") return base;
+  return Math.round(base * 12 * ANNUAL_DISCOUNT);
+}
+
+export function isBillingInterval(value: unknown): value is BillingInterval {
+  return value === "monthly" || value === "annual";
 }
 
 /** Reverse of PLANS: which plan (if any) costs exactly this much, in this currency — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. */
 export function planIdForAmount(amount: number, currency: string): PlanId | null {
-  if (currency === "INR") {
-    if (amount === PLANS.starter.amountPaise) return "starter";
-    if (amount === PLANS.professional.amountPaise) return "professional";
-    return null;
-  }
-  if (currency === "USD") {
-    if (amount === PLANS.starter.amountUsdCents) return "starter";
-    if (amount === PLANS.professional.amountUsdCents) return "professional";
-    return null;
+  for (const planId of ["starter", "professional"] as const) {
+    if (amount === amountForCurrency(planId, currency as PricingCurrency, "monthly")) return planId;
+    if (amount === amountForCurrency(planId, currency as PricingCurrency, "annual")) return planId;
   }
   return null;
 }
