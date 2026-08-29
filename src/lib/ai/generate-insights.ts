@@ -176,13 +176,6 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         zeroResults ? Promise.resolve(null) : callAI(buildInsightPromptFor(slide.ai), keys),
       ]);
 
-      // Debug: the exact response the AI returned, BEFORE any period check
-      // or capping — printed unconditionally (not just when truncation is
-      // suspected) so a "why did this fall back" question can always be
-      // answered from the logs after the fact. null here means the summary
-      // AI call was skipped outright (zero-results slide, see above).
-      console.log(`[ai:generate-insights] Raw AI response for ${name}: ${zeroResults ? "(skipped — zero results)" : rawSummary}`);
-
       let summary: string;
       let summaryFallback: boolean;
       if (zeroResults) {
@@ -197,7 +190,6 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         }
         summary = summaryFallback ? buildFallbackSummary(slide.ai) : capSummary(trimmedSummary);
       }
-      console.log(`[ai:generate-insights] Fallback triggered: ${summaryFallback} for ${name}`);
 
       // Final safety net: checks `summary` — the actual text about to be
       // written to the slide, after capSummary already ran — not rawSummary

@@ -203,26 +203,14 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   // fill-tags.ts already uses for the campaign template's card labels)
   // satisfies both requirements in one pass: it only ever RAISES a size
   // that's below the floor, never lowers one already at or above it.
-  const before = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
-  console.log(
-    `[legend-slide] font sizes before 12pt floor: ${[...new Set(before)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
-  );
   xml = enforceMinFontSize(xml, 12);
-  const after = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
-  console.log(
-    `[legend-slide] font sizes after 12pt floor: ${[...new Set(after)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
-  );
 
   // Overflow guard: every card text box uses spAutoFit ("grow the shape to
   // fit the text"), which at the bumped-up 12pt floor lets long titles or
   // descriptions grow past their card background. Swap slide-wide for
   // normAutofit ("shrink the text to fit the shape") so nothing escapes its
   // card border — titles and descriptions alike.
-  const beforeAutofitCount = (xml.match(/<a:spAutoFit\/>/g) || []).length;
   xml = xml.replace(/<a:spAutoFit\/>/g, "<a:normAutofit/>");
-  console.log(
-    `[legend-slide] converted ${beforeAutofitCount} description text box(es) from spAutoFit (grow shape, can overflow) to normAutofit (shrink text to fit)`,
-  );
 
   // Round L — the slide's own static title ("METRIC ABBREVIATION GUIDE",
   // baked into the template, identical text across all 3 templates)
