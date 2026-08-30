@@ -201,7 +201,9 @@ enum ReportStatus {
 enum ReportType {
   WEEKLY
   MONTHLY
+  DAILY
   COMPARISON
+  CREATIVE
 }
 
 // Which ad platform a report's CSV came from — detected automatically from

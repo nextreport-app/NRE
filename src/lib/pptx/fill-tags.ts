@@ -167,10 +167,19 @@ export function presentedToTopY(hasAgencyName: boolean): number {
   return hasAgencyName ? PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU : PRESENTED_TO_Y;
 }
 
+const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
+const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
+
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 
 const GENERIC_REPORT_TITLES = new Set(
-  [DEFAULT_REPORT_TITLE, DEFAULT_MONTHLY_REPORT_TITLE, DEFAULT_COMPARISON_REPORT_TITLE].map((t) => t.toUpperCase()),
+  [
+    DEFAULT_REPORT_TITLE,
+    DEFAULT_MONTHLY_REPORT_TITLE,
+    DEFAULT_DAILY_REPORT_TITLE,
+    DEFAULT_CREATIVE_REPORT_TITLE,
+    DEFAULT_COMPARISON_REPORT_TITLE,
+  ].map((t) => t.toUpperCase()),
 );
 
 /** Resolves the cover subtitle — custom titles win; generic defaults follow reportType. */
@@ -181,9 +190,13 @@ export function resolveCoverReportTitle(
   const defaultTitle =
     reportType === "MONTHLY"
       ? DEFAULT_MONTHLY_REPORT_TITLE
-      : reportType === "COMPARISON"
-        ? DEFAULT_COMPARISON_REPORT_TITLE
-        : DEFAULT_REPORT_TITLE;
+      : reportType === "DAILY"
+        ? DEFAULT_DAILY_REPORT_TITLE
+        : reportType === "CREATIVE"
+          ? DEFAULT_CREATIVE_REPORT_TITLE
+          : reportType === "COMPARISON"
+            ? DEFAULT_COMPARISON_REPORT_TITLE
+            : DEFAULT_REPORT_TITLE;
   const trimmed = reportTitle?.trim() ?? "";
   if (!trimmed || GENERIC_REPORT_TITLES.has(trimmed.toUpperCase())) {
     return defaultTitle.toUpperCase();
@@ -371,6 +384,13 @@ const CARD_SLOT_LABEL_TAGS: (string | null)[] = [null, null, null, "{{RESULT_LAB
 // 8 was cloned from the CPC card, so it inherits CPC's icon as its own
 // native default.
 const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc", "cpc"];
+
+function slideReportHeader(reportType: ReportType = "WEEKLY"): string {
+  if (reportType === "MONTHLY") return "YOUR MONTHLY PERFORMANCE REPORT";
+  if (reportType === "DAILY") return "YOUR DAILY PERFORMANCE REPORT";
+  if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
+  return "YOUR WEEKLY PERFORMANCE REPORT";
+}
 
 export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
@@ -589,7 +609,7 @@ export function buildCampaignOrAdSetSlideXml(
   // secondary to the bold-white campaign/ad-set name below it) but is now
   // the SAME 24pt size as every other slide's own main heading, not a
   // shrunken 14pt — see REPORT_HEADER_SIZE_PT's own doc comment.
-  const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
+  const header = slideReportHeader(reportType);
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true, sizePt: REPORT_HEADER_SIZE_PT, color: REPORT_HEADER_COLOR });
   return xml;
@@ -637,7 +657,7 @@ export function buildPausedSlideXml(
     },
   );
   xml = applyGoogleAdsCardLabels(xml, platform);
-  const header = reportType === "MONTHLY" ? "YOUR MONTHLY PERFORMANCE REPORT" : "YOUR WEEKLY PERFORMANCE REPORT";
+  const header = slideReportHeader(reportType);
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true });
   return xml;

@@ -19,6 +19,13 @@ import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type Ima
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 import { buildLegendSlideXml } from "./legend-slide";
 import { buildComparisonCampaignSlideXml, buildComparisonCoverSlideXml, buildComparisonSummarySlideXml, COMPARISON_BG_REL_ID } from "./comparison-slides";
+import {
+  buildCreativeFatigueSlideXml,
+  buildCreativeOverviewSlideXml,
+  buildCreativeSlideRels,
+  buildCreativeTopSlideXml,
+  buildCreativeVideoSlideXml,
+} from "./creative-slides";
 import { collectLegendEntries } from "./legend-collect";
 import { slideAiKey } from "./slide-keys";
 
@@ -152,6 +159,8 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     rels: template.cover.rels,
   });
 
+  const skipStandardSlides = data.creativeOnly === true;
+
   if (data.isPaused) {
     slides.push({
       xml: buildPausedSlideXml(
@@ -164,7 +173,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       ),
       rels: template.campaign.rels,
     });
-  } else {
+  } else if (!skipStandardSlides) {
     for (const slide of data.campaignSlides) {
       if (!campaignVisible(slide.campaignName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
@@ -212,7 +221,35 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     }
   }
 
-  if (showCombinedTotal) {
+  if (data.creative && !data.isPaused) {
+    const creativeRels = buildCreativeSlideRels(template.background.mediaTarget);
+    for (const slide of data.creative.overviewSlides) {
+      slides.push({
+        xml: buildCreativeOverviewSlideXml(slide, template.background),
+        rels: creativeRels,
+      });
+    }
+    for (const slide of data.creative.topSlides) {
+      slides.push({
+        xml: buildCreativeTopSlideXml(slide, template.background),
+        rels: creativeRels,
+      });
+    }
+    if (data.creative.videoSlide) {
+      slides.push({
+        xml: buildCreativeVideoSlideXml(data.creative.videoSlide, template.background),
+        rels: creativeRels,
+      });
+    }
+    if (data.creative.fatigueSlide) {
+      slides.push({
+        xml: buildCreativeFatigueSlideXml(data.creative.fatigueSlide, template.background),
+        rels: creativeRels,
+      });
+    }
+  }
+
+  if (showCombinedTotal && !skipStandardSlides) {
   slides.push({
     xml: buildTableSlideXml(
       template.table,

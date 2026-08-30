@@ -9,6 +9,7 @@ import {
   saveWizardGenerateSnapshot,
   type WizardGenerateSnapshot,
 } from "@/lib/nre/wizard-generate-snapshot";
+import type { WizardReportType } from "@/lib/validators/report-wizard";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
@@ -131,7 +132,7 @@ type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 type DateMode = "last7" | "prev7" | "custom";
-type ReportTypeValue = "WEEKLY" | "MONTHLY" | "COMPARISON";
+type ReportTypeValue = WizardReportType;
 type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
 // Which data shape the current preview holds — set from the /preview
 // response's `isComparison` flag (see comparisonData/data below, and
@@ -174,8 +175,13 @@ const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 
+const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
+const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
+
 function defaultReportTitleFor(reportType: ReportTypeValue): string {
   if (reportType === "MONTHLY") return DEFAULT_MONTHLY_REPORT_TITLE;
+  if (reportType === "DAILY") return DEFAULT_DAILY_REPORT_TITLE;
+  if (reportType === "CREATIVE") return DEFAULT_CREATIVE_REPORT_TITLE;
   if (reportType === "COMPARISON") return DEFAULT_COMPARISON_REPORT_TITLE;
   return DEFAULT_REPORT_TITLE;
 }
@@ -448,6 +454,8 @@ export function ReportUploadWizard({
   const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(null);
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
+  const [dailyRange, setDailyRange] = useState<DateRangeIso | null>(null);
+  const [hasAdLevelCsv, setHasAdLevelCsv] = useState(false);
 
   // Step 6 — Preview. Comparison reports populate comparisonData instead of
   // data — previewKind (set alongside both in applyPreviewResult) is what
@@ -730,6 +738,8 @@ export function ReportUploadWizard({
     setWeeklyOptions(json.weeklyOptions || null);
     setMtdRange(json.mtdRange || null);
     setMonthComparisonOptions(json.monthComparisonOptions || null);
+    setDailyRange(json.dailyRange || null);
+    setHasAdLevelCsv(!!json.hasAdLevelCsv);
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
     setDateMode(savedSelection.mode);
     setCustomStart(savedSelection.customStart || "");
@@ -1296,6 +1306,17 @@ export function ReportUploadWizard({
       return;
     }
 
+    if (reportType === "CREATIVE" && !hasAdLevelCsv) {
+      setPreviewStatus("invalid");
+      setPreviewErrors([
+        {
+          field: "mtdDailyCsv",
+          message: "Upload an Ad-level CSV (Ads tab in Meta Ads Manager) to generate a Creative report.",
+        },
+      ]);
+      return;
+    }
+
     const dateSelection = reportType === "WEEKLY" ? currentDateSelection() : undefined;
     // Only persist a weekly preference when one was actually made — a
     // Monthly/Comparison run shouldn't overwrite the client's remembered
@@ -1635,7 +1656,10 @@ export function ReportUploadWizard({
    */
   function reportTypeLabel(): string {
     if (previewKind === "comparison") return "Comparison Report";
-    return reportType === "MONTHLY" ? "Monthly Report" : "Weekly Report";
+    if (reportType === "MONTHLY") return "Monthly Report";
+    if (reportType === "DAILY") return "Daily Report";
+    if (reportType === "CREATIVE") return "Creative Report";
+    return "Weekly Report";
   }
 
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
@@ -2343,13 +2367,20 @@ export function ReportUploadWizard({
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <ReportTypeCard
                 icon="📊"
                 heading="Weekly Performance Report"
                 description="Shows last 7 days performance with month-to-date comparison"
                 selected={reportType === "WEEKLY"}
                 onSelect={() => handleReportTypeChange("WEEKLY")}
+              />
+              <ReportTypeCard
+                icon="☀️"
+                heading="Daily Performance Report"
+                description="Yesterday's performance — ideal for daily client updates"
+                selected={reportType === "DAILY"}
+                onSelect={() => handleReportTypeChange("DAILY")}
               />
               <ReportTypeCard
                 icon="📅"
@@ -2359,6 +2390,18 @@ export function ReportUploadWizard({
                 onSelect={() => handleReportTypeChange("MONTHLY")}
               />
               <ReportTypeCard
+                icon="🎨"
+                heading="Creative Performance Report"
+                description={
+                  hasAdLevelCsv
+                    ? "Ad-level winners, video metrics, and fatigue alerts (last 30 days)"
+                    : "Requires Ad-level CSV with Ad Name column — see Download Guide"
+                }
+                selected={reportType === "CREATIVE"}
+                onSelect={() => handleReportTypeChange("CREATIVE")}
+                disabled={!hasAdLevelCsv}
+              />
+              <ReportTypeCard
                 icon="🔀"
                 heading="Comparison Report"
                 description="Compares two custom periods side by side, campaign by campaign"
@@ -2366,8 +2409,18 @@ export function ReportUploadWizard({
                 onSelect={() => handleReportTypeChange("COMPARISON")}
               />
             </div>
+            {hasAdLevelCsv && reportType !== "CREATIVE" && (
+              <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[13px] text-emerald-200">
+                Ad-level data detected — creative overview slides will be included in this report automatically.
+              </p>
+            )}
             {reportType === "MONTHLY" && (
               <p className="mt-4 text-[13px] text-dash-ink-secondary">Uses the full CSV month — no week picker.</p>
+            )}
+            {reportType === "DAILY" && dailyRange && (
+              <p className="mt-4 text-[13px] text-dash-ink-secondary">
+                Reports on <span className="text-white">{formatIsoRange(dailyRange)}</span> (latest complete day in your CSV).
+              </p>
             )}
           </section>
 
@@ -3289,22 +3342,27 @@ function ReportTypeCard({
   description,
   selected,
   onSelect,
+  disabled = false,
 }: {
   icon: ReactNode;
   heading: string;
   description: string;
   selected: boolean;
   onSelect: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       aria-pressed={selected}
       className={`rounded-lg border p-4 text-left transition-colors ${
-        selected
-          ? "border-dash-accent bg-dash-accent/10"
-          : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
+        disabled
+          ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
+          : selected
+            ? "border-dash-accent bg-dash-accent/10"
+            : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
       }`}
     >
       <span className="inline-flex text-2xl" aria-hidden="true">

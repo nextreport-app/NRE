@@ -24,6 +24,9 @@ import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
+import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
+import { computeDailyRangeIso } from "@/lib/nre/date-range";
+import type { ReportType } from "@/lib/nre/report-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
@@ -115,11 +118,31 @@ async function buildMetaData(
   // values, so this narrows defensively rather than widening report-data.ts's
   // own ReportType to match.
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
-  const reportType = parsedReportType === "MONTHLY" ? "MONTHLY" : "WEEKLY";
+  const adNameColumn = detectAdNameColumn(mtdParsed.headers);
 
-  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
-  if (!dateResolution.ok) {
-    return { error: dateResolution.error || "Invalid date selection." };
+  let reportType: ReportType = "WEEKLY";
+  if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
+  else if (parsedReportType === "DAILY") reportType = "DAILY";
+  else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
+
+  if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
+    return {
+      error:
+        "Creative reporting requires an Ad-level CSV with an Ad Name column. Export from Meta Ads Manager → Ads tab with daily breakdown.",
+    };
+  }
+
+  let weeklyRange: { startIso: string; endIso: string } | undefined;
+  if (reportType === "DAILY") {
+    const daily = computeDailyRangeIso(mtdParsed.rows);
+    if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
+    weeklyRange = daily;
+  } else if (reportType !== "CREATIVE") {
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+    if (!dateResolution.ok) {
+      return { error: dateResolution.error || "Invalid date selection." };
+    }
+    weeklyRange = dateResolution.weeklyRange;
   }
 
   const periodRows = await loadPreviousMonthDataRows(client);
@@ -133,12 +156,14 @@ async function buildMetaData(
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     selectedAdSets: selectedAdSets ?? null,
-    weeklyRange: dateResolution.weeklyRange,
+    weeklyRange,
     reportType,
     selectedMetrics,
     campaignObjectives,
     campaignMetricOverrides,
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+    adNameColumn,
+    creativeOnly: reportType === "CREATIVE",
   });
 
   return { data };
@@ -302,7 +327,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       await prisma.report.update({
         where: { id: comparisonReport.id },
-        data: { status: "COMPLETE", filePath },
+        data: { status: "COMPLETE", filePath, shareToken: generateShareToken() },
+      });
+
+      const updatedComparison = await prisma.report.findUnique({
+        where: { id: comparisonReport.id },
+        select: { shareToken: true, displayName: true },
       });
 
       dispatchReportNotifications({
@@ -311,10 +341,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         client,
         report: {
           id: comparisonReport.id,
-          shareToken: null,
+          shareToken: updatedComparison?.shareToken ?? null,
           reportType: "COMPARISON",
           platform: "META",
-          displayName: comparisonReport.displayName,
+          displayName: updatedComparison?.displayName ?? comparisonReport.displayName,
         },
       });
 

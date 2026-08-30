@@ -13,7 +13,8 @@
  *   META_AD_ACCOUNT_ID=908256752348097   # numeric id only (no act_ prefix)
  *   META_API_VERSION=v26.0
  *   META_CALL_COUNT=500
- *   META_DELAY_MS=800
+ *   META_DELAY_MS=2500                   # default 2.5s — slow avoids rate limits
+ *   META_LIGHT_MODE=1                    # default on: only /me/adaccounts (safest)
  *
  * Get a token from Graph API Explorer (select your app, ads_read scope) or
  * connect Meta Ads in NextReport Account settings after deploying META_APP_*.
@@ -22,8 +23,12 @@
 const TOKEN = process.env.META_TOKEN?.trim();
 const API_VERSION = process.env.META_API_VERSION?.trim() || "v26.0";
 const CALL_COUNT = Math.max(1, Number(process.env.META_CALL_COUNT) || 500);
-const DELAY_MS = Math.max(200, Number(process.env.META_DELAY_MS) || 800);
+const DELAY_MS = Math.max(500, Number(process.env.META_DELAY_MS) || 2500);
+const LIGHT_MODE = process.env.META_LIGHT_MODE !== "0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
+
+/** Meta rate-limit / throttle error codes — retry with backoff, don't rush. */
+const RATE_LIMIT_CODES = new Set([4, 17, 32, 613, 80003, 80004, 80014]);
 
 async function graphGet(path, params = {}) {
   const url = new URL(`${BASE}${path}`);
@@ -49,6 +54,9 @@ async function sleep(ms) {
 
 async function preflight(accountId) {
   console.log(`\nPreflight checks (API ${API_VERSION})…`);
+  if (LIGHT_MODE) {
+    console.log("Mode: LIGHT — only /me/adaccounts calls (best for dev-tier rate limits)");
+  }
 
   const me = await graphGet("/me", { fields: "id,name" });
   console.log(`✓ Token valid for Meta user: ${me.name ?? me.id} (${me.id})`);
@@ -62,6 +70,10 @@ async function preflight(accountId) {
     throw new Error("No ad accounts returned for this token. Ensure ads_read is granted.");
   }
   console.log(`✓ Found ${list.length} ad account(s)`);
+
+  if (LIGHT_MODE) {
+    return accountId;
+  }
 
   let resolvedId = accountId;
   if (!resolvedId) {
@@ -89,8 +101,12 @@ async function preflight(accountId) {
 }
 
 function buildCallPlan(accountId) {
+  if (LIGHT_MODE) {
+    // Single lightweight endpoint — counts as Marketing API read, minimal throttle risk.
+    return [`${BASE}/me/adaccounts?fields=id,name,account_status&limit=5`];
+  }
+
   const act = `act_${accountId}`;
-  // Prefer lightweight read endpoints — insights are slower and fail more often.
   return [
     `/me/adaccounts?fields=id,name&limit=5`,
     `${act}/campaigns?fields=id,name,status&limit=5`,
@@ -110,6 +126,29 @@ async function makeCall(url) {
   } catch (e) {
     return { ok: false, message: e.message };
   }
+}
+
+function isRateLimitError(code) {
+  return code != null && RATE_LIMIT_CODES.has(Number(code));
+}
+
+async function makeCallWithRetry(url, maxRetries = 5) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const result = await makeCall(url);
+    if (result.ok) return result;
+
+    if (isRateLimitError(result.code) && attempt < maxRetries) {
+      const waitSec = 30 * (attempt + 1);
+      console.log(
+        `  Rate limited (${result.code}) — waiting ${waitSec}s before retry ${attempt + 1}/${maxRetries}…`,
+      );
+      await sleep(waitSec * 1000);
+      continue;
+    }
+
+    return result;
+  }
+  return { ok: false, message: "Rate limit retries exhausted" };
 }
 
 async function run() {
@@ -133,30 +172,34 @@ async function run() {
   const calls = buildCallPlan(accountId);
   let success = 0;
   let errors = 0;
-  let consecutiveErrors = 0;
+  let consecutiveHardErrors = 0;
+  const estMinutes = Math.ceil((CALL_COUNT * DELAY_MS) / 60000);
 
-  console.log(`\nStarting ${CALL_COUNT} Marketing API calls (${DELAY_MS}ms delay)…`);
-  console.log("Stop early if 5 consecutive errors — fix the issue first.\n");
+  console.log(`\nStarting ${CALL_COUNT} Marketing API calls (${DELAY_MS}ms delay, ~${estMinutes} min)…`);
+  console.log("Rate-limit errors auto-retry with backoff. Hard errors abort after 5 in a row.\n");
 
   for (let i = 0; i < CALL_COUNT; i++) {
     const url = calls[i % calls.length];
-    const result = await makeCall(url);
+    const result = await makeCallWithRetry(url);
 
     if (result.ok) {
       success++;
-      consecutiveErrors = 0;
+      consecutiveHardErrors = 0;
     } else {
       errors++;
-      consecutiveErrors++;
+      consecutiveHardErrors++;
       console.log(`ERROR [${i + 1}]: ${result.message}${result.code ? ` (${result.code})` : ""}`);
 
-      if (consecutiveErrors >= 5) {
-        console.error("\nAborting — 5 consecutive errors. Fix the issue before continuing.");
+      if (consecutiveHardErrors >= 5) {
+        console.error("\nAborting — 5 consecutive hard errors.");
+        console.error("If you hit rate limits, wait 1–2 hours and run again with:");
+        console.error("  set META_DELAY_MS=4000");
+        console.error("  set META_CALL_COUNT=200");
         break;
       }
     }
 
-    if ((i + 1) % 50 === 0) {
+    if ((i + 1) % 25 === 0) {
       const rate = ((success / (i + 1)) * 100).toFixed(1);
       console.log(`Progress: ${i + 1}/${CALL_COUNT} — Success: ${success}, Errors: ${errors} (${rate}% success)`);
     }
@@ -170,10 +213,9 @@ async function run() {
   console.log(`\nDone! Completed: ${total}, Success: ${success}, Errors: ${errors}`);
   console.log(`Success rate this run: ${successRate}%`);
   console.log("\nNext steps:");
-  console.log("1. Check App Dashboard → App Review → Marketing API Access Tier metrics");
-  console.log("2. Wait until last-500 error rate is below 15%");
-  console.log("3. Resubmit App Review with read-only use case (ads_read only)");
-  console.log("4. Reviewers: sign up at nextreport.in, connect Meta Ads in Account settings");
+  console.log("1. If rate limited, wait 1–2 hours before another batch");
+  console.log("2. Check App Dashboard → App Review → Marketing API Access Tier metrics");
+  console.log("3. Wait until last-500 error rate is below 15%, then resubmit App Review");
 }
 
 run().catch((err) => {

@@ -75,8 +75,8 @@ const LEARNING_PHASE_BADGE = "🟡 Campaign in Learning Phase — optimising del
  * whichever window the caller actually built it from (see report-data.ts's
  * primaryRows).
  */
-export function calculateAccountHealth(weeklyRows: AggRow[], periodLabel: "Weekly" | "Monthly" = "Weekly"): AccountHealth {
-  const periodWord = periodLabel === "Weekly" ? "week" : "month";
+export function calculateAccountHealth(weeklyRows: AggRow[], periodLabel: "Weekly" | "Monthly" | "Daily" = "Weekly"): AccountHealth {
+  const periodWord = periodLabel === "Weekly" ? "week" : periodLabel === "Daily" ? "day" : "month";
 
   if (!weeklyRows || weeklyRows.length === 0) {
     return { score: 0, badge: "⚙️ Active Optimization Phase — improvements underway" };

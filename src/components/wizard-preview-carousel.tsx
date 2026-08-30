@@ -30,8 +30,12 @@ const CARD_BG = "#111f35";
 const CARD_BORDER = "#22304a";
 const MAX_SLIDES = 6;
 
-function reportTypeHeading(reportType: "WEEKLY" | "MONTHLY" | "COMPARISON"): string {
+import type { WizardReportType } from "@/lib/validators/report-wizard";
+
+function reportTypeHeading(reportType: WizardReportType): string {
   if (reportType === "MONTHLY") return "MONTHLY PERFORMANCE REPORT";
+  if (reportType === "DAILY") return "DAILY PERFORMANCE REPORT";
+  if (reportType === "CREATIVE") return "CREATIVE PERFORMANCE REPORT";
   if (reportType === "COMPARISON") return "COMPARISON PERFORMANCE REPORT";
   return "WEEKLY PERFORMANCE REPORT";
 }
@@ -91,7 +95,7 @@ function CoverSlide({
   dateRangeText,
 }: {
   platform: "META" | "GOOGLE";
-  reportType: "WEEKLY" | "MONTHLY" | "COMPARISON";
+  reportType: WizardReportType;
   clientName: string;
   dateRangeText: string;
 }) {
@@ -280,7 +284,7 @@ interface PreviewSlideDescriptor {
 
 interface SlidePreviewCarouselProps {
   platform: "META" | "GOOGLE";
-  reportType: "WEEKLY" | "MONTHLY" | "COMPARISON";
+  reportType: WizardReportType;
   previewKind: "normal" | "comparison";
   clientName: string;
   data: ReportData | null;

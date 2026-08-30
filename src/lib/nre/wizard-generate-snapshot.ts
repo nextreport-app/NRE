@@ -1,5 +1,7 @@
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 
+import type { WizardReportType } from "@/lib/validators/report-wizard";
+
 const SNAPSHOT_VERSION = 1 as const;
 
 export interface WizardGenerateSnapshot {
@@ -8,7 +10,7 @@ export interface WizardGenerateSnapshot {
   downloadUrl: string;
   shareToken: string | null;
   platform: "META" | "GOOGLE";
-  reportType: "WEEKLY" | "MONTHLY" | "COMPARISON";
+  reportType: WizardReportType;
   dateMode: "last7" | "prev7" | "custom";
   customStart: string;
   customEnd: string;

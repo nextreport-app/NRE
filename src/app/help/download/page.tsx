@@ -40,6 +40,21 @@ const META_PREVIOUS_MONTH_STEPS: Step[] = [
   { title: "Export as CSV", body: "" },
 ];
 
+const META_AD_LEVEL_STEPS: Step[] = [
+  { title: "Open Meta Ads Manager → Ads tab", body: "Not Campaigns or Ad Sets — select the Ads tab specifically." },
+  { title: "Set date range to Last 30 days (or at least 14 days)", body: "" },
+  { title: "Set Time Breakdown to Day", body: "Required — one row per ad per day." },
+  {
+    title: "Include these columns",
+    body: "Campaign name, Ad set name, Ad name, Day, Amount spent, Results, Cost per result, Reach, Impressions, CTR (all), Frequency, Link clicks.",
+  },
+  {
+    title: "For video ads, also include",
+    body: "3-second video plays, ThruPlays.",
+  },
+  { title: "Export as CSV", body: "Use for Creative Performance Reports, or any report where you want creative slides included automatically." },
+];
+
 const GOOGLE_STEPS: Step[] = [
   {
     title: "Go to Google Ads → Reports → Predefined reports → Basic → Campaign",
@@ -114,6 +129,17 @@ export default async function DownloadGuidePage() {
             <div className="mt-6 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
               <span className="font-semibold">Note:</span> Result Type column is important — it tells NextReport what
               each campaign was optimising for (purchases, leads, link clicks etc.)
+            </div>
+
+            <h3 className="mt-10 text-lg font-semibold text-white">For Creative Performance Reports (Ad level CSV)</h3>
+            <p className="mt-2 text-sm text-ink-secondary">
+              Only needed for the dedicated Creative report — standard weekly/monthly reports still use Campaign or Ad Set
+              level data above. If your CSV includes Ad name, creative slides are added automatically to any report type.
+            </p>
+            <div className="mt-4 space-y-4">
+              {META_AD_LEVEL_STEPS.map((step, i) => (
+                <StepCard key={step.title} number={i + 1} step={step} />
+              ))}
             </div>
           </section>
 
