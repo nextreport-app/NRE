@@ -111,6 +111,22 @@ export function computeMonthComparisonRangeOptions(rows: NreRow[], now: Date = n
   };
 }
 
+/** Single-day window — yesterday (or latest complete day in the CSV). Used by Daily reports. */
+export function computeDailyRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const iso = toIsoDate(yesterday);
+  return { startIso: iso, endIso: iso };
+}
+
+/** Default creative analysis window — trailing 30 days ending yesterday. */
+export function computeCreativeRangeIso(rows: NreRow[], now: Date = new Date(), days = 30): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now);
+  if (!yesterday) return null;
+  const start = addDays(yesterday, -(days - 1));
+  return { startIso: toIsoDate(start), endIso: toIsoDate(yesterday) };
+}
+
 /** Always day 1 of the reporting month (the month "yesterday" falls in) through yesterday. */
 export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
   const yesterday = computeEffectiveYesterday(rows, now);

@@ -50,7 +50,7 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // report-upload-wizard.tsx's PreviousMonthSummaryOption). The generated
 // Report row is still stored with reportType "MONTHLY" — the closest real
 // enum value — never this literal; no database/schema change needed.
-export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "COMPARISON", "PREVIOUS_MONTH_SUMMARY"]);
+export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE", "PREVIOUS_MONTH_SUMMARY"]);
 
 // Matches prisma/schema.prisma's Platform enum. Absent/undefined means the
 // server falls back to auto-detection from the CSV's own headers (see

@@ -5,7 +5,8 @@ import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
-import { computeCsvDateBounds, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
+import { computeCsvDateBounds, computeDailyRangeIso, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
+import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
@@ -143,6 +144,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // month vs Last month" needs its own computation, additive alongside
     // the existing three.
     const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows);
+    const dailyRange = computeDailyRangeIso(mtdParsed.rows);
+    const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
 
     return NextResponse.json({
       valid: true,
@@ -161,6 +164,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       weeklyOptions,
       mtdRange,
       monthComparisonOptions,
+      dailyRange,
+      hasAdLevelCsv,
       dateSelection,
     });
   } catch (err) {

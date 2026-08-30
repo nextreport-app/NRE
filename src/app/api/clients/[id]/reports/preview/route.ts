@@ -12,6 +12,9 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
+import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
+import { computeDailyRangeIso } from "@/lib/nre/date-range";
+import type { ReportType } from "@/lib/nre/report-data";
 import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignMetricOverridesSchema,
@@ -103,14 +106,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // buildPreviousMonthSummaryReportData). Narrow defensively rather than
   // widening buildReportData's own ReportType to match.
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
-  const reportType = parsedReportType === "MONTHLY" ? "MONTHLY" : parsedReportType === "COMPARISON" ? "COMPARISON" : "WEEKLY";
-
-  // Comparison reports skip the weekly/monthly date-selection resolution
-  // entirely — they split the same MTD Daily CSV into two independent,
-  // wizard-picked windows (Period A/B) instead, via buildComparisonReportData
-  // (a separate pipeline from buildReportData below — see its own file
-  // header in report-data.ts).
-  if (reportType === "COMPARISON") {
+  let reportType: ReportType = "WEEKLY";
+  if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
+  else if (parsedReportType === "DAILY") reportType = "DAILY";
+  else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
+  else if (parsedReportType === "COMPARISON") {
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
     const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
     if (!periodA || !periodB) {
@@ -133,14 +133,44 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isComparison: true, data });
   }
 
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-
-  const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
-  if (!dateResolution.ok) {
+  if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
     return NextResponse.json(
-      { valid: false, errors: [{ field: "dateSelection", message: dateResolution.error || "Invalid date selection." }], warnings: [] },
+      {
+        valid: false,
+        errors: [
+          {
+            field: "mtdDailyCsv",
+            message:
+              "Creative reporting requires an Ad-level CSV with an Ad Name column. Export from Meta Ads Manager → Ads tab.",
+          },
+        ],
+        warnings: [],
+      },
       { status: 200 },
     );
+  }
+
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+
+  let weeklyRange: { startIso: string; endIso: string } | undefined;
+  if (reportType === "DAILY") {
+    const daily = computeDailyRangeIso(mtdParsed.rows);
+    if (!daily) {
+      return NextResponse.json(
+        { valid: false, errors: [{ field: "dateSelection", message: "Could not determine yesterday from CSV." }], warnings: [] },
+        { status: 200 },
+      );
+    }
+    weeklyRange = daily;
+  } else if (reportType !== "CREATIVE") {
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+    if (!dateResolution.ok) {
+      return NextResponse.json(
+        { valid: false, errors: [{ field: "dateSelection", message: dateResolution.error || "Invalid date selection." }], warnings: [] },
+        { status: 200 },
+      );
+    }
+    weeklyRange = dateResolution.weeklyRange;
   }
 
   const periodRows = await loadPreviousMonthDataRows(client);
@@ -154,12 +184,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     selectedAdSets: selectedAdSets ?? null,
-    weeklyRange: dateResolution.weeklyRange,
+    weeklyRange,
     reportType,
     selectedMetrics,
     campaignObjectives,
     campaignMetricOverrides,
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+    adNameColumn: detectAdNameColumn(mtdParsed.headers),
+    creativeOnly: reportType === "CREATIVE",
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

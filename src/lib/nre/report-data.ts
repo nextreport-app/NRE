@@ -60,6 +60,9 @@ import {
 } from "./slot-assignment";
 import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 import { findMetaMetricByKey } from "./meta-dictionary";
+import { detectAdNameColumn } from "./ad-level";
+import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
+import { computeCreativeRangeIso, computeEffectiveYesterday, toIsoDate } from "./date-range";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
 function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
@@ -299,7 +302,7 @@ export interface ObjectiveWarning {
  * "Weekly", and the Combined Total table shows only its MTD row (see
  * pptx/fill-tags.ts's buildTableSlideXml).
  */
-export type ReportType = "WEEKLY" | "MONTHLY";
+export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE";
 
 /** Which ad platform this report's data came from — drives template selection and a handful of label/prompt differences in the render and AI layers. Defaults to "META" everywhere in this file; only google-report-data.ts's buildGoogleReportData ever produces "GOOGLE". */
 export type Platform = "META" | "GOOGLE";
@@ -311,6 +314,10 @@ export interface ReportData {
   cover: CoverData;
   campaignSlides: CampaignSlideData[];
   adSetSlides: AdSetSlideData[];
+  /** Ad-level creative slides — populated when CSV includes Ad Name column. */
+  creative?: CreativeReportSections | null;
+  /** When true, render only cover + creative slides + legend (Creative Report tab). */
+  creativeOnly?: boolean;
   pausedMessage: string | null;
   chart: ChartSlideData | null;
   periodRow: TableRowData;
@@ -363,6 +370,10 @@ export interface BuildReportDataInput {
   weeklyRange?: DateRangeIso;
   /** See the ReportType doc comment above. Defaults to "WEEKLY". */
   reportType?: ReportType;
+  /** Ad name CSV header — when set, creative slides are built from primary raw rows. */
+  adNameColumn?: string | null;
+  /** Creative Performance Report — skips campaign/ad-set/chart/table slides. */
+  creativeOnly?: boolean;
   now?: Date;
   /**
    * Part 3 — the wizard's optional Metric Review step output. Applies the
@@ -785,8 +796,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignObjectives,
     objectiveCache,
     campaignMetricOverrides,
+    adNameColumn: adNameColumnInput,
+    creativeOnly = false,
   } = input;
   const isMonthlyReport = reportType === "MONTHLY";
+  const isDailyReport = reportType === "DAILY";
+  const isCreativeReport = reportType === "CREATIVE" || creativeOnly;
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
   // selectedAdSets is NOT applied here — see its doc comment on
@@ -822,12 +837,88 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // directly, regardless of reportType.
   const primaryRows: AggRow[] = isMonthlyReport ? mtdRows : weeklyRows;
   const isPaused = primaryRows.length === 0;
-  // Same weekly-vs-MTD choice as primaryRows, but the pre-aggregation raw
-  // rows (still carrying _raw) — dynamic-metrics.ts's only way to read a
-  // dictionary metric's original CSV column, since aggregateRows drops
-  // _raw. Grouped below (campaignRawGroups/adSetRawGroups) the same way
-  // campaignGroups/individual AggRow rows already are for the fixed metrics.
   const primaryRawRows: NreRow[] = isMonthlyReport ? (split?.mtdRawRows ?? []) : (split?.weeklyRawRows ?? []);
+
+  const adNameColumn =
+    adNameColumnInput ??
+    detectAdNameColumn(primaryRawRows.length > 0 ? Object.keys(primaryRawRows[0]._raw || {}) : []);
+
+  function keptCampaignNamesForCreative(
+    rawRows: NreRow[],
+    selected: string[] | null | undefined,
+  ): Set<string> {
+    const names = new Set<string>();
+    rawRows.forEach((row) => {
+      const c = String(row.campaign_name || "").trim();
+      if (c) names.add(c);
+    });
+    if (selected && selected.length > 0) {
+      return new Set(selected.filter((c) => names.has(c)));
+    }
+    return names;
+  }
+
+  function buildCreativeSections(dateLine: string, rawForCreative: NreRow[]): CreativeReportSections | null {
+    if (!adNameColumn || rawForCreative.length === 0) return null;
+    return buildCreativeReportSections({
+      rawRows: rawForCreative,
+      adNameColumn,
+      currencySymbol,
+      dateRangeLine: dateLine,
+      keptCampaignNames: keptCampaignNamesForCreative(rawForCreative, selectedCampaigns),
+    });
+  }
+
+  if (isCreativeReport) {
+    const creativeRange = computeCreativeRangeIso(filteredMtdDailyRows, now, 30);
+    const creativeRaw = creativeRange
+      ? filterRawRowsToRange(
+          filterRowsByCampaigns(filteredMtdDailyRows, selectedCampaigns ?? null),
+          creativeRange.startIso,
+          creativeRange.endIso,
+        )
+      : [];
+    const dateLine = creativeRange
+      ? getDateRangeShortLabel(creativeRange.startIso, creativeRange.endIso)
+      : "";
+    const creative = buildCreativeSections(dateLine, creativeRaw);
+    const creativeAgg = aggregateRows(creativeRaw);
+    const { score, badge } = calculateAccountHealth(creativeAgg, "Weekly");
+    const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now);
+    const coverDate = yesterday ? formatDateUS(toIsoDate(yesterday)) : "";
+    const emptyRow = computeTableRow([], currencySymbol, false, new Map());
+    return {
+      isPaused: !creative || creative.overviewSlides.length === 0,
+      platform: "META",
+      reportType: "CREATIVE",
+      cover: {
+        accountName,
+        reportDate: coverDate,
+        dateRange: dateLine,
+        healthBadge: badge,
+        healthScore: score,
+        budgetSummary: budgetSummaryLine(
+          creativeRaw.reduce((s, r) => s + parseCellNum(r.spend), 0),
+          monthlyBudget,
+          currencySymbol,
+        ),
+      },
+      campaignSlides: [],
+      adSetSlides: [],
+      creative,
+      creativeOnly: true,
+      pausedMessage:
+        !creative || creative.overviewSlides.length === 0
+          ? "No ad-level data found. Upload an Ad-level CSV with an Ad Name column."
+          : null,
+      chart: null,
+      periodRow: emptyRow,
+      mtdRow: emptyRow,
+      tableHeaderLabels: { resultColumns: [] },
+      fileDateRange: dateLine,
+      objectiveWarnings: [],
+    };
+  }
 
   // Step 0 — single source of truth for campaign objective detection (see
   // objective.ts's buildCampaignObjectiveMap doc comment): permanent fix for
@@ -950,7 +1041,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       budgetSummary: "",
     };
   } else {
-    const { score, badge } = calculateAccountHealth(primaryRows, isMonthlyReport ? "Monthly" : "Weekly");
+    const periodLabel = isMonthlyReport ? "Monthly" : isDailyReport ? "Daily" : "Weekly";
+    const { score, badge } = calculateAccountHealth(primaryRows, periodLabel);
     const mtdSpend = mtdRows.reduce((sum, r) => sum + parseCellNum(r.spend), 0);
     const coverCampaignCount = new Set(primaryRows.map((r) => String(r.campaign_name || "").trim()).filter(Boolean)).size;
     const budgetLine = budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now);
@@ -1572,6 +1664,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     cover,
     campaignSlides,
     adSetSlides,
+    creative: buildCreativeSections(globalWeekDateRange, primaryRawRows),
+    creativeOnly: false,
     pausedMessage: null,
     chart,
     periodRow,
