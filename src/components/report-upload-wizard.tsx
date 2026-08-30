@@ -9,6 +9,7 @@ import {
   saveWizardGenerateSnapshot,
   type WizardGenerateSnapshot,
 } from "@/lib/nre/wizard-generate-snapshot";
+import type { WizardReportType } from "@/lib/validators/report-wizard";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
@@ -131,7 +132,7 @@ type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 type DateMode = "last7" | "prev7" | "custom";
-type ReportTypeValue = "WEEKLY" | "MONTHLY" | "DAILY" | "COMPARISON" | "CREATIVE";
+type ReportTypeValue = WizardReportType;
 type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
 // Which data shape the current preview holds — set from the /preview
 // response's `isComparison` flag (see comparisonData/data below, and

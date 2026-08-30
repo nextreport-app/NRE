@@ -6,7 +6,7 @@ import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { FullReportHistoryList } from "@/components/full-report-history-list";
 
 const PAGE_SIZE = 20;
-const REPORT_TYPES = ["WEEKLY", "MONTHLY", "COMPARISON"] as const;
+const REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE"] as const;
 
 type SearchParams = { page?: string; type?: string; from?: string; to?: string };
 

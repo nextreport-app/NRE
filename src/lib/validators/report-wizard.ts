@@ -52,6 +52,9 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // enum value — never this literal; no database/schema change needed.
 export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE", "PREVIOUS_MONTH_SUMMARY"]);
 
+/** Wizard Step 5 report types (excludes generate-only PREVIOUS_MONTH_SUMMARY). */
+export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIOUS_MONTH_SUMMARY">;
+
 // Matches prisma/schema.prisma's Platform enum. Absent/undefined means the
 // server falls back to auto-detection from the CSV's own headers (see
 // lib/nre/google-columns.ts's detectPlatform) — sent explicitly only when
