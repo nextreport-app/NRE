@@ -6,6 +6,8 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
+import { formatChartFooterInsight } from "../nre/share-chart-projection";
+import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
 
 const INK = "#ffffff";
 /** Brighter than browser muted — reads clearly on Slides after PNG rasterization. */
@@ -108,7 +110,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const donutCx = 220;
   const donutCy = 310;
   const outerR = 110;
-  const innerR = outerR * 0.52;
+  const innerR = outerR * DONUT_HOLE_RATIO;
 
   let angle = 0;
   for (const seg of chart.donutSegments) {
@@ -133,11 +135,8 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     legendY += 28;
   }
 
-  const insight =
-    `${chart.snapshot.activeCampaignCount} active campaign${chart.snapshot.activeCampaignCount === 1 ? "" : "s"} this month` +
-    (chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : "");
   parts.push(
-    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(insight)}</text>`,
+    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(formatChartFooterInsight(chart.snapshot.activeCampaignCount))}</text>`,
   );
 
   parts.push("</svg>");

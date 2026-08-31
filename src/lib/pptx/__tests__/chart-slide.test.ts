@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDonutSegments,
-  CHART_OVERVIEW_MEDIA_FILE,
-  CHART_OVERVIEW_REL_ID,
   chunkChartCampaigns,
   ringColorForCampaign,
   chartCampaignMetricLines,
@@ -12,6 +10,7 @@ import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";
 import type { TemplateBackgroundImage } from "../package";
+import { DONUT_HOLE_RATIO } from "../chart-slide-constants";
 
 const BACKGROUND: TemplateBackgroundImage = {
   blipXml: '<a:blip r:embed="rId1"/>',
@@ -86,25 +85,26 @@ describe("buildDonutSegments", () => {
   });
 });
 
-describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
-  it("slide XML embeds overview image; title lives in the SVG source", async () => {
+describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
+  it("slide XML uses native editable shapes with title text", async () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
-    const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(buildChart([campaign("A")]), "$"));
-    expect(svg).toContain("August · Month to date overview");
-    expect(svg).toContain("Month to date performance");
+    expect(bundle.xml).toContain("Month to date performance");
+    expect(bundle.xml).toContain('prst="pie"');
+    expect(bundle.xml).toContain("TOTAL SPEND");
+    expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
 
-  it("embeds browser-matching overview PNG instead of native OOXML chart shapes", async () => {
+  it("embeds native OOXML chart shapes instead of a rasterized PNG overlay", async () => {
     const bundle = await buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
       "C$",
       BACKGROUND,
     );
-    expect(bundle.mediaPath).toBe(`ppt/media/${CHART_OVERVIEW_MEDIA_FILE}`);
-    expect(bundle.xml).toContain(`r:embed="${CHART_OVERVIEW_REL_ID}"`);
-    expect(bundle.mediaBytes[0]).toBe(0x89);
-    expect(bundle.mediaBytes[1]).toBe(0x50);
+    expect(bundle.xml).toContain("AD SPEND THIS MONTH");
+    expect(bundle.xml).toContain("PURCHASES");
+    expect(bundle.xml).toContain("A ·");
+    expect(bundle.xml).toContain("B ·");
+    expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(
         buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
@@ -112,20 +112,12 @@ describe("buildChartSlideXml — MTD overview (KPI + donut)", () => {
       ),
     );
     expect(svg).toContain("AD SPEND THIS MONTH");
-    expect(svg).toContain("PURCHASES");
-    expect(svg).toContain("TOTAL SPEND");
-    expect(svg).toContain("A ·");
-    expect(svg).toContain("B ·");
-    expect(bundle.xml).not.toContain('prst="pie"');
   });
 
-  it("buildMtdOverviewSvg includes title and KPI labels from share projection", () => {
+  it("buildMtdOverviewSvg uses thinner donut hole ratio", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain("August · Month to date overview");
-    expect(svg).toContain("AD SPEND THIS MONTH");
-    expect(svg).toContain("TOTAL SPEND");
-    expect(svg).toContain("A ·");
+    expect(svg).toContain(`A ${110 * DONUT_HOLE_RATIO}`);
   });
 
   it("renders a full-ring donut when one campaign owns 100% of spend", () => {
