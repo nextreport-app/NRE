@@ -22,7 +22,7 @@ import { BETA_HIDE_PRICING } from "@/lib/beta";
  */
 export function SiteChromeFooter() {
   const pathname = usePathname();
-  if (pathname?.startsWith("/r/")) return null;
+  if (pathname?.startsWith("/r/") || pathname?.startsWith("/print/")) return null;
 
   return (
     <>

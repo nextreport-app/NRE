@@ -1,7 +1,12 @@
 import puppeteer, { type Browser } from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import type { ShareReportData } from "@/lib/nre/share-report";
-import { buildPrintReportHtml } from "./print-report-html";
+
+// Prebuilt by scripts/build-pdf-html-bundle.mjs — keeps react-dom/server out of the Next.js graph.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { buildPrintReportHtml } = require("./print-report-html.bundle.cjs") as {
+  buildPrintReportHtml: (share: ShareReportData) => string;
+};
 
 async function launchBrowser(): Promise<Browser> {
   const isDev = process.env.NODE_ENV === "development";
@@ -66,9 +71,4 @@ export async function renderReportPdfFromShareData(share: ShareReportData): Prom
   } finally {
     await browser.close();
   }
-}
-
-/** @deprecated Prefer renderReportPdfFromShareData — avoids brittle self-HTTP on serverless. */
-export async function renderReportPdfFromShareToken(_shareToken: string): Promise<Buffer> {
-  throw new Error("renderReportPdfFromShareToken requires share data — use renderReportPdfFromShareData");
 }

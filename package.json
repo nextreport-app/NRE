@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/build-pdf-html-bundle.mjs",
     "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
@@ -32,6 +33,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.18.1",
+    "server-only": "^0.0.1",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
