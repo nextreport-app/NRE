@@ -710,7 +710,7 @@ export function ReportUploadWizard({
       setDownloadUrl(`/api/reports/${resumeReportId}/download`);
       setShareToken(json.shareToken ?? null);
       setPublishedAt(json.publishedAt ?? null);
-      setPdfAvailable(!!json.pdfAvailable);
+      setPdfAvailable(!!(json.publishedAt ?? json.pdfAvailable));
       setGenerateStatus("done");
       setGenerateMessage(null);
       persistGenerateSnapshot(
@@ -1467,7 +1467,7 @@ export function ReportUploadWizard({
       reportId: json.reportId,
       downloadUrl: `/api/reports/${json.reportId}/download`,
       shareToken: json.shareToken ?? null,
-    });
+    }, { publishedAt: null, pdfAvailable: false });
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -2939,7 +2939,7 @@ export function ReportUploadWizard({
                 </a>
 
                 {shareToken && reportId ? (
-                  pdfAvailable ? (
+                  publishedAt ? (
                     <a
                       href={`/api/reports/${reportId}/download-pdf`}
                       className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
@@ -2994,7 +2994,7 @@ export function ReportUploadWizard({
                   </div>
                 )}
               </div>
-              {shareToken && reportId && !pdfAvailable ? (
+              {shareToken && reportId && !publishedAt ? (
                 <p className="text-center text-[12px] text-[#94a3b8]">
                   PDF unlocks after you{" "}
                   <Link

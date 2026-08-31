@@ -3,9 +3,9 @@ import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data"
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { formatDonutSegmentStats, resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
+import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
-import { DONUT_HOLE_RATIO } from "@/lib/pptx/chart-slide-constants";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
 
 /**
@@ -218,16 +218,6 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
 }
 
 function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
-  const donutGradient =
-    chart.donutSegments.length > 0
-      ? `conic-gradient(${chart.donutSegments
-          .map((seg, i) => {
-            const start = chart.donutSegments.slice(0, i).reduce((s, x) => s + x.percentage, 0);
-            return `#${seg.color} ${start}% ${start + seg.percentage}%`;
-          })
-          .join(", ")})`
-      : "#1e293b";
-
   const kpiTiles = [
     { value: chart.snapshot.mtdSpendLabel, label: "Ad spend this month" },
     { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel },
@@ -255,15 +245,8 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
       {chart.donutSegments.length > 0 ? (
         <div className="mt-6 grid grid-cols-1 items-center gap-6 min-[720px]:grid-cols-[220px_1fr]">
-          <div className="relative mx-auto h-[220px] w-[220px] shrink-0">
-            <div
-              className="h-full w-full rounded-full"
-              style={{ background: donutGradient, mask: `radial-gradient(circle, transparent ${DONUT_HOLE_RATIO * 100}%, black ${DONUT_HOLE_RATIO * 100 + 1}%)` }}
-            />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <p className="text-[22px] font-bold text-ink">{chart.totalSpendLabel}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#e2e8f0]">Total spend</p>
-            </div>
+          <div className="relative mx-auto shrink-0">
+            <ShareChartDonut segments={chart.donutSegments} totalSpendLabel={chart.totalSpendLabel} size={220} />
           </div>
           <ul className="space-y-2.5">
             {chart.donutSegments.map((seg) => (
