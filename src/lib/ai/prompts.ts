@@ -35,6 +35,11 @@ function isReachCampaign(ctx: Pick<AiContext, "resultLabel">): boolean {
   return ctx.resultLabel === "REACH";
 }
 
+/** Meta instant-form lead campaigns — leads submit inside Meta, no website pixel. */
+function isMetaFormLeadsCampaign(ctx: Pick<AiContext, "resultLabel">): boolean {
+  return ctx.resultLabel === "META FORM LEADS";
+}
+
 export function buildSummaryPrompt(ctx: AiContext): string {
   if (isReachCampaign(ctx)) {
     return (
@@ -76,6 +81,27 @@ export function buildSummaryPrompt(ctx: AiContext): string {
 }
 
 export function buildInsightPrompt(ctx: AiContext): string {
+  if (isMetaFormLeadsCampaign(ctx)) {
+    return (
+      "This is a META INSTANT FORM LEADS campaign — leads submit inside Meta's own lead form, NOT on a website.\n" +
+      "Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+      "Sentence 1: One data read from the numbers — cite at most one or two real figures. Do not re-list the cards.\n" +
+      "Sentence 2: One next step about the instant form, creative, or audience — NOT website pixels, landing pages, or off-site tracking.\n" +
+      "FORBIDDEN: pixel, landing page, website tracking, checkout, or any off-site conversion setup.\n" +
+      "FORBIDDEN: do not list four generic actions as a laundry list. Give one specific next step only.\n" +
+      "Rules:\n" +
+      "- Always use actual numbers from the data when you cite them\n" +
+      "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
+      "- Do not use bullet points, headers, dashes, or line breaks\n" +
+      "- Keep total length under 60 words\n" +
+      "- Do not start with This week or During this period — vary the opening\n" +
+      "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
+      "- Sound like a senior account manager giving honest advice\n\n" +
+      "Data: Campaign: " + ctx.ctx + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+      ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
+      ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
+    );
+  }
   return (
     "Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
     "Sentence 1: One data read from the numbers — cite at most one or two real figures. Do not re-list the cards.\n" +
@@ -149,6 +175,12 @@ function buildReachSummary(ctx: AiContext): string {
  */
 export function buildZeroResultsSummary(ctx: AiContext): string {
   if (isReachCampaign(ctx)) return buildReachSummary(ctx);
+  if (isMetaFormLeadsCampaign(ctx)) {
+    return (
+      "This campaign is running for Meta instant form leads but recorded none this week, with " +
+      ctx.spend + " spent. Review the form fields, offer clarity, and audience-message match before increasing spend."
+    );
+  }
   return (
     "This campaign is running for " + ctx.resultLabel.toLowerCase() + " but recorded none this week, with " +
     ctx.spend + " spent. Check the conversion path (form, pixel, or landing page) before increasing spend."
@@ -220,6 +252,10 @@ function nextStepFromData(ctx: AiContext): string {
     return "Frequency is " + ctx.freq.toFixed(1) + "x, so refresh creatives before adding budget.";
   }
   if (ctx.resultsNum === 0 && ctx.spendNum > 0 && !isReachCampaign(ctx)) {
+    if (isMetaFormLeadsCampaign(ctx)) {
+      return "Spend landed with no " + ctx.resultLabel.toLowerCase() +
+        " — review the Meta instant form (field count, questions, and offer clarity) before scaling.";
+    }
     return "Spend landed with no " + ctx.resultLabel.toLowerCase() + " — check the form, pixel, or landing page before scaling.";
   }
   const ctrNum = parseFloat(ctrNumberOnly(ctx.ctr));
@@ -327,6 +363,17 @@ export function resultCountMismatch(aiText: string, expectedCount: number): bool
  * Deliberately the same decimal-point-aware logic as the cut point above,
  * so a $-amount or percentage never gets miscounted as an extra sentence.
  */
+export function aiCopyViolatesObjectiveRules(text: string, ctx: AiContext): boolean {
+  if (!isMetaFormLeadsCampaign(ctx)) return false;
+  const lower = text.toLowerCase();
+  return (
+    /\bpixel\b/.test(lower) ||
+    /\blanding page\b/.test(lower) ||
+    /\bwebsite tracking\b/.test(lower) ||
+    /\boff-site\b/.test(lower)
+  );
+}
+
 export function insightsLooksLikeLaundryList(text: string): boolean {
   const lower = text.toLowerCase();
   const hits = ["pausing underperform", "testing new creative", "refining targeting", "allocating budget", "top-performing ads"].filter((p) =>

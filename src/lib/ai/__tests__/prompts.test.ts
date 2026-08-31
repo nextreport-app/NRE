@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aiCopyViolatesObjectiveRules,
   buildFallbackInsights,
   buildFallbackSummary,
   buildInsightPrompt,
@@ -338,6 +339,15 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
     );
     expect(buildZeroResultsSummary(ctx({ resultLabel: "WEBSITE LEADS", results: "0", resultsNum: 0 }))).not.toContain("purchases");
   });
+
+  it("uses instant-form wording for META FORM LEADS — no pixel or landing page", () => {
+    const result = buildZeroResultsSummary(
+      ctx({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", results: "0", resultsNum: 0 }),
+    );
+    expect(result).toContain("Meta instant form leads");
+    expect(result).not.toContain("pixel");
+    expect(result).not.toContain("landing page");
+  });
 });
 
 describe("buildFallbackInsights", () => {
@@ -359,5 +369,34 @@ describe("buildFallbackInsights", () => {
   it("never double-appends a percent sign", () => {
     const result = buildFallbackInsights(ctx({ ctr: "0.35%" }));
     expect(result).not.toContain("0.35%%");
+  });
+
+  it("suggests instant-form review for META FORM LEADS with spend but no results", () => {
+    const result = buildFallbackInsights(
+      ctx({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", results: "0", resultsNum: 0 }),
+    );
+    expect(result.toLowerCase()).toContain("instant form");
+    expect(result.toLowerCase()).not.toContain("pixel");
+  });
+});
+
+describe("buildInsightPrompt — META FORM LEADS", () => {
+  it("forbids pixel and landing page advice", () => {
+    const prompt = buildInsightPrompt(ctx({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }));
+    expect(prompt).toContain("META INSTANT FORM LEADS");
+    expect(prompt).toContain("FORBIDDEN: pixel");
+    expect(prompt).not.toContain("check the form, pixel, or conversion setup");
+  });
+});
+
+describe("aiCopyViolatesObjectiveRules", () => {
+  it("flags pixel mentions for meta form leads", () => {
+    expect(
+      aiCopyViolatesObjectiveRules(
+        "confirm the pixel is firing on completions",
+        ctx({ resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }),
+      ),
+    ).toBe(true);
+    expect(aiCopyViolatesObjectiveRules("refresh the instant form fields", ctx({ resultLabel: "META FORM LEADS" }))).toBe(false);
   });
 });

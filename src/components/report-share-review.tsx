@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/toast";
 import { ShareReportView } from "@/components/share-report-view";
-import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
+import type { ShareReportData, ShareVisibility, ShareChartData } from "@/lib/nre/share-report";
 import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
 import { countVisibleSlides } from "@/lib/nre/share-visibility";
 import { invalidateGenerateSnapshotDrive } from "@/lib/nre/wizard-generate-snapshot";
@@ -107,6 +107,7 @@ export function ReportShareReview({
   const [campaigns, setCampaigns] = useState<CopySlide[]>([]);
   const [adSets, setAdSets] = useState<CopySlide[]>([]);
   const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
+  const [chartEdit, setChartEdit] = useState<ShareChartData | null>(null);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
@@ -130,6 +131,7 @@ export function ReportShareReview({
       setCampaigns(json.campaigns ?? []);
       setAdSets(json.adSets ?? []);
       setVisibility(json.visibility ?? defaultShareVisibility(loaded));
+      setChartEdit((json.chart as ShareChartData | null) ?? loaded.chart ?? null);
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
       setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
@@ -147,6 +149,7 @@ export function ReportShareReview({
     const merged: ShareReportData = {
       ...share,
       visibility,
+      chart: chartEdit ?? share.chart,
       campaigns: share.campaigns.map((c) => {
         const edited = campaigns.find((x) => x.campaignName === c.campaignName);
         return edited
@@ -171,7 +174,7 @@ export function ReportShareReview({
       }),
     };
     return applyVisibilityToShare(merged, visibility);
-  }, [share, visibility, campaigns, adSets]);
+  }, [share, visibility, campaigns, adSets, chartEdit]);
 
   const slideList = useMemo(
     () => (draftShare && visibility ? buildSlideList(draftShare, visibility) : []),
@@ -216,6 +219,16 @@ export function ReportShareReview({
             aiInsights: c.aiInsights,
             metrics: c.metrics.map((m) => ({ key: m.key, value: m.value })),
           })),
+          chart: chartEdit
+            ? {
+                title: chartEdit.title,
+                subtitle: chartEdit.subtitle,
+                totalSpendLabel: chartEdit.totalSpendLabel,
+                footerInsight: chartEdit.footerInsight,
+                snapshot: chartEdit.snapshot,
+                donutSegments: chartEdit.donutSegments,
+              }
+            : undefined,
         },
       }),
     });
@@ -248,6 +261,7 @@ export function ReportShareReview({
   const selectedAdSet = selectedSlideId?.startsWith("a:")
     ? adSets.find((a) => `a:${adSetVisibilityKey(a.campaignName, a.adSetName ?? "")}` === selectedSlideId)
     : null;
+  const overviewSelected = selectedSlideId === "overview";
 
   return (
     <div className="space-y-4">
@@ -427,6 +441,126 @@ export function ReportShareReview({
               ) : null}
             </div>
           )}
+
+          {overviewSelected && chartEdit ? (
+            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-[13px] font-semibold text-dash-ink">Month to date overview</p>
+              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
+                Edit chart text here, then Publish — updates the live browser link and Download PPTX.
+              </p>
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Title</label>
+              <input
+                type="text"
+                value={chartEdit.title}
+                onChange={(e) => setChartEdit((c) => (c ? { ...c, title: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Subtitle</label>
+              <input
+                type="text"
+                value={chartEdit.subtitle}
+                onChange={(e) => setChartEdit((c) => (c ? { ...c, subtitle: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[
+                  { key: "mtdSpendLabel", label: "Ad spend this month" },
+                  { key: "primaryResultsValue", label: chartEdit.snapshot.primaryResultsLabel },
+                  { key: "primaryCprValue", label: chartEdit.snapshot.primaryCprLabel },
+                  { key: "budgetPctUsed", label: "Budget used (%)" },
+                ].map((field) => (
+                  <label key={field.key} className="block">
+                    <span className="text-[11px] font-medium text-dash-ink-secondary">{field.label}</span>
+                    <input
+                      type="text"
+                      value={chartEdit.snapshot[field.key as keyof typeof chartEdit.snapshot] as string}
+                      onChange={(e) =>
+                        setChartEdit((c) =>
+                          c ? { ...c, snapshot: { ...c.snapshot, [field.key]: e.target.value } } : c,
+                        )
+                      }
+                      className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                    />
+                  </label>
+                ))}
+              </div>
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Total spend (donut center)</label>
+              <input
+                type="text"
+                value={chartEdit.totalSpendLabel}
+                onChange={(e) => setChartEdit((c) => (c ? { ...c, totalSpendLabel: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] tabular-nums text-dash-ink"
+              />
+              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Donut legend</p>
+              <div className="mt-2 space-y-3">
+                {chartEdit.donutSegments.map((seg, i) => (
+                  <div key={`${seg.name}-${i}`} className="rounded-md border border-dash-border bg-dash-bg p-3">
+                    <label className="block text-[11px] font-medium text-dash-ink-secondary">Campaign name</label>
+                    <input
+                      type="text"
+                      value={seg.name}
+                      onChange={(e) =>
+                        setChartEdit((c) => {
+                          if (!c) return c;
+                          const donutSegments = c.donutSegments.map((s, j) =>
+                            j === i ? { ...s, name: e.target.value } : s,
+                          );
+                          return { ...c, donutSegments };
+                        })
+                      }
+                      className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] text-dash-ink"
+                    />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-[11px] font-medium text-dash-ink-secondary">% of spend</span>
+                        <input
+                          type="text"
+                          value={String(seg.percentage)}
+                          onChange={(e) =>
+                            setChartEdit((c) => {
+                              if (!c) return c;
+                              const pct = parseFloat(e.target.value) || 0;
+                              const donutSegments = c.donutSegments.map((s, j) =>
+                                j === i ? { ...s, percentage: pct } : s,
+                              );
+                              return { ...c, donutSegments };
+                            })
+                          }
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-[11px] font-medium text-dash-ink-secondary">Spend amount</span>
+                        <input
+                          type="text"
+                          value={seg.spendLabel}
+                          onChange={(e) =>
+                            setChartEdit((c) => {
+                              if (!c) return c;
+                              const donutSegments = c.donutSegments.map((s, j) =>
+                                j === i ? { ...s, spendLabel: e.target.value } : s,
+                              );
+                              return { ...c, donutSegments };
+                            })
+                          }
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Footer line</label>
+              <input
+                type="text"
+                value={chartEdit.footerInsight ?? ""}
+                placeholder={`e.g. 0 active campaigns currently`}
+                onChange={(e) => setChartEdit((c) => (c ? { ...c, footerInsight: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+            </div>
+          ) : null}
 
           <div className="overflow-hidden rounded-lg border border-dash-border">
             <ShareReportView data={draftShare} />

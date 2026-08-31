@@ -4,7 +4,7 @@
  */
 
 import type { ShareChartData, ShareDonutSegment } from "../nre/share-report";
-import { formatChartFooterInsight } from "../nre/share-chart-projection";
+import { resolveChartFooterInsight, formatDonutSegmentStats } from "../nre/share-chart-projection";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import {
@@ -198,6 +198,7 @@ export function buildMtdOverviewOoxmlShapes(
 
   let legendY = 220;
   const legendX = 380;
+  const legendStatsColor = isLightTemplate ? "64748b" : "94a3b8";
   for (const seg of chart.donutSegments) {
     shapes.push(
       roundedCard({
@@ -213,14 +214,25 @@ export function buildMtdOverviewOoxmlShapes(
         x: legendX + 22,
         y: legendY - 2,
         w: W - legendX - 40,
-        h: 22,
-        text: `${seg.name} · ${seg.percentage}% · ${seg.spendLabel}`,
+        h: 20,
+        text: seg.name,
         sizePt: 13,
+        bold: true,
         colorHex: c.ink,
         align: "l",
       }),
+      textBox({
+        x: legendX + 22,
+        y: legendY + 14,
+        w: W - legendX - 40,
+        h: 18,
+        text: formatDonutSegmentStats(seg.percentage, seg.spendLabel),
+        sizePt: 12,
+        colorHex: legendStatsColor,
+        align: "l",
+      }),
     );
-    legendY += 28;
+    legendY += 40;
   }
 
   shapes.push(
@@ -229,7 +241,7 @@ export function buildMtdOverviewOoxmlShapes(
       y: 468,
       w: W - 80,
       h: 28,
-      text: formatChartFooterInsight(chart.snapshot.activeCampaignCount),
+      text: resolveChartFooterInsight(chart),
       sizePt: 14,
       colorHex: c.inkSubtitle,
       align: "ctr",

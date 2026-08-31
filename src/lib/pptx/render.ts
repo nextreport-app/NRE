@@ -11,7 +11,7 @@
  */
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
-import type { ShareVisibility } from "../nre/share-report";
+import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
@@ -108,6 +108,8 @@ export interface RenderPptxInput {
   isLightTemplate?: boolean;
   /** Pre-share editor visibility — omitted means include every slide (initial generation). */
   shareVisibility?: ShareVisibility;
+  /** Published chart edits from share JSON — overrides projected chart slide content. */
+  shareChart?: ShareChartData | null;
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
@@ -121,6 +123,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     clientLogo,
     isLightTemplate = false,
     shareVisibility,
+    shareChart,
   } = input;
   const vis = shareVisibility;
   const showOverview = vis?.overview !== false;
@@ -211,6 +214,8 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         template.background,
         isLightTemplate,
         data.platform,
+        {},
+        shareChart,
       );
       slides.push({
         xml: chartBundle.xml,

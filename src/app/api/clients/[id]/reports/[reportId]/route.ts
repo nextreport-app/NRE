@@ -49,11 +49,36 @@ const visibilitySchema = z.object({
   adSets: z.record(z.string(), z.boolean()),
 });
 
+const chartEditSchema = z.object({
+  title: z.string().max(200),
+  subtitle: z.string().max(200),
+  totalSpendLabel: z.string().max(64),
+  footerInsight: z.string().max(200).optional(),
+  snapshot: z.object({
+    mtdSpendLabel: z.string().max(64),
+    primaryResultsValue: z.string().max(64),
+    primaryResultsLabel: z.string().max(64),
+    primaryCprValue: z.string().max(64),
+    primaryCprLabel: z.string().max(64),
+    budgetPctUsed: z.string().max(32),
+    activeCampaignCount: z.number().int().min(0),
+  }),
+  donutSegments: z.array(
+    z.object({
+      name: z.string().max(200),
+      spendLabel: z.string().max(64),
+      percentage: z.number(),
+      color: z.string().max(6),
+    }),
+  ),
+});
+
 const shareReviewSchema = z.object({
   publish: z.boolean().optional(),
   visibility: visibilitySchema,
   campaigns: z.array(copySlideSchema),
   adSets: z.array(copySlideSchema).optional(),
+  chart: chartEditSchema.optional(),
 });
 
 function parseShareJson(raw: string | null): ShareReportWithArchive | null {
@@ -103,6 +128,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         aiInsights: c.aiInsights,
         metrics: c.metrics.map((m) => ({ key: m.key, label: m.label, value: m.value })),
       })),
+      chart: share.chart ?? null,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:copy-get");
@@ -168,6 +194,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         });
       }
       share.visibility = parsed.data.visibility as ShareVisibility;
+      if (parsed.data.chart && share.chart) {
+        share.chart = { ...share.chart, ...parsed.data.chart };
+      }
       if (parsed.data.publish) {
         share.publishedAt = new Date().toISOString();
       }

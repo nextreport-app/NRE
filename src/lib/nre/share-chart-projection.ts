@@ -13,8 +13,19 @@ function toTitleCase(label: string): string {
 }
 
 /** Footer insight under the donut — active campaigns only (budget % lives in the KPI tile). */
-export function formatChartFooterInsight(activeCampaignCount: number): string {
-  return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} this month`;
+export function formatChartFooterInsight(activeCampaignCount: number, override?: string): string {
+  if (override?.trim()) return override.trim();
+  return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} currently`;
+}
+
+export function resolveChartFooterInsight(chart: Pick<ShareChartData, "snapshot" | "footerInsight">): string {
+  return formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
+}
+
+/** Spend-mix legend stats — clarifies that the % is share of total spend, not budget. */
+export function formatDonutSegmentStats(percentage: number, spendLabel: string): string {
+  const pctLabel = Number.isInteger(percentage) ? String(percentage) : String(percentage);
+  return `${pctLabel}% of spend · ${spendLabel}`;
 }
 
 /** Shared projection from ChartSlideData → share-page chart shape (browser + PPT). */

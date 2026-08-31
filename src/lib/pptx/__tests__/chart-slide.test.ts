@@ -102,8 +102,7 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     );
     expect(bundle.xml).toContain("AD SPEND THIS MONTH");
     expect(bundle.xml).toContain("PURCHASES");
-    expect(bundle.xml).toContain("A ·");
-    expect(bundle.xml).toContain("B ·");
+    expect(bundle.xml).toContain("of spend · C$442");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(

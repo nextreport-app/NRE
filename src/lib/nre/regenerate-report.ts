@@ -55,6 +55,7 @@ export async function regeneratePptxFromShare(
     clientLogo,
     isLightTemplate: archive.isLightTemplate,
     shareVisibility: visibility,
+    shareChart: share.chart ?? null,
   });
 }
 
