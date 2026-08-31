@@ -103,7 +103,7 @@ const STEP_HEADINGS: Record<Step, string> = {
   2: "Select Campaigns",
   3: "Confirm Objectives",
   4: "Review Metric Cards",
-  5: "Report Period and Generate",
+  5: "Choose report type and generate",
 };
 
 const STEP_SUBTITLES: Record<Step, string> = {
@@ -111,7 +111,7 @@ const STEP_SUBTITLES: Record<Step, string> = {
   2: "Unchecked campaigns stay out of the deck. Ad-set slides are extra; campaign totals still include them.",
   3: "Wrong objective means wrong cards and Combined Total. Fix it here.",
   4: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
-  5: "Pick weekly, monthly, or comparison, check the summary, then generate.",
+  5: "Pick a report type, set dates if needed, review the summary, then generate.",
 };
 
 const LAST_PLATFORM_STORAGE_KEY = "nre.lastAdPlatform";
@@ -1662,6 +1662,16 @@ export function ReportUploadWizard({
     return "Weekly Report";
   }
 
+  /** Summary card label for the weekly/custom date line — avoids calling a 10-day custom pick a "week". */
+  function weeklyPeriodSummaryLabel(): string {
+    if (dateMode === "custom") {
+      const days = customSpanDays();
+      if (days !== null && days !== 7) return `Report period (${days} day${days === 1 ? "" : "s"})`;
+      return "Report period";
+    }
+    return "Week period";
+  }
+
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
   function summaryCampaignNames(): string[] {
     if (previewKind === "comparison" && comparisonData) return comparisonData.campaigns.map((c) => c.campaignName);
@@ -1692,7 +1702,7 @@ export function ReportUploadWizard({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="mb-1 text-[20px] font-bold text-white">Report Period and Generate</h1>
+          <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
           <p className="text-[13px] text-dash-ink-secondary">Loading your report…</p>
         </div>
       </div>
@@ -2371,7 +2381,7 @@ export function ReportUploadWizard({
               <ReportTypeCard
                 icon="📊"
                 heading="Weekly Performance Report"
-                description="Shows last 7 days performance with month-to-date comparison"
+                description="One reporting period (usually 7 days) plus month-to-date context"
                 selected={reportType === "WEEKLY"}
                 onSelect={() => handleReportTypeChange("WEEKLY")}
               />
@@ -2415,7 +2425,12 @@ export function ReportUploadWizard({
               </p>
             )}
             {reportType === "MONTHLY" && (
-              <p className="mt-4 text-[13px] text-dash-ink-secondary">Uses the full CSV month — no week picker.</p>
+              <p className="mt-4 text-[13px] text-dash-ink-secondary">Uses the full month in your CSV — no date picker needed.</p>
+            )}
+            {reportType === "CREATIVE" && hasAdLevelCsv && (
+              <p className="mt-4 text-[13px] text-dash-ink-secondary">
+                Uses ad-level data from the last 30 days in your CSV — no date picker needed.
+              </p>
             )}
             {reportType === "DAILY" && dailyRange && (
               <p className="mt-4 text-[13px] text-dash-ink-secondary">
@@ -2424,11 +2439,17 @@ export function ReportUploadWizard({
             )}
           </section>
 
-          {/* Section 2 — Date Range (Weekly only) */}
+          {/* Section 2 — Date range (Weekly only) */}
           {reportType === "WEEKLY" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">Select Weekly Period</h4>
-              <div className="mt-4 flex flex-wrap gap-3">
+              <h4 className="text-[16px] font-semibold text-white">Select report period</h4>
+              <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                Weekly reports compare one reporting window against month-to-date. Pick a 7-day shortcut or choose any
+                custom start and end dates within your CSV (up to 30 days).
+              </p>
+
+              <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks · 7 days</p>
+              <div className="mt-2 flex flex-wrap gap-3">
                 {weeklyOptions && (
                   <WeeklyPeriodOption
                     selected={dateMode === "last7"}
@@ -2451,13 +2472,17 @@ export function ReportUploadWizard({
                     }}
                   />
                 )}
+              </div>
+
+              <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Custom dates</p>
+              <div className="mt-2 flex flex-wrap gap-3">
                 <WeeklyPeriodOption
                   selected={dateMode === "custom"}
-                  label="Custom range"
+                  label="Custom date range"
                   sublabel={
                     dateBounds
-                      ? `CSV covers ${formatIso(dateBounds.minIso)} - ${formatIso(dateBounds.maxIso)}`
-                      : undefined
+                      ? `Any dates within ${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
+                      : "Pick any start and end date in your CSV"
                   }
                   onSelect={() => setDateMode("custom")}
                 />
@@ -2465,6 +2490,10 @@ export function ReportUploadWizard({
 
               {dateMode === "custom" && (
                 <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
+                  <p className="text-[13px] text-dash-ink-secondary">
+                    Choose any consecutive dates from your upload — not limited to 7 days, but shorter ranges work best
+                    for weekly-style reports.
+                  </p>
                   <div className="flex flex-wrap gap-3">
                     <div>
                       <label className="mb-1 block text-[13px] text-dash-ink-secondary">Start date</label>
@@ -2503,7 +2532,8 @@ export function ReportUploadWizard({
                   {needsLongRangeConfirm && (
                     <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
                       <p className="mb-2 text-[13px] text-amber-200">
-                        Weekly reports work best with 7 days or less. Continue anyway?
+                        You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
+                        longer period anyway?
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -2671,6 +2701,9 @@ export function ReportUploadWizard({
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
                   <p className="text-[13px] text-[#94a3b8]">
+                    Report type: <span className="text-[13px] text-white">{reportTypeLabel()}</span>
+                  </p>
+                  <p className="text-[13px] text-[#94a3b8]">
                     Client: <span className="text-[13px] text-white">{clientName}</span>
                   </p>
                   <div>
@@ -2695,12 +2728,28 @@ export function ReportUploadWizard({
                     </p>
                   ) : (
                     <>
-                      {reportType === "WEEKLY" && weeklyRangeIso && (
+                      {reportType === "DAILY" && dailyRange && (
                         <p className="text-[13px] text-[#94a3b8]">
-                          Week period: <span className="text-[13px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                          Daily period: <span className="text-[13px] text-white">{formatSummaryRange(dailyRange)}</span>
                         </p>
                       )}
-                      {mtdRange && (
+                      {reportType === "WEEKLY" && weeklyRangeIso && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          {weeklyPeriodSummaryLabel()}:{" "}
+                          <span className="text-[13px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                        </p>
+                      )}
+                      {reportType === "MONTHLY" && mtdRange && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Full month: <span className="text-[13px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        </p>
+                      )}
+                      {reportType === "CREATIVE" && mtdRange && (
+                        <p className="text-[13px] text-[#94a3b8]">
+                          Data window: <span className="text-[13px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        </p>
+                      )}
+                      {reportType === "WEEKLY" && mtdRange && (
                         <p className="text-[13px] text-[#94a3b8]">
                           Month to date: <span className="text-[13px] text-white">{formatSummaryRange(mtdRange)}</span>
                         </p>
