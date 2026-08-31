@@ -4,6 +4,7 @@
  */
 
 import type { ChartSlideData } from "../nre/report-data";
+import type { ShareChartData } from "../nre/share-report";
 import { projectChartSlideToShareChart } from "../nre/share-chart-projection";
 import type { TemplateBackgroundImage } from "./package";
 import { buildMtdOverviewSlideXml } from "./chart-slide-ooxml";
@@ -21,8 +22,9 @@ export async function buildChartSlideBundle(
   isLightTemplate = false,
   _platform: "META" | "GOOGLE" = "META",
   _options: ChartSlideRenderOptions = {},
+  shareChartOverride?: ShareChartData | null,
 ): Promise<ChartSlideBundle> {
-  const shareChart = projectChartSlideToShareChart(chart, currencySymbol);
+  const shareChart = shareChartOverride ?? projectChartSlideToShareChart(chart, currencySymbol);
   return {
     xml: buildMtdOverviewSlideXml(shareChart, background, isLightTemplate),
   };

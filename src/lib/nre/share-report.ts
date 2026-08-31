@@ -113,6 +113,8 @@ export interface ShareChartData {
   donutSegments: ShareDonutSegment[];
   /** Total MTD spend label for donut center. */
   totalSpendLabel: string;
+  /** Optional override for the footer insight line under the donut. */
+  footerInsight?: string;
   /** @deprecated Legacy bar-chart rows — kept for old share JSON; new reports use donutSegments. */
   summaryLine?: string;
   /** @deprecated Legacy bar-chart rows. */

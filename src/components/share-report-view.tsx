@@ -2,7 +2,7 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { formatChartFooterInsight } from "@/lib/nre/share-chart-projection";
+import { formatDonutSegmentStats, resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { DONUT_HOLE_RATIO } from "@/lib/pptx/chart-slide-constants";
@@ -270,9 +270,10 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
               <li key={seg.name} className="flex items-start gap-2.5 text-[13px] text-ink">
                 <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
                 <span className="min-w-0 break-words">
-                  <span className="font-semibold">{seg.name}</span>
-                  {" · "}
-                  {seg.percentage}% · {seg.spendLabel}
+                  <span className="block font-semibold">{seg.name}</span>
+                  <span className="mt-0.5 block text-[12px] text-[#94a3b8]">
+                    {formatDonutSegmentStats(seg.percentage, seg.spendLabel)}
+                  </span>
                 </span>
               </li>
             ))}
@@ -283,7 +284,7 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
       )}
 
       <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
-        {formatChartFooterInsight(chart.snapshot.activeCampaignCount)}
+        {resolveChartFooterInsight(chart)}
       </p>
     </SlideCard>
   );

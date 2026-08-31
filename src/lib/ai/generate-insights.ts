@@ -74,6 +74,7 @@ import {
   capSummary,
   countSentenceEndings,
   insightsLooksLikeLaundryList,
+  aiCopyViolatesObjectiveRules,
   resultCountMismatch,
 } from "./prompts";
 
@@ -191,7 +192,8 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       } else {
         const trimmedSummary = rawSummary!.trim();
         const countMismatch = resultCountMismatch(trimmedSummary, slide.ai.resultsNum);
-        summaryFallback = isUnusableAi(trimmedSummary) || !endsComplete(trimmedSummary) || countMismatch;
+        summaryFallback = isUnusableAi(trimmedSummary) || !endsComplete(trimmedSummary) || countMismatch
+          || aiCopyViolatesObjectiveRules(trimmedSummary, slide.ai);
         if (countMismatch) {
           console.warn(`[ai:generate-insights] AI summary result count mismatch for ${name} — forcing structured fallback`);
         }
@@ -230,7 +232,8 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       } else {
         const trimmedInsight = rawInsight!.trim();
         insightsFallback =
-          isUnusableAi(trimmedInsight) || !endsComplete(trimmedInsight) || insightsLooksLikeLaundryList(trimmedInsight);
+          isUnusableAi(trimmedInsight) || !endsComplete(trimmedInsight) || insightsLooksLikeLaundryList(trimmedInsight)
+          || aiCopyViolatesObjectiveRules(trimmedInsight, slide.ai);
         insights = insightsFallback ? buildFallbackInsights(slide.ai) : capInsights(trimmedInsight);
       }
 

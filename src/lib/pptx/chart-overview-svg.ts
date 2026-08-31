@@ -6,7 +6,7 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { formatChartFooterInsight } from "../nre/share-chart-projection";
+import { resolveChartFooterInsight, formatDonutSegmentStats } from "../nre/share-chart-projection";
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
 
 const INK = "#ffffff";
@@ -127,16 +127,18 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   // Legend
   let legendY = 220;
   const legendX = 380;
+  const LEGEND_STATS = "#94a3b8";
   for (const seg of chart.donutSegments) {
     parts.push(
       `<rect x="${legendX}" y="${legendY}" width="14" height="14" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendX + 22}" y="${legendY + 12}" fill="${INK}" font-family="Poppins" font-size="13">${escapeXml(`${seg.name} · ${seg.percentage}% · ${seg.spendLabel}`)}</text>`,
+      `<text x="${legendX + 22}" y="${legendY + 12}" fill="${INK}" font-family="Poppins" font-size="13" font-weight="700">${escapeXml(seg.name)}</text>`,
+      `<text x="${legendX + 22}" y="${legendY + 28}" fill="${LEGEND_STATS}" font-family="Poppins" font-size="12" font-weight="500">${escapeXml(formatDonutSegmentStats(seg.percentage, seg.spendLabel))}</text>`,
     );
-    legendY += 28;
+    legendY += 40;
   }
 
   parts.push(
-    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(formatChartFooterInsight(chart.snapshot.activeCampaignCount))}</text>`,
+    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,
   );
 
   parts.push("</svg>");
