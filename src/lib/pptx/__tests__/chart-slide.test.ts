@@ -94,6 +94,16 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
 
+  it("uses muted grey for the main heading — same REPORT_HEADER_COLOR as every other slide", async () => {
+    const chart = buildChart([campaign("A", { spend: 442 })]);
+    const shareChart = projectChartSlideToShareChart(chart, "$");
+    const bundle = await buildChartSlideBundle(chart, "$", BACKGROUND);
+    const titleIdx = bundle.xml.indexOf(`<a:t>${shareChart.title}</a:t>`);
+    expect(titleIdx).toBeGreaterThan(-1);
+    const runStart = bundle.xml.lastIndexOf("<a:r>", titleIdx);
+    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
+  });
+
   it("embeds native OOXML chart shapes instead of a rasterized PNG overlay", async () => {
     const bundle = await buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
@@ -117,6 +127,14 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
     expect(svg).toContain(`A ${110 * DONUT_HOLE_RATIO}`);
+  });
+
+  it("buildMtdOverviewSvg uses muted grey for the main heading", () => {
+    const chart = buildChart([campaign("A", { spend: 442 })]);
+    const shareChart = projectChartSlideToShareChart(chart, "$");
+    const svg = buildMtdOverviewSvg(shareChart);
+    expect(svg).toContain('fill="#94a3b8"');
+    expect(svg).toContain(shareChart.title);
   });
 
   it("renders a full-ring donut when one campaign owns 100% of spend", () => {

@@ -237,7 +237,7 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="text-center text-[24px] font-bold text-ink">{chart.title}</h2>
+      <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{chart.title}</h2>
       <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">

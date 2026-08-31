@@ -7,6 +7,7 @@ import type { ShareChartData, ShareDonutSegment } from "../nre/share-report";
 import { resolveChartFooterInsight, formatDonutSegmentStats } from "../nre/share-chart-projection";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
+import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
 import {
   backgroundImage,
   buildBlankSlideXml,
@@ -85,9 +86,9 @@ export function buildMtdOverviewOoxmlShapes(
       w: W - 80,
       h: 32,
       text: chart.title,
-      sizePt: 24,
+      sizePt: REPORT_HEADER_SIZE_PT,
       bold: true,
-      colorHex: c.ink,
+      colorHex: REPORT_HEADER_COLOR,
       align: "ctr",
     }),
     textBox({
