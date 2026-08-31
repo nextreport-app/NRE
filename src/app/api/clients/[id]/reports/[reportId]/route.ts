@@ -217,6 +217,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         filePath = await saveReportFile(reportId, pptxBuffer);
       }
 
+      await prisma.report.update({
+        where: { id: reportId },
+        data: {
+          summaryJson: JSON.stringify(share),
+          ...(filePath ? { filePath } : {}),
+        },
+      });
+
       if (parsed.data.publish && report.shareToken) {
         const nextPdfPath = await generateReportPdf({
           reportId,
@@ -224,17 +232,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           share,
           previousPdfPath: pdfPath,
         });
-        if (nextPdfPath) pdfPath = nextPdfPath;
+        if (nextPdfPath) {
+          pdfPath = nextPdfPath;
+          await prisma.report.update({
+            where: { id: reportId },
+            data: { pdfPath },
+          });
+        }
       }
-
-      await prisma.report.update({
-        where: { id: reportId },
-        data: {
-          summaryJson: JSON.stringify(share),
-          ...(filePath ? { filePath } : {}),
-          ...(pdfPath !== report.pdfPath ? { pdfPath } : {}),
-        },
-      });
       return NextResponse.json({
         ok: true,
         publishedAt: share.publishedAt ?? null,
