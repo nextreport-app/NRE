@@ -32,6 +32,9 @@ export interface WizardGenerateSnapshot {
   driveView: "collapsed" | "editing" | "success";
   driveSaveUrl: string | null;
   rememberedFolder: { id: string; name: string } | null;
+  /** Set after Review → Publish; gates Download PDF on the generate screen. */
+  publishedAt: string | null;
+  pdfAvailable: boolean;
 }
 
 function storageKey(clientId: string): string {
@@ -76,7 +79,25 @@ export function clearWizardGenerateSnapshot(clientId: string): void {
   }
 }
 
-/** After publish regenerates the PPTX, allow saving the updated deck to Drive again. */
+/** After publish regenerates the PPTX/PDF, allow saving the updated deck to Drive again. */
+export function updateGenerateSnapshotAfterPublish(
+  clientId: string,
+  reportId: string,
+  publishedAt: string,
+  pdfAvailable: boolean,
+): void {
+  const snapshot = loadWizardGenerateSnapshot(clientId, reportId);
+  if (!snapshot) return;
+  saveWizardGenerateSnapshot(clientId, {
+    ...snapshot,
+    publishedAt,
+    pdfAvailable,
+    driveView: "collapsed",
+    driveSaveUrl: null,
+  });
+}
+
+/** @deprecated Use updateGenerateSnapshotAfterPublish */
 export function invalidateGenerateSnapshotDrive(clientId: string, reportId: string): void {
   const snapshot = loadWizardGenerateSnapshot(clientId, reportId);
   if (!snapshot) return;

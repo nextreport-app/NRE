@@ -31,6 +31,15 @@ export async function saveReportFile(reportId: string, buffer: Buffer): Promise<
   return blob.url;
 }
 
+export async function saveReportPdf(reportId: string, buffer: Buffer): Promise<string> {
+  const blob = await put(`reports/${reportId}.pdf`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "application/pdf",
+  });
+  return blob.url;
+}
+
 export async function readReportFile(url: string): Promise<Buffer> {
   const result = await get(url, { access: "private" });
   if (!result || result.statusCode !== 200) {

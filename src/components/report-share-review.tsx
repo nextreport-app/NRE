@@ -7,7 +7,7 @@ import { ShareReportView } from "@/components/share-report-view";
 import type { ShareReportData, ShareVisibility, ShareChartData } from "@/lib/nre/share-report";
 import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
 import { countVisibleSlides } from "@/lib/nre/share-visibility";
-import { invalidateGenerateSnapshotDrive } from "@/lib/nre/wizard-generate-snapshot";
+import { updateGenerateSnapshotAfterPublish } from "@/lib/nre/wizard-generate-snapshot";
 
 interface CopySlide {
   campaignName: string;
@@ -112,6 +112,7 @@ export function ReportShareReview({
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [canSyncPpt, setCanSyncPpt] = useState(true);
+  const [pdfAvailable, setPdfAvailable] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export function ReportShareReview({
       setChartEdit((json.chart as ShareChartData | null) ?? loaded.chart ?? null);
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
+      setPdfAvailable(!!json.pdfAvailable);
       setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
       setError(null);
       setLoading(false);
@@ -240,10 +242,15 @@ export function ReportShareReview({
     const json = await res.json().catch(() => ({}));
     const ts = (json.publishedAt as string | undefined) ?? new Date().toISOString();
     setPublishedAt(ts);
+    setPdfAvailable(!!json.pdfAvailable);
     setJustPublished(true);
     setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
-    invalidateGenerateSnapshotDrive(clientId, reportId);
-    showToast("Published — live link and downloadable PPT are updated.");
+    updateGenerateSnapshotAfterPublish(clientId, reportId, ts, !!json.pdfAvailable);
+    showToast(
+      json.pdfAvailable
+        ? "Published — live link, PPTX, and PDF are updated."
+        : "Published — live link and PPTX updated. PDF could not be generated; try publishing again.",
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -271,8 +278,9 @@ export function ReportShareReview({
             {justPublished ? "✓ Published successfully" : "✓ Last published"}
           </p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            Your live browser link{canSyncPpt ? " and Download PPTX file" : ""} now match this review.
+            Your live browser link{canSyncPpt ? ", Download PPTX," : ""}{pdfAvailable ? " and Download PDF" : ""} now match this review.
             {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
+            {!pdfAvailable && publishedAt ? " PDF generation did not complete — publish again to retry." : ""}
           </p>
           {returnToGenerateHref ? (
             <Link href={returnToGenerateHref} className="mt-2 inline-block text-[13px] font-semibold text-dash-accent hover:underline">
@@ -287,7 +295,7 @@ export function ReportShareReview({
           <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
             {visibleCount} slides on the live link. <strong>Publish</strong> updates the browser report
-            {canSyncPpt ? " and the Download PPTX button" : ""} — not a Google Slides file already in Drive.
+            {canSyncPpt ? ", Download PPTX," : ""} and Download PDF (after review) — not a Google Slides file already in Drive.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -300,6 +308,14 @@ export function ReportShareReview({
             >
               Preview live link
             </Link>
+          ) : null}
+          {pdfAvailable ? (
+            <a
+              href={`/api/reports/${reportId}/download-pdf`}
+              className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"
+            >
+              Download PDF
+            </a>
           ) : null}
           <button
             type="button"

@@ -108,3 +108,18 @@ body:has(#light-preview-page) .whatsapp-float {
    handled by components/site-chrome-footer.tsx (pathname-gated, not CSS),
    since :has() isn't supported in every browser/WebView a shared link might
    be opened in. */
+
+/* PDF export — one slide per page when Puppeteer prints /print/r/[token]. */
+@media print {
+  .print-slide {
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-slide:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}
