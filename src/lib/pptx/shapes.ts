@@ -130,7 +130,7 @@ export interface DonutRingOptions {
   y: number;
   d: number;
   segments: DonutRingSegment[];
-  /** Inner hole diameter as a fraction of outer diameter — matches browser mask (52%). */
+  /** Inner hole diameter as a fraction of outer diameter — see DONUT_HOLE_RATIO in chart-slide-constants.ts. */
   holeRatio?: number;
   holeFillHex: string;
 }
@@ -154,7 +154,7 @@ export function donutRing(opts: DonutRingOptions): string[] {
       }),
     );
   }
-  const holeRatio = opts.holeRatio ?? 0.52;
+  const holeRatio = opts.holeRatio ?? 0.65;
   const innerD = opts.d * holeRatio;
   const inset = (opts.d - innerD) / 2;
   parts.push(

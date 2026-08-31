@@ -26,30 +26,17 @@ const TEMPLATE_PATH = path.resolve(__dirname, "../../../../reference/templates/A
 /** The actual production template (templates.ts's loadTemplateBuffer target) — used where the exact shipped file's structure matters, not just an equivalent reference copy. */
 const PRODUCTION_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const NOW = new Date("2026-07-20T12:00:00Z");
-const CHART_OVERVIEW_MEDIA = "chart-overview.png";
-
-async function assertChartOverviewPngInZip(zip: JSZip): Promise<Uint8Array> {
-  const media = zip.file(`ppt/media/${CHART_OVERVIEW_MEDIA}`);
-  expect(media).not.toBeNull();
-  const bytes = new Uint8Array(await media!.async("arraybuffer"));
-  expect(bytes[0]).toBe(0x89);
-  expect(bytes[1]).toBe(0x50);
-  expect(bytes.length).toBeGreaterThan(1000);
-  return bytes;
-}
+const CHART_SLIDE_MARKER = 'prst="pie"';
 
 function chartOverviewSvgForFixture(chart: ChartSlideData, currencySymbol: string): string {
   return buildMtdOverviewSvg(projectChartSlideToShareChart(chart, currencySymbol));
 }
 
 async function findChartSlideXml(zip: JSZip): Promise<string> {
-  const relPaths = Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p));
-  for (const relPath of relPaths) {
-    const rels = await zip.file(relPath)!.async("string");
-    if (rels.includes(CHART_OVERVIEW_MEDIA)) {
-      const slidePath = relPath.replace("/_rels/", "/").replace(".rels", "");
-      return zip.file(slidePath)!.async("string");
-    }
+  const slidePaths = Object.keys(zip.files).filter((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p));
+  for (const slidePath of slidePaths) {
+    const xml = await zip.file(slidePath)!.async("string");
+    if (xml.includes(CHART_SLIDE_MARKER)) return xml;
   }
   throw new Error("Chart slide not found");
 }
@@ -58,7 +45,9 @@ async function chartSlideRelPath(zip: JSZip): Promise<string> {
   const relPaths = Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p));
   for (const relPath of relPaths) {
     const rels = await zip.file(relPath)!.async("string");
-    if (rels.includes(CHART_OVERVIEW_MEDIA)) return relPath;
+    const slidePath = relPath.replace("/_rels/", "/").replace(".rels", "");
+    const xml = await zip.file(slidePath)!.async("string");
+    if (xml.includes(CHART_SLIDE_MARKER)) return relPath;
   }
   throw new Error("Chart slide rels not found");
 }
@@ -297,9 +286,10 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — KPI tiles + spend-mix donut (embedded PNG).
+    // Combined MTD overview slide — KPI tiles + spend-mix donut (native OOXML).
     const zipForChart = await JSZip.loadAsync(buffer);
-    await assertChartOverviewPngInZip(zipForChart);
+    const chartXmlFromZip = await findChartSlideXml(zipForChart);
+    expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
@@ -579,7 +569,8 @@ describe("renderPptx — real template end-to-end", () => {
 
     // NOW is 2026-07-20, so the MTD start date falls in July.
     const zipForChart = await JSZip.loadAsync(buffer);
-    await assertChartOverviewPngInZip(zipForChart);
+    const chartXmlFromZip = await findChartSlideXml(zipForChart);
+    expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
@@ -749,7 +740,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
     expect(coverXml).not.toContain("{{");
   });
 
-  it("MTD chart slide: one full-slide browser-matching PNG with bundled fonts", async () => {
+  it("MTD chart slide: native editable shapes (text boxes + pie donut), background only", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
     const zip = await JSZip.loadAsync(buffer);
@@ -757,15 +748,14 @@ describe("renderPptx — client logo + agency name branding (real production tem
     const chartRelsPath = await chartSlideRelPath(zip);
     const chartXml = await findChartSlideXml(zip);
     const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
-    expect(chartRelsXml).toContain(`Target="../media/${CHART_OVERVIEW_MEDIA}"`);
+    expect(chartRelsXml).not.toContain("chart-overview.png");
     expect(chartRelsXml).toContain('Id="rId2"');
 
-    const pngBytes = await assertChartOverviewPngInZip(zip);
-    expect(pngBytes.length).toBeGreaterThan(50_000);
-
-    expect(chartXml).toContain('<a:ext cx="12192000" cy="6858000"/>');
-    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(2);
-    expect(chartXml).not.toContain("<p:sp>");
+    expect(chartXml).toContain('prst="pie"');
+    expect(chartXml).toContain('txBox="1"');
+    expect(chartXml).toContain("TOTAL SPEND");
+    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
+    expect((chartXml.match(/<p:sp>/g) || []).length).toBeGreaterThan(10);
   });
 
   it("renders with a client logo only — media added to the cover, nowhere else", async () => {
@@ -1098,9 +1088,10 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const zip = await JSZip.loadAsync(buffer);
     const chartSlideRelPaths = new Set<string>();
     for (const relPath of Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p))) {
-      const rels = await zip.file(relPath)!.async("string");
-      if (rels.includes(CHART_OVERVIEW_MEDIA)) {
-        chartSlideRelPaths.add(relPath.replace("/_rels/", "/").replace(".rels", ""));
+      const slidePath = relPath.replace("/_rels/", "/").replace(".rels", "");
+      const xml = await zip.file(slidePath)!.async("string");
+      if (xml.includes(CHART_SLIDE_MARKER)) {
+        chartSlideRelPaths.add(slidePath);
       }
     }
     const slidePaths = Object.keys(zip.files).filter((p) => p.startsWith("ppt/slides/slide"));
@@ -1118,7 +1109,13 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       // this fixture's Brand campaign its own Cost Per 1K Reach column
       // (real spend, even though its own "count" is always 0), so the
       // table is the full 10 columns wide (6 static + 2 objective pairs).
-      const expected = isTableSlide ? 20 : isChartSlide ? 0 : isLegendSlide ? legendEntryCount : 0;
+      const expected = isTableSlide
+        ? 20
+        : isChartSlide
+          ? 1 /* donut hole fill on light template */
+          : isLegendSlide
+            ? legendEntryCount
+            : 0;
       expect(whiteCount).toBe(expected);
     }
 
@@ -1126,7 +1123,8 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const [cover, campaign1, , , , , table] = slideTexts;
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
-    await assertChartOverviewPngInZip(zip);
+    const chartXmlLight = await findChartSlideXml(zip);
+    expect(chartXmlLight).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("month to date overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just

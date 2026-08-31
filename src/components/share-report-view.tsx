@@ -2,8 +2,10 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
+import { formatChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
+import { DONUT_HOLE_RATIO } from "@/lib/pptx/chart-slide-constants";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
 
 /**
@@ -256,7 +258,7 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           <div className="relative mx-auto h-[220px] w-[220px] shrink-0">
             <div
               className="h-full w-full rounded-full"
-              style={{ background: donutGradient, mask: "radial-gradient(circle, transparent 52%, black 53%)" }}
+              style={{ background: donutGradient, mask: `radial-gradient(circle, transparent ${DONUT_HOLE_RATIO * 100}%, black ${DONUT_HOLE_RATIO * 100 + 1}%)` }}
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-[22px] font-bold text-ink">{chart.totalSpendLabel}</p>
@@ -281,8 +283,7 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
       )}
 
       <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
-        {chart.snapshot.activeCampaignCount} active campaign{chart.snapshot.activeCampaignCount === 1 ? "" : "s"} this month
-        {chart.snapshot.budgetPctUsed ? ` · ${chart.snapshot.budgetPctUsed} of monthly budget used` : ""}
+        {formatChartFooterInsight(chart.snapshot.activeCampaignCount)}
       </p>
     </SlideCard>
   );

@@ -12,7 +12,12 @@ function toTitleCase(label: string): string {
     .join(" ");
 }
 
-/** Shared projection from ChartSlideData → share-page chart shape (browser + PPT SVG). */
+/** Footer insight under the donut — active campaigns only (budget % lives in the KPI tile). */
+export function formatChartFooterInsight(activeCampaignCount: number): string {
+  return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} this month`;
+}
+
+/** Shared projection from ChartSlideData → share-page chart shape (browser + PPT). */
 export function projectChartSlideToShareChart(chart: ChartSlideData, currencySymbol: string): ShareChartData {
   const rangeSuffix = chart.periodSubLabel.length > 0 ? `: ${chart.periodSubLabel}` : "";
   const title = `${chart.mtdMonthName ?? "This month"} · Month to date overview${rangeSuffix}`;

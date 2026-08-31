@@ -13,7 +13,7 @@
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { ShareVisibility } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
-import { CHART_BG_REL_ID, CHART_OVERVIEW_MEDIA_FILE, CHART_OVERVIEW_REL_ID } from "./chart-slide-constants";
+import { CHART_BG_REL_ID } from "./chart-slide-constants";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
@@ -32,13 +32,12 @@ import { slideAiKey } from "./slide-keys";
 export { collectLegendEntries } from "./legend-collect";
 export { slideAiKey } from "./slide-keys";
 
-// Chart slide: template background + transparent chart PNG overlay.
+// Chart slide: template background + native editable overview shapes.
 function buildChartSlideRels(backgroundMediaTarget: string): string {
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>' +
     `<Relationship Id="${CHART_BG_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${backgroundMediaTarget}"/>` +
-    `<Relationship Id="${CHART_OVERVIEW_REL_ID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${CHART_OVERVIEW_MEDIA_FILE}"/>` +
     "</Relationships>"
   );
 }
@@ -213,7 +212,6 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         isLightTemplate,
         data.platform,
       );
-      template.staticFiles.set(chartBundle.mediaPath, chartBundle.mediaBytes);
       slides.push({
         xml: chartBundle.xml,
         rels: buildChartSlideRels(template.background.mediaTarget),
