@@ -215,25 +215,25 @@ export function buildMtdOverviewOoxmlShapes(
         x: legendX + 22,
         y: legendY - 2,
         w: W - legendX - 40,
-        h: 20,
+        h: 22,
         text: seg.name,
-        sizePt: 13,
+        sizePt: 15,
         bold: true,
         colorHex: c.ink,
         align: "l",
       }),
       textBox({
         x: legendX + 22,
-        y: legendY + 14,
+        y: legendY + 16,
         w: W - legendX - 40,
-        h: 18,
+        h: 20,
         text: formatDonutSegmentStats(seg.percentage, seg.spendLabel),
-        sizePt: 12,
+        sizePt: 14,
         colorHex: legendStatsColor,
         align: "l",
       }),
     );
-    legendY += 40;
+    legendY += 44;
   }
 
   shapes.push(
