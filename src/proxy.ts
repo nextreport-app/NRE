@@ -32,6 +32,9 @@ export default auth((req) => {
     // these without logging in; the page itself does its own
     // token-not-found/not-COMPLETE 404 handling, not this middleware.
     pathname.startsWith("/r/") ||
+    // Server-side PDF capture navigates Puppeteer to /print/r/[token]?sig=…
+    // (see lib/pdf/render-report-pdf.ts). Signature is verified on the page.
+    pathname.startsWith("/print/") ||
     // The share page's own "Download PPTX" button (api/r/[token]/download) —
     // same trust boundary as the page itself (the shareToken), not a
     // session cookie.

@@ -4,6 +4,7 @@ import {
   invalidateGenerateSnapshotDrive,
   loadWizardGenerateSnapshot,
   saveWizardGenerateSnapshot,
+  updateGenerateSnapshotAfterPublish,
   type WizardGenerateSnapshot,
 } from "../wizard-generate-snapshot";
 
@@ -39,6 +40,8 @@ const snapshot: WizardGenerateSnapshot = {
   driveView: "collapsed",
   driveSaveUrl: null,
   rememberedFolder: null,
+  publishedAt: null,
+  pdfAvailable: false,
 };
 
 describe("wizard-generate-snapshot", () => {
@@ -73,9 +76,27 @@ describe("wizard-generate-snapshot", () => {
       ...snapshot,
       driveView: "success",
       driveSaveUrl: "https://drive.google.com/file/d/abc/view",
+      publishedAt: "2026-08-31T12:00:00.000Z",
+      pdfAvailable: true,
     });
     invalidateGenerateSnapshotDrive(clientId, "report-1");
     const loaded = loadWizardGenerateSnapshot(clientId, "report-1");
+    expect(loaded?.driveView).toBe("collapsed");
+    expect(loaded?.driveSaveUrl).toBeNull();
+    expect(loaded?.publishedAt).toBe("2026-08-31T12:00:00.000Z");
+    expect(loaded?.pdfAvailable).toBe(true);
+  });
+
+  it("updateGenerateSnapshotAfterPublish stores publish metadata and clears drive success", () => {
+    saveWizardGenerateSnapshot(clientId, {
+      ...snapshot,
+      driveView: "success",
+      driveSaveUrl: "https://drive.google.com/file/d/abc/view",
+    });
+    updateGenerateSnapshotAfterPublish(clientId, "report-1", "2026-08-31T12:00:00.000Z", true);
+    const loaded = loadWizardGenerateSnapshot(clientId, "report-1");
+    expect(loaded?.publishedAt).toBe("2026-08-31T12:00:00.000Z");
+    expect(loaded?.pdfAvailable).toBe(true);
     expect(loaded?.driveView).toBe("collapsed");
     expect(loaded?.driveSaveUrl).toBeNull();
   });

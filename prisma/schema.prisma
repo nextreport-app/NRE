@@ -346,6 +346,9 @@ model Report {
   weekEnd   String?
   fileName  String?
   filePath  String?
+  // Cached PDF export (generated on Publish after review) — same private Blob
+  // store pattern as filePath; null until the agency publishes from Review.
+  pdfPath   String?
   // Cached Drive webViewLink once "Get Google Slides Link" has been used —
   // avoids creating a duplicate Drive file on every click.
   slidesUrl String?

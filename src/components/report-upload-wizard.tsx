@@ -482,6 +482,8 @@ export function ReportUploadWizard({
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [pdfAvailable, setPdfAvailable] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   // "Save to Google Drive" — an explicit, per-report action the user takes
   // right here on the download screen (see handleSaveToDrive below), not
@@ -595,12 +597,14 @@ export function ReportUploadWizard({
     setDriveSaveUrl(null);
     setDriveSaveError(null);
     setCopied(false);
+    setPublishedAt(null);
+    setPdfAvailable(false);
   }
 
   function buildGenerateSnapshot(
     core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
     extras?: Partial<
-      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder">
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt" | "pdfAvailable">
     >,
   ): WizardGenerateSnapshot {
     return {
@@ -629,6 +633,8 @@ export function ReportUploadWizard({
       driveView: extras?.driveView ?? driveView,
       driveSaveUrl: extras?.driveSaveUrl ?? driveSaveUrl,
       rememberedFolder: extras?.rememberedFolder ?? rememberedFolder,
+      publishedAt: extras?.publishedAt ?? publishedAt,
+      pdfAvailable: extras?.pdfAvailable ?? pdfAvailable,
     };
   }
 
@@ -659,6 +665,8 @@ export function ReportUploadWizard({
     setDriveView(snapshot.driveView);
     setDriveSaveUrl(snapshot.driveSaveUrl);
     setRememberedFolder(snapshot.rememberedFolder);
+    setPublishedAt(snapshot.publishedAt ?? null);
+    setPdfAvailable(snapshot.pdfAvailable ?? false);
     setGenerateStatus("done");
     setGenerateMessage(null);
   }
@@ -666,7 +674,7 @@ export function ReportUploadWizard({
   function persistGenerateSnapshot(
     core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
     extras?: Partial<
-      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder">
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt" | "pdfAvailable">
     >,
   ) {
     saveWizardGenerateSnapshot(clientId, buildGenerateSnapshot(core, extras));
@@ -701,8 +709,21 @@ export function ReportUploadWizard({
       setReportId(resumeReportId);
       setDownloadUrl(`/api/reports/${resumeReportId}/download`);
       setShareToken(json.shareToken ?? null);
+      setPublishedAt(json.publishedAt ?? null);
+      setPdfAvailable(!!json.pdfAvailable);
       setGenerateStatus("done");
       setGenerateMessage(null);
+      persistGenerateSnapshot(
+        {
+          reportId: resumeReportId,
+          downloadUrl: `/api/reports/${resumeReportId}/download`,
+          shareToken: json.shareToken ?? null,
+        },
+        {
+          publishedAt: json.publishedAt ?? null,
+          pdfAvailable: !!json.pdfAvailable,
+        },
+      );
       setStepState(5);
       setVisitedSteps(new Set([1, 2, 3, 4, 5]));
       router.replace(`/clients/${clientId}/reports/new`);
@@ -1439,6 +1460,8 @@ export function ReportUploadWizard({
     // header) — json.shareToken is simply absent for that reportType, so
     // this naturally stays null and the Share Report button never renders.
     setShareToken(json.shareToken ?? null);
+    setPublishedAt(null);
+    setPdfAvailable(false);
     setGenerateStatus("done");
     persistGenerateSnapshot({
       reportId: json.reportId,
@@ -2905,10 +2928,8 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              {/* Secondary actions — two equal-width columns. State 4
-                  (Drive not connected): the right column simply never
-                  renders, so Download PPTX sits alone at half width. */}
-              <div className="flex gap-3">
+              {/* Secondary actions — PPTX, PDF (after publish), and optional Drive save. */}
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <a
                   href={downloadUrl}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
@@ -2916,6 +2937,28 @@ export function ReportUploadWizard({
                 >
                   ⬇ Download PPTX
                 </a>
+
+                {shareToken && reportId ? (
+                  pdfAvailable ? (
+                    <a
+                      href={`/api/reports/${reportId}/download-pdf`}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
+                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #63b3ed" }}
+                    >
+                      ⬇ Download PDF
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      title="Review and publish your report to enable PDF download"
+                      className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white opacity-50"
+                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
+                    >
+                      ⬇ Download PDF
+                    </button>
+                  )
+                ) : null}
 
                 {hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success") && (
                   <div className="flex-1">
@@ -2951,6 +2994,23 @@ export function ReportUploadWizard({
                   </div>
                 )}
               </div>
+              {shareToken && reportId && !pdfAvailable ? (
+                <p className="text-center text-[12px] text-[#94a3b8]">
+                  PDF unlocks after you{" "}
+                  <Link
+                    href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                    className="text-dash-accent hover:underline"
+                    onClick={() => {
+                      if (reportId && downloadUrl) {
+                        persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+                      }
+                    }}
+                  >
+                    review and publish
+                  </Link>
+                  .
+                </p>
+              ) : null}
 
               {/* Tertiary actions — always available off the same share
                   link the primary button uses, regardless of Google Drive

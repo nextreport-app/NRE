@@ -373,7 +373,17 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
   );
 }
 
-export function ShareReportView({ data, shareToken }: { data: ShareReportData; shareToken?: string }) {
+export function ShareReportView({
+  data,
+  shareToken,
+  mode = "share",
+}: {
+  data: ShareReportData;
+  shareToken?: string;
+  mode?: "share" | "print";
+}) {
+  const isPrint = mode === "print";
+  const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
   const visibleData = applyShareVisibility(data);
   const generatedDate = new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -389,16 +399,20 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
 
   return (
     <div
-      id="share-report-page"
-      className="min-h-screen"
-      style={{
-        fontFamily: "var(--font-inter), sans-serif",
-        backgroundColor: "#0d1b2e",
-        backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
-        backgroundSize: "32px 32px",
-      }}
+      id={isPrint ? "share-report-print" : "share-report-page"}
+      className={isPrint ? "bg-navy" : "min-h-screen"}
+      style={
+        isPrint
+          ? { fontFamily: "var(--font-inter), sans-serif", backgroundColor: "#0d1b2e" }
+          : {
+              fontFamily: "var(--font-inter), sans-serif",
+              backgroundColor: "#0d1b2e",
+              backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }
+      }
     >
-      {/* Fix 7 — sized to match the main app nav: 40px logo, 60px min height, dark card + amber border on the Download PPTX button (matching the app's download-screen secondary buttons). */}
+      {!isPrint ? (
       <header
         className="sticky top-0 z-10 border-b border-navy-border px-4 sm:px-6"
         style={{ backgroundColor: "#0d1b2e", minHeight: "60px" }}
@@ -422,13 +436,23 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
                 Download PPTX
               </a>
             ) : null}
+            {shareToken && visibleData.publishedAt ? (
+              <a
+                href={`/api/r/${shareToken}/download-pdf`}
+                className="flex items-center rounded-md border border-[#63b3ed] px-4 text-[13px] font-semibold text-white hover:bg-[#63b3ed]/10"
+                style={{ backgroundColor: "#1e293b", height: "44px" }}
+              >
+                Download PDF
+              </a>
+            ) : null}
           </div>
         </div>
       </header>
+      ) : null}
 
-      <main className="mx-auto max-w-[960px] px-4 py-6 sm:px-6">
+      <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-4 py-6 sm:px-6"}>
         {/* Cover slide replica */}
-        <section className="mb-6">
+        <section className={slideClass}>
           <div className="mx-auto aspect-video w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10">
             <div className="flex h-full flex-col items-center justify-center text-center">
               <div
@@ -459,25 +483,25 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
         </section>
 
         {visibleData.campaigns.map((c) => (
-          <section key={`campaign-${c.campaignName}`} className="mb-6">
+          <section key={`campaign-${c.campaignName}`} className={slideClass}>
             <CampaignCard campaign={c} reportType={reportTypeLabel(visibleData)} />
           </section>
         ))}
 
         {adSets.map((a, i) => (
-          <section key={`adset-${a.campaignName}-${a.adSetName}-${i}`} className="mb-6">
+          <section key={`adset-${a.campaignName}-${a.adSetName}-${i}`} className={slideClass}>
             <AdSetCard adSet={a} platform={visibleData.platform} reportType={reportTypeLabel(visibleData)} />
           </section>
         ))}
 
         {showOverview && chart && chart.donutSegments && (
-          <section className="mb-6">
+          <section className={slideClass}>
             <MtdOverviewSlide chart={chart} />
           </section>
         )}
 
         {showCombinedTotal && (
-        <section className="mb-6">
+        <section className={slideClass}>
           <SlideCard>
             <h2 className="mb-4 text-[22px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
             <CombinedTotalTable data={visibleData} />
@@ -486,16 +510,18 @@ export function ShareReportView({ data, shareToken }: { data: ShareReportData; s
         )}
 
         {showMetricGuide && (
-        <section className="mb-6">
+        <section className={slideClass}>
           <MetricGuideSection metricGuide={metricGuide} />
         </section>
         )}
       </main>
 
+      {!isPrint && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
         <div style={{ color: "#94a3b8", fontSize: "12px" }}>This report was generated using NextReport · nextreport.in</div>
         <div style={{ color: "#64748b", fontSize: "11px", marginTop: "4px" }}>Generated on {generatedDate}</div>
       </footer>
+      )}
     </div>
   );
 }
