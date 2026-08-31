@@ -8,9 +8,13 @@ import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
 import { defaultShareVisibility } from "@/lib/nre/share-report";
 import { regeneratePptxFromShare, type ShareReportWithArchive } from "@/lib/nre/regenerate-report";
 import { generateReportPdf } from "@/lib/pdf/generate-report-pdf";
+import { canDownloadReportPdf } from "@/lib/pdf/ensure-report-pdf";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { detectLogoFormat, readLogoDimensions, extensionForLogoFormat, contentTypeForLogoFormat } from "@/lib/logo-processing";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
+
+/** Publish regenerates PPTX and captures PDF via headless Chromium — allow extra time on serverless. */
+export const maxDuration = 120;
 
 async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
   if (!url) return null;
@@ -116,7 +120,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       shareToken: report.shareToken,
       reportStatus: report.status,
       canSyncPpt: !!(share as ShareReportWithArchive)._renderArchive,
-      pdfAvailable: !!report.pdfPath && !!share.publishedAt,
+      pdfAvailable: canDownloadReportPdf(share),
       campaigns: share.campaigns.map((c) => ({
         campaignName: c.campaignName,
         aiSummary: c.aiSummary,
@@ -234,7 +238,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({
         ok: true,
         publishedAt: share.publishedAt ?? null,
-        pdfAvailable: !!pdfPath && !!share.publishedAt,
+        pdfAvailable: canDownloadReportPdf(share),
       });
     }
 

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { readStoredReportPdf } from "@/lib/pdf/generate-report-pdf";
+import { canDownloadReportPdf, ensureReportPdfBuffer } from "@/lib/pdf/ensure-report-pdf";
 import { apiErrorResponse } from "@/lib/api-error";
 import type { ShareReportData } from "@/lib/nre/share-report";
+
+export const maxDuration = 120;
 
 function parseShareJson(raw: string | null): ShareReportData | null {
   if (!raw) return null;
@@ -36,20 +38,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const share = parseShareJson(report.summaryJson);
-    if (!share?.publishedAt) {
+    if (!canDownloadReportPdf(share)) {
       return NextResponse.json(
         { error: "Review and publish your report before downloading PDF." },
         { status: 409 },
       );
     }
-    if (!report.pdfPath) {
+
+    const buffer = await ensureReportPdfBuffer(report);
+    if (!buffer) {
       return NextResponse.json(
-        { error: "PDF is not ready yet. Publish again from Review before sharing." },
-        { status: 409 },
+        { error: "Could not generate PDF right now. Please try again in a moment." },
+        { status: 503 },
       );
     }
 
-    const buffer = await readStoredReportPdf(report.pdfPath);
     const fileName = pdfFileName(report.fileName);
 
     return new NextResponse(new Uint8Array(buffer), {

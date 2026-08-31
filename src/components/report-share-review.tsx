@@ -135,7 +135,7 @@ export function ReportShareReview({
       setChartEdit((json.chart as ShareChartData | null) ?? loaded.chart ?? null);
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
-      setPdfAvailable(!!json.pdfAvailable);
+      setPdfAvailable(!!(json.publishedAt ?? loaded.publishedAt));
       setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
       setError(null);
       setLoading(false);
@@ -242,15 +242,11 @@ export function ReportShareReview({
     const json = await res.json().catch(() => ({}));
     const ts = (json.publishedAt as string | undefined) ?? new Date().toISOString();
     setPublishedAt(ts);
-    setPdfAvailable(!!json.pdfAvailable);
+    setPdfAvailable(true);
     setJustPublished(true);
     setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
-    updateGenerateSnapshotAfterPublish(clientId, reportId, ts, !!json.pdfAvailable);
-    showToast(
-      json.pdfAvailable
-        ? "Published — live link, PPTX, and PDF are updated."
-        : "Published — live link and PPTX updated. PDF could not be generated; try publishing again.",
-    );
+    updateGenerateSnapshotAfterPublish(clientId, reportId, ts, true);
+    showToast("Published — live link, PPTX, and PDF download are updated.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -278,9 +274,8 @@ export function ReportShareReview({
             {justPublished ? "✓ Published successfully" : "✓ Last published"}
           </p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            Your live browser link{canSyncPpt ? ", Download PPTX," : ""}{pdfAvailable ? " and Download PDF" : ""} now match this review.
+            Your live browser link{canSyncPpt ? ", Download PPTX," : ""} and Download PDF now match this review.
             {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
-            {!pdfAvailable && publishedAt ? " PDF generation did not complete — publish again to retry." : ""}
           </p>
           {returnToGenerateHref ? (
             <Link href={returnToGenerateHref} className="mt-2 inline-block text-[13px] font-semibold text-dash-accent hover:underline">
@@ -309,7 +304,7 @@ export function ReportShareReview({
               Preview live link
             </Link>
           ) : null}
-          {pdfAvailable ? (
+          {publishedAt ? (
             <a
               href={`/api/reports/${reportId}/download-pdf`}
               className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"
