@@ -10,6 +10,8 @@ import { resolveChartFooterInsight, formatDonutSegmentStats } from "../nre/share
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
 
 const INK = "#ffffff";
+/** Same muted grey as every other slide's main heading (REPORT_HEADER_COLOR). */
+const TITLE = "#94a3b8";
 /** Brighter than browser muted — reads clearly on Slides after PNG rasterization. */
 const INK_SUBTITLE = "#e2e8f0";
 const ACCENT_ORANGE = "#f6ad55";
@@ -81,7 +83,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   // Title + subtitle (match browser hierarchy; brighter/larger for Slides readability)
   parts.push(
-    `<text x="${W / 2}" y="48" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
+    `<text x="${W / 2}" y="48" text-anchor="middle" fill="${TITLE}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
     `<text x="${W / 2}" y="74" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="16" font-weight="500">${escapeXml(chart.subtitle)}</text>`,
   );
 
