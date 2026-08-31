@@ -2982,11 +2982,13 @@ export function ReportUploadWizard({
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
+                    disabled={!driveSaveUrl}
+                    title={driveSaveUrl ? undefined : "Save to Google Drive first"}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                     style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
                   >
                     <CopyIcon />
-                    {copied ? "Copied!" : "Copy Link"}
+                    {copied ? "Copied!" : "Copy drive link"}
                   </button>
                 </div>
               )}

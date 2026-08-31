@@ -267,11 +267,11 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           </div>
           <ul className="space-y-2.5">
             {chart.donutSegments.map((seg) => (
-              <li key={seg.name} className="flex items-start gap-2.5 text-[13px] text-ink">
+              <li key={seg.name} className="flex items-start gap-2.5 text-[15px] text-ink">
                 <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
                 <span className="min-w-0 break-words">
                   <span className="block font-semibold">{seg.name}</span>
-                  <span className="mt-0.5 block text-[12px] text-[#94a3b8]">
+                  <span className="mt-0.5 block text-[14px] text-[#94a3b8]">
                     {formatDonutSegmentStats(seg.percentage, seg.spendLabel)}
                   </span>
                 </span>

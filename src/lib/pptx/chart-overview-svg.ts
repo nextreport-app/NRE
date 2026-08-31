@@ -133,10 +133,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   for (const seg of chart.donutSegments) {
     parts.push(
       `<rect x="${legendX}" y="${legendY}" width="14" height="14" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendX + 22}" y="${legendY + 12}" fill="${INK}" font-family="Poppins" font-size="13" font-weight="700">${escapeXml(seg.name)}</text>`,
-      `<text x="${legendX + 22}" y="${legendY + 28}" fill="${LEGEND_STATS}" font-family="Poppins" font-size="12" font-weight="500">${escapeXml(formatDonutSegmentStats(seg.percentage, seg.spendLabel))}</text>`,
+      `<text x="${legendX + 22}" y="${legendY + 14}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(seg.name)}</text>`,
+      `<text x="${legendX + 22}" y="${legendY + 32}" fill="${LEGEND_STATS}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(formatDonutSegmentStats(seg.percentage, seg.spendLabel))}</text>`,
     );
-    legendY += 40;
+    legendY += 44;
   }
 
   parts.push(
