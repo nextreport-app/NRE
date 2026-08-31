@@ -1,51 +1,59 @@
-import puppeteer from "puppeteer-core";
+import puppeteer, { type Browser } from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { appBaseUrl } from "./app-base-url";
-import { signPdfRenderToken } from "./render-token";
+import type { ShareReportData } from "@/lib/nre/share-report";
+import { buildPrintReportHtml } from "./print-report-html";
 
-async function resolveExecutablePath(): Promise<{ executablePath: string; args: string[] }> {
-  if (process.env.NODE_ENV === "development") {
+async function launchBrowser(): Promise<Browser> {
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev) {
     const fromEnv = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
-    if (fromEnv) return { executablePath: fromEnv, args: ["--no-sandbox", "--disable-setuid-sandbox"] };
-    for (const candidate of ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]) {
+    const candidates = [
+      fromEnv,
+      "/usr/local/bin/google-chrome",
+      "/usr/bin/google-chrome",
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
+    ].filter(Boolean) as string[];
+
+    for (const executablePath of candidates) {
       try {
         const fs = await import("node:fs");
-        if (fs.existsSync(candidate)) {
-          return { executablePath: candidate, args: ["--no-sandbox", "--disable-setuid-sandbox"] };
-        }
+        if (!fs.existsSync(executablePath)) continue;
+        return puppeteer.launch({
+          headless: true,
+          executablePath,
+          args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+        });
       } catch {
-        /* continue */
+        /* try next */
       }
     }
   }
 
-  return {
-    executablePath: await chromium.executablePath(),
-    args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
-  };
-}
+  chromium.setGraphicsMode = false;
 
-export function buildPrintReportUrl(shareToken: string): string {
-  const sig = signPdfRenderToken(shareToken);
-  return `${appBaseUrl()}/print/r/${encodeURIComponent(shareToken)}?sig=${sig}`;
-}
-
-/** Renders the published share-page layout to a landscape PDF buffer. */
-export async function renderReportPdfFromShareToken(shareToken: string): Promise<Buffer> {
-  const url = buildPrintReportUrl(shareToken);
-  const { executablePath, args } = await resolveExecutablePath();
-
-  const browser = await puppeteer.launch({
+  return puppeteer.launch({
     headless: true,
-    executablePath,
-    args,
+    executablePath: await chromium.executablePath(),
+    args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    defaultViewport: { width: 1280, height: 720 },
   });
+}
+
+/** Renders published share data to a landscape PDF buffer (no live URL fetch). */
+export async function renderReportPdfFromShareData(share: ShareReportData): Promise<Buffer> {
+  const html = buildPrintReportHtml(share);
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 120_000 });
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.waitForSelector("#share-report-print", { timeout: 30_000 });
+    await page.evaluate(() => document.fonts.ready).catch(() => undefined);
     await page.emulateMediaType("print");
+
     const pdf = await page.pdf({
       format: "A4",
       landscape: true,
@@ -53,8 +61,14 @@ export async function renderReportPdfFromShareToken(shareToken: string): Promise
       preferCSSPageSize: false,
       margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" },
     });
+
     return Buffer.from(pdf);
   } finally {
     await browser.close();
   }
+}
+
+/** @deprecated Prefer renderReportPdfFromShareData — avoids brittle self-HTTP on serverless. */
+export async function renderReportPdfFromShareToken(_shareToken: string): Promise<Buffer> {
+  throw new Error("renderReportPdfFromShareToken requires share data — use renderReportPdfFromShareData");
 }

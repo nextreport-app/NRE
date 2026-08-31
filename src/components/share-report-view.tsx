@@ -87,15 +87,16 @@ function StatusBadge({ status }: { status: DeliveryStatusIndicator }) {
   );
 }
 
-function MetricGrid({ metrics }: { metrics: DynamicMetricValue[] }) {
+function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValue[]; assetBaseUrl?: string }) {
   if (metrics.length === 0) return null;
+  const iconPrefix = assetBaseUrl.replace(/\/$/, "");
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {metrics.map((m, i) => (
         <div key={`${m.key}-${i}`} className="rounded-lg border border-navy-border bg-navy-panel px-3 py-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/metric-icons/${metricIconFile(m)}.png`}
+            src={`${iconPrefix}/metric-icons/${metricIconFile(m)}.png`}
             alt=""
             width={20}
             height={20}
@@ -157,7 +158,15 @@ function SlideCard({ children }: { children: React.ReactNode }) {
  * demoted to a small muted line above it, and the "(Campaign)" type label
  * riding the same line as the name in its own smaller amber run.
  */
-function CampaignCard({ campaign, reportType }: { campaign: ShareCampaignData; reportType: string }) {
+function CampaignCard({
+  campaign,
+  reportType,
+  assetBaseUrl = "",
+}: {
+  campaign: ShareCampaignData;
+  reportType: string;
+  assetBaseUrl?: string;
+}) {
   return (
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -176,7 +185,7 @@ function CampaignCard({ campaign, reportType }: { campaign: ShareCampaignData; r
       <DateAndFrequency dateRange={campaign.dateRange} adFrequency={campaign.adFrequency} />
 
       <div className="mt-5">
-        <MetricGrid metrics={campaign.metrics} />
+        <MetricGrid metrics={campaign.metrics} assetBaseUrl={assetBaseUrl} />
       </div>
 
       <AiCopyBlock heading="Campaign Summary" text={campaign.aiSummary} />
@@ -186,7 +195,17 @@ function CampaignCard({ campaign, reportType }: { campaign: ShareCampaignData; r
 }
 
 /** Ad-set slides lead with the AD SET name (not the campaign name) as the prominent heading, matching the PPT's own heading logic — the campaign name becomes secondary context underneath. Falls back to the bare campaign name (no colored type label, no secondary line) when there's no real ad-set name to label as one, same fallback the PPT uses. */
-function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; platform: ShareReportData["platform"]; reportType: string }) {
+function AdSetCard({
+  adSet,
+  platform,
+  reportType,
+  assetBaseUrl = "",
+}: {
+  adSet: ShareAdSetData;
+  platform: ShareReportData["platform"];
+  reportType: string;
+  assetBaseUrl?: string;
+}) {
   const adSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const hasAdSetName = adSet.adSetName.length > 0;
   const primaryName = hasAdSetName ? adSet.adSetName : adSet.campaignName;
@@ -208,7 +227,7 @@ function AdSetCard({ adSet, platform, reportType }: { adSet: ShareAdSetData; pla
       <DateAndFrequency dateRange={adSet.dateRange} adFrequency={adSet.adFrequency} />
 
       <div className="mt-5">
-        <MetricGrid metrics={adSet.metrics} />
+        <MetricGrid metrics={adSet.metrics} assetBaseUrl={assetBaseUrl} />
       </div>
 
       <AiCopyBlock heading="Campaign Summary" text={adSet.aiSummary} />
@@ -360,10 +379,13 @@ export function ShareReportView({
   data,
   shareToken,
   mode = "share",
+  assetBaseUrl = "",
 }: {
   data: ShareReportData;
   shareToken?: string;
   mode?: "share" | "print";
+  /** Prefix for /metric-icons in PDF export (e.g. https://nextreport.in). */
+  assetBaseUrl?: string;
 }) {
   const isPrint = mode === "print";
   const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
@@ -467,13 +489,13 @@ export function ShareReportView({
 
         {visibleData.campaigns.map((c) => (
           <section key={`campaign-${c.campaignName}`} className={slideClass}>
-            <CampaignCard campaign={c} reportType={reportTypeLabel(visibleData)} />
+            <CampaignCard campaign={c} reportType={reportTypeLabel(visibleData)} assetBaseUrl={assetBaseUrl} />
           </section>
         ))}
 
         {adSets.map((a, i) => (
           <section key={`adset-${a.campaignName}-${a.adSetName}-${i}`} className={slideClass}>
-            <AdSetCard adSet={a} platform={visibleData.platform} reportType={reportTypeLabel(visibleData)} />
+            <AdSetCard adSet={a} platform={visibleData.platform} reportType={reportTypeLabel(visibleData)} assetBaseUrl={assetBaseUrl} />
           </section>
         ))}
 

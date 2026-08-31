@@ -1,6 +1,6 @@
 import { deleteReportFile, readReportFile, saveReportPdf } from "@/lib/storage";
 import type { ShareReportData } from "@/lib/nre/share-report";
-import { renderReportPdfFromShareToken } from "./render-report-pdf";
+import { renderReportPdfFromShareData } from "./render-report-pdf";
 
 export function isPdfExportAllowed(share: ShareReportData | null): boolean {
   if (!share?.publishedAt) return false;
@@ -17,7 +17,7 @@ export async function generateReportPdf(params: {
   if (!isPdfExportAllowed(params.share)) return null;
 
   try {
-    const buffer = await renderReportPdfFromShareToken(params.shareToken);
+    const buffer = await renderReportPdfFromShareData(params.share);
     if (params.previousPdfPath) {
       await deleteReportFile(params.previousPdfPath).catch(() => undefined);
     }
