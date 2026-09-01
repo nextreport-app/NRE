@@ -116,15 +116,15 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
   });
 
-  it("embeds native OOXML chart shapes instead of a rasterized PNG overlay", async () => {
+  it("embeds native OOXML chart shapes with metrics table instead of a rasterized PNG overlay", async () => {
     const bundle = await buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
       "C$",
       BACKGROUND,
     );
-    expect(bundle.xml).toContain("AD SPEND THIS MONTH");
-    expect(bundle.xml).toContain("PURCHASES");
-    expect(bundle.xml).toContain("of spend · C$442");
+    expect(bundle.xml).toContain("Ad spend");
+    expect(bundle.xml).toContain("Budget used");
+    expect(bundle.xml).toContain("Purchases");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(
@@ -132,7 +132,8 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
         "C$",
       ),
     );
-    expect(svg).toContain("AD SPEND THIS MONTH");
+    expect(svg).toContain("Ad spend");
+    expect(svg).toContain("TOTAL SPEND");
   });
 
   it("buildMtdOverviewSvg uses thinner donut hole ratio", () => {

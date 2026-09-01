@@ -6,19 +6,26 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiLayout } from "../nre/share-chart-projection";
+import { buildChartMetricsTable } from "../nre/chart-metrics-table";
+import { resolveChartFooterInsight } from "../nre/share-chart-projection";
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
-import { buildMtdChartSlideGeometry, MTD_SLIDE_W, MTD_SLIDE_H } from "./chart-slide-layout";
+import {
+  METRICS_TABLE_COLORS_DARK,
+  metricsTableAlign,
+  metricsTableColumnWidths,
+  metricsTableColumnXs,
+  metricsTableFontSize,
+  metricsTableRowCells,
+  metricsTableRowFill,
+  metricsTableRowWeight,
+  metricsTableTextColor,
+} from "./chart-metrics-table-render";
+import { MTD_DONUT, MTD_FOOTER_Y, MTD_METRICS_TABLE, MTD_SLIDE_H, MTD_SLIDE_W } from "./chart-slide-layout";
 
 const INK = "#ffffff";
-/** Same muted grey as every other slide's main heading (REPORT_HEADER_COLOR). */
 const TITLE = "#94a3b8";
-/** Brighter than browser muted — reads clearly on Slides after PNG rasterization. */
 const INK_SUBTITLE = "#e2e8f0";
-const ACCENT_ORANGE = "#f6ad55";
 const LEGEND_STATS = "#94a3b8";
-const KPI_BG = "#131d30";
-const KPI_BORDER = "#1e293b";
 
 function escapeXml(text: string): string {
   return text
@@ -28,7 +35,6 @@ function escapeXml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Donut ring segment path — angles in degrees, 0° = top, clockwise. */
 function donutSegmentPath(
   cx: number,
   cy: number,
@@ -52,7 +58,6 @@ function donutSegmentPath(
   ].join(" ");
 }
 
-/** A single 360° arc is degenerate in SVG — draw two semicircles instead. */
 function appendDonutSegment(
   parts: string[],
   cx: number,
@@ -74,6 +79,48 @@ function appendDonutSegment(
   );
 }
 
+function appendMetricsTableSvg(
+  parts: string[],
+  chart: ShareChartData,
+): void {
+  const colors = METRICS_TABLE_COLORS_DARK;
+  const table = buildChartMetricsTable(chart.snapshot, MTD_METRICS_TABLE.maxH);
+  const { x: tableX, y: tableY, w: tableW } = MTD_METRICS_TABLE;
+  const colXs = metricsTableColumnXs(tableX, tableW);
+  const colWs = metricsTableColumnWidths(tableW);
+  const border = `#${colors.border}`;
+
+  let rowY = tableY;
+  table.rows.forEach((row, rowIndex) => {
+    const rowH = table.layout.rowHeights[rowIndex] ?? 24;
+    const fill = `#${metricsTableRowFill(row, rowIndex, colors)}`;
+    parts.push(
+      `<rect x="${tableX}" y="${rowY}" width="${tableW}" height="${rowH}" fill="${fill}" stroke="${border}" stroke-width="1"/>`,
+    );
+
+    if (row.kind === "footnote") {
+      parts.push(
+        `<text x="${tableX + 12}" y="${rowY + rowH / 2 + 4}" fill="#${colors.inkMuted}" font-family="Poppins" font-size="${metricsTableFontSize(table, row)}" font-weight="500">${escapeXml(row.label)}</text>`,
+      );
+    } else {
+      const cells = metricsTableRowCells(row);
+      const fontSize = metricsTableFontSize(table, row);
+      const weight = metricsTableRowWeight(row) ? 700 : 500;
+      const textColor = `#${metricsTableTextColor(row, colors)}`;
+      cells.forEach((cell, col) => {
+        if (!cell) return;
+        const align = metricsTableAlign(col);
+        const anchor = align === "l" ? "start" : "end";
+        const tx = align === "l" ? colXs[col]! + 10 : colXs[col]! + colWs[col]! - 10;
+        parts.push(
+          `<text x="${tx}" y="${rowY + rowH / 2 + 4}" text-anchor="${anchor}" fill="${textColor}" font-family="Poppins" font-size="${fontSize}" font-weight="${weight}">${escapeXml(cell)}</text>`,
+        );
+      });
+    }
+    rowY += rowH;
+  });
+}
+
 export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const W = MTD_SLIDE_W;
   const H = MTD_SLIDE_H;
@@ -88,52 +135,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${W / 2}" y="74" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="16" font-weight="500">${escapeXml(chart.subtitle)}</text>`,
   );
 
-  const layout = buildChartKpiLayout(chart.snapshot);
-  const geo = buildMtdChartSlideGeometry(layout);
-
-  if (layout.mode === "single") {
-    const { y: kpiY, h: kpiH, w: kpiW, gap: kpiGap } = geo.accountKpi;
-    const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
-    layout.accountTiles.forEach((tile, i) => {
-      const x = kpiStartX + i * (kpiW + kpiGap);
-      parts.push(
-        `<rect x="${x}" y="${kpiY}" width="${kpiW}" height="${kpiH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-        `<text x="${x + kpiW / 2}" y="${kpiY + 38}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
-        `<text x="${x + kpiW / 2}" y="${kpiY + 62}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
-      );
-    });
-  } else {
-    const { y: accountY, h: accountH, w: accountW, gap: accountGap } = geo.accountKpi;
-    const accountStartX = (W - (2 * accountW + accountGap)) / 2;
-    layout.accountTiles.forEach((tile, i) => {
-      const x = accountStartX + i * (accountW + accountGap);
-      parts.push(
-        `<rect x="${x}" y="${accountY}" width="${accountW}" height="${accountH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-        `<text x="${x + accountW / 2}" y="${accountY + 32}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
-        `<text x="${x + accountW / 2}" y="${accountY + 54}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
-      );
-    });
-
-    const objBand = geo.objectiveKpi!;
-    const objCount = layout.objectiveBlocks.length;
-    const objStartX = (W - (objCount * geo.objectiveTileW + (objCount - 1) * objBand.gap)) / 2;
-    layout.objectiveBlocks.forEach((obj, i) => {
-      const x = objStartX + i * (geo.objectiveTileW + objBand.gap);
-      const objY = objBand.y;
-      const objH = objBand.h;
-      const objW = geo.objectiveTileW;
-      parts.push(
-        `<rect x="${x}" y="${objY}" width="${objW}" height="${objH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-        `<text x="${x + objW / 2}" y="${objY + 16}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="9" font-weight="600">${escapeXml(obj.label.toUpperCase())}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 36}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="18" font-weight="700">${escapeXml(obj.resultsValue)}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 52}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="12" font-weight="600">${escapeXml(obj.cprValue)}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 64}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="8" font-weight="600">${escapeXml(obj.cprLabel.toUpperCase())}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 74}" text-anchor="middle" fill="${LEGEND_STATS}" font-family="Poppins" font-size="9" font-weight="500">${escapeXml(`${obj.spendFormatted} spent`)}</text>`,
-      );
-    });
-  }
-
-  const { cx: donutCx, cy: donutCy, outerR } = geo.donut;
+  const { cx: donutCx, cy: donutCy, outerR } = MTD_DONUT;
   const innerR = outerR * DONUT_HOLE_RATIO;
 
   let angle = 0;
@@ -148,19 +150,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="11" font-weight="600">TOTAL SPEND</text>`,
   );
 
-  let legendY = geo.legend.y;
-  const legendX = geo.legend.x;
-  for (const seg of chart.donutSegments) {
-    parts.push(
-      `<rect x="${legendX}" y="${legendY}" width="14" height="14" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendX + 22}" y="${legendY + 14}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(seg.name)}</text>`,
-      `<text x="${legendX + 22}" y="${legendY + 32}" fill="${LEGEND_STATS}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(formatDonutSegmentStats(seg.percentage, seg.spendLabel))}</text>`,
-    );
-    legendY += geo.legend.rowH;
-  }
+  appendMetricsTableSvg(parts, chart);
 
   parts.push(
-    `<text x="${W / 2}" y="${geo.footerY.svg}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,
+    `<text x="${W / 2}" y="${MTD_FOOTER_Y.svg}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,
   );
 
   parts.push("</svg>");
