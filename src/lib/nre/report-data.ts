@@ -64,7 +64,7 @@ import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type 
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { detectAdNameColumn } from "./ad-level";
 import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
-import { computeCreativeRangeIso, computeEffectiveYesterday, toIsoDate } from "./date-range";
+import { computeCreativeRangeIso, computeEffectiveYesterday, computeMtdRangeIso, toIsoDate } from "./date-range";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
 function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
@@ -508,6 +508,7 @@ function computeTableRow(
   isMtdRow: boolean,
   objectiveMap: Map<string, ResultLabels>,
   now: Date = new Date(),
+  mtdCalendarRange?: DateRangeIso,
 ): TableRowData {
   if (!rows || rows.length === 0) {
     // Fix 5 — a zero-spend current month (no MTD Daily CSV rows fell within
@@ -633,23 +634,27 @@ function computeTableRow(
   const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
 
-  // Fix 3 — both rows show just the plain date range: no "Previous Month —
-  // " prefix, no year, no "MTD" suffix. Fix 2 (this round) — both rows also
-  // use the same compact same-month form ("August 1 - 5" — the end day
-  // alone, not a second "August"; "July 30 - August 5" unchanged when the
-  // range crosses a month boundary) via compactSameMonthRangeLabel, instead
-  // of the MTD row previously always repeating the month name.
-  const monthLabel = rawStart
+  let monthLabel = rawStart
     ? compactSameMonthRangeLabel(rawStart, rawEnd, monthName)
     : isMtdRow
       ? "This Period"
       : "Previous Month";
+  let fullMonthLabel = rawMonthLabel;
+
+  // MTD row labels use the intended calendar month (day 1 → yesterday), not
+  // only the days present in the CSV — so "August 1 - 31" stays correct even
+  // when a Last-30-Days export starts on the 2nd. Totals still reflect actual rows.
+  if (isMtdRow && mtdCalendarRange) {
+    const calMonthName = getMonthName(mtdCalendarRange.startIso);
+    monthLabel = compactSameMonthRangeLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso, calMonthName);
+    fullMonthLabel = getDateRangeShortLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
+  }
 
   return {
     hasData: true,
     monthLabel,
-    fullMonthLabel: rawMonthLabel,
-    monthName,
+    fullMonthLabel,
+    monthName: isMtdRow && mtdCalendarRange ? getMonthName(mtdCalendarRange.startIso) : monthName,
     // Set false here unconditionally — buildReportData overrides this on
     // the Previous Month row specifically, once both rows exist to compare
     // months against each other (this function only ever sees one row's
@@ -1027,7 +1032,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
   let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now);
-  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now);
+  const mtdCalendarRange = computeMtdRangeIso(mtdDailyRows as NreRow[], now) ?? undefined;
+  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
   // calendar month (e.g. a report generated on the 1st, before the new

@@ -119,6 +119,25 @@ export default async function DownloadGuidePage() {
               ))}
             </div>
 
+            <div className="mt-8 rounded-lg border border-[#f6ad55]/40 border-l-4 border-l-[#f6ad55] bg-navy-panel p-5">
+              <h3 className="text-lg font-semibold text-white">Which date range? (especially at the start of a month)</h3>
+              <ul className="mt-3 space-y-3 text-[15px] leading-relaxed text-ink-secondary">
+                <li>
+                  <span className="font-semibold text-[#f6ad55]">Day 1 of the month:</span> Download{" "}
+                  <span className="text-white">Previous Month</span> for a complete monthly report (e.g. August 1–31).
+                  Last 30 Days is OK for weekly reports (last 7 days = Aug 25–31) but often drops the 1st from monthly totals.
+                </li>
+                <li>
+                  <span className="font-semibold text-[#f6ad55]">Days 2–7:</span> Use{" "}
+                  <span className="text-white">Last 30 Days</span> (not This Month) so your weekly slide has a full 7 days across the month boundary. Set Time Breakdown to Day.
+                </li>
+                <li>
+                  <span className="font-semibold text-[#f6ad55]">Day 8 onwards:</span> Use{" "}
+                  <span className="text-white">This Month</span> with Time Breakdown set to Day for month-to-date from the 1st through yesterday.
+                </li>
+              </ul>
+            </div>
+
             <h3 className="mt-10 text-lg font-semibold text-white">For Previous Month (monthly comparison CSV)</h3>
             <div className="mt-4 space-y-4">
               {META_PREVIOUS_MONTH_STEPS.map((step, i) => (
