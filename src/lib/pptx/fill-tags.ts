@@ -41,7 +41,7 @@ const MIN_CARD_LABEL_VALUE_GAP_EMU = ptToEmu(4);
 // lIns="0" rIns="0" — keep in sync if the shape's width or insets ever
 // change in templates/dark.pptx.
 const ACCOUNT_NAME_MAX_WIDTH_PT = emuToPt(5300000);
-const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [28, 24, 20, 18, 16];
+const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [30, 28, 24, 20, 18];
 
 // CAMPAIGN_NAME shape (ppt/slides/slide2.xml, campaign/ad-set template):
 // cx="11433300" lIns="91425" rIns="91425" — keep in sync with the template.
@@ -52,10 +52,10 @@ const CAMPAIGN_NAME_MAX_WIDTH_PT = emuToPt(11433300 - 91425 * 2);
 // "(Campaign)"/"(Ad Set)" type label next to it and the report-type header
 // above it. Floor stays 16pt (Fix 4, readability pass) — a name long enough
 // to need the smaller candidates wraps instead of shrinking further.
-const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [22, 20, 18, 16];
+const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [24, 22, 20, 18];
 // Fixed, not part of the auto-shrink candidates above — the type label
 // always renders at this size regardless of how long the name itself is.
-const TYPE_LABEL_SIZE_PT = 14;
+const TYPE_LABEL_SIZE_PT = 17;
 const CAMPAIGN_LABEL_COLOR = "f6ad55"; // amber — primary accent, matches the donut ring/summary-bar amber elsewhere in the deck
 const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visually distinct from the campaign label at a glance
 // Round L — the muted-grey report-type header ("YOUR WEEKLY/MONTHLY
@@ -67,7 +67,7 @@ const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visuall
 // — this is deliberate: the report-type line is uniform "chrome" repeated
 // on every slide, while the name is the slide's own prominent identifier.
 export const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — used uniformly for every slide type's own main heading
-export const REPORT_HEADER_SIZE_PT = 24;
+export const REPORT_HEADER_SIZE_PT = 30;
 
 /**
  * Largest candidate size (checked largest-first) whose estimated width,
@@ -258,9 +258,9 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       // Every other cover-slide line (REPORT_TITLE 20pt, PRESENTED_TO/
       // PREPARED_BY 12pt, ACCOUNT_NAME 16-28pt) is already at or above the
       // spec's stated 12pt floor and is left untouched.
-      REPORT_DATE: { sizePt: 14 },
-      ACCOUNT_HEALTH_BADGE: { sizePt: 14, bold: true },
-      BUDGET_SUMMARY: { sizePt: 13 },
+      REPORT_DATE: { sizePt: 15 },
+      ACCOUNT_HEALTH_BADGE: { sizePt: 15, bold: true },
+      BUDGET_SUMMARY: { sizePt: 14 },
       // Round L — recolored to the same muted grey every other slide's own
       // main heading uses (the campaign/ad-set report-type header, the MTD
       // chart title, the Combined Total and Metric Guide slide titles),
@@ -454,8 +454,8 @@ export function buildCampaignOrAdSetSlideXml(
   // Overflow protection comes from the char-cap truncation above and the
   // CAMPAIGN_SUMMARY/KEY_INSIGHTS text boxes' own normAutofit (shrink-to-fit)
   // setting below, not from pre-shrinking the requested size here.
-  const summarySizePt = 14;
-  const insightsSizePt = 14;
+  const summarySizePt = 15;
+  const insightsSizePt = 15;
 
   let xml: string;
   if (useDynamicSlots) {
@@ -484,7 +484,7 @@ export function buildCampaignOrAdSetSlideXml(
         // "\n" — replaceTagRun splits on it but keeps one shared rPr for
         // every resulting line). OOXML only has a binary bold toggle, not
         // numeric font weights, so "600/semibold" maps to `bold: true`.
-        DATE_RANGE: { sizePt: 13, bold: true },
+        DATE_RANGE: { sizePt: 14, bold: true },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: summarySizePt, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: insightsSizePt, fontFamily: "Poppins" },
       },
@@ -498,7 +498,7 @@ export function buildCampaignOrAdSetSlideXml(
     // slide) it would immediately undo that shrink. Running it here still
     // catches every card label untouched by the loop below (the "fewer
     // than 8 metrics assigned" dash case), same as before.
-    xml = enforceMinFontSize(xml, 12);
+    xml = enforceMinFontSize(xml, 13);
 
     // Discover every slot's own native icon relationship id BEFORE any
     // slot's {{METRIC_*}} tag text is touched — findCardIconRelId locates
@@ -587,7 +587,7 @@ export function buildCampaignOrAdSetSlideXml(
       },
       {
         // Fix 5 — bumped alongside its dynamic-slots sibling above.
-        DATE_RANGE: { sizePt: 13, bold: true },
+        DATE_RANGE: { sizePt: 14, bold: true },
         CAMPAIGN_SUMMARY: { bold: false, sizePt: summarySizePt, fontFamily: "Poppins" },
         KEY_INSIGHTS: { bold: false, sizePt: insightsSizePt, fontFamily: "Poppins" },
       },
@@ -597,13 +597,13 @@ export function buildCampaignOrAdSetSlideXml(
     // overrides at all, so (unlike the dynamic-slots branch above) there's
     // nothing for this to clobber; kept in the same relative position as
     // before this change.
-    xml = enforceMinFontSize(xml, 12);
+    xml = enforceMinFontSize(xml, 13);
   }
 
   const campaignNameSizePt = fitNameSizePt(heading, typeLabelText, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
   xml = replaceTagRunWithSuffixes(xml, "{{CAMPAIGN_NAME}}", heading, { sizePt: campaignNameSizePt, bold: true }, [
     typeLabelText ? { text: typeLabelText, style: { sizePt: TYPE_LABEL_SIZE_PT, bold: false, color: typeLabelColor } } : null,
-    statusSuffix ? { text: statusSuffix, style: { sizePt: 12, bold: true, color: INACTIVE_TAG_COLOR } } : null,
+    statusSuffix ? { text: statusSuffix, style: { sizePt: 13, bold: true, color: INACTIVE_TAG_COLOR } } : null,
   ]).xml;
   // Round L — the report-type header stays muted grey (color is still
   // secondary to the bold-white campaign/ad-set name below it) but is now

@@ -76,7 +76,7 @@ export function emuToPt(emu: number): number {
  * (enforceMinFontSize) already bumps every one of them up to 12pt today —
  * "current size" for a short label means what's actually on screen now.
  */
-const CARD_LABEL_BASE_SIZE_PT = 12;
+const CARD_LABEL_BASE_SIZE_PT = 13;
 const CARD_LABEL_TRUNCATE_AT = 35;
 
 export interface CardLabelFit {

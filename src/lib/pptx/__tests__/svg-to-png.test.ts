@@ -33,6 +33,7 @@ describe("rasterizeSvgToPng", () => {
             resultCount: 10,
             resultLine: "10 purchases",
             costLine: "$10.00 CPP",
+            statLine: "10 purchases $10.00 CPP",
             barPct: 100,
           },
         ],

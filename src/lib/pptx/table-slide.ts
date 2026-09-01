@@ -286,10 +286,10 @@ export function fillCombinedTotalTable(
   // template's native 10 columns, and even then it stops at 11pt, never
   // lower. Applies uniformly across all 3 templates (dark, light, Google)
   // since this is the shared XML-filling layer they all route through.
-  const HEADER_FONT_SIZE = 1200; // 12pt
-  const HEADER_FONT_SIZE_OVERFLOW = 1100; // 11pt — floor, 3+ objective pairs only
-  const ROW_LABEL_FONT_SIZE = 1100; // 11pt — data rows' own column-0 date-range text
-  const DATA_VALUE_FONT_SIZE = 1200; // 12pt — data rows' numeric/currency cells
+  const HEADER_FONT_SIZE = 1300; // 13pt
+  const HEADER_FONT_SIZE_OVERFLOW = 1200; // 12pt — floor, 3+ objective pairs only
+  const ROW_LABEL_FONT_SIZE = 1200; // 12pt — data rows' own column-0 date-range text
+  const DATA_VALUE_FONT_SIZE = 1300; // 13pt — data rows' numeric/currency cells
   const objectivePairCount = (targetCols - STATIC_COLS) / 2;
   const headerFontSizeHundredths = objectivePairCount >= 3 ? HEADER_FONT_SIZE_OVERFLOW : HEADER_FONT_SIZE;
   console.log(

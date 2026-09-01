@@ -331,7 +331,7 @@ describe("renderPptx — real template end-to-end", () => {
     const zip = await JSZip.loadAsync(buffer);
     const campaignSlideXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
     const aiRunRegex =
-      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1400"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>Campaign performance for this period/;
+      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1500"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>Campaign performance for this period/;
     expect(campaignSlideXml).toMatch(aiRunRegex);
 
     fs.unlinkSync(outPath);

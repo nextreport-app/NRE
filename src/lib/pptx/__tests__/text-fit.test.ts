@@ -24,25 +24,27 @@ describe("estimateTextWidthPt", () => {
 });
 
 describe("fitFontSizePt", () => {
+  const CANDIDATES = [30, 28, 24, 20, 18];
+
   it("picks the largest candidate size for a short name that fits at every size", () => {
-    expect(fitFontSizePt("Acme Inc", ACCOUNT_NAME_MAX_WIDTH_PT, [28, 24, 20, 18, 16])).toBe(28);
+    expect(fitFontSizePt("Acme Inc", ACCOUNT_NAME_MAX_WIDTH_PT, CANDIDATES)).toBe(30);
   });
 
-  it("matches the empirically-confirmed 16pt fit for the reported long account name (regression)", () => {
-    expect(fitFontSizePt(LONG_ACCOUNT_NAME, ACCOUNT_NAME_MAX_WIDTH_PT, [28, 24, 20, 18, 16])).toBe(16);
+  it("matches the empirically-confirmed fit for the reported long account name (regression)", () => {
+    expect(fitFontSizePt(LONG_ACCOUNT_NAME, ACCOUNT_NAME_MAX_WIDTH_PT, CANDIDATES)).toBe(18);
   });
 
   it("falls back to the smallest candidate when nothing fits", () => {
     const veryLong = "W".repeat(200);
-    expect(fitFontSizePt(veryLong, ACCOUNT_NAME_MAX_WIDTH_PT, [28, 24, 20, 18, 16])).toBe(16);
+    expect(fitFontSizePt(veryLong, ACCOUNT_NAME_MAX_WIDTH_PT, CANDIDATES)).toBe(18);
   });
 
   it("checks candidates in the order given, from largest to smallest", () => {
     // A mid-length name should land on one of the middle candidates, not
     // jump straight to the smallest.
     const midName = "Riverside Dental Group LLC";
-    const picked = fitFontSizePt(midName, ACCOUNT_NAME_MAX_WIDTH_PT, [28, 24, 20, 18, 16]);
-    expect([28, 24, 20, 18, 16]).toContain(picked);
+    const picked = fitFontSizePt(midName, ACCOUNT_NAME_MAX_WIDTH_PT, CANDIDATES);
+    expect(CANDIDATES).toContain(picked);
     expect(estimateTextWidthPt(midName, picked)).toBeLessThanOrEqual(ACCOUNT_NAME_MAX_WIDTH_PT);
   });
 });
@@ -51,23 +53,23 @@ describe("fitCardLabel", () => {
   it("keeps the normal 12pt size and full text for a label of 18 characters or fewer", () => {
     const label = "A".repeat(18);
     const fit = fitCardLabel(label);
-    expect(fit.sizePt).toBe(12);
+    expect(fit.sizePt).toBe(13);
     expect(fit.text).toBe(label);
   });
 
   it("reduces by 1.5pt for a 19-24 character label", () => {
-    expect(fitCardLabel("A".repeat(19)).sizePt).toBe(10.5);
-    expect(fitCardLabel("A".repeat(24)).sizePt).toBe(10.5);
+    expect(fitCardLabel("A".repeat(19)).sizePt).toBe(11.5);
+    expect(fitCardLabel("A".repeat(24)).sizePt).toBe(11.5);
   });
 
   it("reduces by 2.5pt for a 25-30 character label", () => {
-    expect(fitCardLabel("A".repeat(25)).sizePt).toBe(9.5);
-    expect(fitCardLabel("A".repeat(30)).sizePt).toBe(9.5);
+    expect(fitCardLabel("A".repeat(25)).sizePt).toBe(10.5);
+    expect(fitCardLabel("A".repeat(30)).sizePt).toBe(10.5);
   });
 
   it("reduces by 3.5pt for a 31+ character label", () => {
-    expect(fitCardLabel("A".repeat(31)).sizePt).toBe(8.5);
-    expect(fitCardLabel("A".repeat(35)).sizePt).toBe(8.5);
+    expect(fitCardLabel("A".repeat(31)).sizePt).toBe(9.5);
+    expect(fitCardLabel("A".repeat(35)).sizePt).toBe(9.5);
   });
 
   it("does not truncate a label at or under 35 characters, even in the largest-reduction band", () => {
@@ -80,18 +82,18 @@ describe("fitCardLabel", () => {
     const fit = fitCardLabel(label);
     expect(fit.text).toBe("A".repeat(35) + "...");
     expect(fit.text.length).toBe(38);
-    expect(fit.sizePt).toBe(8.5);
+    expect(fit.sizePt).toBe(9.5);
   });
 
   it("matches the reported real-world long label 'COST PER WEBSITE LEAD' (21 chars, 1.5pt reduction, no truncation)", () => {
     const fit = fitCardLabel("COST PER WEBSITE LEAD");
-    expect(fit.sizePt).toBe(10.5);
+    expect(fit.sizePt).toBe(11.5);
     expect(fit.text).toBe("COST PER WEBSITE LEAD");
   });
 
   it("matches the reported real-world long label 'COST PER LANDING PAGE VIEW' (26 chars, 2.5pt reduction, no truncation)", () => {
     const fit = fitCardLabel("COST PER LANDING PAGE VIEW");
-    expect(fit.sizePt).toBe(9.5);
+    expect(fit.sizePt).toBe(10.5);
     expect(fit.text).toBe("COST PER LANDING PAGE VIEW");
   });
 });

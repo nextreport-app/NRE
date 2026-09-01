@@ -103,6 +103,8 @@ export const PRINT_REPORT_CSS = `
   .shrink-0 { flex-shrink: 0; }
   .min-w-0 { min-width: 0; }
   .break-words { overflow-wrap: break-word; }
+  .\\[overflow-wrap\\:anywhere\\] { overflow-wrap: anywhere; }
+  .box-border { box-sizing: border-box; }
   .block { display: block; }
   .relative { position: relative; }
   .mx-auto { margin-left: auto; margin-right: auto; }
@@ -163,10 +165,19 @@ export const PRINT_REPORT_CSS = `
   .text-\\[14px\\] { font-size: 14px; line-height: 1.5; }
   .text-\\[15px\\] { font-size: 15px; line-height: 1.5; }
   .text-\\[16px\\] { font-size: 16px; line-height: 1.5; }
+  .text-\\[17px\\] { font-size: 17px; line-height: 1.5; }
+  .text-\\[18px\\] { font-size: 18px; line-height: 1.45; }
+  .text-\\[19px\\] { font-size: 19px; line-height: 1.4; }
   .text-\\[20px\\] { font-size: 20px; line-height: 1.3; }
   .text-\\[22px\\] { font-size: 22px; line-height: 1.25; }
   .text-\\[24px\\] { font-size: 24px; line-height: 1.25; }
+  .text-\\[26px\\] { font-size: 26px; line-height: 1.2; }
+  .text-\\[28px\\] { font-size: 28px; line-height: 1.2; }
+  .text-\\[30px\\] { font-size: 30px; line-height: 1.15; }
   .text-\\[32px\\] { font-size: 32px; line-height: 1.15; }
+  .text-\\[36px\\] { font-size: 36px; line-height: 1.1; }
+  .text-\\[38px\\] { font-size: 38px; line-height: 1.1; }
+  .sm\\:text-\\[30px\\] { font-size: 30px; line-height: 1.15; }
   .text-\\[\\#94a3b8\\] { color: #94a3b8; }
   .leading-\\[1\\.6\\] { line-height: 1.6; }
   .leading-snug { line-height: 1.375; }

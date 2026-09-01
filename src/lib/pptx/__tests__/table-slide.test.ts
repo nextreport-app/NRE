@@ -49,13 +49,13 @@ describe("fillCombinedTotalTable", () => {
     const grid = grid3x10(() => "X");
     const out = fillCombinedTotalTable(xml, grid);
     const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-    expect((rows[0].match(/sz="1200"/g) || []).length).toBe(NATIVE_COLS);
+    expect((rows[0].match(/sz="1300"/g) || []).length).toBe(NATIVE_COLS);
     // Column 0 (row label / date range) is 11pt; the other 9 data columns (values) are 12pt.
-    expect((rows[1].match(/sz="1100"/g) || []).length).toBe(1);
-    expect((rows[1].match(/sz="1200"/g) || []).length).toBe(NATIVE_COLS - 1);
-    expect((rows[2].match(/sz="1100"/g) || []).length).toBe(1);
-    expect((rows[2].match(/sz="1200"/g) || []).length).toBe(NATIVE_COLS - 1);
-    expect(out).not.toContain('sz="1400"');
+    expect((rows[1].match(/sz="1200"/g) || []).length).toBe(1);
+    expect((rows[1].match(/sz="1300"/g) || []).length).toBe(NATIVE_COLS - 1);
+    expect((rows[2].match(/sz="1200"/g) || []).length).toBe(1);
+    expect((rows[2].match(/sz="1300"/g) || []).length).toBe(NATIVE_COLS - 1);
+    expect(out).not.toContain('sz="1500"');
   });
 
   it("column 2 (Reach) never disappears: header text and both row values land exactly there", () => {
@@ -239,11 +239,11 @@ describe("fillCombinedTotalTable", () => {
       const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
       // Data rows (1-2, 12 cells each, including the newly-grown pair):
       // column 0 (row label) is 11pt, the other 11 (values) are 12pt.
-      expect((rows[1].match(/sz="1100"/g) || []).length).toBe(1);
-      expect((rows[1].match(/sz="1200"/g) || []).length).toBe(11);
-      expect((rows[2].match(/sz="1100"/g) || []).length).toBe(1);
-      expect((rows[2].match(/sz="1200"/g) || []).length).toBe(11);
-      expect(out).not.toContain('sz="1400"');
+      expect((rows[1].match(/sz="1200"/g) || []).length).toBe(1);
+      expect((rows[1].match(/sz="1300"/g) || []).length).toBe(11);
+      expect((rows[2].match(/sz="1200"/g) || []).length).toBe(1);
+      expect((rows[2].match(/sz="1300"/g) || []).length).toBe(11);
+      expect(out).not.toContain('sz="1500"');
     });
 
     describe("font-size floors: header row + data rows (product owner spec — Fix 4a raised the header to 12pt, never below 11pt anywhere)", () => {
@@ -252,12 +252,12 @@ describe("fillCombinedTotalTable", () => {
         const grid = grid3xN(12, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1100"/g) || []).length).toBe(12);
-        expect(rows[0]).not.toContain('sz="1400"');
-        expect((rows[1].match(/sz="1100"/g) || []).length).toBe(1);
-        expect((rows[1].match(/sz="1200"/g) || []).length).toBe(11);
-        expect((rows[2].match(/sz="1100"/g) || []).length).toBe(1);
-        expect((rows[2].match(/sz="1200"/g) || []).length).toBe(11);
+        expect((rows[0].match(/sz="1200"/g) || []).length).toBe(12);
+        expect(rows[0]).not.toContain('sz="1500"');
+        expect((rows[1].match(/sz="1200"/g) || []).length).toBe(1);
+        expect((rows[1].match(/sz="1300"/g) || []).length).toBe(11);
+        expect((rows[2].match(/sz="1200"/g) || []).length).toBe(1);
+        expect((rows[2].match(/sz="1300"/g) || []).length).toBe(11);
       });
 
       it("never drops the header below its 11pt absolute floor even at 4+ objective pairs (14 columns)", () => {
@@ -265,7 +265,7 @@ describe("fillCombinedTotalTable", () => {
         const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1100"/g) || []).length).toBe(14);
+        expect((rows[0].match(/sz="1200"/g) || []).length).toBe(14);
         expect(rows[0]).not.toContain('sz="1000"');
         expect(rows[0]).not.toContain('sz="900"');
         expect(rows[0]).not.toContain('sz="800"');
@@ -276,8 +276,8 @@ describe("fillCombinedTotalTable", () => {
         const grid = grid3x10((r, c) => `V${r}-${c}`);
         const out = fillCombinedTotalTable(xml, grid);
         const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1200"/g) || []).length).toBe(10);
-        expect(rows[0]).not.toContain('sz="1400"');
+        expect((rows[0].match(/sz="1300"/g) || []).length).toBe(10);
+        expect(rows[0]).not.toContain('sz="1500"');
       });
 
       it("abbreviates objective labels but spells cost labels out in full (product owner: 'CP ...' read as unclear), once 3+ pairs are present", () => {
@@ -501,7 +501,7 @@ function cellXmlWithFill(placeholder: string, bgColor = "0D1B2E"): string {
   return (
     `<a:tc><a:tcPr><a:lnB><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:lnB>` +
     `<a:solidFill><a:srgbClr val="${bgColor}"/></a:solidFill></a:tcPr>` +
-    `<a:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="1400" b="0"/><a:t>${placeholder}</a:t></a:r></a:p></a:txBody></a:tc>`
+    `<a:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="1500" b="0"/><a:t>${placeholder}</a:t></a:r></a:p></a:txBody></a:tc>`
   );
 }
 

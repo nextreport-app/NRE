@@ -207,7 +207,7 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   console.log(
     `[legend-slide] font sizes before 12pt floor: ${[...new Set(before)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
   );
-  xml = enforceMinFontSize(xml, 12);
+  xml = enforceMinFontSize(xml, 13);
   const after = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
   console.log(
     `[legend-slide] font sizes after 12pt floor: ${[...new Set(after)].sort((a, b) => a - b).map((s) => s / 100 + "pt").join(", ")}`,
