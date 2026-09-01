@@ -56,10 +56,7 @@ export function buildChartKpiLayout(snapshot: ShareChartSnapshot): ChartKpiLayou
   if (snap.mode === "multi") {
     return {
       mode: "multi",
-      accountTiles: [
-        { value: snap.mtdSpendLabel, label: "Ad spend this month" },
-        { value: snap.budgetPctUsed || "—", label: snap.budgetPctUsed ? "Budget used" : "Budget" },
-      ],
+      accountTiles: [{ value: snap.mtdSpendLabel, label: "Ad spend this month" }],
       objectiveBlocks: (snap.objectives ?? []).map((obj) => ({
         label: obj.label,
         resultsValue: obj.resultsValue,
@@ -81,7 +78,6 @@ export function buildChartKpiLayout(snapshot: ShareChartSnapshot): ChartKpiLayou
       },
       { value: primary?.resultsValue ?? snap.primaryResultsValue, label: primary?.label ?? snap.primaryResultsLabel },
       { value: primary?.cprValue ?? snap.primaryCprValue, label: primary?.cprLabel ?? snap.primaryCprLabel },
-      { value: snap.budgetPctUsed || "—", label: snap.budgetPctUsed ? "Budget used" : "Budget" },
     ],
     objectiveBlocks: [],
     objectivesOmittedCount: 0,

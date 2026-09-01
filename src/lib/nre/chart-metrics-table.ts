@@ -4,7 +4,7 @@ import type { ShareChartSnapshot } from "./share-report";
 /** Hard cap on objectives stored in a snapshot — table renderer may show fewer. */
 export const CHART_SNAPSHOT_OBJECTIVE_MAX = 20;
 
-export type ChartMetricsRowKind = "header" | "total" | "objective" | "budget" | "footnote";
+export type ChartMetricsRowKind = "header" | "total" | "objective" | "footnote";
 
 export interface ChartMetricsTableRow {
   kind: ChartMetricsRowKind;
@@ -36,9 +36,8 @@ function pickRowMetrics(
   objectiveCount: number,
   isMulti: boolean,
   maxHeight: number,
-): { visibleCount: number; objectiveRowH: number; headerH: number; budgetH: number; totalH: number; footnoteH: number } {
+): { visibleCount: number; objectiveRowH: number; headerH: number; totalH: number; footnoteH: number } {
   const headerH = 28;
-  const budgetH = 26;
   const totalH = isMulti ? 28 : 0;
   const footnoteH = 20;
   const minObjectiveRowH = 22;
@@ -46,7 +45,7 @@ function pickRowMetrics(
 
   for (let visible = objectiveCount; visible >= 1; visible--) {
     const omitted = objectiveCount - visible;
-    const fixed = headerH + budgetH + totalH + (omitted > 0 ? footnoteH : 0);
+    const fixed = headerH + totalH + (omitted > 0 ? footnoteH : 0);
     const available = maxHeight - fixed;
     const rowH = Math.floor(available / visible);
     if (rowH >= minObjectiveRowH) {
@@ -54,7 +53,6 @@ function pickRowMetrics(
         visibleCount: visible,
         objectiveRowH: Math.min(maxObjectiveRowH, rowH),
         headerH,
-        budgetH,
         totalH,
         footnoteH: omitted > 0 ? footnoteH : 0,
       };
@@ -65,7 +63,6 @@ function pickRowMetrics(
     visibleCount: 1,
     objectiveRowH: minObjectiveRowH,
     headerH,
-    budgetH,
     totalH,
     footnoteH: objectiveCount > 1 ? footnoteH : 0,
   };
@@ -118,14 +115,6 @@ export function buildChartMetricsTable(
     });
   }
 
-  rows.push({
-    kind: "budget",
-    label: "Budget used",
-    spend: snap.budgetPctUsed ? `${snap.budgetPctUsed}` : "—",
-    results: "—",
-    cpr: "—",
-  });
-
   if (omitted > 0) {
     rows.push({
       kind: "footnote",
@@ -144,9 +133,6 @@ export function buildChartMetricsTable(
         break;
       case "total":
         rowHeights.push(metrics.totalH);
-        break;
-      case "budget":
-        rowHeights.push(metrics.budgetH);
         break;
       case "footnote":
         rowHeights.push(metrics.footnoteH);

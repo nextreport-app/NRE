@@ -102,7 +102,8 @@ export interface ShareChartSnapshot {
   primaryCprValue: string;
   primaryCprLabel: string;
   primarySpendFormatted?: string;
-  budgetPctUsed: string;
+  /** @deprecated Legacy field — no longer rendered on chart slides. */
+  budgetPctUsed?: string;
   activeCampaignCount: number;
   objectives?: ShareChartSnapshotObjective[];
   objectivesOmittedCount?: number;

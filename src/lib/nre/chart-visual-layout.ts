@@ -16,7 +16,7 @@ export interface ChartKpiCardRows {
 
 const OBJECTIVE_CARD_CAP = 4;
 
-/** Top KPI card rows — single mode uses 4 tiles; multi uses account row + objective cards. */
+/** Top KPI card rows — single mode uses three tiles; multi uses account row + objective cards. */
 export function buildChartKpiCardRows(snapshot: Parameters<typeof buildChartKpiLayout>[0]): ChartKpiCardRows {
   const layout = buildChartKpiLayout(snapshot);
 

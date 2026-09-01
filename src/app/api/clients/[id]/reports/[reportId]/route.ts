@@ -80,7 +80,6 @@ const chartEditSchema = z.object({
     primaryCprValue: z.string().max(64),
     primaryCprLabel: z.string().max(64),
     primarySpendFormatted: z.string().max(64).optional(),
-    budgetPctUsed: z.string().max(32),
     activeCampaignCount: z.number().int().min(0),
     objectivesOmittedCount: z.number().int().min(0).optional(),
     objectives: z

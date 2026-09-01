@@ -16,7 +16,6 @@ export interface ChartSnapshotKpis {
   mode: "single" | "multi";
   /** Account-level total MTD spend (all objectives). */
   mtdSpendFormatted: string;
-  budgetPctUsed: string;
   activeCampaignCount: number;
   objectives: ChartSnapshotObjective[];
   /** Objectives beyond CHART_SNAPSHOT_OBJECTIVE_CAP (Combined Total has the full set). */
@@ -34,7 +33,6 @@ export function buildChartSnapshotKpis(params: {
   mtdResultColumns: { label: string; value: string; cprValue: string; costLabel: string }[];
   mtdGroups: ResultGroup[];
   totalAllSpendFormatted: string;
-  budgetPctUsed: string | null;
   activeCampaignCount: number;
   currencySymbol: string;
 }): ChartSnapshotKpis {
@@ -62,7 +60,6 @@ export function buildChartSnapshotKpis(params: {
   return {
     mode: objectives.length >= 2 ? "multi" : "single",
     mtdSpendFormatted: params.totalAllSpendFormatted,
-    budgetPctUsed: params.budgetPctUsed ?? "",
     activeCampaignCount: params.activeCampaignCount,
     objectives: stored,
     objectivesOmittedCount: omitted,
