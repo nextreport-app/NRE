@@ -54,11 +54,25 @@ const visibilitySchema = z.object({
   adSets: z.record(z.string(), z.boolean()),
 });
 
+const coverEditSchema = z.object({
+  accountName: z.string().max(200),
+  dateRange: z.string().max(200),
+  healthBadge: z.string().max(200),
+  budgetSummary: z.string().max(400),
+});
+
+const visualSlideEditSchema = z.object({
+  title: z.string().max(200).optional(),
+  summaryLine: z.string().max(500).optional(),
+  groupedDonutCenterLabel: z.string().max(64).optional(),
+});
+
 const chartEditSchema = z.object({
   title: z.string().max(200),
   subtitle: z.string().max(200),
   totalSpendLabel: z.string().max(64),
-  footerInsight: z.string().max(200).optional(),
+  footerInsight: z.string().max(500).optional(),
+  visualSlide: visualSlideEditSchema.optional(),
   snapshot: z.object({
     mode: z.enum(["single", "multi"]).optional(),
     mtdSpendLabel: z.string().max(64),
@@ -95,6 +109,7 @@ const chartEditSchema = z.object({
 const shareReviewSchema = z.object({
   publish: z.boolean().optional(),
   visibility: visibilitySchema,
+  cover: coverEditSchema.optional(),
   campaigns: z.array(copySlideSchema),
   adSets: z.array(copySlideSchema).optional(),
   chart: chartEditSchema.optional(),
@@ -214,8 +229,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         });
       }
       share.visibility = parsed.data.visibility as ShareVisibility;
+      if (parsed.data.cover) {
+        share.accountName = parsed.data.cover.accountName;
+        share.cover = {
+          ...share.cover,
+          dateRange: parsed.data.cover.dateRange,
+          healthBadge: parsed.data.cover.healthBadge,
+          budgetSummary: parsed.data.cover.budgetSummary,
+        };
+      }
       if (parsed.data.chart && share.chart) {
-        share.chart = { ...share.chart, ...parsed.data.chart };
+        const nextChart = { ...share.chart, ...parsed.data.chart };
+        if (parsed.data.chart.visualSlide && share.chart.visualSlide) {
+          nextChart.visualSlide = { ...share.chart.visualSlide, ...parsed.data.chart.visualSlide };
+        } else if (parsed.data.chart.visualSlide) {
+          nextChart.visualSlide = parsed.data.chart.visualSlide as typeof share.chart.visualSlide;
+        }
+        share.chart = nextChart;
       }
       if (parsed.data.publish) {
         share.publishedAt = new Date().toISOString();

@@ -17,6 +17,18 @@ interface CopySlide {
   metrics: { key: string; label: string; value: string }[];
 }
 
+interface CoverEdit {
+  accountName: string;
+  dateRange: string;
+  healthBadge: string;
+  budgetSummary: string;
+}
+
+function patchChartVisualSlide(chart: ShareChartData, patch: Partial<NonNullable<ShareChartData["visualSlide"]>>): ShareChartData {
+  if (!chart.visualSlide) return chart;
+  return { ...chart, visualSlide: { ...chart.visualSlide, ...patch } };
+}
+
 function mergeEditedMetrics<T extends { key: string; label: string; value: string }>(
   original: T[],
   edited: { key: string; value: string }[],
@@ -29,12 +41,19 @@ interface SlideListItem {
   id: string;
   label: string;
   sublabel?: string;
-  kind: "campaign" | "adset" | "overview" | "combinedTotal" | "metricGuide";
+  kind: "cover" | "campaign" | "adset" | "overview" | "combinedTotal" | "metricGuide";
   visible: boolean;
 }
 
 function buildSlideList(share: ShareReportData, visibility: ShareVisibility): SlideListItem[] {
   const items: SlideListItem[] = [];
+  items.push({
+    id: "cover",
+    kind: "cover",
+    label: share.accountName || "Cover",
+    sublabel: "Cover slide",
+    visible: visibility.cover !== false,
+  });
   for (const c of share.campaigns) {
     items.push({
       id: `c:${c.campaignName}`,
@@ -108,6 +127,7 @@ export function ReportShareReview({
   const [adSets, setAdSets] = useState<CopySlide[]>([]);
   const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
   const [chartEdit, setChartEdit] = useState<ShareChartData | null>(null);
+  const [coverEdit, setCoverEdit] = useState<CoverEdit | null>(null);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
@@ -133,10 +153,16 @@ export function ReportShareReview({
       setAdSets(json.adSets ?? []);
       setVisibility(json.visibility ?? defaultShareVisibility(loaded));
       setChartEdit((json.chart as ShareChartData | null) ?? loaded.chart ?? null);
+      setCoverEdit({
+        accountName: loaded.accountName,
+        dateRange: loaded.cover.dateRange,
+        healthBadge: loaded.cover.healthBadge,
+        budgetSummary: loaded.cover.budgetSummary ?? "",
+      });
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
       setPdfAvailable(!!(json.publishedAt ?? loaded.publishedAt));
-      setSelectedSlideId(json.campaigns?.[0] ? `c:${json.campaigns[0].campaignName}` : null);
+      setSelectedSlideId("cover");
       setError(null);
       setLoading(false);
     }
@@ -150,6 +176,17 @@ export function ReportShareReview({
     if (!share || !visibility) return null;
     const merged: ShareReportData = {
       ...share,
+      ...(coverEdit
+        ? {
+            accountName: coverEdit.accountName,
+            cover: {
+              ...share.cover,
+              dateRange: coverEdit.dateRange,
+              healthBadge: coverEdit.healthBadge,
+              budgetSummary: coverEdit.budgetSummary,
+            },
+          }
+        : {}),
       visibility,
       chart: chartEdit ?? share.chart,
       campaigns: share.campaigns.map((c) => {
@@ -176,7 +213,7 @@ export function ReportShareReview({
       }),
     };
     return applyVisibilityToShare(merged, visibility);
-  }, [share, visibility, campaigns, adSets, chartEdit]);
+  }, [share, visibility, campaigns, adSets, chartEdit, coverEdit]);
 
   const slideList = useMemo(
     () => (draftShare && visibility ? buildSlideList(draftShare, visibility) : []),
@@ -186,7 +223,8 @@ export function ReportShareReview({
   function toggleSlide(item: SlideListItem) {
     if (!visibility) return;
     const next = { ...visibility, campaigns: { ...visibility.campaigns }, adSets: { ...visibility.adSets } };
-    if (item.kind === "campaign") {
+    if (item.kind === "cover") next.cover = !item.visible;
+    else if (item.kind === "campaign") {
       const name = item.label;
       next.campaigns[name] = !item.visible;
     } else if (item.kind === "adset") {
@@ -221,6 +259,14 @@ export function ReportShareReview({
             aiInsights: c.aiInsights,
             metrics: c.metrics.map((m) => ({ key: m.key, value: m.value })),
           })),
+          cover: coverEdit
+            ? {
+                accountName: coverEdit.accountName,
+                dateRange: coverEdit.dateRange,
+                healthBadge: coverEdit.healthBadge,
+                budgetSummary: coverEdit.budgetSummary,
+              }
+            : undefined,
           chart: chartEdit
             ? {
                 title: chartEdit.title,
@@ -229,6 +275,13 @@ export function ReportShareReview({
                 footerInsight: chartEdit.footerInsight,
                 snapshot: chartEdit.snapshot,
                 donutSegments: chartEdit.donutSegments,
+                visualSlide: chartEdit.visualSlide
+                  ? {
+                      title: chartEdit.visualSlide.title,
+                      summaryLine: chartEdit.visualSlide.summaryLine,
+                      groupedDonutCenterLabel: chartEdit.visualSlide.groupedDonutCenterLabel,
+                    }
+                  : undefined,
               }
             : undefined,
         },
@@ -264,6 +317,7 @@ export function ReportShareReview({
   const selectedAdSet = selectedSlideId?.startsWith("a:")
     ? adSets.find((a) => `a:${adSetVisibilityKey(a.campaignName, a.adSetName ?? "")}` === selectedSlideId)
     : null;
+  const coverSelected = selectedSlideId === "cover";
   const overviewSelected = selectedSlideId === "overview";
 
   return (
@@ -352,6 +406,43 @@ export function ReportShareReview({
         </aside>
 
         <div className="space-y-4">
+          {coverSelected && coverEdit ? (
+            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-[13px] font-semibold text-dash-ink">Cover slide</p>
+              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
+                Edit cover text here, then Publish — updates the live browser link and Download PPTX.
+              </p>
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Client / account name</label>
+              <input
+                type="text"
+                value={coverEdit.accountName}
+                onChange={(e) => setCoverEdit((c) => (c ? { ...c, accountName: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Date range</label>
+              <input
+                type="text"
+                value={coverEdit.dateRange}
+                onChange={(e) => setCoverEdit((c) => (c ? { ...c, dateRange: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Health badge</label>
+              <input
+                type="text"
+                value={coverEdit.healthBadge}
+                onChange={(e) => setCoverEdit((c) => (c ? { ...c, healthBadge: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Budget summary</label>
+              <input
+                type="text"
+                value={coverEdit.budgetSummary}
+                onChange={(e) => setCoverEdit((c) => (c ? { ...c, budgetSummary: e.target.value } : c))}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+              />
+            </div>
+          ) : null}
+
           {(selectedCampaign || selectedAdSet) && (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[13px] font-semibold text-dash-ink">
@@ -463,7 +554,10 @@ export function ReportShareReview({
               <input
                 type="text"
                 value={chartEdit.title}
-                onChange={(e) => setChartEdit((c) => (c ? { ...c, title: e.target.value } : c))}
+                onChange={(e) => {
+                  const title = e.target.value;
+                  setChartEdit((c) => (c ? patchChartVisualSlide({ ...c, title }, { title }) : c));
+                }}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
               <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Subtitle</label>
@@ -573,7 +667,12 @@ export function ReportShareReview({
               <input
                 type="text"
                 value={chartEdit.totalSpendLabel}
-                onChange={(e) => setChartEdit((c) => (c ? { ...c, totalSpendLabel: e.target.value } : c))}
+                onChange={(e) => {
+                  const totalSpendLabel = e.target.value;
+                  setChartEdit((c) =>
+                    c ? patchChartVisualSlide({ ...c, totalSpendLabel }, { groupedDonutCenterLabel: totalSpendLabel }) : c,
+                  );
+                }}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] tabular-nums text-dash-ink"
               />
               <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Donut legend</p>
@@ -635,12 +734,19 @@ export function ReportShareReview({
                   </div>
                 ))}
               </div>
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Footer line</label>
+              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Summary line</label>
               <input
                 type="text"
-                value={chartEdit.footerInsight ?? ""}
-                placeholder={`e.g. 0 active campaigns currently`}
-                onChange={(e) => setChartEdit((c) => (c ? { ...c, footerInsight: e.target.value } : c))}
+                value={chartEdit.visualSlide?.summaryLine ?? chartEdit.footerInsight ?? ""}
+                placeholder="e.g. Total Spend: $3,401 | 340% Budget Used | Meta Form Leads: 32 · $88.26 CPL"
+                onChange={(e) => {
+                  const summaryLine = e.target.value;
+                  setChartEdit((c) =>
+                    c
+                      ? patchChartVisualSlide({ ...c, footerInsight: summaryLine }, { summaryLine })
+                      : c,
+                  );
+                }}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
             </div>

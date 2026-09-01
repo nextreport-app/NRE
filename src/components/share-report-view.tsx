@@ -464,6 +464,7 @@ export function ShareReportView({
   const showCombinedTotal = visibleData.visibility?.combinedTotal !== false;
   const showMetricGuide = visibleData.visibility?.metricGuide !== false;
   const showOverview = visibleData.visibility?.overview !== false;
+  const showCover = visibleData.visibility?.cover !== false;
 
   return (
     <div
@@ -520,6 +521,7 @@ export function ShareReportView({
 
       <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-4 py-6 sm:px-6"}>
         {/* Cover slide replica */}
+        {showCover ? (
         <section className={slideClass}>
           <div className="mx-auto aspect-video w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10">
             <div className="flex h-full flex-col items-center justify-center text-center">
@@ -549,6 +551,7 @@ export function ShareReportView({
             </p>
           )}
         </section>
+        ) : null}
 
         {visibleData.campaigns.map((c) => (
           <section key={`campaign-${c.campaignName}`} className={slideClass}>
