@@ -264,6 +264,13 @@ describe("budgetSummaryLine", () => {
     expect(line).toBe("Monthly Ad Budget: ₹25,000 of ₹50,000 used (50%) — 9 days remaining");
   });
 
+  it("uses zero days remaining when the MTD month has already ended", () => {
+    const now = new Date(2026, 8, 1); // Sep 1 2026
+    const line = budgetSummaryLine(3401, 1000, "$", now, { year: 2026, month: 7 }); // August MTD
+    expect(line).toContain("3,401");
+    expect(line).toContain("0 days remaining");
+  });
+
   // Fix 6 — always a whole-number percentage, never one decimal place.
   it("rounds the percentage to the nearest whole number, never showing a decimal", () => {
     const now = new Date(2026, 6, 22);

@@ -38,7 +38,7 @@ import {
 import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
 import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
-import { calculateAccountHealth, budgetSummaryLine, budgetPctUsed } from "./health";
+import { calculateAccountHealth, budgetSummaryLine, budgetPctUsed, resolveBudgetMonthFromMtdRows } from "./health";
 import {
   buildCampaignObjectiveMap,
   getGroupedResultDisplayForObjective,
@@ -895,6 +895,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
           creativeRaw.reduce((s, r) => s + parseCellNum(r.spend), 0),
           monthlyBudget,
           currencySymbol,
+          now,
+          resolveBudgetMonthFromMtdRows(filteredMtdDailyRows, now),
         ),
       },
       campaignSlides: [],
@@ -1039,7 +1041,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const { score, badge } = calculateAccountHealth(primaryRows, periodLabel);
     const mtdSpend = mtdRows.reduce((sum, r) => sum + parseCellNum(r.spend), 0);
     const coverCampaignCount = new Set(primaryRows.map((r) => String(r.campaign_name || "").trim()).filter(Boolean)).size;
-    const budgetLine = budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now);
+    const budgetMonth = resolveBudgetMonthFromMtdRows(mtdRows, now);
+    const budgetLine = budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now, budgetMonth);
     cover = {
       accountName,
       reportDate: reportDateStr,

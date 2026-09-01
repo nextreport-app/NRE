@@ -1,6 +1,6 @@
 /** Self-contained styles for PDF capture — mirrors globals.css tokens used by ShareReportView. */
 export const PRINT_REPORT_CSS = `
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
@@ -11,16 +11,39 @@ export const PRINT_REPORT_CSS = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  #share-report-print main {
+    max-width: 100%;
+    padding: 0;
+  }
   .print-slide {
     break-after: page;
     page-break-after: always;
     break-inside: avoid;
     page-break-inside: avoid;
-    padding: 8px 0 24px;
+    min-height: 194mm;
+    height: 194mm;
+    max-height: 194mm;
+    overflow: hidden;
+    padding: 4mm 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .print-slide:last-child {
     break-after: auto;
     page-break-after: auto;
+  }
+  .print-slide > section,
+  .print-slide > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .print-slide .rounded-lg.border {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .bg-navy { background-color: #0d1b2e; }
   .bg-navy-panel { background-color: #111f35; }
@@ -35,6 +58,7 @@ export const PRINT_REPORT_CSS = `
   .rounded-md { border-radius: 8px; }
   .rounded-full { border-radius: 9999px; }
   .rounded-sm { border-radius: 2px; }
+  .rounded { border-radius: 4px; }
   .border { border-width: 1px; border-style: solid; }
   .font-bold { font-weight: 700; }
   .font-semibold { font-weight: 600; }
@@ -43,6 +67,7 @@ export const PRINT_REPORT_CSS = `
   .tracking-wide { letter-spacing: 0.025em; }
   .text-center { text-align: center; }
   .text-left { text-align: left; }
+  .text-right { text-align: right; }
   .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .line-clamp-2 {
     display: -webkit-box;
@@ -51,16 +76,26 @@ export const PRINT_REPORT_CSS = `
     overflow: hidden;
   }
   .grid { display: grid; }
+  .grid-cols-1 { grid-template-columns: minmax(0, 1fr); }
   .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .grid-cols-\\[minmax\\(0\\,1fr\\)_minmax\\(0\\,2\\.2fr\\)\\] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr);
+  }
+  .min-\\[720px\\]\\:grid-cols-\\[320px_1fr\\] {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
   .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
   .gap-6 { gap: 24px; }
   .gap-2 { gap: 8px; }
   .gap-2\\.5 { gap: 10px; }
+  .gap-x-3 { column-gap: 12px; }
   .flex { display: flex; }
   .inline-flex { display: inline-flex; }
+  .inline-block { display: inline-block; }
   .items-center { align-items: center; }
-  .items-start { align-items: flex-start; }
+  .items-start { align-items: start; }
   .justify-center { justify-content: center; }
   .justify-between { justify-content: space-between; }
   .flex-wrap { flex-wrap: wrap; }
@@ -77,17 +112,23 @@ export const PRINT_REPORT_CSS = `
   .max-w-\\[960px\\] { max-width: 960px; }
   .aspect-video { aspect-ratio: 16 / 9; }
   .overflow-x-auto { overflow-x: auto; }
+  .overflow-hidden { overflow: hidden; }
   .border-collapse { border-collapse: collapse; }
   .whitespace-nowrap { white-space: nowrap; }
   .space-y-2\\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }
   .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px; }
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+  .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 20px; }
+  .mt-0\\.5 { margin-top: 2px; }
   .mt-1 { margin-top: 4px; }
   .mt-1\\.5 { margin-top: 6px; }
   .mt-4 { margin-top: 16px; }
   .mt-5 { margin-top: 20px; }
   .mt-6 { margin-top: 24px; }
+  .mb-0 { margin-bottom: 0; }
   .mb-2 { margin-bottom: 8px; }
   .mb-4 { margin-bottom: 16px; }
+  .mr-2 { margin-right: 8px; }
   .my-5 { margin-top: 20px; margin-bottom: 20px; }
   .px-3 { padding-left: 12px; padding-right: 12px; }
   .px-4 { padding-left: 16px; padding-right: 16px; }
@@ -95,14 +136,26 @@ export const PRINT_REPORT_CSS = `
   .py-3 { padding-top: 12px; padding-bottom: 12px; }
   .py-4 { padding-top: 16px; padding-bottom: 16px; }
   .py-8 { padding-top: 32px; padding-bottom: 32px; }
+  .py-0\\.5 { padding-top: 2px; padding-bottom: 2px; }
+  .px-2\\.5 { padding-left: 10px; padding-right: 10px; }
+  .p-4 { padding: 16px; }
   .p-6 { padding: 24px; }
+  .pt-1 { padding-top: 4px; }
   .h-2 { height: 8px; }
-  .w-2 { width: 8px; }
+  .h-2\\.5 { height: 10px; }
   .h-3\\.5 { height: 14px; }
+  .h-5 { height: 20px; }
+  .h-full { height: 100%; }
+  .h-\\[168px\\] { height: 168px; }
+  .w-2 { width: 8px; }
+  .w-2\\.5 { width: 10px; }
   .w-3\\.5 { width: 14px; }
+  .w-\\[168px\\] { width: 168px; }
+  .w-\\[90px\\] { width: 90px; }
   .h-px { height: 1px; }
   .w-24 { width: 96px; }
   .opacity-90 { opacity: 0.9; }
+  .text-\\[9px\\] { font-size: 9px; line-height: 1.25; }
   .text-\\[10px\\] { font-size: 10px; line-height: 1.25; }
   .text-\\[11px\\] { font-size: 11px; line-height: 1.35; }
   .text-\\[12px\\] { font-size: 12px; line-height: 1.4; }
@@ -114,16 +167,12 @@ export const PRINT_REPORT_CSS = `
   .text-\\[22px\\] { font-size: 22px; line-height: 1.25; }
   .text-\\[24px\\] { font-size: 24px; line-height: 1.25; }
   .text-\\[32px\\] { font-size: 32px; line-height: 1.15; }
+  .text-\\[\\#94a3b8\\] { color: #94a3b8; }
   .leading-\\[1\\.6\\] { line-height: 1.6; }
   .leading-snug { line-height: 1.375; }
   .leading-\\[1\\.5\\] { line-height: 1.5; }
   .shadow-\\[0_4px_20px_rgba\\(0\\,0\\,0\\,0\\.25\\)\\] {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  }
-  @media (min-width: 720px) {
-    .min-\\[720px\\]\\:grid-cols-\\[220px_1fr\\] {
-      grid-template-columns: 220px 1fr;
-    }
   }
   .sm\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sm\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -131,4 +180,8 @@ export const PRINT_REPORT_CSS = `
   .sm\\:px-10 { padding-left: 40px; padding-right: 40px; }
   .sm\\:py-10 { padding-top: 40px; padding-bottom: 40px; }
   .sm\\:p-8 { padding: 32px; }
+  /* Cover badge — avoid exaggerated letter-spacing in PDF */
+  #share-report-print .print-slide:first-child span.uppercase {
+    letter-spacing: 0.08em !important;
+  }
 `;
