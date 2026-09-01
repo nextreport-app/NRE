@@ -19,10 +19,12 @@ function daysInclusive(startIso: string, endIso: string): NreRow[] {
 }
 
 describe("getMetaCsvDownloadTip", () => {
-  it("on the 1st recommends Previous Month for complete monthly data", () => {
+  it("on the 1st recommends one Previous Month CSV (not Last 30 Days)", () => {
     const tip = getMetaCsvDownloadTip(new Date("2026-09-01T12:00:00Z"));
     expect(tip).toContain("1st");
+    expect(tip).toContain("one CSV");
     expect(tip).toContain("Previous Month");
+    expect(tip).toContain("Do not use Last 30 Days");
   });
 
   it("on days 2–7 recommends Last 30 Days", () => {

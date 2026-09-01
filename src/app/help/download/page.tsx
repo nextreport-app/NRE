@@ -124,8 +124,9 @@ export default async function DownloadGuidePage() {
               <ul className="mt-3 space-y-3 text-[15px] leading-relaxed text-ink-secondary">
                 <li>
                   <span className="font-semibold text-[#f6ad55]">Day 1 of the month:</span> Download{" "}
-                  <span className="text-white">Previous Month</span> for a complete monthly report (e.g. August 1–31).
-                  Last 30 Days is OK for weekly reports (last 7 days = Aug 25–31) but often drops the 1st from monthly totals.
+                  <span className="text-white">one CSV — Previous Month</span> (e.g. August 1–31) with Time Breakdown set to Day.
+                  That single file covers your weekly slide (last 7 days ending yesterday, e.g. Aug 25–31) and full monthly totals.
+                  Do not use Last 30 Days — it skips the first days of the month.
                 </li>
                 <li>
                   <span className="font-semibold text-[#f6ad55]">Days 2–7:</span> Use{" "}

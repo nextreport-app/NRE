@@ -67,8 +67,9 @@ export function getMetaCsvDownloadTip(now: Date = new Date()): string {
 
   if (dayOfMonth === 1) {
     return (
-      "Today is the 1st. For a complete previous-month report (e.g. August 1–31), download Previous Month — not Last 30 Days — with Time Increment set to Day. " +
-      "Last 30 Days is OK for weekly reports (your last 7 days will end on yesterday), but it often drops the 1st of the month from monthly totals."
+      "Today is the 1st — you're wrapping up last month's report. Download one CSV: Previous Month (e.g. August 1–31) with Time Increment set to Day. " +
+      "That single file covers both your weekly slide (last 7 days ending yesterday) and full monthly totals. " +
+      "Do not use Last 30 Days here — it skips the first days of the month and understates monthly spend."
     );
   }
 
@@ -129,9 +130,9 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date()): 
       kind: "first_of_month",
       title: `Today is the 1st — you're closing ${reportingMonthName ?? "last month"}'s report`,
       message:
-        `There is no data for the new month yet (we never include today). Your weekly slide will use ${weeklyRangeLabel ?? "the last 7 days ending yesterday"}. ` +
+        `There is no data for the new month yet (we never include today). Your weekly slide will use ${weeklyRangeLabel ?? "the last 7 days ending yesterday"} — included in the same CSV. ` +
         `The monthly overview covers ${intendedMtdLabel}. ` +
-        "For complete monthly totals starting on the 1st, download Previous Month from Meta Ads Manager — not Last 30 Days.",
+        "Download Previous Month from Meta Ads Manager (Time Increment: Day). One file is enough — do not also download Last 30 Days.",
       intendedMtdLabel,
       weeklyRangeLabel,
       suggestedDownload: "previous_month",
