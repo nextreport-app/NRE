@@ -8,6 +8,7 @@ import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiLayout
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
+import { buildMtdChartSlideGeometry, MTD_SLIDE_W } from "./chart-slide-layout";
 import {
   backgroundImage,
   buildBlankSlideXml,
@@ -76,7 +77,7 @@ export function buildMtdOverviewOoxmlShapes(
 ): string[] {
   resetShapeIdCounter();
   const c = isLightTemplate ? LIGHT : DARK;
-  const W = 960;
+  const W = MTD_SLIDE_W;
   const shapes: string[] = [backgroundImage({ relId: CHART_BG_REL_ID, ...background })];
 
   shapes.push(
@@ -104,13 +105,10 @@ export function buildMtdOverviewOoxmlShapes(
   );
 
   const layout = buildChartKpiLayout(chart.snapshot);
-  const kpiH = 88;
-  const objH = 96;
+  const geo = buildMtdChartSlideGeometry(layout);
 
   if (layout.mode === "single") {
-    const kpiY = 92;
-    const kpiW = 200;
-    const kpiGap = 16;
+    const { y: kpiY, h: kpiH, w: kpiW, gap: kpiGap } = geo.accountKpi;
     const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
     layout.accountTiles.forEach((tile, i) => {
       const x = kpiStartX + i * (kpiW + kpiGap);
@@ -121,41 +119,37 @@ export function buildMtdOverviewOoxmlShapes(
       );
     });
   } else {
-    const accountY = 92;
-    const accountW = 320;
-    const accountGap = 24;
+    const { y: accountY, h: accountH, w: accountW, gap: accountGap } = geo.accountKpi;
     const accountStartX = (W - (2 * accountW + accountGap)) / 2;
     layout.accountTiles.forEach((tile, i) => {
       const x = accountStartX + i * (accountW + accountGap);
       shapes.push(
-        roundedCard({ x, y: accountY, w: accountW, h: kpiH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
-        textBox({ x, y: accountY + 14, w: accountW, h: 32, text: tile.value, sizePt: 22, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: accountY + 48, w: accountW, h: 20, text: tile.label.toUpperCase(), sizePt: 10, bold: true, colorHex: c.accent, align: "ctr" }),
+        roundedCard({ x, y: accountY, w: accountW, h: accountH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
+        textBox({ x, y: accountY + 10, w: accountW, h: 28, text: tile.value, sizePt: 22, bold: true, colorHex: c.ink, align: "ctr" }),
+        textBox({ x, y: accountY + 40, w: accountW, h: 18, text: tile.label.toUpperCase(), sizePt: 10, bold: true, colorHex: c.accent, align: "ctr" }),
       );
     });
 
+    const objBand = geo.objectiveKpi!;
     const objCount = layout.objectiveBlocks.length;
-    const objY = accountY + kpiH + 12;
-    const objGap = 12;
-    const objW = Math.min(220, (W - objGap * (objCount - 1) - 80) / objCount);
-    const objStartX = (W - (objCount * objW + (objCount - 1) * objGap)) / 2;
+    const objStartX = (W - (objCount * geo.objectiveTileW + (objCount - 1) * objBand.gap)) / 2;
     layout.objectiveBlocks.forEach((obj, i) => {
-      const x = objStartX + i * (objW + objGap);
+      const x = objStartX + i * (geo.objectiveTileW + objBand.gap);
+      const objY = objBand.y;
+      const objH = objBand.h;
+      const objW = geo.objectiveTileW;
       shapes.push(
         roundedCard({ x, y: objY, w: objW, h: objH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
-        textBox({ x, y: objY + 6, w: objW, h: 14, text: obj.label.toUpperCase(), sizePt: 9, bold: true, colorHex: c.accent, align: "ctr" }),
-        textBox({ x, y: objY + 24, w: objW, h: 24, text: obj.resultsValue, sizePt: 20, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: objY + 46, w: objW, h: 16, text: obj.cprValue, sizePt: 13, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: objY + 60, w: objW, h: 12, text: obj.cprLabel.toUpperCase(), sizePt: 8, bold: true, colorHex: c.inkSubtitle, align: "ctr" }),
-        textBox({ x, y: objY + 74, w: objW, h: 14, text: `${obj.spendFormatted} spent`, sizePt: 9, colorHex: c.inkSubtitle, align: "ctr" }),
+        textBox({ x, y: objY + 4, w: objW, h: 12, text: obj.label.toUpperCase(), sizePt: 9, bold: true, colorHex: c.accent, align: "ctr" }),
+        textBox({ x, y: objY + 18, w: objW, h: 22, text: obj.resultsValue, sizePt: 18, bold: true, colorHex: c.ink, align: "ctr" }),
+        textBox({ x, y: objY + 38, w: objW, h: 14, text: obj.cprValue, sizePt: 12, bold: true, colorHex: c.ink, align: "ctr" }),
+        textBox({ x, y: objY + 50, w: objW, h: 10, text: obj.cprLabel.toUpperCase(), sizePt: 8, bold: true, colorHex: c.inkSubtitle, align: "ctr" }),
+        textBox({ x, y: objY + 60, w: objW, h: 12, text: `${obj.spendFormatted} spent`, sizePt: 9, colorHex: c.inkSubtitle, align: "ctr" }),
       );
     });
   }
 
-  const donutD = 220;
-  const donutX = 110;
-  const donutY = layout.mode === "multi" ? 220 : 200;
-  const donutCy = donutY + donutD / 2;
+  const { x: donutX, y: donutY, d: donutD, cy: donutCy } = geo.donut;
 
   if (chart.donutSegments.length > 0) {
     shapes.push(
@@ -197,8 +191,8 @@ export function buildMtdOverviewOoxmlShapes(
     }),
   );
 
-  let legendY = 220;
-  const legendX = 380;
+  let legendY = geo.legend.y;
+  const legendX = geo.legend.x;
   const legendStatsColor = isLightTemplate ? "64748b" : "94a3b8";
   for (const seg of chart.donutSegments) {
     shapes.push(
@@ -233,13 +227,13 @@ export function buildMtdOverviewOoxmlShapes(
         align: "l",
       }),
     );
-    legendY += 44;
+    legendY += geo.legend.rowH;
   }
 
   shapes.push(
     textBox({
       x: 40,
-      y: 468,
+      y: geo.footerY.ooxml,
       w: W - 80,
       h: 28,
       text: resolveChartFooterInsight(chart),

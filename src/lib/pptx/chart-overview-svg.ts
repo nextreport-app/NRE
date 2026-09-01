@@ -8,6 +8,7 @@
 import type { ShareChartData } from "../nre/share-report";
 import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiLayout } from "../nre/share-chart-projection";
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
+import { buildMtdChartSlideGeometry, MTD_SLIDE_W, MTD_SLIDE_H } from "./chart-slide-layout";
 
 const INK = "#ffffff";
 /** Same muted grey as every other slide's main heading (REPORT_HEADER_COLOR). */
@@ -74,29 +75,24 @@ function appendDonutSegment(
 }
 
 export function buildMtdOverviewSvg(chart: ShareChartData): string {
-  const W = 960;
-  const H = 540;
+  const W = MTD_SLIDE_W;
+  const H = MTD_SLIDE_H;
   const parts: string[] = [];
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
   );
 
-  // Title + subtitle (match browser hierarchy; brighter/larger for Slides readability)
   parts.push(
     `<text x="${W / 2}" y="48" text-anchor="middle" fill="${TITLE}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(chart.title)}</text>`,
     `<text x="${W / 2}" y="74" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="16" font-weight="500">${escapeXml(chart.subtitle)}</text>`,
   );
 
-  // KPI tiles — single (4 across) or multi (account row + objective blocks)
   const layout = buildChartKpiLayout(chart.snapshot);
-  const kpiH = 88;
-  const objH = 96;
+  const geo = buildMtdChartSlideGeometry(layout);
 
   if (layout.mode === "single") {
-    const kpiY = 92;
-    const kpiW = 200;
-    const kpiGap = 16;
+    const { y: kpiY, h: kpiH, w: kpiW, gap: kpiGap } = geo.accountKpi;
     const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
     layout.accountTiles.forEach((tile, i) => {
       const x = kpiStartX + i * (kpiW + kpiGap);
@@ -107,40 +103,37 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
       );
     });
   } else {
-    const accountY = 92;
-    const accountW = 320;
-    const accountGap = 24;
+    const { y: accountY, h: accountH, w: accountW, gap: accountGap } = geo.accountKpi;
     const accountStartX = (W - (2 * accountW + accountGap)) / 2;
     layout.accountTiles.forEach((tile, i) => {
       const x = accountStartX + i * (accountW + accountGap);
       parts.push(
-        `<rect x="${x}" y="${accountY}" width="${accountW}" height="${kpiH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-        `<text x="${x + accountW / 2}" y="${accountY + 38}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
-        `<text x="${x + accountW / 2}" y="${accountY + 62}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
+        `<rect x="${x}" y="${accountY}" width="${accountW}" height="${accountH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
+        `<text x="${x + accountW / 2}" y="${accountY + 32}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
+        `<text x="${x + accountW / 2}" y="${accountY + 54}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
       );
     });
 
+    const objBand = geo.objectiveKpi!;
     const objCount = layout.objectiveBlocks.length;
-    const objY = accountY + kpiH + 12;
-    const objGap = 12;
-    const objW = Math.min(220, (W - objGap * (objCount - 1) - 80) / objCount);
-    const objStartX = (W - (objCount * objW + (objCount - 1) * objGap)) / 2;
+    const objStartX = (W - (objCount * geo.objectiveTileW + (objCount - 1) * objBand.gap)) / 2;
     layout.objectiveBlocks.forEach((obj, i) => {
-      const x = objStartX + i * (objW + objGap);
+      const x = objStartX + i * (geo.objectiveTileW + objBand.gap);
+      const objY = objBand.y;
+      const objH = objBand.h;
+      const objW = geo.objectiveTileW;
       parts.push(
         `<rect x="${x}" y="${objY}" width="${objW}" height="${objH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
-        `<text x="${x + objW / 2}" y="${objY + 18}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="9" font-weight="600">${escapeXml(obj.label.toUpperCase())}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 42}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(obj.resultsValue)}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 62}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="13" font-weight="600">${escapeXml(obj.cprValue)}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 76}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="8" font-weight="600">${escapeXml(obj.cprLabel.toUpperCase())}</text>`,
-        `<text x="${x + objW / 2}" y="${objY + 90}" text-anchor="middle" fill="${LEGEND_STATS}" font-family="Poppins" font-size="9" font-weight="500">${escapeXml(`${obj.spendFormatted} spent`)}</text>`,
+        `<text x="${x + objW / 2}" y="${objY + 16}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="9" font-weight="600">${escapeXml(obj.label.toUpperCase())}</text>`,
+        `<text x="${x + objW / 2}" y="${objY + 36}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="18" font-weight="700">${escapeXml(obj.resultsValue)}</text>`,
+        `<text x="${x + objW / 2}" y="${objY + 52}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="12" font-weight="600">${escapeXml(obj.cprValue)}</text>`,
+        `<text x="${x + objW / 2}" y="${objY + 64}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="8" font-weight="600">${escapeXml(obj.cprLabel.toUpperCase())}</text>`,
+        `<text x="${x + objW / 2}" y="${objY + 74}" text-anchor="middle" fill="${LEGEND_STATS}" font-family="Poppins" font-size="9" font-weight="500">${escapeXml(`${obj.spendFormatted} spent`)}</text>`,
       );
     });
   }
 
-  const donutCx = 220;
-  const donutCy = layout.mode === "multi" ? 330 : 310;
-  const outerR = 110;
+  const { cx: donutCx, cy: donutCy, outerR } = geo.donut;
   const innerR = outerR * DONUT_HOLE_RATIO;
 
   let angle = 0;
@@ -155,20 +148,19 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="11" font-weight="600">TOTAL SPEND</text>`,
   );
 
-  // Legend
-  let legendY = layout.mode === "multi" ? 250 : 220;
-  const legendX = 380;
+  let legendY = geo.legend.y;
+  const legendX = geo.legend.x;
   for (const seg of chart.donutSegments) {
     parts.push(
       `<rect x="${legendX}" y="${legendY}" width="14" height="14" rx="2" fill="#${seg.color}"/>`,
       `<text x="${legendX + 22}" y="${legendY + 14}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(seg.name)}</text>`,
       `<text x="${legendX + 22}" y="${legendY + 32}" fill="${LEGEND_STATS}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(formatDonutSegmentStats(seg.percentage, seg.spendLabel))}</text>`,
     );
-    legendY += 44;
+    legendY += geo.legend.rowH;
   }
 
   parts.push(
-    `<text x="${W / 2}" y="488" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,
+    `<text x="${W / 2}" y="${geo.footerY.svg}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,
   );
 
   parts.push("</svg>");
