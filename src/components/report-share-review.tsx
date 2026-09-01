@@ -704,26 +704,19 @@ export function ReportShareReview({
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
               <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {[
-                  { key: "mtdSpendLabel", label: "Total ad spend this month" },
-                  { key: "budgetPctUsed", label: "Budget used (%)" },
-                ].map((field) => (
-                  <label key={field.key} className="block">
-                    <span className="text-[11px] font-medium text-dash-ink-secondary">{field.label}</span>
-                    <input
-                      type="text"
-                      value={chartEdit.snapshot[field.key as keyof typeof chartEdit.snapshot] as string}
-                      onChange={(e) =>
-                        setChartEdit((c) =>
-                          c ? { ...c, snapshot: { ...c.snapshot, [field.key]: e.target.value } } : c,
-                        )
-                      }
-                      className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
-                    />
-                  </label>
-                ))}
-              </div>
+              <label className="mt-2 block">
+                <span className="text-[11px] font-medium text-dash-ink-secondary">Total ad spend this month</span>
+                <input
+                  type="text"
+                  value={chartEdit.snapshot.mtdSpendLabel}
+                  onChange={(e) =>
+                    setChartEdit((c) =>
+                      c ? { ...c, snapshot: { ...c.snapshot, mtdSpendLabel: e.target.value } } : c,
+                    )
+                  }
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                />
+              </label>
               {(chartEdit.snapshot.objectives?.length ?? 0) > 0 ? (
                 <div className="mt-3 space-y-3">
                   <p className="text-[11px] uppercase tracking-wide text-dash-ink-secondary">Objective blocks</p>
