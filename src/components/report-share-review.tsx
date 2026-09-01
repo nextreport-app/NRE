@@ -59,7 +59,7 @@ function buildSlideList(share: ShareReportData, visibility: ShareVisibility): Sl
       id: "overview",
       kind: "overview",
       label: "Month to date overview",
-      sublabel: "KPI tiles + spend mix",
+      sublabel: "Budget + results",
       visible: visibility.overview !== false,
     });
   }

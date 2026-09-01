@@ -10,7 +10,6 @@ import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";
 import type { TemplateBackgroundImage } from "../package";
-import { DONUT_HOLE_RATIO } from "../chart-slide-constants";
 
 const BACKGROUND: TemplateBackgroundImage = {
   blipXml: '<a:blip r:embed="rId1"/>',
@@ -100,20 +99,20 @@ describe("buildDonutSegments", () => {
 describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
   it("slide XML uses native editable shapes with title text", async () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(bundle.xml).toContain("Month to date performance");
+    expect(bundle.xml).toContain("Campaign Performance");
     expect(bundle.xml).toContain('prst="pie"');
-    expect(bundle.xml).toContain("TOTAL SPEND");
+    expect(bundle.xml).toContain("BUDGET DISTRIBUTION");
     expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
 
-  it("uses muted grey for the main heading — same REPORT_HEADER_COLOR as every other slide", async () => {
+  it("uses white title text on the visual chart slide", async () => {
     const chart = buildChart([campaign("A", { spend: 442 })]);
     const shareChart = projectChartSlideToShareChart(chart, "$");
     const bundle = await buildChartSlideBundle(chart, "$", BACKGROUND);
     const titleIdx = bundle.xml.indexOf(`<a:t>${shareChart.title}</a:t>`);
     expect(titleIdx).toBeGreaterThan(-1);
     const runStart = bundle.xml.lastIndexOf("<a:r>", titleIdx);
-    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
+    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="ffffff"/>');
   });
 
   it("embeds native OOXML chart shapes with KPI cards and campaign spend bars", async () => {
@@ -122,8 +121,7 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
       "C$",
       BACKGROUND,
     );
-    expect(bundle.xml).toContain("CAMPAIGN SPEND MIX");
-    expect(bundle.xml).toContain("AD SPEND THIS MONTH");
+    expect(bundle.xml).toContain("BUDGET DISTRIBUTION");
     expect(bundle.xml).toContain("PURCHASES");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
@@ -132,29 +130,22 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
         "C$",
       ),
     );
-    expect(svg).toContain("CAMPAIGN SPEND MIX");
-    expect(svg).toContain("TOTAL SPEND");
+    expect(svg).toContain("BUDGET DISTRIBUTION");
+    expect(svg).toContain("Purchases");
   });
 
-  it("buildMtdOverviewSvg uses thinner donut hole ratio", () => {
+  it("buildMtdOverviewSvg includes mini donut rings for campaign spend", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain(`A ${110 * DONUT_HOLE_RATIO}`);
+    expect(svg).toContain('stroke="#f6ad55"');
+    expect(svg).toContain("BUDGET DISTRIBUTION");
   });
 
-  it("buildMtdOverviewSvg uses muted grey for the main heading", () => {
-    const chart = buildChart([campaign("A", { spend: 442 })]);
-    const shareChart = projectChartSlideToShareChart(chart, "$");
-    const svg = buildMtdOverviewSvg(shareChart);
-    expect(svg).toContain('fill="#94a3b8"');
-    expect(svg).toContain(shareChart.title);
-  });
-
-  it("renders a full-ring donut when one campaign owns 100% of spend", () => {
+  it("buildMtdOverviewSvg renders result bars for each campaign", () => {
     const chart = buildChart([campaign("Only campaign", { spend: 500 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "$"));
-    const pathCount = (svg.match(/<path d="/g) || []).length;
-    expect(pathCount).toBeGreaterThanOrEqual(2);
+    expect(svg).toContain("purchases");
+    expect(svg).toContain('<rect');
   });
 
   it("chartCampaignMetricLines still formats zero-result rows", () => {

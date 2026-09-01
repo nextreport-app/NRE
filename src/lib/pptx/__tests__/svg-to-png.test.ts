@@ -5,7 +5,7 @@ import { rasterizeSvgToPng } from "../svg-to-png";
 describe("rasterizeSvgToPng", () => {
   it("produces a substantial PNG with readable text when fonts are bundled", async () => {
     const svg = buildMtdOverviewSvg({
-      title: "August · Month to date overview",
+      title: "August Campaign Performance: August 1 - August 20, 2026",
       subtitle: "Month to date performance",
       snapshot: {
         mtdSpendLabel: "$100",
@@ -18,6 +18,26 @@ describe("rasterizeSvgToPng", () => {
       },
       donutSegments: [{ name: "A", spendLabel: "$100", percentage: 100, color: "f6ad55" }],
       totalSpendLabel: "$100",
+      visualSlide: {
+        title: "August Campaign Performance: August 1 - August 20, 2026",
+        isMultiObjective: false,
+        leftHeading: "BUDGET DISTRIBUTION",
+        rightHeading: "Purchases by Campaign",
+        miniDonuts: [{ name: "A", spendLabel: "$100", pctLabel: "100%", color: "f6ad55" }],
+        groupedDonut: null,
+        groupedDonutCenterLabel: "$100",
+        resultBars: [
+          {
+            name: "A",
+            color: "f6ad55",
+            resultCount: 10,
+            resultLine: "10 purchases",
+            costLine: "$10.00 CPP",
+            barPct: 100,
+          },
+        ],
+        summaryLine: "Total Spend: $100 · Total Purchases: 10",
+      },
     });
     const png = await rasterizeSvgToPng(svg);
     expect(png[0]).toBe(0x89);

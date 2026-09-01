@@ -292,9 +292,9 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("July · Month to date overview");
+    expect(chartSvg).toContain("Campaign Performance");
     expect(chartSvg).toContain("July 13 - July 19, 2026");
-    expect(chartSvg).toContain("CAMPAIGN SPEND MIX");
+    expect(chartSvg).toContain("BUDGET DISTRIBUTION");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
 
@@ -574,7 +574,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("July · Month to date overview");
+    expect(chartSvg).toContain("July Campaign Performance");
     expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
@@ -754,7 +754,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
 
     expect(chartXml).toContain('prst="pie"');
     expect(chartXml).toContain('txBox="1"');
-    expect(chartXml).toContain("TOTAL SPEND");
+    expect(chartXml).toContain("Total MTD Spend");
     expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
     expect((chartXml.match(/<p:sp>/g) || []).length).toBeGreaterThan(10);
   });
@@ -1127,7 +1127,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const chartXmlLight = await findChartSlideXml(zip);
     expect(chartXmlLight).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
-    expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("month to date overview");
+    expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("campaign performance");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just
     // "CAMPAIGN PERFORMANCE OVERVIEW" (Fix 3's rename).
     expect(table).toContain("MONTHLY CAMPAIGN PERFORMANCE OVERVIEW");

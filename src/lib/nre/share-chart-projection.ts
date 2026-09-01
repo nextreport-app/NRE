@@ -3,6 +3,7 @@ import { buildDonutSegments, type DonutSegment } from "../pptx/chart-slide";
 import type { ChartSlideData } from "./report-data";
 import type { ShareChartData, ShareChartSnapshot, ShareDonutSegment } from "./share-report";
 import { mapChartSnapshotObjective, toTitleCaseChartLabel } from "./chart-kpi-layout";
+import { buildVisualChartSlideModel } from "./visual-chart-slide";
 
 /** Footer insight under the donut — active campaigns only (budget % lives in the KPI tile). */
 export function formatChartFooterInsight(activeCampaignCount: number, override?: string): string {
@@ -10,7 +11,8 @@ export function formatChartFooterInsight(activeCampaignCount: number, override?:
   return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} currently`;
 }
 
-export function resolveChartFooterInsight(chart: Pick<ShareChartData, "snapshot" | "footerInsight">): string {
+export function resolveChartFooterInsight(chart: Pick<ShareChartData, "snapshot" | "footerInsight" | "visualSlide">): string {
+  if (chart.visualSlide?.summaryLine) return chart.visualSlide.summaryLine;
   const base = formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
   const omitted = chart.snapshot.objectivesOmittedCount ?? 0;
   if (omitted > 0) {
@@ -27,9 +29,7 @@ export function formatDonutSegmentStats(percentage: number, spendLabel: string):
 
 /** Shared projection from ChartSlideData → share-page chart shape (browser + PPT). */
 export function projectChartSlideToShareChart(chart: ChartSlideData, currencySymbol: string): ShareChartData {
-  const rangeSuffix = chart.periodSubLabel.length > 0 ? `: ${chart.periodSubLabel}` : "";
-  const title = `${chart.mtdMonthName ?? "This month"} · Month to date overview${rangeSuffix}`;
-  const subtitle = "Month to date performance · Where your budget went";
+  const visualSlide = buildVisualChartSlideModel(chart, currencySymbol);
   const snap = chart.snapshot;
   const snapshot: ShareChartSnapshot = {
     mode: snap.mode,
@@ -61,14 +61,16 @@ export function projectChartSlideToShareChart(chart: ChartSlideData, currencySym
     }),
   );
   return {
-    title,
-    subtitle,
+    title: visualSlide.title,
+    subtitle: "Month to date performance · Where your budget went",
     snapshot,
     donutSegments,
     totalSpendLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
+    visualSlide,
   };
 }
 
 export { buildChartKpiLayout, normalizeShareChartSnapshot, toTitleCaseChartLabel } from "./chart-kpi-layout";
 export { buildChartKpiCardRows, buildChartCampaignBars, computeMtdVisualBandMetrics } from "./chart-visual-layout";
 export { buildChartMetricsTable, CHART_SNAPSHOT_OBJECTIVE_MAX } from "./chart-metrics-table";
+export { buildVisualChartSlideModel, buildVisualChartTitle } from "./visual-chart-slide";
