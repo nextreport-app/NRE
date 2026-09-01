@@ -363,7 +363,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
  * the MTD row is additionally dropped when it would duplicate the Period
  * row's own month.
  */
-function CombinedTotalTable({ data }: { data: ShareReportData }) {
+function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; compact?: boolean }) {
   const grid =
     data.platform === "GOOGLE"
       ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels)
@@ -381,18 +381,25 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
   if (bodyRows.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      {data.combinedTotalStory ? (
-        <p className="text-center text-[16px] leading-snug text-ink" style={{ marginBottom: "12px" }}>
-          {data.combinedTotalStory}
-        </p>
-      ) : null}
-    <div className="overflow-x-auto rounded-lg border border-navy-border">
-      <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
+    <div className={compact ? "print-combined-table overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border"}>
+      <table
+        className={
+          compact
+            ? "w-full border-collapse text-left text-[9px]"
+            : "w-full min-w-[640px] border-collapse text-left text-[13px]"
+        }
+      >
         <thead>
           <tr className="bg-navy-border">
             {headerRow.map((h, i) => (
-              <th key={i} className="whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink">
+              <th
+                key={i}
+                className={
+                  compact
+                    ? "px-1.5 py-2 text-[8px] font-semibold uppercase tracking-wide text-ink"
+                    : "whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink"
+                }
+              >
                 {h}
               </th>
             ))}
@@ -405,7 +412,9 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
                 <td
                   key={ci}
                   className={
-                    "whitespace-nowrap px-4 py-3 text-[13px] text-ink " +
+                    (compact
+                      ? "px-1.5 py-2 text-[9px] text-ink "
+                      : "whitespace-nowrap px-4 py-3 text-[13px] text-ink ") +
                     (ci === 0 ? "text-left font-semibold" : "text-center")
                   }
                 >
@@ -416,7 +425,6 @@ function CombinedTotalTable({ data }: { data: ShareReportData }) {
           ))}
         </tbody>
       </table>
-    </div>
     </div>
   );
 }
@@ -452,6 +460,7 @@ export function ShareReportView({
 }) {
   const isPrint = mode === "print";
   const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
+  const coverSlideClass = isPrint ? "print-slide print-cover-slide mb-0" : slideClass;
   const visibleData = applyShareVisibility(data);
   const generatedDate = new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -472,7 +481,12 @@ export function ShareReportView({
       className={isPrint ? "bg-navy" : "min-h-screen"}
       style={
         isPrint
-          ? { fontFamily: "var(--font-inter), sans-serif", backgroundColor: "#0d1b2e" }
+          ? {
+              fontFamily: "var(--font-inter), sans-serif",
+              backgroundColor: "#0d1b2e",
+              backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }
           : {
               fontFamily: "var(--font-inter), sans-serif",
               backgroundColor: "#0d1b2e",
@@ -522,8 +536,10 @@ export function ShareReportView({
       <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-4 py-6 sm:px-6"}>
         {/* Cover slide replica */}
         {showCover ? (
-        <section className={slideClass}>
-          <div className="mx-auto aspect-video w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10">
+        <section className={coverSlideClass}>
+          <div
+            className={`mx-auto w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10 ${isPrint ? "" : "aspect-video"}`}
+          >
             <div className="flex h-full flex-col items-center justify-center text-center">
               <div
                 className="inline-flex items-center gap-2 rounded-full"
@@ -537,12 +553,13 @@ export function ShareReportView({
                   {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
                 </span>
               </div>
-              <h1 className="mt-4 line-clamp-2 text-[32px] font-bold text-ink">{visibleData.accountName}</h1>
+              <h1 className={`mt-4 font-bold text-ink ${isPrint ? "text-[28px]" : "line-clamp-2 text-[32px]"}`}>
+                {visibleData.accountName}
+              </h1>
               <p className="mt-2 text-[16px] tracking-wide text-ink-muted">{reportTypeLabel(visibleData).toUpperCase()}</p>
               <p className="mt-2 text-[14px] text-ink-muted">{visibleData.cover.dateRange}</p>
               <div className="my-5 h-px w-24 bg-navy-border" />
               <p className="text-[14px] font-medium text-ink">{visibleData.cover.healthBadge}</p>
-              {visibleData.cover.budgetSummary && <p className="mt-2 text-[13px] text-ink-muted">{visibleData.cover.budgetSummary}</p>}
             </div>
           </div>
           {visibleData.isPaused && visibleData.pausedMessage && (
@@ -575,7 +592,7 @@ export function ShareReportView({
         <section className={slideClass}>
           <SlideCard>
             <h2 className="mb-4 text-[22px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
-            <CombinedTotalTable data={visibleData} />
+            <CombinedTotalTable data={visibleData} compact={isPrint} />
           </SlideCard>
         </section>
         )}

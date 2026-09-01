@@ -180,6 +180,30 @@ export const PRINT_REPORT_CSS = `
   .sm\\:px-10 { padding-left: 40px; padding-right: 40px; }
   .sm\\:py-10 { padding-top: 40px; padding-bottom: 40px; }
   .sm\\:p-8 { padding: 32px; }
+  /* Cover slide — avoid clipping the client name; match browser panel styling */
+  .print-cover-slide {
+    overflow: visible;
+    justify-content: center;
+  }
+  .print-cover-slide > div {
+    overflow: visible;
+    max-height: none;
+  }
+  /* Combined Total — fit all objective columns on one landscape page */
+  .print-combined-table table {
+    width: 100%;
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+  .print-combined-table th,
+  .print-combined-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .text-\\[8px\\] { font-size: 8px; line-height: 1.25; }
+  .text-\\[9px\\] { font-size: 9px; line-height: 1.25; }
+  .px-1\\.5 { padding-left: 6px; padding-right: 6px; }
+  .py-2 { padding-top: 8px; padding-bottom: 8px; }
   /* Cover badge — avoid exaggerated letter-spacing in PDF */
   #share-report-print .print-slide:first-child span.uppercase {
     letter-spacing: 0.08em !important;

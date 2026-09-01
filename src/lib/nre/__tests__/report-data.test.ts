@@ -219,11 +219,8 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(data.cover.healthBadge).toContain("On Track");
   });
 
-  it("computes the budget summary line", () => {
-    // Fix 6 — whole-number percentage, no decimal place.
-    expect(data.cover.budgetSummary).toBe(
-      "Monthly Ad Budget: ₹2,450 of ₹100,000 used (2%) — 11 days remaining",
-    );
+  it("leaves the cover budget summary empty", () => {
+    expect(data.cover.budgetSummary).toBe("");
   });
 
   it("builds the MTD chart with default-sorted campaign order", () => {

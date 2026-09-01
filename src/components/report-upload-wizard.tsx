@@ -253,6 +253,16 @@ function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
 
+function buildTelegramShareUrl(reportUrl: string): string {
+  return `https://t.me/share/url?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
+}
+
+function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
+  const subject = encodeURIComponent(`${accountName} — Performance Report`);
+  const body = encodeURIComponent(`Hi,\n\nYour report is ready to view:\n${reportUrl}\n\n`);
+  return `mailto:?subject=${subject}&body=${body}`;
+}
+
 /** The public read-only share page's URL (see app/r/[token]/page.tsx) — a plain domain/path, no protocol, matching how it's shown/copied everywhere in the product spec. */
 function buildShareReportUrl(shareToken: string): string {
   return `nextreport.in/r/${shareToken}`;
@@ -504,15 +514,6 @@ export function ReportUploadWizard({
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Email modal — sends the public share link via Resend (api/reports/[id]/
-  // send-email/route.ts), replacing the old mailto: Email button. Errors
-  // surface as a toast (per spec) rather than inline, so emailModalError
-  // only tracks the in-flight/loading state's button label, not a message.
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState("");
-  const [emailMessage, setEmailMessage] = useState("");
-  const [emailSending, setEmailSending] = useState(false);
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
@@ -1574,34 +1575,6 @@ export function ReportUploadWizard({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function openEmailModal() {
-    setEmailTo("");
-    setEmailMessage("");
-    setEmailModalOpen(true);
-  }
-
-  async function handleSendEmail() {
-    if (!reportId || !emailTo.trim()) return;
-    setEmailSending(true);
-    try {
-      const res = await fetch(`/api/reports/${reportId}/send-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: emailTo.trim(), message: emailMessage.trim() || undefined }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.success) {
-        showToast(json?.error || "Could not send the email. Please try again.", "error");
-        return;
-      }
-      showToast(`Report sent to ${emailTo.trim()}`, "success");
-      setEmailModalOpen(false);
-    } catch {
-      showToast("Could not reach the server. Please try again.", "error");
-    } finally {
-      setEmailSending(false);
-    }
-  }
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
@@ -3021,14 +2994,13 @@ export function ReportUploadWizard({
                     </summary>
                     <div className="border-t border-dash-border px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={openEmailModal}
+                        <a
+                          href={buildMailtoShareUrl(`https://${buildShareReportUrl(shareToken)}`, clientName)}
                           className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
                         >
                           <MailIcon />
                           Email
-                        </button>
+                        </a>
                         <a
                           href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                           target="_blank"
@@ -3040,6 +3012,17 @@ export function ReportUploadWizard({
                             <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
                           </svg>
                           WhatsApp
+                        </a>
+                        <a
+                          href={buildTelegramShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <svg viewBox="0 0 24 24" fill="#26A5E4" width={16} height={16} aria-hidden="true">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                          </svg>
+                          Telegram
                         </a>
                         {driveSaveUrl ? (
                           <button
@@ -3181,56 +3164,6 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {emailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-lg border border-dash-border bg-dash-card p-5">
-            <h2 className="text-[16px] font-semibold text-dash-ink">Send Report by Email</h2>
-
-            <div className="mt-4">
-              <label className="mb-1 block text-sm text-dash-ink-secondary">To</label>
-              <input
-                autoFocus
-                type="email"
-                required
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                placeholder="client@example.com"
-                className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-              />
-            </div>
-
-            <div className="mt-4">
-              <label className="mb-1 block text-sm text-dash-ink-secondary">Message (optional)</label>
-              <textarea
-                rows={3}
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                placeholder="Hi, please find your weekly performance report attached..."
-                className="w-full resize-none rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-              />
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEmailModalOpen(false)}
-                disabled={emailSending}
-                className="rounded-md border border-dash-border px-4 py-2 text-[13px] text-dash-ink-secondary hover:bg-dash-bg disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSendEmail}
-                disabled={emailSending || !emailTo.trim()}
-                className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
-              >
-                {emailSending ? "Sending…" : "Send Email →"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

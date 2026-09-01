@@ -24,7 +24,6 @@ import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from
 import { getDateRangeShortLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { compactSameMonthRangeLabel, fmtCpm } from "./report-data";
 import { buildChartSnapshotKpis } from "./chart-snapshot-kpis";
-import { budgetSummaryLine } from "./health";
 import type { GoogleRow } from "./google-columns";
 import type {
   AdSetSlideData,
@@ -289,7 +288,7 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
       dateRange: dateRangeLabel,
       healthBadge: avgCpaOk ? "✅ Campaigns On Track" : "⚠️ Needs Attention",
       healthScore: avgCpaOk ? 90 : 60,
-      budgetSummary: budgetSummaryLine(totalCost, monthlyBudget, currencySymbol, now),
+      budgetSummary: "",
     };
   }
 

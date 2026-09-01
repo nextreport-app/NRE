@@ -38,7 +38,7 @@ import {
 import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
 import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
-import { calculateAccountHealth, budgetSummaryLine, budgetPctUsed, resolveBudgetMonthFromMtdRows } from "./health";
+import { calculateAccountHealth, budgetPctUsed } from "./health";
 import {
   buildCampaignObjectiveMap,
   getGroupedResultDisplayForObjective,
@@ -723,29 +723,6 @@ export const COMBINED_TOTAL_STATIC_HEADERS = [
   "CPC (All)",
 ] as const;
 
-export function buildCombinedTotalStory(
-  periodRow: TableRowData,
-  mtdRow: TableRowData,
-  headers: TableHeaderLabels,
-  reportType: ReportType,
-): string {
-  const n = headers.resultColumns.length;
-  const objWord = n === 1 ? "1 reported objective" : `${n} reported objectives`;
-  if (periodRow.hasData && periodRow.sameMonthAsCurrentMTD) {
-    return `Previous month ${periodRow.spend} across ${objWord}.`;
-  }
-  if (periodRow.hasData && mtdRow.hasData && reportType !== "MONTHLY") {
-    return `Previous month ${periodRow.spend} vs this period ${mtdRow.spend}, across ${objWord}.`;
-  }
-  if (mtdRow.hasData) {
-    return `This period ${mtdRow.spend} across ${objWord}.`;
-  }
-  if (periodRow.hasData) {
-    return `Previous month ${periodRow.spend} across ${objWord}.`;
-  }
-  return "";
-}
-
 export function buildCombinedTotalTableGrid(
   periodRow: TableRowData,
   mtdRow: TableRowData,
@@ -891,13 +868,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         dateRange: dateLine,
         healthBadge: badge,
         healthScore: score,
-        budgetSummary: budgetSummaryLine(
-          creativeRaw.reduce((s, r) => s + parseCellNum(r.spend), 0),
-          monthlyBudget,
-          currencySymbol,
-          now,
-          resolveBudgetMonthFromMtdRows(filteredMtdDailyRows, now),
-        ),
+        budgetSummary: "",
       },
       campaignSlides: [],
       adSetSlides: [],
@@ -1039,21 +1010,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   } else {
     const periodLabel = isMonthlyReport ? "Monthly" : isDailyReport ? "Daily" : "Weekly";
     const { score, badge } = calculateAccountHealth(primaryRows, periodLabel);
-    const mtdSpend = mtdRows.reduce((sum, r) => sum + parseCellNum(r.spend), 0);
-    const coverCampaignCount = new Set(primaryRows.map((r) => String(r.campaign_name || "").trim()).filter(Boolean)).size;
-    const budgetMonth = resolveBudgetMonthFromMtdRows(mtdRows, now);
-    const budgetLine = budgetSummaryLine(mtdSpend, monthlyBudget, currencySymbol, now, budgetMonth);
     cover = {
       accountName,
       reportDate: reportDateStr,
       dateRange: globalWeekDateRange,
       healthBadge: badge,
       healthScore: score,
-      budgetSummary:
-        budgetLine ||
-        (coverCampaignCount > 0
-          ? `${coverCampaignCount} campaign${coverCampaignCount === 1 ? "" : "s"} in this report`
-          : ""),
+      budgetSummary: "",
     };
   }
 
@@ -1101,7 +1064,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     }
   }
   const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders };
-  const combinedTotalStory = buildCombinedTotalStory(periodRow, mtdRow, tableHeaderLabels, reportType);
+  const combinedTotalStory = undefined;
 
   // ── Paused case: single message slide, no campaign/ad-set/chart slides ──
   if (isPaused) {
@@ -1747,7 +1710,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
     periodRow,
     mtdRow,
     tableHeaderLabels,
-    combinedTotalStory: buildCombinedTotalStory(periodRow, mtdRow, tableHeaderLabels, "WEEKLY"),
+    combinedTotalStory: undefined,
     fileDateRange: periodRow.fullMonthLabel,
     objectiveWarnings: [],
   };

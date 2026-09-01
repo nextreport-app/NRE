@@ -245,7 +245,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       REPORT_DATE: cover.reportDate,
       DATE_RANGE: cover.dateRange,
       ACCOUNT_HEALTH_BADGE: cover.healthBadge,
-      BUDGET_SUMMARY: cover.budgetSummary,
+      BUDGET_SUMMARY: "",
       ...(agencyName ? { PREPARED_BY: `Prepared by ${agencyName}` } : {}),
     },
     {

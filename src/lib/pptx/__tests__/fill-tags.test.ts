@@ -19,7 +19,7 @@ const BASE_COVER: CoverData = {
   dateRange: "Jul 13 - Jul 19",
   healthBadge: "Healthy",
   healthScore: 90,
-  budgetSummary: "$100 spent",
+  budgetSummary: "",
 };
 
 function makeCampaignSlide(campaignName: string): CampaignSlideData {
@@ -109,11 +109,6 @@ describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
     const rPr = xml.slice(runStart, idx);
     expect(sizeOfRunContaining(xml, BASE_COVER.healthBadge)).toBe(14);
     expect(rPr).toContain('b="1"');
-  });
-
-  it("renders the Monthly Ad Budget line at 13pt", () => {
-    const xml = buildCoverSlideXml(template.cover, { ...BASE_COVER, budgetSummary: "Monthly Ad Budget: $5,000" });
-    expect(sizeOfRunContaining(xml, "Monthly Ad Budget: $5,000")).toBe(13);
   });
 
   it("never renders any cover-slide text below 12pt", () => {
@@ -227,10 +222,9 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
     expect(xml).not.toContain("{{HEALTH_TOOLTIP}}");
   });
 
-  it("leaves the badge and budget-summary shapes at the template's original, unshifted positions", () => {
+  it("leaves the health badge shape at the template's original, unshifted position", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
     expect(shapeY(xml, "Healthy")).toBe(6119872);
-    expect(shapeY(xml, "$100 spent")).toBe(6420192);
   });
 });
 
