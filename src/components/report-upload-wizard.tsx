@@ -1747,9 +1747,20 @@ export function ReportUploadWizard({
               <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
               <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
                 <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
-                {selectedPlatformCard === "META"
-                  ? getMetaCsvDownloadTip()
-                  : "Set date range to Last 30 days and segment by Day."}{" "}
+                {selectedPlatformCard === "META" ? (
+                  <>
+                    {getMetaCsvDownloadTip()}{" "}
+                    For month-over-month comparison,{" "}
+                    <Link
+                      href={`/clients/${clientId}#previous-month-data`}
+                      className="font-medium text-dash-accent hover:underline"
+                    >
+                      upload Previous Month Data in client settings →
+                    </Link>{" "}
+                  </>
+                ) : (
+                  "Set date range to Last 30 days and segment by Day. "
+                )}
                 <Link href="/help/download" className="font-medium text-dash-accent hover:underline">
                   Step-by-step guide →
                 </Link>

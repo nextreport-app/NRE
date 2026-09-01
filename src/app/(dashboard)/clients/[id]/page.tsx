@@ -19,9 +19,10 @@ function CardHeading({ children }: { children: React.ReactNode }) {
 }
 
 /** `accent` marks the single most important card on the page (Generate New Report). */
-function Card({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+function Card({ children, accent = false, id }: { children: React.ReactNode; accent?: boolean; id?: string }) {
   return (
     <section
+      id={id}
       className={
         "rounded-lg border border-dash-border bg-dash-card p-4 sm:p-5" + (accent ? " border-l-4 border-l-dash-accent" : "")
       }
