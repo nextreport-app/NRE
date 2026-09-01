@@ -105,14 +105,14 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
 
-  it("uses white title text on the visual chart slide", async () => {
+  it("uses muted grey title text — same REPORT_HEADER_COLOR as every other slide", async () => {
     const chart = buildChart([campaign("A", { spend: 442 })]);
     const shareChart = projectChartSlideToShareChart(chart, "$");
     const bundle = await buildChartSlideBundle(chart, "$", BACKGROUND);
     const titleIdx = bundle.xml.indexOf(`<a:t>${shareChart.title}</a:t>`);
     expect(titleIdx).toBeGreaterThan(-1);
     const runStart = bundle.xml.lastIndexOf("<a:r>", titleIdx);
-    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="ffffff"/>');
+    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
   });
 
   it("embeds native OOXML chart shapes with KPI cards and campaign spend bars", async () => {

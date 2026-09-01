@@ -6,6 +6,7 @@ import type { ShareChartData } from "../nre/share-report";
 import type { VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
+import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
 import {
   resultBarColumns,
   resultBarFillWidth,
@@ -171,7 +172,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
       w: MTD_VISUAL.rightW,
       h: MTD_VISUAL.panelHeadingH,
       text: model.rightHeading.toUpperCase(),
-      sizePt: 11,
+      sizePt: 12,
       bold: true,
       colorHex: c.heading,
       align: "l",
@@ -181,15 +182,16 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barY = rowY + Math.floor((rowH - barH) / 2);
+    const barY = rowY + 2;
+    const metricsY = barY + barH + 4;
     shapes.push(
       textBox({
         x: cols.labelX,
-        y: rowY + 2,
+        y: barY,
         w: cols.labelColW,
-        h: rowH - 4,
+        h: barH,
         text: truncateCampaignBarName(bar.name),
-        sizePt: 9,
+        sizePt: 11,
         colorHex: c.ink,
         align: "r",
         anchor: "ctr",
@@ -202,14 +204,25 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
     }
     shapes.push(
       textBox({
-        x: cols.valueX,
-        y: rowY + 2,
-        w: cols.valueColW,
+        x: cols.barX,
+        y: metricsY,
+        w: cols.trackW,
         h: 14,
-        text: `${bar.resultLine} · ${bar.costLine}`,
-        sizePt: 9,
+        text: bar.resultLine,
+        sizePt: 11,
         bold: true,
         colorHex: c.ink,
+        align: "l",
+        clipOverflow: true,
+      }),
+      textBox({
+        x: cols.barX,
+        y: metricsY + 14,
+        w: cols.trackW,
+        h: 14,
+        text: bar.costLine,
+        sizePt: 10,
+        colorHex: c.inkMuted,
         align: "l",
         clipOverflow: true,
       }),
@@ -239,9 +252,9 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_SLIDE_W - MTD_VISUAL.marginX * 2,
       h: MTD_VISUAL.titleH,
       text: model.title,
-      sizePt: 24,
+      sizePt: REPORT_HEADER_SIZE_PT,
       bold: true,
-      colorHex: c.ink,
+      colorHex: REPORT_HEADER_COLOR,
       align: "ctr",
     }),
   );
@@ -275,7 +288,7 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_VISUAL.leftW,
       h: MTD_VISUAL.panelHeadingH,
       text: model.leftHeading,
-      sizePt: 11,
+      sizePt: 12,
       bold: true,
       colorHex: c.heading,
       align: "l",
@@ -297,7 +310,7 @@ export function buildMtdOverviewOoxmlShapes(
         w: MTD_VISUAL.leftW,
         h: 20,
         text: `Total MTD Spend: ${model.groupedDonutCenterLabel}`,
-        sizePt: 11,
+        sizePt: 12,
         bold: true,
         colorHex: c.ink,
         align: "ctr",
@@ -314,7 +327,7 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_SLIDE_W - MTD_VISUAL.marginX * 2,
       h: MTD_VISUAL.summaryH,
       text: model.summaryLine,
-      sizePt: 11,
+      sizePt: 12,
       colorHex: c.inkMuted,
       align: "ctr",
       anchor: "ctr",

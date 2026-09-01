@@ -251,14 +251,15 @@ function VisualResultBar({
 }) {
   const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)] items-center gap-3">
-      <p className="truncate text-right text-[9px] text-ink">{name}</p>
-      <div className="h-[18px] overflow-hidden rounded bg-[#1e293b]">
-        <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3">
+      <p className="truncate pt-1 text-right text-[11px] font-medium text-ink">{name}</p>
+      <div className="min-w-0">
+        <div className="h-5 overflow-hidden rounded bg-[#1e293b]">
+          <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
+        </div>
+        <p className="mt-1.5 text-[11px] font-bold text-ink">{resultLine}</p>
+        <p className="mt-0.5 text-[10px] text-[#94a3b8]">{costLine}</p>
       </div>
-      <p className="truncate text-[9px] font-bold text-ink">
-        {resultLine} · <span className="font-medium text-[#94a3b8]">{costLine}</span>
-      </p>
     </div>
   );
 }
@@ -299,11 +300,11 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="text-center text-[24px] font-bold text-ink">{model.title}</h2>
+      <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{model.title}</h2>
 
       <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
+          <p className="text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
           {model.isMultiObjective && model.groupedDonut ? (
             <div className="mt-4 space-y-3">
               <div className="relative mx-auto h-[168px] w-[168px]">
@@ -333,15 +334,15 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
             </div>
           )}
           {!model.isMultiObjective ? (
-            <p className="mt-4 text-center text-[11px] font-bold text-ink">
+            <p className="mt-4 text-center text-[12px] font-bold text-ink">
               Total MTD Spend: {model.groupedDonutCenterLabel}
             </p>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
-          <div className="mt-4 space-y-3">
+          <p className="text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+          <div className="mt-4 space-y-5">
             {model.resultBars.map((bar) => (
               <VisualResultBar key={bar.name} {...bar} />
             ))}
@@ -349,7 +350,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
         </div>
       </div>
 
-      <p className="mt-5 text-center text-[11px] text-[#94a3b8]">{model.summaryLine}</p>
+      <p className="mt-5 text-center text-[12px] text-[#94a3b8]">{model.summaryLine}</p>
     </SlideCard>
   );
 }

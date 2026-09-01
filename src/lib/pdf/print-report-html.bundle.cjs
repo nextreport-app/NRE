@@ -427,13 +427,12 @@ function VisualResultBar({
   barPct
 }) {
   const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)] items-center gap-3", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-right text-[9px] text-ink", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-[18px] overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "truncate text-[9px] font-bold text-ink", children: [
-      resultLine,
-      " \xB7 ",
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "font-medium text-[#94a3b8]", children: costLine })
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate pt-1 text-right text-[11px] font-medium text-ink", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-5 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1.5 text-[11px] font-bold text-ink", children: resultLine }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-0.5 text-[10px] text-[#94a3b8]", children: costLine })
     ] })
   ] });
 }
@@ -460,10 +459,10 @@ function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-ink", children: model.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-[#94a3b8]", children: model.title }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
         model.isMultiObjective && model.groupedDonut ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[168px] w-[168px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             ShareChartDonut,
@@ -488,17 +487,17 @@ function ShareMtdOverviewSlide({ chart }) {
             "%"
           ] }, seg.name))
         ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 flex flex-wrap justify-center gap-4", children: model.miniDonuts.map((donut) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualMiniDonut, { ...donut }, donut.name)) }),
-        !model.isMultiObjective ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-4 text-center text-[11px] font-bold text-ink", children: [
+        !model.isMultiObjective ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-4 text-center text-[12px] font-bold text-ink", children: [
           "Total MTD Spend: ",
           model.groupedDonutCenterLabel
         ] }) : null
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-3", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-5", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[11px] text-[#94a3b8]", children: model.summaryLine })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[12px] text-[#94a3b8]", children: model.summaryLine })
   ] });
 }
 function CombinedTotalTable({ data }) {

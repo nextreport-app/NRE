@@ -29,12 +29,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
-    `<text x="${MTD_SLIDE_W / 2}" y="52" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="52" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
     `<rect x="${MTD_VISUAL.leftX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.leftW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
     `<rect x="${MTD_VISUAL.rightX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.rightW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
     `<line x1="${MTD_VISUAL.sepX}" y1="${MTD_VISUAL.panelY}" x2="${MTD_VISUAL.sepX}" y2="${MTD_VISUAL.panelY + MTD_VISUAL.panelH}" stroke="${SEP}"/>`,
-    `<text x="${MTD_VISUAL.leftX}" y="${MTD_VISUAL.panelY + 14}" fill="${MUTED}" font-family="Poppins" font-size="11" font-weight="700">${escapeXml(model.leftHeading)}</text>`,
-    `<text x="${MTD_VISUAL.rightX}" y="${MTD_VISUAL.panelY + 14}" fill="${MUTED}" font-family="Poppins" font-size="11" font-weight="700">${escapeXml(model.rightHeading.toUpperCase())}</text>`,
+    `<text x="${MTD_VISUAL.leftX}" y="${MTD_VISUAL.panelY + 14}" fill="${MUTED}" font-family="Poppins" font-size="12" font-weight="700">${escapeXml(model.leftHeading)}</text>`,
+    `<text x="${MTD_VISUAL.rightX}" y="${MTD_VISUAL.panelY + 14}" fill="${MUTED}" font-family="Poppins" font-size="12" font-weight="700">${escapeXml(model.rightHeading.toUpperCase())}</text>`,
   ];
 
   if (model.isMultiObjective && model.groupedDonut) {
@@ -60,22 +60,24 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barY = rowY + (rowH - MTD_VISUAL.barH) / 2;
+    const barY = rowY + 2;
+    const metricsY = barY + MTD_VISUAL.barH + 4;
     parts.push(
-      `<text x="${cols.labelX + cols.labelColW}" y="${rowY + 14}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="9">${escapeXml(truncateCampaignBarName(bar.name))}</text>`,
+      `<text x="${cols.labelX + cols.labelColW}" y="${barY + 14}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="11">${escapeXml(truncateCampaignBarName(bar.name))}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="2" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {
       parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${MTD_VISUAL.barH}" rx="2" fill="#${bar.color}"/>`);
     }
     parts.push(
-      `<text x="${cols.valueX}" y="${rowY + 14}" fill="${INK}" font-family="Poppins" font-size="9" font-weight="700">${escapeXml(`${bar.resultLine} · ${bar.costLine}`)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY + 11}" fill="${INK}" font-family="Poppins" font-size="11" font-weight="700">${escapeXml(bar.resultLine)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY + 25}" fill="${MUTED}" font-family="Poppins" font-size="10">${escapeXml(bar.costLine)}</text>`,
     );
     rowY += rowH;
   }
 
   parts.push(
-    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 18}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="11">${escapeXml(model.summaryLine)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 18}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="12">${escapeXml(model.summaryLine)}</text>`,
     "</svg>",
   );
   return parts.join("");
