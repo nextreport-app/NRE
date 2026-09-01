@@ -1,75 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { buildChartKpiLayout } from "../../nre/chart-kpi-layout";
-import type { ShareChartSnapshot } from "../../nre/share-report";
-import { buildMtdChartSlideGeometry } from "../chart-slide-layout";
+import { buildChartMetricsTable } from "../../nre/chart-metrics-table";
+import { MTD_DONUT, MTD_METRICS_TABLE, MTD_FOOTER_Y } from "../chart-slide-layout";
+import { metricsTableTotalHeight } from "../chart-metrics-table-render";
 
-function multiSnapshot(): ShareChartSnapshot {
-  return {
-    mtdSpendLabel: "$3,401",
-    primaryResultsValue: "32",
-    primaryResultsLabel: "Meta Form Leads",
-    primaryCprValue: "$88.26",
-    primaryCprLabel: "Cost Per Meta Form Lead",
-    budgetPctUsed: "19%",
-    activeCampaignCount: 2,
-    mode: "multi",
-    objectives: [
-      {
-        label: "Meta Form Leads",
-        resultsValue: "32",
-        cprValue: "$88.26",
-        cprLabel: "Cost Per Meta Form Lead",
-        spendFormatted: "$2,824",
-      },
-      {
-        label: "Website Leads",
-        resultsValue: "0",
-        cprValue: "—",
-        cprLabel: "Cost Per Website Lead",
-        spendFormatted: "$576",
-      },
-    ],
-    objectivesOmittedCount: 0,
-  };
-}
-
-describe("buildMtdChartSlideGeometry", () => {
-  it("keeps single-mode donut below KPI tiles without overlap", () => {
-    const layout = buildChartKpiLayout({
-      mtdSpendLabel: "$500",
-      primaryResultsValue: "10",
-      primaryResultsLabel: "Purchases",
-      primaryCprValue: "$50",
-      primaryCprLabel: "Cost Per Purchase",
-      budgetPctUsed: "10%",
-      activeCampaignCount: 1,
-      mode: "single",
-      objectives: [
-        {
-          label: "Purchases",
-          resultsValue: "10",
-          cprValue: "$50",
-          cprLabel: "Cost Per Purchase",
-          spendFormatted: "$500",
-        },
-      ],
-      objectivesOmittedCount: 0,
-    });
-    const geo = buildMtdChartSlideGeometry(layout);
-    const kpiBottom = geo.accountKpi.y + geo.accountKpi.h;
-    expect(geo.donut.y).toBeGreaterThanOrEqual(kpiBottom - 20);
-    expect(geo.donut.y + geo.donut.d).toBeLessThanOrEqual(geo.footerY.ooxml);
+describe("MTD chart slide layout constants", () => {
+  it("keeps the original 220px donut design on the left", () => {
+    expect(MTD_DONUT.d).toBe(220);
+    expect(MTD_DONUT.outerR).toBe(110);
+    expect(MTD_DONUT.cy).toBe(310);
   });
 
-  it("places multi-mode donut and legend below objective blocks", () => {
-    const layout = buildChartKpiLayout(multiSnapshot());
-    const geo = buildMtdChartSlideGeometry(layout);
-    expect(geo.mode).toBe("multi");
-    expect(geo.objectiveKpi).not.toBeNull();
+  it("places the metrics table on the right without overlapping the donut", () => {
+    const donutRight = MTD_DONUT.x + MTD_DONUT.d;
+    expect(MTD_METRICS_TABLE.x).toBeGreaterThanOrEqual(donutRight + 10);
+  });
 
-    const objectiveBottom = geo.objectiveKpi!.y + geo.objectiveKpi!.h;
-    expect(geo.donut.y).toBeGreaterThanOrEqual(objectiveBottom);
-    expect(geo.legend.y).toBeGreaterThanOrEqual(objectiveBottom);
-    expect(geo.donut.y + geo.donut.d).toBeLessThanOrEqual(geo.footerY.ooxml + 4);
+  it("keeps table and donut above the footer band", () => {
+    const table = buildChartMetricsTable(
+      {
+        mode: "multi",
+        mtdSpendLabel: "$3,401",
+        primaryResultsValue: "32",
+        primaryResultsLabel: "Meta form leads",
+        primaryCprValue: "$88.26",
+        primaryCprLabel: "Cost per lead",
+        budgetPctUsed: "19%",
+        activeCampaignCount: 2,
+        objectives: [
+          {
+            label: "Meta form leads",
+            resultsValue: "32",
+            cprValue: "$88.26",
+            cprLabel: "Cost per lead",
+            spendFormatted: "$2,824",
+          },
+          {
+            label: "Website leads",
+            resultsValue: "0",
+            cprValue: "N/A",
+            cprLabel: "Cost per website lead",
+            spendFormatted: "$576",
+          },
+        ],
+      },
+      MTD_METRICS_TABLE.maxH,
+    );
+    const tableBottom = MTD_METRICS_TABLE.y + metricsTableTotalHeight(table);
+    expect(tableBottom).toBeLessThanOrEqual(MTD_FOOTER_Y.ooxml);
+    expect(MTD_DONUT.y + MTD_DONUT.d).toBeLessThanOrEqual(MTD_FOOTER_Y.ooxml + 4);
   });
 });

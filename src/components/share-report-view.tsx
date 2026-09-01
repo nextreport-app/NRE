@@ -2,7 +2,7 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { formatDonutSegmentStats, resolveChartFooterInsight, buildChartKpiLayout } from "@/lib/nre/share-chart-projection";
+import { resolveChartFooterInsight, buildChartMetricsTable } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -237,74 +237,64 @@ function AdSetCard({
 }
 
 function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
-  const layout = buildChartKpiLayout(chart.snapshot);
+  const table = buildChartMetricsTable(chart.snapshot);
 
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{chart.title}</h2>
       <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
 
-      <div className={`mt-5 grid gap-3 ${layout.mode === "multi" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
-        {layout.accountTiles.map((tile) => (
-          <div
-            key={tile.label}
-            className="rounded-lg border border-navy-border px-3 py-4 text-center"
-            style={{ backgroundColor: "#131d30" }}
-          >
-            <p className="text-[22px] font-bold text-ink">{tile.value}</p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {layout.mode === "multi" ? (
-        <div
-          className={`mt-3 grid gap-3 ${
-            layout.objectiveBlocks.length >= 4
-              ? "grid-cols-2 sm:grid-cols-4"
-              : layout.objectiveBlocks.length === 3
-                ? "grid-cols-1 sm:grid-cols-3"
-                : "grid-cols-2"
-          }`}
-        >
-          {layout.objectiveBlocks.map((obj) => (
-            <div
-              key={obj.label}
-              className="rounded-lg border border-navy-border px-3 py-3 text-center"
-              style={{ backgroundColor: "#131d30" }}
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{obj.label}</p>
-              <p className="mt-1 text-[22px] font-bold text-ink">{obj.resultsValue}</p>
-              <p className="mt-1 text-[14px] font-medium text-ink">{obj.cprValue}</p>
-              <p className="text-[10px] uppercase tracking-wide text-ink-muted">{obj.cprLabel}</p>
-              <p className="mt-1 text-[12px] text-[#94a3b8]">{obj.spendFormatted} spent</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {chart.donutSegments.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 items-center gap-6 min-[720px]:grid-cols-[220px_1fr]">
-          <div className="relative mx-auto shrink-0">
+      <div className="mt-5 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]">
+        {chart.donutSegments.length > 0 ? (
+          <div className="relative mx-auto shrink-0 min-[720px]:mx-0">
             <ShareChartDonut segments={chart.donutSegments} totalSpendLabel={chart.totalSpendLabel} size={220} />
           </div>
-          <ul className="space-y-2.5">
-            {chart.donutSegments.map((seg) => (
-              <li key={seg.name} className="flex items-start gap-2.5 text-[15px] text-ink">
-                <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
-                <span className="min-w-0 break-words">
-                  <span className="block font-semibold">{seg.name}</span>
-                  <span className="mt-0.5 block text-[14px] text-[#94a3b8]">
-                    {formatDonutSegmentStats(seg.percentage, seg.spendLabel)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+        ) : (
+          <p className="text-center text-[14px] text-[#e2e8f0] min-[720px]:text-left">No spend recorded this month yet.</p>
+        )}
+
+        <div className="min-w-0 overflow-hidden rounded-lg border border-navy-border">
+          <table className="w-full border-collapse text-left text-[13px] text-ink">
+            <tbody>
+              {table.rows.map((row, rowIndex) => {
+                const rowH = table.layout.rowHeights[rowIndex] ?? 28;
+                if (row.kind === "footnote") {
+                  return (
+                    <tr key={`${row.kind}-${rowIndex}`} style={{ height: rowH }}>
+                      <td colSpan={4} className="border-t border-navy-border px-3 py-1 text-[11px] text-[#94a3b8]">
+                        {row.label}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const isHeader = row.kind === "header";
+                const isAccentRow = row.kind === "total" || row.kind === "budget";
+                return (
+                  <tr
+                    key={`${row.kind}-${row.label}-${rowIndex}`}
+                    style={{ height: rowH }}
+                    className={
+                      isHeader
+                        ? "bg-[#1a2740] text-[11px] font-semibold uppercase tracking-wide text-accent-orange"
+                        : isAccentRow
+                          ? "bg-[#162033] font-semibold"
+                          : rowIndex % 2 === 0
+                            ? "bg-[#131d30]"
+                            : "bg-[#162033]"
+                    }
+                  >
+                    <td className="border-t border-navy-border px-3 py-1">{row.label}</td>
+                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.spend}</td>
+                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.results}</td>
+                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.cpr}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      ) : (
-        <p className="mt-6 text-center text-[14px] text-[#e2e8f0]">No spend recorded this month yet.</p>
-      )}
+      </div>
 
       <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
         {resolveChartFooterInsight(chart)}

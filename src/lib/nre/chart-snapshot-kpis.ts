@@ -1,8 +1,8 @@
 import { fmtCurrency } from "./format";
 import type { ResultGroup } from "./objective";
+import { CHART_SNAPSHOT_OBJECTIVE_MAX } from "./chart-metrics-table";
 
-/** Max objective blocks on the MTD chart slide — remainder referenced on Combined Total. */
-export const CHART_SNAPSHOT_OBJECTIVE_CAP = 4;
+export { CHART_SNAPSHOT_OBJECTIVE_MAX as CHART_SNAPSHOT_OBJECTIVE_CAP } from "./chart-metrics-table";
 
 export interface ChartSnapshotObjective {
   label: string;
@@ -49,8 +49,8 @@ export function buildChartSnapshotKpis(params: {
     };
   });
 
-  const omitted = Math.max(0, objectives.length - CHART_SNAPSHOT_OBJECTIVE_CAP);
-  const visible = objectives.slice(0, CHART_SNAPSHOT_OBJECTIVE_CAP);
+  const omitted = Math.max(0, objectives.length - CHART_SNAPSHOT_OBJECTIVE_MAX);
+  const stored = objectives.slice(0, CHART_SNAPSHOT_OBJECTIVE_MAX);
   const primary = objectives[0] ?? {
     label: "RESULTS",
     resultsValue: "0",
@@ -64,7 +64,7 @@ export function buildChartSnapshotKpis(params: {
     mtdSpendFormatted: params.totalAllSpendFormatted,
     budgetPctUsed: params.budgetPctUsed ?? "",
     activeCampaignCount: params.activeCampaignCount,
-    objectives: visible,
+    objectives: stored,
     objectivesOmittedCount: omitted,
     primaryResultsValue: primary.resultsValue,
     primaryResultsLabel: primary.label,

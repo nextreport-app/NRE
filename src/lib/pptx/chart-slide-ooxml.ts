@@ -1,14 +1,27 @@
 /**
  * Native OOXML builders for the MTD overview chart slide — editable text,
- * KPI cards, and donut ring shapes in PowerPoint and Google Slides.
+ * metrics table, and donut ring shapes in PowerPoint and Google Slides.
  */
 
 import type { ShareChartData, ShareDonutSegment } from "../nre/share-report";
-import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiLayout } from "../nre/share-chart-projection";
+import { buildChartMetricsTable } from "../nre/chart-metrics-table";
+import { resolveChartFooterInsight } from "../nre/share-chart-projection";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
-import { buildMtdChartSlideGeometry, MTD_SLIDE_W } from "./chart-slide-layout";
+import {
+  METRICS_TABLE_COLORS_DARK,
+  METRICS_TABLE_COLORS_LIGHT,
+  metricsTableAlign,
+  metricsTableColumnWidths,
+  metricsTableColumnXs,
+  metricsTableFontSize,
+  metricsTableRowCells,
+  metricsTableRowFill,
+  metricsTableRowWeight,
+  metricsTableTextColor,
+} from "./chart-metrics-table-render";
+import { MTD_DONUT, MTD_FOOTER_Y, MTD_METRICS_TABLE, MTD_SLIDE_W } from "./chart-slide-layout";
 import {
   backgroundImage,
   buildBlankSlideXml,
@@ -19,26 +32,7 @@ import {
   type DonutRingSegment,
 } from "./shapes";
 
-/** Pie wedges use 0° = 3 o'clock; offset so 0% spend starts at 12 o'clock. */
 const DONUT_START_DEG = 270;
-
-const DARK = {
-  ink: "ffffff",
-  inkSubtitle: "e2e8f0",
-  accent: "f6ad55",
-  kpiBg: "131d30",
-  kpiBorder: "1e293b",
-  holeFill: "0d1b2e",
-};
-
-const LIGHT = {
-  ink: "0d1b2e",
-  inkSubtitle: "475569",
-  accent: "d97706",
-  kpiBg: "f8fafc",
-  kpiBorder: "cbd5e1",
-  holeFill: "ffffff",
-};
 
 function buildColoredPieSegments(donutSegments: ShareDonutSegment[]): DonutRingSegment[] {
   const segments: DonutRingSegment[] = [];
@@ -69,14 +63,83 @@ function buildColoredPieSegments(donutSegments: ShareDonutSegment[]): DonutRingS
   return segments;
 }
 
-/** All native shapes for one MTD overview slide (background + content). */
+function appendMetricsTableOoxml(
+  shapes: string[],
+  chart: ShareChartData,
+  isLightTemplate: boolean,
+): void {
+  const palette = isLightTemplate ? METRICS_TABLE_COLORS_LIGHT : METRICS_TABLE_COLORS_DARK;
+  const table = buildChartMetricsTable(chart.snapshot, MTD_METRICS_TABLE.maxH);
+  const { x: tableX, y: tableY, w: tableW } = MTD_METRICS_TABLE;
+  const colXs = metricsTableColumnXs(tableX, tableW);
+  const colWs = metricsTableColumnWidths(tableW);
+
+  let rowY = tableY;
+  table.rows.forEach((row, rowIndex) => {
+    const rowH = table.layout.rowHeights[rowIndex] ?? 24;
+    const fill = metricsTableRowFill(row, rowIndex, palette);
+    shapes.push(
+      roundedCard({
+        x: tableX,
+        y: rowY,
+        w: tableW,
+        h: rowH,
+        fillHex: fill,
+        strokeHex: palette.border,
+        radiusPt: rowIndex === 0 ? 6 : 0,
+      }),
+    );
+
+    const fontSize = metricsTableFontSize(table, row);
+    const bold = metricsTableRowWeight(row);
+    const color = metricsTableTextColor(row, palette);
+
+    if (row.kind === "footnote") {
+      shapes.push(
+        textBox({
+          x: tableX + 10,
+          y: rowY + 2,
+          w: tableW - 20,
+          h: rowH - 4,
+          text: row.label,
+          sizePt: fontSize,
+          colorHex: color,
+          align: "l",
+          anchor: "ctr",
+        }),
+      );
+    } else {
+      const cells = metricsTableRowCells(row);
+      cells.forEach((cell, col) => {
+        if (!cell) return;
+        const align = metricsTableAlign(col);
+        shapes.push(
+          textBox({
+            x: colXs[col]! + (align === "l" ? 8 : 4),
+            y: rowY + 2,
+            w: colWs[col]! - 12,
+            h: rowH - 4,
+            text: cell,
+            sizePt: fontSize,
+            bold,
+            colorHex: color,
+            align,
+            anchor: "ctr",
+          }),
+        );
+      });
+    }
+    rowY += rowH;
+  });
+}
+
 export function buildMtdOverviewOoxmlShapes(
   chart: ShareChartData,
   background: TemplateBackgroundImage,
   isLightTemplate = false,
 ): string[] {
   resetShapeIdCounter();
-  const c = isLightTemplate ? LIGHT : DARK;
+  const c = isLightTemplate ? METRICS_TABLE_COLORS_LIGHT : METRICS_TABLE_COLORS_DARK;
   const W = MTD_SLIDE_W;
   const shapes: string[] = [backgroundImage({ relId: CHART_BG_REL_ID, ...background })];
 
@@ -99,57 +162,12 @@ export function buildMtdOverviewOoxmlShapes(
       h: 24,
       text: chart.subtitle,
       sizePt: 16,
-      colorHex: c.inkSubtitle,
+      colorHex: c.inkMuted,
       align: "ctr",
     }),
   );
 
-  const layout = buildChartKpiLayout(chart.snapshot);
-  const geo = buildMtdChartSlideGeometry(layout);
-
-  if (layout.mode === "single") {
-    const { y: kpiY, h: kpiH, w: kpiW, gap: kpiGap } = geo.accountKpi;
-    const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
-    layout.accountTiles.forEach((tile, i) => {
-      const x = kpiStartX + i * (kpiW + kpiGap);
-      shapes.push(
-        roundedCard({ x, y: kpiY, w: kpiW, h: kpiH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
-        textBox({ x, y: kpiY + 14, w: kpiW, h: 32, text: tile.value, sizePt: 22, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: kpiY + 48, w: kpiW, h: 20, text: tile.label.toUpperCase(), sizePt: 10, bold: true, colorHex: c.accent, align: "ctr" }),
-      );
-    });
-  } else {
-    const { y: accountY, h: accountH, w: accountW, gap: accountGap } = geo.accountKpi;
-    const accountStartX = (W - (2 * accountW + accountGap)) / 2;
-    layout.accountTiles.forEach((tile, i) => {
-      const x = accountStartX + i * (accountW + accountGap);
-      shapes.push(
-        roundedCard({ x, y: accountY, w: accountW, h: accountH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
-        textBox({ x, y: accountY + 10, w: accountW, h: 28, text: tile.value, sizePt: 22, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: accountY + 40, w: accountW, h: 18, text: tile.label.toUpperCase(), sizePt: 10, bold: true, colorHex: c.accent, align: "ctr" }),
-      );
-    });
-
-    const objBand = geo.objectiveKpi!;
-    const objCount = layout.objectiveBlocks.length;
-    const objStartX = (W - (objCount * geo.objectiveTileW + (objCount - 1) * objBand.gap)) / 2;
-    layout.objectiveBlocks.forEach((obj, i) => {
-      const x = objStartX + i * (geo.objectiveTileW + objBand.gap);
-      const objY = objBand.y;
-      const objH = objBand.h;
-      const objW = geo.objectiveTileW;
-      shapes.push(
-        roundedCard({ x, y: objY, w: objW, h: objH, fillHex: c.kpiBg, strokeHex: c.kpiBorder, radiusPt: 8 }),
-        textBox({ x, y: objY + 4, w: objW, h: 12, text: obj.label.toUpperCase(), sizePt: 9, bold: true, colorHex: c.accent, align: "ctr" }),
-        textBox({ x, y: objY + 18, w: objW, h: 22, text: obj.resultsValue, sizePt: 18, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: objY + 38, w: objW, h: 14, text: obj.cprValue, sizePt: 12, bold: true, colorHex: c.ink, align: "ctr" }),
-        textBox({ x, y: objY + 50, w: objW, h: 10, text: obj.cprLabel.toUpperCase(), sizePt: 8, bold: true, colorHex: c.inkSubtitle, align: "ctr" }),
-        textBox({ x, y: objY + 60, w: objW, h: 12, text: `${obj.spendFormatted} spent`, sizePt: 9, colorHex: c.inkSubtitle, align: "ctr" }),
-      );
-    });
-  }
-
-  const { x: donutX, y: donutY, d: donutD, cy: donutCy } = geo.donut;
+  const { x: donutX, y: donutY, d: donutD, cy: donutCy } = MTD_DONUT;
 
   if (chart.donutSegments.length > 0) {
     shapes.push(
@@ -159,7 +177,7 @@ export function buildMtdOverviewOoxmlShapes(
         d: donutD,
         segments: buildColoredPieSegments(chart.donutSegments),
         holeRatio: DONUT_HOLE_RATIO,
-        holeFillHex: c.holeFill,
+        holeFillHex: isLightTemplate ? "ffffff" : "0d1b2e",
       }),
     );
   }
@@ -185,60 +203,23 @@ export function buildMtdOverviewOoxmlShapes(
       text: "TOTAL SPEND",
       sizePt: 11,
       bold: true,
-      colorHex: c.inkSubtitle,
+      colorHex: c.inkMuted,
       align: "ctr",
       anchor: "ctr",
     }),
   );
 
-  let legendY = geo.legend.y;
-  const legendX = geo.legend.x;
-  const legendStatsColor = isLightTemplate ? "64748b" : "94a3b8";
-  for (const seg of chart.donutSegments) {
-    shapes.push(
-      roundedCard({
-        x: legendX,
-        y: legendY,
-        w: 14,
-        h: 14,
-        fillHex: seg.color,
-        strokeHex: seg.color,
-        radiusPt: 2,
-      }),
-      textBox({
-        x: legendX + 22,
-        y: legendY - 2,
-        w: W - legendX - 40,
-        h: 22,
-        text: seg.name,
-        sizePt: 15,
-        bold: true,
-        colorHex: c.ink,
-        align: "l",
-      }),
-      textBox({
-        x: legendX + 22,
-        y: legendY + 16,
-        w: W - legendX - 40,
-        h: 20,
-        text: formatDonutSegmentStats(seg.percentage, seg.spendLabel),
-        sizePt: 14,
-        colorHex: legendStatsColor,
-        align: "l",
-      }),
-    );
-    legendY += geo.legend.rowH;
-  }
+  appendMetricsTableOoxml(shapes, chart, isLightTemplate);
 
   shapes.push(
     textBox({
       x: 40,
-      y: geo.footerY.ooxml,
+      y: MTD_FOOTER_Y.ooxml,
       w: W - 80,
       h: 28,
       text: resolveChartFooterInsight(chart),
       sizePt: 14,
-      colorHex: c.inkSubtitle,
+      colorHex: c.inkMuted,
       align: "ctr",
     }),
   );

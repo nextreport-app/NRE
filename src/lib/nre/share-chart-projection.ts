@@ -70,3 +70,4 @@ export function projectChartSlideToShareChart(chart: ChartSlideData, currencySym
 }
 
 export { buildChartKpiLayout, normalizeShareChartSnapshot, toTitleCaseChartLabel } from "./chart-kpi-layout";
+export { buildChartMetricsTable, CHART_SNAPSHOT_OBJECTIVE_MAX } from "./chart-metrics-table";

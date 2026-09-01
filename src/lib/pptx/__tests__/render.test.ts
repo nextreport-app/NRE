@@ -286,7 +286,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — KPI tiles + spend-mix donut (native OOXML).
+    // Combined MTD overview slide — donut left + metrics table right (native OOXML).
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
     expect(chartXmlFromZip).toContain('prst="pie"');
@@ -294,8 +294,9 @@ describe("renderPptx — real template end-to-end", () => {
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
     expect(chartSvg).toContain("July 13 - July 19, 2026");
-    expect(chartSvg).toContain("Brand - Reach");
-    expect(chartSvg).toContain("Shoes - Purchases");
+    expect(chartSvg).toContain("Ad spend");
+    expect(chartSvg).toContain("Reach");
+    expect(chartSvg).toContain("Purchases");
 
     // reference/templates/ADS_TEMPLATE_V2.pptx (this describe block's own
     // TEMPLATE_PATH) is a legacy, pre-existing fixture kept for broad
