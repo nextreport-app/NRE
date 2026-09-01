@@ -131,7 +131,7 @@ export default async function ClientDetailPage({
           </div>
         </Card>
 
-        <Card>
+        <Card id="previous-month-data">
           <CardHeading>Previous Month Data</CardHeading>
           <PreviousMonthDataUpload
             clientId={client.id}
