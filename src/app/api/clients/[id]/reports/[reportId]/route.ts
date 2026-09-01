@@ -105,10 +105,33 @@ const chartEditSchema = z.object({
   ),
 });
 
+const tableRowEditSchema = z.object({
+  monthLabel: z.string().max(64),
+  spend: z.string().max(64),
+  reach: z.string().max(64),
+  impressions: z.string().max(64),
+  ctr: z.string().max(64),
+  cpc: z.string().max(64),
+  resultColumns: z.array(
+    z.object({
+      label: z.string().max(64),
+      costLabel: z.string().max(64),
+      value: z.string().max(64),
+      cprValue: z.string().max(64),
+    }),
+  ),
+});
+
+const combinedTotalEditSchema = z.object({
+  periodRow: tableRowEditSchema,
+  mtdRow: tableRowEditSchema,
+});
+
 const shareReviewSchema = z.object({
   publish: z.boolean().optional(),
   visibility: visibilitySchema,
   cover: coverEditSchema.optional(),
+  combinedTotal: combinedTotalEditSchema.optional(),
   campaigns: z.array(copySlideSchema),
   adSets: z.array(copySlideSchema).optional(),
   chart: chartEditSchema.optional(),
@@ -248,6 +271,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           ...chartPatch,
           ...(mergedVisualSlide ? { visualSlide: mergedVisualSlide } : {}),
         };
+      }
+      if (parsed.data.combinedTotal) {
+        share.periodRow = { ...share.periodRow, ...parsed.data.combinedTotal.periodRow };
+        share.mtdRow = { ...share.mtdRow, ...parsed.data.combinedTotal.mtdRow };
       }
       if (parsed.data.publish) {
         share.publishedAt = new Date().toISOString();
