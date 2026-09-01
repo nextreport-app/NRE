@@ -43,6 +43,7 @@ import {
   getGroupedResultDisplayForObjective,
   getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
+  shouldAttributeSpendForObjective,
   normalizeCampaignName,
   resultValueForObjective,
   type ResultLabels,
@@ -1891,9 +1892,12 @@ function comparisonObjectiveTotals(rows: MetricRow[], objective: ResultLabels): 
   let totalSpend = 0;
   let totalReach = 0;
   rows.forEach((row) => {
-    count += resultValueForObjective(row, objective.resultLabel);
-    totalSpend += parseCellNum(row.spend);
-    totalReach += parseCellNum(row.reach);
+    const value = resultValueForObjective(row, objective.resultLabel);
+    count += value;
+    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
+      totalSpend += parseCellNum(row.spend);
+      totalReach += parseCellNum(row.reach);
+    }
   });
   // Same uncounted-Reach special case as buildResultGroups/
   // getGroupedResultDisplayForObjective: a real Reach objective rarely

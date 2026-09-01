@@ -1022,6 +1022,12 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   return 0;
 }
 
+/** Spend/reach roll into an objective bucket only when the row contributes to that objective's results (or spent on that objective with zero results). Prevents another objective's spend from inflating cost-per on the chart slide and Combined Total table. */
+export function shouldAttributeSpendForObjective(row: MetricRow, label: string, attributedValue: number): boolean {
+  if (attributedValue > 0) return true;
+  return resolveCampaignObjective([row]).resultLabel === label;
+}
+
 /**
  * Turns `rows` into per-objective ResultGroup[] for the Combined Total
  * table, using a PRE-BUILT campaignObjectiveMap (see buildCampaignObjectiveMap
@@ -1059,8 +1065,10 @@ export function groupResultsByCampaignObjective(
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label);
       groups[label].count += value;
-      groups[label].totalSpend += parseCellNum(row.spend);
-      groups[label].totalReach += parseCellNum(row.reach);
+      if (shouldAttributeSpendForObjective(row, label, value)) {
+        groups[label].totalSpend += parseCellNum(row.spend);
+        groups[label].totalReach += parseCellNum(row.reach);
+      }
       campaignValueSum += value;
       if (debugLabel) {
         console.log(
@@ -1141,9 +1149,12 @@ export function getGroupedResultDisplayForObjective(
   let totalSpend = 0;
   let totalReach = 0;
   campRows.forEach((row) => {
-    count += resultValueForObjective(row, objective.resultLabel);
-    totalSpend += parseCellNum(row.spend);
-    totalReach += parseCellNum(row.reach);
+    const value = resultValueForObjective(row, objective.resultLabel);
+    count += value;
+    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
+      totalSpend += parseCellNum(row.spend);
+      totalReach += parseCellNum(row.reach);
+    }
   });
 
   // Same uncounted-Reach special case as buildResultGroups: a real Reach
