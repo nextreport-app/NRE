@@ -53,7 +53,6 @@ function buildChart(campaigns: ChartCampaignData[], overrides: Partial<ChartSlid
       primaryCprValue: "$10.00",
       primaryCprLabel: "COST PER PURCHASE",
       primarySpendFormatted: "$" + Math.round(total).toLocaleString("en-US"),
-      budgetPctUsed: "19%",
       activeCampaignCount: campaigns.filter((c) => c.isActive).length,
       objectives: [
         {
