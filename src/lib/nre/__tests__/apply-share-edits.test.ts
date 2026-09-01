@@ -91,7 +91,7 @@ describe("applyShareEditsToReportData", () => {
         dateRange: "Jan 1 - Jan 7",
         healthBadge: "On Track",
         healthScore: 80,
-        budgetSummary: "Old budget line",
+        budgetSummary: "",
       },
     } as ReportData;
     const share = minimalShare({
@@ -101,13 +101,13 @@ describe("applyShareEditsToReportData", () => {
         dateRange: "Jan 1 - Jan 31",
         healthBadge: "Needs Attention",
         healthScore: 55,
-        budgetSummary: "New budget line",
+        budgetSummary: "",
       },
     });
     const patched = applyShareEditsToReportData(data, share);
     expect(patched.cover.accountName).toBe("Edited Co");
     expect(patched.cover.dateRange).toBe("Jan 1 - Jan 31");
     expect(patched.cover.healthBadge).toBe("Needs Attention");
-    expect(patched.cover.budgetSummary).toBe("New budget line");
+    expect(patched.cover.budgetSummary).toBe("");
   });
 });

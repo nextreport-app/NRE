@@ -21,7 +21,6 @@ interface CoverEdit {
   accountName: string;
   dateRange: string;
   healthBadge: string;
-  budgetSummary: string;
 }
 
 function patchChartVisualSlide(chart: ShareChartData, patch: Partial<NonNullable<ShareChartData["visualSlide"]>>): ShareChartData {
@@ -157,7 +156,6 @@ export function ReportShareReview({
         accountName: loaded.accountName,
         dateRange: loaded.cover.dateRange,
         healthBadge: loaded.cover.healthBadge,
-        budgetSummary: loaded.cover.budgetSummary ?? "",
       });
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
@@ -183,7 +181,7 @@ export function ReportShareReview({
               ...share.cover,
               dateRange: coverEdit.dateRange,
               healthBadge: coverEdit.healthBadge,
-              budgetSummary: coverEdit.budgetSummary,
+              budgetSummary: "",
             },
           }
         : {}),
@@ -264,7 +262,6 @@ export function ReportShareReview({
                 accountName: coverEdit.accountName,
                 dateRange: coverEdit.dateRange,
                 healthBadge: coverEdit.healthBadge,
-                budgetSummary: coverEdit.budgetSummary,
               }
             : undefined,
           chart: chartEdit
@@ -431,13 +428,6 @@ export function ReportShareReview({
                 type="text"
                 value={coverEdit.healthBadge}
                 onChange={(e) => setCoverEdit((c) => (c ? { ...c, healthBadge: e.target.value } : c))}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
-              />
-              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Budget summary</label>
-              <input
-                type="text"
-                value={coverEdit.budgetSummary}
-                onChange={(e) => setCoverEdit((c) => (c ? { ...c, budgetSummary: e.target.value } : c))}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
             </div>

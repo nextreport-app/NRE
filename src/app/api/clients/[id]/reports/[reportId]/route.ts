@@ -58,7 +58,6 @@ const coverEditSchema = z.object({
   accountName: z.string().max(200),
   dateRange: z.string().max(200),
   healthBadge: z.string().max(200),
-  budgetSummary: z.string().max(400),
 });
 
 const visualSlideEditSchema = z.object({
@@ -235,7 +234,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           ...share.cover,
           dateRange: parsed.data.cover.dateRange,
           healthBadge: parsed.data.cover.healthBadge,
-          budgetSummary: parsed.data.cover.budgetSummary,
+          budgetSummary: "",
         };
       }
       if (parsed.data.chart && share.chart) {

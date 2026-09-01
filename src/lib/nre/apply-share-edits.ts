@@ -27,8 +27,8 @@ export function applyShareEditsToReportData(data: ReportData, share: ShareReport
     dateRange: share.cover?.dateRange ?? data.cover.dateRange,
     healthBadge: share.cover?.healthBadge ?? data.cover.healthBadge,
     healthScore: share.cover?.healthScore ?? data.cover.healthScore,
-    budgetSummary: share.cover?.budgetSummary ?? data.cover.budgetSummary,
     reportDate: share.cover?.reportDate ?? data.cover.reportDate,
+    budgetSummary: "",
   };
 
   const campaignSlides = data.campaignSlides.map((slide) => {

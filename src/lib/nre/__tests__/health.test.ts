@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { budgetSummaryLine, calculateAccountHealth } from "../health";
+import { calculateAccountHealth, budgetPctUsed } from "../health";
 import type { AggRow } from "../aggregate";
 
 function row(overrides: Partial<AggRow> = {}): AggRow {
@@ -252,29 +252,14 @@ describe("calculateAccountHealth", () => {
   });
 });
 
-describe("budgetSummaryLine", () => {
-  it("returns an empty string when there is no budget", () => {
-    expect(budgetSummaryLine(1000, null, "$")).toBe("");
-    expect(budgetSummaryLine(1000, 0, "$")).toBe("");
+describe("budgetPctUsed", () => {
+  it("returns null when there is no budget", () => {
+    expect(budgetPctUsed(1000, null)).toBeNull();
+    expect(budgetPctUsed(1000, 0)).toBeNull();
   });
 
-  it("formats spend/budget/percent/days-remaining", () => {
-    const now = new Date(2026, 6, 22); // July 22 2026 (local) — 31 days in July
-    const line = budgetSummaryLine(25000, 50000, "₹", now);
-    expect(line).toBe("Monthly Ad Budget: ₹25,000 of ₹50,000 used (50%) — 9 days remaining");
-  });
-
-  it("uses zero days remaining when the MTD month has already ended", () => {
-    const now = new Date(2026, 8, 1); // Sep 1 2026
-    const line = budgetSummaryLine(3401, 1000, "$", now, { year: 2026, month: 7 }); // August MTD
-    expect(line).toContain("3,401");
-    expect(line).toContain("0 days remaining");
-  });
-
-  // Fix 6 — always a whole-number percentage, never one decimal place.
-  it("rounds the percentage to the nearest whole number, never showing a decimal", () => {
-    const now = new Date(2026, 6, 22);
-    expect(budgetSummaryLine(20600, 100000, "$", now)).toContain("(21%)"); // 20.6 -> rounds up
-    expect(budgetSummaryLine(20400, 100000, "$", now)).toContain("(20%)"); // 20.4 -> rounds down
+  it("rounds to a whole-number percentage", () => {
+    expect(budgetPctUsed(20600, 100000)).toBe(21);
+    expect(budgetPctUsed(20400, 100000)).toBe(20);
   });
 });
