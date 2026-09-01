@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCsvDateGuidance, getMetaCsvDownloadTip } from "../csv-date-guidance";
+import { analyzeCsvDateGuidance, getMetaCsvDownloadTip, isCsvGuidanceFirstOfMonth } from "../csv-date-guidance";
 import type { NreRow } from "../columns";
 
 function dailyRow(iso: string): NreRow {
@@ -17,6 +17,16 @@ function daysInclusive(startIso: string, endIso: string): NreRow[] {
   }
   return rows;
 }
+
+describe("isCsvGuidanceFirstOfMonth", () => {
+  it("is true on UTC day 1", () => {
+    expect(isCsvGuidanceFirstOfMonth(new Date("2026-09-01T12:00:00Z"))).toBe(true);
+  });
+
+  it("is false on other days", () => {
+    expect(isCsvGuidanceFirstOfMonth(new Date("2026-09-02T12:00:00Z"))).toBe(false);
+  });
+});
 
 describe("getMetaCsvDownloadTip", () => {
   it("on the 1st recommends one Previous Month CSV (not Last 30 Days)", () => {

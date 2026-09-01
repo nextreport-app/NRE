@@ -61,6 +61,11 @@ function friendlyDate(iso: string): string {
   return `${month} ${d.day}`;
 }
 
+/** True on UTC day 1 — used for day-1-only upload wizard copy. */
+export function isCsvGuidanceFirstOfMonth(now: Date = new Date()): boolean {
+  return now.getUTCDate() === 1;
+}
+
 /** Dynamic Meta CSV download tip shown on Step 1 before upload. */
 export function getMetaCsvDownloadTip(now: Date = new Date()): string {
   const dayOfMonth = now.getUTCDate();
