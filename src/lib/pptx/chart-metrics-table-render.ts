@@ -60,19 +60,17 @@ export function metricsTableRowFill(
 ): string {
   if (row.kind === "header") return colors.headerBg;
   if (row.kind === "total") return colors.rowAltBg;
-  if (row.kind === "budget") return colors.rowAltBg;
   if (row.kind === "footnote") return colors.rowBg;
   return index % 2 === 0 ? colors.rowBg : colors.rowAltBg;
 }
 
 export function metricsTableRowWeight(row: ChartMetricsTableRow): boolean {
-  return row.kind === "header" || row.kind === "total" || row.kind === "budget";
+  return row.kind === "header" || row.kind === "total";
 }
 
 export function metricsTableTextColor(row: ChartMetricsTableRow, colors: MetricsTableColors): string {
   if (row.kind === "header") return colors.accent;
   if (row.kind === "footnote") return colors.inkMuted;
-  if (row.kind === "budget") return colors.accent;
   return colors.ink;
 }
 

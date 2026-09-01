@@ -5,7 +5,7 @@ import type { ShareChartData, ShareChartSnapshot, ShareDonutSegment } from "./sh
 import { mapChartSnapshotObjective, toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { buildVisualChartSlideModel } from "./visual-chart-slide";
 
-/** Footer insight under the donut — active campaigns only (budget % lives in the KPI tile). */
+/** Footer insight under the donut — active campaigns only. */
 export function formatChartFooterInsight(activeCampaignCount: number, override?: string): string {
   if (override?.trim()) return override.trim();
   return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} currently`;
@@ -39,7 +39,6 @@ export function projectChartSlideToShareChart(chart: ChartSlideData, currencySym
     primaryCprValue: snap.primaryCprValue,
     primaryCprLabel: toTitleCaseChartLabel(snap.primaryCprLabel),
     primarySpendFormatted: snap.primarySpendFormatted,
-    budgetPctUsed: snap.budgetPctUsed,
     activeCampaignCount: snap.activeCampaignCount,
     objectives: snap.objectives.map((obj) =>
       mapChartSnapshotObjective({

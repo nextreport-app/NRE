@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateAccountHealth, budgetPctUsed } from "../health";
+import { calculateAccountHealth } from "../health";
 import type { AggRow } from "../aggregate";
 
 function row(overrides: Partial<AggRow> = {}): AggRow {
@@ -249,17 +249,5 @@ describe("calculateAccountHealth", () => {
       // No Traffic override here — CTR 0.3% still gets the generic 2pt floor.
       expect(health.score).toBe(25 + 2 + 20 + 12);
     });
-  });
-});
-
-describe("budgetPctUsed", () => {
-  it("returns null when there is no budget", () => {
-    expect(budgetPctUsed(1000, null)).toBeNull();
-    expect(budgetPctUsed(1000, 0)).toBeNull();
-  });
-
-  it("rounds to a whole-number percentage", () => {
-    expect(budgetPctUsed(20600, 100000)).toBe(21);
-    expect(budgetPctUsed(20400, 100000)).toBe(20);
   });
 });

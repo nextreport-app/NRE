@@ -38,7 +38,7 @@ import {
 import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
 import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
-import { calculateAccountHealth, budgetPctUsed } from "./health";
+import { calculateAccountHealth } from "./health";
 import {
   buildCampaignObjectiveMap,
   getGroupedResultDisplayForObjective,
@@ -1591,7 +1591,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         ? `${mtdRow.fullMonthLabel}, ${periodYear}`
         : mtdRow.fullMonthLabel;
 
-  const pctUsed = budgetPctUsed(totalAllSpend, monthlyBudget);
   const mtdObjectiveGroups = groupResultsByCampaignObjective(mtdRows, campaignObjectiveMap);
   const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
   const chart: ChartSlideData = {
@@ -1603,7 +1602,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       mtdResultColumns: mtdRow.resultColumns,
       mtdGroups: mtdObjectiveGroups,
       totalAllSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
-      budgetPctUsed: pctUsed !== null ? `${pctUsed}%` : "",
       activeCampaignCount,
       currencySymbol,
     }),

@@ -3,7 +3,7 @@ import { buildChartKpiCardRows, buildChartCampaignBars, computeMtdVisualBandMetr
 import type { ShareChartSnapshot } from "../share-report";
 
 describe("buildChartKpiCardRows", () => {
-  it("single objective — four classic KPI cards", () => {
+  it("single objective — three classic KPI cards", () => {
     const rows = buildChartKpiCardRows({
       mode: "single",
       mtdSpendLabel: "$500",
@@ -25,7 +25,7 @@ describe("buildChartKpiCardRows", () => {
       ],
     });
     expect(rows.mode).toBe("single");
-    expect(rows.rows[0]).toHaveLength(4);
+    expect(rows.rows[0]).toHaveLength(3);
     expect(rows.rows[0]?.[0]?.value).toBe("$500");
   });
 
@@ -57,7 +57,7 @@ describe("buildChartKpiCardRows", () => {
       ],
     });
     expect(rows.mode).toBe("multi");
-    expect(rows.rows[0]?.map((c) => c.value)).toEqual(["$3,401", "19%"]);
+    expect(rows.rows[0]?.map((c) => c.value)).toEqual(["$3,401"]);
     expect(rows.rows[1]).toHaveLength(2);
     expect(rows.rows[1]?.[1]?.detail).toContain("$576");
   });

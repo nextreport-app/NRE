@@ -26,7 +26,7 @@ function multiSnapshot(objectiveCount = 2): ShareChartSnapshot {
 }
 
 describe("buildChartMetricsTable", () => {
-  it("single objective — one data row plus budget row", () => {
+  it("single objective — one data row", () => {
     const table = buildChartMetricsTable({
       mode: "single",
       mtdSpendLabel: "$500",
@@ -48,14 +48,13 @@ describe("buildChartMetricsTable", () => {
       ],
       objectivesOmittedCount: 0,
     });
-    expect(table.rows.map((r) => r.kind)).toEqual(["header", "objective", "budget"]);
+    expect(table.rows.map((r) => r.kind)).toEqual(["header", "objective"]);
     expect(table.rows[1]?.spend).toBe("$500");
-    expect(table.rows[2]?.spend).toBe("19%");
   });
 
-  it("multi objective — total row, objective rows, and budget row", () => {
+  it("multi objective — total row and objective rows", () => {
     const table = buildChartMetricsTable(multiSnapshot(2));
-    expect(table.rows.map((r) => r.kind)).toEqual(["header", "total", "objective", "objective", "budget"]);
+    expect(table.rows.map((r) => r.kind)).toEqual(["header", "total", "objective", "objective"]);
     expect(table.rows.find((r) => r.kind === "total")?.spend).toBe("$3,401");
     expect(table.rows.filter((r) => r.kind === "objective")).toHaveLength(2);
   });

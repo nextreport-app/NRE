@@ -26,7 +26,6 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
     snapshot: {
       mode: "single",
       mtdSpendFormatted: "$150",
-      budgetPctUsed: "15%",
       activeCampaignCount: 2,
       objectives: [
         {
@@ -70,7 +69,6 @@ describe("buildVisualChartSlideModel", () => {
         snapshot: {
           mode: "multi",
           mtdSpendFormatted: "$3,401",
-          budgetPctUsed: "340%",
           activeCampaignCount: 2,
           objectives: [
             {

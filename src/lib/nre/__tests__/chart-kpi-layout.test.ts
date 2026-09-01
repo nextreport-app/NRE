@@ -62,7 +62,7 @@ describe("buildChartKpiLayout", () => {
     };
     const layout = buildChartKpiLayout(snapshot);
     expect(layout.mode).toBe("multi");
-    expect(layout.accountTiles.map((t) => t.value)).toEqual(["$3,401", "19%"]);
+    expect(layout.accountTiles.map((t) => t.value)).toEqual(["$3,401"]);
     expect(layout.objectiveBlocks).toHaveLength(2);
     expect(layout.objectiveBlocks[1]?.spendFormatted).toBe("$576");
   });

@@ -374,7 +374,6 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
             },
           ],
           totalAllSpendFormatted: fmtCurrency(totalCost, currencySymbol),
-          budgetPctUsed: "",
           activeCampaignCount: chartCampaigns.filter((c) => c.isActive).length,
           currencySymbol,
         }),

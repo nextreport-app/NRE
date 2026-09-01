@@ -257,6 +257,10 @@ function buildTelegramShareUrl(reportUrl: string): string {
   return `https://t.me/share/url?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
 }
 
+function buildSlackShareUrl(reportUrl: string): string {
+  return `https://slack.com/share?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
+}
+
 function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
   const subject = encodeURIComponent(`${accountName} — Performance Report`);
   const body = encodeURIComponent(`Hi,\n\nYour report is ready to view:\n${reportUrl}\n\n`);
@@ -2958,7 +2962,7 @@ export function ReportUploadWizard({
                 {shareToken && reportId ? (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
                     <p className="text-[13px] leading-snug text-dash-ink">
-                      Edit copy, hide slides, or publish to unlock PDF
+                      Edit report copy or hide slides for the browser link, PPTX, and PDF
                     </p>
                     <Link
                       href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
@@ -2979,7 +2983,7 @@ export function ReportUploadWizard({
                     <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center justify-between gap-2">
                         Share with client
-                        <span className="text-[11px] text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
+                        <span className="text-[15px] leading-none text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
                       </span>
                     </summary>
                     <div className="border-t border-dash-border px-4 py-3">
@@ -3013,6 +3017,17 @@ export function ReportUploadWizard({
                             <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
                           </svg>
                           Telegram
+                        </a>
+                        <a
+                          href={buildSlackShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <svg viewBox="0 0 24 24" fill="#E01E5A" width={16} height={16} aria-hidden="true">
+                            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                          </svg>
+                          Slack
                         </a>
                         {driveSaveUrl ? (
                           <button
