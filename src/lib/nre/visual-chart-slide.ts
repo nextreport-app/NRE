@@ -127,8 +127,6 @@ function buildSummarySingle(
   if (primaryResults > 0 && primaryCpr > 0) {
     parts.push(`Average Cost Per ${toTitleCaseChartLabel(primaryLabel)}: ${fmtCurrency(primaryCpr, currencySymbol)}`);
   }
-  const budget = chart.snapshot.budgetPctUsed?.trim();
-  if (budget) parts.push(`${budget} Budget Used`);
   parts.push(`${chart.activeCampaignCount} Active Campaign${chart.activeCampaignCount === 1 ? "" : "s"}`);
   return parts.join(" · ");
 }
@@ -145,9 +143,7 @@ function buildSummaryMulti(
     const abbrev = shortCostAbbrev(obj.cprLabel);
     return `${label}: ${count.toLocaleString("en-US")} · ${cost} ${abbrev}`;
   });
-  const budget = chart.snapshot.budgetPctUsed?.trim();
   const prefix = [`Total Spend: ${fmtCurrency(chart.totalAllSpend, currencySymbol)}`];
-  if (budget) prefix.push(`${budget} Budget Used`);
   return [...prefix, ...chunks].join("  |  ");
 }
 

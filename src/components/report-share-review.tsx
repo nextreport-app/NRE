@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/toast";
 import { ShareReportView } from "@/components/share-report-view";
 import type { ShareReportData, ShareVisibility, ShareChartData } from "@/lib/nre/share-report";
+import type { TableRowData } from "@/lib/nre/report-data";
 import { adSetVisibilityKey, defaultShareVisibility } from "@/lib/nre/share-report";
 import { countVisibleSlides } from "@/lib/nre/share-visibility";
 import { updateGenerateSnapshotAfterPublish } from "@/lib/nre/wizard-generate-snapshot";
@@ -21,6 +22,110 @@ interface CoverEdit {
   accountName: string;
   dateRange: string;
   healthBadge: string;
+}
+
+interface CombinedTotalEdit {
+  periodRow: TableRowData;
+  mtdRow: TableRowData;
+}
+
+function cloneCombinedTotalEdit(share: ShareReportData): CombinedTotalEdit {
+  return {
+    periodRow: JSON.parse(JSON.stringify(share.periodRow)) as TableRowData,
+    mtdRow: JSON.parse(JSON.stringify(share.mtdRow)) as TableRowData,
+  };
+}
+
+function tableRowForPublish(row: TableRowData) {
+  return {
+    monthLabel: row.monthLabel,
+    spend: row.spend,
+    reach: row.reach,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    cpc: row.cpc,
+    resultColumns: row.resultColumns.map((c) => ({
+      label: c.label,
+      costLabel: c.costLabel,
+      value: c.value,
+      cprValue: c.cprValue,
+    })),
+  };
+}
+
+type TableRowScalarField = "monthLabel" | "spend" | "reach" | "impressions" | "ctr" | "cpc";
+
+function CombinedTotalRowEditor({
+  title,
+  row,
+  headers,
+  onChange,
+}: {
+  title: string;
+  row: TableRowData;
+  headers: ShareReportData["tableHeaderLabels"];
+  onChange: (next: TableRowData) => void;
+}) {
+  const staticFields: { key: TableRowScalarField; label: string }[] = [
+    { key: "monthLabel", label: "Month" },
+    { key: "spend", label: "Ad spend" },
+    { key: "reach", label: "Reach" },
+    { key: "impressions", label: "Impressions" },
+    { key: "ctr", label: "CTR (All)" },
+    { key: "cpc", label: "CPC (All)" },
+  ];
+
+  function patchResultColumn(label: string, costLabel: string, patch: Partial<{ value: string; cprValue: string }>) {
+    const existing = row.resultColumns.find((c) => c.label === label);
+    const nextColumns = existing
+      ? row.resultColumns.map((c) => (c.label === label ? { ...c, ...patch, costLabel } : c))
+      : [...row.resultColumns, { label, costLabel, value: patch.value ?? "—", cprValue: patch.cprValue ?? "—" }];
+    onChange({ ...row, resultColumns: nextColumns });
+  }
+
+  return (
+    <div className="rounded-md border border-dash-border bg-dash-bg p-3">
+      <p className="text-[11px] font-semibold text-dash-ink">{title}</p>
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {staticFields.map(({ key, label }) => (
+          <label key={key} className="block">
+            <span className="text-[11px] font-medium text-dash-ink-secondary">{label}</span>
+            <input
+              type="text"
+              value={row[key]}
+              onChange={(e) => onChange({ ...row, [key]: e.target.value })}
+              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+            />
+          </label>
+        ))}
+        {headers.resultColumns.map((col) => {
+          const dataCol = row.resultColumns.find((r) => r.label === col.label);
+          return (
+            <div key={col.label} className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-[11px] font-medium text-dash-ink-secondary">{col.label}</span>
+                <input
+                  type="text"
+                  value={dataCol?.value ?? "—"}
+                  onChange={(e) => patchResultColumn(col.label, col.costLabel, { value: e.target.value })}
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-medium text-dash-ink-secondary">{col.costLabel}</span>
+                <input
+                  type="text"
+                  value={dataCol?.cprValue ?? "—"}
+                  onChange={(e) => patchResultColumn(col.label, col.costLabel, { cprValue: e.target.value })}
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                />
+              </label>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function patchChartVisualSlide(chart: ShareChartData, patch: Partial<NonNullable<ShareChartData["visualSlide"]>>): ShareChartData {
@@ -127,6 +232,7 @@ export function ReportShareReview({
   const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
   const [chartEdit, setChartEdit] = useState<ShareChartData | null>(null);
   const [coverEdit, setCoverEdit] = useState<CoverEdit | null>(null);
+  const [combinedTotalEdit, setCombinedTotalEdit] = useState<CombinedTotalEdit | null>(null);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
@@ -157,6 +263,7 @@ export function ReportShareReview({
         dateRange: loaded.cover.dateRange,
         healthBadge: loaded.cover.healthBadge,
       });
+      setCombinedTotalEdit(cloneCombinedTotalEdit(loaded));
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
       setPdfAvailable(!!(json.publishedAt ?? loaded.publishedAt));
@@ -187,6 +294,8 @@ export function ReportShareReview({
         : {}),
       visibility,
       chart: chartEdit ?? share.chart,
+      periodRow: combinedTotalEdit?.periodRow ?? share.periodRow,
+      mtdRow: combinedTotalEdit?.mtdRow ?? share.mtdRow,
       campaigns: share.campaigns.map((c) => {
         const edited = campaigns.find((x) => x.campaignName === c.campaignName);
         return edited
@@ -211,7 +320,7 @@ export function ReportShareReview({
       }),
     };
     return applyVisibilityToShare(merged, visibility);
-  }, [share, visibility, campaigns, adSets, chartEdit, coverEdit]);
+  }, [share, visibility, campaigns, adSets, chartEdit, coverEdit, combinedTotalEdit]);
 
   const slideList = useMemo(
     () => (draftShare && visibility ? buildSlideList(draftShare, visibility) : []),
@@ -262,6 +371,12 @@ export function ReportShareReview({
                 accountName: coverEdit.accountName,
                 dateRange: coverEdit.dateRange,
                 healthBadge: coverEdit.healthBadge,
+              }
+            : undefined,
+          combinedTotal: combinedTotalEdit
+            ? {
+                periodRow: tableRowForPublish(combinedTotalEdit.periodRow),
+                mtdRow: tableRowForPublish(combinedTotalEdit.mtdRow),
               }
             : undefined,
           chart: chartEdit
@@ -316,6 +431,10 @@ export function ReportShareReview({
     : null;
   const coverSelected = selectedSlideId === "cover";
   const overviewSelected = selectedSlideId === "overview";
+  const combinedTotalSelected = selectedSlideId === "combinedTotal";
+  const hideCombinedPeriodRow =
+    draftShare.reportType === "MONTHLY" || !draftShare.periodRow.hasData;
+  const hideCombinedMtdRow = !hideCombinedPeriodRow && draftShare.periodRow.sameMonthAsCurrentMTD;
 
   return (
     <div className="space-y-4">
@@ -534,6 +653,33 @@ export function ReportShareReview({
             </div>
           )}
 
+          {combinedTotalSelected && combinedTotalEdit && draftShare ? (
+            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-[13px] font-semibold text-dash-ink">Monthly Campaign Performance Overview</p>
+              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
+                Edit table values here, then Publish — updates the live browser link and Download PPTX.
+              </p>
+              <div className="mt-4 space-y-3">
+                {!hideCombinedPeriodRow ? (
+                  <CombinedTotalRowEditor
+                    title="Previous month row"
+                    row={combinedTotalEdit.periodRow}
+                    headers={draftShare.tableHeaderLabels}
+                    onChange={(periodRow) => setCombinedTotalEdit((prev) => (prev ? { ...prev, periodRow } : prev))}
+                  />
+                ) : null}
+                {!hideCombinedMtdRow ? (
+                  <CombinedTotalRowEditor
+                    title="This period row"
+                    row={combinedTotalEdit.mtdRow}
+                    headers={draftShare.tableHeaderLabels}
+                    onChange={(mtdRow) => setCombinedTotalEdit((prev) => (prev ? { ...prev, mtdRow } : prev))}
+                  />
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           {overviewSelected && chartEdit ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[13px] font-semibold text-dash-ink">Month to date overview</p>
@@ -728,7 +874,7 @@ export function ReportShareReview({
               <input
                 type="text"
                 value={chartEdit.visualSlide?.summaryLine ?? chartEdit.footerInsight ?? ""}
-                placeholder="e.g. Total Spend: $3,401 | 340% Budget Used | Meta Form Leads: 32 · $88.26 CPL"
+                placeholder="e.g. Total Spend: $3,401 | Meta Form Leads: 32 · $88.26 CPL | Website Leads: 0 · N/A CPL"
                 onChange={(e) => {
                   const summaryLine = e.target.value;
                   setChartEdit((c) =>

@@ -51,5 +51,5 @@ export function applyShareEditsToReportData(data: ReportData, share: ShareReport
     };
   });
 
-  return { ...data, cover, campaignSlides, adSetSlides };
+  return { ...data, cover, campaignSlides, adSetSlides, periodRow: share.periodRow, mtdRow: share.mtdRow };
 }

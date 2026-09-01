@@ -110,4 +110,48 @@ describe("applyShareEditsToReportData", () => {
     expect(patched.cover.healthBadge).toBe("Needs Attention");
     expect(patched.cover.budgetSummary).toBe("");
   });
+
+  it("applies published combined-total table rows for PPT regeneration", () => {
+    const data = {
+      ...minimalReportData(),
+      periodRow: {
+        hasData: true,
+        monthLabel: "July 1 - 31",
+        fullMonthLabel: "July 1 - 31",
+        monthName: "July",
+        sameMonthAsCurrentMTD: false,
+        spend: "$582",
+        reach: "1",
+        impressions: "2",
+        ctr: "0.1%",
+        cpc: "$1",
+        resultColumns: [{ label: "LEADS", costLabel: "COST PER LEAD", value: "1", cprValue: "$10" }],
+      },
+      mtdRow: {
+        hasData: true,
+        monthLabel: "August 1 - 30",
+        fullMonthLabel: "August 1 - 30",
+        monthName: "August",
+        sameMonthAsCurrentMTD: false,
+        spend: "$3,401",
+        reach: "2",
+        impressions: "3",
+        ctr: "1%",
+        cpc: "$2",
+        resultColumns: [{ label: "LEADS", costLabel: "COST PER LEAD", value: "32", cprValue: "$88" }],
+      },
+      tableHeaderLabels: { resultColumns: [{ label: "LEADS", costLabel: "COST PER LEAD" }] },
+    } as ReportData;
+    const share = minimalShare({
+      periodRow: data.periodRow,
+      mtdRow: {
+        ...data.mtdRow,
+        spend: "$4,000",
+        resultColumns: [{ label: "LEADS", costLabel: "COST PER LEAD", value: "40", cprValue: "$100" }],
+      },
+    });
+    const patched = applyShareEditsToReportData(data, share);
+    expect(patched.mtdRow.spend).toBe("$4,000");
+    expect(patched.mtdRow.resultColumns[0]?.value).toBe("40");
+  });
 });

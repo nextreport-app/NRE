@@ -104,5 +104,6 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars).toHaveLength(2);
     expect(model.rightHeading).toBe("RESULTS BY OBJECTIVE");
     expect(model.summaryLine).toContain("|");
+    expect(model.summaryLine).not.toContain("Budget Used");
   });
 });
