@@ -2,7 +2,7 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiCardRows, buildChartCampaignBars } from "@/lib/nre/share-chart-projection";
+import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -236,122 +236,120 @@ function AdSetCard({
   );
 }
 
-function CampaignSpendBar({
+function VisualResultBar({
   name,
   color,
-  spendLabel,
-  percentage,
+  resultLine,
+  costLine,
+  barPct,
 }: {
   name: string;
   color: string;
-  spendLabel: string;
-  percentage: number;
+  resultLine: string;
+  costLine: string;
+  barPct: number;
 }) {
-  const widthPct = Math.max(percentage > 0 ? 4 : 0, percentage);
-  const pctLabel = formatDonutSegmentStats(percentage, spendLabel).split(" · ")[0] ?? "";
+  const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
   return (
-    <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(88px,0.8fr)] items-center gap-3">
-      <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
-      <div className="h-4 overflow-hidden rounded bg-[#1e293b]">
-        <div
-          className="h-full rounded"
-          style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
-        />
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)] items-center gap-3">
+      <p className="truncate text-right text-[9px] text-ink">{name}</p>
+      <div className="h-[18px] overflow-hidden rounded bg-[#1e293b]">
+        <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
-      <div className="text-right">
-        <p className="text-[13px] font-bold tabular-nums text-ink">{spendLabel}</p>
-        <p className="text-[11px] text-[#94a3b8]">{pctLabel}</p>
-      </div>
+      <p className="truncate text-[9px] font-bold text-ink">
+        {resultLine} · <span className="font-medium text-[#94a3b8]">{costLine}</span>
+      </p>
     </div>
   );
 }
 
-/** Browser chart slide — exported for PPT/PDF capture so deck matches the live share page. */
+function VisualMiniDonut({
+  name,
+  spendLabel,
+  pctLabel,
+  color,
+}: {
+  name: string;
+  spendLabel: string;
+  pctLabel: string;
+  color: string;
+}) {
+  const size = 90;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  return (
+    <div className="flex w-[90px] flex-col items-center">
+      <svg width={size} height={size} aria-hidden="true">
+        <circle cx={c} cy={c} r={r} fill="none" stroke={`#${color}`} strokeWidth={stroke} />
+        <text x={c} y={c + 4} textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="700">
+          {spendLabel}
+        </text>
+      </svg>
+      <p className="mt-1 w-full truncate text-center text-[9px] text-ink">{name}</p>
+      <p className="text-[9px] text-[#94a3b8]">{pctLabel}</p>
+    </div>
+  );
+}
+
+/** Browser chart slide — two-panel budget + results layout (matches editable PPT slide). */
 export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
-  const cardRows = buildChartKpiCardRows(chart.snapshot);
-  const campaignBars = buildChartCampaignBars(chart.donutSegments);
+  const model = chart.visualSlide;
+  if (!model) return null;
 
   return (
     <SlideCard>
-      <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{chart.title}</h2>
-      <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
+      <h2 className="text-center text-[24px] font-bold text-ink">{model.title}</h2>
 
-      {cardRows.mode === "single" ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(cardRows.rows[0] ?? []).map((tile) => (
-            <div
-              key={tile.label}
-              className="rounded-lg border border-navy-border px-3 py-4 text-center"
-              style={{ backgroundColor: "#131d30" }}
-            >
-              <p className="text-[22px] font-bold text-ink">{tile.value}</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
+      <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]">
+        <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
+          {model.isMultiObjective && model.groupedDonut ? (
+            <div className="mt-4 space-y-3">
+              <div className="relative mx-auto h-[168px] w-[168px]">
+                <ShareChartDonut
+                  segments={model.groupedDonut.map((s) => ({
+                    name: s.name,
+                    spendLabel: s.spendLabel,
+                    percentage: s.percentage,
+                    color: s.color,
+                  }))}
+                  totalSpendLabel={model.groupedDonutCenterLabel}
+                  size={168}
+                />
+              </div>
+              {model.groupedDonut.map((seg) => (
+                <p key={seg.name} className="truncate text-[9px] text-ink">
+                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
+                  {seg.name} · {seg.spendLabel} · {seg.percentage}%
+                </p>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="mt-4 flex flex-wrap justify-center gap-4">
+              {model.miniDonuts.map((donut) => (
+                <VisualMiniDonut key={donut.name} {...donut} />
+              ))}
+            </div>
+          )}
+          {!model.isMultiObjective ? (
+            <p className="mt-4 text-center text-[11px] font-bold text-ink">
+              Total MTD Spend: {model.groupedDonutCenterLabel}
+            </p>
+          ) : null}
         </div>
-      ) : (
-        <div className="mt-5 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            {(cardRows.rows[0] ?? []).map((tile) => (
-              <div
-                key={tile.label}
-                className="rounded-lg border border-navy-border px-3 py-4 text-center"
-                style={{ backgroundColor: "#131d30" }}
-              >
-                <p className="text-[22px] font-bold text-ink">{tile.value}</p>
-                <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
-              </div>
-            ))}
-          </div>
-          <div
-            className={`grid gap-3 ${
-              (cardRows.rows[1]?.length ?? 0) >= 4
-                ? "grid-cols-2 sm:grid-cols-4"
-                : (cardRows.rows[1]?.length ?? 0) === 3
-                  ? "grid-cols-1 sm:grid-cols-3"
-                  : "grid-cols-2"
-            }`}
-          >
-            {(cardRows.rows[1] ?? []).map((card) => (
-              <div
-                key={card.label}
-                className="rounded-lg border border-navy-border px-3 py-3 text-center"
-                style={{ backgroundColor: "#131d30" }}
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{card.label}</p>
-                <p className="mt-1 text-[22px] font-bold text-ink">{card.value}</p>
-                {card.detail ? <p className="mt-1 text-[11px] text-[#94a3b8]">{card.detail}</p> : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {chart.donutSegments.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]">
-          <div className="relative mx-auto shrink-0 min-[720px]:mx-0">
-            <ShareChartDonut segments={chart.donutSegments} totalSpendLabel={chart.totalSpendLabel} size={220} />
-          </div>
-          <div className="min-w-0 space-y-3 pt-1">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-accent-orange">Campaign spend mix</p>
-            {campaignBars.map((bar) => (
-              <CampaignSpendBar
-                key={bar.name}
-                name={bar.name}
-                color={bar.color}
-                spendLabel={bar.spendLabel}
-                percentage={bar.percentage}
-              />
+        <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+          <div className="mt-4 space-y-3">
+            {model.resultBars.map((bar) => (
+              <VisualResultBar key={bar.name} {...bar} />
             ))}
           </div>
         </div>
-      ) : (
-        <p className="mt-6 text-center text-[14px] text-[#e2e8f0]">No spend recorded this month yet.</p>
-      )}
+      </div>
 
-      <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
-        {resolveChartFooterInsight(chart)}
-      </p>
+      <p className="mt-5 text-center text-[11px] text-[#94a3b8]">{model.summaryLine}</p>
     </SlideCard>
   );
 }

@@ -28,65 +28,6 @@ var import_server = require("react-dom/server");
 // src/lib/nre/dates.ts
 var IST_OFFSET_MS = 5.5 * 60 * 60 * 1e3;
 
-// src/lib/nre/chart-kpi-layout.ts
-var KNOWN_METRIC_ACRONYMS = /* @__PURE__ */ new Set(["LPV", "CPM", "1K"]);
-function toTitleCaseChartLabel(label) {
-  return label.split(" ").map((w) => KNOWN_METRIC_ACRONYMS.has(w) ? w : w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(" ");
-}
-function normalizeShareChartSnapshot(snapshot) {
-  if (snapshot.mode && (snapshot.objectives?.length ?? 0) > 0) return snapshot;
-  return {
-    ...snapshot,
-    mode: "single",
-    primarySpendFormatted: snapshot.primarySpendFormatted ?? snapshot.mtdSpendLabel,
-    objectives: [
-      {
-        label: snapshot.primaryResultsLabel,
-        resultsValue: snapshot.primaryResultsValue,
-        cprValue: snapshot.primaryCprValue,
-        cprLabel: snapshot.primaryCprLabel,
-        spendFormatted: snapshot.primarySpendFormatted ?? snapshot.mtdSpendLabel
-      }
-    ],
-    objectivesOmittedCount: snapshot.objectivesOmittedCount ?? 0
-  };
-}
-function buildChartKpiLayout(snapshot) {
-  const snap = normalizeShareChartSnapshot(snapshot);
-  if (snap.mode === "multi") {
-    return {
-      mode: "multi",
-      accountTiles: [
-        { value: snap.mtdSpendLabel, label: "Ad spend this month" },
-        { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
-      ],
-      objectiveBlocks: (snap.objectives ?? []).map((obj) => ({
-        label: obj.label,
-        resultsValue: obj.resultsValue,
-        cprValue: obj.cprValue,
-        cprLabel: obj.cprLabel,
-        spendFormatted: obj.spendFormatted
-      })),
-      objectivesOmittedCount: snap.objectivesOmittedCount ?? 0
-    };
-  }
-  const primary = snap.objectives?.[0];
-  return {
-    mode: "single",
-    accountTiles: [
-      {
-        value: primary?.spendFormatted ?? snap.primarySpendFormatted ?? snap.mtdSpendLabel ?? "",
-        label: "Ad spend this month"
-      },
-      { value: primary?.resultsValue ?? snap.primaryResultsValue, label: primary?.label ?? snap.primaryResultsLabel },
-      { value: primary?.cprValue ?? snap.primaryCprValue, label: primary?.cprLabel ?? snap.primaryCprLabel },
-      { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
-    ],
-    objectiveBlocks: [],
-    objectivesOmittedCount: 0
-  };
-}
-
 // src/lib/nre/packs.ts
 function pack(id, objective, performanceGoal, slot4, slot5, slot7, slot8, extraPoolExamples) {
   return {
@@ -186,67 +127,6 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 
 // src/lib/pptx/chart-slide-constants.ts
 var DONUT_HOLE_RATIO = 0.65;
-
-// src/lib/nre/chart-visual-layout.ts
-var OBJECTIVE_CARD_CAP = 4;
-function buildChartKpiCardRows(snapshot) {
-  const layout = buildChartKpiLayout(snapshot);
-  if (layout.mode === "single") {
-    return {
-      mode: "single",
-      rows: [
-        layout.accountTiles.map((tile) => ({
-          value: tile.value,
-          label: tile.label
-        }))
-      ],
-      objectivesOmittedCount: 0
-    };
-  }
-  const visibleObjectives = layout.objectiveBlocks.slice(0, OBJECTIVE_CARD_CAP);
-  const omitted = layout.objectivesOmittedCount + Math.max(0, layout.objectiveBlocks.length - OBJECTIVE_CARD_CAP);
-  return {
-    mode: "multi",
-    rows: [
-      layout.accountTiles.map((tile) => ({
-        value: tile.value,
-        label: tile.label
-      })),
-      visibleObjectives.map((obj) => ({
-        value: obj.resultsValue,
-        label: toTitleCaseChartLabel(obj.label),
-        detail: `${obj.cprValue} \xB7 ${obj.spendFormatted} spent`
-      }))
-    ],
-    objectivesOmittedCount: omitted
-  };
-}
-function buildChartCampaignBars(segments) {
-  return segments.map((seg) => ({
-    name: seg.name,
-    color: seg.color,
-    spendLabel: seg.spendLabel,
-    percentage: seg.percentage
-  }));
-}
-
-// src/lib/nre/share-chart-projection.ts
-function formatChartFooterInsight(activeCampaignCount, override) {
-  if (override?.trim()) return override.trim();
-  return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} currently`;
-}
-function resolveChartFooterInsight(chart) {
-  const base = formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
-  const omitted = chart.snapshot.objectivesOmittedCount ?? 0;
-  if (omitted > 0) {
-    return `${base} \xB7 ${omitted} more objective${omitted === 1 ? "" : "s"} on Combined Total slide`;
-  }
-  return base;
-}
-function formatDonutSegmentStats(percentage, spendLabel) {
-  const pctLabel = Number.isInteger(percentage) ? String(percentage) : String(percentage);
-  return `${pctLabel}% of spend \xB7 ${spendLabel}`;
-}
 
 // src/lib/nre/share-report.ts
 function defaultShareVisibility(data) {
@@ -539,96 +419,86 @@ function AdSetCard({
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AiCopyBlock, { heading: "Key Insights & Updates", text: adSet.aiInsights })
   ] });
 }
-function CampaignSpendBar({
+function VisualResultBar({
   name,
   color,
-  spendLabel,
-  percentage
+  resultLine,
+  costLine,
+  barPct
 }) {
-  const widthPct = Math.max(percentage > 0 ? 4 : 0, percentage);
-  const pctLabel = formatDonutSegmentStats(percentage, spendLabel).split(" \xB7 ")[0] ?? "";
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(88px,0.8fr)] items-center gap-3", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-[13px] font-semibold text-ink", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-4 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-      "div",
-      {
-        className: "h-full rounded",
-        style: { width: `${widthPct}%`, backgroundColor: `#${color}` }
-      }
-    ) }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "text-right", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[13px] font-bold tabular-nums text-ink", children: spendLabel }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] text-[#94a3b8]", children: pctLabel })
+  const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.2fr)] items-center gap-3", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-right text-[9px] text-ink", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-[18px] overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "truncate text-[9px] font-bold text-ink", children: [
+      resultLine,
+      " \xB7 ",
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "font-medium text-[#94a3b8]", children: costLine })
     ] })
   ] });
 }
-function ShareMtdOverviewSlide({ chart }) {
-  const cardRows = buildChartKpiCardRows(chart.snapshot);
-  const campaignBars = buildChartCampaignBars(chart.donutSegments);
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-[#94a3b8]", children: chart.title }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-center text-[16px] font-medium text-[#e2e8f0]", children: chart.subtitle }),
-    cardRows.mode === "single" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4", children: (cardRows.rows[0] ?? []).map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-      "div",
-      {
-        className: "rounded-lg border border-navy-border px-3 py-4 text-center",
-        style: { backgroundColor: "#131d30" },
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[22px] font-bold text-ink", children: tile.value }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: tile.label })
-        ]
-      },
-      tile.label
-    )) }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 space-y-3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "grid grid-cols-2 gap-3", children: (cardRows.rows[0] ?? []).map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-        "div",
-        {
-          className: "rounded-lg border border-navy-border px-3 py-4 text-center",
-          style: { backgroundColor: "#131d30" },
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[22px] font-bold text-ink", children: tile.value }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: tile.label })
-          ]
-        },
-        tile.label
-      )) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-        "div",
-        {
-          className: `grid gap-3 ${(cardRows.rows[1]?.length ?? 0) >= 4 ? "grid-cols-2 sm:grid-cols-4" : (cardRows.rows[1]?.length ?? 0) === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2"}`,
-          children: (cardRows.rows[1] ?? []).map((card) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-            "div",
-            {
-              className: "rounded-lg border border-navy-border px-3 py-3 text-center",
-              style: { backgroundColor: "#131d30" },
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: card.label }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[22px] font-bold text-ink", children: card.value }),
-                card.detail ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[11px] text-[#94a3b8]", children: card.detail }) : null
-              ]
-            },
-            card.label
-          ))
-        }
-      )
+function VisualMiniDonut({
+  name,
+  spendLabel,
+  pctLabel,
+  color
+}) {
+  const size = 90;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex w-[90px] flex-col items-center", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("circle", { cx: c, cy: c, r, fill: "none", stroke: `#${color}`, strokeWidth: stroke }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("text", { x: c, y: c + 4, textAnchor: "middle", fill: "#ffffff", fontSize: "10", fontWeight: "700", children: spendLabel })
     ] }),
-    chart.donutSegments.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-6 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto shrink-0 min-[720px]:mx-0", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareChartDonut, { segments: chart.donutSegments, totalSpendLabel: chart.totalSpendLabel, size: 220 }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 space-y-3 pt-1", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-accent-orange", children: "Campaign spend mix" }),
-        campaignBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-          CampaignSpendBar,
-          {
-            name: bar.name,
-            color: bar.color,
-            spendLabel: bar.spendLabel,
-            percentage: bar.percentage
-          },
-          bar.name
-        ))
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 w-full truncate text-center text-[9px] text-ink", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[9px] text-[#94a3b8]", children: pctLabel })
+  ] });
+}
+function ShareMtdOverviewSlide({ chart }) {
+  const model = chart.visualSlide;
+  if (!model) return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-ink", children: model.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
+        model.isMultiObjective && model.groupedDonut ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[168px] w-[168px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            ShareChartDonut,
+            {
+              segments: model.groupedDonut.map((s) => ({
+                name: s.name,
+                spendLabel: s.spendLabel,
+                percentage: s.percentage,
+                color: s.color
+              })),
+              totalSpendLabel: model.groupedDonutCenterLabel,
+              size: 168
+            }
+          ) }),
+          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "truncate text-[9px] text-ink", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "mr-2 inline-block h-2.5 w-2.5 rounded-sm", style: { backgroundColor: `#${seg.color}` } }),
+            seg.name,
+            " \xB7 ",
+            seg.spendLabel,
+            " \xB7 ",
+            seg.percentage,
+            "%"
+          ] }, seg.name))
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 flex flex-wrap justify-center gap-4", children: model.miniDonuts.map((donut) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualMiniDonut, { ...donut }, donut.name)) }),
+        !model.isMultiObjective ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-4 text-center text-[11px] font-bold text-ink", children: [
+          "Total MTD Spend: ",
+          model.groupedDonutCenterLabel
+        ] }) : null
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-3", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
       ] })
-    ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-6 text-center text-[14px] text-[#e2e8f0]", children: "No spend recorded this month yet." }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[14px] font-medium text-[#e2e8f0]", children: resolveChartFooterInsight(chart) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[11px] text-[#94a3b8]", children: model.summaryLine })
   ] });
 }
 function CombinedTotalTable({ data }) {

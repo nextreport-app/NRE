@@ -20,6 +20,7 @@
  */
 
 import type { AiCopy } from "../pptx/fill-tags";
+import type { VisualChartSlideModel } from "./visual-chart-slide";
 import { collectLegendEntries } from "../pptx/legend-collect";
 import { slideAiKey } from "../pptx/slide-keys";
 import type { LegendEntry } from "../pptx/legend-slide";
@@ -127,6 +128,8 @@ export interface ShareChartData {
   totalSpendLabel: string;
   /** Optional override for the footer insight line under the donut. */
   footerInsight?: string;
+  /** Two-panel visual chart layout — budget donuts + result bars. */
+  visualSlide?: VisualChartSlideModel;
   /** @deprecated Legacy bar-chart rows — kept for old share JSON; new reports use donutSegments. */
   summaryLine?: string;
   /** @deprecated Legacy bar-chart rows. */
