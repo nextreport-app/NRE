@@ -21,6 +21,16 @@ export function applyShareEditsToReportData(data: ReportData, share: ShareReport
   const campaignMetrics = new Map(share.campaigns.map((c) => [c.campaignName, c.metrics]));
   const adSetMetrics = new Map(share.adSets.map((a) => [`${a.campaignName}\0${a.adSetName}`, a.metrics]));
 
+  const cover = {
+    ...data.cover,
+    accountName: share.accountName ?? data.cover.accountName,
+    dateRange: share.cover?.dateRange ?? data.cover.dateRange,
+    healthBadge: share.cover?.healthBadge ?? data.cover.healthBadge,
+    healthScore: share.cover?.healthScore ?? data.cover.healthScore,
+    budgetSummary: share.cover?.budgetSummary ?? data.cover.budgetSummary,
+    reportDate: share.cover?.reportDate ?? data.cover.reportDate,
+  };
+
   const campaignSlides = data.campaignSlides.map((slide) => {
     const shared = campaignMetrics.get(slide.campaignName);
     if (!shared) return slide;
@@ -41,5 +51,5 @@ export function applyShareEditsToReportData(data: ReportData, share: ShareReport
     };
   });
 
-  return { ...data, campaignSlides, adSetSlides };
+  return { ...data, cover, campaignSlides, adSetSlides };
 }

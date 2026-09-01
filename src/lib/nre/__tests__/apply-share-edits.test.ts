@@ -7,6 +7,14 @@ function minimalReportData(): ReportData {
   return {
     reportType: "WEEKLY",
     platform: "META",
+    cover: {
+      accountName: "Test Co",
+      reportDate: "01-01-2026",
+      dateRange: "Jan 1 - Jan 7",
+      healthBadge: "On Track",
+      healthScore: 80,
+      budgetSummary: "",
+    },
     periodRow: { hasData: false, sameMonthAsCurrentMTD: false, cells: [] },
     mtdRow: { hasData: true, sameMonthAsCurrentMTD: false, cells: [] },
     tableHeaderLabels: [],
@@ -47,6 +55,13 @@ function minimalShare(overrides: Partial<ShareReportData> = {}): ShareReportData
       },
     ],
     adSets: [],
+    cover: {
+      reportDate: "01-01-2026",
+      dateRange: "Jan 1 - Jan 7",
+      healthBadge: "On Track",
+      healthScore: 80,
+      budgetSummary: "",
+    },
     ...overrides,
   } as ShareReportData;
 }
@@ -65,5 +80,34 @@ describe("applyShareEditsToReportData", () => {
     const share = minimalShare({ campaigns: [] });
     const patched = applyShareEditsToReportData(data, share);
     expect(patched.campaignSlides[0]?.dynamicMetrics?.[0]?.value).toBe("5.49%");
+  });
+
+  it("patches cover fields from published share edits", () => {
+    const data = {
+      ...minimalReportData(),
+      cover: {
+        accountName: "Original Co",
+        reportDate: "01-01-2026",
+        dateRange: "Jan 1 - Jan 7",
+        healthBadge: "On Track",
+        healthScore: 80,
+        budgetSummary: "Old budget line",
+      },
+    } as ReportData;
+    const share = minimalShare({
+      accountName: "Edited Co",
+      cover: {
+        reportDate: "01-01-2026",
+        dateRange: "Jan 1 - Jan 31",
+        healthBadge: "Needs Attention",
+        healthScore: 55,
+        budgetSummary: "New budget line",
+      },
+    });
+    const patched = applyShareEditsToReportData(data, share);
+    expect(patched.cover.accountName).toBe("Edited Co");
+    expect(patched.cover.dateRange).toBe("Jan 1 - Jan 31");
+    expect(patched.cover.healthBadge).toBe("Needs Attention");
+    expect(patched.cover.budgetSummary).toBe("New budget line");
   });
 });

@@ -4,7 +4,7 @@ import { adSetVisibilityKey, defaultShareVisibility } from "./share-report";
 /** Slide counts the client will see after visibility is applied — pre-share editor summary. */
 export function countVisibleSlides(share: ShareReportData): number {
   const vis = share.visibility ?? defaultShareVisibility(share);
-  let n = 1; // cover
+  let n = vis.cover !== false ? 1 : 0;
   if (share.isPaused) return n + 1;
   n += share.campaigns.filter((c) => vis.campaigns[c.campaignName] !== false).length;
   n += share.adSets.filter((a) => vis.adSets[adSetVisibilityKey(a.campaignName, a.adSetName)] !== false).length;
