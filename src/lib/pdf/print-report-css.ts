@@ -132,3 +132,43 @@ export const PRINT_REPORT_CSS = `
   .sm\\:py-10 { padding-top: 40px; padding-bottom: 40px; }
   .sm\\:p-8 { padding: 32px; }
 `;
+
+/** Extra styles for chart-only Puppeteer capture — ShareMtdOverviewSlide classes not in PRINT_REPORT_CSS. */
+export const CHART_SLIDE_CAPTURE_CSS = `
+  ${PRINT_REPORT_CSS}
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+  }
+  #chart-slide-capture {
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    box-sizing: border-box;
+    background: transparent;
+  }
+  #chart-slide-capture > .chart-slide-card {
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-cols-\\[minmax\\(0\\,1\\.2fr\\)_minmax\\(0\\,1\\.4fr\\)_minmax\\(88px\\,0\\.8fr\\)\\] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(88px, 0.8fr);
+  }
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+  .pt-1 { padding-top: 4px; }
+  .h-4 { height: 16px; }
+  .h-full { height: 100%; }
+  .overflow-hidden { overflow: hidden; }
+  .rounded { border-radius: 4px; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .text-right { text-align: right; }
+  .sm\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (min-width: 720px) {
+    .min-\\[720px\\]\\:mx-0 { margin-left: 0; margin-right: 0; }
+  }
+`;

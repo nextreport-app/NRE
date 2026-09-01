@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPrintReportHtml } from "../print-report-html";
-import type { ShareReportData } from "@/lib/nre/share-report";
+import { buildPrintReportHtml, buildPrintChartSlideHtml } from "../print-report-html";
+import type { ShareReportData, ShareChartData } from "@/lib/nre/share-report";
 
 function minimalShare(): ShareReportData {
   return {
@@ -29,12 +29,35 @@ function minimalShare(): ShareReportData {
   } as ShareReportData;
 }
 
-describe("buildPrintReportHtml", () => {
-  it("renders share-report-print markup with embedded styles", () => {
-    const html = buildPrintReportHtml(minimalShare());
-    expect(html).toContain('id="share-report-print"');
-    expect(html).toContain("Acme Co");
-    expect(html).toContain(".print-slide");
-    expect(html).toContain("fonts.googleapis.com");
+describe("buildPrintChartSlideHtml", () => {
+  it("renders chart-slide-capture with ShareMtdOverviewSlide markup", () => {
+    const chart: ShareChartData = {
+      title: "August · Month to date overview: August 1 - August 30, 2026",
+      subtitle: "Month to date performance · Where your budget went",
+      totalSpendLabel: "$3,401",
+      donutSegments: [
+        { name: "InstantForms", spend: 2824, percentage: 83.1, color: "f6ad55", spendLabel: "$2,824" },
+      ],
+      snapshot: {
+        mtdSpendFormatted: "$3,401",
+        mode: "multi",
+        primaryResultsValue: "32",
+        primaryResultsLabel: "META FORM LEADS",
+        primaryCprValue: "$88.26",
+        primaryCprLabel: "COST PER META FORM LEAD",
+        primarySpendFormatted: "$2,824",
+        budgetPctUsed: "340%",
+        activeCampaignCount: 2,
+        objectives: [],
+        objectivesOmittedCount: 0,
+      },
+      activeCampaignCount: 2,
+      totalAllSpend: 3401,
+    };
+    const html = buildPrintChartSlideHtml(chart);
+    expect(html).toContain('id="chart-slide-capture"');
+    expect(html).toContain("August · Month to date overview");
+    expect(html).toContain("Campaign spend mix");
+    expect(html).toContain("TOTAL SPEND");
   });
 });

@@ -26,7 +26,7 @@ const TEMPLATE_PATH = path.resolve(__dirname, "../../../../reference/templates/A
 /** The actual production template (templates.ts's loadTemplateBuffer target) — used where the exact shipped file's structure matters, not just an equivalent reference copy. */
 const PRODUCTION_TEMPLATE_PATH = path.resolve(__dirname, "../../../../templates/dark.pptx");
 const NOW = new Date("2026-07-20T12:00:00Z");
-const CHART_SLIDE_MARKER = 'prst="pie"';
+const CHART_SLIDE_MARKER = 'name="Month to date overview"';
 
 function chartOverviewSvgForFixture(chart: ChartSlideData, currencySymbol: string): string {
   return buildMtdOverviewSvg(projectChartSlideToShareChart(chart, currencySymbol));
@@ -286,10 +286,11 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — donut left + metrics table right (native OOXML).
+    // Combined MTD overview slide — browser-rendered PNG overlay on template background.
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
-    expect(chartXmlFromZip).toContain('prst="pie"');
+    expect(chartXmlFromZip).toContain('name="Month to date overview"');
+    expect(zipForChart.file("ppt/media/chart-overview.png")).not.toBeNull();
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
@@ -571,7 +572,7 @@ describe("renderPptx — real template end-to-end", () => {
     // NOW is 2026-07-20, so the MTD start date falls in July.
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
-    expect(chartXmlFromZip).toContain('prst="pie"');
+    expect(chartXmlFromZip).toContain('name="Month to date overview"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
@@ -741,7 +742,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
     expect(coverXml).not.toContain("{{");
   });
 
-  it("MTD chart slide: native editable shapes (text boxes + pie donut), background only", async () => {
+  it("MTD chart slide: browser-rendered PNG overlay on template background", async () => {
     const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
     const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
     const zip = await JSZip.loadAsync(buffer);
@@ -749,14 +750,12 @@ describe("renderPptx — client logo + agency name branding (real production tem
     const chartRelsPath = await chartSlideRelPath(zip);
     const chartXml = await findChartSlideXml(zip);
     const chartRelsXml = await zip.file(chartRelsPath)!.async("string");
-    expect(chartRelsXml).not.toContain("chart-overview.png");
+    expect(chartRelsXml).toContain("chart-overview.png");
     expect(chartRelsXml).toContain('Id="rId2"');
 
-    expect(chartXml).toContain('prst="pie"');
-    expect(chartXml).toContain('txBox="1"');
-    expect(chartXml).toContain("TOTAL SPEND");
-    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
-    expect((chartXml.match(/<p:sp>/g) || []).length).toBeGreaterThan(10);
+    expect(chartXml).toContain('name="Month to date overview"');
+    expect((chartXml.match(/<p:pic>/g) || []).length).toBe(2);
+    expect(zip.file("ppt/media/chart-overview.png")).not.toBeNull();
   });
 
   it("renders with a client logo only — media added to the cover, nowhere else", async () => {
@@ -1113,7 +1112,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       const expected = isTableSlide
         ? 20
         : isChartSlide
-          ? 1 /* donut hole fill on light template */
+          ? 0 /* chart slide is a PNG overlay — no native text shapes */
           : isLegendSlide
             ? legendEntryCount
             : 0;
@@ -1125,7 +1124,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     expect(cover).toContain("Test Agency");
     expect(campaign1).not.toContain("{{");
     const chartXmlLight = await findChartSlideXml(zip);
-    expect(chartXmlLight).toContain('prst="pie"');
+    expect(chartXmlLight).toContain('name="Month to date overview"');
     expect(data.chart).toBeTruthy();
     expect(chartOverviewSvgForFixture(data.chart!, "₹").toLowerCase()).toContain("month to date overview");
     // Renamed this round: "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", not just

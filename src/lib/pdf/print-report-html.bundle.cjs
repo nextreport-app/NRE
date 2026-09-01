@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/lib/pdf/print-report-html.tsx
 var print_report_html_exports = {};
 __export(print_report_html_exports, {
+  buildPrintChartSlideHtml: () => buildPrintChartSlideHtml,
   buildPrintReportHtml: () => buildPrintReportHtml
 });
 module.exports = __toCommonJS(print_report_html_exports);
@@ -562,7 +563,7 @@ function CampaignSpendBar({
     ] })
   ] });
 }
-function MtdOverviewSlide({ chart }) {
+function ShareMtdOverviewSlide({ chart }) {
   const cardRows = buildChartKpiCardRows(chart.snapshot);
   const campaignBars = buildChartCampaignBars(chart.donutSegments);
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
@@ -763,7 +764,7 @@ function ShareReportView({
           ] }),
           visibleData.campaigns.map((c) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CampaignCard, { campaign: c, reportType: reportTypeLabel(visibleData), assetBaseUrl }) }, `campaign-${c.campaignName}`)),
           adSets.map((a, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AdSetCard, { adSet: a, platform: visibleData.platform, reportType: reportTypeLabel(visibleData), assetBaseUrl }) }, `adset-${a.campaignName}-${a.adSetName}-${i}`)),
-          showOverview && chart && chart.donutSegments && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MtdOverviewSlide, { chart }) }),
+          showOverview && chart && chart.donutSegments && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareMtdOverviewSlide, { chart }) }),
           showCombinedTotal && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "mb-4 text-[22px] font-bold text-ink", children: "Monthly Campaign Performance Overview" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CombinedTotalTable, { data: visibleData })
@@ -916,6 +917,44 @@ var PRINT_REPORT_CSS = `
   .sm\\:py-10 { padding-top: 40px; padding-bottom: 40px; }
   .sm\\:p-8 { padding: 32px; }
 `;
+var CHART_SLIDE_CAPTURE_CSS = `
+  ${PRINT_REPORT_CSS}
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+  }
+  #chart-slide-capture {
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    box-sizing: border-box;
+    background: transparent;
+  }
+  #chart-slide-capture > .chart-slide-card {
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-cols-\\[minmax\\(0\\,1\\.2fr\\)_minmax\\(0\\,1\\.4fr\\)_minmax\\(88px\\,0\\.8fr\\)\\] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(88px, 0.8fr);
+  }
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+  .pt-1 { padding-top: 4px; }
+  .h-4 { height: 16px; }
+  .h-full { height: 100%; }
+  .overflow-hidden { overflow: hidden; }
+  .rounded { border-radius: 4px; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .text-right { text-align: right; }
+  .sm\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (min-width: 720px) {
+    .min-\\[720px\\]\\:mx-0 { margin-left: 0; margin-right: 0; }
+  }
+`;
 
 // src/lib/pdf/app-base-url.ts
 function appBaseUrl() {
@@ -948,7 +987,25 @@ function buildPrintReportHtml(share) {
 <body>${body}</body>
 </html>`;
 }
+function buildPrintChartSlideHtml(chart) {
+  const body = (0, import_server.renderToStaticMarkup)(
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { id: "chart-slide-capture", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "chart-slide-card", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ShareMtdOverviewSlide, { chart }) }) })
+  );
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=960" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>${CHART_SLIDE_CAPTURE_CSS}</style>
+</head>
+<body>${body}</body>
+</html>`;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  buildPrintChartSlideHtml,
   buildPrintReportHtml
 });

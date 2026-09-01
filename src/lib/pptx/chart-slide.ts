@@ -1,6 +1,6 @@
 /**
  * MTD overview slide utilities — donut segments, colors, and shared helpers.
- * Server-side slide assembly (native OOXML) lives in chart-slide-render.ts.
+ * Server-side slide assembly (browser PNG capture) lives in chart-slide-render.ts.
  *
  * Coordinates in points. Page is 960×540pt.
  */
