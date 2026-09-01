@@ -1,31 +1,40 @@
 /**
  * SVG renderer for the month-to-date overview slide — mirrors
  * share-report-view.tsx's MtdOverviewSlide layout so PPT/Google Slides match
- * the live browser link. Background is transparent; the template grid shows
- * through from the slide layer beneath this PNG overlay.
+ * the live browser link.
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { buildChartMetricsTable } from "../nre/chart-metrics-table";
-import { resolveChartFooterInsight } from "../nre/share-chart-projection";
+import {
+  buildChartCampaignBars,
+  buildChartKpiCardRows,
+  computeMtdVisualBandMetrics,
+} from "../nre/chart-visual-layout";
+import { resolveChartFooterInsight, formatDonutSegmentStats } from "../nre/share-chart-projection";
+import {
+  campaignBarColumns,
+  campaignBarFillWidth,
+  CAMPAIGN_BAR_COLORS_DARK,
+  truncateCampaignBarName,
+} from "./chart-campaign-bars-render";
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import {
-  METRICS_TABLE_COLORS_DARK,
-  metricsTableAlign,
-  metricsTableColumnWidths,
-  metricsTableColumnXs,
-  metricsTableFontSize,
-  metricsTableRowCells,
-  metricsTableRowFill,
-  metricsTableRowWeight,
-  metricsTableTextColor,
-} from "./chart-metrics-table-render";
-import { MTD_DONUT, MTD_FOOTER_Y, MTD_METRICS_TABLE, MTD_SLIDE_H, MTD_SLIDE_W } from "./chart-slide-layout";
+  MTD_CAMPAIGN_BARS,
+  MTD_DONUT_D,
+  MTD_DONUT_OUTER_R,
+  MTD_FOOTER_Y,
+  MTD_KPI,
+  MTD_SLIDE_H,
+  MTD_SLIDE_W,
+  mtdDonutCenterX,
+} from "./chart-slide-layout";
 
 const INK = "#ffffff";
 const TITLE = "#94a3b8";
 const INK_SUBTITLE = "#e2e8f0";
-const LEGEND_STATS = "#94a3b8";
+const ACCENT_ORANGE = "#f6ad55";
+const KPI_BG = "#131d30";
+const KPI_BORDER = "#1e293b";
 
 function escapeXml(text: string): string {
   return text
@@ -79,52 +88,116 @@ function appendDonutSegment(
   );
 }
 
-function appendMetricsTableSvg(
+function appendKpiCardsSvg(parts: string[], chart: ShareChartData): void {
+  const cardRows = buildChartKpiCardRows(chart.snapshot);
+  const W = MTD_SLIDE_W;
+
+  if (cardRows.mode === "single") {
+    const { y: kpiY, singleRowH: kpiH, singleCardW: kpiW, gap: kpiGap } = MTD_KPI;
+    const row = cardRows.rows[0] ?? [];
+    const kpiStartX = (W - (4 * kpiW + 3 * kpiGap)) / 2;
+    row.forEach((tile, i) => {
+      const x = kpiStartX + i * (kpiW + kpiGap);
+      parts.push(
+        `<rect x="${x}" y="${kpiY}" width="${kpiW}" height="${kpiH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
+        `<text x="${x + kpiW / 2}" y="${kpiY + 38}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
+        `<text x="${x + kpiW / 2}" y="${kpiY + 62}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
+      );
+    });
+    return;
+  }
+
+  const accountRow = cardRows.rows[0] ?? [];
+  const objectiveRow = cardRows.rows[1] ?? [];
+  const accountY = MTD_KPI.y;
+  const accountH = MTD_KPI.accountRowH;
+  const accountW = MTD_KPI.multiAccountW;
+  const accountGap = 24;
+  const accountStartX = (W - (accountRow.length * accountW + (accountRow.length - 1) * accountGap)) / 2;
+  accountRow.forEach((tile, i) => {
+    const x = accountStartX + i * (accountW + accountGap);
+    parts.push(
+      `<rect x="${x}" y="${accountY}" width="${accountW}" height="${accountH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
+      `<text x="${x + accountW / 2}" y="${accountY + 32}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(tile.value)}</text>`,
+      `<text x="${x + accountW / 2}" y="${accountY + 54}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="10" font-weight="600">${escapeXml(tile.label.toUpperCase())}</text>`,
+    );
+  });
+
+  const objY = accountY + accountH + 10;
+  const objH = MTD_KPI.objectiveRowH;
+  const objCount = objectiveRow.length;
+  const objGap = 12;
+  const objW = Math.min(220, (W - objGap * (objCount - 1) - 80) / Math.max(1, objCount));
+  const objStartX = (W - (objCount * objW + (objCount - 1) * objGap)) / 2;
+  objectiveRow.forEach((card, i) => {
+    const x = objStartX + i * (objW + objGap);
+    parts.push(
+      `<rect x="${x}" y="${objY}" width="${objW}" height="${objH}" rx="8" fill="${KPI_BG}" stroke="${KPI_BORDER}" stroke-width="1"/>`,
+      `<text x="${x + objW / 2}" y="${objY + 16}" text-anchor="middle" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="9" font-weight="600">${escapeXml(card.label.toUpperCase())}</text>`,
+      `<text x="${x + objW / 2}" y="${objY + 40}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="22" font-weight="700">${escapeXml(card.value)}</text>`,
+    );
+    if (card.detail) {
+      parts.push(
+        `<text x="${x + objW / 2}" y="${objY + 58}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="10" font-weight="500">${escapeXml(card.detail)}</text>`,
+      );
+    }
+  });
+}
+
+function appendCampaignBarsSvg(
   parts: string[],
   chart: ShareChartData,
+  barsY: number,
+  barRowH: number,
+  headerH: number,
 ): void {
-  const colors = METRICS_TABLE_COLORS_DARK;
-  const table = buildChartMetricsTable(chart.snapshot, MTD_METRICS_TABLE.maxH);
-  const { x: tableX, y: tableY, w: tableW } = MTD_METRICS_TABLE;
-  const colXs = metricsTableColumnXs(tableX, tableW);
-  const colWs = metricsTableColumnWidths(tableW);
-  const border = `#${colors.border}`;
+  const colors = CAMPAIGN_BAR_COLORS_DARK;
+  const bars = buildChartCampaignBars(chart.donutSegments);
+  const cols = campaignBarColumns();
+  const { x: areaX } = MTD_CAMPAIGN_BARS as { x: number };
 
-  let rowY = tableY;
-  table.rows.forEach((row, rowIndex) => {
-    const rowH = table.layout.rowHeights[rowIndex] ?? 24;
-    const fill = `#${metricsTableRowFill(row, rowIndex, colors)}`;
+  parts.push(
+    `<text x="${areaX}" y="${barsY + 14}" fill="${ACCENT_ORANGE}" font-family="Poppins" font-size="11" font-weight="700">CAMPAIGN SPEND MIX</text>`,
+  );
+
+  let rowY = barsY + headerH;
+  for (const bar of bars) {
+    const fillW = campaignBarFillWidth(bar.percentage, cols.trackW);
+    const barH = 14;
+    const barY = rowY + Math.floor((barRowH - barH) / 2);
     parts.push(
-      `<rect x="${tableX}" y="${rowY}" width="${tableW}" height="${rowH}" fill="${fill}" stroke="${border}" stroke-width="1"/>`,
+      `<text x="${cols.labelX}" y="${rowY + barRowH / 2 + 4}" fill="${INK}" font-family="Poppins" font-size="13" font-weight="600">${escapeXml(truncateCampaignBarName(bar.name))}</text>`,
+      `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${barH}" rx="4" fill="#${colors.track}"/>`,
     );
-
-    if (row.kind === "footnote") {
+    if (fillW > 0) {
       parts.push(
-        `<text x="${tableX + 12}" y="${rowY + rowH / 2 + 4}" fill="#${colors.inkMuted}" font-family="Poppins" font-size="${metricsTableFontSize(table, row)}" font-weight="500">${escapeXml(row.label)}</text>`,
+        `<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${barH}" rx="4" fill="#${bar.color}"/>`,
       );
-    } else {
-      const cells = metricsTableRowCells(row);
-      const fontSize = metricsTableFontSize(table, row);
-      const weight = metricsTableRowWeight(row) ? 700 : 500;
-      const textColor = `#${metricsTableTextColor(row, colors)}`;
-      cells.forEach((cell, col) => {
-        if (!cell) return;
-        const align = metricsTableAlign(col);
-        const anchor = align === "l" ? "start" : "end";
-        const tx = align === "l" ? colXs[col]! + 10 : colXs[col]! + colWs[col]! - 10;
-        parts.push(
-          `<text x="${tx}" y="${rowY + rowH / 2 + 4}" text-anchor="${anchor}" fill="${textColor}" font-family="Poppins" font-size="${fontSize}" font-weight="${weight}">${escapeXml(cell)}</text>`,
-        );
-      });
     }
-    rowY += rowH;
-  });
+    parts.push(
+      `<text x="${cols.valueX + cols.valueColW}" y="${rowY + 12}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="13" font-weight="700">${escapeXml(bar.spendLabel)}</text>`,
+      `<text x="${cols.valueX + cols.valueColW}" y="${rowY + 28}" text-anchor="end" fill="#${colors.inkMuted}" font-family="Poppins" font-size="11" font-weight="500">${escapeXml(formatDonutSegmentStats(bar.percentage, bar.spendLabel).split(" · ")[0] ?? "")}</text>`,
+    );
+    rowY += barRowH;
+  }
+
+  if (bars.length === 0) {
+    parts.push(
+      `<text x="${areaX}" y="${rowY + 20}" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="13">No spend recorded this month yet.</text>`,
+    );
+  }
 }
 
 export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const W = MTD_SLIDE_W;
   const H = MTD_SLIDE_H;
   const parts: string[] = [];
+  const cardRows = buildChartKpiCardRows(chart.snapshot);
+  const bars = buildChartCampaignBars(chart.donutSegments);
+  const band = computeMtdVisualBandMetrics(cardRows, bars.length);
+  const donutCx = mtdDonutCenterX();
+  const donutCy = band.donutCy;
+  const innerR = MTD_DONUT_OUTER_R * DONUT_HOLE_RATIO;
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
@@ -135,13 +208,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${W / 2}" y="74" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="16" font-weight="500">${escapeXml(chart.subtitle)}</text>`,
   );
 
-  const { cx: donutCx, cy: donutCy, outerR } = MTD_DONUT;
-  const innerR = outerR * DONUT_HOLE_RATIO;
+  appendKpiCardsSvg(parts, chart);
 
   let angle = 0;
   for (const seg of chart.donutSegments) {
     const sweep = (seg.percentage / 100) * 360;
-    appendDonutSegment(parts, donutCx, donutCy, outerR, innerR, angle, sweep, seg.color);
+    appendDonutSegment(parts, donutCx, donutCy, MTD_DONUT_OUTER_R, innerR, angle, sweep, seg.color);
     angle += sweep;
   }
 
@@ -150,7 +222,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${donutCx}" y="${donutCy + 16}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="11" font-weight="600">TOTAL SPEND</text>`,
   );
 
-  appendMetricsTableSvg(parts, chart);
+  appendCampaignBarsSvg(parts, chart, band.barsY, band.barRowH, band.barsHeaderH);
 
   parts.push(
     `<text x="${W / 2}" y="${MTD_FOOTER_Y.svg}" text-anchor="middle" fill="${INK_SUBTITLE}" font-family="Poppins" font-size="14" font-weight="500">${escapeXml(resolveChartFooterInsight(chart))}</text>`,

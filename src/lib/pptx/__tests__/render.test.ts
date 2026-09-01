@@ -294,7 +294,7 @@ describe("renderPptx — real template end-to-end", () => {
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("July · Month to date overview");
     expect(chartSvg).toContain("July 13 - July 19, 2026");
-    expect(chartSvg).toContain("Ad spend");
+    expect(chartSvg).toContain("CAMPAIGN SPEND MIX");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
 
