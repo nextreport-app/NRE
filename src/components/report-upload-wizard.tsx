@@ -1759,11 +1759,8 @@ export function ReportUploadWizard({
                     </Link>{" "}
                   </>
                 ) : (
-                  "Set date range to Last 30 days and segment by Day. "
+                  "Set date range to Last 30 days and segment by Day."
                 )}
-                <Link href="/help/download" className="font-medium text-dash-accent hover:underline">
-                  Step-by-step guide →
-                </Link>
               </p>
 
               <button
