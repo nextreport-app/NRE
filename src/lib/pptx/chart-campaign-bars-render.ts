@@ -56,12 +56,11 @@ export function resultBarFillWidth(barPct: number, trackW: number): number {
 }
 
 export function resultBarColumns() {
-  const { rightX, labelColW, barTrackMaxW } = MTD_VISUAL;
+  const { rightX, labelColW, barTrackMaxW, rightW } = MTD_VISUAL;
   const labelX = rightX;
   const barX = rightX + labelColW + 8;
-  const valueX = barX + barTrackMaxW + 10;
-  const valueColW = MTD_VISUAL.rightW - labelColW - barTrackMaxW - 18;
-  return { labelX, barX, valueX, labelColW, trackW: barTrackMaxW, valueColW };
+  const trackW = Math.min(barTrackMaxW, rightW - labelColW - 12);
+  return { labelX, barX, labelColW, trackW };
 }
 
 export function truncateCampaignBarName(name: string, max = 22): string {
