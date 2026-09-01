@@ -14,6 +14,7 @@ import {
   resolveCampaignObjective,
   resolveCampaignObjectiveWithConfidence,
   resolveObjective,
+  type ResultLabels,
 } from "../objective";
 import type { AggRow } from "../aggregate";
 import type { MetricRow } from "../types";
@@ -670,11 +671,9 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     // as a Landing Page Views campaign, even though the raw data exists.
     expect(labels).not.toContain("LANDING PAGE VIEWS");
 
-    // The Website Leads campaign's ENTIRE spend/results (both ad sets) roll
-    // into the one WEBSITE LEADS bucket — nothing siphoned off into a
-    // phantom column.
+    // Website-leads rows only — minority LPV spend stays out of this bucket.
     const websiteLeads = groups.find((g) => g.label === "WEBSITE LEADS");
-    expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 210 });
+    expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 200 });
   });
 
   it("row-level getResultGroups WOULD have produced a phantom 4th column for the same input — proving this is a real fix, not a no-op", () => {
@@ -785,6 +784,80 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(tableGroups.map((g) => g.label)).toEqual(["WEBSITE LEADS"]);
     expect(tableGroups.find((g) => g.label === "LANDING PAGE VIEWS")).toBeUndefined();
     expect(tableGroups.find((g) => g.label === "REACH")).toBeUndefined();
+    const website = tableGroups.find((g) => g.label === "WEBSITE LEADS");
+    // Only the website-leads row's spend counts toward CPR — not LPV/reach rows.
+    expect(website?.totalSpend).toBe(600);
+    expect(website?.avgCpr).toBeCloseTo(600 / 30, 2);
+  });
+
+  it("does not let another objective's spend inflate cost-per when rows share a campaign bucket", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Meta Leads",
+        ad_set_name: "Instant form",
+        _raw: {},
+        result_type: "Leads (form)",
+        leads: 14,
+        results: 14,
+        spend: 596,
+      }),
+      metricRow({
+        campaign_name: "Website Leads",
+        ad_set_name: "Landing page",
+        _raw: {},
+        result_type: "Website leads",
+        website_leads: 9,
+        results: 9,
+        spend: 500,
+      }),
+    ];
+    // Simulate both campaigns folded into the meta bucket (wrong map entry for website).
+    const objectiveMap = new Map<string, ResultLabels>([
+      [normalizeCampaignName("Meta Leads"), { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }],
+      [normalizeCampaignName("Website Leads"), { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" }],
+    ]);
+    const groups = groupResultsByCampaignObjective(rows, objectiveMap);
+    const meta = groups.find((g) => g.label === "META FORM LEADS");
+    expect(meta?.count).toBe(14);
+    expect(meta?.totalSpend).toBe(596);
+    expect(meta?.avgCpr).toBeCloseTo(596 / 14, 2);
+    expect(meta?.avgCpr).not.toBeCloseTo((596 + 500) / 14, 1);
+  });
+
+  it("mixed ad sets in one campaign — cost-per uses only spend from rows matching the bucket objective", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Leads Campaign",
+        ad_set_name: "Instant form",
+        _raw: {},
+        result_type: "Leads (form)",
+        leads: 14,
+        results: 14,
+        spend: 100,
+      }),
+      metricRow({
+        campaign_name: "Leads Campaign",
+        ad_set_name: "Website",
+        _raw: {},
+        result_type: "Website leads",
+        website_leads: 5,
+        results: 5,
+        spend: 500,
+      }),
+    ];
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    const assigned = objectiveMap.get(normalizeCampaignName("Leads Campaign"))!;
+    const groups = groupResultsByCampaignObjective(rows, objectiveMap);
+    const bucket = groups.find((g) => g.label === assigned.resultLabel)!;
+    if (assigned.resultLabel === "META FORM LEADS") {
+      expect(bucket.count).toBe(14);
+      expect(bucket.totalSpend).toBe(100);
+      expect(bucket.avgCpr).toBeCloseTo(100 / 14, 2);
+    } else {
+      expect(bucket.count).toBe(5);
+      expect(bucket.totalSpend).toBe(500);
+      expect(bucket.avgCpr).toBeCloseTo(500 / 5, 2);
+    }
   });
 
   it("case-insensitivity fix — differently-cased occurrences of the same campaign name are treated as ONE campaign, not two", () => {

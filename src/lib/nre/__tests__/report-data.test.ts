@@ -1678,12 +1678,19 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
       },
     ];
 
+    const localMtdDailyRows: NreRow[] = periodRows.map((row) => ({
+      ...row,
+      _raw: { Day: "19-07-2026" },
+      date_start: "19-07-2026",
+      date_end: "19-07-2026",
+    }));
+
     const data = buildReportData({
       accountName: "Test Agency",
       currencySymbol: "$",
       timezone: "Asia/Kolkata",
       monthlyBudget: null,
-      mtdDailyRows,
+      mtdDailyRows: localMtdDailyRows,
       periodRows,
       now: NOW,
     });
@@ -1719,6 +1726,12 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
     // case with real Reach spend.
     expect(data.periodRow.resultColumns.some((c) => c.label === "REACH")).toBe(false);
     expect(data.periodRow.resultColumns).toHaveLength(2);
+
+    // Chart snapshot KPIs mirror the highest-spend objective column — CPR must
+    // be scoped to meta form leads only, not blended across every lead type.
+    expect(data.chart?.snapshot.primaryResultsLabel).toBe("META FORM LEADS");
+    expect(data.chart?.snapshot.primaryResultsValue).toBe("14");
+    expect(data.chart?.snapshot.primaryCprValue).toBe("$42.57");
   });
 
   it("keeps every distinct objective column pair, never dropping a live objective", () => {
@@ -1885,11 +1898,10 @@ describe("computeTableRow (via periodRow/mtdRow) — campaign-level objective de
     expect(labels).not.toContain("LANDING PAGE VIEWS");
     expect(data.periodRow.resultColumns).toHaveLength(3);
 
-    // The Website Leads campaign's entire spend/results (both ad sets
-    // combined: $200 + $10, 20 + 0) rolled into one bucket, not split.
+    // Website-leads rows only — minority LPV ad-set spend does not inflate CPR.
     const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(websiteLeads?.value).toBe("20");
-    expect(websiteLeads?.cprValue).toBe("$10.50"); // (200 + 10) / 20
+    expect(websiteLeads?.cprValue).toBe("$10.00"); // 200 / 20 — not (200 + 10) / 20
 
     // Header labels (shared by both rows) also reflect exactly these 3,
     // never a 4th Landing Page Views column.
