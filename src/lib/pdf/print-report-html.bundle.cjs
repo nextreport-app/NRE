@@ -562,7 +562,7 @@ function CampaignSpendBar({
     ] })
   ] });
 }
-function MtdOverviewSlide({ chart }) {
+function ShareMtdOverviewSlide({ chart }) {
   const cardRows = buildChartKpiCardRows(chart.snapshot);
   const campaignBars = buildChartCampaignBars(chart.donutSegments);
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
@@ -763,7 +763,7 @@ function ShareReportView({
           ] }),
           visibleData.campaigns.map((c) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CampaignCard, { campaign: c, reportType: reportTypeLabel(visibleData), assetBaseUrl }) }, `campaign-${c.campaignName}`)),
           adSets.map((a, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AdSetCard, { adSet: a, platform: visibleData.platform, reportType: reportTypeLabel(visibleData), assetBaseUrl }) }, `adset-${a.campaignName}-${a.adSetName}-${i}`)),
-          showOverview && chart && chart.donutSegments && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MtdOverviewSlide, { chart }) }),
+          showOverview && chart && chart.donutSegments && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareMtdOverviewSlide, { chart }) }),
           showCombinedTotal && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "mb-4 text-[22px] font-bold text-ink", children: "Monthly Campaign Performance Overview" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CombinedTotalTable, { data: visibleData })

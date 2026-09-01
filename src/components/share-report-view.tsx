@@ -266,7 +266,8 @@ function CampaignSpendBar({
   );
 }
 
-function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
+/** Browser chart slide — exported for PPT/PDF capture so deck matches the live share page. */
+export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const cardRows = buildChartKpiCardRows(chart.snapshot);
   const campaignBars = buildChartCampaignBars(chart.donutSegments);
 
@@ -564,7 +565,7 @@ export function ShareReportView({
 
         {showOverview && chart && chart.donutSegments && (
           <section className={slideClass}>
-            <MtdOverviewSlide chart={chart} />
+            <ShareMtdOverviewSlide chart={chart} />
           </section>
         )}
 

@@ -286,7 +286,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — donut left + metrics table right (native OOXML).
+    // Combined MTD overview slide — native editable KPI cards, donut, spend bars.
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
     expect(chartXmlFromZip).toContain('prst="pie"');
