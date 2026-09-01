@@ -5,6 +5,7 @@ import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
+import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { computeCsvDateBounds, computeDailyRangeIso, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -146,6 +147,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows);
     const dailyRange = computeDailyRangeIso(mtdParsed.rows);
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
+    const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date());
 
     return NextResponse.json({
       valid: true,
@@ -167,6 +169,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       dailyRange,
       hasAdLevelCsv,
       dateSelection,
+      csvDateGuidance,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:analyze");

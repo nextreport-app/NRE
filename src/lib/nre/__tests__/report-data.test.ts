@@ -255,12 +255,9 @@ describe("buildReportData — multi-campaign integration", () => {
     // inflated ₹2,450 (combined) / 21 = ₹116.67.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
-      // Fix 3 (round 4) — just the plain date range: no "MTD" suffix, no
-      // year (the chart slide's own sub-line still gets the year, computed
-      // separately from fullMonthLabel — see buildReportData's
-      // periodSubLabel). Fix 2 (round 5) — same-month ranges compact to
-      // "July 13 - 19" instead of repeating "July".
-      monthLabel: "July 13 - 19",
+      // MTD labels use the calendar month (July 1 → yesterday), even when the
+      // CSV's earliest row is later — totals still reflect rows present.
+      monthLabel: "July 1 - 19",
       spend: "₹2,450",
       // A straight sum of the daily rows' reach — see the dedicated reach test below.
       reach: "82,600",
@@ -2979,10 +2976,8 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
       now: NOW,
     });
     expect(data.cover.dateRange).toBe("July 15 - July 17");
-    // MTD is unaffected by the weekly selection — still every day the fixture
-    // has data for (13-19; the fixture doesn't include days 1-12), compacted
-    // to the same-month short form (Fix 2, round 5).
-    expect(data.mtdRow.monthLabel).toBe("July 13 - 19");
+    // MTD label uses calendar month start (July 1) through latest data day.
+    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
   });
 });
 

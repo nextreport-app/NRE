@@ -25,6 +25,7 @@ import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
+import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { useToast } from "@/components/toast";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
@@ -107,7 +108,7 @@ const STEP_HEADINGS: Record<Step, string> = {
 };
 
 const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Upload the day-wise last-30-days export from Ads Manager.",
+  1: "Upload a day-wise CSV from Ads Manager — the tip below shows the correct date range for today.",
   2: "Unchecked campaigns stay out of the deck. Ad-set slides are extra; campaign totals still include them.",
   3: "Wrong objective means wrong cards and Combined Total. Fix it here.",
   4: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
@@ -445,6 +446,8 @@ export function ReportUploadWizard({
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
+  const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
+  const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
   const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
   const [dateMode, setDateMode] = useState<DateMode>("last7");
@@ -761,6 +764,8 @@ export function ReportUploadWizard({
     );
     setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
+    setCsvDateGuidance(json.csvDateGuidance || null);
+    setCsvWarningDismissed(false);
     setWeeklyOptions(json.weeklyOptions || null);
     setMtdRange(json.mtdRange || null);
     setMonthComparisonOptions(json.monthComparisonOptions || null);
@@ -1740,13 +1745,13 @@ export function ReportUploadWizard({
           {selectedPlatformCard && (
             <div className="space-y-3">
               <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
-              <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
-                Tip:{" "}
+              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
+                <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
                 {selectedPlatformCard === "META"
-                  ? "Set date range to Last 30 Days and Time Increment to Day (Day-Wise Breakdown Sheet)."
+                  ? getMetaCsvDownloadTip()
                   : "Set date range to Last 30 days and segment by Day."}{" "}
-                <Link href="/help/download" className="text-dash-accent hover:underline">
-                  How to export this CSV
+                <Link href="/help/download" className="font-medium text-dash-accent hover:underline">
+                  Step-by-step guide →
                 </Link>
               </p>
 
@@ -1827,6 +1832,19 @@ export function ReportUploadWizard({
 
       {step === 2 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+          {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
+            <CsvDateGuidanceBanner
+              guidance={csvDateGuidance}
+              onContinue={() => setCsvWarningDismissed(true)}
+              onRedownload={() => {
+                setCsvWarningDismissed(false);
+                setCsvDateGuidance(null);
+                setMtdFile(null);
+                setStep(1);
+              }}
+            />
+          ) : null}
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex cursor-pointer items-center gap-2.5">
               <input
@@ -2698,6 +2716,20 @@ export function ReportUploadWizard({
                   spec calls for. */}
               <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
                 <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
+                {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
+                  <div className="mt-3">
+                    <CsvDateGuidanceBanner
+                      guidance={csvDateGuidance}
+                      onContinue={() => setCsvWarningDismissed(true)}
+                      onRedownload={() => {
+                        setCsvWarningDismissed(false);
+                        setCsvDateGuidance(null);
+                        setMtdFile(null);
+                        setStep(1);
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
                   <p className="text-[13px] text-[#94a3b8]">
@@ -3184,6 +3216,52 @@ export function ReportUploadWizard({
  * state (upload, campaigns, objectives, metrics, dates) is preserved automatically:
  * nothing here clears or resets any of it.
  */
+function CsvDateGuidanceBanner({
+  guidance,
+  onContinue,
+  onRedownload,
+}: {
+  guidance: CsvDateGuidance;
+  onContinue: () => void;
+  onRedownload: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-4">
+      {guidance.warnings.map((warning) => (
+        <div key={`${warning.kind}-${warning.title}`} className="space-y-1.5">
+          <p className="text-[15px] font-semibold leading-snug text-white">{warning.title}</p>
+          <p className="text-[14px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
+        </div>
+      ))}
+      {guidance.suggestPreviousMonthReport ? (
+        <p className="text-[14px] font-medium text-[#f6ad55]">
+          Tip: Choose Monthly report type on the Generate step for a full {guidance.reportingMonthName ?? "previous month"}{" "}
+          summary.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onContinue}
+          className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+        >
+          Continue anyway →
+        </button>
+        <button
+          type="button"
+          onClick={onRedownload}
+          className="rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+        >
+          I&apos;ll re-download
+        </button>
+        <Link href="/help/download" className="self-center text-[13px] font-medium text-dash-accent hover:underline">
+          Download guide
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function StepIndicator({
   step,
   visitedSteps,

@@ -293,7 +293,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("Campaign Performance");
-    expect(chartSvg).toContain("July 13 - July 19, 2026");
+    expect(chartSvg).toContain("July 1 - July 19, 2026");
     expect(chartSvg).toContain("BUDGET DISTRIBUTION");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
@@ -443,7 +443,7 @@ describe("renderPptx — real template end-to-end", () => {
     // same-month ranges compact to "July 13 - 19" instead of repeating
     // "July".
     expect(data.periodRow.monthLabel).toBe("June 1 - 30");
-    expect(data.mtdRow.monthLabel).toBe("July 13 - 19");
+    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -455,7 +455,7 @@ describe("renderPptx — real template end-to-end", () => {
     const allText = texts.join(" | ");
 
     expect(allText).toContain("June 1 - 30");
-    expect(allText).toContain("July 13 - 19");
+    expect(allText).toContain("July 1 - 19");
     expect(allText).not.toContain("Previous Month");
     expect(allText).not.toContain("MTD");
     expect(allText).not.toContain("{{");
