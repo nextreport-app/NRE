@@ -2935,19 +2935,7 @@ export function ReportUploadWizard({
                   </div>
                   {shareToken && reportId && !publishedAt ? (
                     <p className="mt-2 text-[12px] text-dash-ink-secondary">
-                      PDF unlocks after you{" "}
-                      <Link
-                        href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                        className="text-dash-accent hover:underline"
-                        onClick={() => {
-                          if (reportId && downloadUrl) {
-                            persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                          }
-                        }}
-                      >
-                        review and publish
-                      </Link>
-                      .
+                      PDF unlocks after you review and publish.
                     </p>
                   ) : null}
                   {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
@@ -2968,20 +2956,22 @@ export function ReportUploadWizard({
                 </div>
 
                 {shareToken && reportId ? (
-                  <p className="text-[13px] text-dash-ink-secondary">
-                    Need to edit copy or hide slides first?{" "}
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
+                    <p className="text-[13px] leading-snug text-dash-ink">
+                      Edit copy, hide slides, or publish to unlock PDF
+                    </p>
                     <Link
                       href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="font-medium text-dash-accent hover:underline"
+                      className="shrink-0 text-[13px] font-semibold text-dash-accent hover:underline"
                       onClick={() => {
                         if (reportId && downloadUrl) {
                           persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
                         }
                       }}
                     >
-                      Review before sharing
+                      Review →
                     </Link>
-                  </p>
+                  </div>
                 ) : null}
 
                 {shareToken ? (
