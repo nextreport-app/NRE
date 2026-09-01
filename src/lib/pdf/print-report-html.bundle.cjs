@@ -51,123 +51,39 @@ function normalizeShareChartSnapshot(snapshot) {
     objectivesOmittedCount: snapshot.objectivesOmittedCount ?? 0
   };
 }
-
-// src/lib/nre/chart-metrics-table.ts
-var TABLE_COLUMNS = ["Objective", "Ad spend", "Results", "Cost per result"];
-var CHART_METRICS_TABLE_MAX_HEIGHT = 352;
-function pickRowMetrics(objectiveCount, isMulti, maxHeight) {
-  const headerH = 28;
-  const budgetH = 26;
-  const totalH = isMulti ? 28 : 0;
-  const footnoteH = 20;
-  const minObjectiveRowH = 22;
-  const maxObjectiveRowH = 34;
-  for (let visible = objectiveCount; visible >= 1; visible--) {
-    const omitted = objectiveCount - visible;
-    const fixed = headerH + budgetH + totalH + (omitted > 0 ? footnoteH : 0);
-    const available = maxHeight - fixed;
-    const rowH = Math.floor(available / visible);
-    if (rowH >= minObjectiveRowH) {
-      return {
-        visibleCount: visible,
-        objectiveRowH: Math.min(maxObjectiveRowH, rowH),
-        headerH,
-        budgetH,
-        totalH,
-        footnoteH: omitted > 0 ? footnoteH : 0
-      };
-    }
-  }
-  return {
-    visibleCount: 1,
-    objectiveRowH: minObjectiveRowH,
-    headerH,
-    budgetH,
-    totalH,
-    footnoteH: objectiveCount > 1 ? footnoteH : 0
-  };
-}
-function buildChartMetricsTable(snapshot, maxHeight = CHART_METRICS_TABLE_MAX_HEIGHT) {
+function buildChartKpiLayout(snapshot) {
   const snap = normalizeShareChartSnapshot(snapshot);
-  const objectives = (snap.objectives ?? []).map((obj) => ({
-    label: toTitleCaseChartLabel(obj.label),
-    resultsValue: obj.resultsValue,
-    cprValue: obj.cprValue,
-    spendFormatted: obj.spendFormatted
-  }));
-  const isMulti = objectives.length >= 2;
-  const metrics = pickRowMetrics(objectives.length, isMulti, maxHeight);
-  const visibleObjectives = objectives.slice(0, metrics.visibleCount);
-  const omitted = Math.max(0, objectives.length - metrics.visibleCount);
-  const rows = [
-    {
-      kind: "header",
-      label: TABLE_COLUMNS[0],
-      spend: TABLE_COLUMNS[1],
-      results: TABLE_COLUMNS[2],
-      cpr: TABLE_COLUMNS[3]
-    }
-  ];
-  if (isMulti) {
-    rows.push({
-      kind: "total",
-      label: "All campaigns",
-      spend: snap.mtdSpendLabel,
-      results: "\u2014",
-      cpr: "\u2014"
-    });
+  if (snap.mode === "multi") {
+    return {
+      mode: "multi",
+      accountTiles: [
+        { value: snap.mtdSpendLabel, label: "Ad spend this month" },
+        { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
+      ],
+      objectiveBlocks: (snap.objectives ?? []).map((obj) => ({
+        label: obj.label,
+        resultsValue: obj.resultsValue,
+        cprValue: obj.cprValue,
+        cprLabel: obj.cprLabel,
+        spendFormatted: obj.spendFormatted
+      })),
+      objectivesOmittedCount: snap.objectivesOmittedCount ?? 0
+    };
   }
-  for (const obj of visibleObjectives) {
-    rows.push({
-      kind: "objective",
-      label: obj.label,
-      spend: obj.spendFormatted,
-      results: obj.resultsValue,
-      cpr: obj.cprValue
-    });
-  }
-  rows.push({
-    kind: "budget",
-    label: "Budget used",
-    spend: snap.budgetPctUsed ? `${snap.budgetPctUsed}` : "\u2014",
-    results: "\u2014",
-    cpr: "\u2014"
-  });
-  if (omitted > 0) {
-    rows.push({
-      kind: "footnote",
-      label: `+${omitted} more objective${omitted === 1 ? "" : "s"} on Combined Total slide`,
-      spend: "",
-      results: "",
-      cpr: ""
-    });
-  }
-  const rowHeights = [];
-  for (const row of rows) {
-    switch (row.kind) {
-      case "header":
-        rowHeights.push(metrics.headerH);
-        break;
-      case "total":
-        rowHeights.push(metrics.totalH);
-        break;
-      case "budget":
-        rowHeights.push(metrics.budgetH);
-        break;
-      case "footnote":
-        rowHeights.push(metrics.footnoteH);
-        break;
-      default:
-        rowHeights.push(metrics.objectiveRowH);
-    }
-  }
-  const bodyFontSize = metrics.objectiveRowH <= 24 ? 11 : metrics.objectiveRowH <= 28 ? 12 : 13;
-  const headerFontSize = 11;
+  const primary = snap.objectives?.[0];
   return {
-    columns: TABLE_COLUMNS,
-    rows,
-    layout: { rowHeights, bodyFontSize, headerFontSize },
-    objectivesOmittedCount: omitted
+    mode: "single",
+    accountTiles: [
+      {
+        value: primary?.spendFormatted ?? snap.primarySpendFormatted ?? snap.mtdSpendLabel ?? "",
+        label: "Ad spend this month"
+      },
+      { value: primary?.resultsValue ?? snap.primaryResultsValue, label: primary?.label ?? snap.primaryResultsLabel },
+      { value: primary?.cprValue ?? snap.primaryCprValue, label: primary?.cprLabel ?? snap.primaryCprLabel },
+      { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
+    ],
+    objectiveBlocks: [],
+    objectivesOmittedCount: 0
   };
 }
 
@@ -271,6 +187,49 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 // src/lib/pptx/chart-slide-constants.ts
 var DONUT_HOLE_RATIO = 0.65;
 
+// src/lib/nre/chart-visual-layout.ts
+var OBJECTIVE_CARD_CAP = 4;
+function buildChartKpiCardRows(snapshot) {
+  const layout = buildChartKpiLayout(snapshot);
+  if (layout.mode === "single") {
+    return {
+      mode: "single",
+      rows: [
+        layout.accountTiles.map((tile) => ({
+          value: tile.value,
+          label: tile.label
+        }))
+      ],
+      objectivesOmittedCount: 0
+    };
+  }
+  const visibleObjectives = layout.objectiveBlocks.slice(0, OBJECTIVE_CARD_CAP);
+  const omitted = layout.objectivesOmittedCount + Math.max(0, layout.objectiveBlocks.length - OBJECTIVE_CARD_CAP);
+  return {
+    mode: "multi",
+    rows: [
+      layout.accountTiles.map((tile) => ({
+        value: tile.value,
+        label: tile.label
+      })),
+      visibleObjectives.map((obj) => ({
+        value: obj.resultsValue,
+        label: toTitleCaseChartLabel(obj.label),
+        detail: `${obj.cprValue} \xB7 ${obj.spendFormatted} spent`
+      }))
+    ],
+    objectivesOmittedCount: omitted
+  };
+}
+function buildChartCampaignBars(segments) {
+  return segments.map((seg) => ({
+    name: seg.name,
+    color: seg.color,
+    spendLabel: seg.spendLabel,
+    percentage: seg.percentage
+  }));
+}
+
 // src/lib/nre/share-chart-projection.ts
 function formatChartFooterInsight(activeCampaignCount, override) {
   if (override?.trim()) return override.trim();
@@ -283,6 +242,10 @@ function resolveChartFooterInsight(chart) {
     return `${base} \xB7 ${omitted} more objective${omitted === 1 ? "" : "s"} on Combined Total slide`;
   }
   return base;
+}
+function formatDonutSegmentStats(percentage, spendLabel) {
+  const pctLabel = Number.isInteger(percentage) ? String(percentage) : String(percentage);
+  return `${pctLabel}% of spend \xB7 ${spendLabel}`;
 }
 
 // src/lib/nre/share-report.ts
@@ -576,36 +539,95 @@ function AdSetCard({
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AiCopyBlock, { heading: "Key Insights & Updates", text: adSet.aiInsights })
   ] });
 }
+function CampaignSpendBar({
+  name,
+  color,
+  spendLabel,
+  percentage
+}) {
+  const widthPct = Math.max(percentage > 0 ? 4 : 0, percentage);
+  const pctLabel = formatDonutSegmentStats(percentage, spendLabel).split(" \xB7 ")[0] ?? "";
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(88px,0.8fr)] items-center gap-3", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-[13px] font-semibold text-ink", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-4 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      "div",
+      {
+        className: "h-full rounded",
+        style: { width: `${widthPct}%`, backgroundColor: `#${color}` }
+      }
+    ) }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "text-right", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[13px] font-bold tabular-nums text-ink", children: spendLabel }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] text-[#94a3b8]", children: pctLabel })
+    ] })
+  ] });
+}
 function MtdOverviewSlide({ chart }) {
-  const table = buildChartMetricsTable(chart.snapshot);
+  const cardRows = buildChartKpiCardRows(chart.snapshot);
+  const campaignBars = buildChartCampaignBars(chart.donutSegments);
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-[#94a3b8]", children: chart.title }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-center text-[16px] font-medium text-[#e2e8f0]", children: chart.subtitle }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]", children: [
-      chart.donutSegments.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto shrink-0 min-[720px]:mx-0", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareChartDonut, { segments: chart.donutSegments, totalSpendLabel: chart.totalSpendLabel, size: 220 }) }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-center text-[14px] text-[#e2e8f0] min-[720px]:text-left", children: "No spend recorded this month yet." }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "min-w-0 overflow-hidden rounded-lg border border-navy-border", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("table", { className: "w-full border-collapse text-left text-[13px] text-ink", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: table.rows.map((row, rowIndex) => {
-        const rowH = table.layout.rowHeights[rowIndex] ?? 28;
-        if (row.kind === "footnote") {
-          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { height: rowH }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { colSpan: 4, className: "border-t border-navy-border px-3 py-1 text-[11px] text-[#94a3b8]", children: row.label }) }, `${row.kind}-${rowIndex}`);
+    cardRows.mode === "single" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4", children: (cardRows.rows[0] ?? []).map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+      "div",
+      {
+        className: "rounded-lg border border-navy-border px-3 py-4 text-center",
+        style: { backgroundColor: "#131d30" },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[22px] font-bold text-ink", children: tile.value }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: tile.label })
+        ]
+      },
+      tile.label
+    )) }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 space-y-3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "grid grid-cols-2 gap-3", children: (cardRows.rows[0] ?? []).map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        "div",
+        {
+          className: "rounded-lg border border-navy-border px-3 py-4 text-center",
+          style: { backgroundColor: "#131d30" },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[22px] font-bold text-ink", children: tile.value }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: tile.label })
+          ]
+        },
+        tile.label
+      )) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "div",
+        {
+          className: `grid gap-3 ${(cardRows.rows[1]?.length ?? 0) >= 4 ? "grid-cols-2 sm:grid-cols-4" : (cardRows.rows[1]?.length ?? 0) === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2"}`,
+          children: (cardRows.rows[1] ?? []).map((card) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+            "div",
+            {
+              className: "rounded-lg border border-navy-border px-3 py-3 text-center",
+              style: { backgroundColor: "#131d30" },
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: card.label }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[22px] font-bold text-ink", children: card.value }),
+                card.detail ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[11px] text-[#94a3b8]", children: card.detail }) : null
+              ]
+            },
+            card.label
+          ))
         }
-        const isHeader = row.kind === "header";
-        const isAccentRow = row.kind === "total" || row.kind === "budget";
-        return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "tr",
-          {
-            style: { height: rowH },
-            className: isHeader ? "bg-[#1a2740] text-[11px] font-semibold uppercase tracking-wide text-accent-orange" : isAccentRow ? "bg-[#162033] font-semibold" : rowIndex % 2 === 0 ? "bg-[#131d30]" : "bg-[#162033]",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "border-t border-navy-border px-3 py-1", children: row.label }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "border-t border-navy-border px-3 py-1 text-right tabular-nums", children: row.spend }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "border-t border-navy-border px-3 py-1 text-right tabular-nums", children: row.results }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "border-t border-navy-border px-3 py-1 text-right tabular-nums", children: row.cpr })
-            ]
-          },
-          `${row.kind}-${row.label}-${rowIndex}`
-        );
-      }) }) }) })
+      )
     ] }),
+    chart.donutSegments.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-6 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto shrink-0 min-[720px]:mx-0", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareChartDonut, { segments: chart.donutSegments, totalSpendLabel: chart.totalSpendLabel, size: 220 }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 space-y-3 pt-1", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[11px] font-bold uppercase tracking-wide text-accent-orange", children: "Campaign spend mix" }),
+        campaignBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          CampaignSpendBar,
+          {
+            name: bar.name,
+            color: bar.color,
+            spendLabel: bar.spendLabel,
+            percentage: bar.percentage
+          },
+          bar.name
+        ))
+      ] })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-6 text-center text-[14px] text-[#e2e8f0]", children: "No spend recorded this month yet." }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[14px] font-medium text-[#e2e8f0]", children: resolveChartFooterInsight(chart) })
   ] });
 }

@@ -473,7 +473,7 @@ export function ReportShareReview({
                 onChange={(e) => setChartEdit((c) => (c ? { ...c, subtitle: e.target.value } : c))}
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
               />
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Metrics table</p>
+              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {[
                   { key: "mtdSpendLabel", label: "Total ad spend this month" },

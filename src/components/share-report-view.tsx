@@ -2,7 +2,7 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { resolveChartFooterInsight, buildChartMetricsTable } from "@/lib/nre/share-chart-projection";
+import { resolveChartFooterInsight, formatDonutSegmentStats, buildChartKpiCardRows, buildChartCampaignBars } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -236,65 +236,117 @@ function AdSetCard({
   );
 }
 
+function CampaignSpendBar({
+  name,
+  color,
+  spendLabel,
+  percentage,
+}: {
+  name: string;
+  color: string;
+  spendLabel: string;
+  percentage: number;
+}) {
+  const widthPct = Math.max(percentage > 0 ? 4 : 0, percentage);
+  const pctLabel = formatDonutSegmentStats(percentage, spendLabel).split(" · ")[0] ?? "";
+  return (
+    <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(88px,0.8fr)] items-center gap-3">
+      <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
+      <div className="h-4 overflow-hidden rounded bg-[#1e293b]">
+        <div
+          className="h-full rounded"
+          style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
+        />
+      </div>
+      <div className="text-right">
+        <p className="text-[13px] font-bold tabular-nums text-ink">{spendLabel}</p>
+        <p className="text-[11px] text-[#94a3b8]">{pctLabel}</p>
+      </div>
+    </div>
+  );
+}
+
 function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
-  const table = buildChartMetricsTable(chart.snapshot);
+  const cardRows = buildChartKpiCardRows(chart.snapshot);
+  const campaignBars = buildChartCampaignBars(chart.donutSegments);
 
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{chart.title}</h2>
       <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
 
-      <div className="mt-5 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]">
-        {chart.donutSegments.length > 0 ? (
+      {cardRows.mode === "single" ? (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(cardRows.rows[0] ?? []).map((tile) => (
+            <div
+              key={tile.label}
+              className="rounded-lg border border-navy-border px-3 py-4 text-center"
+              style={{ backgroundColor: "#131d30" }}
+            >
+              <p className="text-[22px] font-bold text-ink">{tile.value}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {(cardRows.rows[0] ?? []).map((tile) => (
+              <div
+                key={tile.label}
+                className="rounded-lg border border-navy-border px-3 py-4 text-center"
+                style={{ backgroundColor: "#131d30" }}
+              >
+                <p className="text-[22px] font-bold text-ink">{tile.value}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{tile.label}</p>
+              </div>
+            ))}
+          </div>
+          <div
+            className={`grid gap-3 ${
+              (cardRows.rows[1]?.length ?? 0) >= 4
+                ? "grid-cols-2 sm:grid-cols-4"
+                : (cardRows.rows[1]?.length ?? 0) === 3
+                  ? "grid-cols-1 sm:grid-cols-3"
+                  : "grid-cols-2"
+            }`}
+          >
+            {(cardRows.rows[1] ?? []).map((card) => (
+              <div
+                key={card.label}
+                className="rounded-lg border border-navy-border px-3 py-3 text-center"
+                style={{ backgroundColor: "#131d30" }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{card.label}</p>
+                <p className="mt-1 text-[22px] font-bold text-ink">{card.value}</p>
+                {card.detail ? <p className="mt-1 text-[11px] text-[#94a3b8]">{card.detail}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {chart.donutSegments.length > 0 ? (
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 min-[720px]:grid-cols-[220px_1fr]">
           <div className="relative mx-auto shrink-0 min-[720px]:mx-0">
             <ShareChartDonut segments={chart.donutSegments} totalSpendLabel={chart.totalSpendLabel} size={220} />
           </div>
-        ) : (
-          <p className="text-center text-[14px] text-[#e2e8f0] min-[720px]:text-left">No spend recorded this month yet.</p>
-        )}
-
-        <div className="min-w-0 overflow-hidden rounded-lg border border-navy-border">
-          <table className="w-full border-collapse text-left text-[13px] text-ink">
-            <tbody>
-              {table.rows.map((row, rowIndex) => {
-                const rowH = table.layout.rowHeights[rowIndex] ?? 28;
-                if (row.kind === "footnote") {
-                  return (
-                    <tr key={`${row.kind}-${rowIndex}`} style={{ height: rowH }}>
-                      <td colSpan={4} className="border-t border-navy-border px-3 py-1 text-[11px] text-[#94a3b8]">
-                        {row.label}
-                      </td>
-                    </tr>
-                  );
-                }
-
-                const isHeader = row.kind === "header";
-                const isAccentRow = row.kind === "total" || row.kind === "budget";
-                return (
-                  <tr
-                    key={`${row.kind}-${row.label}-${rowIndex}`}
-                    style={{ height: rowH }}
-                    className={
-                      isHeader
-                        ? "bg-[#1a2740] text-[11px] font-semibold uppercase tracking-wide text-accent-orange"
-                        : isAccentRow
-                          ? "bg-[#162033] font-semibold"
-                          : rowIndex % 2 === 0
-                            ? "bg-[#131d30]"
-                            : "bg-[#162033]"
-                    }
-                  >
-                    <td className="border-t border-navy-border px-3 py-1">{row.label}</td>
-                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.spend}</td>
-                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.results}</td>
-                    <td className="border-t border-navy-border px-3 py-1 text-right tabular-nums">{row.cpr}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="min-w-0 space-y-3 pt-1">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-accent-orange">Campaign spend mix</p>
+            {campaignBars.map((bar) => (
+              <CampaignSpendBar
+                key={bar.name}
+                name={bar.name}
+                color={bar.color}
+                spendLabel={bar.spendLabel}
+                percentage={bar.percentage}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <p className="mt-6 text-center text-[14px] text-[#e2e8f0]">No spend recorded this month yet.</p>
+      )}
 
       <p className="mt-5 text-center text-[14px] font-medium text-[#e2e8f0]">
         {resolveChartFooterInsight(chart)}

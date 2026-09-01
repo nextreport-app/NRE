@@ -3,7 +3,8 @@
  */
 
 import type { ChartMetricsTable, ChartMetricsTableRow } from "../nre/chart-metrics-table";
-import { MTD_TABLE_COL_FRACS } from "./chart-slide-layout";
+
+const MTD_TABLE_COL_FRACS = [0.4, 0.22, 0.16, 0.22] as const;
 
 export interface MetricsTableColors {
   ink: string;
