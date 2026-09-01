@@ -85,14 +85,26 @@ export interface ShareChartCampaignData {
   cprLabel: string;
 }
 
+export interface ShareChartSnapshotObjective {
+  label: string;
+  resultsValue: string;
+  cprValue: string;
+  cprLabel: string;
+  spendFormatted: string;
+}
+
 export interface ShareChartSnapshot {
+  mode?: "single" | "multi";
   mtdSpendLabel: string;
   primaryResultsValue: string;
   primaryResultsLabel: string;
   primaryCprValue: string;
   primaryCprLabel: string;
+  primarySpendFormatted?: string;
   budgetPctUsed: string;
   activeCampaignCount: number;
+  objectives?: ShareChartSnapshotObjective[];
+  objectivesOmittedCount?: number;
 }
 
 export interface ShareDonutSegment {

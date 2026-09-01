@@ -60,13 +60,27 @@ const chartEditSchema = z.object({
   totalSpendLabel: z.string().max(64),
   footerInsight: z.string().max(200).optional(),
   snapshot: z.object({
+    mode: z.enum(["single", "multi"]).optional(),
     mtdSpendLabel: z.string().max(64),
     primaryResultsValue: z.string().max(64),
     primaryResultsLabel: z.string().max(64),
     primaryCprValue: z.string().max(64),
     primaryCprLabel: z.string().max(64),
+    primarySpendFormatted: z.string().max(64).optional(),
     budgetPctUsed: z.string().max(32),
     activeCampaignCount: z.number().int().min(0),
+    objectivesOmittedCount: z.number().int().min(0).optional(),
+    objectives: z
+      .array(
+        z.object({
+          label: z.string().max(64),
+          resultsValue: z.string().max(64),
+          cprValue: z.string().max(64),
+          cprLabel: z.string().max(64),
+          spendFormatted: z.string().max(64),
+        }),
+      )
+      .optional(),
   }),
   donutSegments: z.array(
     z.object({

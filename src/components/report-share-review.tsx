@@ -476,9 +476,7 @@ export function ReportShareReview({
               <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {[
-                  { key: "mtdSpendLabel", label: "Ad spend this month" },
-                  { key: "primaryResultsValue", label: chartEdit.snapshot.primaryResultsLabel },
-                  { key: "primaryCprValue", label: chartEdit.snapshot.primaryCprLabel },
+                  { key: "mtdSpendLabel", label: "Total ad spend this month" },
                   { key: "budgetPctUsed", label: "Budget used (%)" },
                 ].map((field) => (
                   <label key={field.key} className="block">
@@ -496,6 +494,81 @@ export function ReportShareReview({
                   </label>
                 ))}
               </div>
+              {(chartEdit.snapshot.objectives?.length ?? 0) > 0 ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-[11px] uppercase tracking-wide text-dash-ink-secondary">Objective blocks</p>
+                  {chartEdit.snapshot.objectives!.map((obj, i) => (
+                    <div key={`${obj.label}-${i}`} className="rounded-md border border-dash-border bg-dash-bg p-3">
+                      <p className="text-[11px] font-semibold text-dash-ink">{obj.label}</p>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {(
+                          [
+                            ["resultsValue", "Results"],
+                            ["cprValue", obj.cprLabel],
+                            ["spendFormatted", "Spend"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <label key={key} className="block">
+                            <span className="text-[11px] font-medium text-dash-ink-secondary">{label}</span>
+                            <input
+                              type="text"
+                              value={obj[key]}
+                              onChange={(e) =>
+                                setChartEdit((c) => {
+                                  if (!c) return c;
+                                  const objectives = c.snapshot.objectives!.map((o, j) =>
+                                    j === i ? { ...o, [key]: e.target.value } : o,
+                                  );
+                                  const primary = objectives[0];
+                                  return {
+                                    ...c,
+                                    snapshot: {
+                                      ...c.snapshot,
+                                      objectives,
+                                      ...(primary
+                                        ? {
+                                            primaryResultsValue: primary.resultsValue,
+                                            primaryResultsLabel: primary.label,
+                                            primaryCprValue: primary.cprValue,
+                                            primaryCprLabel: primary.cprLabel,
+                                            primarySpendFormatted: primary.spendFormatted,
+                                          }
+                                        : {}),
+                                    },
+                                  };
+                                })
+                              }
+                              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {[
+                    { key: "primarySpendFormatted", label: "Ad spend (objective)" },
+                    { key: "primaryResultsValue", label: chartEdit.snapshot.primaryResultsLabel },
+                    { key: "primaryCprValue", label: chartEdit.snapshot.primaryCprLabel },
+                  ].map((field) => (
+                    <label key={field.key} className="block">
+                      <span className="text-[11px] font-medium text-dash-ink-secondary">{field.label}</span>
+                      <input
+                        type="text"
+                        value={(chartEdit.snapshot[field.key as keyof typeof chartEdit.snapshot] as string) ?? ""}
+                        onChange={(e) =>
+                          setChartEdit((c) =>
+                            c ? { ...c, snapshot: { ...c.snapshot, [field.key]: e.target.value } } : c,
+                          )
+                        }
+                        className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
               <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Total spend (donut center)</label>
               <input
                 type="text"

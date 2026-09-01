@@ -2,15 +2,7 @@ import { fmtCurrency } from "./format";
 import { buildDonutSegments, type DonutSegment } from "../pptx/chart-slide";
 import type { ChartSlideData } from "./report-data";
 import type { ShareChartData, ShareChartSnapshot, ShareDonutSegment } from "./share-report";
-
-const KNOWN_METRIC_ACRONYMS = new Set(["LPV", "CPM", "1K"]);
-
-function toTitleCase(label: string): string {
-  return label
-    .split(" ")
-    .map((w) => (KNOWN_METRIC_ACRONYMS.has(w) ? w : w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
-    .join(" ");
-}
+import { mapChartSnapshotObjective, toTitleCaseChartLabel } from "./chart-kpi-layout";
 
 /** Footer insight under the donut — active campaigns only (budget % lives in the KPI tile). */
 export function formatChartFooterInsight(activeCampaignCount: number, override?: string): string {
@@ -19,7 +11,12 @@ export function formatChartFooterInsight(activeCampaignCount: number, override?:
 }
 
 export function resolveChartFooterInsight(chart: Pick<ShareChartData, "snapshot" | "footerInsight">): string {
-  return formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
+  const base = formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
+  const omitted = chart.snapshot.objectivesOmittedCount ?? 0;
+  if (omitted > 0) {
+    return `${base} · ${omitted} more objective${omitted === 1 ? "" : "s"} on Combined Total slide`;
+  }
+  return base;
 }
 
 /** Spend-mix legend stats — clarifies that the % is share of total spend, not budget. */
@@ -35,13 +32,25 @@ export function projectChartSlideToShareChart(chart: ChartSlideData, currencySym
   const subtitle = "Month to date performance · Where your budget went";
   const snap = chart.snapshot;
   const snapshot: ShareChartSnapshot = {
+    mode: snap.mode,
     mtdSpendLabel: snap.mtdSpendFormatted,
     primaryResultsValue: snap.primaryResultsValue,
-    primaryResultsLabel: toTitleCase(snap.primaryResultsLabel),
+    primaryResultsLabel: toTitleCaseChartLabel(snap.primaryResultsLabel),
     primaryCprValue: snap.primaryCprValue,
-    primaryCprLabel: toTitleCase(snap.primaryCprLabel),
+    primaryCprLabel: toTitleCaseChartLabel(snap.primaryCprLabel),
+    primarySpendFormatted: snap.primarySpendFormatted,
     budgetPctUsed: snap.budgetPctUsed,
     activeCampaignCount: snap.activeCampaignCount,
+    objectives: snap.objectives.map((obj) =>
+      mapChartSnapshotObjective({
+        label: obj.label,
+        resultsValue: obj.resultsValue,
+        cprValue: obj.cprValue,
+        cprLabel: obj.cprLabel,
+        spendFormatted: obj.spendFormatted,
+      }),
+    ),
+    objectivesOmittedCount: snap.objectivesOmittedCount ?? 0,
   };
   const donutSegments: ShareDonutSegment[] = buildDonutSegments(chart.campaigns, chart.totalAllSpend).map(
     (seg: DonutSegment) => ({
@@ -59,3 +68,5 @@ export function projectChartSlideToShareChart(chart: ChartSlideData, currencySym
     totalSpendLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
   };
 }
+
+export { buildChartKpiLayout, normalizeShareChartSnapshot, toTitleCaseChartLabel } from "./chart-kpi-layout";

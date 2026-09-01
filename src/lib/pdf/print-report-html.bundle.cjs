@@ -128,13 +128,70 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 // src/lib/pptx/chart-slide-constants.ts
 var DONUT_HOLE_RATIO = 0.65;
 
+// src/lib/nre/chart-kpi-layout.ts
+function normalizeShareChartSnapshot(snapshot) {
+  if (snapshot.mode && (snapshot.objectives?.length ?? 0) > 0) return snapshot;
+  return {
+    ...snapshot,
+    mode: "single",
+    primarySpendFormatted: snapshot.primarySpendFormatted ?? snapshot.mtdSpendLabel,
+    objectives: [
+      {
+        label: snapshot.primaryResultsLabel,
+        resultsValue: snapshot.primaryResultsValue,
+        cprValue: snapshot.primaryCprValue,
+        cprLabel: snapshot.primaryCprLabel,
+        spendFormatted: snapshot.primarySpendFormatted ?? snapshot.mtdSpendLabel
+      }
+    ],
+    objectivesOmittedCount: snapshot.objectivesOmittedCount ?? 0
+  };
+}
+function buildChartKpiLayout(snapshot) {
+  const snap = normalizeShareChartSnapshot(snapshot);
+  if (snap.mode === "multi") {
+    return {
+      mode: "multi",
+      accountTiles: [
+        { value: snap.mtdSpendLabel, label: "Ad spend this month" },
+        { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
+      ],
+      objectiveBlocks: (snap.objectives ?? []).map((obj) => ({
+        label: obj.label,
+        resultsValue: obj.resultsValue,
+        cprValue: obj.cprValue,
+        cprLabel: obj.cprLabel,
+        spendFormatted: obj.spendFormatted
+      })),
+      objectivesOmittedCount: snap.objectivesOmittedCount ?? 0
+    };
+  }
+  const primary = snap.objectives?.[0];
+  return {
+    mode: "single",
+    accountTiles: [
+      { value: primary?.spendFormatted ?? snap.primarySpendFormatted, label: "Ad spend this month" },
+      { value: primary?.resultsValue ?? snap.primaryResultsValue, label: primary?.label ?? snap.primaryResultsLabel },
+      { value: primary?.cprValue ?? snap.primaryCprValue, label: primary?.cprLabel ?? snap.primaryCprLabel },
+      { value: snap.budgetPctUsed || "\u2014", label: snap.budgetPctUsed ? "Budget used" : "Budget" }
+    ],
+    objectiveBlocks: [],
+    objectivesOmittedCount: 0
+  };
+}
+
 // src/lib/nre/share-chart-projection.ts
 function formatChartFooterInsight(activeCampaignCount, override) {
   if (override?.trim()) return override.trim();
   return `${activeCampaignCount} active campaign${activeCampaignCount === 1 ? "" : "s"} currently`;
 }
 function resolveChartFooterInsight(chart) {
-  return formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
+  const base = formatChartFooterInsight(chart.snapshot.activeCampaignCount, chart.footerInsight);
+  const omitted = chart.snapshot.objectivesOmittedCount ?? 0;
+  if (omitted > 0) {
+    return `${base} \xB7 ${omitted} more objective${omitted === 1 ? "" : "s"} on Combined Total slide`;
+  }
+  return base;
 }
 function formatDonutSegmentStats(percentage, spendLabel) {
   const pctLabel = Number.isInteger(percentage) ? String(percentage) : String(percentage);
@@ -433,16 +490,11 @@ function AdSetCard({
   ] });
 }
 function MtdOverviewSlide({ chart }) {
-  const kpiTiles = [
-    { value: chart.snapshot.mtdSpendLabel, label: "Ad spend this month" },
-    { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel },
-    { value: chart.snapshot.primaryCprValue, label: chart.snapshot.primaryCprLabel },
-    { value: chart.snapshot.budgetPctUsed || "\u2014", label: chart.snapshot.budgetPctUsed ? "Budget used" : "Budget" }
-  ];
+  const layout = buildChartKpiLayout(chart.snapshot);
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[24px] font-bold text-[#94a3b8]", children: chart.title }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-center text-[16px] font-medium text-[#e2e8f0]", children: chart.subtitle }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4", children: kpiTiles.map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `mt-5 grid gap-3 ${layout.mode === "multi" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`, children: layout.accountTiles.map((tile) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
       "div",
       {
         className: "rounded-lg border border-navy-border px-3 py-4 text-center",
@@ -454,6 +506,30 @@ function MtdOverviewSlide({ chart }) {
       },
       tile.label
     )) }),
+    layout.mode === "multi" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      "div",
+      {
+        className: `mt-3 grid gap-3 ${layout.objectiveBlocks.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : layout.objectiveBlocks.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2"}`,
+        children: layout.objectiveBlocks.map((obj) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+          "div",
+          {
+            className: "rounded-lg border border-navy-border px-3 py-3 text-center",
+            style: { backgroundColor: "#131d30" },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-accent-orange", children: obj.label }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[22px] font-bold text-ink", children: obj.resultsValue }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[14px] font-medium text-ink", children: obj.cprValue }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[10px] uppercase tracking-wide text-ink-muted", children: obj.cprLabel }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-1 text-[12px] text-[#94a3b8]", children: [
+                obj.spendFormatted,
+                " spent"
+              ] })
+            ]
+          },
+          obj.label
+        ))
+      }
+    ) : null,
     chart.donutSegments.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-6 grid grid-cols-1 items-center gap-6 min-[720px]:grid-cols-[220px_1fr]", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareChartDonut, { segments: chart.donutSegments, totalSpendLabel: chart.totalSpendLabel, size: 220 }) }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "space-y-2.5", children: chart.donutSegments.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("li", { className: "flex items-start gap-2.5 text-[15px] text-ink", children: [

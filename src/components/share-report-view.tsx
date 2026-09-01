@@ -2,7 +2,7 @@ import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { formatDonutSegmentStats, resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
+import { formatDonutSegmentStats, resolveChartFooterInsight, buildChartKpiLayout } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -237,20 +237,15 @@ function AdSetCard({
 }
 
 function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
-  const kpiTiles = [
-    { value: chart.snapshot.mtdSpendLabel, label: "Ad spend this month" },
-    { value: chart.snapshot.primaryResultsValue, label: chart.snapshot.primaryResultsLabel },
-    { value: chart.snapshot.primaryCprValue, label: chart.snapshot.primaryCprLabel },
-    { value: chart.snapshot.budgetPctUsed || "—", label: chart.snapshot.budgetPctUsed ? "Budget used" : "Budget" },
-  ];
+  const layout = buildChartKpiLayout(chart.snapshot);
 
   return (
     <SlideCard>
       <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{chart.title}</h2>
       <p className="mt-1 text-center text-[16px] font-medium text-[#e2e8f0]">{chart.subtitle}</p>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {kpiTiles.map((tile) => (
+      <div className={`mt-5 grid gap-3 ${layout.mode === "multi" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+        {layout.accountTiles.map((tile) => (
           <div
             key={tile.label}
             className="rounded-lg border border-navy-border px-3 py-4 text-center"
@@ -261,6 +256,32 @@ function MtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           </div>
         ))}
       </div>
+
+      {layout.mode === "multi" ? (
+        <div
+          className={`mt-3 grid gap-3 ${
+            layout.objectiveBlocks.length >= 4
+              ? "grid-cols-2 sm:grid-cols-4"
+              : layout.objectiveBlocks.length === 3
+                ? "grid-cols-1 sm:grid-cols-3"
+                : "grid-cols-2"
+          }`}
+        >
+          {layout.objectiveBlocks.map((obj) => (
+            <div
+              key={obj.label}
+              className="rounded-lg border border-navy-border px-3 py-3 text-center"
+              style={{ backgroundColor: "#131d30" }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-accent-orange">{obj.label}</p>
+              <p className="mt-1 text-[22px] font-bold text-ink">{obj.resultsValue}</p>
+              <p className="mt-1 text-[14px] font-medium text-ink">{obj.cprValue}</p>
+              <p className="text-[10px] uppercase tracking-wide text-ink-muted">{obj.cprLabel}</p>
+              <p className="mt-1 text-[12px] text-[#94a3b8]">{obj.spendFormatted} spent</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {chart.donutSegments.length > 0 ? (
         <div className="mt-6 grid grid-cols-1 items-center gap-6 min-[720px]:grid-cols-[220px_1fr]">
