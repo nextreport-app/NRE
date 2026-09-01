@@ -97,26 +97,44 @@ describe("buildDonutSegments", () => {
   });
 });
 
-describe("buildChartSlideBundle — MTD overview (browser PNG)", () => {
-  it("slide XML embeds template background + full-slide chart PNG overlay", async () => {
+describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
+  it("slide XML uses native editable shapes with title text", async () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(bundle.xml).toContain('name="Month to date overview"');
-    expect(bundle.xml).toContain('name="Background"');
-    expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(2);
-    expect(bundle.mediaPath).toBe("ppt/media/chart-overview.png");
-    expect(bundle.mediaBytes.length).toBeGreaterThan(1000);
-    expect(bundle.mediaBytes[0]).toBe(0x89);
-    expect(bundle.mediaBytes[1]).toBe(0x50);
-  }, 60_000);
+    expect(bundle.xml).toContain("Month to date performance");
+    expect(bundle.xml).toContain('prst="pie"');
+    expect(bundle.xml).toContain("TOTAL SPEND");
+    expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
+  });
 
-  it("PNG capture includes chart title from share projection", async () => {
+  it("uses muted grey for the main heading — same REPORT_HEADER_COLOR as every other slide", async () => {
     const chart = buildChart([campaign("A", { spend: 442 })]);
     const shareChart = projectChartSlideToShareChart(chart, "$");
     const bundle = await buildChartSlideBundle(chart, "$", BACKGROUND);
-    expect(bundle.mediaBytes.length).toBeGreaterThan(1000);
-    const svg = buildMtdOverviewSvg(shareChart);
-    expect(svg).toContain(shareChart.title);
-  }, 60_000);
+    const titleIdx = bundle.xml.indexOf(`<a:t>${shareChart.title}</a:t>`);
+    expect(titleIdx).toBeGreaterThan(-1);
+    const runStart = bundle.xml.lastIndexOf("<a:r>", titleIdx);
+    expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
+  });
+
+  it("embeds native OOXML chart shapes with KPI cards and campaign spend bars", async () => {
+    const bundle = await buildChartSlideBundle(
+      buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
+      "C$",
+      BACKGROUND,
+    );
+    expect(bundle.xml).toContain("CAMPAIGN SPEND MIX");
+    expect(bundle.xml).toContain("AD SPEND THIS MONTH");
+    expect(bundle.xml).toContain("PURCHASES");
+    expect(bundle.xml).toContain('txBox="1"');
+    const svg = buildMtdOverviewSvg(
+      projectChartSlideToShareChart(
+        buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
+        "C$",
+      ),
+    );
+    expect(svg).toContain("CAMPAIGN SPEND MIX");
+    expect(svg).toContain("TOTAL SPEND");
+  });
 
   it("buildMtdOverviewSvg uses thinner donut hole ratio", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);

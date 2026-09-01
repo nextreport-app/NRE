@@ -112,7 +112,7 @@ function appendKpiCardsOoxml(shapes: string[], chart: ShareChartData, isLight: b
     const x = objStartX + i * (objW + objGap);
     shapes.push(
       roundedCard({ x, y: objY, w: objW, h: objH, fillHex: fill, strokeHex: stroke, radiusPt: 8 }),
-      textBox({ x, y: objY + 4, w: objW, h: 12, text: card.label.toUpperCase(), sizePt: 9, bold: true, colorHex: accent, align: "ctr" }),
+      textBox({ x, y: objY + 4, w: objW, h: 12, text: card.label.toUpperCase(), sizePt: 10, bold: true, colorHex: accent, align: "ctr" }),
       textBox({ x, y: objY + 20, w: objW, h: 28, text: card.value, sizePt: 22, bold: true, colorHex: ink, align: "ctr" }),
     );
     if (card.detail) {
@@ -209,6 +209,7 @@ export function buildMtdOverviewOoxmlShapes(
 ): string[] {
   resetShapeIdCounter();
   const c = isLightTemplate ? CAMPAIGN_BAR_COLORS_LIGHT : CAMPAIGN_BAR_COLORS_DARK;
+  const subtitleColor = isLightTemplate ? c.inkMuted : "e2e8f0";
   const W = MTD_SLIDE_W;
   const cardRows = buildChartKpiCardRows(chart.snapshot);
   const bars = buildChartCampaignBars(chart.donutSegments);
@@ -237,7 +238,7 @@ export function buildMtdOverviewOoxmlShapes(
       h: 24,
       text: chart.subtitle,
       sizePt: 16,
-      colorHex: c.inkMuted,
+      colorHex: subtitleColor,
       align: "ctr",
     }),
   );
@@ -294,7 +295,7 @@ export function buildMtdOverviewOoxmlShapes(
       h: 28,
       text: resolveChartFooterInsight(chart),
       sizePt: 14,
-      colorHex: c.inkMuted,
+      colorHex: subtitleColor,
       align: "ctr",
     }),
   );

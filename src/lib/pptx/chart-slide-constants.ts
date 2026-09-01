@@ -5,6 +5,7 @@ export const CHART_BG_REL_ID = "rId2";
 export const DONUT_HOLE_RATIO = 0.65;
 
 /** Relationship id for the browser-rendered chart overview PNG on the chart slide. */
+/** @deprecated Chart slide is native OOXML now; kept for legacy PNG/SVG tests. */
 export const CHART_OVERVIEW_REL_ID = "rId3";
-
+/** @deprecated Chart slide is native OOXML now. */
 export const CHART_OVERVIEW_MEDIA_FILE = "chart-overview.png";
