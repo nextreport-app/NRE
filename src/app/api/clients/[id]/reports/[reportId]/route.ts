@@ -239,13 +239,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         };
       }
       if (parsed.data.chart && share.chart) {
-        const nextChart = { ...share.chart, ...parsed.data.chart };
-        if (parsed.data.chart.visualSlide && share.chart.visualSlide) {
-          nextChart.visualSlide = { ...share.chart.visualSlide, ...parsed.data.chart.visualSlide };
-        } else if (parsed.data.chart.visualSlide) {
-          nextChart.visualSlide = parsed.data.chart.visualSlide as typeof share.chart.visualSlide;
-        }
-        share.chart = nextChart;
+        const { visualSlide: visualSlidePatch, ...chartPatch } = parsed.data.chart;
+        const mergedVisualSlide =
+          visualSlidePatch && share.chart.visualSlide
+            ? { ...share.chart.visualSlide, ...visualSlidePatch }
+            : share.chart.visualSlide;
+        share.chart = {
+          ...share.chart,
+          ...chartPatch,
+          ...(mergedVisualSlide ? { visualSlide: mergedVisualSlide } : {}),
+        };
       }
       if (parsed.data.publish) {
         share.publishedAt = new Date().toISOString();
