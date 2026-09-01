@@ -533,7 +533,7 @@ export function ShareReportView({
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
                 />
-                <span className="text-[11px] font-semibold uppercase" style={{ color: "#94a3b8", letterSpacing: "2px" }}>
+                <span className="text-[11px] font-semibold uppercase text-[#94a3b8]" style={{ letterSpacing: "0.08em" }}>
                   {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
                 </span>
               </div>

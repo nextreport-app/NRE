@@ -2886,32 +2886,83 @@ export function ReportUploadWizard({
           )}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="space-y-4">
-              <p className="text-center text-[16px] font-semibold text-[#68d391]">✓ Report Generated Successfully</p>
+            <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
+              <div className="border-b border-dash-border px-5 py-4">
+                <p className="text-[16px] font-semibold text-[#68d391]">Report ready</p>
+                <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                  Share the live link with your client or download files below.
+                </p>
+              </div>
 
-              {/* Primary action — the public read-only share page, always
-                  available once the report is generated (see
-                  share-token.ts/share-report.ts), independent of the
-                  Google Drive save flow below. */}
-              {shareToken && (
+              <div className="space-y-5 p-5">
+                {shareToken ? (
+                  <>
+                    <a
+                      href={`https://${buildShareReportUrl(shareToken)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-full items-center justify-center rounded-lg text-[15px] font-semibold transition-opacity hover:opacity-90"
+                      style={{ height: "48px", backgroundColor: "#f5b45a", color: "#0d1b2e" }}
+                    >
+                      View in browser
+                    </a>
+                    <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
+                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-[#94a3b8]">
+                        {buildShareReportUrl(shareToken)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyShareLink}
+                        className="shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium text-dash-accent hover:bg-dash-border"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+
                 <div>
-                  <a
-                    href={`https://${buildShareReportUrl(shareToken)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-lg text-[15px] font-semibold hover:opacity-90"
-                    style={{ height: "48px", backgroundColor: "#f5b45a", color: "#0d1b2e" }}
-                  >
-                    🌐 View Report in Browser →
-                  </a>
-                  <p className="mt-1.5 text-center text-[11px] text-[#94a3b8]">
-                    {buildShareReportUrl(shareToken)} ·{" "}
-                    <button type="button" onClick={handleCopyShareLink} className="text-dash-accent hover:underline">
-                      Copy
-                    </button>
-                  </p>
-                  {reportId ? (
-                    <p className="mt-2 text-center text-[12px] text-[#94a3b8]">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
+                  <div className={`grid gap-2 ${hasGoogleDriveConnected ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
+                    <a
+                      href={downloadUrl}
+                      className="flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#f5b45a]"
+                    >
+                      PPTX
+                    </a>
+                    {shareToken && reportId ? (
+                      publishedAt ? (
+                        <a
+                          href={`/api/reports/${reportId}/download-pdf`}
+                          className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#63b3ed]"
+                        >
+                          PDF
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          title="Review and publish your report to enable PDF download"
+                          className="flex cursor-not-allowed items-center justify-center rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-dash-ink-secondary opacity-60"
+                        >
+                          PDF
+                        </button>
+                      )
+                    ) : null}
+                    {hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success") ? (
+                      <button
+                        type="button"
+                        onClick={handleSaveButtonClick}
+                        disabled={driveSaving}
+                        className="flex items-center justify-center rounded-lg border border-[#68d391]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#68d391] disabled:opacity-50"
+                      >
+                        {driveSaving ? "Saving…" : driveSaveUrl ? "Drive (update)" : "Google Drive"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {shareToken && reportId && !publishedAt ? (
+                    <p className="mt-2 text-[12px] text-dash-ink-secondary">
+                      PDF unlocks after you{" "}
                       <Link
                         href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
                         className="text-dash-accent hover:underline"
@@ -2921,140 +2972,91 @@ export function ReportUploadWizard({
                           }
                         }}
                       >
-                        Review before sharing
+                        review and publish
                       </Link>
+                      .
+                    </p>
+                  ) : null}
+                  {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
+                    <p className="mt-2 text-[12px] text-dash-ink-secondary">
+                      Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDriveSaveError(null);
+                          setDriveView("editing");
+                        }}
+                        className="text-dash-accent hover:underline"
+                      >
+                        Change
+                      </button>
                     </p>
                   ) : null}
                 </div>
-              )}
-
-              {/* Secondary actions — PPTX, PDF (after publish), and optional Drive save. */}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <a
-                  href={downloadUrl}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
-                  style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #f5b45a" }}
-                >
-                  ⬇ Download PPTX
-                </a>
 
                 {shareToken && reportId ? (
-                  publishedAt ? (
-                    <a
-                      href={`/api/reports/${reportId}/download-pdf`}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90"
-                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #63b3ed" }}
+                  <p className="text-[13px] text-dash-ink-secondary">
+                    Need to edit copy or hide slides first?{" "}
+                    <Link
+                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                      className="font-medium text-dash-accent hover:underline"
+                      onClick={() => {
+                        if (reportId && downloadUrl) {
+                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+                        }
+                      }}
                     >
-                      ⬇ Download PDF
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      title="Review and publish your report to enable PDF download"
-                      className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white opacity-50"
-                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
-                    >
-                      ⬇ Download PDF
-                    </button>
-                  )
+                      Review before sharing
+                    </Link>
+                  </p>
                 ) : null}
 
-                {hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success") && (
-                  <div className="flex-1">
-                    <button
-                      onClick={handleSaveButtonClick}
-                      disabled={driveSaving}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
-                      style={{ height: "44px", backgroundColor: "#1e293b", border: "1px solid #68d391" }}
-                    >
-                      ☁{" "}
-                      {driveSaving
-                        ? "Saving to Drive…"
-                        : driveSaveUrl
-                          ? "Save updated PPTX to Drive"
-                          : "Save to Google Drive"}
-                    </button>
-                    {/* State 2: a folder is already remembered for this client. */}
-                    {rememberedFolder && (
-                      <p className="mt-1.5 text-center text-[12px] text-dash-ink-secondary">
-                        Saving to: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
+                {shareToken ? (
+                  <details className="group rounded-lg border border-dash-border bg-[#0d1b2e]">
+                    <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center justify-between gap-2">
+                        Share with client
+                        <span className="text-[11px] text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
+                      </span>
+                    </summary>
+                    <div className="border-t border-dash-border px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setDriveSaveError(null);
-                            setDriveView("editing");
-                          }}
-                          className="text-dash-accent hover:underline"
+                          onClick={openEmailModal}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
                         >
-                          Change
+                          <MailIcon />
+                          Email
                         </button>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-              {shareToken && reportId && !publishedAt ? (
-                <p className="text-center text-[12px] text-[#94a3b8]">
-                  PDF unlocks after you{" "}
-                  <Link
-                    href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                    className="text-dash-accent hover:underline"
-                    onClick={() => {
-                      if (reportId && downloadUrl) {
-                        persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                      }
-                    }}
-                  >
-                    review and publish
-                  </Link>
-                  .
-                </p>
-              ) : null}
+                        <a
+                          href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
+                          </svg>
+                          WhatsApp
+                        </a>
+                        {driveSaveUrl ? (
+                          <button
+                            type="button"
+                            onClick={handleCopyLink}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[12px] text-dash-ink hover:bg-dash-border"
+                          >
+                            <CopyIcon />
+                            {copied ? "Copied!" : "Copy Drive link"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </details>
+                ) : null}
 
-              {/* Tertiary actions — always available off the same share
-                  link the primary button uses, regardless of Google Drive
-                  save state. */}
-              {shareToken && (
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={openEmailModal}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
-                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
-                  >
-                    <MailIcon />
-                    Email
-                  </button>
-                  <a
-                    href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90"
-                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
-                    </svg>
-                    WhatsApp
-                  </a>
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    disabled={!driveSaveUrl}
-                    title={driveSaveUrl ? undefined : "Save to Google Drive first"}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg text-[12px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{ height: "40px", backgroundColor: "#1e293b", border: "1px solid #334155" }}
-                  >
-                    <CopyIcon />
-                    {copied ? "Copied!" : "Copy drive link"}
-                  </button>
-                </div>
-              )}
-
-              {/* State 1 (no remembered folder) / "Change" from State 2 — the paste-a-link input, hidden behind the button until clicked. */}
-              {hasGoogleDriveConnected && driveView === "editing" && (
+                {hasGoogleDriveConnected && driveView === "editing" && (
                 <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
                   <div>
                     <label className="block text-[13px] text-dash-ink-secondary">Folder link:</label>
@@ -3151,7 +3153,7 @@ export function ReportUploadWizard({
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
               {reportType !== "COMPARISON" && !hasPreviousMonthData && (
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
-                  <p className="font-semibold">📊 Missing previous month comparison</p>
+                  <p className="font-semibold">Missing previous month comparison</p>
                   <p className="mt-1 text-dash-ink-secondary">
                     Your Monthly Campaign Performance Overview slide does not have a previous month row.{" "}
                     <Link href={`/clients/${clientId}`} className="text-dash-accent hover:underline">
@@ -3162,17 +3164,16 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              {/* Bottom action — moved here from the top of this section
-                  (Fix 4): the primary/secondary/tertiary share actions above
-                  come first, this is the last thing on the screen. */}
-              <button
-                type="button"
-                onClick={handleGenerateAnother}
-                className="flex w-full items-center justify-center rounded-lg text-[13px] font-medium text-white transition-colors hover:opacity-90"
-                style={{ height: "44px", backgroundColor: "#0d1b2e", border: "1px solid #63b3ed", marginTop: "8px" }}
-              >
-                ← Generate Another Report for {clientName}
-              </button>
+              <div className="border-t border-dash-border pt-4">
+                <button
+                  type="button"
+                  onClick={handleGenerateAnother}
+                  className="w-full text-center text-[13px] font-medium text-[#63b3ed] hover:underline"
+                >
+                  Generate another report for {clientName}
+                </button>
+              </div>
+              </div>
             </div>
           )}
             </>

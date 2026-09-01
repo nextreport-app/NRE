@@ -182,16 +182,51 @@ export function calculateAccountHealth(weeklyRows: AggRow[], periodLabel: "Weekl
 }
 
 /** Port of the budget portion of fillCoverExtras_. Returns '' if no budget is set. */
+export function budgetDaysRemaining(
+  now: Date,
+  budgetMonth: { year: number; month: number },
+): number {
+  const lastDay = new Date(budgetMonth.year, budgetMonth.month + 1, 0).getDate();
+  if (now.getFullYear() > budgetMonth.year || (now.getFullYear() === budgetMonth.year && now.getMonth() > budgetMonth.month)) {
+    return 0;
+  }
+  if (now.getFullYear() < budgetMonth.year || (now.getFullYear() === budgetMonth.year && now.getMonth() < budgetMonth.month)) {
+    return lastDay;
+  }
+  return Math.max(0, lastDay - now.getDate());
+}
+
+/** Calendar month the MTD spend figures belong to — derived from the latest MTD row date. */
+export function resolveBudgetMonthFromMtdRows(
+  mtdRows: { date_end?: string | null; date_start?: string | null }[],
+  fallback: Date = new Date(),
+): { year: number; month: number } {
+  let latestIso: string | null = null;
+  for (const row of mtdRows) {
+    const candidate = row.date_end || row.date_start;
+    if (candidate && (!latestIso || candidate > latestIso)) latestIso = candidate;
+  }
+  if (!latestIso) {
+    return { year: fallback.getFullYear(), month: fallback.getMonth() };
+  }
+  const parsed = new Date(`${latestIso}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return { year: fallback.getFullYear(), month: fallback.getMonth() };
+  }
+  return { year: parsed.getFullYear(), month: parsed.getMonth() };
+}
+
 export function budgetSummaryLine(
   mtdSpend: number,
   monthlyBudget: number | null | undefined,
   currencySymbol: string,
   now: Date = new Date(),
+  budgetMonth?: { year: number; month: number } | null,
 ): string {
   if (!monthlyBudget || monthlyBudget <= 0) return "";
 
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = lastDay - now.getDate();
+  const month = budgetMonth ?? { year: now.getFullYear(), month: now.getMonth() };
+  const daysLeft = budgetDaysRemaining(now, month);
   // Fix 6 — always a whole-number percentage ("20%"), never one decimal
   // place ("20.6%").
   const pctUsed = Math.round((mtdSpend / monthlyBudget) * 100);
