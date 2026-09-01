@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import type { ShareReportData } from "@/lib/nre/share-report";
@@ -38,10 +40,15 @@ async function launchBrowser(): Promise<Browser> {
 
   chromium.setGraphicsMode = false;
 
+  const binPath = path.join(process.cwd(), "node_modules/@sparticuz/chromium/bin");
+  const executablePath = fs.existsSync(binPath)
+    ? await chromium.executablePath(binPath)
+    : await chromium.executablePath();
+
   return puppeteer.launch({
-    headless: true,
-    executablePath: await chromium.executablePath(),
-    args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    headless: "shell",
+    executablePath,
+    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
     defaultViewport: { width: 1280, height: 720 },
   });
 }
