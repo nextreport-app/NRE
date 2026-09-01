@@ -104,4 +104,53 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.summaryLine).toContain("|");
     expect(model.summaryLine).not.toContain("Budget Used");
   });
+
+  it("formats link-click CPC with cents on one stat line (not rounded to $0)", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 1921,
+        snapshot: {
+          mode: "multi",
+          mtdSpendFormatted: "$1,921",
+          activeCampaignCount: 3,
+          objectives: [
+            {
+              label: "REACH",
+              resultsValue: "45,230",
+              cprValue: "$0.04",
+              cprLabel: "COST PER 1,000 PEOPLE REACHED",
+              spendFormatted: "$1,200",
+            },
+            {
+              label: "LINK CLICKS",
+              resultsValue: "6,626",
+              cprValue: "$0",
+              cprLabel: "COST PER LINK CLICK",
+              spendFormatted: "$1,921",
+            },
+            {
+              label: "META FORM LEADS",
+              resultsValue: "32",
+              cprValue: "$60.03",
+              cprLabel: "COST PER META FORM LEAD",
+              spendFormatted: "$1,921",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "6,626",
+          primaryResultsLabel: "LINK CLICKS",
+          primaryCprValue: "$0",
+          primaryCprLabel: "COST PER LINK CLICK",
+          primarySpendFormatted: "$1,921",
+        },
+      }),
+      "$",
+    );
+
+    const linkBar = model.resultBars.find((b) => b.name === "Link Clicks");
+    expect(linkBar).toBeDefined();
+    expect(linkBar!.statLine).toBe("6,626 link clicks $0.29 CPC");
+    expect(linkBar!.statLine).not.toContain("\n");
+    expect(linkBar!.costLine).toBe("$0.29 CPC");
+  });
 });

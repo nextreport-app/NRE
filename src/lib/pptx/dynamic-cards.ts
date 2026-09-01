@@ -101,8 +101,8 @@ const ICON_PIC_SHADOW =
 // within its circular badge, not edge-to-edge.
 const ICON_TO_BADGE_RATIO = 540001 / 581069;
 
-const LABEL_CANDIDATE_SIZES_PT = [11.5, 10, 9, 8];
-const VALUE_CANDIDATE_SIZES_PT = [21, 18, 16, 14, 12, 10];
+const LABEL_CANDIDATE_SIZES_PT = [12.5, 11, 10, 9];
+const VALUE_CANDIDATE_SIZES_PT = [23, 20, 18, 16, 14, 12];
 
 function cardBackgroundXml(x: number, y: number, w: number, h: number): string {
   return (

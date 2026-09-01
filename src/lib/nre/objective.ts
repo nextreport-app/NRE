@@ -1010,11 +1010,18 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
 
   if (ownLabel === label) {
+    if (label === "LINK CLICKS") {
+      return parseCellNum(row.link_clicks) || parseCellNum(row.results);
+    }
+    if (label === "LANDING PAGE VIEWS") {
+      return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
+    }
     return parseCellNum(row.results);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
   if (label === "ADD TO CART") return rowAddToCart(row);
+  if (label === "LINK CLICKS") return parseCellNum(row.link_clicks);
   // No dedicated field tracks any other objective (Leads, Reach, ...) on a
   // mismatched row — it contributes nothing to a bucket it has no real
   // metric for, rather than reusing `results`, which measures something

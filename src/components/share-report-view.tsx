@@ -81,7 +81,7 @@ function getExplanation(label: string): string {
 function StatusBadge({ status }: { status: DeliveryStatusIndicator }) {
   if (!status) return null;
   return (
-    <span className="shrink-0 rounded-full border border-accent-orange/40 bg-accent-orange/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent-orange">
+    <span className="shrink-0 rounded-full border border-accent-orange/40 bg-accent-orange/15 px-2.5 py-0.5 text-[14px] font-semibold uppercase tracking-wide text-accent-orange">
       {status}
     </span>
   );
@@ -102,10 +102,10 @@ function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValu
             height={20}
             className="mx-auto mb-2 opacity-90"
           />
-          <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-accent-orange" style={{ letterSpacing: "0.5px" }}>
+          <p className="truncate text-[14px] font-semibold uppercase tracking-wide text-accent-orange" style={{ letterSpacing: "0.5px" }}>
             {m.label}
           </p>
-          <p className="mt-1 truncate text-[22px] font-bold text-ink">{m.value}</p>
+          <p className="mt-1 truncate text-[28px] font-bold text-ink">{m.value}</p>
         </div>
       ))}
     </div>
@@ -114,7 +114,7 @@ function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValu
 
 function DateAndFrequency({ dateRange, adFrequency }: { dateRange: string; adFrequency: string }) {
   return (
-    <div className="mt-1 text-[12px] text-ink-muted">
+    <div className="mt-1 text-[16px] text-ink-muted">
       {dateRange}
       {adFrequency && ` · ${adFrequency}`}
     </div>
@@ -125,7 +125,7 @@ function DateAndFrequency({ dateRange, adFrequency }: { dateRange: string; adFre
 function CardReportTypeLabel({ label }: { label: string }) {
   return (
     <div
-      className="text-[11px] font-semibold text-ink-muted"
+      className="text-[14px] font-semibold text-ink-muted"
       style={{ letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px" }}
     >
       {label}
@@ -137,15 +137,15 @@ function AiCopyBlock({ heading, text }: { heading: string; text: string }) {
   if (!text) return null;
   return (
     <div className="mt-4">
-      <h4 className="text-[11px] font-bold uppercase tracking-wide text-accent-orange">{heading}</h4>
-      <p className="mt-1.5 text-[14px] leading-[1.6] text-ink">{text}</p>
+      <h4 className="text-[14px] font-bold uppercase tracking-wide text-accent-orange">{heading}</h4>
+      <p className="mt-1.5 text-[17px] leading-[1.6] text-ink">{text}</p>
     </div>
   );
 }
 
 function SlideCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-navy-border bg-navy p-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-8">
+    <div className="overflow-hidden rounded-lg border border-navy-border bg-navy p-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-8">
       {children}
     </div>
   );
@@ -170,11 +170,11 @@ function CampaignCard({
   return (
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1 overflow-hidden">
           <CardReportTypeLabel label={reportType} />
-          <h3 className="line-clamp-2 text-[20px] font-bold text-ink">
+          <h3 className="box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]">
             {campaign.campaignName}
-            <span className="text-accent-orange" style={{ fontSize: "14px", fontWeight: 400 }}>
+            <span className="text-accent-orange" style={{ fontSize: "16px", fontWeight: 400 }}>
               {" "}
               (Campaign)
             </span>
@@ -212,15 +212,17 @@ function AdSetCard({
   return (
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1 overflow-hidden">
           <CardReportTypeLabel label={reportType} />
-          <h3 className="line-clamp-2 text-[20px] font-bold text-ink">
+          <h3 className="box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]">
             {primaryName}
             {hasAdSetName && (
-              <span style={{ color: "#63b3ed", fontSize: "14px", fontWeight: 400 }}>{adSetLabel}</span>
+              <span style={{ color: "#63b3ed", fontSize: "16px", fontWeight: 400 }}>{adSetLabel}</span>
             )}
           </h3>
-          {hasAdSetName && <p className="mt-0.5 text-[13px] text-ink-muted">{adSet.campaignName}</p>}
+          {hasAdSetName && (
+            <p className="mt-0.5 break-words text-[17px] text-ink-muted [overflow-wrap:anywhere]">{adSet.campaignName}</p>
+          )}
         </div>
         <StatusBadge status={adSet.statusIndicator} />
       </div>
@@ -239,26 +241,23 @@ function AdSetCard({
 function VisualResultBar({
   name,
   color,
-  resultLine,
-  costLine,
+  statLine,
   barPct,
 }: {
   name: string;
   color: string;
-  resultLine: string;
-  costLine: string;
+  statLine: string;
   barPct: number;
 }) {
   const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3">
-      <p className="truncate pt-1 text-right text-[11px] font-medium text-ink">{name}</p>
+      <p className="truncate pt-1 text-right text-[16px] font-medium text-ink">{name}</p>
       <div className="min-w-0">
         <div className="h-5 overflow-hidden rounded bg-[#1e293b]">
           <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
         </div>
-        <p className="mt-1.5 text-[11px] font-bold text-ink">{resultLine}</p>
-        <p className="mt-0.5 text-[10px] text-[#94a3b8]">{costLine}</p>
+        <p className="mt-1.5 break-words text-[16px] font-bold leading-snug text-ink">{statLine}</p>
       </div>
     </div>
   );
@@ -283,12 +282,12 @@ function VisualMiniDonut({
     <div className="flex w-[90px] flex-col items-center">
       <svg width={size} height={size} aria-hidden="true">
         <circle cx={c} cy={c} r={r} fill="none" stroke={`#${color}`} strokeWidth={stroke} />
-        <text x={c} y={c + 4} textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="700">
+        <text x={c} y={c + 4} textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="700">
           {spendLabel}
         </text>
       </svg>
-      <p className="mt-1 w-full truncate text-center text-[9px] text-ink">{name}</p>
-      <p className="text-[9px] text-[#94a3b8]">{pctLabel}</p>
+      <p className="mt-1 w-full truncate text-center text-[12px] text-ink">{name}</p>
+      <p className="text-[12px] text-[#94a3b8]">{pctLabel}</p>
     </div>
   );
 }
@@ -300,11 +299,11 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="text-center text-[24px] font-bold text-[#94a3b8]">{model.title}</h2>
+      <h2 className="text-center text-[30px] font-bold text-[#94a3b8]">{model.title}</h2>
 
       <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
-          <p className="text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
+          <p className="text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
           {model.isMultiObjective && model.groupedDonut ? (
             <div className="mt-4 space-y-3">
               <div className="relative mx-auto h-[168px] w-[168px]">
@@ -320,7 +319,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                 />
               </div>
               {model.groupedDonut.map((seg) => (
-                <p key={seg.name} className="truncate text-[9px] text-ink">
+                <p key={seg.name} className="truncate text-[13px] text-ink">
                   <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
                   {seg.name} · {seg.spendLabel} · {seg.percentage}%
                 </p>
@@ -334,14 +333,14 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
             </div>
           )}
           {!model.isMultiObjective ? (
-            <p className="mt-4 text-center text-[12px] font-bold text-ink">
+            <p className="mt-4 text-center text-[15px] font-bold text-ink">
               Total MTD Spend: {model.groupedDonutCenterLabel}
             </p>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
-          <p className="text-[12px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+          <p className="text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
           <div className="mt-4 space-y-5">
             {model.resultBars.map((bar) => (
               <VisualResultBar key={bar.name} {...bar} />
@@ -350,7 +349,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
         </div>
       </div>
 
-      <p className="mt-5 text-center text-[12px] text-[#94a3b8]">{model.summaryLine}</p>
+      <p className="mt-5 text-center text-[15px] text-[#94a3b8]">{model.summaryLine}</p>
     </SlideCard>
   );
 }
@@ -385,8 +384,8 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
       <table
         className={
           compact
-            ? "w-full border-collapse text-left text-[9px]"
-            : "w-full min-w-[640px] border-collapse text-left text-[13px]"
+            ? "w-full border-collapse text-left text-[12px]"
+            : "w-full min-w-[640px] border-collapse text-left text-[16px]"
         }
       >
         <thead>
@@ -396,8 +395,8 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
                 key={i}
                 className={
                   compact
-                    ? "px-1.5 py-2 text-[8px] font-semibold uppercase tracking-wide text-ink"
-                    : "whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink"
+                    ? "px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink"
+                    : "whitespace-nowrap px-4 py-3 text-[14px] font-semibold uppercase tracking-wide text-ink"
                 }
               >
                 {h}
@@ -413,8 +412,8 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
                   key={ci}
                   className={
                     (compact
-                      ? "px-1.5 py-2 text-[9px] text-ink "
-                      : "whitespace-nowrap px-4 py-3 text-[13px] text-ink ") +
+                      ? "px-1.5 py-2 text-[12px] text-ink "
+                      : "whitespace-nowrap px-4 py-3 text-[16px] text-ink ") +
                     (ci === 0 ? "text-left font-semibold" : "text-center")
                   }
                 >
@@ -433,12 +432,12 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
   if (metricGuide.length === 0) return null;
   return (
     <SlideCard>
-      <h2 className="text-[22px] font-bold text-ink">Metric Abbreviation Guide</h2>
+      <h2 className="text-[28px] font-bold text-ink">Metric Abbreviation Guide</h2>
       <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
         {metricGuide.map((entry, i) => (
           <div key={`${entry.term}-${i}`}>
-            <p className="text-[12px] font-bold uppercase tracking-wide text-accent-orange">{entry.term}</p>
-            <p className="mt-1 text-[11px] leading-[1.5] text-ink-muted">{getExplanation(entry.term)}</p>
+            <p className="text-[15px] font-bold uppercase tracking-wide text-accent-orange">{entry.term}</p>
+            <p className="mt-1 text-[15px] leading-[1.5] text-ink-muted">{getExplanation(entry.term)}</p>
           </div>
         ))}
       </div>
@@ -504,16 +503,16 @@ export function ShareReportView({
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
-            <span className="text-[20px] font-bold text-ink" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+            <span className="text-[26px] font-bold text-ink" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
               NextReport
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden text-[14px] text-white sm:inline">Powered by NextReport</span>
+            <span className="hidden text-[17px] text-white sm:inline">Powered by NextReport</span>
             {shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
-                className="flex items-center rounded-md border border-accent-orange px-4 text-[13px] font-semibold text-white hover:bg-accent-orange/10"
+                className="flex items-center rounded-md border border-accent-orange px-4 text-[16px] font-semibold text-white hover:bg-accent-orange/10"
                 style={{ backgroundColor: "#1e293b", height: "44px" }}
               >
                 Download PPTX
@@ -522,7 +521,7 @@ export function ShareReportView({
             {shareToken && visibleData.publishedAt ? (
               <a
                 href={`/api/r/${shareToken}/download-pdf`}
-                className="flex items-center rounded-md border border-[#63b3ed] px-4 text-[13px] font-semibold text-white hover:bg-[#63b3ed]/10"
+                className="flex items-center rounded-md border border-[#63b3ed] px-4 text-[16px] font-semibold text-white hover:bg-[#63b3ed]/10"
                 style={{ backgroundColor: "#1e293b", height: "44px" }}
               >
                 Download PDF
@@ -549,21 +548,21 @@ export function ShareReportView({
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
                 />
-                <span className="text-[11px] font-semibold uppercase text-[#94a3b8]" style={{ letterSpacing: "0.08em" }}>
+                <span className="text-[14px] font-semibold uppercase text-[#94a3b8]" style={{ letterSpacing: "0.08em" }}>
                   {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
                 </span>
               </div>
-              <h1 className={`mt-4 font-bold text-ink ${isPrint ? "text-[28px]" : "line-clamp-2 text-[32px]"}`}>
+              <h1 className={`mt-4 font-bold text-ink ${isPrint ? "text-[30px]" : "line-clamp-2 text-[38px]"}`}>
                 {visibleData.accountName}
               </h1>
-              <p className="mt-2 text-[16px] tracking-wide text-ink-muted">{reportTypeLabel(visibleData).toUpperCase()}</p>
-              <p className="mt-2 text-[14px] text-ink-muted">{visibleData.cover.dateRange}</p>
+              <p className="mt-2 text-[19px] tracking-wide text-ink-muted">{reportTypeLabel(visibleData).toUpperCase()}</p>
+              <p className="mt-2 text-[17px] text-ink-muted">{visibleData.cover.dateRange}</p>
               <div className="my-5 h-px w-24 bg-navy-border" />
-              <p className="text-[14px] font-medium text-ink">{visibleData.cover.healthBadge}</p>
+              <p className="text-[17px] font-medium text-ink">{visibleData.cover.healthBadge}</p>
             </div>
           </div>
           {visibleData.isPaused && visibleData.pausedMessage && (
-            <p className="mx-auto mt-4 max-w-2xl rounded-md border border-navy-border bg-navy-panel px-4 py-3 text-center text-[13px] text-ink-muted">
+            <p className="mx-auto mt-4 max-w-2xl rounded-md border border-navy-border bg-navy-panel px-4 py-3 text-center text-[16px] text-ink-muted">
               {visibleData.pausedMessage}
             </p>
           )}
@@ -591,7 +590,7 @@ export function ShareReportView({
         {showCombinedTotal && (
         <section className={slideClass}>
           <SlideCard>
-            <h2 className="mb-4 text-[22px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
+            <h2 className="mb-4 text-[28px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
             <CombinedTotalTable data={visibleData} compact={isPrint} />
           </SlideCard>
         </section>
@@ -606,8 +605,8 @@ export function ShareReportView({
 
       {!isPrint && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
-        <div style={{ color: "#94a3b8", fontSize: "12px" }}>This report was generated using NextReport · nextreport.in</div>
-        <div style={{ color: "#64748b", fontSize: "11px", marginTop: "4px" }}>Generated on {generatedDate}</div>
+        <div style={{ color: "#94a3b8", fontSize: "13px" }}>This report was generated using NextReport · nextreport.in</div>
+        <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>Generated on {generatedDate}</div>
       </footer>
       )}
     </div>

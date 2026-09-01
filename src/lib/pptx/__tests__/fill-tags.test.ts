@@ -86,20 +86,20 @@ function colorOfRunContaining(xml: string, text: string): string {
 describe("buildCoverSlideXml — account name auto-shrink (regression)", () => {
   it("renders a short account name at the maximum 28pt candidate", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    expect(sizeOfRunContaining(xml, "Acme Inc")).toBe(28);
+    expect(sizeOfRunContaining(xml, "Acme Inc")).toBe(30);
   });
 
   it("shrinks the reported long account name down to 16pt so it fits on one line", () => {
     const longName = "Alonzo Carr (Tailored Fiduciary Services)";
     const xml = buildCoverSlideXml(template.cover, { ...BASE_COVER, accountName: longName });
-    expect(sizeOfRunContaining(xml, longName)).toBe(16);
+    expect(sizeOfRunContaining(xml, longName)).toBe(18);
   });
 });
 
 describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
   it("renders the date line at 14pt", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    expect(sizeOfRunContaining(xml, BASE_COVER.reportDate)).toBe(14);
+    expect(sizeOfRunContaining(xml, BASE_COVER.reportDate)).toBe(15);
   });
 
   it("renders the Performance Score line at 14pt bold", () => {
@@ -107,7 +107,7 @@ describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
     const idx = xml.indexOf(`<a:t>${BASE_COVER.healthBadge}</a:t>`);
     const runStart = xml.lastIndexOf("<a:r>", idx);
     const rPr = xml.slice(runStart, idx);
-    expect(sizeOfRunContaining(xml, BASE_COVER.healthBadge)).toBe(14);
+    expect(sizeOfRunContaining(xml, BASE_COVER.healthBadge)).toBe(15);
     expect(rPr).toContain('b="1"');
   });
 
@@ -231,9 +231,9 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
 describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression)", () => {
   it("renders a short campaign name at the maximum 22pt candidate, with its own separate ' (Campaign)' label run", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(22);
-    // The type label is its own run, always 14pt regardless of the name's own size.
-    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(14);
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(24);
+    // The type label is its own run, always 17pt regardless of the name's own size.
+    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(17);
   });
 
   it("shrinks a very long campaign name below 22pt so it fits on one line, but never below the Fix 4 16pt floor", () => {
@@ -241,37 +241,37 @@ describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression
       "Q3 2026 National Brand Awareness and Retargeting Campaign for All Product Lines";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide(longCampaignName));
     const size = sizeOfRunContaining(xml, longCampaignName);
-    expect(size).toBe(16);
+    expect(size).toBe(18);
   });
 });
 
 describe("buildCampaignOrAdSetSlideXml — readability font sizes (Fix 4)", () => {
   it("renders the date range / Ad Frequency line at 13pt", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Jul 13 - Jul 19")).toBe(13);
+    expect(sizeOfRunContaining(xml, "Jul 13 - Jul 19")).toBe(14);
   });
 
   it("brings the template's own 11.5pt static card labels up to the 12pt floor", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "AD SPEND")).toBeGreaterThanOrEqual(12);
-    expect(sizeOfRunContaining(xml, "REACH")).toBeGreaterThanOrEqual(12);
-    expect(sizeOfRunContaining(xml, "RESULTS")).toBeGreaterThanOrEqual(12); // {{RESULT_LABEL}}
+    expect(sizeOfRunContaining(xml, "AD SPEND")).toBeGreaterThanOrEqual(13);
+    expect(sizeOfRunContaining(xml, "REACH")).toBeGreaterThanOrEqual(13);
+    expect(sizeOfRunContaining(xml, "RESULTS")).toBeGreaterThanOrEqual(13); // {{RESULT_LABEL}}
   });
 
   it("never renders any campaign/ad-set slide text below 12pt", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
     const sizes = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]) / 100);
     for (const sz of sizes) {
-      expect(sz).toBeGreaterThanOrEqual(12);
+      expect(sz).toBeGreaterThanOrEqual(13);
     }
   });
 });
 
 describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label + heading hierarchy", () => {
-  it("colors a campaign slide's ' (Campaign)' label amber, at 14pt, separate from the 22pt bold name", () => {
+  it("colors a campaign slide's ' (Campaign)' label amber, at 17pt, separate from the 24pt bold name", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(22);
-    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(14);
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(24);
+    expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(17);
     expect(colorOfRunContaining(xml, " (Campaign)")).toBe("f6ad55");
   });
 
@@ -279,14 +279,14 @@ describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label +
     const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Purchases");
     const adSetSlide = { ...rest, kind: "adset" as const, adSetName: "Brisbane North - broad", rowFreq: 0 };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, adSetSlide);
-    expect(sizeOfRunContaining(xml, "Brisbane North - broad")).toBe(22);
-    expect(sizeOfRunContaining(xml, " (Ad Set)")).toBe(14);
+    expect(sizeOfRunContaining(xml, "Brisbane North - broad")).toBe(24);
+    expect(sizeOfRunContaining(xml, " (Ad Set)")).toBe(17);
     expect(colorOfRunContaining(xml, " (Ad Set)")).toBe("63b3ed");
   });
 
-  it("keeps the 'YOUR WEEKLY PERFORMANCE REPORT' header at 24pt muted grey — same size as every other slide's own main heading, still secondary in color to the bold-white name", () => {
+  it("keeps the 'YOUR WEEKLY PERFORMANCE REPORT' header at 30pt muted grey — same size as every other slide's own main heading, still secondary in color to the bold-white name", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(24);
+    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(30);
     expect(colorOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe("94a3b8");
   });
 
@@ -315,8 +315,8 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), { summary, insights });
     expect(xml).toContain(`<a:t>${summary}</a:t>`);
     expect(xml).toContain(`<a:t>${insights}</a:t>`);
-    expect(sizeOfRunContaining(xml, summary)).toBe(14);
-    expect(sizeOfRunContaining(xml, insights)).toBe(14);
+    expect(sizeOfRunContaining(xml, summary)).toBe(15);
+    expect(sizeOfRunContaining(xml, insights)).toBe(15);
   });
 
   it("truncates Campaign Summary over 300 characters at the last complete sentence, never mid-sentence", () => {
@@ -363,7 +363,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
       insights: "Short insights.",
     });
     expect(xml).toContain(`<a:t>${summary}</a:t>`); // under the 300 cap — kept verbatim
-    expect(sizeOfRunContaining(xml, summary)).toBe(14);
+    expect(sizeOfRunContaining(xml, summary)).toBe(15);
   });
 
   // Fix 2 (later round) — Key Insights no longer shrinks by length at all;
@@ -378,7 +378,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
       insights,
     });
     expect(xml).toContain(`<a:t>${insights}</a:t>`); // under the 400 cap — kept verbatim
-    expect(sizeOfRunContaining(xml, insights)).toBe(14);
+    expect(sizeOfRunContaining(xml, insights)).toBe(15);
   });
 
   it("uses <a:normAutofit/> (shrink text to fit) instead of <a:spAutoFit/> (grow shape) for the Campaign Summary and Key Insights boxes specifically", () => {
@@ -398,7 +398,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const summary = "A".repeat(259) + ".";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary, insights: "Short insights." });
-    expect(sizeOfRunContaining(xml, summary)).toBe(14);
+    expect(sizeOfRunContaining(xml, summary)).toBe(15);
     expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
   });
 
@@ -596,13 +596,13 @@ describe("buildCampaignOrAdSetSlideXml — metric card label overflow fix", () =
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: slots };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
     expect(xml).toContain("<a:t>COST PER WEBSITE LEAD</a:t>");
-    expect(sizeOfRunContaining(xml, "COST PER WEBSITE LEAD")).toBe(10.5); // 21 chars -> 12 - 1.5
+    expect(sizeOfRunContaining(xml, "COST PER WEBSITE LEAD")).toBe(11.5); // 21 chars -> 12 - 1.5
   });
 
   it("keeps a short card label (<=18 chars) at the normal 12pt size, unaffected by the shrink logic", () => {
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
-    expect(sizeOfRunContaining(xml, "WEBSITE LEADS")).toBe(12); // 13 chars, slot 4's own {{RESULT_LABEL}} tag
+    expect(sizeOfRunContaining(xml, "WEBSITE LEADS")).toBe(13); // 13 chars, slot 4's own {{RESULT_LABEL}} tag
   });
 
   it("truncates a card label over 35 characters to 35 chars + an ellipsis, at the largest reduction size", () => {
@@ -614,7 +614,7 @@ describe("buildCampaignOrAdSetSlideXml — metric card label overflow fix", () =
     const truncated = longLabel.slice(0, 35) + "...";
     expect(xml).toContain(`<a:t>${truncated}</a:t>`);
     expect(xml).not.toContain(`<a:t>${longLabel}</a:t>`);
-    expect(sizeOfRunContaining(xml, truncated)).toBe(8.5);
+    expect(sizeOfRunContaining(xml, truncated)).toBe(9.5);
   });
 
   it("shrinks a long label assigned to one of the static-label slots (e.g. slot 1, Spend) via replaceCardLabel too", () => {
@@ -623,7 +623,7 @@ describe("buildCampaignOrAdSetSlideXml — metric card label overflow fix", () =
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: slots };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide);
     expect(xml).toContain("<a:t>COST PER LANDING PAGE VIEW</a:t>");
-    expect(sizeOfRunContaining(xml, "COST PER LANDING PAGE VIEW")).toBe(9.5); // 27 chars -> 12 - 2.5
+    expect(sizeOfRunContaining(xml, "COST PER LANDING PAGE VIEW")).toBe(10.5); // 27 chars -> 12 - 2.5
   });
 
   it("keeps every card's label/value shapes at least 4pt apart, even for slots with a short (unshrunk) label", () => {

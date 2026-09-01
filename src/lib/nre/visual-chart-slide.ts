@@ -4,7 +4,7 @@
  * Right: primary results bars (results magnitude, not spend).
  */
 
-import { fmtCurrency } from "./format";
+import { fmtCurrency, fmtCurrency2dp } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { buildDonutSegments, ringColorForCampaign } from "../pptx/chart-slide";
@@ -34,6 +34,8 @@ export interface VisualResultBar {
   resultCount: number;
   resultLine: string;
   costLine: string;
+  /** Single-line stats under the bar — e.g. "6,626 link clicks $0.29 CPC". */
+  statLine: string;
   /** 0–100 relative to the largest result in the set. */
   barPct: number;
 }
@@ -81,7 +83,26 @@ function formatResultLine(count: number, resLabel: string): string {
 function formatCostLine(cpr: number, cprLabel: string, currencySymbol: string, hasResults: boolean): string {
   if (!hasResults) return "N/A cost";
   if (cpr <= 0) return `N/A ${shortCostAbbrev(cprLabel)}`;
-  return `${fmtCurrency(cpr, currencySymbol)} ${shortCostAbbrev(cprLabel)}`;
+  return `${fmtCurrency2dp(cpr, currencySymbol)} ${shortCostAbbrev(cprLabel)}`;
+}
+
+function formatStatLine(resultLine: string, costLine: string): string {
+  if (costLine.startsWith("N/A")) return resultLine;
+  return `${resultLine} ${costLine}`;
+}
+
+/** Parse CPR from snapshot fields — falls back to spend ÷ results when stored CPR rounded to $0. */
+export function resolveObjectiveCpr(params: {
+  resultsValue: string;
+  cprValue: string;
+  spendFormatted: string;
+}): number {
+  const parsed = parseFloat(params.cprValue.replace(/[^0-9.-]/g, ""));
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  const spend = parseFloat(params.spendFormatted.replace(/[^0-9.-]/g, ""));
+  const count = parseInt(params.resultsValue.replace(/,/g, ""), 10) || 0;
+  if (count > 0 && spend > 0) return spend / count;
+  return 0;
 }
 
 function assignCampaignColors(campaigns: ChartCampaignData[]): Map<string, string> {
@@ -102,14 +123,19 @@ function buildResultBars(
   return rows
     .slice()
     .sort((a, b) => b.results - a.results)
-    .map((row) => ({
-      name: row.name,
-      color: row.color,
-      resultCount: row.results,
-      resultLine: formatResultLine(row.results, row.resLabel),
-      costLine: formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0),
-      barPct: row.results > 0 ? Math.max(4, Math.round((row.results / maxResults) * 100)) : 0,
-    }));
+    .map((row) => {
+      const resultLine = formatResultLine(row.results, row.resLabel);
+      const costLine = formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
+      return {
+        name: row.name,
+        color: row.color,
+        resultCount: row.results,
+        resultLine,
+        costLine,
+        statLine: formatStatLine(resultLine, costLine),
+        barPct: row.results > 0 ? Math.max(4, Math.round((row.results / maxResults) * 100)) : 0,
+      };
+    });
 }
 
 function buildSummarySingle(
@@ -182,7 +208,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         color: VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]!,
         results: parseInt(obj.resultsValue.replace(/,/g, ""), 10) || 0,
         resLabel: obj.label,
-        cpr: parseFloat(obj.cprValue.replace(/[^0-9.-]/g, "")) || 0,
+        cpr: resolveObjectiveCpr(obj),
         cprLabel: obj.cprLabel,
       })),
       currencySymbol,
