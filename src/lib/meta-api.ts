@@ -161,14 +161,15 @@ export interface MetaSignedRequestPayload {
  */
 export function parseMetaSignedRequest(
   signedRequest: string,
-  appSecret = requireMetaAppSecret(),
+  appSecret?: string,
 ): MetaSignedRequestPayload | null {
   const parts = signedRequest.split(".");
   if (parts.length !== 2) return null;
 
+  const secret = appSecret ?? requireMetaAppSecret();
   const [encodedSig, encodedPayload] = parts;
   const sig = base64UrlDecode(encodedSig);
-  const expected = createHmac("sha256", appSecret).update(encodedPayload).digest();
+  const expected = createHmac("sha256", secret).update(encodedPayload).digest();
 
   if (sig.length !== expected.length || !timingSafeEqual(sig, expected)) {
     return null;
