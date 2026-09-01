@@ -1727,11 +1727,18 @@ describe("computeTableRow (via periodRow/mtdRow) — per-objective spend trackin
     expect(data.periodRow.resultColumns.some((c) => c.label === "REACH")).toBe(false);
     expect(data.periodRow.resultColumns).toHaveLength(2);
 
-    // Chart snapshot KPIs mirror the highest-spend objective column — CPR must
-    // be scoped to meta form leads only, not blended across every lead type.
-    expect(data.chart?.snapshot.primaryResultsLabel).toBe("META FORM LEADS");
-    expect(data.chart?.snapshot.primaryResultsValue).toBe("14");
-    expect(data.chart?.snapshot.primaryCprValue).toBe("$42.57");
+    // Chart snapshot uses multi-objective layout when 2+ objectives run.
+    expect(data.chart?.snapshot.mode).toBe("multi");
+    expect(data.chart?.snapshot.mtdSpendFormatted).toBe("$751");
+    expect(data.chart?.snapshot.objectives).toHaveLength(2);
+    const metaObj = data.chart?.snapshot.objectives.find((o) => o.label === "META FORM LEADS");
+    const webObj = data.chart?.snapshot.objectives.find((o) => o.label === "WEBSITE LEADS");
+    expect(metaObj?.resultsValue).toBe("14");
+    expect(metaObj?.cprValue).toBe("$42.57");
+    expect(metaObj?.spendFormatted).toBe("$596");
+    expect(webObj?.resultsValue).toBe("0");
+    expect(webObj?.cprValue).toBe("N/A");
+    expect(webObj?.spendFormatted).toBe("$155");
   });
 
   it("keeps every distinct objective column pair, never dropping a live objective", () => {

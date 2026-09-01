@@ -23,6 +23,7 @@
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { getDateRangeShortLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { compactSameMonthRangeLabel, fmtCpm } from "./report-data";
+import { buildChartSnapshotKpis } from "./chart-snapshot-kpis";
 import { budgetSummaryLine } from "./health";
 import type { GoogleRow } from "./google-columns";
 import type {
@@ -354,15 +355,30 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
         reportType: "WEEKLY",
         mtdMonthName: null,
         periodSubLabel,
-        snapshot: {
-          mtdSpendFormatted: fmtCurrency(totalCost, currencySymbol),
-          primaryResultsValue: String(totalConversions),
-          primaryResultsLabel: RESULT_LABEL,
-          primaryCprValue: totalConversions > 0 ? fmtCurrency2dp(totalCost / totalConversions, currencySymbol) : "—",
-          primaryCprLabel: COST_LABEL,
+        snapshot: buildChartSnapshotKpis({
+          mtdResultColumns: [
+            {
+              label: RESULT_LABEL,
+              costLabel: COST_LABEL,
+              value: fmtNumber(totalConversions),
+              cprValue:
+                totalConversions > 0 ? fmtCurrency2dp(totalCost / totalConversions, currencySymbol) : "—",
+            },
+          ],
+          mtdGroups: [
+            {
+              label: RESULT_LABEL,
+              costLabel: COST_LABEL,
+              count: totalConversions,
+              avgCpr: totalConversions > 0 ? totalCost / totalConversions : 0,
+              totalSpend: totalCost,
+            },
+          ],
+          totalAllSpendFormatted: fmtCurrency(totalCost, currencySymbol),
           budgetPctUsed: "",
           activeCampaignCount: chartCampaigns.filter((c) => c.isActive).length,
-        },
+          currencySymbol,
+        }),
       };
 
   const emptyPeriodRow: TableRowData = {

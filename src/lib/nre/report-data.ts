@@ -35,6 +35,7 @@ import {
   isArchivedDeliveryStatus,
   type DeliveryStatusIndicator,
 } from "./delivery-status";
+import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
 import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth, budgetSummaryLine, budgetPctUsed } from "./health";
@@ -187,17 +188,9 @@ export interface ChartCampaignData {
   statusIndicator: DeliveryStatusIndicator;
 }
 
-/** Account-level KPI row on the combined MTD overview slide (Option A). All values are MTD-only. */
-export interface ChartSnapshotKpis {
-  mtdSpendFormatted: string;
-  primaryResultsValue: string;
-  primaryResultsLabel: string;
-  primaryCprValue: string;
-  primaryCprLabel: string;
-  /** e.g. "19%" — empty when the client has no monthly budget set. */
-  budgetPctUsed: string;
-  activeCampaignCount: number;
-}
+/** Account-level KPI row on the combined MTD overview slide. All values are MTD-only. */
+export type { ChartSnapshotKpis, ChartSnapshotObjective } from "./chart-snapshot-kpis";
+export { buildChartSnapshotKpis, CHART_SNAPSHOT_OBJECTIVE_CAP } from "./chart-snapshot-kpis";
 
 export interface ChartSlideData {
   periodLabel: "MTD" | "Weekly";
@@ -1632,27 +1625,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         ? `${mtdRow.fullMonthLabel}, ${periodYear}`
         : mtdRow.fullMonthLabel;
 
-  const primaryMtd = mtdRow.resultColumns[0] ?? {
-    label: "RESULTS",
-    costLabel: "COST PER RESULT",
-    value: "0",
-    cprValue: "—",
-  };
   const pctUsed = budgetPctUsed(totalAllSpend, monthlyBudget);
+  const mtdObjectiveGroups = groupResultsByCampaignObjective(mtdRows, campaignObjectiveMap);
+  const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
   const chart: ChartSlideData = {
     periodLabel: "MTD",
     campaigns: chartCampaigns,
     totalAllSpend,
-    activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
-    snapshot: {
-      mtdSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
-      primaryResultsValue: primaryMtd.value,
-      primaryResultsLabel: primaryMtd.label,
-      primaryCprValue: primaryMtd.cprValue,
-      primaryCprLabel: primaryMtd.costLabel,
+    activeCampaignCount,
+    snapshot: buildChartSnapshotKpis({
+      mtdResultColumns: mtdRow.resultColumns,
+      mtdGroups: mtdObjectiveGroups,
+      totalAllSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
       budgetPctUsed: pctUsed !== null ? `${pctUsed}%` : "",
-      activeCampaignCount: chartCampaigns.filter((d) => d.isActive).length,
-    },
+      activeCampaignCount,
+      currencySymbol,
+    }),
     reportType,
     mtdMonthName: mtdRow.monthName,
     periodSubLabel,
