@@ -344,11 +344,13 @@ export interface SplitMtdDailyOptions {
    * full reporting month regardless of the weekly selection.
    */
   weeklyRange?: DateRangeIso;
+  /** Client IANA timezone — "today"/"yesterday" for capping incomplete days. */
+  timezone?: string;
 }
 
 /**
- * Port of splitMTDDaily_(). `now` is injectable for testing; defaults to the
- * real clock, matching the Apps Script's use of the server's UTC date.
+ * Port of splitMTDDaily_(). `now` is injectable for testing; "today" is
+ * evaluated in the client's timezone (see options.timezone).
  */
 export function splitMtdDaily(
   rows: NreRow[],
@@ -357,8 +359,9 @@ export function splitMtdDaily(
 ): SplitMtdDailyResult | null {
   if (rows.length === 0) return null;
 
+  const timezone = options.timezone ?? "UTC";
   // ALWAYS cap at YESTERDAY — today's data is incomplete (day still running).
-  const yesterday = computeEffectiveYesterday(rows, now);
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const yesterdayTs = Date.UTC(yesterday.year, yesterday.month - 1, yesterday.day);
 

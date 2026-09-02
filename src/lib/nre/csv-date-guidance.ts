@@ -3,7 +3,7 @@
  * beginning-of-month edge cases (Last 30 Days vs This Month vs Previous Month).
  */
 
-import { getDateRangeShortLabel, getMonthName, parseDate } from "./dates";
+import { getDateRangeShortLabel, getMonthName, getCalendarDateInTimezone, parseDate } from "./dates";
 import {
   computeCsvDateBounds,
   computeEffectiveYesterday,
@@ -61,9 +61,9 @@ function friendlyDate(iso: string): string {
   return `${month} ${d.day}`;
 }
 
-/** Dynamic Meta CSV download tip shown on Step 1 before upload. */
-export function getMetaCsvDownloadTip(now: Date = new Date()): string {
-  const dayOfMonth = now.getUTCDate();
+/** Dynamic Meta CSV download tip shown on Step 1 before upload — uses the client's timezone. */
+export function getMetaCsvDownloadTip(now: Date = new Date(), timezone = "UTC"): string {
+  const dayOfMonth = getCalendarDateInTimezone(now, timezone).day;
 
   if (dayOfMonth === 1) {
     return (
@@ -93,12 +93,12 @@ function monthStartPresentInCsv(rows: NreRow[], monthStartIso: string): boolean 
 }
 
 /** Post-analyze guidance — compares CSV bounds to the intended MTD calendar window. */
-export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date()): CsvDateGuidance {
-  const downloadTip = getMetaCsvDownloadTip(now);
+export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), timezone = "UTC"): CsvDateGuidance {
+  const downloadTip = getMetaCsvDownloadTip(now, timezone);
   const csvBounds = computeCsvDateBounds(rows);
-  const mtdRange = computeMtdRangeIso(rows, now);
-  const weeklyOptions = computeWeeklyRangeOptions(rows, now);
-  const dayOfMonth = now.getUTCDate();
+  const mtdRange = computeMtdRangeIso(rows, now, timezone);
+  const weeklyOptions = computeWeeklyRangeOptions(rows, now, timezone);
+  const dayOfMonth = getCalendarDateInTimezone(now, timezone).day;
 
   if (!csvBounds || !mtdRange) {
     return {
@@ -197,7 +197,7 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date()): 
     });
   }
 
-  const yesterday = computeEffectiveYesterday(rows, now);
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   const suggestPreviousMonthReport =
     dayOfMonth === 1 &&
     !!yesterday &&

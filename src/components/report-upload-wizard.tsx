@@ -276,6 +276,7 @@ function buildShareReportUrl(shareToken: string): string {
 export function ReportUploadWizard({
   clientId,
   clientName,
+  clientTimezone,
   currencySymbol,
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
@@ -286,6 +287,8 @@ export function ReportUploadWizard({
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
   clientName: string;
+  /** Client.timezone — drives "today is the Nth" CSV guidance for this client's reporting calendar. */
+  clientTimezone: string;
   /** Client currency symbol for campaign spend badges on Step 2. */
   currencySymbol: string;
   /** Whether the account has a Google Drive account connected — gates showing the "Save to Google Drive" button on the download screen at all. */
@@ -1749,7 +1752,7 @@ export function ReportUploadWizard({
                 <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
                 {selectedPlatformCard === "META" ? (
                   <>
-                    {getMetaCsvDownloadTip()}{" "}
+                    {getMetaCsvDownloadTip(new Date(), clientTimezone)}{" "}
                     For month-over-month comparison,{" "}
                     <Link
                       href={`/clients/${clientId}#previous-month-data`}

@@ -154,7 +154,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows);
+    const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
     if (!daily) {
       return NextResponse.json(
         { valid: false, errors: [{ field: "dateSelection", message: "Could not determine yesterday from CSV." }], warnings: [] },
@@ -163,7 +163,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     weeklyRange = daily;
   } else if (reportType !== "CREATIVE") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
     if (!dateResolution.ok) {
       return NextResponse.json(
         { valid: false, errors: [{ field: "dateSelection", message: dateResolution.error || "Invalid date selection." }], warnings: [] },

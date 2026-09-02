@@ -134,11 +134,11 @@ async function buildMetaData(
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows);
+    const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
     if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
     weeklyRange = daily;
   } else if (reportType !== "CREATIVE") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection);
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
     if (!dateResolution.ok) {
       return { error: dateResolution.error || "Invalid date selection." };
     }

@@ -138,16 +138,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const dateBounds = computeCsvDateBounds(mtdParsed.rows);
-    const weeklyOptions = computeWeeklyRangeOptions(mtdParsed.rows);
-    const mtdRange = computeMtdRangeIso(mtdParsed.rows);
+    const weeklyOptions = computeWeeklyRangeOptions(mtdParsed.rows, new Date(), client.timezone);
+    const mtdRange = computeMtdRangeIso(mtdParsed.rows, new Date(), client.timezone);
     // Comparison Report's "This week vs Last week" preset reuses
     // weeklyOptions.last7/prev7 directly (already exactly Period A/B); "This
     // month vs Last month" needs its own computation, additive alongside
     // the existing three.
-    const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows);
-    const dailyRange = computeDailyRangeIso(mtdParsed.rows);
+    const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows, new Date(), client.timezone);
+    const dailyRange = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
-    const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date());
+    const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone);
 
     return NextResponse.json({
       valid: true,

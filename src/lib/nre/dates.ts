@@ -24,6 +24,21 @@ export interface ParsedDate {
   year: number;
 }
 
+/** Calendar date (year/month/day) for an instant in a specific IANA timezone — used for "today"/"yesterday" in reporting. */
+export function getCalendarDateInTimezone(now: Date, timezone: string): ParsedDate {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+  const parts = formatter.formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")!.value);
+  const month = Number(parts.find((p) => p.type === "month")!.value);
+  const day = Number(parts.find((p) => p.type === "day")!.value);
+  return { year, month, day };
+}
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 export function parseDate(rawValue: unknown): ParsedDate | null {

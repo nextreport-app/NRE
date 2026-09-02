@@ -6,7 +6,7 @@
  * and what actually gets aggregated can never drift apart.
  */
 
-import { parseDate, type ParsedDate } from "./dates";
+import { parseDate, getCalendarDateInTimezone, type ParsedDate } from "./dates";
 import { getRowDate, type NreRow } from "./columns";
 
 export function toIsoDate(d: ParsedDate): string {
@@ -33,7 +33,11 @@ function addDays(d: ParsedDate, days: number): ParsedDate {
  * This is the single definition of "yesterday" shared by every date-range
  * helper below and by aggregate.ts's splitMtdDaily.
  */
-export function computeEffectiveYesterday(rows: NreRow[], now: Date = new Date()): ParsedDate | null {
+export function computeEffectiveYesterday(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): ParsedDate | null {
   let latestTs: number | null = null;
   rows.forEach((row) => {
     const d = parseDate(getRowDate(row));
@@ -43,8 +47,8 @@ export function computeEffectiveYesterday(rows: NreRow[], now: Date = new Date()
   });
   if (latestTs === null) return null;
 
-  const todayStartTs = new Date(now.toISOString().split("T")[0] + "T00:00:00Z").getTime();
-  const yesterdayTs = todayStartTs - 24 * 60 * 60 * 1000;
+  const yesterdayInTz = addDays(getCalendarDateInTimezone(now, timezone), -1);
+  const yesterdayTs = tsOf(yesterdayInTz);
   return dateFromTs(Math.min(latestTs, yesterdayTs));
 }
 
@@ -59,8 +63,12 @@ export interface WeeklyRangeOptions {
 }
 
 /** "Last 7 days ending yesterday" and the 7 days immediately before that, as actual dates. */
-export function computeWeeklyRangeOptions(rows: NreRow[], now: Date = new Date()): WeeklyRangeOptions | null {
-  const yesterday = computeEffectiveYesterday(rows, now);
+export function computeWeeklyRangeOptions(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): WeeklyRangeOptions | null {
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const last7Start = addDays(yesterday, -6);
   const prev7End = addDays(last7Start, -1);
@@ -90,8 +98,12 @@ export interface MonthComparisonRangeOptions {
  * Period B's end clamps to that shorter month's own last day (Feb 28/29)
  * rather than overflowing into March.
  */
-export function computeMonthComparisonRangeOptions(rows: NreRow[], now: Date = new Date()): MonthComparisonRangeOptions | null {
-  const yesterday = computeEffectiveYesterday(rows, now);
+export function computeMonthComparisonRangeOptions(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): MonthComparisonRangeOptions | null {
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const periodAStart: ParsedDate = { year: yesterday.year, month: yesterday.month, day: 1 };
 
@@ -112,24 +124,29 @@ export function computeMonthComparisonRangeOptions(rows: NreRow[], now: Date = n
 }
 
 /** Single-day window — yesterday (or latest complete day in the CSV). Used by Daily reports. */
-export function computeDailyRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
-  const yesterday = computeEffectiveYesterday(rows, now);
+export function computeDailyRangeIso(rows: NreRow[], now: Date = new Date(), timezone = "UTC"): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const iso = toIsoDate(yesterday);
   return { startIso: iso, endIso: iso };
 }
 
 /** Default creative analysis window — trailing 30 days ending yesterday. */
-export function computeCreativeRangeIso(rows: NreRow[], now: Date = new Date(), days = 30): DateRangeIso | null {
-  const yesterday = computeEffectiveYesterday(rows, now);
+export function computeCreativeRangeIso(
+  rows: NreRow[],
+  now: Date = new Date(),
+  days = 30,
+  timezone = "UTC",
+): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const start = addDays(yesterday, -(days - 1));
   return { startIso: toIsoDate(start), endIso: toIsoDate(yesterday) };
 }
 
 /** Always day 1 of the reporting month (the month "yesterday" falls in) through yesterday. */
-export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date()): DateRangeIso | null {
-  const yesterday = computeEffectiveYesterday(rows, now);
+export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date(), timezone = "UTC"): DateRangeIso | null {
+  const yesterday = computeEffectiveYesterday(rows, now, timezone);
   if (!yesterday) return null;
   const monthStart: ParsedDate = { year: yesterday.year, month: yesterday.month, day: 1 };
   return { startIso: toIsoDate(monthStart), endIso: toIsoDate(yesterday) };
