@@ -1,6 +1,10 @@
 /**
- * CSV download guidance and post-upload date-range warnings for the
- * beginning-of-month edge cases (Last 30 Days vs This Month vs Previous Month).
+ * CSV download guidance for Meta reports — two user-facing rules:
+ * 1) Client timezone day 1 → Previous Month + Day breakdown (close last month)
+ * 2) All other days → Last 30 Days + Day breakdown
+ *
+ * Optional third upload (client settings): Previous Month Data for the Combined
+ * Total comparison row — separate from the wizard CSV above.
  */
 
 import { getDateRangeShortLabel, getMonthName, getCalendarDateInTimezone, parseDate } from "./dates";
@@ -14,10 +18,7 @@ import {
 import type { NreRow } from "./columns";
 import { getRowDate } from "./columns";
 
-export type CsvDateWarningKind =
-  | "first_of_month"
-  | "missing_month_start"
-  | "early_month_last30";
+export type CsvDateWarningKind = "first_of_month" | "missing_month_start" | "early_month_last30";
 
 export interface CsvDateWarning {
   kind: CsvDateWarningKind;
@@ -27,31 +28,18 @@ export interface CsvDateWarning {
   csvStartLabel?: string;
   intendedMtdLabel?: string;
   weeklyRangeLabel?: string;
-  suggestedDownload: "previous_month" | "this_month" | "last_30_days";
+  suggestedDownload: "previous_month" | "last_30_days";
 }
 
 export interface CsvDateGuidance {
   downloadTip: string;
+  /** Shown after upload only when the CSV is missing expected days — not a repeat of the upload tip. */
   warnings: CsvDateWarning[];
   /** True on the 1st when the CSV only contains the prior calendar month — a final monthly report. */
   suggestPreviousMonthReport: boolean;
   reportingMonthName: string | null;
   mtdRange: DateRangeIso | null;
   csvBounds: { minIso: string; maxIso: string } | null;
-}
-
-function ordinalDay(day: number): string {
-  if (day >= 11 && day <= 13) return `${day}th`;
-  switch (day % 10) {
-    case 1:
-      return `${day}st`;
-    case 2:
-      return `${day}nd`;
-    case 3:
-      return `${day}rd`;
-    default:
-      return `${day}th`;
-  }
 }
 
 function friendlyDate(iso: string): string {
@@ -61,25 +49,21 @@ function friendlyDate(iso: string): string {
   return `${month} ${d.day}`;
 }
 
-/** Dynamic Meta CSV download tip shown on Step 1 before upload — uses the client's timezone. */
+/**
+ * Step 1 upload tip — client timezone calendar day.
+ * Rule A: 1st → Previous Month. Rule B: everything else → Last 30 Days.
+ */
 export function getMetaCsvDownloadTip(now: Date = new Date(), timezone = "UTC"): string {
   const dayOfMonth = getCalendarDateInTimezone(now, timezone).day;
 
   if (dayOfMonth === 1) {
     return (
-      "Today is the 1st — download one Previous Month CSV (daily breakdown). " +
-      "One file covers weekly and monthly slides. Do not use Last 30 Days."
+      "It's the 1st — export Previous Month with Day breakdown. " +
+      "One file covers last week's slide and last month's totals."
     );
   }
 
-  if (dayOfMonth <= 7) {
-    return (
-      `Today is the ${ordinalDay(dayOfMonth)} — select Last 30 Days (not This Month) with Day breakdown ` +
-      "so your weekly slide has a full 7 days."
-    );
-  }
-
-  return "Select This Month in Meta Ads Manager with Day breakdown — month-to-date through yesterday.";
+  return "Export Last 30 Days with Day breakdown.";
 }
 
 function monthStartPresentInCsv(rows: NreRow[], monthStartIso: string): boolean {
@@ -92,7 +76,7 @@ function monthStartPresentInCsv(rows: NreRow[], monthStartIso: string): boolean 
   });
 }
 
-/** Post-analyze guidance — compares CSV bounds to the intended MTD calendar window. */
+/** Post-analyze — warn only when the uploaded CSV is missing days the report expects. */
 export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), timezone = "UTC"): CsvDateGuidance {
   const downloadTip = getMetaCsvDownloadTip(now, timezone);
   const csvBounds = computeCsvDateBounds(rows);
@@ -122,78 +106,21 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), t
 
   const warnings: CsvDateWarning[] = [];
 
-  if (dayOfMonth === 1) {
-    if (monthStartMissing) {
-      const missingDateLabel = friendlyDate(mtdRange.startIso);
-      const csvStartLabel = friendlyDate(csvBounds.minIso);
-      warnings.push({
-        kind: "first_of_month",
-        title: `${reportingMonthName ?? "Last month"} report — ${missingDateLabel} missing from CSV`,
-        message:
-          `Your file starts ${csvStartLabel}, so monthly totals skip ${missingDateLabel}. ` +
-          `Re-download one Previous Month export (${intendedMtdLabel}, Day breakdown) from Meta Ads Manager — one file covers weekly and monthly slides. ` +
-          "Choose Monthly report type when you generate.",
-        missingDateLabel,
-        csvStartLabel,
-        intendedMtdLabel,
-        weeklyRangeLabel,
-        suggestedDownload: "previous_month",
-      });
-    } else {
-      warnings.push({
-        kind: "first_of_month",
-        title: `Closing ${reportingMonthName ?? "last month"}'s report`,
-        message:
-          `On the 1st, download one Previous Month CSV (${intendedMtdLabel}, Day breakdown). ` +
-          "One file covers your weekly slide and monthly overview — do not use Last 30 Days. " +
-          "Choose Monthly report type when you generate.",
-        intendedMtdLabel,
-        weeklyRangeLabel,
-        suggestedDownload: "previous_month",
-      });
-    }
-  } else if (dayOfMonth <= 7) {
-    if (monthStartMissing) {
-      const missingDateLabel = friendlyDate(mtdRange.startIso);
-      const csvStartLabel = friendlyDate(csvBounds.minIso);
-      warnings.push({
-        kind: "early_month_last30",
-        title: `${missingDateLabel} missing — weekly slide may be short`,
-        message:
-          `Your CSV starts ${csvStartLabel}. Re-download Last 30 Days (Day breakdown) from Meta Ads Manager so totals include ${missingDateLabel}. ` +
-          `MTD overview will show ${intendedMtdLabel}.`,
-        missingDateLabel,
-        csvStartLabel,
-        intendedMtdLabel,
-        weeklyRangeLabel,
-        suggestedDownload: "last_30_days",
-      });
-    } else {
-      warnings.push({
-        kind: "early_month_last30",
-        title: "Early in the month — use Last 30 Days",
-        message:
-          `Select Last 30 Days (not This Month) when downloading so your weekly slide has a full 7 days. ` +
-          `MTD overview: ${intendedMtdLabel}.`,
-        intendedMtdLabel,
-        weeklyRangeLabel,
-        suggestedDownload: "last_30_days",
-      });
-    }
-  } else if (monthStartMissing) {
+  if (monthStartMissing) {
     const missingDateLabel = friendlyDate(mtdRange.startIso);
     const csvStartLabel = friendlyDate(csvBounds.minIso);
+    const usePreviousMonth = dayOfMonth === 1;
     warnings.push({
-      kind: "missing_month_start",
-      title: `${missingDateLabel} missing from CSV`,
-      message:
-        `Your file starts ${csvStartLabel}, so MTD totals exclude ${missingDateLabel}. ` +
-        `Re-download This Month from Meta Ads Manager (${intendedMtdLabel}).`,
+      kind: usePreviousMonth ? "first_of_month" : "missing_month_start",
+      title: `${missingDateLabel} missing from your CSV`,
+      message: usePreviousMonth
+        ? `Your file starts ${csvStartLabel}, so last month's totals skip ${missingDateLabel}. Re-export Previous Month (${intendedMtdLabel}) with Day breakdown.`
+        : `Your file starts ${csvStartLabel}, so MTD skips ${missingDateLabel}. Re-export Last 30 Days with Day breakdown (${intendedMtdLabel}).`,
       missingDateLabel,
       csvStartLabel,
       intendedMtdLabel,
       weeklyRangeLabel,
-      suggestedDownload: "this_month",
+      suggestedDownload: usePreviousMonth ? "previous_month" : "last_30_days",
     });
   }
 

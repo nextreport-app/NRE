@@ -18,36 +18,34 @@ function daysInclusive(startIso: string, endIso: string): NreRow[] {
   return rows;
 }
 
-describe("getMetaCsvDownloadTip", () => {
-  it("on the 1st recommends one Previous Month CSV (not Last 30 Days)", () => {
+describe("getMetaCsvDownloadTip — two rules", () => {
+  it("on the 1st recommends Previous Month only", () => {
     const tip = getMetaCsvDownloadTip(new Date("2026-09-01T12:00:00Z"), "UTC");
     expect(tip).toContain("1st");
-    expect(tip).toContain("One file");
     expect(tip).toContain("Previous Month");
-    expect(tip).toContain("Do not use Last 30 Days");
+    expect(tip).not.toContain("Last 30 Days");
+    expect(tip).not.toContain("This Month");
   });
 
-  it("uses the client timezone, not UTC — same instant can be a different calendar day", () => {
-    const instant = new Date("2026-09-01T03:00:00Z"); // Sep 1 in UTC; still Aug 31 in US Eastern
+  it("on days 2–31 recommends Last 30 Days only (same message on the 2nd and the 15th)", () => {
+    for (const iso of ["2026-09-02T12:00:00Z", "2026-09-15T12:00:00Z"]) {
+      const tip = getMetaCsvDownloadTip(new Date(iso), "UTC");
+      expect(tip).toBe("Export Last 30 Days with Day breakdown.");
+      expect(tip).not.toContain("This Month");
+      expect(tip).not.toContain("1st");
+    }
+  });
+
+  it("uses the client timezone for the 1st vs not-1st rule", () => {
+    const instant = new Date("2026-09-01T03:00:00Z");
     expect(getMetaCsvDownloadTip(instant, "UTC")).toContain("1st");
-    expect(getMetaCsvDownloadTip(instant, "America/New_York")).not.toContain("1st");
+    expect(getMetaCsvDownloadTip(instant, "America/New_York")).toBe("Export Last 30 Days with Day breakdown.");
     expect(getMetaCsvDownloadTip(instant, "Asia/Kolkata")).toContain("1st");
-  });
-
-  it("on days 2–7 recommends Last 30 Days", () => {
-    const tip = getMetaCsvDownloadTip(new Date("2026-09-05T12:00:00Z"), "UTC");
-    expect(tip).toContain("Last 30 Days");
-    expect(tip).not.toContain("Previous Month");
-  });
-
-  it("after day 7 recommends This Month", () => {
-    const tip = getMetaCsvDownloadTip(new Date("2026-09-10T12:00:00Z"), "UTC");
-    expect(tip).toContain("This Month");
   });
 });
 
 describe("analyzeCsvDateGuidance", () => {
-  it("Sep 1 + Last 30 days CSV missing Aug 1 warns once and suggests previous-month monthly report", () => {
+  it("Sep 1 + Last 30 days CSV missing Aug 1 warns once", () => {
     const rows = daysInclusive("2026-08-02", "2026-08-31");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-01T12:00:00Z"), "UTC");
 
@@ -55,31 +53,33 @@ describe("analyzeCsvDateGuidance", () => {
     expect(guidance.warnings).toHaveLength(1);
     expect(guidance.warnings[0]?.kind).toBe("first_of_month");
     expect(guidance.warnings[0]?.missingDateLabel).toBe("August 1");
+    expect(guidance.warnings[0]?.suggestedDownload).toBe("previous_month");
     expect(guidance.suggestPreviousMonthReport).toBe(true);
   });
 
-  it("Sep 1 + full August CSV has no missing-month-start warning", () => {
+  it("Sep 1 + full August CSV has no post-upload warning", () => {
     const rows = daysInclusive("2026-08-01", "2026-08-31");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-01T12:00:00Z"), "UTC");
 
-    expect(guidance.warnings.some((w) => w.kind === "missing_month_start")).toBe(false);
+    expect(guidance.warnings).toHaveLength(0);
     expect(guidance.suggestPreviousMonthReport).toBe(false);
   });
 
-  it("Sep 1 weekly last 7 ends Aug 25–31", () => {
-    const rows = daysInclusive("2026-08-02", "2026-08-31");
-    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-01T12:00:00Z"), "UTC");
+  it("Sep 2 + full CSV through Sep 1 has no warning and MTD is one day", () => {
+    const rows = daysInclusive("2026-08-03", "2026-09-01");
+    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-02T12:00:00Z"), "UTC");
 
-    expect(guidance.warnings[0]?.weeklyRangeLabel).toContain("August 25");
-    expect(guidance.warnings[0]?.weeklyRangeLabel).toContain("31");
+    expect(guidance.mtdRange).toEqual({ startIso: "2026-09-01", endIso: "2026-09-01" });
+    expect(guidance.warnings).toHaveLength(0);
   });
 
-  it("Sep 5 + CSV starting Sep 2 warns once with merged early-month + missing-day message", () => {
+  it("Sep 5 + CSV starting Sep 2 warns missing September 1 with Last 30 Days", () => {
     const rows = daysInclusive("2026-09-02", "2026-09-04");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-05T12:00:00Z"), "UTC");
 
     expect(guidance.warnings).toHaveLength(1);
-    expect(guidance.warnings[0]?.kind).toBe("early_month_last30");
+    expect(guidance.warnings[0]?.kind).toBe("missing_month_start");
+    expect(guidance.warnings[0]?.suggestedDownload).toBe("last_30_days");
     expect(guidance.warnings[0]?.missingDateLabel).toBe("September 1");
   });
 });

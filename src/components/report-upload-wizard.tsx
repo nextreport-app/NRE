@@ -1752,14 +1752,17 @@ export function ReportUploadWizard({
                 <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
                 {selectedPlatformCard === "META" ? (
                   <>
-                    {getMetaCsvDownloadTip(new Date(), clientTimezone)}{" "}
-                    For month-over-month comparison,{" "}
-                    <Link
-                      href={`/clients/${clientId}#previous-month-data`}
-                      className="font-medium text-dash-accent hover:underline"
-                    >
-                      upload Previous Month Data in client settings →
-                    </Link>{" "}
+                    <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
+                    <span className="mt-2 block text-[13px] text-[#94a3b8]">
+                      Optional — for the previous-month column in Combined Total,{" "}
+                      <Link
+                        href={`/clients/${clientId}#previous-month-data`}
+                        className="font-medium text-dash-accent hover:underline"
+                      >
+                        upload Previous Month Data once in client settings
+                      </Link>
+                      .
+                    </span>
                   </>
                 ) : (
                   "Set date range to Last 30 days and segment by Day."
