@@ -787,7 +787,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // A Monthly report has no weekly window at all — weeklyRange is ignored
   // (never even resolved by the caller in that case) and splitMtdDaily's
   // own weekly split is simply never used below (see primaryRows).
-  const split = splitMtdDaily(filteredMtdDailyRows, now, weeklyRange ? { weeklyRange } : {});
+  const split = splitMtdDaily(filteredMtdDailyRows, now, {
+    ...(weeklyRange ? { weeklyRange } : {}),
+    timezone,
+  });
 
   // The optional Previous Month Data (previous full month) feeds the table
   // slide's separate "Period" row. Its campaign selection is independent of
@@ -860,7 +863,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const creative = buildCreativeSections(dateLine, creativeRaw);
     const creativeAgg = aggregateRows(creativeRaw);
     const { score, badge } = calculateAccountHealth(creativeAgg, "Weekly");
-    const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now);
+    const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now, timezone);
     const coverDate = yesterday ? formatDateUS(toIsoDate(yesterday)) : "";
     const emptyRow = computeTableRow([], currencySymbol, false, new Map());
     return {
@@ -1032,7 +1035,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
   let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now);
-  const mtdCalendarRange = computeMtdRangeIso(mtdDailyRows as NreRow[], now) ?? undefined;
+  const mtdCalendarRange = computeMtdRangeIso(mtdDailyRows as NreRow[], now, timezone) ?? undefined;
   const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same

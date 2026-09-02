@@ -40,6 +40,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         <ReportUploadWizard
           clientId={client.id}
           clientName={client.accountName}
+          clientTimezone={client.timezone}
           currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
           hasGoogleDriveConnected={!!user.googleRefreshToken}
           initialLastDriveFolderId={client.lastDriveFolderId}

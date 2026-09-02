@@ -22,6 +22,7 @@ export function resolveDateSelection(
   rows: NreRow[],
   selection: DateSelection | undefined,
   now: Date = new Date(),
+  timezone = "UTC",
 ): ResolveDateSelectionResult {
   if (!selection) return { ok: true };
 
@@ -37,7 +38,7 @@ export function resolveDateSelection(
     return { ok: true, weeklyRange: { startIso: selection.customStart, endIso: selection.customEnd } };
   }
 
-  const options = computeWeeklyRangeOptions(rows, now);
+  const options = computeWeeklyRangeOptions(rows, now, timezone);
   if (!options) {
     return { ok: false, error: "Could not compute a weekly date range from the uploaded CSV." };
   }
