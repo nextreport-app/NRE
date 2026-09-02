@@ -15,13 +15,14 @@ export const MTD_VISUAL = {
   sepX: 372,
   rightX: 388,
   rightW: 532,
-  miniDonutD: 90,
+  miniDonutD: 108,
+  miniDonutCaptionH: 18,
   groupedDonutD: 168,
   barH: 20,
-  barMetricsH: 34,
-  barRowGap: 10,
-  barTrackMaxW: 380,
-  labelColW: 108,
+  barMetricsH: 28,
+  barRowGap: 8,
+  barTrackMaxW: 360,
+  labelColW: 124,
   panelHeadingH: 22,
 } as const;
 
@@ -62,15 +63,15 @@ export function miniDonutPosition(index: number, count: number): { x: number; y:
   const { cols, rows } = miniDonutGrid(count);
   const col = index % cols;
   const row = Math.floor(index / cols);
-  const gapX = 16;
-  const gapY = 14;
+  const gapX = 12;
+  const gapY = 12;
   const gridW = cols * MTD_VISUAL.miniDonutD + (cols - 1) * gapX;
-  const gridH = rows * MTD_VISUAL.miniDonutD + (rows - 1) * gapY + 36;
+  const gridH = rows * MTD_VISUAL.miniDonutD + (rows - 1) * gapY + MTD_VISUAL.miniDonutCaptionH;
   const startX = MTD_VISUAL.leftX + (MTD_VISUAL.leftW - gridW) / 2;
   const startY = MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + 8 + (MTD_VISUAL.panelH - MTD_VISUAL.panelHeadingH - gridH) / 2;
   return {
     x: startX + col * (MTD_VISUAL.miniDonutD + gapX),
-    y: startY + row * (MTD_VISUAL.miniDonutD + gapY + 36),
+    y: startY + row * (MTD_VISUAL.miniDonutD + gapY + MTD_VISUAL.miniDonutCaptionH),
   };
 }
 
@@ -78,7 +79,7 @@ export function resultBarGeometry(barCount: number): { rowH: number; startY: num
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
   const ideal = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
-  const rowH = barCount > 0 ? Math.min(58, Math.max(ideal, Math.floor(available / barCount))) : ideal;
+  const rowH = barCount > 0 ? Math.min(52, Math.max(ideal, Math.floor(available / barCount))) : ideal;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
   return { rowH, startY };

@@ -19,7 +19,7 @@ function campaign(name: string, overrides: Partial<ChartCampaignData> = {}): Cha
 
 function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
   return {
-    periodLabel: "MTD",
+    periodLabel: "Last30",
     campaigns: [campaign("Alpha"), campaign("Beta", { spend: 50, results: 4 })],
     totalAllSpend: 150,
     activeCampaignCount: 2,
@@ -53,7 +53,7 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 describe("buildVisualChartSlideModel", () => {
   it("builds campaign mini-donuts and result bars for single-objective accounts", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
-    expect(model.title).toBe("August Campaign Performance: August 1 - August 20, 2026");
+    expect(model.title).toBe("Last 30 Days Campaign Performance: August 1 - August 20, 2026");
     expect(model.isMultiObjective).toBe(false);
     expect(model.miniDonuts.length).toBe(2);
     expect(model.rightHeading).toContain("Purchases");

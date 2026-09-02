@@ -193,7 +193,8 @@ export type { ChartSnapshotKpis, ChartSnapshotObjective } from "./chart-snapshot
 export { buildChartSnapshotKpis, CHART_SNAPSHOT_OBJECTIVE_CAP } from "./chart-snapshot-kpis";
 
 export interface ChartSlideData {
-  periodLabel: "MTD" | "Weekly";
+  /** @deprecated Kept for share-edit compatibility — chart data is always last-30-days now. */
+  periodLabel: "MTD" | "Weekly" | "Last30";
   campaigns: ChartCampaignData[];
   totalAllSpend: number;
   activeCampaignCount: number;
@@ -569,6 +570,20 @@ function computeTableRow(
   let rawStart = "";
   let rawEnd = "";
 
+  // Daily Previous Month exports carry file-wide Reporting starts/ends on
+  // every row (e.g. Aug 1 - Aug 31) even when delivery only began mid-month
+  // (Aug 22). When any row has a real Day/Date column, derive the label only
+  // from those rows — never let the shared Reporting range pull the start
+  // back to the 1st.
+  const rowsForDateRange = rows.some(hasRealRowDate) ? rows.filter(hasRealRowDate) : rows;
+
+  rowsForDateRange.forEach((row) => {
+    const rowStart = rowRangeStart(row);
+    const rowEnd = rowRangeEnd(row);
+    if (rowStart && (!rawStart || rowStart < rawStart)) rawStart = rowStart;
+    if (rowEnd && (!rawEnd || rowEnd > rawEnd)) rawEnd = rowEnd;
+  });
+
   rows.forEach((row) => {
     const spend = parseCellNum(row.spend);
     const impr = parseCellNum(row.impressions);
@@ -576,14 +591,6 @@ function computeTableRow(
     totalReach += parseCellNum(row.reach);
     totalImpr += impr;
     totalClicks += impliedClicks(row, spend, impr);
-    // Previous Month Data daily exports carry a constant file-wide
-    // "Reporting starts/ends" on date_start/date_end (e.g. Aug 1 - Aug 31)
-    // even when rows only exist from a mid-month campaign start — use the
-    // per-row Day/Date column when present, same as getRowDate/splitMtdDaily.
-    const rowStart = rowRangeStart(row);
-    const rowEnd = rowRangeEnd(row);
-    if (rowStart && (!rawStart || rowStart < rawStart)) rawStart = rowStart;
-    if (rowEnd && (!rawEnd || rowEnd > rawEnd)) rawEnd = rowEnd;
   });
 
   // CTR/CPC can't be summed OR simply averaged across rows — a low-volume
@@ -1536,24 +1543,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
   });
 
-  // ── MTD performance chart slide ──────────────────────────────────────
-  // Uses MTD data (always present alongside weekly in the single-download
-  // workflow), grouped by campaign — chart circle order = default sort.
-  // (TYPE_COLOR label→color mapping from addVisualScorecardSlide_ lives in
-  // the PPTX render layer, task 6, since it's a pure rendering concern.)
+  // ── Visual chart slide (last 30 days) ───────────────────────────────────
+  // Always uses trailing-30-days ending calendar yesterday — not current-month
+  // MTD — so a report generated on the 1st or 2nd still shows a full month of
+  // context instead of one or two days of MTD data.
+  const chartRange = computeCreativeRangeIso(filteredMtdDailyRows, now, 30, timezone);
+  const chartRawRows = chartRange
+    ? filterRawRowsToRange(filteredMtdDailyRows, chartRange.startIso, chartRange.endIso)
+    : [];
+  const chartRows: AggRow[] = aggregateRows(chartRawRows);
   const chartGroups: Record<string, AggRow[]> = {};
-  mtdRows.forEach((row) => {
+  chartRows.forEach((row) => {
     const name = String(row.campaign_name || "").trim();
     if (!chartGroups[name]) chartGroups[name] = [];
     chartGroups[name].push(row);
   });
-  // Fix 6 — a campaign that's part of this report (campaignNames, built
-  // from primaryRows above) but contributed zero rows to mtdRows this
-  // calendar month must still get its own donut, showing $0/empty rather
-  // than silently vanishing from the chart. campaignNames only ever comes
-  // from primaryRows (this report's own weekly/MTD scope) — never from
-  // Previous Month Data — so unioning it in here can't leak last month's
-  // figures onto the chart, only supplies campaign IDENTITY for a $0 month.
+  // A campaign in this report but with zero L30 delivery still gets a $0 slot.
   const chartCampaignNames = Array.from(new Set([...Object.keys(chartGroups), ...campaignNames])).sort();
 
   let totalAllSpend = 0;
@@ -1591,52 +1596,36 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
 
-  // The chart is always MTD data (see the "MTD performance chart slide"
-  // comment above) — its sub-line must reflect the MTD period even for
-  // Weekly reports, not the trailing-7-day weekly window used elsewhere on
-  // those slides. mtdRow.fullMonthLabel is always "August 1 - August 5"
-  // (never compacted to the Combined Total table's own "August 1 - 5" short
-  // form — see TableRowData's own doc comment) — appending the year here
-  // reuses that same date range for the chart's own "[Month] 1 - [Yesterday],
-  // [Year]" sub-line without recomputing it.
-  // Fix 2 (chart title/date single-line combination): the Monthly branch
-  // used to repeat the month name here ("Full Month — August 2026"), which
-  // read fine as its own sub-line but duplicates the month name once
-  // chart-slide.ts folds this into the title itself ("August Campaign
-  // Performance: Full Month — August 2026"). Dropped the repeated month name
-  // and the dash so the combined title reads "August Campaign Performance:
-  // Full Month 2026" instead.
-  // Fix 6 — mtdRow.monthName/fullMonthLabel are now ALWAYS the real current
-  // month's range (see Fix 5's computeTableRow change above), never a bare
-  // "—" placeholder even when mtdRows is empty — so the sub-line no longer
-  // needs to gate on mtdRow.hasData to avoid showing stale/blank text; it
-  // always reflects the current month, zero-spend or not.
-  const periodYear = parseDate(mtdCalendarRange.endIso)?.year;
+  const chartRangeLabel = chartRange ? getDateRangeShortLabel(chartRange.startIso, chartRange.endIso) : "";
+  const chartRangeYear = chartRange ? parseDate(chartRange.endIso)?.year : undefined;
   const periodSubLabel =
-    reportType === "MONTHLY"
-      ? mtdRow.monthName && periodYear
-        ? `Full Month ${periodYear}`
-        : ""
-      : periodYear
-        ? `${mtdRow.fullMonthLabel}, ${periodYear}`
-        : mtdRow.fullMonthLabel;
+    chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;
 
-  const mtdObjectiveGroups = groupResultsByCampaignObjective(mtdRows, campaignObjectiveMap);
+  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, campaignObjectiveMap);
+  const chartSnapshotRow = computeTableRow(
+    chartRows as MetricRow[],
+    currencySymbol,
+    false,
+    campaignObjectiveMap,
+    now,
+    undefined,
+    timezone,
+  );
   const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
   const chart: ChartSlideData = {
-    periodLabel: "MTD",
+    periodLabel: "Last30",
     campaigns: chartCampaigns,
     totalAllSpend,
     activeCampaignCount,
     snapshot: buildChartSnapshotKpis({
-      mtdResultColumns: mtdRow.resultColumns,
-      mtdGroups: mtdObjectiveGroups,
+      mtdResultColumns: chartSnapshotRow.resultColumns,
+      mtdGroups: chartObjectiveGroups,
       totalAllSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
       activeCampaignCount,
       currencySymbol,
     }),
     reportType,
-    mtdMonthName: mtdRow.monthName,
+    mtdMonthName: chartRange ? getMonthName(chartRange.endIso) : mtdRow.monthName,
     periodSubLabel,
   };
 
