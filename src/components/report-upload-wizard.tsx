@@ -2724,20 +2724,6 @@ export function ReportUploadWizard({
                   spec calls for. */}
               <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
                 <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
-                {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
-                  <div className="mt-3">
-                    <CsvDateGuidanceBanner
-                      guidance={csvDateGuidance}
-                      onContinue={() => setCsvWarningDismissed(true)}
-                      onRedownload={() => {
-                        setCsvWarningDismissed(false);
-                        setCsvDateGuidance(null);
-                        setMtdFile(null);
-                        setStep(1);
-                      }}
-                    />
-                  </div>
-                ) : null}
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
                   <p className="text-[13px] text-[#94a3b8]">
@@ -3248,20 +3234,15 @@ function CsvDateGuidanceBanner({
   onContinue: () => void;
   onRedownload: () => void;
 }) {
+  const warning = guidance.warnings[0];
+  if (!warning) return null;
+
   return (
     <div className="space-y-3 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-4">
-      {guidance.warnings.map((warning) => (
-        <div key={`${warning.kind}-${warning.title}`} className="space-y-1.5">
-          <p className="text-[15px] font-semibold leading-snug text-white">{warning.title}</p>
-          <p className="text-[14px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
-        </div>
-      ))}
-      {guidance.suggestPreviousMonthReport ? (
-        <p className="text-[14px] font-medium text-[#f6ad55]">
-          Tip: Choose Monthly report type on the Generate step for a full {guidance.reportingMonthName ?? "previous month"}{" "}
-          summary.
-        </p>
-      ) : null}
+      <div className="space-y-1.5">
+        <p className="text-[15px] font-semibold leading-snug text-white">{warning.title}</p>
+        <p className="text-[14px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
+      </div>
       <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="button"
@@ -3277,9 +3258,6 @@ function CsvDateGuidanceBanner({
         >
           I&apos;ll re-download
         </button>
-        <Link href="/help/download" className="self-center text-[13px] font-medium text-dash-accent hover:underline">
-          Download guide
-        </Link>
       </div>
     </div>
   );
