@@ -137,6 +137,28 @@ export function getComparisonPeriodLabel(rawStart: unknown, rawEnd: unknown): st
   return `${sm} ${s.day} - ${em} ${e.day}, ${e.year}`;
 }
 
+/** "Jan" — abbreviated calendar month name. Null if unparseable. */
+export function getMonthAbbrName(rawValue: unknown): string | null {
+  const d = parseDate(rawValue);
+  return d ? MONTHS_ABBR[d.month - 1] : null;
+}
+
+/**
+ * Abbreviated date range — "Aug 1 - Aug 31" or "Aug 1" for a single day.
+ * Used on the Combined Total table and visual chart slide title so long
+ * month names do not wrap onto a second line.
+ */
+export function getDateRangeAbbrLabel(rawStart: unknown, rawEnd: unknown): string {
+  const s = parseDate(rawStart);
+  const e = parseDate(rawEnd);
+  if (!s) return "N/A";
+  const sm = MONTHS_ABBR[s.month - 1];
+  if (!e) return `${sm} ${s.day}`;
+  const em = MONTHS_ABBR[e.month - 1];
+  if (s.day === e.day && s.month === e.month && s.year === e.year) return `${sm} ${s.day}`;
+  return `${sm} ${s.day} - ${em} ${e.day}`;
+}
+
 /** "July" — just the calendar month name of a raw date value, no year. Null if unparseable. Deliberately not timezone-aware (unlike getMonthLabel above, which is for "today" in the viewer's timezone): these raw values are already-resolved calendar dates from a CSV, not instants that need zone conversion. */
 export function getMonthName(rawValue: unknown): string | null {
   const d = parseDate(rawValue);

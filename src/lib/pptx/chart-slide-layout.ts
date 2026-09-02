@@ -3,27 +3,26 @@ export const MTD_SLIDE_W = 960;
 export const MTD_SLIDE_H = 540;
 
 export const MTD_VISUAL = {
-  marginX: 40,
-  titleY: 28,
-  titleH: 40,
-  panelY: 88,
-  panelH: 368,
-  summaryY: 472,
-  summaryH: 36,
-  leftX: 40,
-  leftW: 320,
-  sepX: 372,
-  rightX: 388,
-  rightW: 532,
-  miniDonutD: 108,
-  miniDonutCaptionH: 18,
-  groupedDonutD: 168,
-  barH: 20,
-  barMetricsH: 28,
-  barRowGap: 8,
-  barTrackMaxW: 360,
-  labelColW: 124,
-  panelHeadingH: 22,
+  marginX: 36,
+  titleY: 20,
+  titleH: 34,
+  panelY: 64,
+  panelH: 396,
+  summaryY: 468,
+  summaryH: 40,
+  leftX: 36,
+  leftW: 368,
+  sepX: 416,
+  rightX: 432,
+  rightW: 492,
+  miniDonutCaptionH: 24,
+  groupedDonutD: 204,
+  barH: 28,
+  barMetricsH: 34,
+  barRowGap: 6,
+  barTrackMaxW: 332,
+  labelColW: 148,
+  panelHeadingH: 28,
 } as const;
 
 /** @deprecated Legacy layout constants — kept for tests referencing old geometry. */
@@ -59,27 +58,36 @@ export function miniDonutGrid(count: number): { cols: number; rows: number } {
   return { cols: 2, rows: 3 };
 }
 
-export function miniDonutPosition(index: number, count: number): { x: number; y: number } {
+/** Larger donuts when fewer campaigns — keeps six-campaign grids readable. */
+export function miniDonutDiameter(count: number): number {
+  if (count <= 2) return 152;
+  if (count <= 4) return 132;
+  return 112;
+}
+
+export function miniDonutPosition(index: number, count: number): { x: number; y: number; d: number } {
+  const d = miniDonutDiameter(count);
   const { cols, rows } = miniDonutGrid(count);
   const col = index % cols;
   const row = Math.floor(index / cols);
-  const gapX = 12;
-  const gapY = 12;
-  const gridW = cols * MTD_VISUAL.miniDonutD + (cols - 1) * gapX;
-  const gridH = rows * MTD_VISUAL.miniDonutD + (rows - 1) * gapY + MTD_VISUAL.miniDonutCaptionH;
+  const gapX = 10;
+  const gapY = 10;
+  const gridW = cols * d + (cols - 1) * gapX;
+  const gridH = rows * d + (rows - 1) * gapY + MTD_VISUAL.miniDonutCaptionH;
   const startX = MTD_VISUAL.leftX + (MTD_VISUAL.leftW - gridW) / 2;
-  const startY = MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + 8 + (MTD_VISUAL.panelH - MTD_VISUAL.panelHeadingH - gridH) / 2;
+  const startY = MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + 6 + (MTD_VISUAL.panelH - MTD_VISUAL.panelHeadingH - gridH) / 2;
   return {
-    x: startX + col * (MTD_VISUAL.miniDonutD + gapX),
-    y: startY + row * (MTD_VISUAL.miniDonutD + gapY + MTD_VISUAL.miniDonutCaptionH),
+    x: startX + col * (d + gapX),
+    y: startY + row * (d + gapY + MTD_VISUAL.miniDonutCaptionH),
+    d,
   };
 }
 
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
-  const header = MTD_VISUAL.panelHeadingH + 8;
+  const header = MTD_VISUAL.panelHeadingH + 6;
   const available = MTD_VISUAL.panelH - header;
   const ideal = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
-  const rowH = barCount > 0 ? Math.min(52, Math.max(ideal, Math.floor(available / barCount))) : ideal;
+  const rowH = barCount > 0 ? Math.min(58, Math.max(ideal, Math.floor(available / barCount))) : ideal;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
   return { rowH, startY };

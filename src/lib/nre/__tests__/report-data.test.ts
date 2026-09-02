@@ -257,7 +257,7 @@ describe("buildReportData — multi-campaign integration", () => {
       hasData: true,
       // MTD labels use the calendar month (July 1 → yesterday), even when the
       // CSV's earliest row is later — totals still reflect rows present.
-      monthLabel: "July 1 - 19",
+      monthLabel: "Jul 1 - 19",
       spend: "₹2,450",
       // A straight sum of the daily rows' reach — see the dedicated reach test below.
       reach: "82,600",
@@ -2266,7 +2266,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       periodRows: junePeriodRows,
       now: NOW,
     });
-    expect(data.periodRow.monthLabel).toBe("June 1 - 30");
+    expect(data.periodRow.monthLabel).toBe("Jun 1 - 30");
     expect(data.periodRow.monthName).toBe("June");
   });
 
@@ -2296,8 +2296,8 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       now: new Date("2026-09-05T12:00:00Z"),
     });
 
-    expect(data.periodRow.monthLabel).toBe("August 22 - 31");
-    expect(data.periodRow.fullMonthLabel).toBe("August 22 - August 31");
+    expect(data.periodRow.monthLabel).toBe("Aug 22 - 31");
+    expect(data.periodRow.fullMonthLabel).toBe("Aug 22 - Aug 31");
   });
 
   it("ignores file-wide Reporting starts on monthly-total rows when daily Day rows define the span", () => {
@@ -2342,7 +2342,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       now: new Date("2026-09-05T12:00:00Z"),
     });
 
-    expect(data.periodRow.monthLabel).toBe("August 22 - 26");
+    expect(data.periodRow.monthLabel).toBe("Aug 22 - 26");
   });
 
   it("uses Reporting starts/ends for previous month label on monthly totals exports", () => {
@@ -2373,7 +2373,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       now: new Date("2026-09-05T12:00:00Z"),
     });
 
-    expect(data.periodRow.monthLabel).toBe("August 1 - 31");
+    expect(data.periodRow.monthLabel).toBe("Aug 1 - 31");
   });
 
   it("sameMonthAsCurrentMTD is false when the Previous Month row and MTD row fall in different calendar months", () => {
@@ -2580,8 +2580,8 @@ describe("buildReportData — paused account", () => {
     });
     expect(data.mtdRow.hasData).toBe(false);
     expect(data.mtdRow.monthLabel).not.toBe("—");
-    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
-    expect(data.mtdRow.fullMonthLabel).toBe("July 1 - July 19");
+    expect(data.mtdRow.monthLabel).toBe("Jul 1 - 19");
+    expect(data.mtdRow.fullMonthLabel).toBe("Jul 1 - Jul 19");
     expect(data.mtdRow.monthName).toBe("July");
     // Every other value stays 0/"—" — only the date label changes.
     expect(data.mtdRow.spend).toBe("—");
@@ -2768,26 +2768,26 @@ describe("buildReportData — chart slide with zero current-month spend (Fix 6)"
   });
 
   it("shows the last-30-days date span on the chart sub-line", () => {
-    expect(data.chart!.periodSubLabel).toBe("June 20 - July 19, 2026");
+    expect(data.chart!.periodSubLabel).toBe("Jun 20 - Jul 19, 2026");
     expect(data.chart!.periodLabel).toBe("Last30");
   });
 });
 
 describe("compactSameMonthRangeLabel (Fix 2, round 5) — Combined Total table's short date format", () => {
   it("compacts a same-month, multi-day range to 'Month D - D' (only one month name)", () => {
-    expect(compactSameMonthRangeLabel("01-08-2026", "05-08-2026", "August")).toBe("August 1 - 5");
+    expect(compactSameMonthRangeLabel("01-08-2026", "05-08-2026", "August")).toBe("Aug 1 - 5");
   });
 
-  it("keeps the full 'Month D - Month D' form when start and end are in different months", () => {
-    expect(compactSameMonthRangeLabel("30-07-2026", "05-08-2026", "August")).toBe("July 30 - August 5");
+  it("keeps the full abbreviated form when start and end are in different months", () => {
+    expect(compactSameMonthRangeLabel("30-07-2026", "05-08-2026", "August")).toBe("Jul 30 - Aug 5");
   });
 
-  it("collapses to a single 'Month D' when start and end are the same day", () => {
-    expect(compactSameMonthRangeLabel("15-08-2026", "15-08-2026", "August")).toBe("August 15");
+  it("collapses to a single abbreviated 'Mon D' when start and end are the same day", () => {
+    expect(compactSameMonthRangeLabel("15-08-2026", "15-08-2026", "August")).toBe("Aug 15");
   });
 
-  it("keeps the full form across a year boundary too (December -> January)", () => {
-    expect(compactSameMonthRangeLabel("29-12-2026", "03-01-2027", "January")).toBe("December 29 - January 3");
+  it("keeps the abbreviated form across a year boundary too (December -> January)", () => {
+    expect(compactSameMonthRangeLabel("29-12-2026", "03-01-2027", "January")).toBe("Dec 29 - Jan 3");
   });
 });
 
@@ -3082,7 +3082,7 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
     });
     expect(data.cover.dateRange).toBe("July 15 - July 17");
     // MTD label uses calendar month start (July 1) through latest data day.
-    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
+    expect(data.mtdRow.monthLabel).toBe("Jul 1 - 19");
   });
 });
 
@@ -3573,8 +3573,8 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
   it("uses the last-30-days window on the chart for Weekly and Monthly reports alike", () => {
     const weekly = build("WEEKLY");
     const monthly = build("MONTHLY");
-    expect(weekly.chart?.periodSubLabel).toBe("June 20 - July 19, 2026");
-    expect(monthly.chart?.periodSubLabel).toBe("June 20 - July 19, 2026");
+    expect(weekly.chart?.periodSubLabel).toBe("Jun 20 - Jul 19, 2026");
+    expect(monthly.chart?.periodSubLabel).toBe("Jun 20 - Jul 19, 2026");
     expect(weekly.chart?.periodLabel).toBe("Last30");
   });
 
@@ -4407,7 +4407,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
       now,
     });
 
-    expect(data.mtdRow.monthLabel).toBe("September 1");
+    expect(data.mtdRow.monthLabel).toBe("Sep 1");
     expect(data.mtdRow.hasData).toBe(false);
     expect(data.mtdRow.spend).toBe("—");
     // Chart uses last-30-days — August delivery still counts even though MTD is empty.
@@ -4427,7 +4427,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     });
 
     expect(data.chart!.periodLabel).toBe("Last30");
-    expect(data.chart!.periodSubLabel).toBe("August 3 - September 1, 2026");
+    expect(data.chart!.periodSubLabel).toBe("Aug 3 - Sep 1, 2026");
     expect(data.chart!.totalAllSpend).toBeGreaterThan(500);
   });
 
@@ -4443,7 +4443,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
       now,
     });
 
-    expect(data.mtdRow.monthLabel).toBe("September 1");
+    expect(data.mtdRow.monthLabel).toBe("Sep 1");
     expect(data.mtdRow.spend).toBe("C$186");
     expect(data.chart!.totalAllSpend).toBe(186.4);
   });

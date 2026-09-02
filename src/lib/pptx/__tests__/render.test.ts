@@ -293,7 +293,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("Last 30 Days Campaign Performance");
-    expect(chartSvg).toContain("June 20 - July 19, 2026");
+    expect(chartSvg).toContain("Jun 20 - Jul 19, 2026");
     expect(chartSvg).toContain("BUDGET DISTRIBUTION");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
@@ -442,8 +442,8 @@ describe("renderPptx — real template end-to-end", () => {
     // prefix, no year, no "MTD" suffix on either row. Fix 2 (round 5) —
     // same-month ranges compact to "July 13 - 19" instead of repeating
     // "July".
-    expect(data.periodRow.monthLabel).toBe("June 1 - 30");
-    expect(data.mtdRow.monthLabel).toBe("July 1 - 19");
+    expect(data.periodRow.monthLabel).toBe("Jun 1 - 30");
+    expect(data.mtdRow.monthLabel).toBe("Jul 1 - 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -454,8 +454,8 @@ describe("renderPptx — real template end-to-end", () => {
     const { texts, rowFillColors } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
 
-    expect(allText).toContain("June 1 - 30");
-    expect(allText).toContain("July 1 - 19");
+    expect(allText).toContain("Jun 1 - 30");
+    expect(allText).toContain("Jul 1 - 19");
     expect(allText).not.toContain("Previous Month");
     expect(allText).not.toContain("MTD");
     expect(allText).not.toContain("{{");
@@ -508,7 +508,7 @@ describe("renderPptx — real template end-to-end", () => {
       now: NOW,
     });
 
-    expect(data.periodRow.monthLabel).toBe("July 1 - 19");
+    expect(data.periodRow.monthLabel).toBe("Jul 1 - 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(true);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -526,7 +526,7 @@ describe("renderPptx — real template end-to-end", () => {
 
     const { texts } = inspectTableSlide(outPath, 6);
     const allText = texts.join(" | ");
-    expect(allText).toContain("July 1 - 19");
+    expect(allText).toContain("Jul 1 - 19");
     // No leftover MTD-row content (its own distinct spend figure) and no
     // Fix-3-style footnote (removed — hiding the row replaces it).
     expect(allText).not.toContain("₹2,450");
