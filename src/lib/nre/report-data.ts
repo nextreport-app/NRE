@@ -26,7 +26,7 @@ import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
 import { adSetKey } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
-import { getRowDate, type NreRow } from "./columns";
+import { getRowDate, hasRealRowDate, type NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
 import {
   campaignStatusIndicator,
@@ -567,8 +567,14 @@ function computeTableRow(
     totalReach += parseCellNum(row.reach);
     totalImpr += impr;
     totalClicks += impliedClicks(row, spend, impr);
-    if (row.date_start && (!rawStart || row.date_start < rawStart)) rawStart = row.date_start;
-    if (row.date_end && (!rawEnd || row.date_end > rawEnd)) rawEnd = row.date_end;
+    // Previous Month Data daily exports carry a constant file-wide
+    // "Reporting starts/ends" on date_start/date_end (e.g. Aug 1 - Aug 31)
+    // even when rows only exist from a mid-month campaign start — use the
+    // per-row Day/Date column when present, same as getRowDate/splitMtdDaily.
+    const rowStart = getRowDate(row);
+    const rowEnd = hasRealRowDate(row) ? rowStart : row.date_end || rowStart;
+    if (rowStart && (!rawStart || rowStart < rawStart)) rawStart = rowStart;
+    if (rowEnd && (!rawEnd || rowEnd > rawEnd)) rawEnd = rowEnd;
   });
 
   // CTR/CPC can't be summed OR simply averaged across rows — a low-volume
