@@ -60,9 +60,9 @@ describe("resolveDateSelection", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("fails gracefully when the CSV has no parseable dates at all", () => {
+  it("still resolves last7 from the calendar when the CSV has no parseable dates", () => {
     const result = resolveDateSelection([{ _raw: {} }], { mode: "last7" }, now);
-    expect(result.ok).toBe(false);
-    expect(result.error).toBeTruthy();
+    expect(result.ok).toBe(true);
+    expect(result.weeklyRange).toEqual({ startIso: "2026-07-18", endIso: "2026-07-24" });
   });
 });

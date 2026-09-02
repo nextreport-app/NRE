@@ -50,17 +50,24 @@ describe("computeWeeklyRangeOptions", () => {
   it("computes last7 (ending yesterday) and prev7 (the 7 days before that)", () => {
     const rows = daysInclusive("2026-07-01", "2026-07-24");
     const now = new Date("2026-07-25T12:00:00Z"); // yesterday = Jul 24
-    const options = computeWeeklyRangeOptions(rows, now)!;
+    const options = computeWeeklyRangeOptions(rows, now);
     expect(options.last7).toEqual({ startIso: "2026-07-18", endIso: "2026-07-24" });
     expect(options.prev7).toEqual({ startIso: "2026-07-11", endIso: "2026-07-17" });
   });
 
   it("handles a last7/prev7 window that crosses a month boundary", () => {
     const rows = daysInclusive("2026-06-20", "2026-07-03");
-    const now = new Date("2026-07-04T12:00:00Z"); // yesterday = Jul 3
-    const options = computeWeeklyRangeOptions(rows, now)!;
+    const now = new Date("2026-07-04T12:00:00Z"); // calendar yesterday = Jul 3
+    const options = computeWeeklyRangeOptions(rows, now);
     expect(options.last7).toEqual({ startIso: "2026-06-27", endIso: "2026-07-03" });
     expect(options.prev7).toEqual({ startIso: "2026-06-20", endIso: "2026-06-26" });
+  });
+
+  it("anchors last7 to calendar yesterday even when the CSV's latest row is earlier", () => {
+    const rows = daysInclusive("2026-08-01", "2026-08-20");
+    const now = new Date("2026-09-02T12:00:00Z");
+    const options = computeWeeklyRangeOptions(rows, now, "America/Toronto");
+    expect(options.last7).toEqual({ startIso: "2026-08-26", endIso: "2026-09-01" });
   });
 });
 
