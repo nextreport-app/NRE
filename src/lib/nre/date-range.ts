@@ -144,12 +144,22 @@ export function computeCreativeRangeIso(
   return { startIso: toIsoDate(start), endIso: toIsoDate(yesterday) };
 }
 
-/** Always day 1 of the reporting month (the month "yesterday" falls in) through yesterday. */
-export function computeMtdRangeIso(rows: NreRow[], now: Date = new Date(), timezone = "UTC"): DateRangeIso | null {
-  const yesterday = computeEffectiveYesterday(rows, now, timezone);
-  if (!yesterday) return null;
-  const monthStart: ParsedDate = { year: yesterday.year, month: yesterday.month, day: 1 };
-  return { startIso: toIsoDate(monthStart), endIso: toIsoDate(yesterday) };
+/** Yesterday in the client's calendar — independent of which dates appear in the CSV. */
+export function getCalendarYesterday(now: Date = new Date(), timezone = "UTC"): ParsedDate {
+  return addDays(getCalendarDateInTimezone(now, timezone), -1);
+}
+
+/**
+ * MTD window for labels and filtering: day 1 of the current calendar month
+ * (in the client's timezone) through calendar yesterday. Anchored to the
+ * real reporting month, NOT the latest month present in the CSV — so a Last
+ * 30 Days export that still only has last month's rows on the 2nd never
+ * mis-labels August totals as September MTD.
+ */
+export function computeMtdRangeIso(_rows: NreRow[], now: Date = new Date(), timezone = "UTC"): DateRangeIso {
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const monthStart: ParsedDate = { year: calendarYesterday.year, month: calendarYesterday.month, day: 1 };
+  return { startIso: toIsoDate(monthStart), endIso: toIsoDate(calendarYesterday) };
 }
 
 export interface CsvDateBounds {

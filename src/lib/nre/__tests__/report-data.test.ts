@@ -2300,6 +2300,37 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     expect(data.periodRow.fullMonthLabel).toBe("August 22 - August 31");
   });
 
+  it("uses Meta Starts column for previous month label on monthly totals exports", () => {
+    const augustMonthlyPeriodRows = [
+      {
+        _raw: { Starts: "2026-08-05", "Reporting starts": "2026-08-01", "Reporting ends": "2026-08-31" },
+        campaign_name: "Shoes - Purchases",
+        ad_set_name: "Prospecting",
+        result_type: "Purchase",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "10",
+        ctr: "2",
+        cpc: "3",
+        date_start: "2026-08-01",
+        date_end: "2026-08-31",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: augustMonthlyPeriodRows,
+      now: new Date("2026-09-05T12:00:00Z"),
+    });
+
+    expect(data.periodRow.monthLabel).toBe("August 5 - 31");
+  });
+
   it("sameMonthAsCurrentMTD is false when the Previous Month row and MTD row fall in different calendar months", () => {
     const data = buildReportData({
       accountName: "Test Agency",
@@ -4273,5 +4304,91 @@ describe("buildPreviousMonthSummaryReportData — no current-period data, Previo
   it("tableHeaderLabels mirrors the Period row's own resultColumns", () => {
     const data = buildSummary();
     expect(data.tableHeaderLabels.resultColumns.map((c) => c.label)).toEqual(data.periodRow.resultColumns.map((c) => c.label));
+  });
+});
+
+describe("buildReportData — September MTD must not reuse August totals (real-account regression)", () => {
+  const augustOnlyMtdRows: NreRow[] = Array.from({ length: 10 }, (_, i) => ({
+    _raw: { Day: `${String(22 + i).padStart(2, "0")}-08-2026` },
+    campaign_name: "Purchase Campaign | Remarketing",
+    ad_set_name: "Remarketing",
+    result_type: "Purchase",
+    spend: "50",
+    reach: "200",
+    impressions: "400",
+    results: "1",
+    ctr: "2",
+    cpc: "3",
+    date_start: "2026-08-22",
+    date_end: "2026-08-31",
+  }));
+
+  const septemberRow: NreRow = {
+    _raw: { Day: "2026-09-01" },
+    campaign_name: "ABO - Testing",
+    ad_set_name: "September Ads",
+    result_type: "Purchase",
+    spend: "186.4",
+    reach: "2866",
+    impressions: "3830",
+    results: "2",
+    purchases: "2",
+    ctr: "4.49",
+    cpc: "1.47",
+    date_start: "2026-09-01",
+    date_end: "2026-09-01",
+  };
+
+  const pmMonthlyRow: NreRow = {
+    _raw: { Starts: "2026-08-05", "Reporting starts": "2026-08-01", "Reporting ends": "2026-08-31" },
+    campaign_name: "Purchase Campaign | Remarketing",
+    ad_set_name: "Remarketing",
+    result_type: "Website purchases",
+    spend: "324.2",
+    reach: "1234",
+    impressions: "8402",
+    results: "2",
+    purchases: "2",
+    ctr: "2.01",
+    cpc: "3.45",
+    date_start: "2026-08-01",
+    date_end: "2026-08-31",
+  };
+
+  const now = new Date("2026-09-02T12:00:00Z");
+
+  it("when only paused August campaigns are selected, MTD shows September with no spend — not August totals mislabeled", () => {
+    const data = buildReportData({
+      accountName: "Nope",
+      currencySymbol: "C$",
+      timezone: "America/Toronto",
+      monthlyBudget: null,
+      mtdDailyRows: [...augustOnlyMtdRows, septemberRow],
+      periodRows: [pmMonthlyRow],
+      selectedCampaigns: ["Purchase Campaign | Remarketing"],
+      now,
+    });
+
+    expect(data.mtdRow.monthLabel).toBe("September 1");
+    expect(data.mtdRow.hasData).toBe(false);
+    expect(data.mtdRow.spend).toBe("—");
+    expect(data.chart!.totalAllSpend).toBe(0);
+  });
+
+  it("when the active September campaign is selected, MTD reflects only September spend", () => {
+    const data = buildReportData({
+      accountName: "Nope",
+      currencySymbol: "C$",
+      timezone: "America/Toronto",
+      monthlyBudget: null,
+      mtdDailyRows: [...augustOnlyMtdRows, septemberRow],
+      periodRows: [pmMonthlyRow],
+      selectedCampaigns: ["ABO - Testing"],
+      now,
+    });
+
+    expect(data.mtdRow.monthLabel).toBe("September 1");
+    expect(data.mtdRow.spend).toBe("C$186");
+    expect(data.chart!.totalAllSpend).toBe(186.4);
   });
 });

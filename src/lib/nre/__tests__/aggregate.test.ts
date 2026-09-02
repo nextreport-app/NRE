@@ -292,6 +292,17 @@ describe("splitMtdDaily", () => {
     expect(mtdSpend).toBe(30);
   });
 
+  it("does not bleed previous-month rows into MTD when the calendar month has advanced", () => {
+    const rows: NreRow[] = [];
+    for (let day = 1; day <= 31; day++) {
+      rows.push(dailyRow({ day: `${String(day).padStart(2, "0")}-08-2026`, spend: "1" }));
+    }
+    const result = splitMtdDaily(rows, new Date("2026-09-02T12:00:00Z"), { timezone: "America/Toronto" });
+    expect(result).not.toBeNull();
+    expect(result!.mtdRows.length).toBe(0);
+    expect(result!.weeklyRows.length).toBeGreaterThan(0);
+  });
+
   it("uses an explicit weeklyRange instead of the default trailing-7-days window when given", () => {
     const rows: NreRow[] = [];
     for (let day = 1; day <= 19; day++) {

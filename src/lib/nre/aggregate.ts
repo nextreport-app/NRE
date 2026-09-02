@@ -20,7 +20,7 @@ import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
 import { canonicalResultTypeText, detectObjectiveFromColumns, resolveObjective, sumRawColumnByKeywords } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
-import { computeEffectiveYesterday, type DateRangeIso } from "./date-range";
+import { computeEffectiveYesterday, getCalendarYesterday, type DateRangeIso } from "./date-range";
 
 export interface AggRow {
   campaign_name: string;
@@ -386,16 +386,18 @@ export function splitMtdDaily(
   });
   const weeklyRows = aggregateRows(weeklyRaw);
 
-  // MTD = day 1 of the reporting month through yesterday — explicitly
-  // bounded (not just "every valid row in the file") so it always matches
-  // exactly what the wizard's "MTD period: ..." confirmation shows,
-  // regardless of the weekly selection above.
-  const monthStartTs = Date.UTC(yesterday.year, yesterday.month - 1, 1);
+  // MTD = day 1 of the CURRENT calendar month (client TZ) through calendar
+  // yesterday — never the month of the CSV's latest row. A Last 30 Days file
+  // that still ends in August must not bleed August totals into September
+  // MTD when the report is generated on the 2nd.
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const calendarYesterdayTs = Date.UTC(calendarYesterday.year, calendarYesterday.month - 1, calendarYesterday.day);
+  const monthStartTs = Date.UTC(calendarYesterday.year, calendarYesterday.month - 1, 1);
   const mtdRaw = validRows.filter((row) => {
     const d = parseDate(getRowDate(row));
     if (!d) return false;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
-    return ts >= monthStartTs && ts <= yesterdayTs;
+    return ts >= monthStartTs && ts <= calendarYesterdayTs;
   });
   const mtdRows = aggregateRows(mtdRaw);
 
