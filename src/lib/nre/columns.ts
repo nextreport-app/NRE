@@ -132,8 +132,14 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
  * "Reporting starts"/"Starts"/"Ends" never equal "day" or "date" outright,
  * so they can never be picked up here even by accident.
  */
+/** Minimal row shape for date extraction — satisfied by both NreRow and MetricRow. */
+export type RowWithDate = {
+  _raw?: Record<string, string>;
+  date_start?: string | null;
+};
+
 /** The value of a real per-row "Day"/"Date" column, or null if this row has neither — shared by getRowDate (which additionally falls back to date_start) and hasRealRowDate (which deliberately does NOT). */
-function findRealDayOrDateValue(row: NreRow): string | null {
+function findRealDayOrDateValue(row: RowWithDate): string | null {
   const raw = row._raw || {};
   const normalized = Object.entries(raw).map(([header, value]) => [header.trim().toLowerCase(), value] as const);
 
@@ -146,7 +152,7 @@ function findRealDayOrDateValue(row: NreRow): string | null {
   return null;
 }
 
-export function getRowDate(row: NreRow): string {
+export function getRowDate(row: RowWithDate): string {
   // Last-resort fallback for exports with no real per-row date column at
   // all (rare) — matches the source's own fallback to date_start.
   return findRealDayOrDateValue(row) ?? row.date_start ?? "";
@@ -161,6 +167,6 @@ export function getRowDate(row: NreRow): string {
  * "weekly or monthly totals instead of daily data" check, which uses this
  * to catch that before it produces garbage weekly/MTD splits downstream.
  */
-export function hasRealRowDate(row: NreRow): boolean {
+export function hasRealRowDate(row: RowWithDate): boolean {
   return findRealDayOrDateValue(row) !== null;
 }
