@@ -2270,6 +2270,36 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     expect(data.periodRow.monthName).toBe("June");
   });
 
+  it("labels the Previous Month row from per-row Day values, not file-wide Reporting starts (mid-month campaign start)", () => {
+    const augustDailyPeriodRows = Array.from({ length: 10 }, (_, i) => ({
+      _raw: { Day: `${String(22 + i).padStart(2, "0")}-08-2026` },
+      campaign_name: "Shoes - Purchases",
+      ad_set_name: "Prospecting",
+      result_type: "Purchase",
+      spend: "50",
+      reach: "200",
+      impressions: "400",
+      results: "1",
+      ctr: "2",
+      cpc: "3",
+      date_start: "01-08-2026",
+      date_end: "31-08-2026",
+    }));
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: augustDailyPeriodRows,
+      now: new Date("2026-09-05T12:00:00Z"),
+    });
+
+    expect(data.periodRow.monthLabel).toBe("August 22 - 31");
+    expect(data.periodRow.fullMonthLabel).toBe("August 22 - August 31");
+  });
+
   it("sameMonthAsCurrentMTD is false when the Previous Month row and MTD row fall in different calendar months", () => {
     const data = buildReportData({
       accountName: "Test Agency",

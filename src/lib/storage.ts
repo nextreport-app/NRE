@@ -103,12 +103,10 @@ export async function deleteLogoFile(url: string): Promise<void> {
 // the user actually uploaded is recovered from the Blob URL's own path
 // (previousMonthDataFileName below) rather than stored separately.
 //
-// Because the key includes the filename, and that can change between
-// uploads, a re-upload does NOT automatically overwrite the previous blob
-// the way the logo's fixed-extension keys do — the caller is expected to
-// delete the client's previous previousMonthDataUrl (read before the
-// update) once the new one is saved, or the old file is orphaned in Blob
-// storage indefinitely.
+// Because the key includes the filename, re-uploading the same filename
+// overwrites the existing blob in place (allowOverwrite: true). A upload
+// under a different filename leaves the old blob orphaned until the caller
+// deletes the client's previous previousMonthDataUrl after saving the new one.
 
 function sanitizeFileNameForBlobKey(fileName: string): string {
   const base = fileName.split(/[/\\]/).pop() || "file";
@@ -126,6 +124,7 @@ export async function savePreviousMonthDataFile(
   const blob = await put(`previous-month-data/${clientId}/${safeName}`, buffer, {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType,
   });
   return blob.url;
