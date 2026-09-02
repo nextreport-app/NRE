@@ -6,7 +6,7 @@ import type { ShareChartData } from "../nre/share-report";
 import type { VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
-import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
+import { REPORT_HEADER_COLOR, VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
 import {
   resultBarColumns,
   resultBarFillWidth,
@@ -35,6 +35,10 @@ import {
 
 const DONUT_START_DEG = 270;
 const MINI_DONUT_HOLE = (MTD_VISUAL.miniDonutD / 2 - 12) / (MTD_VISUAL.miniDonutD / 2);
+
+function truncateLegendLine(text: string, max = 42): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
 
 function palette(isLight: boolean) {
   return isLight ? VISUAL_CHART_COLORS_LIGHT : VISUAL_CHART_COLORS_DARK;
@@ -148,11 +152,12 @@ function appendGroupedDonut(
         y: legendY,
         w: d - 14,
         h: 14,
-        text: `${seg.name} · ${seg.spendLabel} · ${seg.percentage}%`,
+        text: truncateLegendLine(`${seg.name} · ${seg.spendLabel} · ${seg.percentage}%`),
         sizePt: 11,
         colorHex: ink,
         align: "l",
         clipOverflow: true,
+        nowrap: true,
       }),
     );
     legendY += 16;
@@ -241,10 +246,12 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_SLIDE_W - MTD_VISUAL.marginX * 2,
       h: MTD_VISUAL.titleH,
       text: model.title,
-      sizePt: REPORT_HEADER_SIZE_PT,
+      sizePt: VISUAL_CHART_TITLE_SIZE_PT,
       bold: true,
       colorHex: REPORT_HEADER_COLOR,
       align: "ctr",
+      clipOverflow: true,
+      nowrap: true,
     }),
   );
 

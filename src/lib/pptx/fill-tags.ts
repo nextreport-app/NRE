@@ -68,6 +68,8 @@ const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visuall
 // on every slide, while the name is the slide's own prominent identifier.
 export const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — used uniformly for every slide type's own main heading
 export const REPORT_HEADER_SIZE_PT = 30;
+/** MTD Visual Chart slide title — slightly smaller so long date ranges stay on one line. */
+export const VISUAL_CHART_TITLE_SIZE_PT = 28;
 
 /**
  * Largest candidate size (checked largest-first) whose estimated width,

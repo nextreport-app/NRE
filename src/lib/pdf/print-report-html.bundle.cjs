@@ -425,7 +425,7 @@ function VisualResultBar({
   statLine,
   barPct
 }) {
-  const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
+  const widthPct = Math.max(0, Math.min(100, barPct));
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3", children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate pt-1 text-right text-[16px] font-medium text-ink", children: name }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
@@ -457,7 +457,7 @@ function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-center text-[30px] font-bold text-[#94a3b8]", children: model.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-1 text-center text-[28px] font-bold leading-tight text-[#94a3b8]", children: model.title }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
@@ -475,8 +475,8 @@ function ShareMtdOverviewSlide({ chart }) {
               size: 168
             }
           ) }),
-          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "truncate text-[13px] text-ink", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "mr-2 inline-block h-2.5 w-2.5 rounded-sm", style: { backgroundColor: `#${seg.color}` } }),
+          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-ink", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "mr-2 inline-block h-2.5 w-2.5 shrink-0 rounded-sm align-middle", style: { backgroundColor: `#${seg.color}` } }),
             seg.name,
             " \xB7 ",
             seg.spendLabel,
@@ -537,9 +537,9 @@ function MetricGuideSection({ metricGuide }) {
   if (metricGuide.length === 0) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-[28px] font-bold text-ink", children: "Metric Abbreviation Guide" }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2", children: metricGuide.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[15px] font-bold uppercase tracking-wide text-accent-orange", children: entry.term }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[15px] leading-[1.5] text-ink-muted", children: getExplanation(entry.term) })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2", children: metricGuide.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 overflow-hidden", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "line-clamp-2 break-words text-[15px] font-bold uppercase tracking-wide text-accent-orange", children: entry.term }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted", children: getExplanation(entry.term) })
     ] }, `${entry.term}-${i}`)) })
   ] });
 }
