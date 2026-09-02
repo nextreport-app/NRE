@@ -52,7 +52,8 @@ export const CAMPAIGN_BAR_COLORS_LIGHT = {
 
 export function resultBarFillWidth(barPct: number, trackW: number): number {
   const pct = Math.max(0, Math.min(100, barPct));
-  return Math.max(pct > 0 ? 6 : 0, Math.round((pct / 100) * trackW));
+  if (pct <= 0) return 0;
+  return Math.round((pct / 100) * trackW);
 }
 
 export function resultBarColumns() {

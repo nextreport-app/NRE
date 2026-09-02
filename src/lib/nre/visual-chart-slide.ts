@@ -1,7 +1,7 @@
 /**
  * MTD Visual Chart slide — shared data model for browser, OOXML, and SVG.
  * Left: budget distribution (mini donuts per campaign, or one donut by objective).
- * Right: primary results bars (results magnitude, not spend).
+ * Right: primary results bars (stat line = results + cost; bar fill = spend share).
  */
 
 import { fmtCurrency, fmtCurrency2dp } from "./format";
@@ -36,7 +36,7 @@ export interface VisualResultBar {
   costLine: string;
   /** Single-line stats under the bar — e.g. "6,626 link clicks $0.29 CPC". */
   statLine: string;
-  /** 0–100 relative to the largest result in the set. */
+  /** 0–100 relative to the largest spend in the set. */
   barPct: number;
 }
 
@@ -116,10 +116,10 @@ function assignCampaignColors(campaigns: ChartCampaignData[]): Map<string, strin
 }
 
 function buildResultBars(
-  rows: { name: string; color: string; results: number; resLabel: string; cpr: number; cprLabel: string }[],
+  rows: { name: string; color: string; spend: number; results: number; resLabel: string; cpr: number; cprLabel: string }[],
   currencySymbol: string,
 ): VisualResultBar[] {
-  const maxResults = Math.max(1, ...rows.map((r) => r.results));
+  const maxSpend = Math.max(1, ...rows.map((r) => r.spend));
   return rows
     .slice()
     .sort((a, b) => b.results - a.results)
@@ -133,7 +133,7 @@ function buildResultBars(
         resultLine,
         costLine,
         statLine: formatStatLine(resultLine, costLine),
-        barPct: row.results > 0 ? Math.max(4, Math.round((row.results / maxResults) * 100)) : 0,
+        barPct: row.spend > 0 ? Math.round((row.spend / maxSpend) * 100) : 0,
       };
     });
 }
@@ -206,6 +206,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       objectives.map((obj, i) => ({
         name: toTitleCaseChartLabel(obj.label),
         color: VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]!,
+        spend: parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0,
         results: parseInt(obj.resultsValue.replace(/,/g, ""), 10) || 0,
         resLabel: obj.label,
         cpr: resolveObjectiveCpr(obj),
@@ -260,6 +261,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     chart.campaigns.map((c) => ({
       name: truncateName(c.name, 22),
       color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
+      spend: c.spend,
       results: c.results,
       resLabel: c.resLabel,
       cpr: c.cpr,

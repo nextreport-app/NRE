@@ -153,4 +153,52 @@ describe("buildVisualChartSlideModel", () => {
     expect(linkBar!.statLine).not.toContain("\n");
     expect(linkBar!.costLine).toBe("$0.29 CPC");
   });
+
+  it("fills result bars proportionally to spend, not results count", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 5780,
+        snapshot: {
+          mode: "multi",
+          mtdSpendFormatted: "$5,780",
+          activeCampaignCount: 3,
+          objectives: [
+            {
+              label: "META FORM LEADS",
+              resultsValue: "32",
+              cprValue: "$90.91",
+              cprLabel: "COST PER META FORM LEAD",
+              spendFormatted: "$2,909",
+            },
+            {
+              label: "LINK CLICKS",
+              resultsValue: "6,626",
+              cprValue: "$0.29",
+              cprLabel: "COST PER LINK CLICK",
+              spendFormatted: "$1,921",
+            },
+            {
+              label: "REACH",
+              resultsValue: "45,230",
+              cprValue: "$0.02",
+              cprLabel: "COST PER 1,000 PEOPLE REACHED",
+              spendFormatted: "$950",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "45,230",
+          primaryResultsLabel: "REACH",
+          primaryCprValue: "$0.02",
+          primaryCprLabel: "COST PER 1,000 PEOPLE REACHED",
+          primarySpendFormatted: "$2,909",
+        },
+      }),
+      "$",
+    );
+
+    const byName = Object.fromEntries(model.resultBars.map((b) => [b.name, b.barPct]));
+    expect(byName["Meta Form Leads"]).toBe(100);
+    expect(byName["Link Clicks"]).toBeGreaterThan(byName["Reach"]!);
+    expect(byName["Link Clicks"]).not.toBe(byName["Reach"]);
+  });
 });

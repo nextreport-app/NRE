@@ -235,6 +235,8 @@ export interface TextBoxOptions {
   anchor?: TextAnchor;
   /** Clip ink that would paint outside the box (unbreakable campaign names). */
   clipOverflow?: boolean;
+  /** When true, keep text on a single line (no word wrap). */
+  nowrap?: boolean;
 }
 
 export function textBox(opts: TextBoxOptions): string {
@@ -244,11 +246,12 @@ export function textBox(opts: TextBoxOptions): string {
   const font = opts.fontFamily ?? "Poppins";
   const bodyAnchor = opts.anchor ?? "t";
   const overflow = opts.clipOverflow ? ' horzOverflow="clip" vertOverflow="clip"' : "";
+  const wrap = opts.nowrap ? "none" : "square";
   return (
     `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="TextBox ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
     `<p:spPr><a:xfrm><a:off x="${ptToEmu(opts.x)}" y="${ptToEmu(opts.y)}"/><a:ext cx="${ptToEmu(opts.w)}" cy="${ptToEmu(opts.h)}"/></a:xfrm>` +
     `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>` +
-    `<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="${bodyAnchor}"${overflow}><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
+    `<p:txBody><a:bodyPr wrap="${wrap}" lIns="0" tIns="0" rIns="0" bIns="0" anchor="${bodyAnchor}"${overflow}><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
     `<a:p><a:pPr algn="${align}"/><a:r><a:rPr lang="en-US" sz="${Math.round(opts.sizePt * 100)}" b="${bold}">` +
     `<a:solidFill><a:srgbClr val="${opts.colorHex}"/></a:solidFill>` +
     `<a:latin typeface="${font}"/><a:ea typeface="${font}"/><a:cs typeface="${font}"/></a:rPr>` +

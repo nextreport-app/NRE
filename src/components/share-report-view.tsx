@@ -249,7 +249,7 @@ function VisualResultBar({
   statLine: string;
   barPct: number;
 }) {
-  const widthPct = Math.max(barPct > 0 ? 4 : 0, barPct);
+  const widthPct = Math.max(0, Math.min(100, barPct));
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3">
       <p className="truncate pt-1 text-right text-[16px] font-medium text-ink">{name}</p>
@@ -299,7 +299,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="text-center text-[30px] font-bold text-[#94a3b8]">{model.title}</h2>
+      <h2 className="line-clamp-1 text-center text-[28px] font-bold leading-tight text-[#94a3b8]">{model.title}</h2>
 
       <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
@@ -319,8 +319,8 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                 />
               </div>
               {model.groupedDonut.map((seg) => (
-                <p key={seg.name} className="truncate text-[13px] text-ink">
-                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `#${seg.color}` }} />
+                <p key={seg.name} className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-ink">
+                  <span className="mr-2 inline-block h-2.5 w-2.5 shrink-0 rounded-sm align-middle" style={{ backgroundColor: `#${seg.color}` }} />
                   {seg.name} · {seg.spendLabel} · {seg.percentage}%
                 </p>
               ))}
@@ -435,9 +435,13 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
       <h2 className="text-[28px] font-bold text-ink">Metric Abbreviation Guide</h2>
       <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
         {metricGuide.map((entry, i) => (
-          <div key={`${entry.term}-${i}`}>
-            <p className="text-[15px] font-bold uppercase tracking-wide text-accent-orange">{entry.term}</p>
-            <p className="mt-1 text-[15px] leading-[1.5] text-ink-muted">{getExplanation(entry.term)}</p>
+          <div key={`${entry.term}-${i}`} className="min-w-0 overflow-hidden">
+            <p className="line-clamp-2 break-words text-[15px] font-bold uppercase tracking-wide text-accent-orange">
+              {entry.term}
+            </p>
+            <p className="mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted">
+              {getExplanation(entry.term)}
+            </p>
           </div>
         ))}
       </div>

@@ -78,28 +78,36 @@ function normalize(s: string): string {
 /** Splits long metric names into the template's abbreviation + expansion pattern. */
 function splitLegendTitle(term: string, slot: TemplateLegendSlot): { primary: string; secondary: string } {
   const upper = term.toUpperCase();
+  const maxSecondaryLen = 22;
+
+  function trimSecondary(text: string): string {
+    if (text.length <= maxSecondaryLen) return text;
+    return `${text.slice(0, maxSecondaryLen - 1)}…`;
+  }
+
   if (slot.titleRuns.length < 2) {
     const words = upper.split(/\s+/);
     if (words.length >= 4 || upper.length > 18) {
       return { primary: words.map((w) => w[0]).join("").slice(0, 6), secondary: "" };
     }
-    return { primary: upper, secondary: "" };
+    return { primary: upper.length > 24 ? `${upper.slice(0, 23)}…` : upper, secondary: "" };
   }
 
   const paren = upper.match(/^(.+?)\s*\((.+)\)$/);
   if (paren) {
-    return { primary: `${paren[1].trim()} `, secondary: `(${paren[2].trim()})` };
+    const expansion = `(${paren[2].trim()})`;
+    return { primary: `${paren[1].trim()} `, secondary: trimSecondary(expansion) };
   }
 
   const words = upper.split(/\s+/);
   if (words.length >= 4 || upper.length > 22) {
     const acronym = words.map((w) => w[0]).join("").slice(0, 5);
-    return { primary: `${acronym} `, secondary: `(${upper})` };
+    return { primary: `${acronym} `, secondary: trimSecondary(`(${upper})`) };
   }
   if (words.length === 3 && !/^\d+$/.test(words[2] ?? "")) {
-    return { primary: `${words.slice(0, 2).join(" ")} `, secondary: `(${words[2]})` };
+    return { primary: `${words.slice(0, 2).join(" ")} `, secondary: trimSecondary(`(${words[2]})`) };
   }
-  return { primary: upper, secondary: "" };
+  return { primary: upper.length > 20 ? `${upper.slice(0, 19)}…` : upper, secondary: "" };
 }
 
 const LEGEND_DESC_OVERRIDES: Record<string, string> = {
@@ -186,7 +194,9 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
     const { primary, secondary } = splitLegendTitle(entry.term, slot);
     xml = replaceLiteralText(xml, slot.titleRuns[0], primary);
     if (slot.titleRuns[1]) xml = replaceLiteralText(xml, slot.titleRuns[1], secondary);
-    xml = replaceLiteralText(xml, slot.descText, entry.explanation);
+    const explanation =
+      entry.explanation.length > 120 ? `${entry.explanation.slice(0, 117).trimEnd()}…` : entry.explanation;
+    xml = replaceLiteralText(xml, slot.descText, explanation);
   }
 
   for (const [original, replacement] of Object.entries(LEGEND_DESC_OVERRIDES)) {
