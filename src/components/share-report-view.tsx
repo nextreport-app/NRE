@@ -7,6 +7,7 @@ import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
+import { miniDonutGrid } from "@/lib/pptx/chart-slide-layout";
 
 /**
  * The public share page's full presentational tree (app/r/[token]/page.tsx)
@@ -251,13 +252,13 @@ function VisualResultBar({
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3">
-      <p className="truncate pt-1 text-right text-[16px] font-medium text-ink">{name}</p>
+    <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-x-3">
+      <p className="truncate text-right text-[14px] font-medium leading-tight text-ink">{name}</p>
       <div className="min-w-0">
         <div className="h-5 overflow-hidden rounded bg-[#1e293b]">
           <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
         </div>
-        <p className="mt-1.5 break-words text-[16px] font-bold leading-snug text-ink">{statLine}</p>
+        <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink">{statLine}</p>
       </div>
     </div>
   );
@@ -274,20 +275,21 @@ function VisualMiniDonut({
   pctLabel: string;
   color: string;
 }) {
-  const size = 90;
+  const size = 108;
   const stroke = 12;
   const r = (size - stroke) / 2;
   const c = size / 2;
   return (
-    <div className="flex w-[90px] flex-col items-center">
+    <div className="flex w-[108px] flex-col items-center">
       <svg width={size} height={size} aria-hidden="true">
         <circle cx={c} cy={c} r={r} fill="none" stroke={`#${color}`} strokeWidth={stroke} />
         <text x={c} y={c + 4} textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="700">
           {spendLabel}
         </text>
       </svg>
-      <p className="mt-1 w-full truncate text-center text-[12px] text-ink">{name}</p>
-      <p className="text-[12px] text-[#94a3b8]">{pctLabel}</p>
+      <p className="mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[11px] text-[#94a3b8]">
+        {name} · {pctLabel}
+      </p>
     </div>
   );
 }
@@ -326,7 +328,10 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
               ))}
             </div>
           ) : (
-            <div className="mt-4 flex flex-wrap justify-center gap-4">
+            <div
+              className="mt-4 grid justify-items-center gap-x-3 gap-y-3"
+              style={{ gridTemplateColumns: `repeat(${miniDonutGrid(model.miniDonuts.length).cols}, 108px)` }}
+            >
               {model.miniDonuts.map((donut) => (
                 <VisualMiniDonut key={donut.name} {...donut} />
               ))}
@@ -334,14 +339,14 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           )}
           {!model.isMultiObjective ? (
             <p className="mt-4 text-center text-[15px] font-bold text-ink">
-              Total MTD Spend: {model.groupedDonutCenterLabel}
+              Total Spend: {model.groupedDonutCenterLabel}
             </p>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
           <p className="text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
-          <div className="mt-4 space-y-5">
+          <div className="mt-4 space-y-4">
             {model.resultBars.map((bar) => (
               <VisualResultBar key={bar.name} {...bar} />
             ))}

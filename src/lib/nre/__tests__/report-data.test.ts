@@ -2300,6 +2300,51 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     expect(data.periodRow.fullMonthLabel).toBe("August 22 - August 31");
   });
 
+  it("ignores file-wide Reporting starts on monthly-total rows when daily Day rows define the span", () => {
+    const augustDailyPeriodRows = Array.from({ length: 5 }, (_, i) => ({
+      _raw: { Day: `${String(22 + i).padStart(2, "0")}-08-2026` },
+      campaign_name: "Shoes - Purchases",
+      ad_set_name: "Prospecting",
+      result_type: "Purchase",
+      spend: "50",
+      reach: "200",
+      impressions: "400",
+      results: "1",
+      ctr: "2",
+      cpc: "3",
+      date_start: "01-08-2026",
+      date_end: "31-08-2026",
+    }));
+    const augustMonthlyPeriodRows = [
+      {
+        _raw: { Starts: "2026-08-05", "Reporting starts": "2026-08-01", "Reporting ends": "2026-08-31" },
+        campaign_name: "Boots - Reach",
+        ad_set_name: "Prospecting",
+        result_type: "Reach",
+        spend: "500",
+        reach: "2000",
+        impressions: "4000",
+        results: "0",
+        ctr: "2",
+        cpc: "3",
+        date_start: "2026-08-01",
+        date_end: "2026-08-31",
+      },
+    ];
+
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "$",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows,
+      periodRows: [...augustDailyPeriodRows, ...augustMonthlyPeriodRows],
+      now: new Date("2026-09-05T12:00:00Z"),
+    });
+
+    expect(data.periodRow.monthLabel).toBe("August 22 - 26");
+  });
+
   it("uses Reporting starts/ends for previous month label on monthly totals exports", () => {
     const augustMonthlyPeriodRows = [
       {
@@ -2709,23 +2754,22 @@ describe("buildReportData — chart slide with zero current-month spend (Fix 6)"
     expect(data.mtdRow.monthName).toBe("July");
   });
 
-  it("still gives the June-only campaign its own $0 donut on the chart, instead of dropping it because MTD (July) has no rows for it", () => {
+  it("still gives the June-only campaign its own slot on the chart with its last-30-days spend", () => {
     const entry = data.chart!.campaigns.find((c) => c.name === "Old Campaign");
     expect(entry).toBeDefined();
-    expect(entry!.spend).toBe(0);
-    expect(entry!.results).toBe(0);
+    // L30 (June 20 - July 19) includes Old Campaign's June 20-26 delivery.
+    expect(entry!.spend).toBe(700);
+    expect(entry!.results).toBeGreaterThan(0);
   });
 
-  it("shows a $0 Total Month to Date Spend contribution from the June-only campaign, never June's real figure", () => {
-    // Active Campaign's real July spend (7 days x $200 = $1400) is the only
-    // contributor — Old Campaign's $700 June spend never leaks in.
-    expect(data.chart!.totalAllSpend).toBe(1400);
+  it("sums last-30-days spend across every campaign in the chart window", () => {
+    // Old Campaign: 7 days x $100 = $700. Active Campaign: 7 days x $200 = $1400.
+    expect(data.chart!.totalAllSpend).toBe(2100);
   });
 
-  it("shows the CURRENT month (July) on the chart sub-line and title, never June", () => {
-    expect(data.chart!.mtdMonthName).toBe("July");
-    expect(data.chart!.periodSubLabel).toContain("July");
-    expect(data.chart!.periodSubLabel).not.toContain("June");
+  it("shows the last-30-days date span on the chart sub-line", () => {
+    expect(data.chart!.periodSubLabel).toBe("June 20 - July 19, 2026");
+    expect(data.chart!.periodLabel).toBe("Last30");
   });
 });
 
@@ -3526,18 +3570,12 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
     expect(weekly.mtdRow.spend).toBe(monthly.mtdRow.spend);
   });
 
-  it("shows the MTD date range on the chart sub-line for Weekly reports, not the trailing-7-day window", () => {
-    // mtdDays spans July 1-19; the trailing-7-day weekly window is July
-    // 13-19 (see NOW above) — the chart is always MTD data, so its sub-line
-    // must show the full July 1-19 MTD range either way, not the narrower
-    // weekly window.
+  it("uses the last-30-days window on the chart for Weekly and Monthly reports alike", () => {
     const weekly = build("WEEKLY");
-    expect(weekly.chart?.periodSubLabel).toBe("July 1 - July 19, 2026");
-  });
-
-  it("keeps the 'Full Month [Year]' chart sub-line for Monthly reports", () => {
     const monthly = build("MONTHLY");
-    expect(monthly.chart?.periodSubLabel).toBe("Full Month 2026");
+    expect(weekly.chart?.periodSubLabel).toBe("June 20 - July 19, 2026");
+    expect(monthly.chart?.periodSubLabel).toBe("June 20 - July 19, 2026");
+    expect(weekly.chart?.periodLabel).toBe("Last30");
   });
 
   it("is paused only when there's no data in the relevant window — an explicit weekly gap week for Weekly, vs. the full MTD for Monthly", () => {
@@ -4372,7 +4410,25 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     expect(data.mtdRow.monthLabel).toBe("September 1");
     expect(data.mtdRow.hasData).toBe(false);
     expect(data.mtdRow.spend).toBe("—");
-    expect(data.chart!.totalAllSpend).toBe(0);
+    // Chart uses last-30-days — August delivery still counts even though MTD is empty.
+    expect(data.chart!.totalAllSpend).toBe(500);
+  });
+
+  it("chart slide uses last-30-days data on Sep 2 — not just Sep 1-2 MTD", () => {
+    const data = buildReportData({
+      accountName: "Nope",
+      currencySymbol: "C$",
+      timezone: "America/Toronto",
+      monthlyBudget: null,
+      mtdDailyRows: [...augustOnlyMtdRows, septemberRow],
+      periodRows: [pmMonthlyRow],
+      selectedCampaigns: ["ABO - Testing", "Purchase Campaign | Remarketing"],
+      now,
+    });
+
+    expect(data.chart!.periodLabel).toBe("Last30");
+    expect(data.chart!.periodSubLabel).toBe("August 3 - September 1, 2026");
+    expect(data.chart!.totalAllSpend).toBeGreaterThan(500);
   });
 
   it("when the active September campaign is selected, MTD reflects only September spend", () => {

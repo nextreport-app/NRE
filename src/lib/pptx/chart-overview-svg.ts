@@ -20,6 +20,11 @@ function escapeXml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function truncateCaption(name: string, pctLabel: string, max = 28): string {
+  const full = `${name} · ${pctLabel}`;
+  return full.length > max ? `${full.slice(0, max - 1)}…` : full;
+}
+
 export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const model = chart.visualSlide;
   if (!model) {
@@ -52,7 +57,13 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
       const cy = pos.y + MTD_VISUAL.miniDonutD / 2;
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${MTD_VISUAL.miniDonutD / 2 - 6}" fill="none" stroke="#${donut.color}" stroke-width="12"/>`);
       parts.push(`<text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="11" font-weight="700">${escapeXml(donut.spendLabel)}</text>`);
+      parts.push(
+        `<text x="${cx}" y="${pos.y + MTD_VISUAL.miniDonutD + 14}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="9">${escapeXml(truncateCaption(donut.name, donut.pctLabel))}</text>`,
+      );
     });
+    parts.push(
+      `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelH - 12}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">Total Spend: ${escapeXml(model.groupedDonutCenterLabel)}</text>`,
+    );
   }
 
   const cols = resultBarColumns();
@@ -60,17 +71,18 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barY = rowY + 2;
-    const metricsY = barY + MTD_VISUAL.barH + 4;
+    const barBlockH = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH;
+    const barY = rowY + Math.max(0, (rowH - barBlockH) / 2);
+    const metricsY = barY + MTD_VISUAL.barH + 14;
     parts.push(
-      `<text x="${cols.labelX + cols.labelColW}" y="${barY + 14}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="13">${escapeXml(truncateCampaignBarName(bar.name))}</text>`,
+      `<text x="${cols.labelX + cols.labelColW}" y="${rowY + rowH / 2 + 4}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="12">${escapeXml(truncateCampaignBarName(bar.name, 20))}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="2" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {
       parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${MTD_VISUAL.barH}" rx="2" fill="#${bar.color}"/>`);
     }
     parts.push(
-      `<text x="${cols.barX}" y="${metricsY + 14}" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">${escapeXml(bar.statLine)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY}" fill="${INK}" font-family="Poppins" font-size="12" font-weight="700">${escapeXml(bar.statLine)}</text>`,
     );
     rowY += rowH;
   }

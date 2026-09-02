@@ -292,8 +292,8 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("Campaign Performance");
-    expect(chartSvg).toContain("July 1 - July 19, 2026");
+    expect(chartSvg).toContain("Last 30 Days Campaign Performance");
+    expect(chartSvg).toContain("June 20 - July 19, 2026");
     expect(chartSvg).toContain("BUDGET DISTRIBUTION");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
@@ -574,7 +574,7 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("July Campaign Performance");
+    expect(chartSvg).toContain("Last 30 Days Campaign Performance");
     expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
@@ -754,7 +754,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
 
     expect(chartXml).toContain('prst="pie"');
     expect(chartXml).toContain('txBox="1"');
-    expect(chartXml).toContain("Total MTD Spend");
+    expect(chartXml).toContain("Total Spend");
     expect((chartXml.match(/<p:pic>/g) || []).length).toBe(1);
     expect((chartXml.match(/<p:sp>/g) || []).length).toBeGreaterThan(10);
   });

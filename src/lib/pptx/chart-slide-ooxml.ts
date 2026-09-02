@@ -100,8 +100,19 @@ function appendMiniDonut(
   );
   shapes.push(
     textBox({ x, y: y + d / 2 - 8, w: d, h: 16, text: spendLabel, sizePt: 11, bold: true, colorHex: ink, align: "ctr", anchor: "ctr" }),
-    textBox({ x, y: y + d + 4, w: d, h: 14, text: name, sizePt: 10, colorHex: ink, align: "ctr", clipOverflow: true }),
-    textBox({ x, y: y + d + 18, w: d, h: 12, text: pctLabel, sizePt: 10, colorHex: muted, align: "ctr" }),
+    textBox({
+      x: x - 6,
+      y: y + d + 4,
+      w: d + 12,
+      h: MTD_VISUAL.miniDonutCaptionH,
+      text: `${name} · ${pctLabel}`,
+      sizePt: 9,
+      colorHex: muted,
+      align: "ctr",
+      anchor: "ctr",
+      clipOverflow: true,
+      nowrap: true,
+    }),
   );
 }
 
@@ -168,7 +179,6 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   const c = palette(isLight);
   const cols = resultBarColumns();
   const { rowH, startY } = resultBarGeometry(model.resultBars.length);
-  const barH = MTD_VISUAL.barH;
 
   shapes.push(
     textBox({
@@ -187,38 +197,42 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barY = rowY + 2;
-    const metricsY = barY + barH + 4;
+    const barBlockH = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH;
+    const barY = rowY + Math.max(0, (rowH - barBlockH) / 2);
+    const metricsY = barY + MTD_VISUAL.barH + 2;
     shapes.push(
       textBox({
         x: cols.labelX,
-        y: barY,
+        y: rowY,
         w: cols.labelColW,
-        h: barH,
-        text: truncateCampaignBarName(bar.name),
-        sizePt: 13,
+        h: rowH,
+        text: truncateCampaignBarName(bar.name, 20),
+        sizePt: 12,
         colorHex: c.ink,
         align: "r",
         anchor: "ctr",
         clipOverflow: true,
+        nowrap: true,
       }),
-      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: barH, fillHex: c.track }),
+      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: MTD_VISUAL.barH, fillHex: c.track }),
     );
     if (fillW > 0) {
-      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: barH, fillHex: bar.color }));
+      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: MTD_VISUAL.barH, fillHex: bar.color }));
     }
     shapes.push(
       textBox({
         x: cols.barX,
         y: metricsY,
         w: cols.trackW,
-        h: 18,
+        h: MTD_VISUAL.barMetricsH,
         text: bar.statLine,
-        sizePt: 14,
+        sizePt: 12,
         bold: true,
         colorHex: c.ink,
         align: "l",
+        anchor: "t",
         clipOverflow: true,
+        nowrap: true,
       }),
     );
     rowY += rowH;
@@ -305,7 +319,7 @@ export function buildMtdOverviewOoxmlShapes(
         y: MTD_VISUAL.panelY + MTD_VISUAL.panelH - 28,
         w: MTD_VISUAL.leftW,
         h: 20,
-        text: `Total MTD Spend: ${model.groupedDonutCenterLabel}`,
+        text: `Total Spend: ${model.groupedDonutCenterLabel}`,
         sizePt: 14,
         bold: true,
         colorHex: c.ink,

@@ -174,9 +174,8 @@ function buildSummaryMulti(
 }
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {
-  const month = chart.mtdMonthName ?? "This month";
   const range = chart.periodSubLabel.trim();
-  return range.length > 0 ? `${month} Campaign Performance: ${range}` : `${month} Campaign Performance`;
+  return range.length > 0 ? `Last 30 Days Campaign Performance: ${range}` : "Last 30 Days Campaign Performance";
 }
 
 export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol: string): VisualChartSlideModel {
