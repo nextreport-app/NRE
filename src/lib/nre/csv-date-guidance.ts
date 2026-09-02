@@ -67,22 +67,19 @@ export function getMetaCsvDownloadTip(now: Date = new Date()): string {
 
   if (dayOfMonth === 1) {
     return (
-      "Today is the 1st — you're wrapping up last month's report. Download one CSV: Previous Month (e.g. August 1–31) with Time Increment set to Day. " +
-      "That single file covers both your weekly slide (last 7 days ending yesterday) and full monthly totals. " +
-      "Do not use Last 30 Days here — it skips the first days of the month and understates monthly spend."
+      "Today is the 1st — download one Previous Month CSV (daily breakdown). " +
+      "One file covers weekly and monthly slides. Do not use Last 30 Days."
     );
   }
 
   if (dayOfMonth <= 7) {
     return (
-      `Today is the ${ordinalDay(dayOfMonth)}. Select Last 30 Days (not This Month) in Meta Ads Manager — this keeps your weekly slide at a full 7 days across the month boundary. ` +
-      "Set Time Increment to Day."
+      `Today is the ${ordinalDay(dayOfMonth)} — select Last 30 Days (not This Month) with Day breakdown ` +
+      "so your weekly slide has a full 7 days."
     );
   }
 
-  return (
-    "Select This Month in Meta Ads Manager with Time Increment set to Day — complete month-to-date from the 1st through yesterday."
-  );
+  return "Select This Month in Meta Ads Manager with Day breakdown — month-to-date through yesterday.";
 }
 
 function monthStartPresentInCsv(rows: NreRow[], monthStartIso: string): boolean {
@@ -126,49 +123,77 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date()): 
   const warnings: CsvDateWarning[] = [];
 
   if (dayOfMonth === 1) {
-    warnings.push({
-      kind: "first_of_month",
-      title: `Today is the 1st — you're closing ${reportingMonthName ?? "last month"}'s report`,
-      message:
-        `There is no data for the new month yet (we never include today). Your weekly slide will use ${weeklyRangeLabel ?? "the last 7 days ending yesterday"} — included in the same CSV. ` +
-        `The monthly overview covers ${intendedMtdLabel}. ` +
-        "Download Previous Month from Meta Ads Manager (Time Increment: Day). One file is enough — do not also download Last 30 Days.",
-      intendedMtdLabel,
-      weeklyRangeLabel,
-      suggestedDownload: "previous_month",
-    });
+    if (monthStartMissing) {
+      const missingDateLabel = friendlyDate(mtdRange.startIso);
+      const csvStartLabel = friendlyDate(csvBounds.minIso);
+      warnings.push({
+        kind: "first_of_month",
+        title: `${reportingMonthName ?? "Last month"} report — ${missingDateLabel} missing from CSV`,
+        message:
+          `Your file starts ${csvStartLabel}, so monthly totals skip ${missingDateLabel}. ` +
+          `Re-download one Previous Month export (${intendedMtdLabel}, Day breakdown) from Meta Ads Manager — one file covers weekly and monthly slides. ` +
+          "Choose Monthly report type when you generate.",
+        missingDateLabel,
+        csvStartLabel,
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "previous_month",
+      });
+    } else {
+      warnings.push({
+        kind: "first_of_month",
+        title: `Closing ${reportingMonthName ?? "last month"}'s report`,
+        message:
+          `On the 1st, download one Previous Month CSV (${intendedMtdLabel}, Day breakdown). ` +
+          "One file covers your weekly slide and monthly overview — do not use Last 30 Days. " +
+          "Choose Monthly report type when you generate.",
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "previous_month",
+      });
+    }
   } else if (dayOfMonth <= 7) {
-    warnings.push({
-      kind: "early_month_last30",
-      title: "Early in the month — use Last 30 Days",
-      message:
-        `Today is the ${ordinalDay(dayOfMonth)}. Select Last 30 Days (not This Month) when downloading so your weekly slide has a full 7 days across the month boundary. ` +
-        `Your MTD overview will show ${intendedMtdLabel}.`,
-      intendedMtdLabel,
-      weeklyRangeLabel,
-      suggestedDownload: "last_30_days",
-    });
-  }
-
-  if (monthStartMissing) {
+    if (monthStartMissing) {
+      const missingDateLabel = friendlyDate(mtdRange.startIso);
+      const csvStartLabel = friendlyDate(csvBounds.minIso);
+      warnings.push({
+        kind: "early_month_last30",
+        title: `${missingDateLabel} missing — weekly slide may be short`,
+        message:
+          `Your CSV starts ${csvStartLabel}. Re-download Last 30 Days (Day breakdown) from Meta Ads Manager so totals include ${missingDateLabel}. ` +
+          `MTD overview will show ${intendedMtdLabel}.`,
+        missingDateLabel,
+        csvStartLabel,
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "last_30_days",
+      });
+    } else {
+      warnings.push({
+        kind: "early_month_last30",
+        title: "Early in the month — use Last 30 Days",
+        message:
+          `Select Last 30 Days (not This Month) when downloading so your weekly slide has a full 7 days. ` +
+          `MTD overview: ${intendedMtdLabel}.`,
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "last_30_days",
+      });
+    }
+  } else if (monthStartMissing) {
     const missingDateLabel = friendlyDate(mtdRange.startIso);
     const csvStartLabel = friendlyDate(csvBounds.minIso);
     warnings.push({
       kind: "missing_month_start",
-      title: `${missingDateLabel} data is missing from your CSV`,
+      title: `${missingDateLabel} missing from CSV`,
       message:
-        `Your CSV starts on ${csvStartLabel}, so monthly totals exclude ${missingDateLabel}. ` +
-        `The report will label the period as ${intendedMtdLabel}, but spend and results only include days present in the file. ` +
-        (dayOfMonth === 1
-          ? `Re-download using Previous Month (${intendedMtdLabel}) from Meta Ads Manager.`
-          : dayOfMonth <= 7
-            ? "Re-download using Last 30 Days with Time Increment set to Day, or use This Month once enough days have passed."
-            : "Re-download using This Month from Meta Ads Manager so the export starts on the 1st."),
+        `Your file starts ${csvStartLabel}, so MTD totals exclude ${missingDateLabel}. ` +
+        `Re-download This Month from Meta Ads Manager (${intendedMtdLabel}).`,
       missingDateLabel,
       csvStartLabel,
       intendedMtdLabel,
       weeklyRangeLabel,
-      suggestedDownload: dayOfMonth === 1 ? "previous_month" : dayOfMonth <= 7 ? "last_30_days" : "this_month",
+      suggestedDownload: "this_month",
     });
   }
 

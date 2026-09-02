@@ -22,7 +22,7 @@ describe("getMetaCsvDownloadTip", () => {
   it("on the 1st recommends one Previous Month CSV (not Last 30 Days)", () => {
     const tip = getMetaCsvDownloadTip(new Date("2026-09-01T12:00:00Z"));
     expect(tip).toContain("1st");
-    expect(tip).toContain("one CSV");
+    expect(tip).toContain("One file");
     expect(tip).toContain("Previous Month");
     expect(tip).toContain("Do not use Last 30 Days");
   });
@@ -40,15 +40,15 @@ describe("getMetaCsvDownloadTip", () => {
 });
 
 describe("analyzeCsvDateGuidance", () => {
-  it("Sep 1 + Last 30 days CSV missing Aug 1 warns and suggests previous-month monthly report", () => {
+  it("Sep 1 + Last 30 days CSV missing Aug 1 warns once and suggests previous-month monthly report", () => {
     const rows = daysInclusive("2026-08-02", "2026-08-31");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-01T12:00:00Z"));
 
     expect(guidance.mtdRange).toEqual({ startIso: "2026-08-01", endIso: "2026-08-31" });
-    expect(guidance.warnings.some((w) => w.kind === "first_of_month")).toBe(true);
-    expect(guidance.warnings.some((w) => w.kind === "missing_month_start")).toBe(true);
+    expect(guidance.warnings).toHaveLength(1);
+    expect(guidance.warnings[0]?.kind).toBe("first_of_month");
+    expect(guidance.warnings[0]?.missingDateLabel).toBe("August 1");
     expect(guidance.suggestPreviousMonthReport).toBe(true);
-    expect(guidance.warnings.find((w) => w.kind === "missing_month_start")?.missingDateLabel).toBe("August 1");
   });
 
   it("Sep 1 + full August CSV has no missing-month-start warning", () => {
@@ -67,11 +67,12 @@ describe("analyzeCsvDateGuidance", () => {
     expect(guidance.warnings[0]?.weeklyRangeLabel).toContain("31");
   });
 
-  it("Sep 5 + CSV starting Sep 2 warns missing September 1", () => {
+  it("Sep 5 + CSV starting Sep 2 warns once with merged early-month + missing-day message", () => {
     const rows = daysInclusive("2026-09-02", "2026-09-04");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-05T12:00:00Z"));
 
-    expect(guidance.warnings.some((w) => w.kind === "missing_month_start")).toBe(true);
-    expect(guidance.warnings.some((w) => w.kind === "early_month_last30")).toBe(true);
+    expect(guidance.warnings).toHaveLength(1);
+    expect(guidance.warnings[0]?.kind).toBe("early_month_last30");
+    expect(guidance.warnings[0]?.missingDateLabel).toBe("September 1");
   });
 });
