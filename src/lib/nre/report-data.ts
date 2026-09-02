@@ -36,7 +36,7 @@ import {
   type DeliveryStatusIndicator,
 } from "./delivery-status";
 import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
-import { getDateRangeShortLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, parseDate } from "./dates";
+import { getDateRangeShortLabel, getDateRangeAbbrLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, getMonthAbbrName, parseDate } from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth } from "./health";
 import {
@@ -475,14 +475,15 @@ export function freqLine(freq: number): string {
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
-/** Fix 3 (round 4)/Fix 2 (round 5) — "July 1 - 31" for a same-month, multi-day range (the end day alone, not a second "July"); "July 15" for a single day. Falls back to getDateRangeShortLabel's own "Month D - Month D" form when the range crosses a calendar month boundary (e.g. "July 30 - August 5"). Exported for google-report-data.ts's own Combined Total table row, which needs the exact same short-format logic. */
+/** Fix 3 (round 4)/Fix 2 (round 5) — "Jul 1 - 31" for a same-month, multi-day range; "Sep 1 - 2" for early MTD. Falls back to getDateRangeAbbrLabel when the range crosses a calendar month boundary. Exported for google-report-data.ts's own Combined Total table row. */
 export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, monthName: string | null): string {
   const s = parseDate(rawStart);
   const e = parseDate(rawEnd);
-  if (!s || !monthName) return "Previous Month";
-  if (!e || (s.day === e.day && s.month === e.month && s.year === e.year)) return `${monthName} ${s.day}`;
-  if (s.month === e.month && s.year === e.year) return `${monthName} ${s.day} - ${e.day}`;
-  return getDateRangeShortLabel(rawStart, rawEnd);
+  const abbr = getMonthAbbrName(rawStart) ?? (monthName ? monthName.slice(0, 3) : null);
+  if (!s || !abbr) return "Previous Month";
+  if (!e || (s.day === e.day && s.month === e.month && s.year === e.year)) return `${abbr} ${s.day}`;
+  if (s.month === e.month && s.year === e.year) return `${abbr} ${s.day} - ${e.day}`;
+  return getDateRangeAbbrLabel(rawStart, rawEnd);
 }
 
 /**
@@ -537,7 +538,7 @@ function computeTableRow(
       return {
         hasData: false,
         monthLabel: compactSameMonthRangeLabel(range.startIso, range.endIso, monthName),
-        fullMonthLabel: getDateRangeShortLabel(range.startIso, range.endIso),
+        fullMonthLabel: getDateRangeAbbrLabel(range.startIso, range.endIso),
         monthName,
         sameMonthAsCurrentMTD: false,
         spend: "—",
@@ -653,7 +654,7 @@ function computeTableRow(
   // a live objective (see table-slide.ts).
   const allGroups = [...groupsToShow].sort((a, b) => b.totalSpend - a.totalSpend);
 
-  const rawMonthLabel = rawStart ? getDateRangeShortLabel(rawStart, rawEnd) : "This Period";
+  const rawMonthLabel = rawStart ? getDateRangeAbbrLabel(rawStart, rawEnd) : "This Period";
   const monthName = rawStart ? getMonthName(rawStart) : null;
 
   let monthLabel = rawStart
@@ -669,7 +670,7 @@ function computeTableRow(
   if (isMtdRow && mtdCalendarRange) {
     const calMonthName = getMonthName(mtdCalendarRange.startIso);
     monthLabel = compactSameMonthRangeLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso, calMonthName);
-    fullMonthLabel = getDateRangeShortLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
+    fullMonthLabel = getDateRangeAbbrLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
   }
 
   return {
@@ -1596,7 +1597,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
 
-  const chartRangeLabel = chartRange ? getDateRangeShortLabel(chartRange.startIso, chartRange.endIso) : "";
+  const chartRangeLabel = chartRange ? getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso) : "";
   const chartRangeYear = chartRange ? parseDate(chartRange.endIso)?.year : undefined;
   const periodSubLabel =
     chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;

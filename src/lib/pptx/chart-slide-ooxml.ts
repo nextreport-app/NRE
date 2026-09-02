@@ -34,7 +34,10 @@ import {
 } from "./shapes";
 
 const DONUT_START_DEG = 270;
-const MINI_DONUT_HOLE = (MTD_VISUAL.miniDonutD / 2 - 12) / (MTD_VISUAL.miniDonutD / 2);
+
+function miniDonutHoleRatio(d: number): number {
+  return (d / 2 - 14) / (d / 2);
+}
 
 function truncateLegendLine(text: string, max = 42): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
@@ -94,19 +97,19 @@ function appendMiniDonut(
       y,
       d,
       segments: buildColoredPieSegments([{ percentage: 100, color }]),
-      holeRatio: MINI_DONUT_HOLE,
+      holeRatio: miniDonutHoleRatio(d),
       holeFillHex: holeFill,
     }),
   );
   shapes.push(
-    textBox({ x, y: y + d / 2 - 8, w: d, h: 16, text: spendLabel, sizePt: 11, bold: true, colorHex: ink, align: "ctr", anchor: "ctr" }),
+    textBox({ x, y: y + d / 2 - 10, w: d, h: 20, text: spendLabel, sizePt: 14, bold: true, colorHex: ink, align: "ctr", anchor: "ctr" }),
     textBox({
-      x: x - 6,
+      x: x - 8,
       y: y + d + 4,
-      w: d + 12,
+      w: d + 16,
       h: MTD_VISUAL.miniDonutCaptionH,
       text: `${name} · ${pctLabel}`,
-      sizePt: 9,
+      sizePt: 11,
       colorHex: muted,
       align: "ctr",
       anchor: "ctr",
@@ -142,29 +145,29 @@ function appendGroupedDonut(
   shapes.push(
     textBox({
       x,
-      y: y + d / 2 - 10,
+      y: y + d / 2 - 12,
       w: d,
-      h: 22,
+      h: 26,
       text: model.groupedDonutCenterLabel,
-      sizePt: 16,
+      sizePt: 20,
       bold: true,
       colorHex: ink,
       align: "ctr",
       anchor: "ctr",
     }),
-    textBox({ x, y: y + d / 2 + 10, w: d, h: 14, text: "TOTAL SPEND", sizePt: 10, bold: true, colorHex: muted, align: "ctr", anchor: "ctr" }),
+    textBox({ x, y: y + d / 2 + 12, w: d, h: 16, text: "TOTAL SPEND", sizePt: 12, bold: true, colorHex: muted, align: "ctr", anchor: "ctr" }),
   );
-  let legendY = y + d + 16;
+  let legendY = y + d + 18;
   for (const seg of segments) {
     shapes.push(
-      rectangle({ x, y: legendY + 2, w: 10, h: 10, fillHex: seg.color }),
+      rectangle({ x, y: legendY + 2, w: 12, h: 12, fillHex: seg.color }),
       textBox({
-        x: x + 14,
+        x: x + 16,
         y: legendY,
-        w: d - 14,
-        h: 14,
+        w: d - 16,
+        h: 16,
         text: truncateLegendLine(`${seg.name} · ${seg.spendLabel} · ${seg.percentage}%`),
-        sizePt: 11,
+        sizePt: 13,
         colorHex: ink,
         align: "l",
         clipOverflow: true,
@@ -187,7 +190,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
       w: MTD_VISUAL.rightW,
       h: MTD_VISUAL.panelHeadingH,
       text: model.rightHeading.toUpperCase(),
-      sizePt: 14,
+      sizePt: 16,
       bold: true,
       colorHex: c.heading,
       align: "l",
@@ -207,7 +210,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         w: cols.labelColW,
         h: rowH,
         text: truncateCampaignBarName(bar.name, 20),
-        sizePt: 12,
+        sizePt: 15,
         colorHex: c.ink,
         align: "r",
         anchor: "ctr",
@@ -226,7 +229,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         w: cols.trackW,
         h: MTD_VISUAL.barMetricsH,
         text: bar.statLine,
-        sizePt: 12,
+        sizePt: 15,
         bold: true,
         colorHex: c.ink,
         align: "l",
@@ -298,7 +301,7 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_VISUAL.leftW,
       h: MTD_VISUAL.panelHeadingH,
       text: model.leftHeading,
-      sizePt: 14,
+      sizePt: 16,
       bold: true,
       colorHex: c.heading,
       align: "l",
@@ -311,16 +314,16 @@ export function buildMtdOverviewOoxmlShapes(
     const count = model.miniDonuts.length;
     model.miniDonuts.forEach((donut, i) => {
       const pos = miniDonutPosition(i, count);
-      appendMiniDonut(shapes, pos.x, pos.y, MTD_VISUAL.miniDonutD, donut.color, donut.spendLabel, donut.name, donut.pctLabel, holeFill, c.ink, c.inkMuted);
+      appendMiniDonut(shapes, pos.x, pos.y, pos.d, donut.color, donut.spendLabel, donut.name, donut.pctLabel, holeFill, c.ink, c.inkMuted);
     });
     shapes.push(
       textBox({
         x: MTD_VISUAL.leftX,
-        y: MTD_VISUAL.panelY + MTD_VISUAL.panelH - 28,
+        y: MTD_VISUAL.panelY + MTD_VISUAL.panelH - 32,
         w: MTD_VISUAL.leftW,
-        h: 20,
+        h: 24,
         text: `Total Spend: ${model.groupedDonutCenterLabel}`,
-        sizePt: 14,
+        sizePt: 16,
         bold: true,
         colorHex: c.ink,
         align: "ctr",
@@ -337,7 +340,7 @@ export function buildMtdOverviewOoxmlShapes(
       w: MTD_SLIDE_W - MTD_VISUAL.marginX * 2,
       h: MTD_VISUAL.summaryH,
       text: model.summaryLine,
-      sizePt: 14,
+      sizePt: 15,
       colorHex: c.inkMuted,
       align: "ctr",
       anchor: "ctr",

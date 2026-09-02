@@ -5,7 +5,7 @@ import { rasterizeSvgToPng } from "../svg-to-png";
 describe("rasterizeSvgToPng", () => {
   it("produces a substantial PNG with readable text when fonts are bundled", async () => {
     const svg = buildMtdOverviewSvg({
-      title: "Last 30 Days Campaign Performance: August 1 - August 20, 2026",
+      title: "Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026",
       subtitle: "Month to date performance",
       snapshot: {
         mtdSpendLabel: "$100",
@@ -19,7 +19,7 @@ describe("rasterizeSvgToPng", () => {
       donutSegments: [{ name: "A", spendLabel: "$100", percentage: 100, color: "f6ad55" }],
       totalSpendLabel: "$100",
       visualSlide: {
-        title: "Last 30 Days Campaign Performance: August 1 - August 20, 2026",
+        title: "Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026",
         isMultiObjective: false,
         leftHeading: "BUDGET DISTRIBUTION",
         rightHeading: "Purchases by Campaign",

@@ -45,7 +45,7 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
     },
     reportType: "WEEKLY",
     mtdMonthName: "August",
-    periodSubLabel: "August 1 - August 20, 2026",
+    periodSubLabel: "Aug 1 - Aug 20, 2026",
     ...overrides,
   };
 }
@@ -53,7 +53,7 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 describe("buildVisualChartSlideModel", () => {
   it("builds campaign mini-donuts and result bars for single-objective accounts", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
-    expect(model.title).toBe("Last 30 Days Campaign Performance: August 1 - August 20, 2026");
+    expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
     expect(model.miniDonuts.length).toBe(2);
     expect(model.rightHeading).toContain("Purchases");
