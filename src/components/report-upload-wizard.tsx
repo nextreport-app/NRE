@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -26,6 +26,8 @@ import { normalizeCampaignName } from "@/lib/nre/objective";
 import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
+import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
+import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { useToast } from "@/components/toast";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
@@ -282,6 +284,7 @@ export function ReportUploadWizard({
   initialLastDriveFolderId,
   initialLastDriveFolderName,
   hasPreviousMonthData,
+  initialPreviousMonthDataUpdatedAt,
   clientTemplate,
 }: {
   clientId: string;
@@ -296,8 +299,10 @@ export function ReportUploadWizard({
   /** Client.lastDriveFolderId/lastDriveFolderName — the folder this client's reports were last saved to, if any. Pre-navigates the folder picker into it as a convenience. */
   initialLastDriveFolderId: string | null;
   initialLastDriveFolderName: string | null;
-  /** Whether Client.previousMonthDataUrl is set — drives Fix 1's "Missing previous month comparison" notice on the download screen for a WEEKLY/MONTHLY report. */
+  /** Whether Client.previousMonthDataUrl is set. */
   hasPreviousMonthData: boolean;
+  /** ISO timestamp of the last Previous Month Data upload — drives stale detection in the wizard. */
+  initialPreviousMonthDataUpdatedAt: string | null;
   /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
   clientTemplate: string;
 }) {
@@ -451,6 +456,14 @@ export function ReportUploadWizard({
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
+  const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
+  const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
+  const previousMonthComparisonReady = useMemo(
+    () =>
+      getPreviousMonthComparisonInfo(previousMonthHasFile, previousMonthUpdatedAt, clientTimezone).status ===
+      "current",
+    [previousMonthHasFile, previousMonthUpdatedAt, clientTimezone],
+  );
   const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
   const [dateMode, setDateMode] = useState<DateMode>("last7");
@@ -1751,20 +1764,24 @@ export function ReportUploadWizard({
               <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
                 <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
                 {selectedPlatformCard === "META" ? (
-                  <>
-                    {getMetaCsvDownloadTip(new Date(), clientTimezone)}{" "}
-                    For month-over-month comparison,{" "}
-                    <Link
-                      href={`/clients/${clientId}#previous-month-data`}
-                      className="font-medium text-dash-accent hover:underline"
-                    >
-                      upload Previous Month Data in client settings →
-                    </Link>{" "}
-                  </>
+                  <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
                 ) : (
                   "Set date range to Last 30 days and segment by Day."
                 )}
               </p>
+
+              {selectedPlatformCard === "META" ? (
+                <PreviousMonthDataWizardPanel
+                  clientId={clientId}
+                  clientTimezone={clientTimezone}
+                  initialHasFile={previousMonthHasFile}
+                  initialUpdatedAt={previousMonthUpdatedAt}
+                  onUploaded={() => {
+                    setPreviousMonthHasFile(true);
+                    setPreviousMonthUpdatedAt(new Date().toISOString());
+                  }}
+                />
+              ) : null}
 
               <button
                 onClick={handleAnalyze}
@@ -1803,7 +1820,7 @@ export function ReportUploadWizard({
           {analyzeStatus === "invalid" && (
             <div className="space-y-3">
               {analyzeErrors.filter(isNoDataRowsError).map((e, i) =>
-                hasPreviousMonthData ? (
+                previousMonthHasFile ? (
                   <PreviousMonthSummaryOption
                     key={i}
                     status={pmsStatus}
@@ -2676,7 +2693,7 @@ export function ReportUploadWizard({
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
                   {previewErrors.filter(isNoDataRowsError).map((e, i) =>
-                    hasPreviousMonthData ? (
+                    previousMonthHasFile ? (
                       <PreviousMonthSummaryOption
                         key={i}
                         status={pmsStatus}
@@ -3183,15 +3200,15 @@ export function ReportUploadWizard({
               )}
 
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
-              {reportType !== "COMPARISON" && !hasPreviousMonthData && (
+              {reportType !== "COMPARISON" && !previousMonthComparisonReady && (
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
-                  <p className="font-semibold">Missing previous month comparison</p>
+                  <p className="font-semibold">Previous month comparison not set up</p>
                   <p className="mt-1 text-dash-ink-secondary">
-                    Your Monthly Campaign Performance Overview slide does not have a previous month row.{" "}
-                    <Link href={`/clients/${clientId}`} className="text-dash-accent hover:underline">
-                      Upload previous month data in Client Settings
+                    Combined Total won&apos;t include a previous-month row.{" "}
+                    <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
+                      Upload on the client page
                     </Link>{" "}
-                    to enable it.
+                    or add it when you start your next report.
                   </p>
                 </div>
               )}

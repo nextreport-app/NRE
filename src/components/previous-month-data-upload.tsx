@@ -159,8 +159,8 @@ export function PreviousMonthDataUpload({
         </p>
         <p>
           <span className="font-medium text-dash-ink-secondary">How to download:</span> In Meta Ads Manager,
-          set the date range to the full previous month (e.g. July 1-31), set Time Increment to Monthly
-          (not Day — monthly total only), then export and upload here.
+          set the date range to the full previous month (e.g. July 1–31). Day breakdown is recommended; monthly
+          totals also work for the comparison row.
         </p>
         <p>
           NextReport uses this automatically in every report for this client until you replace it with

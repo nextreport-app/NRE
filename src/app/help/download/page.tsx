@@ -35,7 +35,10 @@ const META_LAST_30_DAYS_STEPS: Step[] = [
 
 const META_PREVIOUS_MONTH_STEPS: Step[] = [
   { title: "Same steps but set date range to Last Month", body: "" },
-  { title: "Time Breakdown", body: "Can be None (monthly totals) or Day." },
+  {
+    title: "Time Breakdown",
+    body: "Day is recommended (matches the main CSV). Monthly totals (None) also work for the comparison row only.",
+  },
   { title: "Same columns as above", body: "" },
   { title: "Export as CSV", body: "" },
 ];
@@ -120,23 +123,23 @@ export default async function DownloadGuidePage() {
             </div>
 
             <div className="mt-8 rounded-lg border border-[#f6ad55]/40 border-l-4 border-l-[#f6ad55] bg-navy-panel p-5">
-              <h3 className="text-lg font-semibold text-white">Which date range? (especially at the start of a month)</h3>
+              <h3 className="text-lg font-semibold text-white">Which date range for the main CSV?</h3>
               <ul className="mt-3 space-y-3 text-[15px] leading-relaxed text-ink-secondary">
                 <li>
-                  <span className="font-semibold text-[#f6ad55]">Day 1 of the month:</span> Download{" "}
-                  <span className="text-white">one CSV — Previous Month</span> (e.g. August 1–31) with Time Breakdown set to Day.
-                  That single file covers your weekly slide (last 7 days ending yesterday, e.g. Aug 25–31) and full monthly totals.
-                  Do not use Last 30 Days — it skips the first days of the month.
+                  <span className="font-semibold text-[#f6ad55]">1st of the month</span> (in your client&apos;s timezone):{" "}
+                  <span className="text-white">Previous Month</span> with Time Breakdown set to Day — one file for last
+                  week&apos;s slide and last month&apos;s totals. Do not use Last 30 Days (it skips the 1st of the prior month).
                 </li>
                 <li>
-                  <span className="font-semibold text-[#f6ad55]">Days 2–7:</span> Use{" "}
-                  <span className="text-white">Last 30 Days</span> (not This Month) so your weekly slide has a full 7 days across the month boundary. Set Time Breakdown to Day.
-                </li>
-                <li>
-                  <span className="font-semibold text-[#f6ad55]">Day 8 onwards:</span> Use{" "}
-                  <span className="text-white">This Month</span> with Time Breakdown set to Day for month-to-date from the 1st through yesterday.
+                  <span className="font-semibold text-[#f6ad55]">Every other day:</span>{" "}
+                  <span className="text-white">Last 30 Days</span> with Time Breakdown set to Day — weekly slides, custom
+                  ranges, and month-to-date all come from this same file.
                 </li>
               </ul>
+              <p className="mt-4 text-[14px] leading-relaxed text-ink-muted">
+                Month-to-date is calculated from the current month&apos;s rows inside your Last 30 Days file (1st through
+                yesterday). Today is never included.
+              </p>
             </div>
 
             <h3 className="mt-10 text-lg font-semibold text-white">For Previous Month (monthly comparison CSV)</h3>
