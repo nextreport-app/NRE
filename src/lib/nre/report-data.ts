@@ -64,7 +64,7 @@ import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type 
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { detectAdNameColumn } from "./ad-level";
 import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
-import { computeCreativeRangeIso, computeEffectiveYesterday, computeMtdRangeIso, toIsoDate } from "./date-range";
+import { computeCreativeRangeIso, computeEffectiveYesterday, computeMtdRangeIso, computeWeeklyRangeOptions, toIsoDate } from "./date-range";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
 function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
@@ -502,23 +502,14 @@ export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, mon
  * this row set's combined totals instead, since a plain average would give
  * a low-volume row's rate equal weight to a high-volume row's.
  */
-/** Meta monthly-total exports expose a per-campaign "Starts" column — use it for period labels when there's no Day breakdown. */
-function metaStartsColumnValue(row: MetricRow): string | null {
-  const raw = row._raw || {};
-  for (const [header, value] of Object.entries(raw)) {
-    if (header.trim().toLowerCase() === "starts" && value) return value;
-  }
-  return null;
-}
-
+/** Per-row date for period labels — daily rows use Day/Date; monthly totals use Reporting starts/ends (date_start/date_end), never campaign Starts. */
 function rowRangeStart(row: MetricRow): string {
-  if (hasRealRowDate(row)) return getRowDate(row);
-  return metaStartsColumnValue(row) || row.date_start || getRowDate(row);
+  return getRowDate(row);
 }
 
 function rowRangeEnd(row: MetricRow): string {
   if (hasRealRowDate(row)) return getRowDate(row);
-  return row.date_end || rowRangeStart(row);
+  return row.date_end || getRowDate(row);
 }
 
 function computeTableRow(
@@ -808,11 +799,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // BuildReportDataInput: it only prunes which ad-set slides get built
   // (Phase A2 below), never the rows that feed MTD/weekly totals.
   const filteredMtdDailyRows = campaignFilteredRows;
+  const mtdCalendarRange = computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
+  const resolvedWeeklyRange =
+    weeklyRange ?? (!isMonthlyReport ? computeWeeklyRangeOptions(filteredMtdDailyRows, now, timezone).last7 : undefined);
   // A Monthly report has no weekly window at all — weeklyRange is ignored
   // (never even resolved by the caller in that case) and splitMtdDaily's
   // own weekly split is simply never used below (see primaryRows).
   const split = splitMtdDaily(filteredMtdDailyRows, now, {
-    ...(weeklyRange ? { weeklyRange } : {}),
+    ...(weeklyRange ? { weeklyRange } : resolvedWeeklyRange ? { weeklyRange: resolvedWeeklyRange } : {}),
     timezone,
   });
 
@@ -993,21 +987,25 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // inactive just because the status column doesn't exist.
   const hasDeliveryStatusData = filteredMtdDailyRows.some((r) => (r.delivery_status || "").trim() !== "");
 
-  // Global reporting date range across ALL campaigns — used on every slide
-  // so reporting periods stay consistent even if one campaign started
-  // mid-window. Despite the "week" naming (unchanged so this isn't a
-  // sweeping rename), this is really "primaryRows' own date range" — the
-  // trailing-7-day window normally, or the full MTD span for Monthly.
-  let globalWeekStart = "";
-  let globalWeekEnd = "";
-  primaryRows.forEach((r) => {
-    if (r.date_start && (!globalWeekStart || r.date_start < globalWeekStart)) globalWeekStart = r.date_start;
-    if (r.date_end && (!globalWeekEnd || r.date_end > globalWeekEnd)) globalWeekEnd = r.date_end;
-  });
-  const globalWeekDateRange = globalWeekStart && globalWeekEnd ? getDateRangeShortLabel(globalWeekStart, globalWeekEnd) : "";
+  // Global reporting date range — the intended weekly or MTD window, not the
+  // min/max dates of whichever campaigns happened to deliver during it.
+  let globalWeekDateRange = "";
+  if (isMonthlyReport) {
+    globalWeekDateRange = getDateRangeShortLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
+  } else if (resolvedWeeklyRange) {
+    globalWeekDateRange = getDateRangeShortLabel(resolvedWeeklyRange.startIso, resolvedWeeklyRange.endIso);
+  } else {
+    let globalWeekStart = "";
+    let globalWeekEnd = "";
+    primaryRows.forEach((r) => {
+      if (r.date_start && (!globalWeekStart || r.date_start < globalWeekStart)) globalWeekStart = r.date_start;
+      if (r.date_end && (!globalWeekEnd || r.date_end > globalWeekEnd)) globalWeekEnd = r.date_end;
+    });
+    globalWeekDateRange = globalWeekStart && globalWeekEnd ? getDateRangeShortLabel(globalWeekStart, globalWeekEnd) : "";
+  }
 
-  const fileStartDate = globalWeekStart ? formatDateUS(globalWeekStart) : "unknown";
-  const fileEndDate = globalWeekEnd ? formatDateUS(globalWeekEnd) : "unknown";
+  const fileStartDate = globalWeekDateRange ? formatDateUS(resolvedWeeklyRange?.startIso ?? mtdCalendarRange.startIso) : "unknown";
+  const fileEndDate = globalWeekDateRange ? formatDateUS(resolvedWeeklyRange?.endIso ?? mtdCalendarRange.endIso) : "unknown";
   const fileDateRange =
     fileStartDate !== "unknown" && fileEndDate !== "unknown"
       ? fileStartDate + " to " + fileEndDate
@@ -1059,7 +1057,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
   let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now, undefined, timezone);
-  const mtdCalendarRange = computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
   const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange, timezone);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
@@ -1614,7 +1611,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // "—" placeholder even when mtdRows is empty — so the sub-line no longer
   // needs to gate on mtdRow.hasData to avoid showing stale/blank text; it
   // always reflects the current month, zero-spend or not.
-  const periodYear = parseDate(globalWeekEnd || globalWeekStart)?.year;
+  const periodYear = parseDate(mtdCalendarRange.endIso)?.year;
   const periodSubLabel =
     reportType === "MONTHLY"
       ? mtdRow.monthName && periodYear

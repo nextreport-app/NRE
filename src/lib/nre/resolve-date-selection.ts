@@ -39,8 +39,5 @@ export function resolveDateSelection(
   }
 
   const options = computeWeeklyRangeOptions(rows, now, timezone);
-  if (!options) {
-    return { ok: false, error: "Could not compute a weekly date range from the uploaded CSV." };
-  }
   return { ok: true, weeklyRange: selection.mode === "prev7" ? options.prev7 : options.last7 };
 }

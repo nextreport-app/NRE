@@ -62,19 +62,18 @@ export interface WeeklyRangeOptions {
   prev7: DateRangeIso;
 }
 
-/** "Last 7 days ending yesterday" and the 7 days immediately before that, as actual dates. */
+/** "Last 7 days ending calendar yesterday" and the 7 days before that — anchored to the client's timezone, not the CSV's latest row. */
 export function computeWeeklyRangeOptions(
-  rows: NreRow[],
+  _rows: NreRow[],
   now: Date = new Date(),
   timezone = "UTC",
-): WeeklyRangeOptions | null {
-  const yesterday = computeEffectiveYesterday(rows, now, timezone);
-  if (!yesterday) return null;
-  const last7Start = addDays(yesterday, -6);
+): WeeklyRangeOptions {
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const last7Start = addDays(calendarYesterday, -6);
   const prev7End = addDays(last7Start, -1);
   const prev7Start = addDays(prev7End, -6);
   return {
-    last7: { startIso: toIsoDate(last7Start), endIso: toIsoDate(yesterday) },
+    last7: { startIso: toIsoDate(last7Start), endIso: toIsoDate(calendarYesterday) },
     prev7: { startIso: toIsoDate(prev7Start), endIso: toIsoDate(prev7End) },
   };
 }

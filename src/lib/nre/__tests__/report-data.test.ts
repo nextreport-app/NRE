@@ -2300,7 +2300,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
     expect(data.periodRow.fullMonthLabel).toBe("August 22 - August 31");
   });
 
-  it("uses Meta Starts column for previous month label on monthly totals exports", () => {
+  it("uses Reporting starts/ends for previous month label on monthly totals exports", () => {
     const augustMonthlyPeriodRows = [
       {
         _raw: { Starts: "2026-08-05", "Reporting starts": "2026-08-01", "Reporting ends": "2026-08-31" },
@@ -2328,7 +2328,7 @@ describe("buildReportData — Combined Total row labels and same-month note (Fix
       now: new Date("2026-09-05T12:00:00Z"),
     });
 
-    expect(data.periodRow.monthLabel).toBe("August 5 - 31");
+    expect(data.periodRow.monthLabel).toBe("August 1 - 31");
   });
 
   it("sameMonthAsCurrentMTD is false when the Previous Month row and MTD row fall in different calendar months", () => {
@@ -4390,5 +4390,20 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     expect(data.mtdRow.monthLabel).toBe("September 1");
     expect(data.mtdRow.spend).toBe("C$186");
     expect(data.chart!.totalAllSpend).toBe(186.4);
+  });
+
+  it("shows the full last-7-days window on weekly slides, not each campaign's own delivery span", () => {
+    const data = buildReportData({
+      accountName: "Nope",
+      currencySymbol: "C$",
+      timezone: "America/Toronto",
+      monthlyBudget: null,
+      mtdDailyRows: [...augustOnlyMtdRows, septemberRow],
+      periodRows: [pmMonthlyRow],
+      now,
+    });
+
+    expect(data.cover.dateRange).toBe("August 26 - September 1");
+    expect(data.campaignSlides.every((s) => s.dateRangeLine.startsWith("August 26 - September 1"))).toBe(true);
   });
 });

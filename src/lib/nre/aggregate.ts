@@ -373,10 +373,15 @@ export function splitMtdDaily(
   });
   if (validRows.length === 0) return null;
 
-  const weekEndTs = options.weeklyRange ? Date.parse(options.weeklyRange.endIso + "T00:00:00Z") : yesterdayTs;
+  // Weekly window ends on calendar yesterday (the real reporting week), not
+  // the CSV's latest row — so a stale export still labels Aug 26 - Sep 1
+  // on a Sep 2 report even when selected campaigns stopped delivering earlier.
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const calendarYesterdayTs = Date.UTC(calendarYesterday.year, calendarYesterday.month - 1, calendarYesterday.day);
+  const weekEndTs = options.weeklyRange ? Date.parse(options.weeklyRange.endIso + "T00:00:00Z") : calendarYesterdayTs;
   const weekStartTs = options.weeklyRange
     ? Date.parse(options.weeklyRange.startIso + "T00:00:00Z")
-    : yesterdayTs - 6 * 24 * 60 * 60 * 1000; // default: 7 days ending yesterday
+    : weekEndTs - 6 * 24 * 60 * 60 * 1000; // default: 7 days ending calendar yesterday
 
   const weeklyRaw = validRows.filter((row) => {
     const d = parseDate(getRowDate(row));
@@ -390,8 +395,6 @@ export function splitMtdDaily(
   // yesterday — never the month of the CSV's latest row. A Last 30 Days file
   // that still ends in August must not bleed August totals into September
   // MTD when the report is generated on the 2nd.
-  const calendarYesterday = getCalendarYesterday(now, timezone);
-  const calendarYesterdayTs = Date.UTC(calendarYesterday.year, calendarYesterday.month - 1, calendarYesterday.day);
   const monthStartTs = Date.UTC(calendarYesterday.year, calendarYesterday.month - 1, 1);
   const mtdRaw = validRows.filter((row) => {
     const d = parseDate(getRowDate(row));
