@@ -70,6 +70,12 @@ describe("computeMtdRangeIso", () => {
     const now = new Date("2026-07-24T12:00:00Z"); // yesterday = Jul 23
     expect(computeMtdRangeIso(rows, now)).toEqual({ startIso: "2026-07-01", endIso: "2026-07-23" });
   });
+
+  it("anchors to the calendar month even when the CSV's latest row is still last month", () => {
+    const rows = daysInclusive("2026-08-01", "2026-08-31");
+    const now = new Date("2026-09-02T12:00:00Z");
+    expect(computeMtdRangeIso(rows, now, "America/Toronto")).toEqual({ startIso: "2026-09-01", endIso: "2026-09-01" });
+  });
 });
 
 describe("computeCsvDateBounds", () => {

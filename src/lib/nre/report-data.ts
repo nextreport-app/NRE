@@ -502,6 +502,25 @@ export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, mon
  * this row set's combined totals instead, since a plain average would give
  * a low-volume row's rate equal weight to a high-volume row's.
  */
+/** Meta monthly-total exports expose a per-campaign "Starts" column — use it for period labels when there's no Day breakdown. */
+function metaStartsColumnValue(row: MetricRow): string | null {
+  const raw = row._raw || {};
+  for (const [header, value] of Object.entries(raw)) {
+    if (header.trim().toLowerCase() === "starts" && value) return value;
+  }
+  return null;
+}
+
+function rowRangeStart(row: MetricRow): string {
+  if (hasRealRowDate(row)) return getRowDate(row);
+  return metaStartsColumnValue(row) || row.date_start || getRowDate(row);
+}
+
+function rowRangeEnd(row: MetricRow): string {
+  if (hasRealRowDate(row)) return getRowDate(row);
+  return row.date_end || rowRangeStart(row);
+}
+
 function computeTableRow(
   rows: MetricRow[],
   currencySymbol: string,
@@ -509,6 +528,7 @@ function computeTableRow(
   objectiveMap: Map<string, ResultLabels>,
   now: Date = new Date(),
   mtdCalendarRange?: DateRangeIso,
+  timezone = "UTC",
 ): TableRowData {
   if (!rows || rows.length === 0) {
     // Fix 5 — a zero-spend current month (no MTD Daily CSV rows fell within
@@ -520,15 +540,13 @@ function computeTableRow(
     // Previous Month Data upload has no "current period" of its own to
     // synthesize, so it keeps the plain placeholder.
     if (isMtdRow) {
-      const todayStartTs = new Date(now.toISOString().split("T")[0] + "T00:00:00Z").getTime();
-      const yesterdayIso = new Date(todayStartTs - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const monthStartIso = yesterdayIso.slice(0, 7) + "-01";
-      const currentMonthName = getMonthName(monthStartIso);
+      const range = mtdCalendarRange ?? computeMtdRangeIso([], now, timezone);
+      const monthName = getMonthName(range.startIso);
       return {
         hasData: false,
-        monthLabel: compactSameMonthRangeLabel(monthStartIso, yesterdayIso, currentMonthName),
-        fullMonthLabel: getDateRangeShortLabel(monthStartIso, yesterdayIso),
-        monthName: currentMonthName,
+        monthLabel: compactSameMonthRangeLabel(range.startIso, range.endIso, monthName),
+        fullMonthLabel: getDateRangeShortLabel(range.startIso, range.endIso),
+        monthName,
         sameMonthAsCurrentMTD: false,
         spend: "—",
         reach: "—",
@@ -571,8 +589,8 @@ function computeTableRow(
     // "Reporting starts/ends" on date_start/date_end (e.g. Aug 1 - Aug 31)
     // even when rows only exist from a mid-month campaign start — use the
     // per-row Day/Date column when present, same as getRowDate/splitMtdDaily.
-    const rowStart = getRowDate(row);
-    const rowEnd = hasRealRowDate(row) ? rowStart : row.date_end || rowStart;
+    const rowStart = rowRangeStart(row);
+    const rowEnd = rowRangeEnd(row);
     if (rowStart && (!rawStart || rowStart < rawStart)) rawStart = rowStart;
     if (rowEnd && (!rawEnd || rowEnd > rawEnd)) rawEnd = rowEnd;
   });
@@ -871,7 +889,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const { score, badge } = calculateAccountHealth(creativeAgg, "Weekly");
     const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now, timezone);
     const coverDate = yesterday ? formatDateUS(toIsoDate(yesterday)) : "";
-    const emptyRow = computeTableRow([], currencySymbol, false, new Map());
+    const emptyRow = computeTableRow([], currencySymbol, false, new Map(), now, undefined, timezone);
     return {
       isPaused: !creative || creative.overviewSlides.length === 0,
       platform: "META",
@@ -1040,9 +1058,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now);
-  const mtdCalendarRange = computeMtdRangeIso(mtdDailyRows as NreRow[], now, timezone) ?? undefined;
-  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange);
+  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now, undefined, timezone);
+  const mtdCalendarRange = computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
+  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange, timezone);
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
   // calendar month (e.g. a report generated on the 1st, before the new
@@ -1681,10 +1699,11 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
 
   const objectiveMap = buildCampaignObjectiveMap(periodRows as MetricRow[]);
   const periodRow: TableRowData = {
-    ...computeTableRow(periodRows as MetricRow[], currencySymbol, false, objectiveMap, now),
+    ...computeTableRow(periodRows as MetricRow[], currencySymbol, false, objectiveMap, now, undefined, timezone),
     sameMonthAsCurrentMTD: true,
   };
-  const mtdRow = computeTableRow([], currencySymbol, true, new Map(), now);
+  const mtdCalendarRange = computeMtdRangeIso([], now, timezone);
+  const mtdRow = computeTableRow([], currencySymbol, true, new Map(), now, mtdCalendarRange, timezone);
   const tableHeaderLabels: TableHeaderLabels = {
     resultColumns: periodRow.resultColumns.map((c) => ({ label: c.label, costLabel: c.costLabel })),
   };
