@@ -177,11 +177,17 @@ function buildSummaryMulti(
   return [...prefix, ...chunks].join("  |  ");
 }
 
-/** Single centered legend line under the grouped donut — spend % only (no campaign names). */
-export function formatGroupedDonutLegendLine(
-  segments: Pick<VisualChartSegment, "percentage" | "spendLabel">[],
+const LEGEND_NAME_MAX = 28;
+
+function truncateLegendName(name: string, max: number): string {
+  return name.length > max ? `${name.slice(0, Math.max(1, max - 1))}…` : name;
+}
+
+/** One donut legend row — name · % · spend (single line, no wrap). */
+export function formatGroupedDonutLegendEntry(
+  segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
-  return segments.map((s) => `${s.percentage}% · ${s.spendLabel}`).join("     ·     ");
+  return `${truncateLegendName(segment.name, LEGEND_NAME_MAX)} · ${segment.percentage}% · ${segment.spendLabel}`;
 }
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {

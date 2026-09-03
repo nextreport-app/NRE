@@ -5,7 +5,7 @@
 import type { ShareChartData } from "../nre/share-report";
 import { MTD_SLIDE_W, MTD_SLIDE_H, MTD_VISUAL, miniDonutPosition, resultBarGeometry } from "./chart-slide-layout";
 import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
-import { formatGroupedDonutLegendLine } from "../nre/visual-chart-slide";
+import { formatGroupedDonutLegendEntry } from "../nre/visual-chart-slide";
 
 const INK = "#ffffff";
 const MUTED = "#94a3b8";
@@ -69,10 +69,13 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     parts.push(
       `<text x="${x + d / 2}" y="${y + d / 2}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(model.groupedDonutCenterLabel)}</text>`,
     );
-    const legendY = y + d + 28;
-    parts.push(
-      `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${legendY}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(formatGroupedDonutLegendLine(model.groupedDonut))}</text>`,
-    );
+    let legendY = y + d + 24;
+    for (const seg of model.groupedDonut) {
+      parts.push(
+        `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${legendY}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(formatGroupedDonutLegendEntry(seg))}</text>`,
+      );
+      legendY += MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap;
+    }
   } else {
     model.miniDonuts.forEach((donut, i) => {
       const pos = miniDonutPosition(i, model.miniDonuts.length);

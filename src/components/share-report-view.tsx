@@ -4,7 +4,7 @@ import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
-import { formatGroupedDonutLegendLine } from "@/lib/nre/visual-chart-slide";
+import { formatGroupedDonutLegendEntry } from "@/lib/nre/visual-chart-slide";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
@@ -285,9 +285,16 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                   size={204}
                 />
               </div>
-              <p className="mt-4 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink">
-                {formatGroupedDonutLegendLine(model.groupedDonut)}
-              </p>
+              <div className="mt-3 space-y-2">
+                {model.groupedDonut.map((seg) => (
+                  <p
+                    key={seg.name}
+                    className="overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink"
+                  >
+                    {formatGroupedDonutLegendEntry(seg)}
+                  </p>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
