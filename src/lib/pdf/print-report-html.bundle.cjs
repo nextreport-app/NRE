@@ -105,7 +105,7 @@ function buildCombinedTotalTableGrid(periodRow, mtdRow, headers) {
     });
     return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
   };
-  return [headerRow, dataRow(periodRow), dataRow(mtdRow)];
+  return [headerRow, dataRow(mtdRow), dataRow(periodRow)];
 }
 
 // src/lib/nre/google-report-data.ts
@@ -281,9 +281,9 @@ function miniDonutGrid(count) {
   return { cols: 2, rows: 3 };
 }
 function miniDonutDiameter(count) {
-  if (count <= 2) return 152;
-  if (count <= 4) return 132;
-  return 112;
+  if (count <= 2) return 140;
+  if (count <= 4) return 120;
+  return 100;
 }
 
 // src/components/share-report-view.tsx
@@ -352,7 +352,7 @@ function MetricGrid({ metrics, assetBaseUrl = "" }) {
       }
     ),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-[14px] font-semibold uppercase tracking-wide text-accent-orange", style: { letterSpacing: "0.5px" }, children: m.label }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 truncate text-[28px] font-bold text-ink", children: m.value })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 truncate text-[22px] font-bold text-ink sm:text-[28px]", children: m.value })
   ] }, `${m.key}-${i}`)) });
 }
 function DateAndFrequency({ dateRange, adFrequency }) {
@@ -379,7 +379,7 @@ function AiCopyBlock({ heading, text }) {
   ] });
 }
 function SlideCard({ children }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "overflow-hidden rounded-lg border border-navy-border bg-navy p-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-8", children });
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "overflow-hidden rounded-lg border border-navy-border bg-navy p-4 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-6 md:p-8", children });
 }
 function CampaignCard({
   campaign,
@@ -390,9 +390,9 @@ function CampaignCard({
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 flex-1 overflow-hidden", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CardReportTypeLabel, { label: reportType }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]", children: [
           campaign.campaignName,
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-accent-orange", style: { fontSize: "16px", fontWeight: 400 }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-accent-orange", style: { fontSize: "14px", fontWeight: 400 }, children: [
             " ",
             "(Campaign)"
           ] })
@@ -419,9 +419,9 @@ function AdSetCard({
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 flex-1 overflow-hidden", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CardReportTypeLabel, { label: reportType }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]", children: [
           primaryName,
-          hasAdSetName && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "#63b3ed", fontSize: "16px", fontWeight: 400 }, children: adSetLabel })
+          hasAdSetName && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "#63b3ed", fontSize: "14px", fontWeight: 400 }, children: adSetLabel })
         ] }),
         hasAdSetName && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-0.5 break-words text-[17px] text-ink-muted [overflow-wrap:anywhere]", children: adSet.campaignName })
       ] }),
@@ -440,12 +440,10 @@ function VisualResultBar({
   barPct
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[148px_minmax(0,1fr)] items-center gap-x-4", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-right text-[16px] font-medium leading-tight text-ink", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1.5 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink", children: statLine })
-    ] })
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-[14px] font-bold leading-tight text-ink", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-1 h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink", children: statLine })
   ] });
 }
 function VisualMiniDonut({
@@ -461,9 +459,9 @@ function VisualMiniDonut({
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex flex-col items-center", style: { width: size }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("circle", { cx: c, cy: c, r, fill: "none", stroke: `#${color}`, strokeWidth: stroke }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("text", { x: c, y: c + 5, textAnchor: "middle", fill: "#ffffff", fontSize: size >= 140 ? 14 : 13, fontWeight: "700", children: spendLabel })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("text", { x: c, y: c + 5, textAnchor: "middle", fill: "#ffffff", fontSize: size >= 120 ? 17 : 15, fontWeight: "700", children: spendLabel })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12px] text-[#94a3b8]", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[13px] text-[#94a3b8]", children: [
       name,
       " \xB7 ",
       pctLabel
@@ -474,8 +472,8 @@ function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-1 text-center text-[24px] font-bold leading-tight text-[#94a3b8]", children: model.title }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[368px_1fr]", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]", children: model.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
         model.isMultiObjective && model.groupedDonut ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
@@ -528,10 +526,10 @@ function CombinedTotalTable({ data, compact = false }) {
   const grid = data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
   const hidePeriodRow = data.reportType === "MONTHLY" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
-  const [headerRow, periodRow, mtdRow] = grid;
+  const [headerRow, mtdRow, periodRow] = grid;
   const bodyRows = [
-    ...hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }],
-    ...hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }]
+    ...hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }],
+    ...hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]
   ];
   if (bodyRows.length === 0) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: compact ? "print-combined-table overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
@@ -562,7 +560,7 @@ function CombinedTotalTable({ data, compact = false }) {
 function MetricGuideSection({ metricGuide }) {
   if (metricGuide.length === 0) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-[28px] font-bold text-ink", children: "Metric Abbreviation Guide" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-[22px] font-bold text-ink sm:text-[28px]", children: "Metric Abbreviation Guide" }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2", children: metricGuide.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 overflow-hidden", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "line-clamp-2 break-words text-[15px] font-bold uppercase tracking-wide text-accent-orange", children: entry.term }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted", children: getExplanation(entry.term) })
@@ -611,66 +609,85 @@ function ShareReportView({
         !isPrint ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "header",
           {
-            className: "sticky top-0 z-10 border-b border-navy-border px-4 sm:px-6",
-            style: { backgroundColor: "#0d1b2e", minHeight: "60px" },
-            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mx-auto flex max-w-[960px] items-center justify-between gap-3", style: { minHeight: "60px" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-2", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: "/logo.png", alt: "NextReport logo", style: { height: "40px", width: "40px", display: "block" } }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-[26px] font-bold text-ink", style: { fontFamily: "var(--font-inter), sans-serif" }, children: "NextReport" })
+            className: "sticky top-0 z-10 border-b border-navy-border px-3 py-2 sm:px-6 sm:py-0",
+            style: { backgroundColor: "#0d1b2e" },
+            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mx-auto flex max-w-[960px] items-center justify-between gap-2 sm:min-h-[56px] sm:gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-w-0 items-center gap-1.5 sm:gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "img",
+                  {
+                    src: "/logo.png",
+                    alt: "NextReport logo",
+                    className: "h-7 w-7 shrink-0 sm:h-9 sm:w-9"
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "truncate text-[17px] font-bold text-ink sm:text-[22px]", style: { fontFamily: "var(--font-inter), sans-serif" }, children: "NextReport" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-3", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden text-[17px] text-white sm:inline", children: "Powered by NextReport" }),
-                shareToken ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex shrink-0 items-center gap-1.5 sm:gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden text-[15px] text-white md:inline", children: "Powered by NextReport" }),
+                shareToken ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
                   "a",
                   {
                     href: `/api/r/${shareToken}/download`,
-                    className: "flex items-center rounded-md border border-accent-orange px-4 text-[16px] font-semibold text-white hover:bg-accent-orange/10",
-                    style: { backgroundColor: "#1e293b", height: "44px" },
-                    children: "Download PPTX"
+                    className: "inline-flex items-center justify-center rounded-md border border-accent-orange px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-accent-orange/10 sm:px-3.5 sm:py-2 sm:text-[14px]",
+                    style: { backgroundColor: "#1e293b" },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden min-[400px]:inline", children: "Download " }),
+                      "PPTX"
+                    ]
                   }
                 ) : null,
-                shareToken && visibleData.publishedAt ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                shareToken && visibleData.publishedAt ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
                   "a",
                   {
                     href: `/api/r/${shareToken}/download-pdf`,
-                    className: "flex items-center rounded-md border border-[#63b3ed] px-4 text-[16px] font-semibold text-white hover:bg-[#63b3ed]/10",
-                    style: { backgroundColor: "#1e293b", height: "44px" },
-                    children: "Download PDF"
+                    className: "inline-flex items-center justify-center rounded-md border border-[#63b3ed] px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-[#63b3ed]/10 sm:px-3.5 sm:py-2 sm:text-[14px]",
+                    style: { backgroundColor: "#1e293b" },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden min-[400px]:inline", children: "Download " }),
+                      "PDF"
+                    ]
                   }
                 ) : null
               ] })
             ] })
           }
         ) : null,
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("main", { className: isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-4 py-6 sm:px-6", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("main", { className: isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-3 py-4 sm:px-6 sm:py-6", children: [
           showCover ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { className: coverSlideClass, children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               "div",
               {
-                className: `mx-auto w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10 ${isPrint ? "" : "aspect-video"}`,
-                children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex h-full flex-col items-center justify-center text-center", children: [
+                className: `mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-navy-border bg-navy-panel px-4 py-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-8 sm:py-9 md:px-10 md:py-10 ${isPrint ? "" : "sm:aspect-video"}`,
+                children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-h-0 flex-col items-center justify-center px-1 text-center sm:h-full", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
                     "div",
                     {
-                      className: "inline-flex items-center gap-2 rounded-full",
-                      style: { backgroundColor: "#1e293b", border: "1px solid #334155", padding: "4px 12px" },
+                      className: "inline-flex max-w-full items-center gap-2 rounded-full",
+                      style: { backgroundColor: "#1e293b", border: "1px solid #334155", padding: "3px 10px" },
                       children: [
                         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                           "span",
                           {
-                            className: "h-2 w-2 shrink-0 rounded-full",
+                            className: "h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2",
                             style: { backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }
                           }
                         ),
-                        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-[14px] font-semibold uppercase text-[#94a3b8]", style: { letterSpacing: "0.08em" }, children: visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS" })
+                        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]", style: { letterSpacing: "0.08em" }, children: visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS" })
                       ]
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h1", { className: `mt-4 font-bold text-ink ${isPrint ? "text-[30px]" : "line-clamp-2 text-[38px]"}`, children: visibleData.accountName }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-2 text-[19px] tracking-wide text-ink-muted", children: reportTypeLabel(visibleData).toUpperCase() }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-2 text-[17px] text-ink-muted", children: visibleData.cover.dateRange }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "my-5 h-px w-24 bg-navy-border" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[17px] font-medium text-ink", children: visibleData.cover.healthBadge })
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                    "h1",
+                    {
+                      className: `mt-3 max-w-full break-words font-bold leading-tight text-ink [overflow-wrap:anywhere] ${isPrint ? "text-[28px]" : "text-[22px] sm:text-[30px] md:text-[34px]"}`,
+                      children: visibleData.accountName
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1.5 text-[13px] tracking-wide text-ink-muted sm:mt-2 sm:text-[16px]", children: reportTypeLabel(visibleData).toUpperCase() }),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]", children: visibleData.cover.dateRange }),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "max-w-full break-words px-1 text-[13px] font-medium leading-snug text-ink sm:text-[16px]", children: visibleData.cover.healthBadge })
                 ] })
               }
             ),
@@ -680,7 +697,7 @@ function ShareReportView({
           adSets.map((a, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AdSetCard, { adSet: a, platform: visibleData.platform, reportType: reportTypeLabel(visibleData), assetBaseUrl }) }, `adset-${a.campaignName}-${a.adSetName}-${i}`)),
           showOverview && chart && chart.donutSegments && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(ShareMtdOverviewSlide, { chart }) }),
           showCombinedTotal && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "mb-4 text-[28px] font-bold text-ink", children: "Monthly Campaign Performance Overview" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "mb-4 text-[22px] font-bold text-ink sm:text-[28px]", children: "Monthly Campaign Performance Overview" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CombinedTotalTable, { data: visibleData, compact: isPrint })
           ] }) }),
           showMetricGuide && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MetricGuideSection, { metricGuide }) })
