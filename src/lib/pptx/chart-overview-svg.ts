@@ -4,7 +4,8 @@
 
 import type { ShareChartData } from "../nre/share-report";
 import { MTD_SLIDE_W, MTD_SLIDE_H, MTD_VISUAL, miniDonutPosition, resultBarGeometry } from "./chart-slide-layout";
-import { resultBarColumns, resultBarFillWidth, truncateCampaignBarName } from "./chart-campaign-bars-render";
+import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
+import { formatGroupedDonutLegendLine } from "../nre/visual-chart-slide";
 
 const INK = "#ffffff";
 const MUTED = "#94a3b8";
@@ -68,6 +69,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     parts.push(
       `<text x="${x + d / 2}" y="${y + d / 2}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(model.groupedDonutCenterLabel)}</text>`,
     );
+    const legendY = y + d + 28;
+    parts.push(
+      `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${legendY}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(formatGroupedDonutLegendLine(model.groupedDonut))}</text>`,
+    );
   } else {
     model.miniDonuts.forEach((donut, i) => {
       const pos = miniDonutPosition(i, model.miniDonuts.length);
@@ -89,12 +94,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const nameY = rowY;
-    const metricsY = rowY + MTD_VISUAL.barNameH + 2;
-    const barY = metricsY + MTD_VISUAL.barMetricsH + 2;
+    const metricsY = rowY + 16;
+    const barY = metricsY + 8;
     parts.push(
-      `<text x="${cols.barX}" y="${nameY + 14}" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">${escapeXml(truncateCampaignBarName(bar.name, 36))}</text>`,
-      `<text x="${cols.barX}" y="${metricsY + 14}" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">${escapeXml(bar.statLine)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY}" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(bar.statLine)}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="3" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {

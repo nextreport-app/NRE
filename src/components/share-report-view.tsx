@@ -4,6 +4,7 @@ import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
+import { formatGroupedDonutLegendLine } from "@/lib/nre/visual-chart-slide";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
@@ -239,12 +240,10 @@ function AdSetCard({
 }
 
 function VisualResultBar({
-  name,
   color,
   statLine,
   barPct,
 }: {
-  name: string;
   color: string;
   statLine: string;
   barPct: number;
@@ -252,9 +251,8 @@ function VisualResultBar({
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
     <div className="min-w-0">
-      <p className="truncate text-[14px] font-bold leading-tight text-ink">{name}</p>
-      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink">{statLine}</p>
-      <div className="mt-1 h-7 overflow-hidden rounded bg-[#1e293b]">
+      <p className="overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold leading-tight text-ink">{statLine}</p>
+      <div className="mt-2 h-7 overflow-hidden rounded bg-[#1e293b]">
         <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
     </div>
@@ -287,21 +285,18 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                   size={204}
                 />
               </div>
-              {model.groupedDonut.map((seg) => (
-                <p key={seg.name} className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-ink">
-                  <span className="mr-2 inline-block h-2.5 w-2.5 shrink-0 rounded-sm align-middle" style={{ backgroundColor: `#${seg.color}` }} />
-                  {seg.name} · {seg.spendLabel} · {seg.percentage}%
-                </p>
-              ))}
+              <p className="mt-4 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink">
+                {formatGroupedDonutLegendLine(model.groupedDonut)}
+              </p>
             </div>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-7">
             {model.resultBars.map((bar) => (
-              <VisualResultBar key={bar.name} {...bar} />
+              <VisualResultBar key={bar.name} color={bar.color} statLine={bar.statLine} barPct={bar.barPct} />
             ))}
           </div>
         </div>

@@ -18,9 +18,12 @@ export const MTD_VISUAL = {
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
   barH: 26,
-  barNameH: 18,
-  barMetricsH: 20,
-  barRowGap: 8,
+  /** @deprecated Campaign names removed from result bars — kept for legacy geometry refs. */
+  barNameH: 0,
+  barMetricsH: 22,
+  barRowGap: 20,
+  groupedDonutLegendH: 24,
+  groupedDonutLegendSizePt: 16,
   barTrackMaxW: 448,
   labelColW: 0,
   panelHeadingH: 26,
@@ -88,9 +91,8 @@ export function miniDonutPosition(index: number, count: number): { x: number; y:
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
-  const ideal =
-    MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 4 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
-  const rowH = barCount > 0 ? Math.min(64, Math.max(ideal, Math.floor(available / barCount))) : ideal;
+  const ideal = MTD_VISUAL.barMetricsH + 6 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
+  const rowH = barCount > 0 ? Math.min(88, Math.max(ideal, Math.floor(available / barCount))) : ideal;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
   return { rowH, startY };
