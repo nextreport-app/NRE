@@ -103,8 +103,11 @@ function PreviousMonthDataWizardContent({
   if (info.status === "current") {
     return (
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-        <span className="font-medium text-emerald-400">Previous month comparison ready</span>
-        <span className="text-dash-ink-secondary"> — {info.expectedMonthName} data will appear in Combined Total. </span>
+        <span className="font-medium text-emerald-400">Previous month CSV ready</span>
+        <span className="text-dash-ink-secondary">
+          {" "}
+          — {info.expectedMonthName} data will appear in the Monthly Overview slide.{" "}
+        </span>
         <Link href={manageHref} className="font-medium text-dash-accent hover:underline">
           Manage on client page
         </Link>
@@ -115,19 +118,19 @@ function PreviousMonthDataWizardContent({
   const needsUpload = info.status === "missing" || info.status === "stale";
   const title =
     info.status === "missing"
-      ? `Add ${info.expectedMonthName} for month-over-month comparison`
-      : `Update comparison data for ${info.expectedMonthName}`;
+      ? `Add ${info.expectedMonthName} CSV for the previous month row`
+      : `Update ${info.expectedMonthName} CSV for the previous month row`;
 
   return (
     <div className="space-y-2">
       <p className="text-[14px] font-medium text-[#f6ad55]">{title}</p>
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-        Upload once per month — powers the previous-month column in Combined Total. Export{" "}
-        <span className="text-dash-ink">Last Month</span> from Meta with Day breakdown (monthly totals also work).
+        Upload once per month — powers the previous-month row on the Monthly Overview slide. Export{" "}
+        <span className="text-dash-ink">Last Month</span> CSV from Meta with or without Day breakdown.
       </p>
       {needsUpload ? (
         <label className="block">
-          <span className="sr-only">Upload previous month comparison CSV</span>
+          <span className="sr-only">Upload previous month CSV</span>
           <input
             ref={inputRef}
             type="file"
@@ -141,9 +144,9 @@ function PreviousMonthDataWizardContent({
       {uploading ? <p className="text-[13px] text-dash-ink-secondary">Uploading…</p> : null}
       {error ? <p className="text-[13px] text-red-400">{error}</p> : null}
       <p className="text-[12px] text-dash-ink-secondary">
-        Optional — skip if you don&apos;t need the comparison row.{" "}
+        Optional — skip if you don&apos;t need the previous month row.{" "}
         <Link href={manageHref} className="font-medium text-dash-accent hover:underline">
-          Open full upload on client page
+          Open client page
         </Link>
       </p>
     </div>

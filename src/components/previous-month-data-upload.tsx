@@ -154,13 +154,12 @@ export function PreviousMonthDataUpload({
     <div className="rounded-lg border border-dash-border bg-dash-card p-5">
       <div className="mb-3 space-y-2 text-[13px] text-dash-ink-secondary">
         <p>
-          Upload your previous month campaign data at the start of each new month. This populates the
-          comparison row in your Combined Total slide.
+          Upload your previous month campaign data at the start of each new month. This adds the
+          previous month row to your Monthly Overview slide.
         </p>
         <p>
           <span className="font-medium text-dash-ink-secondary">How to download:</span> In Meta Ads Manager,
-          set the date range to the full previous month (e.g. July 1–31). Day breakdown is recommended; monthly
-          totals also work for the comparison row.
+          set the date range to the full previous month (e.g. July 1–31). Export with or without Day breakdown.
         </p>
         <p>
           NextReport uses this automatically in every report for this client until you replace it with

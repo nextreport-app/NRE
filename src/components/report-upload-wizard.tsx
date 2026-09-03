@@ -1723,6 +1723,7 @@ export function ReportUploadWizard({
     return (
       <div className="space-y-6">
         <div>
+          <p className="mb-0.5 text-[13px] font-semibold text-[#f6ad55]">{clientName}</p>
           <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
           <p className="text-[13px] text-dash-ink-secondary">Loading your report…</p>
         </div>
@@ -1733,6 +1734,7 @@ export function ReportUploadWizard({
   return (
     <div className="space-y-6">
       <div>
+        <p className="mb-0.5 text-[13px] font-semibold text-[#f6ad55]">{clientName}</p>
         <h1 className="mb-1 text-[20px] font-bold text-white">{STEP_HEADINGS[step]}</h1>
         <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step]}</p>
       </div>
@@ -2039,7 +2041,9 @@ export function ReportUploadWizard({
                           onChange={() => toggleAdSet(name, group.adSetNames[0])}
                           className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
                         />
-                        <span className="text-[12px] text-dash-ink-secondary">Include ad set slide within this campaign</span>
+                        <span className="text-[12px] text-dash-ink-secondary">
+                          Optional ad set slide — mirrors campaign data. Enable only if you want a separate slide.
+                        </span>
                       </label>
                     </div>
                   )}
@@ -2048,10 +2052,6 @@ export function ReportUploadWizard({
               });
             })()}
           </ul>
-
-          <p className="text-[13px] text-dash-ink-secondary">
-            A single-ad-set slide repeats the campaign slide — turn it on only if you want both.
-          </p>
 
           <div className="flex gap-3">
             <button
@@ -2944,35 +2944,36 @@ export function ReportUploadWizard({
                   </>
                 ) : null}
 
+                {(() => {
+                  const showPdf = !!(shareToken && reportId && (publishedAt || pdfAvailable));
+                  const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
+                  const downloadCount = 1 + (showPdf ? 1 : 0) + (showDrive ? 1 : 0);
+                  const gridClass =
+                    downloadCount === 1
+                      ? "grid grid-cols-1 gap-2"
+                      : downloadCount === 2
+                        ? "grid grid-cols-2 gap-2"
+                        : "grid grid-cols-2 sm:grid-cols-3 gap-2";
+
+                  return (
                 <div>
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
-                  <div className={`grid gap-2 ${hasGoogleDriveConnected ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
+                  <div className={gridClass}>
                     <a
                       href={downloadUrl}
                       className="flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#f5b45a]"
                     >
                       PPTX
                     </a>
-                    {shareToken && reportId ? (
-                      publishedAt ? (
-                        <a
-                          href={`/api/reports/${reportId}/download-pdf`}
-                          className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#63b3ed]"
-                        >
-                          PDF
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          title="Review and publish your report to enable PDF download"
-                          className="flex cursor-not-allowed items-center justify-center rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-dash-ink-secondary opacity-60"
-                        >
-                          PDF
-                        </button>
-                      )
+                    {showPdf ? (
+                      <a
+                        href={`/api/reports/${reportId}/download-pdf`}
+                        className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[13px] font-medium text-white hover:border-[#63b3ed]"
+                      >
+                        PDF
+                      </a>
                     ) : null}
-                    {hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success") ? (
+                    {showDrive ? (
                       <button
                         type="button"
                         onClick={handleSaveButtonClick}
@@ -2983,7 +2984,7 @@ export function ReportUploadWizard({
                       </button>
                     ) : null}
                   </div>
-                  {shareToken && reportId && !publishedAt ? (
+                  {shareToken && reportId && !showPdf ? (
                     <p className="mt-2 text-[12px] text-dash-ink-secondary">
                       PDF unlocks after you review and publish.
                     </p>
@@ -3004,11 +3005,13 @@ export function ReportUploadWizard({
                     </p>
                   ) : null}
                 </div>
+                  );
+                })()}
 
                 {shareToken && reportId ? (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
                     <p className="text-[13px] leading-snug text-dash-ink">
-                      Edit report copy or hide slides for the browser link, PPTX, and PDF
+                      Review slide wording and choose which slides to include before sharing or downloading.
                     </p>
                     <Link
                       href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
