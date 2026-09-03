@@ -37,7 +37,7 @@ const META_PREVIOUS_MONTH_STEPS: Step[] = [
   { title: "Same steps but set date range to Last Month", body: "" },
   {
     title: "Time Breakdown",
-    body: "Day is recommended (matches the main CSV). Monthly totals (None) also work for the comparison row only.",
+    body: "Day is recommended (matches the main CSV). Monthly totals (None) also work for the previous month row.",
   },
   { title: "Same columns as above", body: "" },
   { title: "Export as CSV", body: "" },
