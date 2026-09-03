@@ -1,9 +1,9 @@
 const STEPS = [
   {
     number: "1",
-    title: "Upload your CSV",
+    title: "Connect or upload",
     description:
-      "Download from Meta Ads Manager or Google Ads. Upload any format — CSV, Excel, or Google Sheets export.",
+      "Sync from Meta or Google Ads via official API — or upload a CSV export. Pick the path that suits your workflow.",
   },
   {
     number: "2",
@@ -13,8 +13,7 @@ const STEPS = [
   {
     number: "3",
     title: "Download or share",
-    description:
-      "Get a branded PowerPoint or save directly to Google Drive with a shareable link.",
+    description: "Get a branded PowerPoint or save directly to Google Drive with a shareable link.",
   },
 ];
 
