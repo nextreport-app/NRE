@@ -128,6 +128,11 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 // src/lib/pptx/chart-slide-constants.ts
 var DONUT_HOLE_RATIO = 0.65;
 
+// src/lib/nre/visual-chart-slide.ts
+function formatGroupedDonutLegendLine(segments) {
+  return segments.map((s) => `${s.percentage}% \xB7 ${s.spendLabel}`).join("     \xB7     ");
+}
+
 // src/lib/nre/share-report.ts
 function defaultShareVisibility(data) {
   return {
@@ -420,16 +425,14 @@ function AdSetCard({
   ] });
 }
 function VisualResultBar({
-  name,
   color,
   statLine,
   barPct
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-[14px] font-bold leading-tight text-ink", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink", children: statLine }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-1 h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold leading-tight text-ink", children: statLine }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-2 h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
   ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
@@ -454,20 +457,12 @@ function ShareMtdOverviewSlide({ chart }) {
               size: 204
             }
           ) }),
-          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-ink", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "mr-2 inline-block h-2.5 w-2.5 shrink-0 rounded-sm align-middle", style: { backgroundColor: `#${seg.color}` } }),
-            seg.name,
-            " \xB7 ",
-            seg.spendLabel,
-            " \xB7 ",
-            seg.percentage,
-            "%"
-          ] }, seg.name))
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-4 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink", children: formatGroupedDonutLegendLine(model.groupedDonut) })
         ] }) : null
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-4", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-7", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { color: bar.color, statLine: bar.statLine, barPct: bar.barPct }, bar.name)) })
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[16px] text-[#94a3b8]", children: model.summaryLine })

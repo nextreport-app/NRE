@@ -3,14 +3,13 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import type { VisualChartSlideModel } from "../nre/visual-chart-slide";
+import { formatGroupedDonutLegendLine, type VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import { REPORT_HEADER_COLOR, VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
 import {
   resultBarColumns,
   resultBarFillWidth,
-  truncateCampaignBarName,
   VISUAL_CHART_COLORS_DARK,
   VISUAL_CHART_COLORS_LIGHT,
 } from "./chart-campaign-bars-render";
@@ -37,10 +36,6 @@ const DONUT_START_DEG = 270;
 
 function miniDonutHoleRatio(d: number): number {
   return (d / 2 - 14) / (d / 2);
-}
-
-function truncateLegendLine(text: string, max = 42): string {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
 function palette(isLight: boolean) {
@@ -157,25 +152,24 @@ function appendGroupedDonut(
     }),
     textBox({ x, y: y + d / 2 + 12, w: d, h: 16, text: "TOTAL SPEND", sizePt: 12, bold: true, colorHex: muted, align: "ctr", anchor: "ctr" }),
   );
-  let legendY = y + d + 18;
-  for (const seg of segments) {
-    shapes.push(
-      rectangle({ x, y: legendY + 2, w: 12, h: 12, fillHex: seg.color }),
-      textBox({
-        x: x + 16,
-        y: legendY,
-        w: d - 16,
-        h: 16,
-        text: truncateLegendLine(`${seg.name} · ${seg.spendLabel} · ${seg.percentage}%`),
-        sizePt: 13,
-        colorHex: ink,
-        align: "l",
-        clipOverflow: true,
-        nowrap: true,
-      }),
-    );
-    legendY += 16;
-  }
+  const legendY = y + d + 20;
+  const legendText = formatGroupedDonutLegendLine(segments);
+  shapes.push(
+    textBox({
+      x: leftX + 8,
+      y: legendY,
+      w: MTD_VISUAL.leftW - 16,
+      h: MTD_VISUAL.groupedDonutLegendH,
+      text: legendText,
+      sizePt: MTD_VISUAL.groupedDonutLegendSizePt,
+      bold: true,
+      colorHex: ink,
+      align: "ctr",
+      anchor: "ctr",
+      clipOverflow: true,
+      nowrap: true,
+    }),
+  );
 }
 
 function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, isLight: boolean): void {
@@ -200,32 +194,17 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const nameY = rowY;
-    const metricsY = rowY + MTD_VISUAL.barNameH + 2;
-    const barY = metricsY + MTD_VISUAL.barMetricsH + 2;
+    const metricsY = rowY;
+    const barY = metricsY + MTD_VISUAL.barMetricsH + 6;
 
     shapes.push(
-      textBox({
-        x: cols.barX,
-        y: nameY,
-        w: cols.trackW,
-        h: MTD_VISUAL.barNameH,
-        text: truncateCampaignBarName(bar.name, 36),
-        sizePt: 14,
-        bold: true,
-        colorHex: c.ink,
-        align: "l",
-        anchor: "t",
-        clipOverflow: true,
-        nowrap: true,
-      }),
       textBox({
         x: cols.barX,
         y: metricsY,
         w: cols.trackW,
         h: MTD_VISUAL.barMetricsH,
         text: bar.statLine,
-        sizePt: 14,
+        sizePt: 16,
         bold: true,
         colorHex: c.ink,
         align: "l",

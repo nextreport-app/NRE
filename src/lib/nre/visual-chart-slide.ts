@@ -177,6 +177,13 @@ function buildSummaryMulti(
   return [...prefix, ...chunks].join("  |  ");
 }
 
+/** Single centered legend line under the grouped donut — spend % only (no campaign names). */
+export function formatGroupedDonutLegendLine(
+  segments: Pick<VisualChartSegment, "percentage" | "spendLabel">[],
+): string {
+  return segments.map((s) => `${s.percentage}% · ${s.spendLabel}`).join("     ·     ");
+}
+
 export function buildVisualChartTitle(chart: ChartSlideData): string {
   const range = chart.periodSubLabel.trim();
   return range.length > 0 ? `Last 30 Days Campaign Performance: ${range}` : "Last 30 Days Campaign Performance";

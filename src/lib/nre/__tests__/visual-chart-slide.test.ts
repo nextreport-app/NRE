@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildVisualChartSlideModel } from "../visual-chart-slide";
+import { buildVisualChartSlideModel, formatGroupedDonutLegendLine } from "../visual-chart-slide";
 import type { ChartCampaignData, ChartSlideData } from "../report-data";
 
 function campaign(name: string, overrides: Partial<ChartCampaignData> = {}): ChartCampaignData {
@@ -51,6 +51,11 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 }
 
 describe("buildVisualChartSlideModel", () => {
+  it("formats grouped donut legend as one centered spend line", () => {
+    const model = buildVisualChartSlideModel(chart(), "$");
+    expect(formatGroupedDonutLegendLine(model.groupedDonut!)).toMatch(/% · \$.*·.*% · \$/);
+  });
+
   it("builds grouped spend donut and result bars for single-objective accounts", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
