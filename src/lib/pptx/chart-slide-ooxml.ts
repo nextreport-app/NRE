@@ -3,7 +3,7 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { formatGroupedDonutLegendLine, type VisualChartSlideModel } from "../nre/visual-chart-slide";
+import { formatGroupedDonutLegendEntry, type VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import { REPORT_HEADER_COLOR, VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
@@ -152,24 +152,26 @@ function appendGroupedDonut(
     }),
     textBox({ x, y: y + d / 2 + 12, w: d, h: 16, text: "TOTAL SPEND", sizePt: 12, bold: true, colorHex: muted, align: "ctr", anchor: "ctr" }),
   );
-  const legendY = y + d + 20;
-  const legendText = formatGroupedDonutLegendLine(segments);
-  shapes.push(
-    textBox({
-      x: leftX + 8,
-      y: legendY,
-      w: MTD_VISUAL.leftW - 16,
-      h: MTD_VISUAL.groupedDonutLegendH,
-      text: legendText,
-      sizePt: MTD_VISUAL.groupedDonutLegendSizePt,
-      bold: true,
-      colorHex: ink,
-      align: "ctr",
-      anchor: "ctr",
-      clipOverflow: true,
-      nowrap: true,
-    }),
-  );
+  let legendY = y + d + 16;
+  for (const seg of segments) {
+    shapes.push(
+      textBox({
+        x: leftX + 8,
+        y: legendY,
+        w: MTD_VISUAL.leftW - 16,
+        h: MTD_VISUAL.groupedDonutLegendRowH,
+        text: formatGroupedDonutLegendEntry(seg),
+        sizePt: MTD_VISUAL.groupedDonutLegendSizePt,
+        bold: true,
+        colorHex: ink,
+        align: "ctr",
+        anchor: "ctr",
+        clipOverflow: true,
+        nowrap: true,
+      }),
+    );
+    legendY += MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap;
+  }
 }
 
 function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, isLight: boolean): void {

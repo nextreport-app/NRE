@@ -129,17 +129,12 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 var DONUT_HOLE_RATIO = 0.65;
 
 // src/lib/nre/visual-chart-slide.ts
-var LEGEND_LINE_MAX = 62;
-var LEGEND_SEP = "  \xB7  ";
+var LEGEND_NAME_MAX = 28;
 function truncateLegendName(name, max) {
   return name.length > max ? `${name.slice(0, Math.max(1, max - 1))}\u2026` : name;
 }
-function formatGroupedDonutLegendLine(segments) {
-  if (segments.length === 0) return "";
-  const sepLen = LEGEND_SEP.length * (segments.length - 1);
-  const fixedLen = segments.reduce((sum, s) => sum + ` \xB7 ${s.percentage}% \xB7 ${s.spendLabel}`.length, 0);
-  const nameMax = Math.max(6, Math.floor((LEGEND_LINE_MAX - sepLen - fixedLen) / segments.length));
-  return segments.map((s) => `${truncateLegendName(s.name, nameMax)} \xB7 ${s.percentage}% \xB7 ${s.spendLabel}`).join(LEGEND_SEP);
+function formatGroupedDonutLegendEntry(segment) {
+  return `${truncateLegendName(segment.name, LEGEND_NAME_MAX)} \xB7 ${segment.percentage}% \xB7 ${segment.spendLabel}`;
 }
 
 // src/lib/nre/share-report.ts
@@ -466,7 +461,14 @@ function ShareMtdOverviewSlide({ chart }) {
               size: 204
             }
           ) }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-4 overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink", children: formatGroupedDonutLegendLine(model.groupedDonut) })
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-3 space-y-2", children: model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "p",
+            {
+              className: "overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink",
+              children: formatGroupedDonutLegendEntry(seg)
+            },
+            seg.name
+          )) })
         ] }) : null
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [

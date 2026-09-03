@@ -177,24 +177,17 @@ function buildSummaryMulti(
   return [...prefix, ...chunks].join("  |  ");
 }
 
-const LEGEND_LINE_MAX = 62;
-const LEGEND_SEP = "  ·  ";
+const LEGEND_NAME_MAX = 28;
 
 function truncateLegendName(name: string, max: number): string {
   return name.length > max ? `${name.slice(0, Math.max(1, max - 1))}…` : name;
 }
 
-/** Single centered legend line under the grouped donut — name, spend %, and amount per segment. */
-export function formatGroupedDonutLegendLine(
-  segments: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">[],
+/** One donut legend row — name · % · spend (single line, no wrap). */
+export function formatGroupedDonutLegendEntry(
+  segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
-  if (segments.length === 0) return "";
-  const sepLen = LEGEND_SEP.length * (segments.length - 1);
-  const fixedLen = segments.reduce((sum, s) => sum + ` · ${s.percentage}% · ${s.spendLabel}`.length, 0);
-  const nameMax = Math.max(6, Math.floor((LEGEND_LINE_MAX - sepLen - fixedLen) / segments.length));
-  return segments
-    .map((s) => `${truncateLegendName(s.name, nameMax)} · ${s.percentage}% · ${s.spendLabel}`)
-    .join(LEGEND_SEP);
+  return `${truncateLegendName(segment.name, LEGEND_NAME_MAX)} · ${segment.percentage}% · ${segment.spendLabel}`;
 }
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {
