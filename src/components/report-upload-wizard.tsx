@@ -375,6 +375,8 @@ export function ReportUploadWizard({
   const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | null>("META");
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
+  const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -917,6 +919,42 @@ export function ReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     await dispatchAfterAnalyze(detected);
+  }
+
+  /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
+  async function handleApiSynced(file: File) {
+    if (!selectedPlatformCard) return;
+    setApiSyncStatus("idle");
+    setApiSyncError(null);
+    setMtdFile(file);
+    setAnalyzeStatus("loading");
+    setAnalyzeErrors([]);
+    setAnalyzeMessage(null);
+    setMismatchWarning(false);
+
+    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+      method: "POST",
+      body: buildUploadFormData(file, { platform: selectedPlatformCard }),
+    });
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !json) {
+      setAnalyzeStatus("error");
+      setAnalyzeMessage("Something went wrong analyzing the synced data. Please try again.");
+      return;
+    }
+
+    if (!json.valid) {
+      setPlatform(selectedPlatformCard);
+      setAnalyzeStatus("invalid");
+      setAnalyzeErrors(json.errors || []);
+      return;
+    }
+
+    setPlatform(selectedPlatformCard);
+    applyAnalyzeResult(json);
+    setAnalyzeStatus("idle");
+    await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
   /** Mismatch warning's "Continue anyway" — re-analyzes with the user's selected platform forced as an override, so a genuinely wrong-platform CSV fails validation honestly instead of silently being parsed as the wrong thing. */
@@ -1784,12 +1822,24 @@ export function ReportUploadWizard({
 
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
+                  clientId={clientId}
                   platform={selectedPlatformCard}
                   metaConnected={metaConnected}
                   metaConnectedName={metaConnectedName}
                   metaConfigured={metaConfigured}
                   googleAdsConfigured={googleAdsConfigured}
                   googleAdsConnected={googleAdsConnected}
+                  onSynced={(file) => void handleApiSynced(file)}
+                  syncStatus={apiSyncStatus}
+                  syncError={apiSyncError}
+                  onSyncStart={() => {
+                    setApiSyncStatus("loading");
+                    setApiSyncError(null);
+                  }}
+                  onSyncError={(message) => {
+                    setApiSyncStatus("error");
+                    setApiSyncError(message);
+                  }}
                 />
               ) : (
                 <>
