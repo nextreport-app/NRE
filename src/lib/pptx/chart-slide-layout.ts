@@ -89,7 +89,7 @@ export function resultBarGeometry(barCount: number): { rowH: number; startY: num
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
   const ideal =
-    MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barH + 4 + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
+    MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 4 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
   const rowH = barCount > 0 ? Math.min(64, Math.max(ideal, Math.floor(available / barCount))) : ideal;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);

@@ -42,11 +42,29 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${MTD_VISUAL.rightX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(model.rightHeading.toUpperCase())}</text>`,
   ];
 
-  if (model.isMultiObjective && model.groupedDonut) {
+  if (model.groupedDonut && model.groupedDonut.length > 0) {
     const d = MTD_VISUAL.groupedDonutD;
     const x = MTD_VISUAL.leftX + (MTD_VISUAL.leftW - d) / 2;
     const y = MTD_VISUAL.panelY + 36;
-    parts.push(`<circle cx="${x + d / 2}" cy="${y + d / 2}" r="${d / 2 - 8}" fill="none" stroke="#f6ad55" stroke-width="14"/>`);
+    let angle = 270;
+    for (const seg of model.groupedDonut) {
+      const sweep = (seg.percentage / 100) * 360;
+      if (sweep <= 0) continue;
+      const cx = x + d / 2;
+      const cy = y + d / 2;
+      const r = d / 2 - 8;
+      const startRad = (angle * Math.PI) / 180;
+      const endRad = ((angle + sweep) * Math.PI) / 180;
+      const x1 = cx + r * Math.cos(startRad);
+      const y1 = cy + r * Math.sin(startRad);
+      const x2 = cx + r * Math.cos(endRad);
+      const y2 = cy + r * Math.sin(endRad);
+      const largeArc = sweep > 180 ? 1 : 0;
+      parts.push(
+        `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="#${seg.color}" stroke-width="14"/>`,
+      );
+      angle += sweep;
+    }
     parts.push(
       `<text x="${x + d / 2}" y="${y + d / 2}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(model.groupedDonutCenterLabel)}</text>`,
     );
@@ -71,19 +89,17 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barBlockH = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH;
-    const barY = rowY + Math.max(0, (rowH - barBlockH) / 2);
-    const metricsY = barY + MTD_VISUAL.barH + 16;
+    const nameY = rowY;
+    const metricsY = rowY + MTD_VISUAL.barNameH + 2;
+    const barY = metricsY + MTD_VISUAL.barMetricsH + 2;
     parts.push(
-      `<text x="${cols.labelX + cols.labelColW}" y="${rowY + rowH / 2 + 5}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="15">${escapeXml(truncateCampaignBarName(bar.name, 20))}</text>`,
+      `<text x="${cols.barX}" y="${nameY + 14}" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">${escapeXml(truncateCampaignBarName(bar.name, 36))}</text>`,
+      `<text x="${cols.barX}" y="${metricsY + 14}" fill="${INK}" font-family="Poppins" font-size="14" font-weight="700">${escapeXml(bar.statLine)}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="3" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {
       parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${MTD_VISUAL.barH}" rx="3" fill="#${bar.color}"/>`);
     }
-    parts.push(
-      `<text x="${cols.barX}" y="${metricsY}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(bar.statLine)}</text>`,
-    );
     rowY += rowH;
   }
 

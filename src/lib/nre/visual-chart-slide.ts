@@ -1,17 +1,16 @@
 /**
  * MTD Visual Chart slide — shared data model for browser, OOXML, and SVG.
- * Left: budget distribution (mini donuts per campaign, or one donut by objective).
- * Right: primary results bars (stat line = results + cost; bar fill = spend share).
+ * Left: one grouped spend donut (multi-color segments by campaign or objective).
+ * Right: result bars sorted by spend — name, results + cost, then bar underneath.
  */
 
 import { fmtCurrency, fmtCurrency2dp } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
-import { buildDonutSegments, ringColorForCampaign } from "../pptx/chart-slide";
+import { buildDonutSegments } from "../pptx/chart-slide";
 
 export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
 const INACTIVE_COLOR = "4a5568";
-const OTHER_COLOR = "64748b";
 const MAX_LEFT_ITEMS = 5;
 
 export interface VisualChartSegment {
@@ -45,9 +44,9 @@ export interface VisualChartSlideModel {
   isMultiObjective: boolean;
   leftHeading: string;
   rightHeading: string;
-  /** Single-objective: one mini donut per campaign (max 5). Multi: empty — use groupedDonut. */
+  /** @deprecated Always empty — use groupedDonut. Kept for backward-compatible API. */
   miniDonuts: VisualMiniDonut[];
-  /** Multi-objective: one spend donut grouped by objective. */
+  /** One spend donut with proportional segments (campaigns or objectives). */
   groupedDonut: VisualChartSegment[] | null;
   groupedDonutCenterLabel: string;
   resultBars: VisualResultBar[];
@@ -122,7 +121,7 @@ function buildResultBars(
   const maxSpend = Math.max(1, ...rows.map((r) => r.spend));
   return rows
     .slice()
-    .sort((a, b) => b.results - a.results)
+    .sort((a, b) => b.spend - a.spend)
     .map((row) => {
       const resultLine = formatResultLine(row.results, row.resLabel);
       const costLine = formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
@@ -233,32 +232,12 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   }
 
   const segments = buildDonutSegments(chart.campaigns, chart.totalAllSpend);
-  const topCampaigns = [...chart.campaigns].sort((a, b) => b.spend - a.spend).slice(0, MAX_LEFT_ITEMS - 1);
-  const otherSpend = chart.campaigns
-    .slice()
-    .sort((a, b) => b.spend - a.spend)
-    .slice(MAX_LEFT_ITEMS - 1)
-    .reduce((s, c) => s + c.spend, 0);
-
-  const miniDonuts: VisualMiniDonut[] = topCampaigns.map((c) => {
-    const color = colorByCampaign.get(c.name) ?? ringColorForCampaign(c, 0);
-    const pct = chart.totalAllSpend > 0 ? Math.round((c.spend / chart.totalAllSpend) * 1000) / 10 : 0;
-    return {
-      name: truncateName(c.name),
-      spendLabel: fmtCurrency(c.spend, currencySymbol),
-      pctLabel: `${pct}%`,
-      color,
-    };
-  });
-  if (otherSpend > 0) {
-    const pct = chart.totalAllSpend > 0 ? Math.round((otherSpend / chart.totalAllSpend) * 1000) / 10 : 0;
-    miniDonuts.push({
-      name: "Others",
-      spendLabel: fmtCurrency(otherSpend, currencySymbol),
-      pctLabel: `${pct}%`,
-      color: OTHER_COLOR,
-    });
-  }
+  const groupedDonut: VisualChartSegment[] = segments.map((s) => ({
+    name: truncateName(s.name),
+    color: s.color,
+    percentage: s.percentage,
+    spendLabel: fmtCurrency(s.spend, currencySymbol),
+  }));
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const resultBars = buildResultBars(
@@ -283,8 +262,8 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     isMultiObjective: false,
     leftHeading: "BUDGET DISTRIBUTION",
     rightHeading: `${toTitleCaseChartLabel(primaryResLabel)} by Campaign`,
-    miniDonuts,
-    groupedDonut: null,
+    miniDonuts: [],
+    groupedDonut,
     groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
     resultBars,
     summaryLine: buildSummarySingle(

@@ -201,8 +201,8 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
     const nameY = rowY;
-    const barY = rowY + MTD_VISUAL.barNameH + 2;
-    const metricsY = barY + MTD_VISUAL.barH + 4;
+    const metricsY = rowY + MTD_VISUAL.barNameH + 2;
+    const barY = metricsY + MTD_VISUAL.barMetricsH + 2;
 
     shapes.push(
       textBox({
@@ -219,12 +219,6 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         clipOverflow: true,
         nowrap: true,
       }),
-      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: MTD_VISUAL.barH, fillHex: c.track }),
-    );
-    if (fillW > 0) {
-      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: MTD_VISUAL.barH, fillHex: bar.color }));
-    }
-    shapes.push(
       textBox({
         x: cols.barX,
         y: metricsY,
@@ -239,7 +233,11 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         clipOverflow: true,
         nowrap: true,
       }),
+      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: MTD_VISUAL.barH, fillHex: c.track }),
     );
+    if (fillW > 0) {
+      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: MTD_VISUAL.barH, fillHex: bar.color }));
+    }
     rowY += rowH;
   }
 }
@@ -310,7 +308,7 @@ export function buildMtdOverviewOoxmlShapes(
     }),
   );
 
-  if (model.isMultiObjective && model.groupedDonut) {
+  if (model.groupedDonut && model.groupedDonut.length > 0) {
     appendGroupedDonut(shapes, model, MTD_VISUAL.leftX, MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + 24, holeFill, c.ink, c.inkMuted);
   } else {
     const count = model.miniDonuts.length;
