@@ -23,16 +23,20 @@ interface CustomerRow {
  */
 export function GoogleAdsSettings({
   initialConnectedEmail,
+  initialConnected,
   justConnected,
   connectError,
   googleAdsConfigured,
 }: {
   initialConnectedEmail: string | null;
+  /** True when User.googleAdsRefreshToken is set — email may be null (adwords-only scope). */
+  initialConnected: boolean;
   justConnected: boolean;
   connectError: string | null;
   googleAdsConfigured: boolean;
 }) {
   const router = useRouter();
+  const [connected, setConnected] = useState(initialConnected);
   const [connectedEmail, setConnectedEmail] = useState(initialConnectedEmail);
   const [disconnecting, setDisconnecting] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -42,6 +46,10 @@ export function GoogleAdsSettings({
   useEffect(() => {
     if (justConnected || connectError) {
       router.replace("/account#google-ads", { scroll: false });
+      if (justConnected && !connectError) {
+        setConnected(true);
+        router.refresh();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -50,6 +58,7 @@ export function GoogleAdsSettings({
     setDisconnecting(true);
     await fetch("/api/google-ads/disconnect", { method: "POST" }).catch(() => {});
     setDisconnecting(false);
+    setConnected(false);
     setConnectedEmail(null);
     setCustomers(null);
     setCustomersError(null);
@@ -84,10 +93,11 @@ export function GoogleAdsSettings({
         </p>
       )}
 
-      {connectedEmail ? (
+      {connected ? (
         <div className="rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
           <p className="text-sm text-emerald-300">
-            Connected: {connectedEmail} <span aria-hidden="true">✓</span>
+            Connected
+            {connectedEmail ? `: ${connectedEmail}` : ""} <span aria-hidden="true">✓</span>
           </p>
           <p className="mt-1 text-[12px] text-emerald-200/80">
             Read-only access — NextReport can list ad accounts and fetch campaign metrics. It cannot create or

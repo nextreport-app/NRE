@@ -48,6 +48,7 @@ export default async function AccountSettingsPage({
         metaConnectedName: true,
         metaConnectedUserId: true,
         googleAdsConnectedEmail: true,
+        googleAdsEnabled: true,
         slackWebhookUrl: true,
         automationWebhookUrl: true,
         planId: true,
@@ -100,6 +101,7 @@ export default async function AccountSettingsPage({
         <SectionHeading>Google Ads</SectionHeading>
         <GoogleAdsSettings
           initialConnectedEmail={user.googleAdsConnectedEmail}
+          initialConnected={user.googleAdsEnabled}
           justConnected={google_ads_connected === "1"}
           connectError={google_ads_error ?? null}
           googleAdsConfigured={googleAdsConfigured}
