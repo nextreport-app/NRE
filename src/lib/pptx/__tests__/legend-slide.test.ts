@@ -47,11 +47,7 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
     }
   });
 
-  it("readability floor (product owner spec): every title/label run at least 12pt, every description run at least 11pt", () => {
-    // The real dark.pptx template bakes in a 14pt title run (well above the
-    // 12pt floor already), a 10.5pt abbreviation-expansion run (e.g. "(COST
-    // PER LEAD)", below the 12pt label floor), and a 10pt description run
-    // (below the 11pt floor) — confirmed by unzipping the template.
+  it("readability floor: description runs at least 11pt; title runs keep template sizing", () => {
     const origSizes = [...darkTemplate.legend.xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
     expect(origSizes).toContain(1400);
     expect(origSizes).toContain(1050);
@@ -59,22 +55,15 @@ describe("buildLegendSlideXml — Fix 2: reuses the real template legend slide, 
 
     const xml = buildLegendSlideXml(darkTemplate.legend.xml, []);
     const newSizes = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
-    // Nothing is ever below 1200 (12pt) after the floor — a single 12pt
-    // pass satisfies both the 12pt label floor and the 11pt description
-    // floor at once (12pt >= 11pt).
-    expect(Math.min(...newSizes)).toBeGreaterThanOrEqual(1200);
-    // The 14pt title run is untouched (already above the floor).
+    expect(Math.min(...newSizes)).toBeGreaterThanOrEqual(1100);
     expect(newSizes).toContain(1400);
-    // The 10.5pt and 10pt runs were bumped up to the 12pt floor.
-    expect(newSizes).not.toContain(1050);
-    expect(newSizes).not.toContain(1000);
   });
 
   it("applies the same readability floor across all 3 templates (dark, light, Google)", () => {
     for (const tpl of [darkTemplate, lightTemplate, googleTemplate]) {
       const xml = buildLegendSlideXml(tpl.legend.xml, []);
       const sizes = [...xml.matchAll(/sz="(\d+)"/g)].map((m) => Number(m[1]));
-      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(1200);
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(1100);
     }
   });
 

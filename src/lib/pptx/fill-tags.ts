@@ -52,7 +52,7 @@ const CAMPAIGN_NAME_MAX_WIDTH_PT = emuToPt(11433300 - 91425 * 2);
 // "(Campaign)"/"(Ad Set)" type label next to it and the report-type header
 // above it. Floor stays 16pt (Fix 4, readability pass) — a name long enough
 // to need the smaller candidates wraps instead of shrinking further.
-const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [24, 22, 20, 18];
+const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [20, 18, 16];
 // Fixed, not part of the auto-shrink candidates above — the type label
 // always renders at this size regardless of how long the name itself is.
 const TYPE_LABEL_SIZE_PT = 17;
@@ -67,9 +67,9 @@ const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visuall
 // — this is deliberate: the report-type line is uniform "chrome" repeated
 // on every slide, while the name is the slide's own prominent identifier.
 export const REPORT_HEADER_COLOR = "94a3b8"; // muted grey — used uniformly for every slide type's own main heading
-export const REPORT_HEADER_SIZE_PT = 30;
-/** MTD Visual Chart slide title — slightly smaller so long date ranges stay on one line. */
-export const VISUAL_CHART_TITLE_SIZE_PT = 24;
+export const REPORT_HEADER_SIZE_PT = 28;
+/** MTD Visual Chart slide title — 28pt with room for two lines when date range is long. */
+export const VISUAL_CHART_TITLE_SIZE_PT = 28;
 
 /**
  * Largest candidate size (checked largest-first) whose estimated width,
@@ -713,11 +713,15 @@ export function buildTableSlideXml(
   const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
   const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideRowIndexes: [...(hidePeriodRow ? [1] : []), ...(hideMtdRow ? [2] : [])],
+    hideRowIndexes: [...(hidePeriodRow ? [2] : []), ...(hideMtdRow ? [1] : [])],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
   });
-  let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", { color: REPORT_HEADER_COLOR });
+  let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
+    bold: true,
+    sizePt: REPORT_HEADER_SIZE_PT,
+    color: REPORT_HEADER_COLOR,
+  });
   if (combinedTotalStory.trim()) {
     out = insertShapeBeforeSpTreeClose(
       out,

@@ -102,14 +102,14 @@ function appendMiniDonut(
     }),
   );
   shapes.push(
-    textBox({ x, y: y + d / 2 - 10, w: d, h: 20, text: spendLabel, sizePt: 14, bold: true, colorHex: ink, align: "ctr", anchor: "ctr" }),
+    textBox({ x, y: y + d / 2 - 12, w: d, h: 24, text: spendLabel, sizePt: 17, bold: true, colorHex: ink, align: "ctr", anchor: "ctr" }),
     textBox({
       x: x - 8,
       y: y + d + 4,
       w: d + 16,
       h: MTD_VISUAL.miniDonutCaptionH,
       text: `${name} · ${pctLabel}`,
-      sizePt: 11,
+      sizePt: 13,
       colorHex: muted,
       align: "ctr",
       anchor: "ctr",
@@ -200,20 +200,22 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const barBlockH = MTD_VISUAL.barH + MTD_VISUAL.barMetricsH;
-    const barY = rowY + Math.max(0, (rowH - barBlockH) / 2);
-    const metricsY = barY + MTD_VISUAL.barH + 2;
+    const nameY = rowY;
+    const barY = rowY + MTD_VISUAL.barNameH + 2;
+    const metricsY = barY + MTD_VISUAL.barH + 4;
+
     shapes.push(
       textBox({
-        x: cols.labelX,
-        y: rowY,
-        w: cols.labelColW,
-        h: rowH,
-        text: truncateCampaignBarName(bar.name, 20),
-        sizePt: 15,
+        x: cols.barX,
+        y: nameY,
+        w: cols.trackW,
+        h: MTD_VISUAL.barNameH,
+        text: truncateCampaignBarName(bar.name, 36),
+        sizePt: 14,
+        bold: true,
         colorHex: c.ink,
-        align: "r",
-        anchor: "ctr",
+        align: "l",
+        anchor: "t",
         clipOverflow: true,
         nowrap: true,
       }),
@@ -229,7 +231,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         w: cols.trackW,
         h: MTD_VISUAL.barMetricsH,
         text: bar.statLine,
-        sizePt: 15,
+        sizePt: 14,
         bold: true,
         colorHex: c.ink,
         align: "l",
@@ -267,26 +269,26 @@ export function buildMtdOverviewOoxmlShapes(
       bold: true,
       colorHex: REPORT_HEADER_COLOR,
       align: "ctr",
+      anchor: "t",
       clipOverflow: true,
-      nowrap: true,
     }),
   );
 
   shapes.push(
     roundedCard({
-      x: MTD_VISUAL.leftX - 8,
-      y: MTD_VISUAL.panelY - 8,
-      w: MTD_VISUAL.leftW + 16,
-      h: MTD_VISUAL.panelH + 16,
+      x: MTD_VISUAL.leftX - 6,
+      y: MTD_VISUAL.panelY - 6,
+      w: MTD_VISUAL.leftW + 12,
+      h: MTD_VISUAL.panelH + 12,
       fillHex: isLightTemplate ? c.panelFill : "111f35",
       strokeHex: c.separator,
       radiusPt: 8,
     }),
     roundedCard({
-      x: MTD_VISUAL.rightX - 8,
-      y: MTD_VISUAL.panelY - 8,
-      w: MTD_VISUAL.rightW + 16,
-      h: MTD_VISUAL.panelH + 16,
+      x: MTD_VISUAL.rightX - 6,
+      y: MTD_VISUAL.panelY - 6,
+      w: MTD_VISUAL.rightW + 12,
+      h: MTD_VISUAL.panelH + 12,
       fillHex: isLightTemplate ? c.panelFill : "111f35",
       strokeHex: c.separator,
       radiusPt: 8,

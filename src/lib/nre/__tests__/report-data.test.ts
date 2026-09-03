@@ -2910,13 +2910,13 @@ describe("buildCombinedTotalTableGrid", () => {
   // Reach column (index 2) — the grid builder just carries whatever
   // computeTableRow gave it straight through; both rows now get a real
   // summed number (see computeTableRow's own reach tests for the sum logic).
-  it("column 2 (Reach): carries the Period and MTD row's own reach values through unchanged", () => {
+  it("column 2 (Reach): carries the MTD and Period row reach values through unchanged (MTD first)", () => {
     const periodRow = tableRow({ reach: "46,266" });
     const mtdRow = tableRow({ reach: "90,779" });
     const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, oneObjectiveHeaders);
-    expect(grid[0][2]).toBe("Reach"); // header never disappears
-    expect(grid[1][2]).toBe("46,266"); // Period row
-    expect(grid[2][2]).toBe("90,779"); // MTD row
+    expect(grid[0][2]).toBe("Reach");
+    expect(grid[1][2]).toBe("90,779"); // MTD row (current month on top)
+    expect(grid[2][2]).toBe("46,266"); // Period row (previous month below)
   });
 
   it("dynamic result columns show the actual objective names, never generic 'Results'/'CPR'", () => {
@@ -2986,25 +2986,23 @@ describe("buildCombinedTotalTableGrid", () => {
     const mtdRow = tableRow({ resultColumns: [resultCol("LEADS (FORM)", "COST PER LEAD", "12", "₹15.00")] });
     const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
 
-    // Period row: Leads column is blank, Purchases column has real data.
-    expect(grid[1]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "—", "—", "5", "₹40.00"]);
-    // MTD row: the reverse.
-    expect(grid[2]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "12", "₹15.00", "—", "—"]);
+    // MTD row first, Period row second.
+    expect(grid[1]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "12", "₹15.00", "—", "—"]);
+    expect(grid[2]).toEqual(["Jul 1 - Jul 23", "₹1,000", "5,000", "10,000", "1.50%", "₹2.00", "—", "—", "5", "₹40.00"]);
   });
 
-  // MTD month label.
-  it("row 2 (MTD) column 0 carries the ' MTD'-suffixed month label computeTableRow already produced", () => {
+  it("row 1 (MTD) column 0 carries the ' MTD'-suffixed month label — current month on top", () => {
     const periodRow = tableRow({ monthLabel: "Jun 1 - Jun 30" });
     const mtdRow = tableRow({ monthLabel: "Jul 1 - Jul 23 MTD" });
     const grid = buildCombinedTotalTableGrid(periodRow, mtdRow, oneObjectiveHeaders);
-    expect(grid[1][0]).toBe("Jun 1 - Jun 30");
-    expect(grid[2][0]).toBe("Jul 1 - Jul 23 MTD");
+    expect(grid[1][0]).toBe("Jul 1 - Jul 23 MTD");
+    expect(grid[2][0]).toBe("Jun 1 - Jun 30");
   });
 
   it("row order matches TableRowData's own field order for every static column", () => {
     const periodRow = tableRow({ monthLabel: "M", spend: "S", reach: "R", impressions: "I", ctr: "C1", cpc: "C2" });
     const grid = buildCombinedTotalTableGrid(periodRow, tableRow(), oneObjectiveHeaders);
-    expect(grid[1].slice(0, 6)).toEqual(["M", "S", "R", "I", "C1", "C2"]);
+    expect(grid[2].slice(0, 6)).toEqual(["M", "S", "R", "I", "C1", "C2"]);
   });
 });
 
