@@ -51,9 +51,13 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 }
 
 describe("buildVisualChartSlideModel", () => {
-  it("formats grouped donut legend as one centered spend line", () => {
+  it("formats grouped donut legend as one centered line with campaign names", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
-    expect(formatGroupedDonutLegendLine(model.groupedDonut!)).toMatch(/% · \$.*·.*% · \$/);
+    const line = formatGroupedDonutLegendLine(model.groupedDonut!);
+    expect(line).toContain("Alpha");
+    expect(line).toContain("Beta");
+    expect(line).toMatch(/% · \$.*% · \$/);
+    expect(line.split("\n")).toHaveLength(1);
   });
 
   it("builds grouped spend donut and result bars for single-objective accounts", () => {
