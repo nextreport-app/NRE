@@ -106,7 +106,7 @@ function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValu
           <p className="truncate text-[14px] font-semibold uppercase tracking-wide text-accent-orange" style={{ letterSpacing: "0.5px" }}>
             {m.label}
           </p>
-          <p className="mt-1 truncate text-[28px] font-bold text-ink">{m.value}</p>
+          <p className="mt-1 truncate text-[22px] font-bold text-ink sm:text-[28px]">{m.value}</p>
         </div>
       ))}
     </div>
@@ -146,7 +146,7 @@ function AiCopyBlock({ heading, text }: { heading: string; text: string }) {
 
 function SlideCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-navy-border bg-navy p-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-8">
+    <div className="overflow-hidden rounded-lg border border-navy-border bg-navy p-4 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-6 md:p-8">
       {children}
     </div>
   );
@@ -173,9 +173,9 @@ function CampaignCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1 overflow-hidden">
           <CardReportTypeLabel label={reportType} />
-          <h3 className="box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]">
+          <h3 className="box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]">
             {campaign.campaignName}
-            <span className="text-accent-orange" style={{ fontSize: "16px", fontWeight: 400 }}>
+            <span className="text-accent-orange" style={{ fontSize: "14px", fontWeight: 400 }}>
               {" "}
               (Campaign)
             </span>
@@ -215,10 +215,10 @@ function AdSetCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1 overflow-hidden">
           <CardReportTypeLabel label={reportType} />
-          <h3 className="box-border max-w-full break-words text-[28px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[30px]">
+          <h3 className="box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]">
             {primaryName}
             {hasAdSetName && (
-              <span style={{ color: "#63b3ed", fontSize: "16px", fontWeight: 400 }}>{adSetLabel}</span>
+              <span style={{ color: "#63b3ed", fontSize: "14px", fontWeight: 400 }}>{adSetLabel}</span>
             )}
           </h3>
           {hasAdSetName && (
@@ -300,7 +300,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="line-clamp-2 text-center text-[28px] font-bold leading-tight text-[#94a3b8]">{model.title}</h2>
+      <h2 className="line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">{model.title}</h2>
 
       <div className="mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
@@ -438,7 +438,7 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
   if (metricGuide.length === 0) return null;
   return (
     <SlideCard>
-      <h2 className="text-[28px] font-bold text-ink">Metric Abbreviation Guide</h2>
+      <h2 className="text-[22px] font-bold text-ink sm:text-[28px]">Metric Abbreviation Guide</h2>
       <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
         {metricGuide.map((entry, i) => (
           <div key={`${entry.term}-${i}`} className="min-w-0 overflow-hidden">
@@ -506,35 +506,39 @@ export function ShareReportView({
     >
       {!isPrint ? (
       <header
-        className="sticky top-0 z-10 border-b border-navy-border px-4 sm:px-6"
-        style={{ backgroundColor: "#0d1b2e", minHeight: "60px" }}
+        className="sticky top-0 z-10 border-b border-navy-border px-3 py-2 sm:px-6 sm:py-0"
+        style={{ backgroundColor: "#0d1b2e" }}
       >
-        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3" style={{ minHeight: "60px" }}>
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-2 sm:min-h-[56px] sm:gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
-            <span className="text-[26px] font-bold text-ink" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+            <img
+              src="/logo.png"
+              alt="NextReport logo"
+              className="h-7 w-7 shrink-0 sm:h-9 sm:w-9"
+            />
+            <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
               NextReport
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-[17px] text-white sm:inline">Powered by NextReport</span>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <span className="hidden text-[15px] text-white md:inline">Powered by NextReport</span>
             {shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
-                className="flex items-center rounded-md border border-accent-orange px-4 text-[16px] font-semibold text-white hover:bg-accent-orange/10"
-                style={{ backgroundColor: "#1e293b", height: "44px" }}
+                className="inline-flex items-center justify-center rounded-md border border-accent-orange px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-accent-orange/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
+                style={{ backgroundColor: "#1e293b" }}
               >
-                Download PPTX
+                <span className="hidden min-[400px]:inline">Download </span>PPTX
               </a>
             ) : null}
             {shareToken && visibleData.publishedAt ? (
               <a
                 href={`/api/r/${shareToken}/download-pdf`}
-                className="flex items-center rounded-md border border-[#63b3ed] px-4 text-[16px] font-semibold text-white hover:bg-[#63b3ed]/10"
-                style={{ backgroundColor: "#1e293b", height: "44px" }}
+                className="inline-flex items-center justify-center rounded-md border border-[#63b3ed] px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-[#63b3ed]/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
+                style={{ backgroundColor: "#1e293b" }}
               >
-                Download PDF
+                <span className="hidden min-[400px]:inline">Download </span>PDF
               </a>
             ) : null}
           </div>
@@ -542,33 +546,41 @@ export function ShareReportView({
       </header>
       ) : null}
 
-      <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-4 py-6 sm:px-6"}>
+      <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-3 py-4 sm:px-6 sm:py-6"}>
         {/* Cover slide replica */}
         {showCover ? (
         <section className={coverSlideClass}>
           <div
-            className={`mx-auto w-full max-w-2xl rounded-lg border border-navy-border bg-navy-panel px-6 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-10 sm:py-10 ${isPrint ? "" : "aspect-video"}`}
+            className={`mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-navy-border bg-navy-panel px-4 py-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-8 sm:py-9 md:px-10 md:py-10 ${isPrint ? "" : "sm:aspect-video"}`}
           >
-            <div className="flex h-full flex-col items-center justify-center text-center">
+            <div className="flex min-h-0 flex-col items-center justify-center px-1 text-center sm:h-full">
               <div
-                className="inline-flex items-center gap-2 rounded-full"
-                style={{ backgroundColor: "#1e293b", border: "1px solid #334155", padding: "4px 12px" }}
+                className="inline-flex max-w-full items-center gap-2 rounded-full"
+                style={{ backgroundColor: "#1e293b", border: "1px solid #334155", padding: "3px 10px" }}
               >
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2"
                   style={{ backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
                 />
-                <span className="text-[14px] font-semibold uppercase text-[#94a3b8]" style={{ letterSpacing: "0.08em" }}>
+                <span className="text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]" style={{ letterSpacing: "0.08em" }}>
                   {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
                 </span>
               </div>
-              <h1 className={`mt-4 font-bold text-ink ${isPrint ? "text-[30px]" : "line-clamp-2 text-[38px]"}`}>
+              <h1
+                className={`mt-3 max-w-full break-words font-bold leading-tight text-ink [overflow-wrap:anywhere] ${
+                  isPrint ? "text-[28px]" : "text-[22px] sm:text-[30px] md:text-[34px]"
+                }`}
+              >
                 {visibleData.accountName}
               </h1>
-              <p className="mt-2 text-[19px] tracking-wide text-ink-muted">{reportTypeLabel(visibleData).toUpperCase()}</p>
-              <p className="mt-2 text-[17px] text-ink-muted">{visibleData.cover.dateRange}</p>
-              <div className="my-5 h-px w-24 bg-navy-border" />
-              <p className="text-[17px] font-medium text-ink">{visibleData.cover.healthBadge}</p>
+              <p className="mt-1.5 text-[13px] tracking-wide text-ink-muted sm:mt-2 sm:text-[16px]">
+                {reportTypeLabel(visibleData).toUpperCase()}
+              </p>
+              <p className="mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]">{visibleData.cover.dateRange}</p>
+              <div className="my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" />
+              <p className="max-w-full break-words px-1 text-[13px] font-medium leading-snug text-ink sm:text-[16px]">
+                {visibleData.cover.healthBadge}
+              </p>
             </div>
           </div>
           {visibleData.isPaused && visibleData.pausedMessage && (
@@ -600,7 +612,7 @@ export function ShareReportView({
         {showCombinedTotal && (
         <section className={slideClass}>
           <SlideCard>
-            <h2 className="mb-4 text-[28px] font-bold text-ink">Monthly Campaign Performance Overview</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">Monthly Campaign Performance Overview</h2>
             <CombinedTotalTable data={visibleData} compact={isPrint} />
           </SlideCard>
         </section>
