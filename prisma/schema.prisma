@@ -101,6 +101,16 @@ model User {
   metaConnectedUserId  String?
   metaConnectedName    String?
 
+  // Google Ads connection (account settings) — separate OAuth grant from
+  // NextAuth login and from googleDrive* above. Uses GOOGLE_ADS_CLIENT_ID/
+  // GOOGLE_ADS_CLIENT_SECRET (not AUTH_GOOGLE_*). Read-only adwords scope
+  // for future GAQL report fetch; tokens via /api/google-ads/connect +
+  // /api/google-ads/callback.
+  googleAdsEnabled        Boolean @default(false)
+  googleAdsRefreshToken   String? @db.Text
+  googleAdsAccessToken    String? @db.Text
+  googleAdsConnectedEmail String?
+
   // Report delivery integrations (account settings) — optional incoming
   // webhooks fired after each report reaches COMPLETE status.
   // slackWebhookUrl: Slack incoming webhook (hooks.slack.com/...).
