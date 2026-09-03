@@ -54,7 +54,7 @@ export function buildGoogleAdsConnectUrl(redirectUri: string, state: string): st
   url.searchParams.set("client_id", requireGoogleAdsClientId());
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GOOGLE_ADS_SCOPE);
+  url.searchParams.set("scope", `${GOOGLE_ADS_SCOPE} openid email`);
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("state", state);
