@@ -159,7 +159,6 @@ function buildSummarySingle(
       );
     }
   }
-  parts.push(`${chart.activeCampaignCount} Active Campaign${chart.activeCampaignCount === 1 ? "" : "s"}`);
   return parts.join(" · ");
 }
 
