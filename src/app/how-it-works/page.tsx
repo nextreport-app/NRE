@@ -130,7 +130,6 @@ export default async function HowItWorksPage() {
               Official API sync or CSV upload — client-ready reports in under 2 minutes
             </p>
           </div>
-          </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
