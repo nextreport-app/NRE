@@ -109,7 +109,7 @@ function assignCampaignColors(campaigns: ChartCampaignData[]): Map<string, strin
   const sorted = [...campaigns].sort((a, b) => b.spend - a.spend);
   const map = new Map<string, string>();
   sorted.forEach((c, i) => {
-    const color = c.spend > 0 && c.isActive !== false ? VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]! : INACTIVE_COLOR;
+    const color = c.spend > 0 ? VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]! : INACTIVE_COLOR;
     map.set(c.name, color);
   });
   return map;
@@ -150,8 +150,14 @@ function buildSummarySingle(
     `Total Spend: ${fmtCurrency(chart.totalAllSpend, currencySymbol)}`,
     `Total ${toTitleCaseChartLabel(primaryLabel)}: ${primaryResults.toLocaleString("en-US")}`,
   ];
-  if (primaryResults > 0 && primaryCpr > 0) {
-    parts.push(`Average Cost Per ${toTitleCaseChartLabel(primaryLabel)}: ${fmtCurrency(primaryCpr, currencySymbol)}`);
+  if (primaryResults > 0) {
+    const cpr =
+      primaryCpr > 0 ? primaryCpr : chart.totalAllSpend > 0 ? chart.totalAllSpend / primaryResults : 0;
+    if (cpr > 0) {
+      parts.push(
+        `Average Cost Per ${toTitleCaseChartLabel(primaryLabel)}: ${fmtCurrency2dp(cpr, currencySymbol)}`,
+      );
+    }
   }
   parts.push(`${chart.activeCampaignCount} Active Campaign${chart.activeCampaignCount === 1 ? "" : "s"}`);
   return parts.join(" · ");

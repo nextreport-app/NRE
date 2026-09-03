@@ -201,4 +201,48 @@ describe("buildVisualChartSlideModel", () => {
     expect(byName["Link Clicks"]).toBeGreaterThan(byName["Reach"]!);
     expect(byName["Link Clicks"]).not.toBe(byName["Reach"]);
   });
+
+  it("summary line shows fractional average CPC (not rounded to $0) and counts spend as active", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 391,
+        activeCampaignCount: 2,
+        campaigns: [
+          campaign("Traffic", {
+            spend: 391,
+            results: 1539,
+            cpr: 0.25,
+            resLabel: "LINK CLICKS",
+            cprLabel: "COST PER LINK CLICK",
+            isActive: true,
+          }),
+        ],
+        snapshot: {
+          mode: "single",
+          mtdSpendFormatted: "$391",
+          activeCampaignCount: 2,
+          objectives: [
+            {
+              label: "LINK CLICKS",
+              resultsValue: "1,539",
+              cprValue: "$0.25",
+              cprLabel: "COST PER LINK CLICK",
+              spendFormatted: "$391",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "1,539",
+          primaryResultsLabel: "LINK CLICKS",
+          primaryCprValue: "$0.25",
+          primaryCprLabel: "COST PER LINK CLICK",
+          primarySpendFormatted: "$391",
+        },
+      }),
+      "$",
+    );
+    expect(model.summaryLine).toContain("Average Cost Per Link Clicks: $0.25");
+    expect(model.summaryLine).not.toContain("$0 ·");
+    expect(model.summaryLine).toContain("2 Active Campaigns");
+    expect(model.miniDonuts[0]!.color).toBe("f6ad55");
+  });
 });

@@ -773,7 +773,7 @@ export function buildCombinedTotalTableGrid(
     });
     return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
   };
-  return [headerRow, dataRow(periodRow), dataRow(mtdRow)];
+  return [headerRow, dataRow(mtdRow), dataRow(periodRow)];
 }
 
 // ─────────────────────────── Main entry point ──────────────────────────────
@@ -1587,9 +1587,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
     totalAllSpend += spend;
 
-    const isActive = hasDeliveryStatusData
-      ? rows.some((r) => isActiveDeliveryStatus(r.delivery_status))
-      : spend > 0;
+    const isActive =
+      rows.some((r) => isActiveDeliveryStatus(r.delivery_status)) ||
+      (spend > 0 && !rows.some((r) => deliveryStatusIndicator(r.delivery_status) !== null));
     const statusIndicator = hasDeliveryStatusData
       ? campaignStatusIndicator(rows.map((r) => r.delivery_status))
       : null;

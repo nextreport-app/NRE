@@ -231,17 +231,17 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
 describe("buildCampaignOrAdSetSlideXml — campaign name auto-shrink (regression)", () => {
   it("renders a short campaign name at the maximum 22pt candidate, with its own separate ' (Campaign)' label run", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(24);
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(20);
     // The type label is its own run, always 17pt regardless of the name's own size.
     expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(17);
   });
 
-  it("shrinks a very long campaign name below 22pt so it fits on one line, but never below the Fix 4 16pt floor", () => {
+  it("shrinks a very long campaign name below 20pt so it fits on one line, but never below the 16pt floor", () => {
     const longCampaignName =
       "Q3 2026 National Brand Awareness and Retargeting Campaign for All Product Lines";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide(longCampaignName));
     const size = sizeOfRunContaining(xml, longCampaignName);
-    expect(size).toBe(18);
+    expect(size).toBe(16);
   });
 });
 
@@ -270,7 +270,7 @@ describe("buildCampaignOrAdSetSlideXml — readability font sizes (Fix 4)", () =
 describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label + heading hierarchy", () => {
   it("colors a campaign slide's ' (Campaign)' label amber, at 17pt, separate from the 24pt bold name", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(24);
+    expect(sizeOfRunContaining(xml, "Shoes - Purchases")).toBe(20);
     expect(sizeOfRunContaining(xml, " (Campaign)")).toBe(17);
     expect(colorOfRunContaining(xml, " (Campaign)")).toBe("f6ad55");
   });
@@ -279,14 +279,14 @@ describe("buildCampaignOrAdSetSlideXml — Fix 6 (round K): colored type label +
     const { avgFreq: _avgFreq, ...rest } = makeCampaignSlide("Shoes - Purchases");
     const adSetSlide = { ...rest, kind: "adset" as const, adSetName: "Brisbane North - broad", rowFreq: 0 };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, adSetSlide);
-    expect(sizeOfRunContaining(xml, "Brisbane North - broad")).toBe(24);
+    expect(sizeOfRunContaining(xml, "Brisbane North - broad")).toBe(20);
     expect(sizeOfRunContaining(xml, " (Ad Set)")).toBe(17);
     expect(colorOfRunContaining(xml, " (Ad Set)")).toBe("63b3ed");
   });
 
-  it("keeps the 'YOUR WEEKLY PERFORMANCE REPORT' header at 30pt muted grey — same size as every other slide's own main heading, still secondary in color to the bold-white name", () => {
+  it("keeps the 'YOUR WEEKLY PERFORMANCE REPORT' header at 28pt muted grey — same size as every other slide's own main heading", () => {
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"));
-    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(30);
+    expect(sizeOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe(28);
     expect(colorOfRunContaining(xml, "YOUR WEEKLY PERFORMANCE REPORT")).toBe("94a3b8");
   });
 

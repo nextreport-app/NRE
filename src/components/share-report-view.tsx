@@ -252,14 +252,12 @@ function VisualResultBar({
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
-    <div className="grid grid-cols-[148px_minmax(0,1fr)] items-center gap-x-4">
-      <p className="truncate text-right text-[16px] font-medium leading-tight text-ink">{name}</p>
-      <div className="min-w-0">
-        <div className="h-7 overflow-hidden rounded bg-[#1e293b]">
-          <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
-        </div>
-        <p className="mt-1.5 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink">{statLine}</p>
+    <div className="min-w-0">
+      <p className="truncate text-[14px] font-bold leading-tight text-ink">{name}</p>
+      <div className="mt-1 h-7 overflow-hidden rounded bg-[#1e293b]">
+        <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
+      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink">{statLine}</p>
     </div>
   );
 }
@@ -284,11 +282,11 @@ function VisualMiniDonut({
     <div className="flex flex-col items-center" style={{ width: size }}>
       <svg width={size} height={size} aria-hidden="true">
         <circle cx={c} cy={c} r={r} fill="none" stroke={`#${color}`} strokeWidth={stroke} />
-        <text x={c} y={c + 5} textAnchor="middle" fill="#ffffff" fontSize={size >= 140 ? 14 : 13} fontWeight="700">
+        <text x={c} y={c + 5} textAnchor="middle" fill="#ffffff" fontSize={size >= 120 ? 17 : 15} fontWeight="700">
           {spendLabel}
         </text>
       </svg>
-      <p className="mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12px] text-[#94a3b8]">
+      <p className="mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[13px] text-[#94a3b8]">
         {name} · {pctLabel}
       </p>
     </div>
@@ -302,9 +300,9 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="line-clamp-1 text-center text-[24px] font-bold leading-tight text-[#94a3b8]">{model.title}</h2>
+      <h2 className="line-clamp-2 text-center text-[28px] font-bold leading-tight text-[#94a3b8]">{model.title}</h2>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[368px_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
           {model.isMultiObjective && model.groupedDonut ? (
@@ -378,11 +376,11 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
 
   const hidePeriodRow = data.reportType === "MONTHLY" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
-  const [headerRow, periodRow, mtdRow] = grid;
+  const [headerRow, mtdRow, periodRow] = grid;
 
   const bodyRows: { cells: string[]; isPeriod: boolean }[] = [
-    ...(hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]),
     ...(hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }]),
+    ...(hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]),
   ];
 
   if (bodyRows.length === 0) return null;
