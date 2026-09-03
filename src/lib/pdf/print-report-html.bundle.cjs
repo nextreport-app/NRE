@@ -272,6 +272,20 @@ function resolveMetricIconId(metric) {
   return "results";
 }
 
+// src/lib/pptx/chart-slide-layout.ts
+var MTD_DONUT_D = 220;
+var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
+function miniDonutGrid(count) {
+  if (count <= 2) return { cols: count, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  return { cols: 2, rows: 3 };
+}
+function miniDonutDiameter(count) {
+  if (count <= 2) return 152;
+  if (count <= 4) return 132;
+  return 112;
+}
+
 // src/components/share-report-view.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function reportTypeLabel(data) {
@@ -426,11 +440,11 @@ function VisualResultBar({
   barPct
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-x-3", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate pt-1 text-right text-[16px] font-medium text-ink", children: name }),
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-[148px_minmax(0,1fr)] items-center gap-x-4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "truncate text-right text-[16px] font-medium leading-tight text-ink", children: name }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-5 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1.5 break-words text-[16px] font-bold leading-snug text-ink", children: statLine })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1.5 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink", children: statLine })
     ] })
   ] });
 }
@@ -438,31 +452,34 @@ function VisualMiniDonut({
   name,
   spendLabel,
   pctLabel,
-  color
+  color,
+  size
 }) {
-  const size = 90;
-  const stroke = 12;
+  const stroke = Math.round(size * (14 / 152));
   const r = (size - stroke) / 2;
   const c = size / 2;
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex w-[90px] flex-col items-center", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex flex-col items-center", style: { width: size }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("circle", { cx: c, cy: c, r, fill: "none", stroke: `#${color}`, strokeWidth: stroke }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("text", { x: c, y: c + 4, textAnchor: "middle", fill: "#ffffff", fontSize: "11", fontWeight: "700", children: spendLabel })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("text", { x: c, y: c + 5, textAnchor: "middle", fill: "#ffffff", fontSize: size >= 140 ? 14 : 13, fontWeight: "700", children: spendLabel })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 w-full truncate text-center text-[12px] text-ink", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[12px] text-[#94a3b8]", children: pctLabel })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12px] text-[#94a3b8]", children: [
+      name,
+      " \xB7 ",
+      pctLabel
+    ] })
   ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-1 text-center text-[28px] font-bold leading-tight text-[#94a3b8]", children: model.title }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[320px_1fr]", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-1 text-center text-[24px] font-bold leading-tight text-[#94a3b8]", children: model.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-[368px_1fr]", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
         model.isMultiObjective && model.groupedDonut ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[168px] w-[168px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[204px] w-[204px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             ShareChartDonut,
             {
               segments: model.groupedDonut.map((s) => ({
@@ -472,10 +489,10 @@ function ShareMtdOverviewSlide({ chart }) {
                 color: s.color
               })),
               totalSpendLabel: model.groupedDonutCenterLabel,
-              size: 168
+              size: 204
             }
           ) }),
-          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-ink", children: [
+          model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-ink", children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "mr-2 inline-block h-2.5 w-2.5 shrink-0 rounded-sm align-middle", style: { backgroundColor: `#${seg.color}` } }),
             seg.name,
             " \xB7 ",
@@ -484,18 +501,27 @@ function ShareMtdOverviewSlide({ chart }) {
             seg.percentage,
             "%"
           ] }, seg.name))
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 flex flex-wrap justify-center gap-4", children: model.miniDonuts.map((donut) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualMiniDonut, { ...donut }, donut.name)) }),
-        !model.isMultiObjective ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-4 text-center text-[15px] font-bold text-ink", children: [
-          "Total MTD Spend: ",
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "div",
+          {
+            className: "mt-4 grid justify-items-center gap-x-2.5 gap-y-3",
+            style: {
+              gridTemplateColumns: `repeat(${miniDonutGrid(model.miniDonuts.length).cols}, ${miniDonutDiameter(model.miniDonuts.length)}px)`
+            },
+            children: model.miniDonuts.map((donut) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualMiniDonut, { ...donut, size: miniDonutDiameter(model.miniDonuts.length) }, donut.name))
+          }
+        ),
+        !model.isMultiObjective ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { className: "mt-4 text-center text-[16px] font-bold text-ink", children: [
+          "Total Spend: ",
           model.groupedDonutCenterLabel
         ] }) : null
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[15px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-5", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-4", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { ...bar }, bar.name)) })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[15px] text-[#94a3b8]", children: model.summaryLine })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[16px] text-[#94a3b8]", children: model.summaryLine })
   ] });
 }
 function CombinedTotalTable({ data, compact = false }) {

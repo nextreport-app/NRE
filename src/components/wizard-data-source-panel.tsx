@@ -94,7 +94,7 @@ export function WizardDataSourcePanel({
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-dash-ink-secondary">
             {googleAdsConfigured
-              ? "Connect your Google Ads account in Account Settings. Direct sync in the wizard is coming next — use CSV upload until then."
+              ? "Connect your Google Ads account below, then use Sync from API in the report wizard. Direct report generation from API data is rolling out — CSV upload works today."
               : "Google Ads API credentials are not configured on this server yet."}
           </p>
           {googleAdsConfigured ? (

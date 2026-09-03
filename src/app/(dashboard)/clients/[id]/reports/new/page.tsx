@@ -25,6 +25,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         googleRefreshToken: true,
         metaConnectedName: true,
         metaAccessToken: true,
+        googleAdsRefreshToken: true,
       },
     }),
   ]);
@@ -61,7 +62,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           metaConnectedName={user.metaConnectedName}
           metaConfigured={isMetaApiConfigured()}
           googleAdsConfigured={isGoogleAdsApiConfigured()}
-          googleAdsConnected={false}
+          googleAdsConnected={!!user.googleAdsRefreshToken}
         />
       </Suspense>
     </div>

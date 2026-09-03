@@ -31,6 +31,8 @@ export default async function AccountSettingsPage({
     google_drive_error?: string;
     meta_ads_connected?: string;
     meta_ads_error?: string;
+    google_ads_connected?: string;
+    google_ads_error?: string;
   }>;
 }) {
   const session = await auth();
@@ -45,6 +47,7 @@ export default async function AccountSettingsPage({
         googleConnectedEmail: true,
         metaConnectedName: true,
         metaConnectedUserId: true,
+        googleAdsConnectedEmail: true,
         slackWebhookUrl: true,
         automationWebhookUrl: true,
         planId: true,
@@ -55,7 +58,7 @@ export default async function AccountSettingsPage({
   ]);
   if (!user) notFound();
 
-  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error } = params;
+  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error, google_ads_connected, google_ads_error } = params;
   const metaConfigured = isMetaApiConfigured();
   const googleAdsConfigured = isGoogleAdsApiConfigured();
 
@@ -93,9 +96,14 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="google-ads" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Ads</SectionHeading>
-        <GoogleAdsSettings googleAdsConfigured={googleAdsConfigured} />
+        <GoogleAdsSettings
+          initialConnectedEmail={user.googleAdsConnectedEmail}
+          justConnected={google_ads_connected === "1"}
+          connectError={google_ads_error ?? null}
+          googleAdsConfigured={googleAdsConfigured}
+        />
       </section>
 
       <section className="mb-10">
