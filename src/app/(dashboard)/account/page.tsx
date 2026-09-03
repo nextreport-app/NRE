@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { AccountSettingsForm } from "@/components/account-settings-form";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
 import { MetaAdsSettings } from "@/components/meta-ads-settings";
+import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { isGoogleAdsApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
 
 const PLAN_LABELS: Record<string, string> = {
   trial: "Free Trial",
@@ -54,7 +56,8 @@ export default async function AccountSettingsPage({
   if (!user) notFound();
 
   const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error } = params;
-  const metaConfigured = !!(process.env.META_APP_ID?.trim() && process.env.META_APP_SECRET?.trim());
+  const metaConfigured = isMetaApiConfigured();
+  const googleAdsConfigured = isGoogleAdsApiConfigured();
 
   const status = getSubscriptionStatus(user);
 
@@ -79,7 +82,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="meta-ads" className="mb-10 scroll-mt-6">
         <SectionHeading>Meta Ads</SectionHeading>
         <MetaAdsSettings
           initialConnectedName={user.metaConnectedName}
@@ -88,6 +91,11 @@ export default async function AccountSettingsPage({
           connectError={meta_ads_error ?? null}
           metaConfigured={metaConfigured}
         />
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading>Google Ads</SectionHeading>
+        <GoogleAdsSettings googleAdsConfigured={googleAdsConfigured} />
       </section>
 
       <section className="mb-10">

@@ -1,9 +1,10 @@
-// Homepage copy/structure overhaul — this section replaces the two
-// previous near-duplicate sections ("Everything your agency needs" and
-// "Why agencies choose NextReport"), which listed largely the same
-// capabilities under different headings/icons. One section, 6 items max,
-// no duplicates.
 const FEATURES = [
+  {
+    icon: "✅",
+    title: "Official Meta & Google Ads APIs",
+    description:
+      "Approved for Meta Marketing API and Google Ads API — connect your accounts and skip the CSV export entirely.",
+  },
   {
     icon: "🎯",
     title: "Auto-detects campaign objectives",
@@ -16,8 +17,8 @@ const FEATURES = [
   },
   {
     icon: "📊",
-    title: "Works with standard CSV exports",
-    description: "Works with standard Meta Ads Manager and Google Ads CSV exports when recommended columns are included.",
+    title: "CSV upload still supported",
+    description: "Prefer a manual export? Standard Meta and Google Ads CSVs work when the recommended columns are included.",
   },
   {
     icon: "🔀",
@@ -28,11 +29,6 @@ const FEATURES = [
     icon: "🌐",
     title: "Share a browser link",
     description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
-  },
-  {
-    icon: "☁️",
-    title: "Google Drive integration",
-    description: "Reports save automatically to your Drive folder, with a shareable link ready to send.",
   },
 ];
 

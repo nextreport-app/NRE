@@ -6,7 +6,7 @@ import { BetaBanner } from "@/components/beta-banner";
 
 export const metadata: Metadata = {
   title: "How NextReport Works",
-  description: "From CSV export to client-ready report in under 2 minutes.",
+  description: "Connect via API or upload CSV — client-ready reports in under 2 minutes.",
 };
 
 interface ReportType {
@@ -32,8 +32,8 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    title: "Upload your CSV",
-    body: "Select Meta Ads or Google Ads, then upload your last 30 days CSV.",
+    title: "Connect or upload",
+    body: "Choose Sync from API (Meta Marketing API or Google Ads API) or upload a Last 30 Days CSV. Meta users can also add an optional Previous Month CSV for the overview row.",
   },
   {
     title: "Select campaigns",
@@ -126,44 +126,59 @@ export default async function HowItWorksPage() {
         <section className="bg-navy px-6 py-16 text-center">
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
-            <p className="mt-4 text-lg text-ink-muted">From CSV export to client-ready report in under 2 minutes</p>
+            <p className="mt-4 text-lg text-ink-muted">
+              Official API sync or CSV upload — client-ready reports in under 2 minutes
+            </p>
+          </div>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
-          {/* Section 1 — What you need */}
           <section>
-            <h2 className="text-2xl font-semibold text-white">What you need</h2>
+            <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport uses two CSV exports from your ad platform:
+              NextReport is approved for Meta&apos;s Marketing API and Google&apos;s Ads API. Connect in Account
+              Settings and choose <span className="text-white">Sync from API</span> in the wizard — no CSV needed.
+              Prefer a manual export? CSV upload works the same way it always has.
+            </p>
+            {loggedIn ? (
+              <p className="mt-3 text-sm">
+                <Link href="/account" className="text-accent-orange hover:underline">
+                  Connect your ad accounts in Account Settings →
+                </Link>
+              </p>
+            ) : null}
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white">If you use CSV (Meta)</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
+              Two optional uploads power the full weekly Meta workflow:
             </p>
             <div className="mt-6 space-y-4">
               <FileCard
                 label="File 1"
                 cadence="upload once per month"
-                title="Previous Month Data"
-                body="Download your previous full calendar month from Meta Ads Manager or Google Ads. This powers the comparison row in your Campaign Performance Overview table."
+                title="Previous Month CSV"
+                body="Last full calendar month from Meta. Adds the previous month row on the Monthly Overview slide — so clients see how campaigns performed last month alongside this month's MTD. Not a month-over-month comparison."
               />
               <FileCard
                 label="File 2"
                 cadence="upload every week"
                 title="Last 30 Days, Day by Day"
-                body="Download the last 30 days with Time Increment set to Day. This powers your weekly, monthly, and comparison report data."
+                body="Powers weekly slides, MTD row, visual chart (last 30 days), and comparison reports. On the 1st, export Previous Month with Day breakdown instead — see the Download Guide."
               />
             </div>
             <p className="mt-4 text-sm text-ink-muted">
-              Not sure how to export these? See the{" "}
+              Step-by-step export instructions:{" "}
               <Link href="/help/download" className="text-accent-orange hover:underline">
                 Download Guide
-              </Link>{" "}
-              for exact steps.
+              </Link>
             </p>
           </section>
 
-          {/* Section 2 — Report types */}
           <section>
             <h2 className="text-2xl font-semibold text-white">Report types available</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-secondary">Choose from multiple report types:</p>
             <ul className="mt-6 space-y-3">
               {REPORT_TYPES.map((type) => (
                 <ReportTypeRow key={type.name} type={type} />
@@ -171,7 +186,6 @@ export default async function HowItWorksPage() {
             </ul>
           </section>
 
-          {/* Section 3 — The 5 steps */}
           <section>
             <h2 className="text-2xl font-semibold text-white">The 5 steps</h2>
             <div className="mt-6 space-y-4">
@@ -181,7 +195,6 @@ export default async function HowItWorksPage() {
             </div>
           </section>
 
-          {/* Section 4 — What you get */}
           <section>
             <h2 className="text-2xl font-semibold text-white">What you get</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -200,7 +213,6 @@ export default async function HowItWorksPage() {
           </section>
         </div>
 
-        {/* CTA */}
         <section className="bg-navy-panel px-6 py-16 text-center">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Ready to try it yourself?</h2>
           <div className="mt-6">

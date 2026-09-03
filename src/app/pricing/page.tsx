@@ -26,6 +26,10 @@ const FAQS = [
     a: "Yes. You can upgrade or downgrade at any time from your billing page. Changes take effect immediately.",
   },
   {
+    q: "Can I connect Meta or Google Ads directly instead of uploading a CSV?",
+    a: "Yes — NextReport is approved for Meta's Marketing API and Google's Ads API. Connect your accounts in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported if you prefer manual exports.",
+  },
+  {
     q: "What file formats can I upload?",
     a: "NextReport accepts CSV, Excel (xlsx, xls), TSV, and TXT files. Download your report from Meta Ads Manager or Google Ads in any of these formats and upload directly — no conversion needed.",
   },

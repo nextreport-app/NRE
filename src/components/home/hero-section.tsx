@@ -53,7 +53,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
-            Meta Ads + Google Ads Reporting
+            Meta + Google Ads API approved
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
@@ -61,8 +61,8 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </h1>
 
           <p className="mt-5 text-lg text-ink-muted">
-            Upload your campaign CSV. Get the same PowerPoint your clients already expect — filled with
-            accurate data and AI-written insights. No templates to configure.
+            Connect via official API — or upload a CSV. Either way you get the same PowerPoint your clients expect,
+            with accurate data and AI-written insights. No templates to configure.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

@@ -6,6 +6,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { ReportUploadWizard } from "@/components/report-upload-wizard";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { isGoogleAdsApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,7 +17,15 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
     prisma.client.findUnique({ where: { id } }),
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, planId: true, trialEndsAt: true, googleRefreshToken: true },
+      select: {
+        name: true,
+        email: true,
+        planId: true,
+        trialEndsAt: true,
+        googleRefreshToken: true,
+        metaConnectedName: true,
+        metaAccessToken: true,
+      },
     }),
   ]);
   if (!client || client.userId !== session.user.id) notFound();
@@ -48,6 +57,11 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           hasPreviousMonthData={!!client.previousMonthDataUrl}
           initialPreviousMonthDataUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
           clientTemplate={client.template}
+          metaConnected={!!user.metaAccessToken}
+          metaConnectedName={user.metaConnectedName}
+          metaConfigured={isMetaApiConfigured()}
+          googleAdsConfigured={isGoogleAdsApiConfigured()}
+          googleAdsConnected={false}
         />
       </Suspense>
     </div>

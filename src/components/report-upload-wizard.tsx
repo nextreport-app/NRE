@@ -28,6 +28,11 @@ import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
+import {
+  WizardDataSourcePanel,
+  WizardDataSourceToggle,
+  type WizardDataSource,
+} from "@/components/wizard-data-source-panel";
 import { useToast } from "@/components/toast";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
@@ -102,7 +107,7 @@ const STEP_LABELS: Record<Step, string> = {
 // Fix 2 — context-specific wizard heading per step, replacing the generic
 // "Generate Report" heading that used to be static on every screen.
 const STEP_HEADINGS: Record<Step, string> = {
-  1: "Upload Your CSV",
+  1: "Add your ad data",
   2: "Select Campaigns",
   3: "Confirm Objectives",
   4: "Review Metric Cards",
@@ -110,7 +115,7 @@ const STEP_HEADINGS: Record<Step, string> = {
 };
 
 const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Upload a day-wise CSV from Ads Manager — the tip below shows the correct date range for today.",
+  1: "Connect via official API or upload a CSV — the tip below shows the correct date range for today.",
   2: "Unchecked campaigns stay out of the deck. Ad-set slides are extra; campaign totals still include them.",
   3: "Wrong objective means wrong cards and Combined Total. Fix it here.",
   4: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
@@ -286,6 +291,11 @@ export function ReportUploadWizard({
   hasPreviousMonthData,
   initialPreviousMonthDataUpdatedAt,
   clientTemplate,
+  metaConnected = false,
+  metaConnectedName = null,
+  metaConfigured = false,
+  googleAdsConfigured = false,
+  googleAdsConnected = false,
 }: {
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
@@ -305,6 +315,13 @@ export function ReportUploadWizard({
   initialPreviousMonthDataUpdatedAt: string | null;
   /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
   clientTemplate: string;
+  /** Meta Marketing API — connected in Account Settings. */
+  metaConnected?: boolean;
+  metaConnectedName?: string | null;
+  metaConfigured?: boolean;
+  /** Google Ads API — env configured; OAuth UI rolling out. */
+  googleAdsConfigured?: boolean;
+  googleAdsConnected?: boolean;
 }) {
   const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
@@ -356,6 +373,7 @@ export function ReportUploadWizard({
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | null>("META");
+  const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
@@ -1747,14 +1765,14 @@ export function ReportUploadWizard({
             <ReportTypeCard
               icon={<MetaAdsIcon />}
               heading="Meta Ads"
-              description="Upload your Meta Ads Manager CSV export"
+              description="Sync via Marketing API or upload a CSV export"
               selected={selectedPlatformCard === "META"}
               onSelect={() => choosePlatform("META")}
             />
             <ReportTypeCard
               icon={<GoogleAdsIcon />}
               heading="Google Ads"
-              description="Upload your Google Ads CSV export"
+              description="Sync via Ads API or upload a CSV export"
               selected={selectedPlatformCard === "GOOGLE"}
               onSelect={() => choosePlatform("GOOGLE")}
             />
@@ -1762,9 +1780,29 @@ export function ReportUploadWizard({
 
           {selectedPlatformCard && (
             <div className="space-y-3">
+              <WizardDataSourceToggle value={dataSourceMode} onChange={setDataSourceMode} />
+
+              {dataSourceMode === "api" ? (
+                <WizardDataSourcePanel
+                  platform={selectedPlatformCard}
+                  metaConnected={metaConnected}
+                  metaConnectedName={metaConnectedName}
+                  metaConfigured={metaConfigured}
+                  googleAdsConfigured={googleAdsConfigured}
+                  googleAdsConnected={googleAdsConnected}
+                />
+              ) : (
+                <>
               <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
               <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
-                <span className="mb-1 block text-[15px] font-semibold text-[#f6ad55]">How to download your CSV</span>
+                <a
+                  href="https://nextreport.in/help/download"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
+                >
+                  How to download your CSV
+                </a>
                 {selectedPlatformCard === "META" ? (
                   <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
                 ) : (
@@ -1792,6 +1830,8 @@ export function ReportUploadWizard({
               >
                 {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
               </button>
+                </>
+              )}
             </div>
           )}
 
