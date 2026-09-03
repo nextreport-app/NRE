@@ -61,6 +61,12 @@ export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIO
 // the wizard's user has manually overridden the detected platform.
 export const platformSchema = z.enum(["META", "GOOGLE"]);
 
+/** Wizard data source — CSV upload vs API sync. */
+export const dataSourceSchema = z.enum(["csv", "api"]);
+
+export const metaAdAccountIdSchema = z.string().trim().min(1);
+export const googleCustomerIdSchema = z.string().trim().min(1);
+
 // Comparison Report's two wizard-picked date windows — plain ISO dates,
 // same shape as lib/nre/date-range.ts's own DateRangeIso (not imported
 // directly: that module pulls in the NRE engine's CSV-parsing types, which

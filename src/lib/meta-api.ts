@@ -121,6 +121,92 @@ export async function fetchMetaAdAccounts(accessToken: string): Promise<MetaAdAc
   return data.data ?? [];
 }
 
+export interface MetaInsightAction {
+  action_type: string;
+  value: string;
+}
+
+export interface MetaInsightRow {
+  campaign_name?: string;
+  adset_name?: string;
+  spend?: string;
+  reach?: string;
+  impressions?: string;
+  ctr?: string;
+  cpc?: string;
+  inline_link_clicks?: string;
+  frequency?: string;
+  date_start?: string;
+  date_stop?: string;
+  actions?: MetaInsightAction[];
+  cost_per_action_type?: MetaInsightAction[];
+}
+
+interface MetaInsightsResponse {
+  data?: MetaInsightRow[];
+  paging?: { next?: string };
+  error?: { message: string };
+}
+
+const META_INSIGHT_FIELDS = [
+  "campaign_name",
+  "adset_name",
+  "spend",
+  "reach",
+  "impressions",
+  "ctr",
+  "cpc",
+  "inline_link_clicks",
+  "frequency",
+  "actions",
+  "cost_per_action_type",
+  "date_start",
+  "date_stop",
+].join(",");
+
+/** Fetches daily ad-set-level insights for an ad account (paginated). */
+export async function fetchMetaAdAccountInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+}): Promise<MetaInsightRow[]> {
+  const accountId = params.adAccountId.startsWith("act_")
+    ? params.adAccountId
+    : `act_${params.adAccountId.replace(/\D/g, "")}`;
+
+  const allRows: MetaInsightRow[] = [];
+  let nextUrl: string | null = null;
+
+  const buildUrl = () => {
+    const url = new URL(`${metaGraphBase()}/${accountId}/insights`);
+    url.searchParams.set("level", "adset");
+    url.searchParams.set("time_increment", "1");
+    url.searchParams.set("fields", META_INSIGHT_FIELDS);
+    url.searchParams.set(
+      "time_range",
+      JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
+    );
+    url.searchParams.set("limit", "500");
+    url.searchParams.set("access_token", params.accessToken);
+    return url.toString();
+  };
+
+  nextUrl = buildUrl();
+
+  while (nextUrl) {
+    const res = await fetch(nextUrl);
+    const data = (await res.json()) as MetaInsightsResponse;
+    if (!res.ok || data.error) {
+      throw new Error(data.error?.message ?? `Failed to fetch Meta insights (${res.status})`);
+    }
+    allRows.push(...(data.data ?? []));
+    nextUrl = data.paging?.next ?? null;
+  }
+
+  return allRows;
+}
+
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */
 export async function ensureFreshMetaAccessToken(params: {
   accessToken: string;

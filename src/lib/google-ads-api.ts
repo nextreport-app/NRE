@@ -149,3 +149,77 @@ export async function listAccessibleGoogleAdsCustomers(accessToken: string): Pro
 
   throw lastError ?? new Error("Google Ads ListAccessibleCustomers failed: no API version reachable");
 }
+
+export interface GoogleAdsSearchRow {
+  campaign?: { name?: string; resourceName?: string };
+  adGroup?: { name?: string; resourceName?: string };
+  segments?: { date?: string };
+  metrics?: {
+    costMicros?: string;
+    cost_micros?: string;
+    clicks?: string;
+    impressions?: string;
+    ctr?: number;
+    averageCpc?: number;
+    average_cpc?: number;
+    conversions?: number;
+    conversionsValue?: number;
+    conversions_value?: number;
+  };
+}
+
+interface GoogleAdsSearchResponse {
+  results?: GoogleAdsSearchRow[];
+  nextPageToken?: string;
+  next_page_token?: string;
+}
+
+function googleAdsSearchHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "developer-token": requireGoogleAdsDeveloperToken(),
+    "Content-Type": "application/json",
+  };
+  if (loginCustomerId) {
+    headers["login-customer-id"] = loginCustomerId.replace(/\D/g, "");
+  }
+  return headers;
+}
+
+/** Runs a GAQL query via GoogleAdsService.Search (paginated). */
+export async function searchGoogleAds(params: {
+  accessToken: string;
+  customerId: string;
+  query: string;
+  loginCustomerId?: string;
+}): Promise<GoogleAdsSearchRow[]> {
+  const customerId = params.customerId.replace(/\D/g, "");
+  const allRows: GoogleAdsSearchRow[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = `${googleAdsApiBase()}/customers/${customerId}/googleAds:search`;
+    const body: { query: string; pageToken?: string } = { query: params.query };
+    if (pageToken) body.pageToken = pageToken;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: googleAdsSearchHeaders(params.accessToken, params.loginCustomerId),
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      const snippet = text.startsWith("<!DOCTYPE")
+        ? "Google returned HTML (check developer token and OAuth scope)"
+        : text.slice(0, 500);
+      throw new Error(`Google Ads Search failed (${res.status}): ${snippet}`);
+    }
+
+    const data = (await res.json()) as GoogleAdsSearchResponse;
+    allRows.push(...(data.results ?? []));
+    pageToken = data.nextPageToken ?? data.next_page_token;
+  } while (pageToken);
+
+  return allRows;
+}
