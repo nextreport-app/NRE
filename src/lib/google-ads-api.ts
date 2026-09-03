@@ -12,7 +12,7 @@ export const GOOGLE_ADS_OAUTH_STATE_COOKIE = "google_ads_oauth_state";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
-const DEFAULT_API_VERSION = "v20";
+const DEFAULT_API_VERSION = "v22";
 
 export function googleAdsApiVersion(): string {
   return process.env.GOOGLE_ADS_API_VERSION?.trim() || DEFAULT_API_VERSION;
@@ -116,20 +116,36 @@ export async function fetchGoogleAdsAccountEmail(accessToken: string): Promise<s
 
 /** CustomerService.ListAccessibleCustomers — verifies OAuth + developer token. */
 export async function listAccessibleGoogleAdsCustomers(accessToken: string): Promise<string[]> {
-  const url = `${googleAdsApiBase()}/customers:listAccessibleCustomers`;
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "developer-token": requireGoogleAdsDeveloperToken(),
-      "Content-Type": "application/json",
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    const snippet = body.startsWith("<!DOCTYPE") ? "Google returned HTML (check API version / developer token)" : body.slice(0, 500);
-    throw new Error(`Google Ads ListAccessibleCustomers failed (${res.status}): ${snippet}`);
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "developer-token": requireGoogleAdsDeveloperToken(),
+    "Content-Type": "application/json",
+  };
+
+  // v21 and below return HTML 404 today; retry newer versions if env pins an old one.
+  const versions = [...new Set([googleAdsApiVersion(), "v22", "v24"])];
+  let lastError: Error | null = null;
+
+  for (const version of versions) {
+    const url = `https://googleads.googleapis.com/${version}/customers:listAccessibleCustomers`;
+    const res = await fetch(url, { method: "GET", headers });
+
+    if (res.status === 404) {
+      lastError = new Error(`Google Ads API ${version} not found (404)`);
+      continue;
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      const snippet = body.startsWith("<!DOCTYPE")
+        ? "Google returned HTML (check developer token and OAuth scope)"
+        : body.slice(0, 500);
+      throw new Error(`Google Ads ListAccessibleCustomers failed (${res.status}): ${snippet}`);
+    }
+
+    const data = (await res.json()) as { resourceNames?: string[]; resource_names?: string[] };
+    return data.resourceNames ?? data.resource_names ?? [];
   }
-  const data = (await res.json()) as { resourceNames?: string[]; resource_names?: string[] };
-  return data.resourceNames ?? data.resource_names ?? [];
+
+  throw lastError ?? new Error("Google Ads ListAccessibleCustomers failed: no API version reachable");
 }
