@@ -51,14 +51,16 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 }
 
 describe("buildVisualChartSlideModel", () => {
-  it("builds campaign mini-donuts and result bars for single-objective accounts", () => {
+  it("builds grouped spend donut and result bars for single-objective accounts", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
-    expect(model.miniDonuts.length).toBe(2);
+    expect(model.miniDonuts).toHaveLength(0);
+    expect(model.groupedDonut).toHaveLength(2);
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
-    expect(model.resultBars[0]!.resultCount).toBeGreaterThanOrEqual(model.resultBars[1]!.resultCount);
+    expect(model.resultBars[0]!.name).toBe("Alpha");
+    expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -243,6 +245,6 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.summaryLine).toContain("Average Cost Per Link Clicks: $0.25");
     expect(model.summaryLine).not.toContain("$0 ·");
     expect(model.summaryLine).not.toContain("Active Campaign");
-    expect(model.miniDonuts[0]!.color).toBe("f6ad55");
+    expect(model.groupedDonut![0]!.color).toBe("f6ad55");
   });
 });

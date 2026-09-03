@@ -7,7 +7,6 @@ import { ShareChartDonut } from "@/components/share-chart-donut";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
-import { miniDonutGrid, miniDonutDiameter } from "@/lib/pptx/chart-slide-layout";
 
 /**
  * The public share page's full presentational tree (app/r/[token]/page.tsx)
@@ -254,41 +253,10 @@ function VisualResultBar({
   return (
     <div className="min-w-0">
       <p className="truncate text-[14px] font-bold leading-tight text-ink">{name}</p>
+      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink">{statLine}</p>
       <div className="mt-1 h-7 overflow-hidden rounded bg-[#1e293b]">
         <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
-      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] font-bold text-ink">{statLine}</p>
-    </div>
-  );
-}
-
-function VisualMiniDonut({
-  name,
-  spendLabel,
-  pctLabel,
-  color,
-  size,
-}: {
-  name: string;
-  spendLabel: string;
-  pctLabel: string;
-  color: string;
-  size: number;
-}) {
-  const stroke = Math.round(size * (14 / 152));
-  const r = (size - stroke) / 2;
-  const c = size / 2;
-  return (
-    <div className="flex flex-col items-center" style={{ width: size }}>
-      <svg width={size} height={size} aria-hidden="true">
-        <circle cx={c} cy={c} r={r} fill="none" stroke={`#${color}`} strokeWidth={stroke} />
-        <text x={c} y={c + 5} textAnchor="middle" fill="#ffffff" fontSize={size >= 120 ? 17 : 15} fontWeight="700">
-          {spendLabel}
-        </text>
-      </svg>
-      <p className="mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[13px] text-[#94a3b8]">
-        {name} · {pctLabel}
-      </p>
     </div>
   );
 }
@@ -305,7 +273,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
       <div className="mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]">
         <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
-          {model.isMultiObjective && model.groupedDonut ? (
+          {model.groupedDonut && model.groupedDonut.length > 0 ? (
             <div className="mt-4 space-y-3">
               <div className="relative mx-auto h-[204px] w-[204px]">
                 <ShareChartDonut
@@ -326,22 +294,6 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                 </p>
               ))}
             </div>
-          ) : (
-            <div
-              className="mt-4 grid justify-items-center gap-x-2.5 gap-y-3"
-              style={{
-                gridTemplateColumns: `repeat(${miniDonutGrid(model.miniDonuts.length).cols}, ${miniDonutDiameter(model.miniDonuts.length)}px)`,
-              }}
-            >
-              {model.miniDonuts.map((donut) => (
-                <VisualMiniDonut key={donut.name} {...donut} size={miniDonutDiameter(model.miniDonuts.length)} />
-              ))}
-            </div>
-          )}
-          {!model.isMultiObjective ? (
-            <p className="mt-4 text-center text-[16px] font-bold text-ink">
-              Total Spend: {model.groupedDonutCenterLabel}
-            </p>
           ) : null}
         </div>
 
