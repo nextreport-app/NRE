@@ -242,7 +242,7 @@ describe("buildVisualChartSlideModel", () => {
     );
     expect(model.summaryLine).toContain("Average Cost Per Link Clicks: $0.25");
     expect(model.summaryLine).not.toContain("$0 ·");
-    expect(model.summaryLine).toContain("2 Active Campaigns");
+    expect(model.summaryLine).not.toContain("Active Campaign");
     expect(model.miniDonuts[0]!.color).toBe("f6ad55");
   });
 });
