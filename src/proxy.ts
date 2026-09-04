@@ -16,6 +16,8 @@ const PUBLIC_PATHS = [
   "/how-it-works",
   "/case-studies",
   "/refer",
+  "/sitemap.xml",
+  "/robots.txt",
   // Internal design preview, not linked from anywhere — accessible directly
   // by URL without logging in, same as the other public marketing pages.
   "/light-preview",
@@ -25,6 +27,12 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  // Crawlers must receive XML/text — never redirect sitemap or robots to login.
+  if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
+    return NextResponse.next();
+  }
+
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith("/api/auth") ||
@@ -72,5 +80,7 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|sitemap\\.xml|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
