@@ -10,6 +10,7 @@ import { ReportPreviewSection } from "@/components/home/report-preview-section";
 import { SampleReportSection } from "@/components/home/sample-report-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
+import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
 
 export default async function Home() {
@@ -33,6 +34,7 @@ export default async function Home() {
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
+        <LeadCaptureSection />
         {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
         {!BETA_HIDE_PRICING && (
           <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />

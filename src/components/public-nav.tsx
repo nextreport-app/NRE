@@ -2,53 +2,63 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
+import { PUBLIC_NAV_LINKS, SUPPORT_EMAIL, filterBetaLinks, type SiteLink } from "@/lib/site-links";
 
-const ALL_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/how-it-works", label: "How It Works" },
+const ALL_LINKS: SiteLink[] = [
+  ...PUBLIC_NAV_LINKS,
+  { href: "/pricing", label: "Pricing", hideDuringBeta: true },
 ];
 
-// BETA: hidden during beta period — restore before public launch (flip
-// BETA_HIDE_PRICING in lib/beta.ts; ALL_LINKS above is untouched).
-const LINKS = BETA_HIDE_PRICING ? ALL_LINKS.filter((link) => link.href !== "/pricing") : ALL_LINKS;
+const LINKS = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING);
+
+function navLinkClass(active: boolean) {
+  return active
+    ? "font-medium text-white"
+    : "text-ink-secondary transition-colors hover:text-white";
+}
 
 /**
- * Top nav for public marketing pages only (home, pricing, help, about,
- * privacy, terms, contact) — never rendered inside the (dashboard) route
- * group, which has its own Nav (components/nav.tsx). Auth-aware like the
- * homepage hero: a logged-in visitor sees a single "Dashboard" link
- * instead of Login/Get Started, so this nav never contradicts the hero's
- * own "Go to Dashboard" state directly below it.
+ * Top nav for public marketing pages — auth-aware, active-route highlighting,
+ * expanded link set, and a persistent demo CTA.
  */
 export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: "20px",
-              color: "white",
-              letterSpacing: "-0.3px",
-              fontFamily: "var(--font-inter), sans-serif",
-            }}
-          >
-            NextReport
-          </span>
+    <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <img src="/logo.png" alt="NextReport logo" className="h-9 w-9 sm:h-10 sm:w-10" />
+          <span className="text-lg font-bold tracking-tight text-white sm:text-xl">NextReport</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm text-ink-secondary md:flex">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
           {LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-white">
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`rounded-md px-3 py-2 text-sm ${navLinkClass(isActive(link.href))}`}
+            >
               {link.label}
             </Link>
           ))}
+        </nav>
+
+        <div className="hidden items-center gap-2 lg:flex">
+          <Link
+            href="/contact"
+            className="rounded-md px-3 py-2 text-sm text-ink-secondary transition-colors hover:text-white"
+          >
+            Book a demo
+          </Link>
           {loggedIn ? (
             <Link
               href="/clients"
@@ -58,7 +68,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             </Link>
           ) : (
             <>
-              <Link href="/login" className="hover:text-white">
+              <Link href="/login" className="rounded-md px-3 py-2 text-sm text-ink-secondary hover:text-white">
                 Login
               </Link>
               <Link
@@ -69,14 +79,14 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
               </Link>
             </>
           )}
-        </nav>
+        </div>
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-navy-border text-white md:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-navy-border text-white lg:hidden"
         >
           {open ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
@@ -90,46 +100,63 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
         </button>
       </div>
 
-      {open && (
-        <nav className="flex flex-col gap-1 border-t border-navy-border bg-navy px-6 py-4 text-sm text-ink-secondary md:hidden">
-          {LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setOpen(false)}
-              className="rounded-md px-2 py-2 hover:bg-navy-panel hover:text-white"
-            >
-              {link.label}
-            </Link>
-          ))}
-          {loggedIn ? (
-            <Link
-              href="/clients"
-              onClick={() => setOpen(false)}
-              className="mt-2 rounded-md bg-accent-orange px-4 py-2 text-center text-sm font-semibold text-navy hover:bg-accent-orange-hover"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <>
+      {open ? (
+        <nav className="border-t border-navy-border bg-navy px-6 py-4 lg:hidden" aria-label="Mobile">
+          <div className="flex flex-col gap-1">
+            {LINKS.map((link) => (
               <Link
-                href="/login"
+                key={link.href}
+                href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-2 hover:bg-navy-panel hover:text-white"
+                className={`rounded-md px-3 py-2.5 text-sm ${isActive(link.href) ? "bg-navy-panel font-medium text-white" : "text-ink-secondary hover:bg-navy-panel hover:text-white"}`}
               >
-                Login
+                {link.label}
               </Link>
+            ))}
+            <Link
+              href="/contact"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2.5 text-sm text-ink-secondary hover:bg-navy-panel hover:text-white"
+            >
+              Book a demo
+            </Link>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="rounded-md px-3 py-2.5 text-sm text-ink-muted hover:text-white"
+            >
+              {SUPPORT_EMAIL}
+            </a>
+          </div>
+          <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
+            {loggedIn ? (
               <Link
-                href="/signup"
+                href="/clients"
                 onClick={() => setOpen(false)}
-                className="mt-2 rounded-md bg-accent-orange px-4 py-2 text-center text-sm font-semibold text-navy hover:bg-accent-orange-hover"
+                className="rounded-md bg-accent-orange px-4 py-2.5 text-center text-sm font-semibold text-navy"
               >
-                Get Started
+                Dashboard
               </Link>
-            </>
-          )}
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md border border-navy-border px-4 py-2.5 text-center text-sm text-white"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md bg-accent-orange px-4 py-2.5 text-center text-sm font-semibold text-navy"
+                >
+                  Get Started — free trial
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
-      )}
+      ) : null}
     </header>
   );
 }
