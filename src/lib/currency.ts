@@ -13,8 +13,8 @@ export const PRICING_CURRENCY_LABELS: Record<PricingCurrency, string> = {
 };
 
 export const PRICING_CURRENCY_NOTE: Record<PricingCurrency, string> = {
-  INR: "Prices in Indian Rupees. Pay with UPI, cards, or net banking.",
-  USD: "International pricing in US Dollars. Billed in USD at checkout — agencies worldwide welcome.",
+  INR: "Prices in Indian Rupees, excluding 18% GST (added at checkout). Pay with UPI, cards, or net banking.",
+  USD: "International pricing in US Dollars, excluding tax. Billed in USD at checkout — agencies worldwide welcome.",
 };
 
 /** India shows INR; every other country (US, CA, UK/GB, AU, all of Europe, everyone else) shows USD — see the /pricing spec's exact wording. */

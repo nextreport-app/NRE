@@ -136,7 +136,7 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport is approved for Meta&apos;s Marketing API and Google&apos;s Ads API. Connect in Account
+              NextReport syncs with Meta&apos;s Marketing API and Google&apos;s Ads API. Connect in Account
               Settings and choose <span className="text-white">Sync from API</span> in the wizard — no CSV needed.
               Prefer a manual export? CSV upload works the same way it always has.
             </p>

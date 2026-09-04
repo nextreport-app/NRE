@@ -3,7 +3,7 @@ const FEATURES = [
     icon: "✅",
     title: "Official Meta & Google Ads APIs",
     description:
-      "Approved for Meta Marketing API and Google Ads API — connect your accounts and skip the CSV export entirely.",
+      "Meta Marketing API and Google Ads API sync — connect your accounts and skip the CSV export entirely.",
   },
   {
     icon: "🎯",
@@ -29,6 +29,11 @@ const FEATURES = [
     icon: "🌐",
     title: "Share a browser link",
     description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
+  },
+  {
+    icon: "📄",
+    title: "PDF download",
+    description: "Export a polished PDF from any published report — ready to attach or print.",
   },
 ];
 

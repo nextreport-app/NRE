@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: "Can I connect Meta or Google Ads directly instead of uploading a CSV?",
-    a: "Yes — NextReport is approved for Meta's Marketing API and Google's Ads API. Connect your accounts in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported if you prefer manual exports.",
+    a: "Yes — NextReport syncs with Meta's Marketing API and Google's Ads API. Connect your accounts in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported if you prefer manual exports.",
   },
   {
     q: "What file formats can I upload?",
@@ -76,7 +76,7 @@ export default async function PricingPage() {
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
             Everything you need to automate Meta and Google Ads reporting. Connect via official API or upload a CSV —
-            same client-ready decks either way.
+            then share a live browser link, download a PDF, or export PowerPoint.
           </p>
         </div>
 
