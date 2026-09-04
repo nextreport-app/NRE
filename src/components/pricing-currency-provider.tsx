@@ -13,6 +13,7 @@ import {
   IPAPI_TIMEOUT_MS,
   countryCodeToCurrency,
   detectCountryCode,
+  readCachedCountry,
   readPricingCurrencyPreference,
   resolveInitialPricingCurrency,
   writePricingCurrencyPreference,
@@ -29,13 +30,18 @@ type PricingCurrencyContextValue = {
 const PricingCurrencyContext = createContext<PricingCurrencyContextValue | null>(null);
 
 export function PricingCurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrencyState] = useState<PricingCurrency>("INR");
-  const [ready, setReady] = useState(false);
+  const [currency, setCurrencyState] = useState<PricingCurrency>(() => resolveInitialPricingCurrency());
+  const [ready, setReady] = useState(() => !!readPricingCurrencyPreference() || !!readCachedCountry());
 
   useEffect(() => {
-    setCurrencyState(resolveInitialPricingCurrency());
-
     if (readPricingCurrencyPreference()) {
+      setReady(true);
+      return;
+    }
+
+    const cached = readCachedCountry();
+    if (cached) {
+      setCurrencyState(countryCodeToCurrency(cached.countryCode));
       setReady(true);
       return;
     }
@@ -50,7 +56,7 @@ export function PricingCurrencyProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Keep INR default when geo is blocked or fails.
+        // Geo blocked or failed — keep USD default for international-safe fallback.
       })
       .finally(() => {
         clearTimeout(timeout);

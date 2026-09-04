@@ -84,7 +84,7 @@ export function writePricingCurrencyPreference(
   }
 }
 
-/** Best initial currency for client render — preference, cached geo, then INR default. */
+/** Best initial currency for client render — saved preference, cached geo, else USD until ipapi confirms India. */
 export function resolveInitialPricingCurrency(
   storage: Pick<Storage, "getItem"> = globalThis.localStorage,
 ): PricingCurrency {
@@ -92,7 +92,9 @@ export function resolveInitialPricingCurrency(
   if (pref) return pref;
   const cached = readCachedCountry(storage);
   if (cached) return countryCodeToCurrency(cached.countryCode);
-  return "INR";
+  // USD default avoids flashing INR to international first-time visitors
+  // before ipapi.co resolves; India is switched to INR once geo returns IN.
+  return "USD";
 }
 
 export const IPAPI_URL = "https://ipapi.co/json/";

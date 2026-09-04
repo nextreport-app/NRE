@@ -132,4 +132,14 @@ describe("pricing currency preference", () => {
     writeCachedCountry("US", storage);
     expect(resolveInitialPricingCurrency(storage)).toBe("USD");
   });
+
+  it("defaults to USD when no preference or geo cache (international-safe first paint)", () => {
+    expect(resolveInitialPricingCurrency(fakeStorage())).toBe("USD");
+  });
+
+  it("maps cached India to INR on first paint", () => {
+    const storage = fakeStorage();
+    writeCachedCountry("IN", storage);
+    expect(resolveInitialPricingCurrency(storage)).toBe("INR");
+  });
 });
