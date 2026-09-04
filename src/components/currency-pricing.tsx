@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
-import { CurrencySelector } from "@/components/currency-selector";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
@@ -32,9 +31,10 @@ const PLANS: Plan[] = [
     features: [
       "Up to 10 client accounts",
       "Unlimited report generation",
-      "Meta Ads reporting",
-      "Google Ads reporting",
-      "AI-written campaign summaries",
+      "Meta Ads — Marketing API sync (approved)",
+      "Google Ads — API sync (approved)",
+      "CSV upload — Meta & Google exports",
+      "AI-written campaign summaries & insights",
       "PowerPoint and Google Slides export",
       "Google Drive auto-save",
       "Slack & Zapier webhooks",
@@ -51,10 +51,11 @@ const PLANS: Plan[] = [
     features: [
       "Unlimited client accounts",
       "Everything in Starter",
+      "Meta & Google API sync for every client",
       "Priority email support",
       "Early access to new features",
-      "Google Ads advanced reporting",
-      "Slack & Zapier webhooks on report generation",
+      "Creative performance reporting",
+      "Slack & Zapier on every report generated",
     ],
   },
 ];
@@ -207,7 +208,6 @@ export function CurrencyPricing({
       </div>
 
       <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3">
-        <CurrencySelector />
         <p className="text-center text-xs text-ink-muted">{PRICING_CURRENCY_NOTE[currency]}</p>
       </div>
     </>
