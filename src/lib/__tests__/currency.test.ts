@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { countryCodeToCurrency, readCachedCountry, writeCachedCountry, type CachedCountry } from "../currency";
+import {
+  countryCodeToCurrency,
+  readCachedCountry,
+  readPricingCurrencyPreference,
+  resolveInitialPricingCurrency,
+  writeCachedCountry,
+  writePricingCurrencyPreference,
+  type CachedCountry,
+} from "../currency";
 
 /** Minimal in-memory Storage stand-in — avoids depending on jsdom's real localStorage just for these two functions. */
 function fakeStorage(initial: Record<string, string> = {}): Storage {
@@ -95,5 +103,33 @@ describe("readCachedCountry / writeCachedCountry", () => {
     };
     expect(() => readCachedCountry(storage)).not.toThrow();
     expect(readCachedCountry(storage)).toBeNull();
+  });
+});
+
+describe("pricing currency preference", () => {
+  it("round-trips INR and USD preference", () => {
+    const storage = fakeStorage();
+    writePricingCurrencyPreference("USD", storage);
+    expect(readPricingCurrencyPreference(storage)).toBe("USD");
+    writePricingCurrencyPreference("INR", storage);
+    expect(readPricingCurrencyPreference(storage)).toBe("INR");
+  });
+
+  it("returns null for invalid stored values", () => {
+    const storage = fakeStorage({ nre_pricing_currency_v1: "EUR" });
+    expect(readPricingCurrencyPreference(storage)).toBeNull();
+  });
+
+  it("resolveInitialPricingCurrency prefers saved preference over geo cache", () => {
+    const storage = fakeStorage();
+    writeCachedCountry("IN", storage);
+    writePricingCurrencyPreference("USD", storage);
+    expect(resolveInitialPricingCurrency(storage)).toBe("USD");
+  });
+
+  it("resolveInitialPricingCurrency falls back to cached geo when no preference", () => {
+    const storage = fakeStorage();
+    writeCachedCountry("US", storage);
+    expect(resolveInitialPricingCurrency(storage)).toBe("USD");
   });
 });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
+import { CurrencySelector } from "@/components/currency-selector";
 import { PUBLIC_NAV_LINKS, SUPPORT_EMAIL, filterBetaLinks, type SiteLink } from "@/lib/site-links";
 
 const ALL_LINKS: SiteLink[] = [
@@ -53,6 +54,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
+          <CurrencySelector compact />
           <Link
             href="/contact"
             className="rounded-md px-3 py-2 text-sm text-ink-secondary transition-colors hover:text-white"
@@ -126,6 +128,10 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             >
               {SUPPORT_EMAIL}
             </a>
+            <div className="px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Currency</p>
+              <CurrencySelector compact className="mt-2" />
+            </div>
           </div>
           <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
             {loggedIn ? (

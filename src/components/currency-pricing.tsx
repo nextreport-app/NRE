@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
-import { countryCodeToCurrency, readCachedCountry, writeCachedCountry, type PricingCurrency } from "@/lib/currency";
+import { CurrencySelector } from "@/components/currency-selector";
+import { usePricingCurrency } from "@/components/pricing-currency-provider";
+import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
 
 const ANNUAL_PRICES = {
@@ -61,17 +63,6 @@ const PAYMENT_METHOD_LINE: Record<PricingCurrency, string> = {
   INR: "Pay securely with UPI, Cards, Net Banking",
   USD: "Pay securely with Credit or Debit Card",
 };
-
-const PRICING_NOTE: Record<PricingCurrency, string> = {
-  INR: "Prices in Indian Rupees. Indian customers only. International pricing available in USD.",
-  USD: "Prices in US Dollars. Indian customers can switch to INR above for local payment options.",
-};
-
-// ipapi.co's free tier is unauthenticated and rate-limited but needs no
-// API key — called directly from the browser (not proxied through our
-// own server) so it sees the visitor's real public IP, not Vercel's.
-const IPAPI_URL = "https://ipapi.co/json/";
-const IPAPI_TIMEOUT_MS = 5000;
 
 function CheckIcon() {
   return (
@@ -171,50 +162,8 @@ export function CurrencyPricing({
   userEmail?: string | null;
   userName?: string | null;
 }) {
-  // Defaults to INR on first paint (not USD): most early users are Indian,
-  // so this is the choice that shows the RIGHT currency with zero lag for
-  // the majority of visitors — international visitors briefly see INR
-  // before the detection below (cached or freshly fetched) switches them
-  // to USD. This is also what's left in place if detection fails entirely.
-  const [currency, setCurrency] = useState<PricingCurrency>("INR");
+  const { currency } = usePricingCurrency();
   const [interval, setInterval] = useState<BillingInterval>("monthly");
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), IPAPI_TIMEOUT_MS);
-
-    // A cached country code (see lib/currency.ts, 24h TTL) resolves
-    // immediately and skips the network call altogether — no flash at all
-    // for a repeat visitor, not even the brief one first-time visitors see.
-    // Funneled through the same promise chain as the network path (rather
-    // than calling setCurrency synchronously right here) so there's exactly
-    // one place setCurrency is ever called from this effect.
-    const cached = readCachedCountry();
-    const detectedCountryCode: Promise<string | null> = cached
-      ? Promise.resolve(cached.countryCode)
-      : fetch(IPAPI_URL, { signal: controller.signal })
-          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`ipapi.co responded ${res.status}`))))
-          .then((data: { country_code?: string }) => {
-            const countryCode = data.country_code ?? null;
-            writeCachedCountry(countryCode);
-            return countryCode;
-          });
-
-    detectedCountryCode
-      .then((countryCode) => setCurrency(countryCodeToCurrency(countryCode)))
-      .catch(() => {
-        // Detection failed, timed out, or was blocked (ad blockers/privacy
-        // extensions commonly block third-party geo-IP calls) — the INR
-        // default above is left standing, and nothing is cached (so it's
-        // retried on the next visit rather than "stuck" on a guess).
-      })
-      .finally(() => clearTimeout(timeout));
-
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
-  }, []);
 
   return (
     <>
@@ -258,30 +207,8 @@ export function CurrencyPricing({
       </div>
 
       <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3">
-        <div className="flex items-center gap-1 rounded-full border border-navy-border bg-navy-panel p-1 text-sm">
-          <button
-            type="button"
-            onClick={() => setCurrency("INR")}
-            aria-pressed={currency === "INR"}
-            className={`rounded-full px-3 py-1 transition-colors ${
-              currency === "INR" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
-            }`}
-          >
-            🇮🇳 INR
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrency("USD")}
-            aria-pressed={currency === "USD"}
-            className={`rounded-full px-3 py-1 transition-colors ${
-              currency === "USD" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
-            }`}
-          >
-            🌍 USD
-          </button>
-        </div>
-
-        <p className="text-center text-xs text-ink-muted">{PRICING_NOTE[currency]}</p>
+        <CurrencySelector />
+        <p className="text-center text-xs text-ink-muted">{PRICING_CURRENCY_NOTE[currency]}</p>
       </div>
     </>
   );

@@ -95,9 +95,10 @@ export function SiteChromeFooter() {
                 </a>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-                Serving agencies worldwide — pay in{" "}
-                <span className="font-medium text-ink-secondary">INR</span> (India) or{" "}
-                <span className="font-medium text-ink-secondary">USD</span> (international).
+                Serving agencies worldwide — choose{" "}
+                <span className="font-medium text-ink-secondary">INR</span> or{" "}
+                <span className="font-medium text-ink-secondary">USD</span> in the header. Product and support in
+                English.
               </p>
               <div className="mt-5 border-t border-navy-border pt-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">Stay updated</p>
