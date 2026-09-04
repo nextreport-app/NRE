@@ -5,4 +5,4 @@
  * pricing everywhere at once when the beta ends; nothing else needs to
  * change.
  */
-export const BETA_HIDE_PRICING = true;
+export const BETA_HIDE_PRICING = false;

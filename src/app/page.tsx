@@ -8,9 +8,9 @@ import { FeaturesSection } from "@/components/home/features-section";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { ReportPreviewSection } from "@/components/home/report-preview-section";
 import { SampleReportSection } from "@/components/home/sample-report-section";
+import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { BETA_HIDE_PRICING } from "@/lib/beta";
 
 export default async function Home() {
   const session = await auth();
@@ -33,10 +33,8 @@ export default async function Home() {
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
-        {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
-        {!BETA_HIDE_PRICING && (
-          <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
-        )}
+        <LeadCaptureSection />
+        <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
       </main>
     </>
   );
