@@ -26,6 +26,13 @@ export default async function ClientsPage() {
 
   return (
     <div>
+      <div className="mb-4 rounded-lg border border-dash-border bg-dash-card px-4 py-3 text-sm text-dash-ink-secondary">
+        Something not working in a report?{" "}
+        <Link href="/support" className="font-medium text-dash-accent underline hover:no-underline">
+          Raise a support ticket
+        </Link>
+      </div>
+
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-[24px] font-bold text-dash-ink">My Clients</h1>
         <Link

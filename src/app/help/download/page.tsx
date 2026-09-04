@@ -4,11 +4,22 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { isMetaApiConfigured, isGoogleAdsApiConfigured } from "@/lib/integrations-config";
+import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Download Guide — NextReport",
-  description: "Connect via official Meta and Google Ads APIs, or export CSVs manually.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "CSV Export Guide",
+  description:
+    "Step-by-step guide to export Meta Ads and Google Ads CSV files for NextReport — recommended columns, date ranges, and API sync alternatives.",
+  path: "/help/download",
+  keywords: [
+    "meta ads csv export",
+    "google ads csv export",
+    "csv to ppt",
+    "csv to pdf",
+    "meta reporting csv columns",
+    ...DEFAULT_KEYWORDS,
+  ],
+});
 
 interface Step {
   title: string;
@@ -242,7 +253,7 @@ export default async function DownloadGuidePage() {
           <p className="mx-auto mt-3 max-w-xl text-sm text-ink-muted">
             See the full workflow on the{" "}
             <Link href="/how-it-works" className="text-accent-orange hover:underline">
-              How It Works
+              Getting Started
             </Link>{" "}
             page.
           </p>

@@ -3,11 +3,14 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "How NextReport Works",
-  description: "Connect via API or upload CSV — client-ready reports in under 2 minutes.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Getting Started",
+  description:
+    "Learn how NextReport works — connect Meta or Google Ads via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.",
+  path: "/how-it-works",
+});
 
 interface ReportType {
   name: string;
@@ -165,13 +168,13 @@ export default async function HowItWorksPage() {
                 label="File 2"
                 cadence="upload every week"
                 title="Last 30 Days, Day by Day"
-                body="Powers weekly slides, MTD row, visual chart (last 30 days), and comparison reports. On the 1st, export Previous Month with Day breakdown instead — see the Download Guide."
+                body="Powers weekly slides, MTD row, visual chart (last 30 days), and comparison reports. On the 1st, export Previous Month with Day breakdown instead — see the CSV Export Guide."
               />
             </div>
             <p className="mt-4 text-sm text-ink-muted">
               Step-by-step export instructions:{" "}
               <Link href="/help/download" className="text-accent-orange hover:underline">
-                Download Guide
+                CSV Export Guide
               </Link>
             </p>
           </section>

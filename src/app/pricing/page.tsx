@@ -5,12 +5,14 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { CurrencyPricing } from "@/components/currency-pricing";
 import { PricingCurrencyBanner } from "@/components/pricing-currency-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Pricing — NextReport",
+export const metadata: Metadata = pageMetadata({
+  title: "Pricing",
   description:
-    "Simple, transparent pricing for NextReport. Starter and Professional plans for agencies of any size, with a 7-day free trial.",
-};
+    "Simple pricing for automated Meta and Google Ads reporting. Starter from $8/month, Professional from $20/month. 7-day free trial, live browser share link, and PDF download included.",
+  path: "/pricing",
+});
 
 const FAQS = [
   {
@@ -35,7 +37,7 @@ const FAQS = [
   },
   {
     q: "Do I need to include specific columns in my CSV?",
-    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our Download Guide for the exact steps to download the right format from Meta and Google Ads.",
+    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our CSV Export Guide for the exact steps to download the right format from Meta and Google Ads.",
   },
   {
     q: "How many reports can I generate per month?",

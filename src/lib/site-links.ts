@@ -8,13 +8,13 @@ export type SiteLink = {
 };
 
 export const PUBLIC_NAV_LINKS: SiteLink[] = [
-  { href: "/how-it-works", label: "How It Works" },
+  { href: "/how-it-works", label: "Getting Started" },
 ];
 
 export const FOOTER_PRODUCT_LINKS: SiteLink[] = [
   { href: "/", label: "Home" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/help/download", label: "Download Guide" },
+  { href: "/how-it-works", label: "Getting Started" },
+  { href: "/help/download", label: "CSV Export Guide" },
   { href: "/pricing", label: "Pricing", hideDuringBeta: true },
 ];
 

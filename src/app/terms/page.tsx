@@ -3,10 +3,13 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Terms of Service — NextReport",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of Service",
+  description: "NextReport terms of service for agencies using automated Meta and Google Ads reporting.",
+  path: "/terms",
+});
 
 export default async function TermsPage() {
   const session = await auth();

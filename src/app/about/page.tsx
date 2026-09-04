@@ -3,10 +3,14 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About — NextReport",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "About",
+  description:
+    "NextReport automates Meta and Google Ads reporting for digital agencies — built to turn CSV exports and API sync into client-ready decks in minutes.",
+  path: "/about",
+});
 
 const STORY_PARAGRAPHS = [
   "This started from a simple frustration — the kind every performance marketer knows well.",

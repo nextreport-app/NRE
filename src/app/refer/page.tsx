@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { auth } from "@/lib/auth";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Refer an Agency — NextReport",
+export const metadata: Metadata = pageMetadata({
+  title: "Refer an Agency",
   description: "Refer another agency to NextReport and both of you get a discount.",
-};
+  path: "/refer",
+});
 
 export default async function ReferPage() {
   const session = await auth();
