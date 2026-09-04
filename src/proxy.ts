@@ -16,6 +16,9 @@ const PUBLIC_PATHS = [
   "/how-it-works",
   "/case-studies",
   "/refer",
+  // Crawlers and Search Console must receive XML/text, not a login redirect.
+  "/sitemap.xml",
+  "/robots.txt",
   // Internal design preview, not linked from anywhere — accessible directly
   // by URL without logging in, same as the other public marketing pages.
   "/light-preview",
