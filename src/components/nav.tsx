@@ -9,8 +9,9 @@ const LINKS = [
   { href: "/clients", label: "My Clients", hideOnMobile: false },
   { href: "/account", label: "Account", hideOnMobile: false },
   { href: "/billing", label: "Billing", hideOnMobile: false },
+  { href: "/support", label: "Support", hideOnMobile: false },
   { href: "/pricing", label: "Pricing", hideOnMobile: true },
-  { href: "/help/download", label: "How It Works", hideOnMobile: true },
+  { href: "/help/download", label: "CSV Export Guide", hideOnMobile: true },
 ];
 
 /** Active-page match: exact for "/", prefix for everything else (so /clients/abc still highlights "My Clients"). */

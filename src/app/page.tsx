@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { JsonLd } from "@/components/json-ld";
+import { HOME_JSON_LD, pageMetadata } from "@/lib/seo";
 import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { PainPointSection } from "@/components/home/pain-point-section";
@@ -12,12 +14,20 @@ import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 
+export const metadata = pageMetadata({
+  title: "Automated Meta & Google Ads Reporting",
+  description:
+    "Client-ready Meta and Google Ads reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser share link, and PDF export with AI insights. 7-day free trial.",
+  path: "/",
+});
+
 export default async function Home() {
   const session = await auth();
   const loggedIn = !!session?.user;
 
   return (
     <>
+      <JsonLd data={HOME_JSON_LD} />
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">

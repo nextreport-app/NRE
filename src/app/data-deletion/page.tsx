@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "User Data Deletion — NextReport",
-  description:
-    "How to request deletion of your personal data and Meta/Facebook data from NextReport.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "User Data Deletion",
+  description: "How to request deletion of your personal data and Meta/Facebook data from NextReport.",
+  path: "/data-deletion",
+});
 
 export default async function DataDeletionPage() {
   const session = await auth();

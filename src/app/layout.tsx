@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteChromeFooter } from "@/components/site-chrome-footer";
+import { DEFAULT_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 // Geist Mono is kept only for --font-mono (monospace text, if any); Geist
 // Sans was removed entirely — Inter is now the ONE sans-serif font loaded,
@@ -25,8 +26,24 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NextReport — Automated Ad Reporting",
-  description: "Client-ready Meta and Google Ads reports in under 2 minutes.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Automated Meta & Google Ads Reporting`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description:
+    "Client-ready Meta and Google Ads reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser link, and PDF export with AI insights.",
+  keywords: [...DEFAULT_KEYWORDS],
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: `${SITE_NAME} logo` }],
+  },
+  twitter: {
+    card: "summary",
+    images: ["/logo.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },

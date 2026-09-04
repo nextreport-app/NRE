@@ -142,6 +142,30 @@ export async function deletePreviousMonthDataFile(url: string): Promise<void> {
   await del(url).catch(() => {});
 }
 
+// ─────────────────────── Support ticket attachments ──────────────────────
+
+function sanitizeSupportFileName(fileName: string): string {
+  const base = fileName.split(/[/\\]/).pop() || "file";
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-150);
+  return cleaned || "file";
+}
+
+export async function saveSupportTicketAttachment(
+  ticketId: string,
+  buffer: Buffer,
+  originalFileName: string,
+  contentType: string,
+): Promise<string> {
+  const safeName = sanitizeSupportFileName(originalFileName);
+  const blob = await put(`support-tickets/${ticketId}/${safeName}`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType,
+  });
+  return blob.url;
+}
+
 /** Recovers the originally-uploaded filename from a Previous Month Data Blob URL's own path — see this section's header for why there's no separate filename column to read instead. */
 export function previousMonthDataFileName(url: string): string {
   const pathname = new URL(url).pathname;

@@ -121,6 +121,7 @@ model User {
   accounts Account[]
   sessions Session[]
   clients  Client[]
+  supportTickets SupportTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -436,4 +437,44 @@ model ContactMessage {
   message String @db.Text
 
   createdAt DateTime @default(now())
+}
+
+enum SupportTicketStatus {
+  OPEN
+  CLOSED
+}
+
+// Authenticated support tickets (api/support/route.ts) — one row per issue
+// report from a logged-in user. Linked to User so account/plan context is
+// always available. Optional CSV attachment stored in Vercel Blob (private).
+model SupportTicket {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String
+  email String
+  phone String?
+
+  category String
+  message  String @db.Text
+
+  // Auto-captured account context at submit time
+  planId           String
+  clientId         String?
+  clientName       String?
+  reportId         String?
+  reportDisplayName String?
+
+  attachmentUrl      String?
+  attachmentFileName String?
+
+  status SupportTicketStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

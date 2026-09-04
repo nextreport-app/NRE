@@ -3,10 +3,13 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — NextReport",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
+  description: "NextReport privacy policy — how we handle your account data, CSV uploads, and Meta and Google Ads API connections.",
+  path: "/privacy",
+});
 
 export default async function PrivacyPage() {
   const session = await auth();

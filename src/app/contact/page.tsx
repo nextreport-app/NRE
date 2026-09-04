@@ -3,10 +3,13 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { ContactForm } from "@/components/contact-form";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Contact — NextReport",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Contact",
+  description: "Contact NextReport for demos, pricing questions, or product support. We reply within one business day.",
+  path: "/contact",
+});
 
 export default async function ContactPage() {
   const session = await auth();

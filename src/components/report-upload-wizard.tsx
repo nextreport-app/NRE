@@ -34,6 +34,7 @@ import {
   type WizardDataSource,
 } from "@/components/wizard-data-source-panel";
 import { useToast } from "@/components/toast";
+import { SupportTicketLink } from "@/components/support-ticket-link";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
 // crammed campaign checkboxes + ad-set expand sections + the objective
@@ -251,7 +252,7 @@ function SpecificFieldWarning({ message }: { message: string }) {
     <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
       <p>{message}</p>
       <Link href="/help/download" className="mt-2 inline-block text-amber-300 underline hover:text-amber-100">
-        See our Download Guide →
+        See our CSV Export Guide →
       </Link>
     </div>
   );
@@ -1795,6 +1796,11 @@ export function ReportUploadWizard({
         <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step]}</p>
       </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
+
+      <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-2.5 text-[13px] text-dash-ink-secondary">
+        Have an issue with this report?{" "}
+        <SupportTicketLink clientId={clientId} />
+      </p>
 
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
