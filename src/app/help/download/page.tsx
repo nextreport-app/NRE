@@ -113,7 +113,7 @@ export default async function DownloadGuidePage() {
           <section>
             <SectionHeading>Option A — Sync from API (recommended)</SectionHeading>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport is approved for{" "}
+              NextReport syncs with{" "}
               <span className="text-white">Meta&apos;s Marketing API</span> and{" "}
               <span className="text-white">Google&apos;s Ads API</span>. Connect once in Account Settings and pull
               campaign data directly — no CSV export from Ads Manager.

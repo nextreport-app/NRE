@@ -2,8 +2,8 @@ import Link from "next/link";
 import { SubscribeButton } from "./subscribe-button";
 
 const PLAN_OPTIONS = [
-  { id: "starter" as const, name: "Starter", priceInr: "₹999", priceUsd: "$12" },
-  { id: "professional" as const, name: "Professional", priceInr: "₹2,499", priceUsd: "$29" },
+  { id: "starter" as const, name: "Starter", priceInr: "₹699", priceUsd: "$8" },
+  { id: "professional" as const, name: "Professional", priceInr: "₹1,699", priceUsd: "$20" },
 ];
 
 /**

@@ -7,8 +7,8 @@ import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
 
 const ANNUAL_PRICES = {
-  starter: { inr: "₹9,590", usd: "$115" },
-  professional: { inr: "₹23,990", usd: "$278" },
+  starter: { inr: "₹6,710", usd: "$77" },
+  professional: { inr: "₹16,310", usd: "$192" },
 } as const;
 
 interface Plan {
@@ -25,17 +25,19 @@ const PLANS: Plan[] = [
   {
     id: "starter",
     name: "Starter",
-    priceInr: "₹999",
-    priceUsd: "$12",
+    priceInr: "₹699",
+    priceUsd: "$8",
     bestFor: "Freelancers and small agencies",
     features: [
       "Up to 10 client accounts",
       "Unlimited report generation",
-      "Meta Ads — Marketing API sync (approved)",
-      "Google Ads — API sync (approved)",
+      "Meta Ads — Marketing API sync",
+      "Google Ads — API sync",
       "CSV upload — Meta & Google exports",
       "AI-written campaign summaries & insights",
       "PowerPoint and Google Slides export",
+      "Live browser share link for clients",
+      "PDF download for every report",
       "Google Drive auto-save",
       "Slack & Zapier webhooks",
       "Email support within 24 hours",
@@ -44,14 +46,15 @@ const PLANS: Plan[] = [
   {
     id: "professional",
     name: "Professional",
-    priceInr: "₹2,499",
-    priceUsd: "$29",
+    priceInr: "₹1,699",
+    priceUsd: "$20",
     bestFor: "Growing agencies managing multiple clients",
     highlighted: true,
     features: [
       "Unlimited client accounts",
       "Everything in Starter",
       "Meta & Google API sync for every client",
+      "Live browser share link & PDF on every report",
       "Priority email support",
       "Early access to new features",
       "Creative performance reporting",
@@ -131,6 +134,9 @@ function PlanCard({
         <p className="mt-1 text-xs font-medium text-emerald-400">Save 20% vs paying monthly</p>
       )}
       <p className="mt-1 text-xs text-ink-muted">{PAYMENT_METHOD_LINE[currency]}</p>
+      <p className="mt-0.5 text-[11px] text-ink-muted/80">
+        {currency === "INR" ? "Excl. 18% GST" : "Excl. tax"}
+      </p>
 
       <ul className="mt-8 space-y-3 text-sm text-ink-secondary">
         {plan.features.map((feature) => (

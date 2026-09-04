@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   "/about",
   "/pricing",
   "/help/download",
+  "/how-it-works",
   "/case-studies",
   "/refer",
   // Internal design preview, not linked from anywhere — accessible directly

@@ -45,10 +45,10 @@ export function SiteChromeFooter() {
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Meta API approved
+                  Meta API Sync
                 </span>
                 <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Google Ads API
+                  Google Ads API Sync
                 </span>
               </div>
             </div>
@@ -68,7 +68,7 @@ export function SiteChromeFooter() {
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-white">Get in touch</h3>
               <p className="mt-4 text-sm leading-relaxed text-ink-muted">
-                Questions about setup, pricing, or a custom agency workflow? Our team typically replies within one business day.
+                Questions about setup, pricing, or a feature? Our team typically replies within one business day.
               </p>
               <div className="mt-4 space-y-3 text-sm">
                 <a
@@ -94,12 +94,7 @@ export function SiteChromeFooter() {
                   Chat on WhatsApp
                 </a>
               </div>
-              <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-                Serving agencies worldwide — choose{" "}
-                <span className="font-medium text-ink-secondary">INR</span> or{" "}
-                <span className="font-medium text-ink-secondary">USD</span> in the header. Product and support in
-                English.
-              </p>
+              <p className="mt-4 text-xs leading-relaxed text-ink-muted">Serving agencies worldwide.</p>
               <div className="mt-5 border-t border-navy-border pt-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">Stay updated</p>
                 <div className="mt-3">
@@ -120,7 +115,7 @@ export function SiteChromeFooter() {
                 for digital agencies. Automate your ad reporting.
               </p>
             </div>
-            <p className="text-center text-[11px] leading-relaxed text-ink-muted/80 sm:text-left">
+            <p className="text-center text-[11px] leading-relaxed text-ink-muted/80">
               Meta and Google are trademarks of their respective owners. NextReport is an independent tool and is not
               affiliated with Meta Platforms, Inc. or Google LLC.
             </p>
