@@ -5,6 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import authConfig from "@/lib/auth.config";
+import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -48,6 +49,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
+    async createUser({ user }) {
+      notifyAdminNewSignup({
+        email: user.email ?? "unknown",
+        name: user.name,
+        provider: "google",
+      });
+    },
     // The adapter only calls `linkAccount` (which persists tokens) the first
     // time an OAuth account is linked — on every subsequent "Continue with
     // Google" it just signs the user in without touching the stored tokens.

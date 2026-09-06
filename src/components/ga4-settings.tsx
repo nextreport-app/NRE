@@ -110,16 +110,20 @@ export function Ga4Settings({
       )}
 
       {connected ? (
-        <div className="space-y-3">
-          <p className="text-[14px] text-dash-ink">
+        <div className="rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
+          <p className="text-sm text-emerald-300">
             Connected{connectedEmail ? `: ${connectedEmail}` : ""} <span aria-hidden="true">✓</span>
           </p>
-          <div className="flex flex-wrap gap-2">
+          <p className="mt-1 text-[12px] text-emerald-200/80">
+            Read-only access — NextReport can list GA4 properties and pull website traffic metrics. It cannot change
+            your Analytics settings.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleListProperties}
               disabled={loadingProperties}
-              className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] hover:bg-dash-card disabled:opacity-60"
+              className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
             >
               {loadingProperties ? "Loading properties…" : "List GA4 properties"}
             </button>
@@ -127,27 +131,27 @@ export function Ga4Settings({
               type="button"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-red-300 hover:bg-dash-card disabled:opacity-60"
+              className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
             >
               {disconnecting ? "Disconnecting…" : "Disconnect"}
             </button>
           </div>
-          {propertiesError && <p className="text-[13px] text-red-300">{propertiesError}</p>}
+          {propertiesError && <p className="mt-2 text-[13px] text-red-300">{propertiesError}</p>}
           {properties && properties.length === 0 && (
-            <p className="text-[13px] text-dash-ink-muted">No GA4 properties found for this Google account.</p>
+            <p className="mt-2 text-[13px] text-emerald-200/80">No GA4 properties found for this Google account.</p>
           )}
           {properties && properties.length > 0 && (
-            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-dash-border bg-dash-sidebar/40 p-3 text-[13px]">
+            <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-md border border-emerald-900/50 bg-emerald-950/20 p-3 text-[13px]">
               {properties.map((p) => (
-                <li key={p.propertyId} className="text-dash-ink-secondary">
-                  <span className="font-medium text-dash-ink">{p.displayName}</span>
+                <li key={p.propertyId} className="text-emerald-100/90">
+                  <span className="font-medium text-emerald-50">{p.displayName}</span>
                   {p.accountName ? ` · ${p.accountName}` : ""}
-                  <span className="text-dash-ink-muted"> · ID {p.propertyId}</span>
+                  <span className="text-emerald-200/70"> · ID {p.propertyId}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[12px] text-dash-ink-muted">
+          <p className="mt-3 text-[12px] text-emerald-200/70">
             Link a property to each client on their Manage page to generate Website Traffic reports.
           </p>
         </div>

@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteChromeFooter } from "@/components/site-chrome-footer";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { DEFAULT_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 // Geist Mono is kept only for --font-mono (monospace text, if any); Geist
@@ -59,9 +60,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+
   return (
     <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
+        {gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
         <Providers>{children}</Providers>
         <SiteChromeFooter />
       </body>

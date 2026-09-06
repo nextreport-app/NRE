@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signupSchema } from "@/lib/validators/auth";
 import { apiErrorResponse } from "@/lib/api-error";
+import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -26,6 +27,8 @@ export async function POST(req: Request) {
     await prisma.user.create({
       data: { name, email, passwordHash },
     });
+
+    notifyAdminNewSignup({ email, name, provider: "credentials" });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
