@@ -16,7 +16,8 @@ import {
 } from "@/lib/nre/website-report-data";
 import { formatDateUS } from "@/lib/nre/dates";
 
-const OVERVIEW_METRICS = [
+/** GA4 Data API allows at most 10 metrics per runReport request — split overview fetch. */
+const OVERVIEW_METRICS_PRIMARY = [
   "sessions",
   "totalUsers",
   "newUsers",
@@ -27,9 +28,9 @@ const OVERVIEW_METRICS = [
   "userEngagementDuration",
   "screenPageViews",
   "conversions",
-  "purchaseRevenue",
-  "transactions",
 ] as const;
+
+const OVERVIEW_METRICS_ECOMMERCE = ["purchaseRevenue", "transactions"] as const;
 
 function dateRangeLabel(range: Ga4DateRange): string {
   return `${formatDateUS(range.startIso)} – ${formatDateUS(range.endIso)}`;
@@ -41,11 +42,23 @@ async function fetchOverviewTotals(
   range: Ga4DateRange,
   rangeName?: string,
 ) {
-  const response = await runGa4Report(accessToken, propertyId, {
-    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso), name: rangeName }],
-    metrics: OVERVIEW_METRICS.map((name) => ({ name })),
+  const dateRanges = [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso), name: rangeName }];
+
+  const [primary, ecommerce] = await Promise.all([
+    runGa4Report(accessToken, propertyId, {
+      dateRanges,
+      metrics: OVERVIEW_METRICS_PRIMARY.map((name) => ({ name })),
+    }),
+    runGa4Report(accessToken, propertyId, {
+      dateRanges,
+      metrics: OVERVIEW_METRICS_ECOMMERCE.map((name) => ({ name })),
+    }),
+  ]);
+
+  return ga4OverviewTotalsFromMetrics({
+    ...parseGa4MetricTotals(primary),
+    ...parseGa4MetricTotals(ecommerce),
   });
-  return ga4OverviewTotalsFromMetrics(parseGa4MetricTotals(response));
 }
 
 async function fetchChannelBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
