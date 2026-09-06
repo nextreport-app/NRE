@@ -1,9 +1,12 @@
 import { deleteReportFile, readReportFile, saveReportPdf } from "@/lib/storage";
 import type { ShareReportData } from "@/lib/nre/share-report";
+import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
+import { isShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { renderReportPdfFromShareData } from "./render-report-pdf";
 
-export function isPdfExportAllowed(share: ShareReportData | null): boolean {
+export function isPdfExportAllowed(share: ShareReportData | ShareWebsiteReportData | null): boolean {
   if (!share?.publishedAt) return false;
+  if (isShareWebsiteReportData(share)) return true;
   return Array.isArray(share.campaigns);
 }
 
@@ -11,7 +14,7 @@ export function isPdfExportAllowed(share: ShareReportData | null): boolean {
 export async function generateReportPdf(params: {
   reportId: string;
   shareToken: string;
-  share: ShareReportData;
+  share: ShareReportData | ShareWebsiteReportData;
   previousPdfPath?: string | null;
 }): Promise<string | null> {
   if (!isPdfExportAllowed(params.share)) return null;

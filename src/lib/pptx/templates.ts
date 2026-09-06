@@ -33,7 +33,10 @@ export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buff
  * one Google Ads template asset (matching the spec's ask), a real, flagged
  * gap versus Meta's per-color-template selection above, not an oversight.
  */
-export async function loadTemplateBufferForPlatform(platform: "META" | "GOOGLE", template: ReportTemplate): Promise<Buffer> {
+export async function loadTemplateBufferForPlatform(
+  platform: "META" | "GOOGLE" | "GA4",
+  template: ReportTemplate,
+): Promise<Buffer> {
   if (platform === "GOOGLE") return fs.readFile(path.join(TEMPLATES_DIR, "google-ads-dark.pptx"));
   return loadTemplateBuffer(template);
 }

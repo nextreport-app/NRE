@@ -173,6 +173,7 @@ const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
+const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
 
 const GENERIC_REPORT_TITLES = new Set(
   [
@@ -181,13 +182,14 @@ const GENERIC_REPORT_TITLES = new Set(
     DEFAULT_DAILY_REPORT_TITLE,
     DEFAULT_CREATIVE_REPORT_TITLE,
     DEFAULT_COMPARISON_REPORT_TITLE,
+    DEFAULT_WEBSITE_REPORT_TITLE,
   ].map((t) => t.toUpperCase()),
 );
 
 /** Resolves the cover subtitle — custom titles win; generic defaults follow reportType. */
 export function resolveCoverReportTitle(
   reportTitle: string | null | undefined,
-  reportType?: ReportType | "COMPARISON",
+  reportType?: ReportType | "COMPARISON" | "WEBSITE",
 ): string {
   const defaultTitle =
     reportType === "MONTHLY"
@@ -198,7 +200,9 @@ export function resolveCoverReportTitle(
           ? DEFAULT_CREATIVE_REPORT_TITLE
           : reportType === "COMPARISON"
             ? DEFAULT_COMPARISON_REPORT_TITLE
-            : DEFAULT_REPORT_TITLE;
+            : reportType === "WEBSITE"
+              ? DEFAULT_WEBSITE_REPORT_TITLE
+              : DEFAULT_REPORT_TITLE;
   const trimmed = reportTitle?.trim() ?? "";
   if (!trimmed || GENERIC_REPORT_TITLES.has(trimmed.toUpperCase())) {
     return defaultTitle.toUpperCase();
@@ -222,7 +226,7 @@ export interface CoverSlideOptions {
    * `ReportType`, which stays WEEKLY/MONTHLY-only throughout the existing
    * engine this function otherwise serves unchanged.
    */
-  reportType?: ReportType | "COMPARISON";
+  reportType?: ReportType | "COMPARISON" | "WEBSITE";
 }
 
 export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, options: CoverSlideOptions = {}): string {
@@ -387,10 +391,11 @@ const CARD_SLOT_LABEL_TAGS: (string | null)[] = [null, null, null, "{{RESULT_LAB
 // native default.
 const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions", "results", "ctr", "cost", "cpc", "cpc"];
 
-function slideReportHeader(reportType: ReportType = "WEEKLY"): string {
+function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): string {
   if (reportType === "MONTHLY") return "YOUR MONTHLY PERFORMANCE REPORT";
   if (reportType === "DAILY") return "YOUR DAILY PERFORMANCE REPORT";
   if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
+  if (reportType === "WEBSITE") return "YOUR WEBSITE TRAFFIC REPORT";
   return "YOUR WEEKLY PERFORMANCE REPORT";
 }
 
@@ -398,7 +403,7 @@ export function buildCampaignOrAdSetSlideXml(
   template: TemplateSlide,
   slide: SlideData,
   ai: AiCopy = FALLBACK_AI_COPY,
-  reportType: ReportType = "WEEKLY",
+  reportType: ReportType | "WEBSITE" = "WEEKLY",
   platform: Platform = "META",
   /**
    * Part 4 — true for a campaign/ad-set's second "Additional Metrics" slide
@@ -411,6 +416,8 @@ export function buildCampaignOrAdSetSlideXml(
    * than triggering a second AI call for the same campaign.
    */
   useAdditionalMetricsSlide = false,
+  /** Website Traffic reports — hide the "(Campaign)" badge and use website header chrome. */
+  websiteMode = false,
 ): string {
   const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
   const isAdSetKind = slide.kind === "adset";
@@ -425,13 +432,15 @@ export function buildCampaignOrAdSetSlideXml(
   // "[Name] — Additional Metrics" heading), nor on an ad-set slide that had
   // no real ad-set name to label (falls back to showing the bare campaign
   // name, which a "(Ad Set)" badge would misdescribe).
-  const typeLabelText = useAdditionalMetricsSlide
+  const typeLabelText = websiteMode
     ? null
-    : isAdSetKind
-      ? slide.adSetName
-        ? adGroupOrSetLabel
-        : null
-      : " (Campaign)";
+    : useAdditionalMetricsSlide
+      ? null
+      : isAdSetKind
+        ? slide.adSetName
+          ? adGroupOrSetLabel
+          : null
+        : " (Campaign)";
   const typeLabelColor = isAdSetKind ? AD_SET_LABEL_COLOR : CAMPAIGN_LABEL_COLOR;
 
   // Small "Paused"/"Inactive" badge right after the name (and after the

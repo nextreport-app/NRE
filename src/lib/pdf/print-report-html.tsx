@@ -1,15 +1,18 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ShareReportView } from "@/components/share-report-view";
+import { ShareWebsiteReportView } from "@/components/share-website-report-view";
 import type { ShareReportData } from "@/lib/nre/share-report";
+import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
+import { isShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { PRINT_REPORT_CSS } from "./print-report-css";
 import { appBaseUrl } from "./app-base-url";
 
 /** Full HTML document for Puppeteer — no HTTP round trip to the live app. */
-export function buildPrintReportHtml(share: ShareReportData): string {
-  const body = renderToStaticMarkup(
-    <ShareReportView data={share} mode="print" assetBaseUrl={appBaseUrl()} />,
-  );
+export function buildPrintReportHtml(share: ShareReportData | ShareWebsiteReportData): string {
+  const body = isShareWebsiteReportData(share)
+    ? renderToStaticMarkup(<ShareWebsiteReportView data={share} isPrint />)
+    : renderToStaticMarkup(<ShareReportView data={share} mode="print" assetBaseUrl={appBaseUrl()} />);
 
   return `<!DOCTYPE html>
 <html lang="en">
