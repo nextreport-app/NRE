@@ -10,10 +10,12 @@ const FROM_ADDRESS = "hello@nextreport.in";
 let client: Resend | null = null;
 
 /** Lazily constructed so a missing RESEND_API_KEY only breaks the send path, not module import (e.g. at build time / in tests that never call this). */
-function getResendClient(): Resend {
+export function getResendClient(): Resend {
   if (!client) client = new Resend(process.env.RESEND_API_KEY);
   return client;
 }
+
+export { FROM_ADDRESS };
 
 export interface SendReportEmailInput extends ReportEmailProps {
   to: string;
