@@ -60,7 +60,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  const gaMeasurementId = process.env.GA_MEASUREMENT_ID?.trim();
 
   return (
     <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`}>
