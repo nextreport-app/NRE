@@ -7,7 +7,7 @@ export interface ReportNotificationPayload {
   event: "report.generated";
   reportId: string;
   clientName: string;
-  platform: "META" | "GOOGLE";
+  platform: "META" | "GOOGLE" | "GA4";
   reportType: string;
   displayName: string | null;
   shareUrl: string | null;
@@ -107,7 +107,7 @@ export async function notifyReportGeneratedForUser(params: {
   reportId: string;
   shareToken: string | null;
   clientName: string;
-  platform: "META" | "GOOGLE";
+  platform: "META" | "GOOGLE" | "GA4";
   reportType: string;
   displayName: string | null;
   healthScore?: number | null;

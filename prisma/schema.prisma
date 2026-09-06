@@ -111,6 +111,14 @@ model User {
   googleAdsAccessToken    String? @db.Text
   googleAdsConnectedEmail String?
 
+  // Google Analytics 4 (account settings) — separate OAuth grant with
+  // analytics.readonly scope. Lists GA4 properties via Admin API and pulls
+  // website performance metrics via Data API (see lib/ga4-api.ts).
+  ga4Enabled          Boolean @default(false)
+  ga4RefreshToken     String? @db.Text
+  ga4AccessToken      String? @db.Text
+  ga4ConnectedEmail   String?
+
   // Report delivery integrations (account settings) — optional incoming
   // webhooks fired after each report reaches COMPLETE status.
   // slackWebhookUrl: Slack incoming webhook (hooks.slack.com/...).
@@ -215,6 +223,7 @@ enum ReportType {
   DAILY
   COMPARISON
   CREATIVE
+  WEBSITE
 }
 
 // Which ad platform a report's CSV came from — detected automatically from
@@ -227,6 +236,7 @@ enum ReportType {
 enum Platform {
   META
   GOOGLE
+  GA4
 }
 
 model Client {
@@ -328,6 +338,11 @@ model Client {
   // display copy, never read by the NRE engine or any report. 1000-char
   // limit enforced by the form/validator, not the column itself.
   notes String? @db.Text
+
+  // GA4 property linked to this client for Website Traffic reports —
+  // numeric property ID (e.g. "123456789"), not the full resource name.
+  ga4PropertyId   String?
+  ga4PropertyName String?
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports Report[]

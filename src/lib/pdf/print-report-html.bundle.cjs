@@ -671,6 +671,91 @@ function ShareReportView({
   );
 }
 
+// src/components/share-website-report-view.tsx
+var import_jsx_runtime3 = require("react/jsx-runtime");
+function MetricCardGrid({ title, metrics }) {
+  if (metrics.length === 0) return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "print-slide mb-8 break-inside-avoid rounded-xl border border-slate-700/60 bg-[#0f172a] p-6", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { className: "mb-4 text-lg font-semibold text-amber-400", children: title }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "grid grid-cols-2 gap-3 md:grid-cols-4", children: metrics.map((m) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "rounded-lg border border-slate-700 bg-[#111f35] p-4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-[11px] font-medium uppercase tracking-wide text-slate-400", children: m.label }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-1 text-xl font-semibold text-white", children: m.value }),
+      m.changeLabel ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-1 text-xs text-emerald-400", children: m.changeLabel }) : null
+    ] }, `${title}-${m.label}`)) })
+  ] });
+}
+function SimpleTable({
+  title,
+  columns,
+  rows
+}) {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "print-slide mb-8 break-inside-avoid rounded-xl border border-slate-700/60 bg-[#0f172a] p-6", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { className: "mb-4 text-lg font-semibold text-amber-400", children: title }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("table", { className: "w-full min-w-[480px] border-collapse text-sm", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tr", { children: columns.map((col) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("th", { className: "border-b border-slate-700 px-3 py-2 text-left text-xs uppercase text-slate-400", children: col }, col)) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tbody", { children: rows.map((row, i) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tr", { className: "border-b border-slate-800/80", children: row.map((cell, j) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("td", { className: "px-3 py-2 text-slate-200", children: cell }, j)) }, i)) })
+    ] }) })
+  ] });
+}
+function ShareWebsiteReportView({
+  data,
+  shareToken,
+  isPrint = false
+}) {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    "div",
+    {
+      id: isPrint ? "share-report-print" : "share-report-page",
+      className: "min-h-screen bg-[#0b1220] text-slate-100",
+      children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("main", { className: "mx-auto max-w-4xl px-4 py-8 sm:px-6", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "print-slide mb-8 break-inside-avoid rounded-xl border border-slate-700/60 bg-[#0f172a] p-8", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-xs uppercase tracking-[0.2em] text-slate-400", children: "Website Traffic Report" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h1", { className: "mt-2 text-3xl font-bold text-white", children: data.accountName }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-2 text-slate-300", children: data.propertyName }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-4 text-sm text-slate-400", children: data.dateRangeLabel }),
+          data.comparisonRangeLabel ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("p", { className: "text-sm text-slate-500", children: [
+            "Compared to ",
+            data.comparisonRangeLabel
+          ] }) : null,
+          data.agencyName ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("p", { className: "mt-6 text-sm text-slate-400", children: [
+            "Prepared by ",
+            data.agencyName
+          ] }) : null
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MetricCardGrid, { title: "Traffic Overview", metrics: data.overviewMetrics }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MetricCardGrid, { title: "Conversions & Engagement", metrics: data.conversionMetrics }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Traffic Sources",
+            columns: ["Channel", "Sessions", "Engagement", "Conversions"],
+            rows: data.channels.map((c) => [c.channel, c.sessionsLabel, c.engagementRateLabel, c.conversionsLabel])
+          }
+        ),
+        data.topPages.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Top Landing Pages",
+            columns: ["Page", "Sessions", "Engagement"],
+            rows: data.topPages.map((p) => [p.page, p.sessionsLabel, p.engagementRateLabel])
+          }
+        ) : null,
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-xs leading-relaxed text-slate-500", children: data.attributionNote }),
+        !isPrint && shareToken ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("p", { className: "mt-8 text-center text-xs text-slate-600", children: [
+          "Shared via NextReport \xB7 ",
+          shareToken.slice(0, 6),
+          "\u2026"
+        ] }) : null
+      ] })
+    }
+  );
+}
+
+// src/lib/nre/share-website-report.ts
+function isShareWebsiteReportData(value) {
+  return typeof value === "object" && value !== null && value.version === 1 && value.kind === "website";
+}
+
 // src/lib/pdf/print-report-css.ts
 var PRINT_REPORT_CSS = `
   @page { size: A4 landscape; margin: 8mm; }
@@ -907,11 +992,9 @@ function appBaseUrl() {
 }
 
 // src/lib/pdf/print-report-html.tsx
-var import_jsx_runtime3 = require("react/jsx-runtime");
+var import_jsx_runtime4 = require("react/jsx-runtime");
 function buildPrintReportHtml(share) {
-  const body = (0, import_server.renderToStaticMarkup)(
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ShareReportView, { data: share, mode: "print", assetBaseUrl: appBaseUrl() })
-  );
+  const body = isShareWebsiteReportData(share) ? (0, import_server.renderToStaticMarkup)(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ShareWebsiteReportView, { data: share, isPrint: true })) : (0, import_server.renderToStaticMarkup)(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ShareReportView, { data: share, mode: "print", assetBaseUrl: appBaseUrl() }));
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

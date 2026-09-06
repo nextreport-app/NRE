@@ -1,15 +1,16 @@
 import type { Browser } from "puppeteer-core";
 import type { ShareReportData } from "@/lib/nre/share-report";
+import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { launchPuppeteerBrowser } from "./puppeteer-browser";
 
 // Prebuilt by scripts/build-pdf-html-bundle.mjs — keeps react-dom/server out of the Next.js graph.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { buildPrintReportHtml } = require("./print-report-html.bundle.cjs") as {
-  buildPrintReportHtml: (share: ShareReportData) => string;
+  buildPrintReportHtml: (share: ShareReportData | ShareWebsiteReportData) => string;
 };
 
 /** Renders published share data to a landscape PDF buffer (no live URL fetch). */
-export async function renderReportPdfFromShareData(share: ShareReportData): Promise<Buffer> {
+export async function renderReportPdfFromShareData(share: ShareReportData | ShareWebsiteReportData): Promise<Buffer> {
   const html = buildPrintReportHtml(share);
   const browser = await launchPuppeteerBrowser();
 

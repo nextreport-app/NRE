@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { generateReportPdf, readStoredReportPdf } from "@/lib/pdf/generate-report-pdf";
 import type { ShareReportData } from "@/lib/nre/share-report";
+import { isShareWebsiteReportData, type ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 
-function parseShareJson(raw: string | null): ShareReportData | null {
+function parseShareJson(raw: string | null): ShareReportData | ShareWebsiteReportData | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== 1 || !Array.isArray(parsed.campaigns)) return null;
-    return parsed as ShareReportData;
+    if (parsed?.version !== 1) return null;
+    if (isShareWebsiteReportData(parsed)) return parsed;
+    if (Array.isArray(parsed.campaigns)) return parsed as ShareReportData;
+    return null;
   } catch {
     return null;
   }
@@ -47,6 +50,6 @@ export async function ensureReportPdfBuffer(report: {
 }
 
 /** True once the agency has published — PDF may be generated lazily on first download. */
-export function canDownloadReportPdf(share: ShareReportData | null): boolean {
+export function canDownloadReportPdf(share: ShareReportData | ShareWebsiteReportData | null): boolean {
   return !!share?.publishedAt;
 }

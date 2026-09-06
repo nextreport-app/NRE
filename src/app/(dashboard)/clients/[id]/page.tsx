@@ -7,6 +7,7 @@ import { DeleteClientButton } from "@/components/delete-client-button";
 import { DuplicateClientButton } from "@/components/duplicate-client-button";
 import { ResetObjectiveMemoryButton } from "@/components/reset-objective-memory-button";
 import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
+import { Ga4PropertyPicker } from "@/components/ga4-property-picker";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
@@ -44,13 +45,17 @@ export default async function ClientDetailPage({
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
-  const [reports, reportCount] = await Promise.all([
+  const [reports, reportCount, owner] = await Promise.all([
     prisma.report.findMany({
       where: { clientId: client.id },
       orderBy: { createdAt: "desc" },
       take: REPORT_HISTORY_LIMIT,
     }),
     prisma.report.count({ where: { clientId: client.id } }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { ga4Enabled: true, ga4RefreshToken: true },
+    }),
   ]);
 
   // Part 1 — re-parsed server-side on every page load (rather than stored)
@@ -142,17 +147,35 @@ export default async function ClientDetailPage({
           />
         </Card>
 
+        <Card id="website-analytics">
+          <CardHeading>Website Analytics (GA4)</CardHeading>
+          <Ga4PropertyPicker
+            clientId={client.id}
+            initialPropertyId={client.ga4PropertyId}
+            initialPropertyName={client.ga4PropertyName}
+            ga4Connected={!!owner?.ga4RefreshToken || !!owner?.ga4Enabled}
+          />
+        </Card>
+
         <Card accent>
           <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
           <p className="text-[15px] text-dash-ink-secondary">
-            Upload your MTD daily CSV to generate a branded performance report
+            Upload ad CSVs or pull website traffic from GA4 — branded PPT, browser link, and PDF.
           </p>
-          <Link
-            href={`/clients/${client.id}/reports/new`}
-            className="mt-5 block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-          >
-            Generate Report
-          </Link>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <Link
+              href={`/clients/${client.id}/reports/new`}
+              className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            >
+              Meta / Google Ads Report
+            </Link>
+            <Link
+              href={`/clients/${client.id}/reports/website/new`}
+              className="block w-full rounded-md border border-dash-border px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-card"
+            >
+              Website Traffic Report
+            </Link>
+          </div>
         </Card>
 
         <Card>

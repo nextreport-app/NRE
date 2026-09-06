@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { ShareReportData } from "@/lib/nre/share-report";
+import { isShareWebsiteReportData, type ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { ShareReportView, reportTypeLabel } from "@/components/share-report-view";
+import { ShareWebsiteReportView, websiteReportTypeLabel } from "@/components/share-website-report-view";
+
+type SharedReportPayload =
+  | { kind: "ads"; data: ShareReportData }
+  | { kind: "website"; data: ShareWebsiteReportData };
 
 /**
  * Public, read-only, no-login report page — a client-shareable alternative
@@ -18,13 +24,19 @@ import { ShareReportView, reportTypeLabel } from "@/components/share-report-view
  * cache() dedupes the DB lookup between generateMetadata and the page
  * component below, which both need the same report within one request.
  */
-const getReportByToken = cache(async (token: string): Promise<ShareReportData | null> => {
+const getReportByToken = cache(async (token: string): Promise<SharedReportPayload | null> => {
   const report = await prisma.report.findUnique({ where: { shareToken: token } });
   if (!report || report.status !== "COMPLETE" || !report.summaryJson) return null;
   try {
     const parsed = JSON.parse(report.summaryJson);
-    if (parsed?.version !== 1 || !Array.isArray(parsed.campaigns)) return null;
-    return parsed as ShareReportData;
+    if (parsed?.version !== 1) return null;
+    if (isShareWebsiteReportData(parsed)) {
+      return { kind: "website", data: parsed };
+    }
+    if (Array.isArray(parsed.campaigns)) {
+      return { kind: "ads", data: parsed as ShareReportData };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -32,13 +44,19 @@ const getReportByToken = cache(async (token: string): Promise<ShareReportData | 
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
-  const data = await getReportByToken(token);
-  if (!data) {
+  const payload = await getReportByToken(token);
+  if (!payload) {
     return { title: "Report not found — NextReport" };
   }
 
-  const title = `${data.accountName} — ${reportTypeLabel(data)} | NextReport`;
-  const description = `${data.accountName} performance report — ${data.cover.dateRange}`;
+  const title =
+    payload.kind === "website"
+      ? `${payload.data.accountName} — ${websiteReportTypeLabel()} | NextReport`
+      : `${payload.data.accountName} — ${reportTypeLabel(payload.data)} | NextReport`;
+  const description =
+    payload.kind === "website"
+      ? `${payload.data.accountName} website traffic — ${payload.data.dateRangeLabel}`
+      : `${payload.data.accountName} performance report — ${payload.data.cover.dateRange}`;
 
   return {
     title,
@@ -60,8 +78,12 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function SharedReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const data = await getReportByToken(token);
-  if (!data) notFound();
+  const payload = await getReportByToken(token);
+  if (!payload) notFound();
 
-  return <ShareReportView data={data} shareToken={token} />;
+  if (payload.kind === "website") {
+    return <ShareWebsiteReportView data={payload.data} shareToken={token} />;
+  }
+
+  return <ShareReportView data={payload.data} shareToken={token} />;
 }

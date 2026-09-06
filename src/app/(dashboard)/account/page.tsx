@@ -8,7 +8,8 @@ import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import { isGoogleAdsApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
+import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
+import { Ga4Settings } from "@/components/ga4-settings";
 
 const PLAN_LABELS: Record<string, string> = {
   trial: "Free Trial",
@@ -33,6 +34,8 @@ export default async function AccountSettingsPage({
     meta_ads_error?: string;
     google_ads_connected?: string;
     google_ads_error?: string;
+    ga4_connected?: string;
+    ga4_error?: string;
   }>;
 }) {
   const session = await auth();
@@ -49,6 +52,8 @@ export default async function AccountSettingsPage({
         metaConnectedUserId: true,
         googleAdsConnectedEmail: true,
         googleAdsEnabled: true,
+        ga4ConnectedEmail: true,
+        ga4Enabled: true,
         slackWebhookUrl: true,
         automationWebhookUrl: true,
         planId: true,
@@ -59,9 +64,10 @@ export default async function AccountSettingsPage({
   ]);
   if (!user) notFound();
 
-  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error, google_ads_connected, google_ads_error } = params;
+  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error, google_ads_connected, google_ads_error, ga4_connected, ga4_error } = params;
   const metaConfigured = isMetaApiConfigured();
   const googleAdsConfigured = isGoogleAdsApiConfigured();
+  const ga4Configured = isGa4ApiConfigured();
 
   const status = getSubscriptionStatus(user);
 
@@ -105,6 +111,17 @@ export default async function AccountSettingsPage({
           justConnected={google_ads_connected === "1"}
           connectError={google_ads_error ?? null}
           googleAdsConfigured={googleAdsConfigured}
+        />
+      </section>
+
+      <section id="ga4" className="mb-10 scroll-mt-6">
+        <SectionHeading>Google Analytics (GA4)</SectionHeading>
+        <Ga4Settings
+          initialConnectedEmail={user.ga4ConnectedEmail}
+          initialConnected={user.ga4Enabled}
+          justConnected={ga4_connected === "1"}
+          connectError={ga4_error ?? null}
+          ga4Configured={ga4Configured}
         />
       </section>
 

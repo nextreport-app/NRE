@@ -12,3 +12,10 @@ export function isGoogleAdsApiConfigured(): boolean {
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim()
   );
 }
+
+/** Google Analytics 4 — OAuth client for Analytics Data + Admin APIs (see .env.example). */
+export function isGa4ApiConfigured(): boolean {
+  const hasDedicated = !!(process.env.GA4_CLIENT_ID?.trim() && process.env.GA4_CLIENT_SECRET?.trim());
+  const hasFallback = !!(process.env.GOOGLE_ADS_CLIENT_ID?.trim() && process.env.GOOGLE_ADS_CLIENT_SECRET?.trim());
+  return hasDedicated || hasFallback;
+}

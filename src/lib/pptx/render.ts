@@ -11,6 +11,7 @@
  */
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
+import type { WebsiteReportData } from "../nre/website-report-data";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
@@ -28,6 +29,14 @@ import {
 } from "./creative-slides";
 import { collectLegendEntries } from "./legend-collect";
 import { slideAiKey } from "./slide-keys";
+import {
+  buildWebsiteChannelTableSlideXml,
+  buildWebsiteConversionSlideXml,
+  buildWebsiteCoverSlideXml,
+  buildWebsiteOverviewSlideXml,
+  buildWebsiteSlideRels,
+  buildWebsiteTopPagesSlideXml,
+} from "./website-slides";
 
 export { collectLegendEntries } from "./legend-collect";
 export { slideAiKey } from "./slide-keys";
@@ -329,6 +338,51 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     xml: buildComparisonSummarySlideXml(data, template.background),
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   });
+
+  return assemblePptx(template, slides);
+}
+
+export interface RenderWebsitePptxInput {
+  templateBuffer: Buffer;
+  data: WebsiteReportData;
+  accountName: string;
+  agencyName?: string | null;
+}
+
+export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<Buffer> {
+  const { templateBuffer, data, accountName, agencyName } = input;
+  const template = await loadTemplate(templateBuffer);
+  const tableRels = buildWebsiteSlideRels(template.background.mediaTarget);
+
+  const slides: SlideToInsert[] = [
+    {
+      xml: buildWebsiteCoverSlideXml(template.cover, data, { agencyName, accountName }),
+      rels: template.cover.rels,
+    },
+    {
+      xml: buildWebsiteOverviewSlideXml(template.campaign, data),
+      rels: template.campaign.rels,
+    },
+  ];
+
+  if (data.conversionMetrics.length > 0) {
+    slides.push({
+      xml: buildWebsiteConversionSlideXml(template.campaign, data),
+      rels: template.campaign.rels,
+    });
+  }
+
+  slides.push({
+    xml: buildWebsiteChannelTableSlideXml(data, template.background),
+    rels: tableRels,
+  });
+
+  if (data.topPages.length > 0) {
+    slides.push({
+      xml: buildWebsiteTopPagesSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
 
   return assemblePptx(template, slides);
 }
