@@ -12,6 +12,7 @@
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { WebsiteReportData } from "../nre/website-report-data";
+import { DEFAULT_WEBSITE_BREAKDOWNS } from "../nre/website-report-data";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
@@ -33,6 +34,8 @@ import {
   buildWebsiteChannelTableSlideXml,
   buildWebsiteConversionSlideXml,
   buildWebsiteCoverSlideXml,
+  buildWebsiteDeviceTableSlideXml,
+  buildWebsiteGeoTableSlideXml,
   buildWebsiteOverviewSlideXml,
   buildWebsiteSlideRels,
   buildWebsiteTopPagesSlideXml,
@@ -353,6 +356,7 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
   const { templateBuffer, data, accountName, agencyName } = input;
   const template = await loadTemplate(templateBuffer);
   const tableRels = buildWebsiteSlideRels(template.background.mediaTarget);
+  const breakdowns = data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS;
 
   const slides: SlideToInsert[] = [
     {
@@ -372,12 +376,28 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
     });
   }
 
-  slides.push({
-    xml: buildWebsiteChannelTableSlideXml(data, template.background),
-    rels: tableRels,
-  });
+  if (breakdowns.device) {
+    slides.push({
+      xml: buildWebsiteDeviceTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
 
-  if (data.topPages.length > 0) {
+  if (breakdowns.channels) {
+    slides.push({
+      xml: buildWebsiteChannelTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.geoCities) {
+    slides.push({
+      xml: buildWebsiteGeoTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.topPages && data.topPages.length > 0) {
     slides.push({
       xml: buildWebsiteTopPagesSlideXml(data, template.background),
       rels: tableRels,

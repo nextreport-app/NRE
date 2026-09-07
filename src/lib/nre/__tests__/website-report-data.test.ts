@@ -3,7 +3,9 @@ import {
   buildWebsiteReportData,
   detectWebsiteClientKind,
   emptyGa4OverviewTotals,
+  estimateWebsiteSlideCount,
   ga4OverviewTotalsFromMetrics,
+  parseWebsiteBreakdownOptions,
 } from "@/lib/nre/website-report-data";
 
 describe("website-report-data", () => {
@@ -64,5 +66,38 @@ describe("website-report-data", () => {
     expect(report.overviewMetrics[0]?.changeLabel).toBe("+25.0%");
     expect(report.clientKind).toBe("lead_gen");
     expect(report.channels).toHaveLength(1);
+    expect(report.devices).toEqual([]);
+    expect(report.geoCities).toEqual([]);
+    expect(report.breakdowns.device).toBe(true);
+  });
+
+  it("builds device and geo rows with share labels", () => {
+    const current = ga4OverviewTotalsFromMetrics({ sessions: 1000, totalUsers: 800, newUsers: 600, engagedSessions: 700, engagementRate: 0.7, bounceRate: 0.3, averageSessionDuration: 120, userEngagementDuration: 50000, screenPageViews: 2500, conversions: 40, purchaseRevenue: 0, transactions: 0 });
+
+    const report = buildWebsiteReportData({
+      propertyId: "123",
+      propertyName: "Example Site",
+      dateRangeLabel: "Aug 1 – Aug 31",
+      currencySymbol: "$",
+      current,
+      channels: [],
+      devices: [{ device: "mobile", sessions: 600, engagementRate: 0.65, conversions: 20 }],
+      geoCities: [{ location: "Mumbai", sessions: 240, conversions: 8 }],
+      topPages: [],
+    });
+
+    expect(report.devices[0]?.device).toBe("mobile");
+    expect(report.geoCities[0]?.shareLabel).toBe("24.0%");
+    expect(report.geoCities[0]?.conversionRateLabel).toBe("3.3%");
+  });
+
+  it("parses breakdown query flags and estimates slide count", () => {
+    expect(parseWebsiteBreakdownOptions({ device: "0", geo: "1" })).toEqual({
+      device: false,
+      geoCities: true,
+      channels: true,
+      topPages: true,
+    });
+    expect(estimateWebsiteSlideCount({ device: true, geoCities: true, channels: true, topPages: false })).toBe(6);
   });
 });

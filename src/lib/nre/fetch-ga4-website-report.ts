@@ -11,7 +11,9 @@ import {
 } from "@/lib/ga4-api";
 import {
   buildWebsiteReportData,
+  DEFAULT_WEBSITE_BREAKDOWNS,
   ga4OverviewTotalsFromMetrics,
+  type WebsiteBreakdownOptions,
   type WebsiteReportData,
 } from "@/lib/nre/website-report-data";
 import { formatDateUS } from "@/lib/nre/dates";
@@ -100,6 +102,39 @@ async function fetchTopPages(accessToken: string, propertyId: string, range: Ga4
   }));
 }
 
+async function fetchDeviceBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
+  const response = await runGa4Report(accessToken, propertyId, {
+    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso) }],
+    dimensions: [{ name: "deviceCategory" }],
+    metrics: [{ name: "sessions" }, { name: "engagementRate" }, { name: "conversions" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 6,
+  });
+
+  return parseGa4Rows(response, ["deviceCategory"], ["sessions", "engagementRate", "conversions"]).map((row) => ({
+    device: String(row.deviceCategory || "Unknown"),
+    sessions: Number(row.sessions ?? 0),
+    engagementRate: Number(row.engagementRate ?? 0),
+    conversions: Number(row.conversions ?? 0),
+  }));
+}
+
+async function fetchGeoCityBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
+  const response = await runGa4Report(accessToken, propertyId, {
+    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso) }],
+    dimensions: [{ name: "city" }],
+    metrics: [{ name: "sessions" }, { name: "conversions" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 10,
+  });
+
+  return parseGa4Rows(response, ["city"], ["sessions", "conversions"]).map((row) => ({
+    location: String(row.city || "(not set)"),
+    sessions: Number(row.sessions ?? 0),
+    conversions: Number(row.conversions ?? 0),
+  }));
+}
+
 export async function fetchGa4WebsiteReport(input: {
   accessToken: string;
   propertyId: string;
@@ -108,16 +143,22 @@ export async function fetchGa4WebsiteReport(input: {
   currencySymbol: string;
   currentRange: Ga4DateRange;
   comparisonRange?: Ga4DateRange;
+  breakdowns?: WebsiteBreakdownOptions;
 }): Promise<WebsiteReportData> {
   const { accessToken, propertyId, currentRange, comparisonRange } = input;
+  const breakdowns = input.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS;
 
-  const [current, previous, channels, topPages] = await Promise.all([
+  const [current, previous, channels, topPages, devices, geoCities] = await Promise.all([
     fetchOverviewTotals(accessToken, propertyId, currentRange, "current"),
     comparisonRange
       ? fetchOverviewTotals(accessToken, propertyId, comparisonRange, "previous")
       : Promise.resolve(undefined),
-    fetchChannelBreakdown(accessToken, propertyId, currentRange),
-    fetchTopPages(accessToken, propertyId, currentRange),
+    breakdowns.channels
+      ? fetchChannelBreakdown(accessToken, propertyId, currentRange)
+      : Promise.resolve([]),
+    breakdowns.topPages ? fetchTopPages(accessToken, propertyId, currentRange) : Promise.resolve([]),
+    breakdowns.device ? fetchDeviceBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
+    breakdowns.geoCities ? fetchGeoCityBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
   ]);
 
   return buildWebsiteReportData({
@@ -130,7 +171,10 @@ export async function fetchGa4WebsiteReport(input: {
     current,
     previous,
     channels,
+    devices,
+    geoCities,
     topPages,
+    breakdowns,
   });
 }
 
