@@ -555,6 +555,8 @@ export function ReportUploadWizard({
   // title +" link on the merged Step 3 — expanding it once (or having already typed
   // a title) keeps it expanded for the rest of the session.
   const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
+  /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
+  const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -2677,9 +2679,9 @@ export function ReportUploadWizard({
             {reportType === "HISTORICAL" && (
               <div className="mt-4 space-y-3">
                 <p className="text-[13px] text-dash-ink-secondary">
-                  Upload one <strong className="text-white">daily CSV</strong> covering every month you need — not separate
-                  monthly files. Each complete calendar month becomes its own set of campaign slides (e.g. &quot;May
-                  Performance&quot;, &quot;June Performance&quot;).
+                  Upload one <strong className="text-white">daily CSV</strong>{" "}
+                  covering every month you need — not separate monthly files. Each complete calendar month becomes its
+                  own set of campaign slides (e.g. &quot;May Performance&quot;, &quot;June Performance&quot;).
                 </p>
                 <label className="block text-[13px] text-dash-ink-secondary">
                   How many complete prior months?
@@ -2975,7 +2977,22 @@ export function ReportUploadWizard({
                   Ready to generate) into the one card the merged Step 3
                   spec calls for. */}
               <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
-                <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
+                <button
+                  type="button"
+                  onClick={() => setReportSummaryExpanded((open) => !open)}
+                  aria-expanded={reportSummaryExpanded}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
+                  <span
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-[#475569] bg-[#0f172a] text-[22px] leading-none text-[#f6ad55]"
+                    aria-hidden
+                  >
+                    {reportSummaryExpanded ? "▲" : "▼"}
+                  </span>
+                </button>
+                {reportSummaryExpanded && (
+                  <>
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
                   <p className="text-[13px] text-[#94a3b8]">
@@ -3049,6 +3066,8 @@ export function ReportUploadWizard({
                     Estimated slides: <span className="text-[13px] text-white">{estimatedSlideCount()}</span>
                   </p>
                 </div>
+                  </>
+                )}
               </div>
 
             {previewKind === "normal" && data?.isPaused && (
