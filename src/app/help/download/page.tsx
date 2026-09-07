@@ -9,7 +9,7 @@ import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "CSV Export Guide",
   description:
-    "Step-by-step guide to export Meta Ads and Google Ads CSV files for NextReport — recommended columns, date ranges, and API sync alternatives.",
+    "Step-by-step guide to export Meta Ads, Google Ads, TikTok, and GA4 CSV files for NextReport — recommended columns, date ranges, and API sync alternatives.",
   path: "/help/download",
   keywords: [
     "meta ads csv export",

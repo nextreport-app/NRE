@@ -4,11 +4,12 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { pageMetadata } from "@/lib/seo";
+import { PLATFORM_LIST_API, PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "Getting Started",
   description:
-    "Learn how NextReport works — connect Meta Ads, Google Ads, or GA4 via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.",
+    `Learn how NextReport works — connect ${PLATFORM_LIST_SHORT} via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.`,
   path: "/how-it-works",
 });
 
@@ -36,7 +37,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     title: "Connect or upload",
-    body: "Choose Sync from API (Meta Marketing API, Google Ads API, or GA4 Data API) or upload a CSV export. Meta users can also add an optional Previous Month CSV for the overview row.",
+    body: "Choose Sync from API (Meta Marketing API, Google Ads API, TikTok Marketing API, or GA4 Data API) or upload a CSV export. Meta users can also add an optional Previous Month CSV for the overview row.",
   },
   {
     title: "Select campaigns",
@@ -139,9 +140,9 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport syncs with Meta&apos;s Marketing API, Google&apos;s Ads API, and GA4&apos;s Data API. Connect in
-              Account Settings and choose <span className="text-white">Sync from API</span> in the wizard — no CSV
-              needed. Prefer a manual export? CSV upload works the same way it always has.
+              NextReport syncs with {PLATFORM_LIST_API}. Connect in Account Settings and choose{" "}
+              <span className="text-white">Sync from API</span> in the wizard — no CSV needed. Prefer a manual export?
+              CSV upload works the same way it always has.
             </p>
             {loggedIn ? (
               <p className="mt-3 text-sm">
@@ -150,6 +151,14 @@ export default async function HowItWorksPage() {
                 </Link>
               </p>
             ) : null}
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white">TikTok Ads</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
+              Connect TikTok Ads in Account Settings, then choose API sync or upload a TikTok CSV export in the report
+              wizard. Campaign spend, results, and KPIs land in the same branded deck as your Meta and Google reports.
+            </p>
           </section>
 
           <section>

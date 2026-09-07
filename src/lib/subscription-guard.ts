@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getPlanDisplayName } from "@/lib/plan-labels";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 const TRIAL_ENDED_MESSAGE = "Your free trial has ended. Subscribe to continue using NextReport.";
@@ -42,7 +43,7 @@ export async function requireClientCapacity(userId: string): Promise<NextRespons
     if (clientCount >= status.clientLimit) {
       return NextResponse.json(
         {
-          error: `The Starter plan is limited to ${status.clientLimit} client accounts. Upgrade to Professional for unlimited clients.`,
+          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client accounts. Upgrade to Professional for unlimited clients.`,
         },
         { status: 403 },
       );

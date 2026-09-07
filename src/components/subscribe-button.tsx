@@ -4,14 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
-
-type PlanId = "starter" | "professional";
+import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 
 const RAZORPAY_CHECKOUT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 
-const PLAN_NAMES: Record<PlanId, string> = {
-  starter: "Starter",
-  professional: "Professional",
+const PLAN_NAMES: Record<BillablePlanId, string> = {
+  starter: getPlanDisplayName("starter"),
+  professional: getPlanDisplayName("professional"),
 };
 
 interface RazorpaySuccessResponse {
@@ -78,7 +77,7 @@ export function SubscribeButton({
   currency = "INR",
   interval = "monthly",
 }: {
-  planId: PlanId;
+  planId: BillablePlanId;
   /** Defaults to "Subscribe" — callers pass e.g. "Upgrade to Professional" for the upgrade-prompt/billing contexts. */
   label?: string;
   className?: string;
@@ -110,7 +109,7 @@ export function SubscribeButton({
       return;
     }
 
-    let orderData: { order_id: string; amount: number; currency: string; planId: PlanId };
+    let orderData: { order_id: string; amount: number; currency: string; planId: BillablePlanId };
     try {
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
+import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import type { BillingInterval } from "@/lib/razorpay";
 
 const ANNUAL_PRICES = {
@@ -12,7 +13,7 @@ const ANNUAL_PRICES = {
 } as const;
 
 interface Plan {
-  id: "starter" | "professional";
+  id: BillablePlanId;
   name: string;
   priceInr: string;
   priceUsd: string;
@@ -24,21 +25,18 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     id: "starter",
-    name: "Starter",
+    name: getPlanDisplayName("starter"),
     priceInr: "₹699",
     priceUsd: "$8",
-    bestFor: "Freelancers and small agencies",
+    bestFor: "Freelancers and boutique agencies",
     features: [
       "Up to 10 client accounts",
       "Unlimited report generation",
-      "Meta Ads — Marketing API sync",
-      "Google Ads — API sync",
-      "GA4 website reporting — API sync",
-      "CSV upload — Meta, Google & GA4 exports",
+      "Meta, Google Ads, TikTok & GA4 — API sync",
+      "CSV upload — all four platforms",
       "AI-written campaign summaries & insights",
-      "PowerPoint and Google Slides export",
-      "Live browser share link for clients",
-      "PDF download for every report",
+      "PowerPoint, Google Slides & live browser share",
+      "PDF download on every report",
       "Google Drive auto-save",
       "Slack & Zapier webhooks",
       "Email support within 24 hours",
@@ -46,20 +44,18 @@ const PLANS: Plan[] = [
   },
   {
     id: "professional",
-    name: "Professional",
+    name: getPlanDisplayName("professional"),
     priceInr: "₹1,699",
     priceUsd: "$20",
-    bestFor: "Growing agencies managing multiple clients",
+    bestFor: "Growing agencies with larger client rosters",
     highlighted: true,
     features: [
       "Unlimited client accounts",
-      "Everything in Starter",
-      "Meta, Google Ads & GA4 API sync for every client",
-      "Live browser share link & PDF on every report",
+      "Everything in Agency",
+      "All four platforms — API sync for every client",
+      "Creative performance reporting",
       "Priority email support",
       "Early access to new features",
-      "Creative performance reporting",
-      "Slack & Zapier on every report generated",
     ],
   },
 ];

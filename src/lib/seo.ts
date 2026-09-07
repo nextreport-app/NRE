@@ -96,7 +96,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: "hello@nextreport.in",
       description:
-        "Automated Meta Ads, Google Ads, and GA4 website reporting for digital agencies — client-ready decks, browser share links, and PDF exports in under two minutes.",
+        "Automated Meta Ads, Google Ads, TikTok Ads, and GA4 website reporting for digital agencies — client-ready decks, browser share links, and PDF exports in under two minutes.",
     },
     {
       "@type": "WebSite",
@@ -116,19 +116,19 @@ export const HOME_JSON_LD = {
         "@type": "Offer",
         price: "8",
         priceCurrency: "USD",
-        description: "Starter plan from $8/month with 7-day free trial",
+        description: `${getPlanDisplayName("starter")} plan from $8/month with 7-day free trial`,
       },
       description:
-        "Connect Meta Ads, Google Ads, or GA4 via API — or upload a CSV — to generate client-ready PowerPoint reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Connect Meta Ads, Google Ads, TikTok Ads, or GA4 via API — or upload a CSV — to generate client-ready PowerPoint reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
         "Meta Marketing API sync",
         "Google Ads API sync",
+        "TikTok Marketing API sync",
         "Google Analytics 4 website reporting",
         "CSV to PowerPoint",
         "CSV to PDF",
         "Live browser share link",
         "AI campaign summaries",
-        "TikTok Ads reporting (coming soon)",
       ],
     },
   ],
