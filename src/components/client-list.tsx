@@ -2,13 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import type { Currency } from "@/generated/prisma/enums";
+import {
+  formatAbsoluteReportDate,
+  formatClientCurrencyLine,
+  formatMonthlyBudget,
+  formatRelativeReportDate,
+  formatReportTypeLabel,
+  getClientInitial,
+  getPreviousMonthListStatus,
+} from "@/lib/client-display";
 
 const PAGE_SIZE = 12;
 const MAX_PAGE_BUTTONS = 5;
 
-/** A sliding window of up to MAX_PAGE_BUTTONS page numbers centred on the current page, with "ellipsis" markers standing in for the gap to page 1 / the last page when the window doesn't reach them. */
 function getPageWindow(current: number, total: number): (number | "ellipsis")[] {
   if (total <= MAX_PAGE_BUTTONS) return Array.from({ length: total }, (_, i) => i + 1);
 
@@ -53,12 +60,12 @@ function PageButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3.5 py-2 text-[14px] font-semibold transition-colors ${
+      className={`rounded-lg px-3.5 py-2 text-[15px] font-semibold transition-colors ${
         disabled
           ? "cursor-not-allowed bg-dash-card text-dash-ink-secondary/50"
           : active
-            ? "bg-[#f6ad55] text-[#0d1b2e]"
-            : "bg-dash-card text-white hover:bg-[#1e3a5f]"
+            ? "bg-dash-accent text-dash-ink"
+            : "bg-dash-card text-dash-ink hover:bg-dash-border"
       }`}
     >
       {children}
@@ -88,7 +95,7 @@ function Pagination({
         </PageButton>
         {getPageWindow(page, totalPages).map((item, i) =>
           item === "ellipsis" ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-[14px] text-dash-ink-secondary">
+            <span key={`ellipsis-${i}`} className="px-1 text-[15px] text-dash-ink-secondary">
               …
             </span>
           ) : (
@@ -101,8 +108,8 @@ function Pagination({
           Next →
         </PageButton>
       </div>
-      <p className="text-[13px] text-dash-ink-secondary">
-        Showing {rangeStart}-{rangeEnd} of {totalCount} clients
+      <p className="text-[14px] text-dash-ink-secondary">
+        Showing {rangeStart}–{rangeEnd} of {totalCount} clients
       </p>
     </nav>
   );
@@ -114,44 +121,162 @@ interface ClientListItem {
   currency: Currency;
   timezone: string;
   monthlyBudget: number | null;
-  /** ISO timestamp of the most recent report generated for this client, or null if none yet. */
+  logoUrl: string | null;
+  reportCount: number;
   lastReportAt: string | null;
-  /** Whether Client.previousMonthDataUrl is set — drives Fix 2's status dot below the last-report line. */
+  lastReportType: string | null;
   hasPreviousMonthData: boolean;
+  previousMonthDataUpdatedAt: string | null;
+  hasGa4Property: boolean;
+  ga4PropertyName: string | null;
 }
 
-function formatLastReport(iso: string | null): string {
-  if (!iso) return "No reports yet";
-  const date = new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  return `Last report: ${date}`;
-}
-
-function formatBudget(currency: Currency, budget: number | null): string {
-  if (budget == null) return "No monthly ad spend budget set";
-  return `Monthly Ad Spend Budget: ${CURRENCY_SYMBOLS[currency]}${budget.toLocaleString("en-US")}`;
-}
-
-/** Fix 2 — at-a-glance Previous Month Data status, most useful at the start of each new month when last month's upload needs replacing. */
-function PreviousMonthDataStatus({ uploaded }: { uploaded: boolean }) {
+function SearchIcon() {
   return (
-    <p className={`mt-1 flex items-center gap-1.5 text-[11px] ${uploaded ? "text-dash-ink-secondary" : "text-dash-accent"}`}>
-      <span
-        aria-hidden="true"
-        className={`h-1.5 w-1.5 rounded-full ${uploaded ? "bg-emerald-500" : "bg-dash-accent"}`}
-      />
-      {uploaded ? "Prev. month ✓" : "Prev. month missing"}
-    </p>
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3-3" strokeLinecap="round" />
+    </svg>
   );
 }
 
-/**
- * Client-side name filter over the already-loaded client list — no server
- * request per keystroke, since the full list is already on the page (this
- * app's client counts are small, capped at 10 on Starter / unlimited on
- * Professional, so filtering in the browser is simpler than adding a
- * search API route for what's realistically a few dozen rows at most).
- */
-export function ClientList({ clients }: { clients: ClientListItem[] }) {
+function ClientAvatar({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        className="h-11 w-11 shrink-0 rounded-lg border border-dash-border bg-white object-contain p-1"
+      />
+    );
+  }
+  return (
+    <div
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dash-border bg-dash-bg text-[17px] font-bold text-dash-accent"
+      aria-hidden="true"
+    >
+      {getClientInitial(name)}
+    </div>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-[15px]">
+      <span className="shrink-0 text-dash-ink-secondary">{label}</span>
+      <span className="text-right font-medium text-dash-ink">{children}</span>
+    </div>
+  );
+}
+
+function StatusChip({
+  tone,
+  label,
+  title,
+}: {
+  tone: "neutral" | "good" | "warn" | "info";
+  label: string;
+  title?: string;
+}) {
+  const toneClass =
+    tone === "good"
+      ? "border-emerald-800/50 bg-emerald-950/40 text-emerald-200"
+      : tone === "warn"
+        ? "border-amber-800/50 bg-amber-950/40 text-amber-200"
+        : tone === "info"
+          ? "border-sky-800/50 bg-sky-950/40 text-sky-200"
+          : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium ${toneClass}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${
+          tone === "good" ? "bg-emerald-400" : tone === "warn" ? "bg-amber-400" : tone === "info" ? "bg-sky-400" : "bg-dash-ink-secondary"
+        }`}
+      />
+      {label}
+    </span>
+  );
+}
+
+function ClientCard({ client }: { client: ClientListItem }) {
+  const budget = formatMonthlyBudget(client.currency, client.monthlyBudget);
+  const prevMonth = getPreviousMonthListStatus(
+    client.hasPreviousMonthData,
+    client.previousMonthDataUpdatedAt,
+    client.timezone,
+  );
+  const lastType = formatReportTypeLabel(client.lastReportType);
+
+  return (
+    <article className="flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/50">
+      <div className="flex items-start gap-3 border-b border-dash-border bg-dash-sidebar/20 px-5 py-4">
+        <ClientAvatar name={client.accountName} logoUrl={client.logoUrl} />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
+            {client.accountName}
+          </h3>
+          <p className="mt-0.5 text-[15px] text-dash-ink-secondary" title={client.timezone}>
+            {formatClientCurrencyLine(client.currency, client.timezone)}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2.5 px-5 py-4">
+        <DetailRow label="Last report">
+          {client.lastReportAt ? (
+            <span title={formatAbsoluteReportDate(client.lastReportAt)}>
+              {lastType ? `${lastType} · ` : ""}
+              {formatRelativeReportDate(client.lastReportAt)}
+            </span>
+          ) : (
+            <span className="text-dash-ink-secondary">None yet</span>
+          )}
+        </DetailRow>
+        <DetailRow label="Total reports">{client.reportCount}</DetailRow>
+        {budget ? <DetailRow label="Monthly budget">{budget}</DetailRow> : null}
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-t border-dash-border px-5 py-3">
+        <StatusChip
+          tone={prevMonth.status === "current" ? "good" : "warn"}
+          label={prevMonth.label}
+          title={prevMonth.title}
+        />
+        <StatusChip
+          tone={client.hasGa4Property ? "info" : "neutral"}
+          label={client.hasGa4Property ? "GA4 linked" : "GA4 not linked"}
+          title={
+            client.hasGa4Property
+              ? client.ga4PropertyName ?? "Google Analytics property linked on Manage."
+              : "Link a Google Analytics property on Manage for website reports."
+          }
+        />
+      </div>
+
+      <div className="mt-auto flex gap-3 border-t border-dash-border px-5 py-4">
+        <Link
+          href={`/clients/${client.id}/reports/new`}
+          className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+        >
+          Generate Report
+        </Link>
+        <Link
+          href={`/clients/${client.id}`}
+          className="flex-1 rounded-md border border-dash-border bg-dash-bg px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-border/40"
+        >
+          Manage
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+export function ClientList({ clients, totalCount }: { clients: ClientListItem[]; totalCount: number }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -160,21 +285,12 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
-  // Adjust state during render (React's recommended alternative to an
-  // effect for this) rather than after commit, so the page never briefly
-  // renders out of range. Keeps `page` in range whenever the filtered
-  // count shrinks — e.g. a client is deleted (the list refreshes with one
-  // fewer item) and the current page no longer exists, so we fall back to
-  // the new last page rather than showing an empty grid.
   const [prevTotalPages, setPrevTotalPages] = useState(totalPages);
   if (totalPages !== prevTotalPages) {
     setPrevTotalPages(totalPages);
     setPage((p) => Math.min(p, totalPages));
   }
 
-  // Runs after the clamp above (statement order also decides precedence
-  // here), so a search keystroke always wins and resets to page 1 rather
-  // than just clamping into range.
   const [prevSearch, setPrevSearch] = useState(search);
   if (search !== prevSearch) {
     setPrevSearch(search);
@@ -186,67 +302,56 @@ export function ClientList({ clients }: { clients: ClientListItem[] }) {
   return (
     <div>
       <div className="relative mb-6 max-w-md">
+        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-dash-ink-secondary">
+          <SearchIcon />
+        </span>
         <input
-          type="text"
+          type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search clients..."
+          placeholder="Search by client name…"
           aria-label="Search clients"
-          className="w-full rounded-md border border-dash-border bg-dash-card px-3.5 py-2.5 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent"
+          className="w-full rounded-lg border border-dash-border bg-dash-card py-2.5 pl-10 pr-10 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent"
         />
-        {search && (
+        {search ? (
           <button
             type="button"
             onClick={() => setSearch("")}
             aria-label="Clear search"
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-dash-ink-secondary hover:text-dash-ink"
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-dash-ink-secondary hover:bg-dash-border hover:text-dash-ink"
           >
             ×
           </button>
-        )}
+        ) : null}
       </div>
 
+      {search && filtered.length > 0 ? (
+        <p className="mb-4 text-[14px] text-dash-ink-secondary">
+          {filtered.length} of {totalCount} client{totalCount === 1 ? "" : "s"} match &ldquo;{search.trim()}&rdquo;
+        </p>
+      ) : null}
+
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-dash-border p-10 text-center">
-          <p className="text-[15px] text-dash-ink-secondary">No clients found matching your search.</p>
+        <div className="rounded-xl border border-dashed border-dash-border bg-dash-card/40 p-10 text-center">
+          <p className="text-[16px] text-dash-ink-secondary">No clients match your search.</p>
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="mt-3 text-[15px] font-medium text-dash-accent underline hover:no-underline"
+          >
+            Clear search
+          </button>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {paginated.map((client) => (
-              <div
-                key={client.id}
-                className="flex flex-col rounded-lg border border-dash-border bg-dash-card p-6 transition-colors hover:border-dash-accent/60"
-              >
-                <div>
-                  <h3 className="text-[18px] font-bold text-dash-ink">{client.accountName}</h3>
-                  <p className="mt-2 text-[13px] text-dash-ink-secondary">
-                    {client.currency} · {client.timezone}
-                  </p>
-                  <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatBudget(client.currency, client.monthlyBudget)}</p>
-                  <p className="mt-1 text-[13px] text-dash-ink-secondary">{formatLastReport(client.lastReportAt)}</p>
-                  <PreviousMonthDataStatus uploaded={client.hasPreviousMonthData} />
-                </div>
-                <div className="mt-5 flex gap-3">
-                  <Link
-                    href={`/clients/${client.id}/reports/new`}
-                    className="flex-1 rounded-md bg-[#f6ad55] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#d97706]"
-                  >
-                    Generate Report
-                  </Link>
-                  <Link
-                    href={`/clients/${client.id}`}
-                    className="flex-1 rounded-md bg-[#1e3a5f] px-4 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-[#2d4f7c]"
-                  >
-                    Manage
-                  </Link>
-                </div>
-              </div>
+              <ClientCard key={client.id} client={client} />
             ))}
           </div>
-          {totalPages > 1 && (
+          {totalPages > 1 ? (
             <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
-          )}
+          ) : null}
         </>
       )}
     </div>
