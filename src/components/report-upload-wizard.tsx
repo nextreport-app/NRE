@@ -35,6 +35,20 @@ import {
 } from "@/components/wizard-data-source-panel";
 import { useToast } from "@/components/toast";
 import { SupportTicketLink } from "@/components/support-ticket-link";
+import {
+  WizardGoogleGenerateBanner,
+  WizardPlatformBanner,
+  WizardPlatformSelectorIntro,
+  WizardPlatformSummaryLabel,
+} from "@/components/wizard-platform-banner";
+import {
+  getAdWizardFlow,
+  getVisibleWizardSteps,
+  getWizardStepHeading,
+  getWizardStepLabel,
+  getWizardStepSubtitle,
+  usesFullAdWizard,
+} from "@/lib/nre/platform-labels";
 
 // 5-screen wizard. Went 6 -> 3 -> 5 across two rounds: the 3-screen version
 // crammed campaign checkboxes + ad-set expand sections + the objective
@@ -1477,7 +1491,7 @@ export function ReportUploadWizard({
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
   useEffect(() => {
-    if (step !== 5 || platform !== "META") return;
+    if (step !== 5 || !usesFullAdWizard(platform)) return;
     // fetchPreview's first line sets state (previewStatus "loading") — a
     // microtask hop keeps that out of this effect's own synchronous call
     // stack, matching react-hooks/set-state-in-effect's expectations
@@ -1793,14 +1807,16 @@ export function ReportUploadWizard({
     );
   }
 
+  const wizardFlow = getAdWizardFlow(platform);
+
   return (
     <div className="space-y-6">
       <div>
         <p className="mb-0.5 text-[13px] font-semibold text-[#f6ad55]">{clientName}</p>
-        <h1 className="mb-1 text-[20px] font-bold text-white">{STEP_HEADINGS[step]}</h1>
-        <p className="text-[13px] text-dash-ink-secondary">{STEP_SUBTITLES[step]}</p>
+        <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(step, platform)}</h1>
+        <p className="text-[13px] text-dash-ink-secondary">{getWizardStepSubtitle(step, platform)}</p>
       </div>
-      <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} />
+      <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} flow={wizardFlow} />
 
       <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-2.5 text-[13px] text-dash-ink-secondary">
         Have an issue with this report?{" "}
@@ -1810,6 +1826,8 @@ export function ReportUploadWizard({
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
+          <WizardPlatformSelectorIntro />
+          {selectedPlatformCard && <WizardPlatformBanner platform={selectedPlatformCard} />}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <ReportTypeCard
               icon={<MetaAdsIcon />}
@@ -2545,7 +2563,7 @@ export function ReportUploadWizard({
               Back
             </button>
           </div>
-          {platform === "META" && (
+          {usesFullAdWizard(platform) && (
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
@@ -2581,8 +2599,13 @@ export function ReportUploadWizard({
                 }
                 selected={reportType === "CREATIVE"}
                 onSelect={() => handleReportTypeChange("CREATIVE")}
-                disabled={!hasAdLevelCsv}
+                disabled={!hasAdLevelCsv || platform === "TIKTOK"}
               />
+              {platform === "TIKTOK" && (
+                <p className="text-[12px] text-dash-ink-secondary">
+                  Creative reports require Meta-style ad-level exports — not available for TikTok yet.
+                </p>
+              )}
               <ReportTypeCard
                 icon="🔀"
                 heading="Comparison Report"
@@ -2810,8 +2833,9 @@ export function ReportUploadWizard({
               )}
 
               <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink-secondary">
-                Tip: Your CSV must cover both date ranges. Download a custom date range from Meta Ads Manager that
-                includes all dates from both periods.
+                Tip: Your CSV must cover both date ranges. Export a custom date range from{" "}
+                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes all dates from both
+                periods.
               </p>
             </section>
           )}
@@ -2860,6 +2884,8 @@ export function ReportUploadWizard({
               )}
             </div>
           )}
+
+          {platform === "GOOGLE" && <WizardGoogleGenerateBanner />}
 
           {(data || comparisonData) && (
             <>
@@ -2932,7 +2958,7 @@ export function ReportUploadWizard({
                     Template: <span className="text-[13px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
-                    Platform: <span className="text-[13px] text-white">{platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}</span>
+                    Platform: <WizardPlatformSummaryLabel platform={platform} />
                   </p>
                   <p className="text-[13px] text-[#94a3b8]">
                     Estimated slides: <span className="text-[13px] text-white">{estimatedSlideCount()}</span>
@@ -3416,12 +3442,14 @@ function StepIndicator({
   step,
   visitedSteps,
   onNavigate,
+  flow,
 }: {
   step: Step;
   visitedSteps: Set<Step>;
   onNavigate: (s: Step) => void;
+  flow: "full" | "simple";
 }) {
-  const steps: Step[] = [1, 2, 3, 4, 5];
+  const steps = getVisibleWizardSteps(flow);
   return (
     <div className="flex flex-wrap items-center gap-2 text-[12px]">
       {steps.map((s, i) => {
@@ -3435,7 +3463,7 @@ function StepIndicator({
                 className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-white"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
-                {STEP_LABELS[s]}
+                {getWizardStepLabel(s, flow)}
               </button>
             ) : (
               <span
@@ -3445,7 +3473,7 @@ function StepIndicator({
                     : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
                 }
               >
-                {STEP_LABELS[s]}
+                {getWizardStepLabel(s, flow)}
               </span>
             )}
             {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}

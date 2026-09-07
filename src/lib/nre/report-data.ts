@@ -367,6 +367,8 @@ export interface BuildReportDataInput {
   reportType?: ReportType;
   /** Ad name CSV header — when set, creative slides are built from primary raw rows. */
   adNameColumn?: string | null;
+  /** Persisted platform for PPTX labels and share page — defaults to META. */
+  platform?: Platform;
   /** Creative Performance Report — skips campaign/ad-set/chart/table slides. */
   creativeOnly?: boolean;
   now?: Date;
@@ -797,7 +799,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     campaignMetricOverrides,
     adNameColumn: adNameColumnInput,
     creativeOnly = false,
+    platform: platformInput,
   } = input;
+  const platform = platformInput ?? "META";
   const isMonthlyReport = reportType === "MONTHLY";
   const isDailyReport = reportType === "DAILY";
   const isCreativeReport = reportType === "CREATIVE" || creativeOnly;
@@ -894,7 +898,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const emptyRow = computeTableRow([], currencySymbol, false, new Map(), now, undefined, timezone);
     return {
       isPaused: !creative || creative.overviewSlides.length === 0,
-      platform: "META",
+      platform,
       reportType: "CREATIVE",
       cover: {
         accountName,
@@ -1113,7 +1117,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     return {
       isPaused: true,
-      platform: "META",
+      platform,
       reportType,
       cover,
       campaignSlides: [],
@@ -1632,7 +1636,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   return {
     isPaused: false,
-    platform: "META",
+    platform,
     reportType,
     cover,
     campaignSlides,
