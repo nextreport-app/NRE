@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
-    "NextReport automates Meta and Google Ads reporting for digital agencies — built to turn CSV exports and API sync into client-ready decks in minutes.",
+    "NextReport automates Meta Ads, Google Ads, and GA4 website reporting for digital agencies — built to turn CSV exports and API sync into client-ready decks in minutes.",
   path: "/about",
 });
 
@@ -17,14 +17,15 @@ const STORY_PARAGRAPHS = [
   "Every week, hours disappeared into the same repetitive task: downloading campaign CSVs, copying numbers into PowerPoint slides, writing the same campaign summaries, formatting the same tables. Not strategy. Data entry.",
   "The tools that existed were built for other markets — dollar pricing, enterprise features, complex setup. Nothing was built for how Indian agencies actually work, or for the reality of managing US client accounts from India.",
   "So NextReport was built.",
-  "It reads your Meta Ads and Google Ads CSV exports, detects what each campaign was trying to achieve, selects the right metrics automatically, and generates a branded PowerPoint report with AI-written insights — in under 2 minutes.",
+  "It reads your Meta Ads, Google Ads, and GA4 exports, detects what each campaign was trying to achieve, selects the right metrics automatically, and generates a branded PowerPoint report with AI-written insights — in under 2 minutes.",
+  "TikTok Ads reporting is our fourth and final platform before official launch — built for US and global accounts, with the same wizard and template quality you already get for Meta.",
   "The goal is simple: less time on formatting, more time on strategy.",
 ];
 
 const STATS = [
   "Under 2 minutes per report",
-  "Meta Ads and Google Ads supported",
-  "Weekly, monthly and comparison reports",
+  "Meta Ads, Google Ads & GA4 supported",
+  "TikTok Ads reporting launching soon",
 ];
 
 export default async function AboutPage() {
@@ -62,7 +63,8 @@ export default async function AboutPage() {
             <h2 className="text-2xl font-semibold text-accent-orange">Our Mission</h2>
             <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-secondary">
               To give every digital agency in India the same reporting power that large agencies have — fast,
-              professional, branded reports that let you focus on strategy instead of spreadsheets.
+              professional, branded reports across Meta Ads, Google Ads, GA4 website analytics, and soon TikTok Ads,
+              so you can focus on strategy instead of spreadsheets.
             </p>
           </div>
         </section>

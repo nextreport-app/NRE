@@ -6,9 +6,12 @@ export const SITE_NAME = "NextReport";
 export const DEFAULT_KEYWORDS = [
   "meta ads reporting tool",
   "google ads reporting tool",
+  "ga4 reporting tool",
+  "google analytics 4 reporting",
   "automated ad reporting",
   "meta reporting automated",
   "google ads reporting automated",
+  "website traffic reporting",
   "csv to ppt",
   "csv to pdf",
   "meta ads csv to powerpoint",
@@ -17,6 +20,7 @@ export const DEFAULT_KEYWORDS = [
   "digital marketing reports",
   "meta marketing api",
   "google ads api sync",
+  "tiktok ads reporting",
 ] as const;
 
 export type SitemapEntry = {
@@ -92,7 +96,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: "hello@nextreport.in",
       description:
-        "Automated Meta and Google Ads reporting for digital agencies — client-ready decks, browser share links, and PDF exports in under two minutes.",
+        "Automated Meta Ads, Google Ads, and GA4 website reporting for digital agencies — client-ready decks, browser share links, and PDF exports in under two minutes.",
     },
     {
       "@type": "WebSite",
@@ -115,14 +119,16 @@ export const HOME_JSON_LD = {
         description: "Starter plan from $8/month with 7-day free trial",
       },
       description:
-        "Connect Meta or Google Ads via API or upload a CSV to generate client-ready PowerPoint reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Connect Meta Ads, Google Ads, or GA4 via API — or upload a CSV — to generate client-ready PowerPoint reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
         "Meta Marketing API sync",
         "Google Ads API sync",
+        "Google Analytics 4 website reporting",
         "CSV to PowerPoint",
         "CSV to PDF",
         "Live browser share link",
         "AI campaign summaries",
+        "TikTok Ads reporting (coming soon)",
       ],
     },
   ],

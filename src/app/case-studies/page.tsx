@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Case Studies — NextReport",
-  description: "How agencies use NextReport to automate Meta and Google Ads client reporting.",
+  description: "How agencies use NextReport to automate Meta Ads, Google Ads, and GA4 client reporting.",
 };
 
 const CASE_STUDIES = [

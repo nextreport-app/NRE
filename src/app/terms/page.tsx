@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "NextReport terms of service for agencies using automated Meta and Google Ads reporting.",
+  description: "NextReport terms of service for agencies using automated Meta Ads, Google Ads, and GA4 reporting.",
   path: "/terms",
 });
 

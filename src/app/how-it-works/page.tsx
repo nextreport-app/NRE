@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Getting Started",
   description:
-    "Learn how NextReport works — connect Meta or Google Ads via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.",
+    "Learn how NextReport works — connect Meta Ads, Google Ads, or GA4 via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.",
   path: "/how-it-works",
 });
 
@@ -36,7 +36,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     title: "Connect or upload",
-    body: "Choose Sync from API (Meta Marketing API or Google Ads API) or upload a Last 30 Days CSV. Meta users can also add an optional Previous Month CSV for the overview row.",
+    body: "Choose Sync from API (Meta Marketing API, Google Ads API, or GA4 Data API) or upload a CSV export. Meta users can also add an optional Previous Month CSV for the overview row.",
   },
   {
     title: "Select campaigns",
@@ -130,7 +130,7 @@ export default async function HowItWorksPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              Official API sync or CSV upload — client-ready reports in under 2 minutes
+              Official API sync or CSV upload — ad and website reports in under 2 minutes
             </p>
           </div>
         </section>
@@ -139,9 +139,9 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport syncs with Meta&apos;s Marketing API and Google&apos;s Ads API. Connect in Account
-              Settings and choose <span className="text-white">Sync from API</span> in the wizard — no CSV needed.
-              Prefer a manual export? CSV upload works the same way it always has.
+              NextReport syncs with Meta&apos;s Marketing API, Google&apos;s Ads API, and GA4&apos;s Data API. Connect in
+              Account Settings and choose <span className="text-white">Sync from API</span> in the wizard — no CSV
+              needed. Prefer a manual export? CSV upload works the same way it always has.
             </p>
             {loggedIn ? (
               <p className="mt-3 text-sm">
@@ -150,6 +150,15 @@ export default async function HowItWorksPage() {
                 </Link>
               </p>
             ) : null}
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white">Website Traffic (GA4)</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
+              From any client page, open <span className="text-white">Website Traffic Report</span> to generate a GA4
+              deck — sessions, channels, landing pages, device and geo breakdowns, and more. Connect GA4 in Account
+              Settings, link a property to the client, then choose API sync or upload a GA4 CSV export.
+            </p>
           </section>
 
           <section>

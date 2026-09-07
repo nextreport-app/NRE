@@ -33,7 +33,8 @@ const PLANS: Plan[] = [
       "Unlimited report generation",
       "Meta Ads — Marketing API sync",
       "Google Ads — API sync",
-      "CSV upload — Meta & Google exports",
+      "GA4 website reporting — API sync",
+      "CSV upload — Meta, Google & GA4 exports",
       "AI-written campaign summaries & insights",
       "PowerPoint and Google Slides export",
       "Live browser share link for clients",
@@ -53,7 +54,7 @@ const PLANS: Plan[] = [
     features: [
       "Unlimited client accounts",
       "Everything in Starter",
-      "Meta & Google API sync for every client",
+      "Meta, Google Ads & GA4 API sync for every client",
       "Live browser share link & PDF on every report",
       "Priority email support",
       "Early access to new features",

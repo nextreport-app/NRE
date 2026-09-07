@@ -29,11 +29,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Automated Meta & Google Ads Reporting`,
+    default: `${SITE_NAME} — Automated Ad & Website Reporting`,
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Client-ready Meta and Google Ads reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser link, and PDF export with AI insights.",
+    "Client-ready Meta Ads, Google Ads, and GA4 website reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser link, and PDF export with AI insights.",
   keywords: [...DEFAULT_KEYWORDS],
   openGraph: {
     type: "website",
