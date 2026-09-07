@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getPlanDisplayName } from "@/lib/plan-labels";
 
 export const SITE_URL = "https://nextreport.in";
 export const SITE_NAME = "NextReport";
