@@ -12,12 +12,13 @@
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { HistoricalReportData } from "../nre/historical-report-data";
+import { historicalSlideShareKey } from "../nre/share-report";
 import type { WebsiteReportData } from "../nre/website-report-data";
 import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-report-config";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
-import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
+import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 import { buildLegendSlideXml } from "./legend-slide";
@@ -360,11 +361,12 @@ export interface RenderHistoricalPptxInput {
   agencyName?: string | null;
   clientLogo?: ImageAsset | null;
   isLightTemplate?: boolean;
+  aiCopyBySlideKey?: Map<string, AiCopy>;
 }
 
-/** Multi-Month Historical — cover + one campaign slide per month (no chart/table/ad-sets). */
+/** Multi-Month Historical — cover, campaign + month-total slides, and a final comparison table. */
 export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
+  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false, aiCopyBySlideKey } = input;
   const template = await loadTemplate(templateBuffer);
   const hasAgencyName = !!agencyName?.trim();
 
@@ -409,16 +411,30 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     });
   } else {
     for (const slide of data.slides) {
+      const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "MONTHLY", data.platform),
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform),
         rels: template.campaign.rels,
       });
       if (slide.additionalMetricsSlide) {
         slides.push({
-          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "MONTHLY", data.platform, true),
+          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform, true),
           rels: template.campaign.rels,
         });
       }
+    }
+
+    if (data.comparisonRows.length > 0) {
+      slides.push({
+        xml: buildHistoricalTableSlideXml(
+          template.table,
+          data.comparisonRows,
+          data.tableHeaderLabels,
+          isLightTemplate,
+          data.platform,
+        ),
+        rels: template.table.rels,
+      });
     }
   }
 

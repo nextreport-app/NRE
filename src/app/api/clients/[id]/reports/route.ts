@@ -8,7 +8,7 @@ import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import type { Platform } from "@/lib/nre/google-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
-import { buildShareReportData } from "@/lib/nre/share-report";
+import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
@@ -18,7 +18,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
-import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
@@ -409,6 +409,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const fileName = `Multi-Month Report - ${historicalData.monthsLabel}.pptx`.replace(/[\s/]/g, "_");
 
     let historicalReport;
+    const shareToken = generateShareToken();
     try {
       historicalReport = await prisma.report.create({
         data: {
@@ -418,6 +419,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           platform: platform === "TIKTOK" ? "TIKTOK" : "META",
           fileName,
           displayName: defaultReportDisplayName("HISTORICAL", null, null, historicalData.monthsLabel),
+          shareToken,
           summaryJson: JSON.stringify({
             isPaused: historicalData.isPaused,
             monthsLabel: historicalData.monthsLabel,
@@ -447,13 +449,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         agencyName: user?.agencyName,
         clientLogo,
         isLightTemplate: client.template === "LIGHT",
+        aiCopyBySlideKey: buildHistoricalAiCopyMap(historicalData.slides),
       });
 
       const filePath = await saveReportFile(historicalReport.id, pptxBuffer);
 
+      const aiCopyMap = buildHistoricalAiCopyMap(historicalData.slides);
+      const shareData = buildHistoricalShareReportData(historicalData, aiCopyMap, new Date(), {
+        agencyName: user?.agencyName,
+      });
+      const shareWithArchive = {
+        ...shareData,
+        _renderArchive: {
+          historicalData,
+          aiCopy: Object.fromEntries(aiCopyMap),
+          reportTitle,
+          agencyName: user?.agencyName ?? null,
+          isLightTemplate: client.template === "LIGHT",
+        },
+      };
+
       await prisma.report.update({
         where: { id: historicalReport.id },
-        data: { status: "COMPLETE", filePath, shareToken: generateShareToken() },
+        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive) },
       });
 
       const updatedHistorical = await prisma.report.findUnique({
@@ -467,14 +485,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         client,
         report: {
           id: historicalReport.id,
-          shareToken: updatedHistorical?.shareToken ?? null,
+          shareToken: updatedHistorical?.shareToken ?? shareToken,
           reportType: "HISTORICAL",
           platform: platform === "TIKTOK" ? "TIKTOK" : "META",
           displayName: updatedHistorical?.displayName ?? historicalReport.displayName,
         },
       });
 
-      return NextResponse.json({ ok: true, reportId: historicalReport.id });
+      return NextResponse.json({
+        ok: true,
+        reportId: historicalReport.id,
+        shareToken: updatedHistorical?.shareToken ?? shareToken,
+      });
     } catch (err) {
       console.error("[api:reports:generate] historical report failed:", err);
       const message = err instanceof Error ? err.message : "Report generation failed.";

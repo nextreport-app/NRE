@@ -267,6 +267,17 @@ export function validateHistoricalCsvCoverage(
   return { valid: true };
 }
 
+/**
+ * Anchor `now` for a complete historical calendar month so splitMtdDaily's
+ * "calendar yesterday" falls on that month's last day (not the day before).
+ * E.g. May 2026 → Jun 1 noon UTC → yesterday = May 31.
+ */
+export function historicalMonthNowAnchor(endIso: string): Date {
+  const [year, month, day] = endIso.split("-").map(Number);
+  const nextDay = addDays({ year, month, day }, 1);
+  return new Date(`${toIsoDate(nextDay)}T12:00:00Z`);
+}
+
 /** Filters parsed CSV rows to an inclusive ISO date window. */
 export function filterNreRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
   const startTs = Date.parse(range.startIso + "T00:00:00Z");

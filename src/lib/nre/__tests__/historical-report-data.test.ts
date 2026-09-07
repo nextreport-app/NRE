@@ -1,21 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { computeHistoricalMonthRanges, validateHistoricalCsvCoverage } from "../date-range";
-import { buildHistoricalReportData, validateHistoricalReportInput } from "../historical-report-data";
+import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistoricalReportInput } from "../historical-report-data";
+import { buildHistoricalShareReportData } from "../share-report";
+import { buildHistoricalSlideCopy } from "../historical-slide-copy";
 import type { NreRow } from "../columns";
 
-function dailyRow(iso: string, campaign: string, spend: string): NreRow {
+function dailyRow(iso: string, campaign: string, spend: string, results = "5"): NreRow {
   return {
     campaign_name: campaign,
     ad_set_name: "Set 1",
     spend,
     reach: "100",
     impressions: "1000",
-    results: "5",
+    results,
     ctr: "1",
     cpc: "0.5",
     date_start: iso,
     date_end: iso,
-    _raw: { Day: iso, Spend: spend },
+    _raw: { Day: iso, Spend: spend, Results: results, "Result type": "Website leads" },
   };
 }
 
@@ -34,7 +36,7 @@ describe("computeHistoricalMonthRanges", () => {
 });
 
 describe("buildHistoricalReportData", () => {
-  it("builds one slide per campaign per month with month headers", () => {
+  it("builds campaign slides, month totals, and comparison rows", () => {
     const fullRows: NreRow[] = [];
     for (const month of [5, 6, 7, 8]) {
       fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-01`, "Shoes", "10"));
@@ -57,10 +59,42 @@ describe("buildHistoricalReportData", () => {
     });
 
     expect(data.isPaused).toBe(false);
-    expect(data.slides).toHaveLength(4);
+    expect(data.slides).toHaveLength(8);
+    expect(data.slides.filter((s) => s.isMonthTotal)).toHaveLength(4);
+    expect(data.comparisonRows).toHaveLength(4);
     expect(data.slides[0].performanceHeader).toBe("YOUR MAY PERFORMANCE REPORT");
-    expect(data.slides[3].performanceHeader).toBe("YOUR AUGUST PERFORMANCE REPORT");
-    expect(data.slides.every((s) => s.campaignName === "Shoes")).toBe(true);
+    expect(data.slides[0].isMonthTotal).toBeFalsy();
+    expect(data.slides[1].isMonthTotal).toBe(true);
+    expect(data.slides[1].performanceHeader).toBe("YOUR MAY MONTH TOTAL");
+
+    const copy = buildHistoricalSlideCopy(data.slides[0]);
+    expect(copy.insights).toBe("Historical data.");
+    expect(copy.summary).toContain("Shoes spent");
+
+    const share = buildHistoricalShareReportData(data, buildHistoricalAiCopyMap(data.slides));
+    expect(share.reportType).toBe("HISTORICAL");
+    expect(share.campaigns).toHaveLength(8);
+    expect(share.campaigns[0].slideReportTypeLabel).toBe("May Performance Report");
+    expect(share.historicalComparisonRows).toHaveLength(4);
+    expect(share.visibility?.combinedTotal).toBe(true);
+  });
+
+  it("excludes campaigns under $10 spend for that month", () => {
+    const rows: NreRow[] = [
+      dailyRow("2026-05-01", "Tiny", "0.50"),
+      dailyRow("2026-05-15", "Big", "15"),
+    ];
+    const data = buildHistoricalReportData({
+      accountName: "Acme",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      monthCount: 1,
+      now: new Date("2026-06-07T12:00:00Z"),
+    });
+    const campaignSlides = data.slides.filter((s) => !s.isMonthTotal);
+    expect(campaignSlides.map((s) => s.campaignName)).toEqual(["Big"]);
   });
 });
 

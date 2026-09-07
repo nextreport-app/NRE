@@ -6,7 +6,7 @@
  */
 
 import { additionalMetricsHeading } from "../nre/available-metrics";
-import { buildCombinedTotalTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
+import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
 import {
   cloneShapeAsTag,
@@ -57,6 +57,7 @@ const CAMPAIGN_NAME_CANDIDATE_SIZES_PT = [20, 18, 16];
 // always renders at this size regardless of how long the name itself is.
 const TYPE_LABEL_SIZE_PT = 17;
 const CAMPAIGN_LABEL_COLOR = "f6ad55"; // amber — primary accent, matches the donut ring/summary-bar amber elsewhere in the deck
+const MONTH_TOTAL_LABEL_COLOR = "38bdf8"; // sky blue — distinct badge for month-level totals in historical reports
 const AD_SET_LABEL_COLOR = "63b3ed"; // light blue — secondary accent, visually distinct from the campaign label at a glance
 // Round L — the muted-grey report-type header ("YOUR WEEKLY/MONTHLY
 // PERFORMANCE REPORT") reads at the SAME size as every other slide's own
@@ -452,8 +453,15 @@ export function buildCampaignOrAdSetSlideXml(
         ? slide.adSetName
           ? adGroupOrSetLabel
           : null
-        : " (Campaign)";
-  const typeLabelColor = isAdSetKind ? AD_SET_LABEL_COLOR : CAMPAIGN_LABEL_COLOR;
+        : slide.kind === "campaign" && slide.isMonthTotal
+          ? " (Month Total)"
+          : " (Campaign)";
+  const typeLabelColor =
+    slide.kind === "campaign" && slide.isMonthTotal
+      ? MONTH_TOTAL_LABEL_COLOR
+      : isAdSetKind
+        ? AD_SET_LABEL_COLOR
+        : CAMPAIGN_LABEL_COLOR;
 
   // Small "Paused"/"Inactive" badge right after the name (and after the
   // type label, if present) — null (no badge at all) for active
@@ -707,6 +715,32 @@ export function buildPausedSlideXml(
  * data fact, computed independently of reportType), but hiding the MTD row
  * too in that case would leave zero data rows on the slide.
  */
+
+/** Multi-Month Historical — one row per calendar month on the Combined Total template. */
+export function buildHistoricalTableSlideXml(
+  template: TemplateSlide,
+  rows: TableRowData[],
+  headers: TableHeaderLabels,
+  isLightTemplate = false,
+  platform: Platform = "META",
+): string {
+  if (platform === "GOOGLE") {
+    throw new Error("Historical comparison table is not supported for Google Ads yet.");
+  }
+  const grid = buildHistoricalComparisonTableGrid(rows, headers);
+  const xml = fillCombinedTotalTable(template.xml, grid, {
+    hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
+    isLightTemplate,
+  });
+  let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
+    bold: true,
+    sizePt: REPORT_HEADER_SIZE_PT,
+    color: REPORT_HEADER_COLOR,
+  });
+  out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", "MULTI-MONTH PERFORMANCE OVERVIEW");
+  return out;
+}
+
 export function buildTableSlideXml(
   template: TemplateSlide,
   periodRow: TableRowData,
