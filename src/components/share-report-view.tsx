@@ -21,7 +21,9 @@ import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons"
  */
 
 export function reportTypeLabel(data: ShareReportData): string {
-  return data.reportType === "MONTHLY" ? "Monthly Performance Report" : "Weekly Performance Report";
+  if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
+  if (data.reportType === "MONTHLY") return "Monthly Performance Report";
+  return "Weekly Performance Report";
 }
 
 /** Reuses the same category resolution the PPT metric cards use (metric-icons.ts) — its 7 categories map 1:1 onto public/metric-icons/*.png, except "cost" (a per-unit currency metric like COST PER LEAD), which has no cost.png and instead shares the cost-per-result.png art. */
@@ -172,7 +174,7 @@ function CampaignCard({
     <SlideCard>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1 overflow-hidden">
-          <CardReportTypeLabel label={reportType} />
+          <CardReportTypeLabel label={campaign.slideReportTypeLabel ?? reportType} />
           <h3 className="box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]">
             {campaign.campaignName}
             <span className="text-accent-orange" style={{ fontSize: "14px", fontWeight: 400 }}>
@@ -328,7 +330,7 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
       ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels)
       : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
 
-  const hidePeriodRow = data.reportType === "MONTHLY" || !data.periodRow.hasData;
+  const hidePeriodRow = data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const [headerRow, mtdRow, periodRow] = grid;
 

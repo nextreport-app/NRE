@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeHistoricalMonthRanges, validateHistoricalCsvCoverage } from "../date-range";
 import { buildHistoricalReportData, validateHistoricalReportInput } from "../historical-report-data";
+import { buildHistoricalShareReportData } from "../share-report";
 import type { NreRow } from "../columns";
 
 function dailyRow(iso: string, campaign: string, spend: string): NreRow {
@@ -61,6 +62,11 @@ describe("buildHistoricalReportData", () => {
     expect(data.slides[0].performanceHeader).toBe("YOUR MAY PERFORMANCE REPORT");
     expect(data.slides[3].performanceHeader).toBe("YOUR AUGUST PERFORMANCE REPORT");
     expect(data.slides.every((s) => s.campaignName === "Shoes")).toBe(true);
+
+    const share = buildHistoricalShareReportData(data);
+    expect(share.reportType).toBe("HISTORICAL");
+    expect(share.campaigns).toHaveLength(4);
+    expect(share.campaigns[0].slideReportTypeLabel).toBe("May Performance Report");
   });
 });
 

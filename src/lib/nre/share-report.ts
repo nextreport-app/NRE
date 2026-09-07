@@ -38,6 +38,7 @@ import type {
 import { freqLine } from "./report-data";
 import type { DynamicMetricValue } from "./dynamic-metrics";
 import type { DeliveryStatusIndicator } from "./delivery-status";
+import type { HistoricalReportData } from "./historical-report-data";
 
 export interface ShareCampaignData {
   campaignName: string;
@@ -47,6 +48,8 @@ export interface ShareCampaignData {
   adFrequency: string;
   statusIndicator: DeliveryStatusIndicator;
   metrics: DynamicMetricValue[];
+  /** Multi-Month Historical — per-slide type line above the campaign name. */
+  slideReportTypeLabel?: string;
   aiSummary: string;
   aiInsights: string;
 }
@@ -142,7 +145,7 @@ export interface ShareReportData {
   version: 1;
   accountName: string;
   platform: Platform;
-  reportType: ReportType;
+  reportType: ReportType | "HISTORICAL";
   isPaused: boolean;
   pausedMessage: string | null;
   fileDateRange: string;
@@ -297,6 +300,87 @@ export function buildShareReportData(
     agencyName: extras.agencyName ?? null,
     generatedAt: now.toISOString(),
     visibility: defaultShareVisibility({ campaigns, adSets }),
+    publishedAt: null,
+  };
+}
+
+const EMPTY_TABLE_ROW: TableRowData = {
+  hasData: false,
+  monthLabel: "—",
+  fullMonthLabel: "—",
+  monthName: null,
+  sameMonthAsCurrentMTD: false,
+  spend: "—",
+  reach: "—",
+  impressions: "—",
+  ctr: "—",
+  cpc: "—",
+  resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT", value: "0", cprValue: "—" }],
+};
+
+/** Stable share/review key for a historical month slide — must match regenerate-report.ts lookups. */
+export function historicalSlideShareKey(slide: CampaignSlideData): string {
+  const month = slide.ai.dateRange || "Month";
+  return `${month} — ${slide.campaignName}`;
+}
+
+function historicalSlideReportTypeLabel(performanceHeader?: string): string | undefined {
+  if (!performanceHeader) return undefined;
+  return performanceHeader
+    .replace(/^YOUR /, "")
+    .replace(/ PERFORMANCE REPORT$/, " Performance Report");
+}
+
+/** Share-page payload for Multi-Month Historical reports — parallel to buildShareReportData. */
+export function buildHistoricalShareReportData(
+  data: HistoricalReportData,
+  now: Date = new Date(),
+  extras: ShareReportExtras = {},
+): ShareReportData {
+  const campaigns: ShareCampaignData[] = data.slides.map((slide) => ({
+    campaignName: historicalSlideShareKey(slide),
+    resultLabel: slide.resultLabel,
+    dateRange: slide.dateRangeLine.split("\n")[0]?.trim() ?? slide.dateRangeLine,
+    adFrequency: adFrequencyLabel(slide.avgFreq),
+    statusIndicator: slide.statusIndicator,
+    metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
+    slideReportTypeLabel: historicalSlideReportTypeLabel(slide.performanceHeader),
+    aiSummary: "",
+    aiInsights: "",
+  }));
+
+  return {
+    version: 1,
+    accountName: data.accountName,
+    platform: data.platform,
+    reportType: "HISTORICAL",
+    isPaused: data.isPaused,
+    pausedMessage: data.isPaused ? "No campaign spend found in the selected months." : null,
+    fileDateRange: data.monthsLabel,
+    cover: {
+      reportDate: data.reportDate,
+      dateRange: data.monthsLabel,
+      healthBadge: "Multi-Month",
+      healthScore: 0,
+      budgetSummary: "",
+    },
+    campaigns,
+    adSets: [],
+    chart: null,
+    tableHeaderLabels: { resultColumns: [] },
+    periodRow: EMPTY_TABLE_ROW,
+    mtdRow: EMPTY_TABLE_ROW,
+    metricGuide: [],
+    agencyName: extras.agencyName ?? null,
+    generatedAt: now.toISOString(),
+    visibility: {
+      cover: true,
+      overview: false,
+      combinedTotal: false,
+      metricGuide: false,
+      campaigns: Object.fromEntries(campaigns.map((c) => [c.campaignName, true])),
+      adSets: {},
+    },
     publishedAt: null,
   };
 }

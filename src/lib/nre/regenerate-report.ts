@@ -8,7 +8,9 @@ import type { ShareReportData, ShareVisibility } from "./share-report";
 import { defaultShareVisibility } from "./share-report";
 import { applyShareEditsToReportData } from "./apply-share-edits";
 import type { AiCopy } from "../pptx/fill-tags";
-import { renderPptx } from "../pptx/render";
+import type { HistoricalReportData } from "./historical-report-data";
+import { historicalSlideShareKey } from "./share-report";
+import { renderHistoricalPptx, renderPptx } from "../pptx/render";
 import type { ImageAsset } from "../pptx/embed-image";
 
 export interface RenderArchive {
@@ -20,7 +22,20 @@ export interface RenderArchive {
   agencyName?: string | null;
 }
 
-export type ShareReportWithArchive = ShareReportData & { _renderArchive?: RenderArchive };
+export interface HistoricalRenderArchive {
+  historicalData: HistoricalReportData;
+  reportTitle?: string | null;
+  agencyName?: string | null;
+  isLightTemplate: boolean;
+}
+
+export type ShareReportWithArchive = ShareReportData & {
+  _renderArchive?: RenderArchive | HistoricalRenderArchive;
+};
+
+function isHistoricalArchive(archive: RenderArchive | HistoricalRenderArchive): archive is HistoricalRenderArchive {
+  return "historicalData" in archive;
+}
 
 export function mergeShareCopyIntoAiMap(share: ShareReportData, base: Record<string, AiCopy>): Map<string, AiCopy> {
   const map = new Map<string, AiCopy>(Object.entries(base));
@@ -42,6 +57,23 @@ export async function regeneratePptxFromShare(
   if (!archive) {
     throw new Error("This report cannot be regenerated — generate a new report to enable PPT sync.");
   }
+
+  if (isHistoricalArchive(archive)) {
+    const visibility: ShareVisibility = share.visibility ?? defaultShareVisibility(share);
+    const slides = archive.historicalData.slides.filter(
+      (slide) => visibility.campaigns[historicalSlideShareKey(slide)] !== false,
+    );
+
+    return renderHistoricalPptx({
+      templateBuffer,
+      data: { ...archive.historicalData, slides, isPaused: slides.length === 0 },
+      reportTitle: archive.reportTitle,
+      agencyName: archive.agencyName,
+      clientLogo,
+      isLightTemplate: archive.isLightTemplate,
+    });
+  }
+
   const visibility: ShareVisibility = share.visibility ?? defaultShareVisibility(share);
   const aiCopyBySlideKey = mergeShareCopyIntoAiMap(share, archive.aiCopy);
   const data = applyShareEditsToReportData(archive.reportData, share);
