@@ -36,8 +36,8 @@ export function formatClientTimezone(iana: string): string {
   return segment ? segment.replace(/_/g, " ") : iana;
 }
 
-export function formatClientCurrencyLine(currency: Currency, timezone: string): string {
-  return `${currency} · ${formatClientTimezone(timezone)}`;
+export function formatClientCurrency(currency: Currency): string {
+  return currency;
 }
 
 export function formatReportTypeLabel(reportType: string | null | undefined): string | null {

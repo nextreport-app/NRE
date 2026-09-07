@@ -16,17 +16,10 @@ export default async function ClientsPage() {
           currency: true,
           timezone: true,
           monthlyBudget: true,
-          logoUrl: true,
           ga4PropertyId: true,
           ga4PropertyName: true,
           previousMonthDataUrl: true,
           previousMonthDataUpdatedAt: true,
-          _count: { select: { reports: true } },
-          reports: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: { createdAt: true, reportType: true },
-          },
         },
       })
     : [];
@@ -37,10 +30,6 @@ export default async function ClientsPage() {
     currency: c.currency,
     timezone: c.timezone,
     monthlyBudget: c.monthlyBudget,
-    logoUrl: c.logoUrl,
-    reportCount: c._count.reports,
-    lastReportAt: c.reports[0]?.createdAt.toISOString() ?? null,
-    lastReportType: c.reports[0]?.reportType ?? null,
     hasPreviousMonthData: !!c.previousMonthDataUrl,
     previousMonthDataUpdatedAt: c.previousMonthDataUpdatedAt?.toISOString() ?? null,
     hasGa4Property: !!c.ga4PropertyId,

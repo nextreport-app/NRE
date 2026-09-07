@@ -12,24 +12,49 @@ import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
+import { getPreviousMonthListStatus } from "@/lib/client-display";
+import { purgeExpiredReports, REPORT_RETENTION_DAYS } from "@/lib/report-retention";
 
-const REPORT_HISTORY_LIMIT = 10;
+const RECENT_REPORTS_LIMIT = 5;
 
-function CardHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-4 border-b border-dash-border pb-3 text-[16px] font-semibold text-dash-ink">{children}</h2>;
+function CardHeading({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="mb-4 border-b border-dash-border pb-3">
+      <h2 className="text-[17px] font-semibold text-dash-ink">{children}</h2>
+      {hint ? <p className="mt-1 text-[14px] text-dash-ink-secondary">{hint}</p> : null}
+    </div>
+  );
 }
 
-/** `accent` marks the single most important card on the page (Generate New Report). */
 function Card({ children, accent = false, id }: { children: React.ReactNode; accent?: boolean; id?: string }) {
   return (
     <section
       id={id}
       className={
-        "rounded-lg border border-dash-border bg-dash-card p-4 sm:p-5" + (accent ? " border-l-4 border-l-dash-accent" : "")
+        "rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5" +
+        (accent ? " border-l-4 border-l-dash-accent" : "")
       }
     >
       {children}
     </section>
+  );
+}
+
+function SetupStatusChip({
+  tone,
+  label,
+}: {
+  tone: "good" | "warn" | "neutral";
+  label: string;
+}) {
+  const cls =
+    tone === "good"
+      ? "border-emerald-800/50 bg-emerald-950/30 text-emerald-200"
+      : tone === "warn"
+        ? "border-amber-800/50 bg-amber-950/30 text-amber-200"
+        : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[13px] font-medium ${cls}`}>{label}</span>
   );
 }
 
@@ -42,6 +67,8 @@ export default async function ClientDetailPage({
   const session = await auth();
   if (!session?.user) notFound();
 
+  await purgeExpiredReports().catch(() => undefined);
+
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
@@ -49,7 +76,7 @@ export default async function ClientDetailPage({
     prisma.report.findMany({
       where: { clientId: client.id },
       orderBy: { createdAt: "desc" },
-      take: REPORT_HISTORY_LIMIT,
+      take: RECENT_REPORTS_LIMIT,
     }),
     prisma.report.count({ where: { clientId: client.id } }),
     prisma.user.findUnique({
@@ -58,11 +85,6 @@ export default async function ClientDetailPage({
     }),
   ]);
 
-  // Part 1 — re-parsed server-side on every page load (rather than stored)
-  // so the checkbox list's full universe always matches the file's actual
-  // current contents, even if it was replaced outside this render. A
-  // corrupt/unreadable file (rare — it already passed this same parse at
-  // upload time) degrades to an empty list rather than failing the page.
   let previousMonthCampaigns: string[] = [];
   if (client.previousMonthDataUrl) {
     try {
@@ -82,6 +104,12 @@ export default async function ClientDetailPage({
       })()
     : null;
 
+  const prevMonth = getPreviousMonthListStatus(
+    !!client.previousMonthDataUrl,
+    client.previousMonthDataUpdatedAt?.toISOString() ?? null,
+    client.timezone,
+  );
+
   const reportItems = reports.map((r) => ({
     id: r.id,
     fileName: r.fileName,
@@ -95,20 +123,65 @@ export default async function ClientDetailPage({
   }));
 
   return (
-    <div className="mx-auto max-w-[800px]">
-      <div className="mb-4">
-        <Link href="/clients" className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6">
+        <Link href="/clients" className="text-[15px] text-dash-ink-secondary hover:text-dash-ink">
           ← Back to Clients
         </Link>
+        <h1 className="mt-2 truncate text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
+        <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{client.currency}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <SetupStatusChip
+            tone={prevMonth.status === "current" ? "good" : "warn"}
+            label={prevMonth.label}
+          />
+          <SetupStatusChip
+            tone={client.ga4PropertyId ? "good" : "neutral"}
+            label={client.ga4PropertyId ? "GA4 linked" : "GA4 not linked"}
+          />
+        </div>
       </div>
 
-      {/* Single linear column, same order and full width on every screen
-          size (mobile just gets smaller card padding via Card's p-4 sm:p-5)
-          — no responsive column/order logic needed since this layout never
-          branches by breakpoint. */}
       <div className="space-y-4">
+        <Card accent>
+          <CardHeading hint="Meta, Google Ads, TikTok, and Google Analytics — all in one wizard.">
+            Generate report
+          </CardHeading>
+          <Link
+            href={`/clients/${client.id}/reports/new`}
+            className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          >
+            Generate Report
+          </Link>
+        </Card>
+
+        <Card id="previous-month-data">
+          <CardHeading hint="Optional — adds a previous-month row on Monthly overview slides.">
+            Previous month data
+          </CardHeading>
+          <PreviousMonthDataUpload
+            clientId={client.id}
+            initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
+            initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+            initialCampaigns={previousMonthCampaigns}
+            initialSelectedCampaigns={previousMonthSelectedCampaigns}
+          />
+        </Card>
+
+        <Card id="website-analytics">
+          <CardHeading hint="Required only for Google Analytics reports.">
+            Google Analytics
+          </CardHeading>
+          <Ga4PropertyPicker
+            clientId={client.id}
+            initialPropertyId={client.ga4PropertyId}
+            initialPropertyName={client.ga4PropertyName}
+            ga4Connected={!!owner?.ga4RefreshToken || !!owner?.ga4Enabled}
+          />
+        </Card>
+
         <Card>
-          <CardHeading>Client Settings</CardHeading>
+          <CardHeading>Client settings</CardHeading>
           <ClientForm
             clientId={client.id}
             initial={{
@@ -125,70 +198,35 @@ export default async function ClientDetailPage({
             submitFullWidth
             inline
           />
-          <div className="mt-4">
+          <div className="mt-4 space-y-2 border-t border-dash-border pt-4">
             <ResetObjectiveMemoryButton clientId={client.id} />
-          </div>
-          <div className="mt-4">
+            <DuplicateClientButton clientId={client.id} clientName={client.accountName} />
             <DeleteClientButton clientId={client.id} />
           </div>
-          <div className="mt-2">
-            <DuplicateClientButton clientId={client.id} clientName={client.accountName} />
-          </div>
         </Card>
 
-        <Card id="previous-month-data">
-          <CardHeading>Previous Month Data</CardHeading>
-          <PreviousMonthDataUpload
-            clientId={client.id}
-            initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
-            initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
-            initialCampaigns={previousMonthCampaigns}
-            initialSelectedCampaigns={previousMonthSelectedCampaigns}
-          />
-        </Card>
-
-        <Card id="website-analytics">
-          <CardHeading>Website Analytics (GA4)</CardHeading>
-          <Ga4PropertyPicker
-            clientId={client.id}
-            initialPropertyId={client.ga4PropertyId}
-            initialPropertyName={client.ga4PropertyName}
-            ga4Connected={!!owner?.ga4RefreshToken || !!owner?.ga4Enabled}
-          />
-        </Card>
-
-        <Card accent>
-          <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
-          <p className="text-[15px] text-dash-ink-secondary">
-            Meta, Google Ads, and TikTok campaign reports share one wizard. GA4 website traffic uses a separate flow
-            below.
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Link
-              href={`/clients/${client.id}/reports/new`}
-              className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+        {reportCount > 0 ? (
+          <Card>
+            <CardHeading
+              hint={`Showing the latest ${RECENT_REPORTS_LIMIT}. Reports auto-delete after ${REPORT_RETENTION_DAYS} days.`}
             >
-              Meta · Google · TikTok Ads
-            </Link>
-            <Link
-              href={`/clients/${client.id}/reports/website/new`}
-              className="block w-full rounded-md border border-dash-border px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-card"
-            >
-              Google Analytics
-            </Link>
-          </div>
-          <p className="mt-3 text-[12px] text-dash-ink-secondary">
-            Meta and TikTok use the full 5-step wizard. Google Ads uses a faster 2-step flow.{" "}
-            <Link href="/help/download" className="text-dash-accent underline hover:text-dash-accent-hover">
-              CSV export guide →
-            </Link>
-          </p>
-        </Card>
-
-        <Card>
-          <CardHeading>Recent Downloaded Reports ({reportItems.length})</CardHeading>
-          <ReportHistoryList clientId={client.id} initialReports={reportItems} hasMoreReports={reportCount > reportItems.length} />
-        </Card>
+              Recent reports
+            </CardHeading>
+            <ReportHistoryList
+              clientId={client.id}
+              initialReports={reportItems}
+              hasMoreReports={reportCount > reportItems.length}
+            />
+            {reportCount > reportItems.length ? (
+              <Link
+                href={`/clients/${client.id}/reports`}
+                className="mt-4 inline-block text-[15px] font-medium text-dash-accent underline hover:no-underline"
+              >
+                View all {reportCount} reports →
+              </Link>
+            ) : null}
+          </Card>
+        ) : null}
       </div>
     </div>
   );

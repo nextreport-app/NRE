@@ -4,12 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Currency } from "@/generated/prisma/enums";
 import {
-  formatAbsoluteReportDate,
-  formatClientCurrencyLine,
+  formatClientCurrency,
   formatMonthlyBudget,
-  formatRelativeReportDate,
-  formatReportTypeLabel,
-  getClientInitial,
   getPreviousMonthListStatus,
 } from "@/lib/client-display";
 
@@ -121,10 +117,6 @@ interface ClientListItem {
   currency: Currency;
   timezone: string;
   monthlyBudget: number | null;
-  logoUrl: string | null;
-  reportCount: number;
-  lastReportAt: string | null;
-  lastReportType: string | null;
   hasPreviousMonthData: boolean;
   previousMonthDataUpdatedAt: string | null;
   hasGa4Property: boolean;
@@ -137,35 +129,6 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="7" />
       <path d="M20 20l-3-3" strokeLinecap="round" />
     </svg>
-  );
-}
-
-function ClientAvatar({ name, logoUrl }: { name: string; logoUrl: string | null }) {
-  if (logoUrl) {
-    return (
-      <img
-        src={logoUrl}
-        alt=""
-        className="h-11 w-11 shrink-0 rounded-lg border border-dash-border bg-white object-contain p-1"
-      />
-    );
-  }
-  return (
-    <div
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dash-border bg-dash-bg text-[17px] font-bold text-dash-accent"
-      aria-hidden="true"
-    >
-      {getClientInitial(name)}
-    </div>
-  );
-}
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-3 text-[15px]">
-      <span className="shrink-0 text-dash-ink-secondary">{label}</span>
-      <span className="text-right font-medium text-dash-ink">{children}</span>
-    </div>
   );
 }
 
@@ -210,38 +173,17 @@ function ClientCard({ client }: { client: ClientListItem }) {
     client.previousMonthDataUpdatedAt,
     client.timezone,
   );
-  const lastType = formatReportTypeLabel(client.lastReportType);
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/50">
-      <div className="flex items-start gap-3 border-b border-dash-border bg-dash-sidebar/20 px-5 py-4">
-        <ClientAvatar name={client.accountName} logoUrl={client.logoUrl} />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
-            {client.accountName}
-          </h3>
-          <p className="mt-0.5 text-[15px] text-dash-ink-secondary" title={client.timezone}>
-            {formatClientCurrencyLine(client.currency, client.timezone)}
-          </p>
-        </div>
+      <div className="border-b border-dash-border px-5 py-4">
+        <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
+          {client.accountName}
+        </h3>
+        <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{formatClientCurrency(client.currency)}</p>
       </div>
 
-      <div className="space-y-2.5 px-5 py-4">
-        <DetailRow label="Last report">
-          {client.lastReportAt ? (
-            <span title={formatAbsoluteReportDate(client.lastReportAt)}>
-              {lastType ? `${lastType} · ` : ""}
-              {formatRelativeReportDate(client.lastReportAt)}
-            </span>
-          ) : (
-            <span className="text-dash-ink-secondary">None yet</span>
-          )}
-        </DetailRow>
-        <DetailRow label="Total reports">{client.reportCount}</DetailRow>
-        {budget ? <DetailRow label="Monthly budget">{budget}</DetailRow> : null}
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-t border-dash-border px-5 py-3">
+      <div className="flex flex-wrap gap-2 px-5 py-3">
         <StatusChip
           tone={prevMonth.status === "current" ? "good" : "warn"}
           label={prevMonth.label}
@@ -253,9 +195,12 @@ function ClientCard({ client }: { client: ClientListItem }) {
           title={
             client.hasGa4Property
               ? client.ga4PropertyName ?? "Google Analytics property linked on Manage."
-              : "Link a Google Analytics property on Manage for website reports."
+              : "Link Google Analytics on Manage for website reports."
           }
         />
+        {budget ? (
+          <StatusChip tone="neutral" label={budget} title="Monthly ad spend budget set on Manage." />
+        ) : null}
       </div>
 
       <div className="mt-auto flex gap-3 border-t border-dash-border px-5 py-4">

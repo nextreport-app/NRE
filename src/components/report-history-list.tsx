@@ -24,7 +24,7 @@ function weekPeriodLabel(r: ReportHistoryItem): string {
 }
 
 /**
- * Fix 1 — the client detail page's report history, capped to the 10 most
+ * Fix 1 — the client detail page's report history, capped to the 5 most
  * recent reports server-side (see clients/[id]/page.tsx's own query,
  * `take: 10` ordered newest-first) — this component only ever renders what
  * it's handed, it doesn't re-filter or re-sort.
