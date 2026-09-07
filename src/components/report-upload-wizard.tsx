@@ -40,6 +40,12 @@ import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { WizardGoogleGenerateBanner, WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import {
+  Ga4BrandIcon,
+  GoogleAdsBrandIcon,
+  MetaAdsBrandIcon,
+  TikTokAdsBrandIcon,
+} from "@/components/platform-brand-icons";
+import {
   getAdWizardFlow,
   getVisibleWizardSteps,
   getWizardStepHeading,
@@ -1859,7 +1865,7 @@ export function ReportUploadWizard({
       <div className="space-y-6">
         <div>
           <p className="mb-0.5 text-[15px] font-semibold text-[#f6ad55]">{clientName}</p>
-          <h1 className="mb-1 text-[22px] font-bold text-white">Website traffic (GA4)</h1>
+          <h1 className="mb-1 text-[22px] font-bold text-white">Google Analytics</h1>
           <p className="text-[15px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
         <button
@@ -1912,32 +1918,36 @@ export function ReportUploadWizard({
           <h3 className="text-[18px] font-semibold text-white">Select platform</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ReportTypeCard
-              icon={<MetaAdsIcon />}
+              icon={<MetaAdsBrandIcon />}
               heading="Meta Ads"
               description="Sync via Marketing API or upload a CSV export"
               selected={selectedPlatformCard === "META"}
               onSelect={() => choosePlatform("META")}
+              singleLineHeading
             />
             <ReportTypeCard
-              icon={<GoogleAdsIcon />}
+              icon={<GoogleAdsBrandIcon />}
               heading="Google Ads"
               description="Sync via Ads API or upload a CSV export"
               selected={selectedPlatformCard === "GOOGLE"}
               onSelect={() => choosePlatform("GOOGLE")}
+              singleLineHeading
             />
             <ReportTypeCard
-              icon={<TikTokAdsIcon />}
+              icon={<TikTokAdsBrandIcon />}
               heading="TikTok Ads"
               description="Sync via Marketing API or upload a CSV export"
               selected={selectedPlatformCard === "TIKTOK"}
               onSelect={() => choosePlatform("TIKTOK")}
+              singleLineHeading
             />
             <ReportTypeCard
-              icon={<Ga4WebsiteIcon />}
-              heading="Website Traffic (GA4)"
-              description="Sessions, channels, and landing pages from GA4"
+              icon={<Ga4BrandIcon />}
+              heading="Google Analytics"
+              description="Sessions, channels, and landing pages"
               selected={false}
               onSelect={() => setWizardKind("website")}
+              singleLineHeading
             />
           </div>
 
@@ -3646,43 +3656,6 @@ function CopyIcon() {
   );
 }
 
-/** Meta Ads platform-selector icon — a plain solid blue circle, no text or brand glyphs. */
-function MetaAdsIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="20" cy="20" r="20" fill="#1877F2" />
-    </svg>
-  );
-}
-
-/** TikTok Ads — blue triangle (same accent family as Meta/Google icons). */
-function TikTokAdsIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <polygon points="20,4 36,36 4,36" fill="#4285F4" />
-    </svg>
-  );
-}
-
-/** GA4 website reports — blue triangle outline variant for distinction from TikTok. */
-function Ga4WebsiteIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <polygon points="20,6 34,34 6,34" fill="none" stroke="#4285F4" strokeWidth="3" />
-      <polygon points="20,12 28,30 12,30" fill="#4285F4" opacity="0.35" />
-    </svg>
-  );
-}
-
-/** Google Ads platform-selector icon — a plain solid blue rounded square, no text or brand glyphs. */
-function GoogleAdsIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect width="40" height="40" rx="8" fill="#4285F4" />
-    </svg>
-  );
-}
-
 /**
  * Renders NO_DATA_ROWS_MESSAGE's paragraph / bulleted-causes / numbered-steps
  * structure as real list markup instead of a wall of text — the message is
@@ -3800,6 +3773,7 @@ function ReportTypeCard({
   selected,
   onSelect,
   disabled = false,
+  singleLineHeading = false,
 }: {
   icon: ReactNode;
   heading: string;
@@ -3807,6 +3781,7 @@ function ReportTypeCard({
   selected: boolean;
   onSelect: () => void;
   disabled?: boolean;
+  singleLineHeading?: boolean;
 }) {
   return (
     <button
@@ -3825,7 +3800,11 @@ function ReportTypeCard({
       <span className="inline-flex text-2xl" aria-hidden="true">
         {icon}
       </span>
-      <p className="mt-2 text-[17px] font-semibold text-white">{heading}</p>
+      <p
+        className={`mt-2 text-[17px] font-semibold text-white${singleLineHeading ? " whitespace-nowrap" : ""}`}
+      >
+        {heading}
+      </p>
       <p className="mt-1 text-[15px] text-dash-ink-secondary">{description}</p>
     </button>
   );

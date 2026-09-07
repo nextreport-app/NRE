@@ -174,7 +174,7 @@ export default async function ClientDetailPage({
               href={`/clients/${client.id}/reports/website/new`}
               className="block w-full rounded-md border border-dash-border px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-card"
             >
-              Website Traffic (GA4)
+              Google Analytics
             </Link>
           </div>
           <p className="mt-3 text-[12px] text-dash-ink-secondary">
