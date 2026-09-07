@@ -43,7 +43,7 @@ function buildSlackBlocks(payload: ReportNotificationPayload) {
         : payload.platform === "TIKTOK"
           ? "TikTok Ads"
           : payload.platform === "GA4"
-            ? "GA4 Website"
+            ? "Google Analytics"
             : "Meta Ads"
     }`,
     `*Report:* ${payload.displayName ?? payload.reportType}`,

@@ -1865,7 +1865,7 @@ export function ReportUploadWizard({
       <div className="space-y-6">
         <div>
           <p className="mb-0.5 text-[15px] font-semibold text-[#f6ad55]">{clientName}</p>
-          <h1 className="mb-1 text-[22px] font-bold text-white">GA4 Website</h1>
+          <h1 className="mb-1 text-[22px] font-bold text-white">Google Analytics</h1>
           <p className="text-[15px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
         <button
@@ -1943,7 +1943,7 @@ export function ReportUploadWizard({
             />
             <ReportTypeCard
               icon={<Ga4BrandIcon />}
-              heading="GA4 Website"
+              heading="Google Analytics"
               description="Sessions, channels, and landing pages"
               selected={false}
               onSelect={() => setWizardKind("website")}
