@@ -3,14 +3,15 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { getPlanDisplayName } from "@/lib/plan-labels";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { CancelSubscriptionButton } from "@/components/cancel-subscription-button";
 
 const PLAN_LABELS: Record<string, string> = {
-  trial: "Free Trial",
-  starter: "Starter",
-  professional: "Professional",
-  cancelled: "Cancelled",
+  trial: getPlanDisplayName("trial"),
+  starter: getPlanDisplayName("starter"),
+  professional: getPlanDisplayName("professional"),
+  cancelled: getPlanDisplayName("cancelled"),
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -100,7 +101,7 @@ export default async function BillingPage() {
                 loggedIn
                 userEmail={user.email}
                 userName={user.name}
-                label="Subscribe to Starter"
+                label={`Subscribe to ${getPlanDisplayName("starter")}`}
                 className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
               />
               <SubscribeButton

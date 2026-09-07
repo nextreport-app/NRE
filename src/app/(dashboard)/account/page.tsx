@@ -8,15 +8,16 @@ import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { getPlanDisplayName } from "@/lib/plan-labels";
 import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { Ga4Settings } from "@/components/ga4-settings";
 import { TikTokAdsSettings } from "@/components/tiktok-ads-settings";
 
 const PLAN_LABELS: Record<string, string> = {
-  trial: "Free Trial",
-  starter: "Starter",
-  professional: "Professional",
-  cancelled: "Cancelled",
+  trial: getPlanDisplayName("trial"),
+  starter: getPlanDisplayName("starter"),
+  professional: getPlanDisplayName("professional"),
+  cancelled: getPlanDisplayName("cancelled"),
 };
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

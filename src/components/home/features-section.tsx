@@ -3,7 +3,7 @@ const FEATURES = [
     icon: "✅",
     title: "Official platform APIs",
     description:
-      "Meta Marketing API, Google Ads API, and GA4 Data API — connect your accounts and skip manual CSV exports.",
+      "Meta Marketing API, Google Ads API, TikTok Marketing API, and GA4 Data API — connect your accounts and skip manual CSV exports.",
   },
   {
     icon: "📈",
@@ -12,9 +12,15 @@ const FEATURES = [
       "Traffic, channels, landing pages, device and geo breakdowns — a full website performance deck alongside your ad reports.",
   },
   {
+    icon: "🎵",
+    title: "TikTok Ads reporting",
+    description:
+      "Campaign KPIs, spend, and results in the same branded template — API sync or CSV upload for US and global accounts.",
+  },
+  {
     icon: "🎯",
     title: "Auto-detects campaign objectives",
-    description: "Identifies leads, purchases, traffic, reach and more — for Meta and Google Ads campaigns.",
+    description: "Identifies leads, purchases, traffic, reach and more — for Meta, Google Ads, and TikTok campaigns.",
   },
   {
     icon: "🤖",
@@ -24,7 +30,8 @@ const FEATURES = [
   {
     icon: "📊",
     title: "CSV upload still supported",
-    description: "Prefer a manual export? Standard Meta, Google Ads, and GA4 CSVs work when the recommended columns are included.",
+    description:
+      "Prefer a manual export? Standard Meta, Google Ads, TikTok, and GA4 CSVs work when the recommended columns are included.",
   },
   {
     icon: "🔀",
@@ -36,11 +43,6 @@ const FEATURES = [
     title: "Share a browser link",
     description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
   },
-  {
-    icon: "🎵",
-    title: "TikTok Ads reporting",
-    description: "Our fourth platform — TikTok Ads reporting is in development and launching soon for US and global accounts.",
-  },
 ];
 
 export function FeaturesSection() {
@@ -51,7 +53,7 @@ export function FeaturesSection() {
           Everything you need to send better reports
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">
-          Meta Ads, Google Ads, GA4 website analytics — and TikTok Ads coming soon.
+          Meta Ads, Google Ads, TikTok Ads, and GA4 website analytics — one workflow for every platform.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

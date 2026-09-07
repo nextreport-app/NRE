@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import { SubscribeButton } from "./subscribe-button";
 
 const PLAN_OPTIONS = [
-  { id: "starter" as const, name: "Starter", priceInr: "₹699", priceUsd: "$8" },
-  { id: "professional" as const, name: "Professional", priceInr: "₹1,699", priceUsd: "$20" },
+  { id: "starter" as const, name: getPlanDisplayName("starter"), priceInr: "₹699", priceUsd: "$8" },
+  { id: "professional" as const, name: getPlanDisplayName("professional"), priceInr: "₹1,699", priceUsd: "$20" },
 ];
 
 /**

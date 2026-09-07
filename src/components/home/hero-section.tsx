@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
+import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -53,7 +54,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
-            Meta · Google Ads · GA4 · TikTok soon
+            Meta · Google Ads · TikTok · GA4
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
@@ -61,8 +62,8 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </h1>
 
           <p className="mt-5 text-lg text-ink-muted">
-            Meta Ads, Google Ads, and GA4 website analytics — connect via official API or upload a CSV. Same branded
-            PowerPoint your clients expect, with accurate data and AI-written insights. Share a live browser link or PDF.
+            {PLATFORM_LIST_SHORT} — connect via official API or upload a CSV. Same branded PowerPoint your clients
+            expect, with accurate data and AI-written insights. Share a live browser link or PDF.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
