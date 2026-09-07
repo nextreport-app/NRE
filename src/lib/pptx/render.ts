@@ -34,6 +34,7 @@ import {
   buildWebsiteAudienceSlideXml,
   buildWebsiteCampaignTableSlideXml,
   buildWebsiteChannelTableSlideXml,
+  buildWebsiteConversionEventsSlideXml,
   buildWebsiteConversionSlideXml,
   buildWebsiteCoverSlideXml,
   buildWebsiteDemographicsSlideXml,
@@ -43,6 +44,7 @@ import {
   buildWebsiteSlideRels,
   buildWebsiteSourceTableSlideXml,
   buildWebsiteTechTableSlideXml,
+  buildWebsiteTimeTableSlideXml,
   buildWebsiteTopPagesSlideXml,
 } from "./website-slides";
 
@@ -440,6 +442,27 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
   if (breakdowns.newVsReturning) {
     slides.push({
       xml: buildWebsiteAudienceSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.dayOfWeek) {
+    slides.push({
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Day of Week", "DAY", data.dayOfWeek),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.hourOfDay) {
+    slides.push({
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Hour", "HOUR", data.hourOfDay),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.conversionEvents) {
+    slides.push({
+      xml: buildWebsiteConversionEventsSlideXml(data, template.background),
       rels: tableRels,
     });
   }

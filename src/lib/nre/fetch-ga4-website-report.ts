@@ -269,6 +269,70 @@ async function fetchBrowserBreakdown(accessToken: string, propertyId: string, ra
   }));
 }
 
+async function fetchDayOfWeekBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
+  const response = await runGa4Report(accessToken, propertyId, {
+    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso) }],
+    dimensions: [{ name: "dayOfWeek" }],
+    metrics: [{ name: "sessions" }, { name: "engagementRate" }, { name: "conversions" }],
+    orderBys: [{ dimension: { dimensionName: "dayOfWeek" }, desc: false }],
+    limit: 7,
+  });
+
+  return parseGa4Rows(response, ["dayOfWeek"], ["sessions", "engagementRate", "conversions"]).map((row) => ({
+    label: String(row.dayOfWeek || "Unknown"),
+    sessions: Number(row.sessions ?? 0),
+    engagementRate: Number(row.engagementRate ?? 0),
+    conversions: Number(row.conversions ?? 0),
+  }));
+}
+
+async function fetchHourBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
+  const response = await runGa4Report(accessToken, propertyId, {
+    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso) }],
+    dimensions: [{ name: "hour" }],
+    metrics: [{ name: "sessions" }, { name: "engagementRate" }, { name: "conversions" }],
+    orderBys: [{ dimension: { dimensionName: "hour" }, desc: false }],
+    limit: 24,
+  });
+
+  return parseGa4Rows(response, ["hour"], ["sessions", "engagementRate", "conversions"]).map((row) => ({
+    label: String(row.hour ?? "0"),
+    sessions: Number(row.sessions ?? 0),
+    engagementRate: Number(row.engagementRate ?? 0),
+    conversions: Number(row.conversions ?? 0),
+  }));
+}
+
+async function fetchConversionEventsBreakdown(accessToken: string, propertyId: string, range: Ga4DateRange) {
+  const response = await runGa4Report(accessToken, propertyId, {
+    dateRanges: [{ startDate: toGa4Date(range.startIso), endDate: toGa4Date(range.endIso) }],
+    dimensions: [{ name: "eventName" }],
+    metrics: [{ name: "eventCount" }, { name: "sessions" }],
+    orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+    limit: 12,
+  });
+
+  return parseGa4Rows(response, ["eventName"], ["eventCount", "sessions"]).map((row) => {
+    const count = Number(row.eventCount ?? 0);
+    const sessions = Number(row.sessions ?? 0);
+    return {
+      event: String(row.eventName || "unknown"),
+      count,
+      sessions,
+      conversionRate: sessions > 0 ? count / sessions : 0,
+    };
+  });
+}
+
+async function safeBreakdown<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.warn(`[ga4:website-report] ${label} fetch failed:`, err instanceof Error ? err.message : err);
+    return fallback;
+  }
+}
+
 export async function fetchGa4WebsiteReport(input: {
   accessToken: string;
   propertyId: string;
@@ -297,6 +361,9 @@ export async function fetchGa4WebsiteReport(input: {
     audience,
     operatingSystems,
     browsers,
+    dayOfWeek,
+    hourOfDay,
+    conversionEvents,
   ] = await Promise.all([
     fetchOverviewTotals(accessToken, propertyId, currentRange, "current"),
     comparisonRange
@@ -306,15 +373,38 @@ export async function fetchGa4WebsiteReport(input: {
     breakdowns.topPages ? fetchTopPages(accessToken, propertyId, currentRange) : Promise.resolve([]),
     breakdowns.device ? fetchDeviceBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
     breakdowns.geo
-      ? fetchGeoBreakdown(accessToken, propertyId, currentRange, breakdowns.geoDimension)
+      ? safeBreakdown("geo", () => fetchGeoBreakdown(accessToken, propertyId, currentRange, breakdowns.geoDimension), [])
       : Promise.resolve([]),
-    breakdowns.campaigns ? fetchCampaignBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.sources ? fetchSourceBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.demographics ? fetchAgeBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.demographics ? fetchGenderBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.newVsReturning ? fetchAudienceBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.operatingSystem ? fetchOsBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
-    breakdowns.browser ? fetchBrowserBreakdown(accessToken, propertyId, currentRange) : Promise.resolve([]),
+    breakdowns.campaigns
+      ? safeBreakdown("campaigns", () => fetchCampaignBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.sources
+      ? safeBreakdown("sources", () => fetchSourceBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.demographics
+      ? safeBreakdown("age", () => fetchAgeBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.demographics
+      ? safeBreakdown("gender", () => fetchGenderBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.newVsReturning
+      ? safeBreakdown("audience", () => fetchAudienceBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.operatingSystem
+      ? safeBreakdown("os", () => fetchOsBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.browser
+      ? safeBreakdown("browser", () => fetchBrowserBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.dayOfWeek
+      ? safeBreakdown("dayOfWeek", () => fetchDayOfWeekBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.hourOfDay
+      ? safeBreakdown("hourOfDay", () => fetchHourBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
+    breakdowns.conversionEvents
+      ? safeBreakdown("events", () => fetchConversionEventsBreakdown(accessToken, propertyId, currentRange), [])
+      : Promise.resolve([]),
   ]);
 
   let clientKindOverride: WebsiteClientKind | undefined;
@@ -344,6 +434,9 @@ export async function fetchGa4WebsiteReport(input: {
     operatingSystems,
     browsers,
     topPages,
+    dayOfWeek,
+    hourOfDay,
+    conversionEvents,
     breakdowns,
   });
 }

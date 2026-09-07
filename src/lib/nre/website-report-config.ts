@@ -21,6 +21,9 @@ export interface WebsiteBreakdownOptions {
   browser: boolean;
   topPages: boolean;
   newVsReturning: boolean;
+  dayOfWeek: boolean;
+  hourOfDay: boolean;
+  conversionEvents: boolean;
 }
 
 export interface WebsiteReportConfig {
@@ -44,6 +47,9 @@ export const DEFAULT_WEBSITE_BREAKDOWNS: WebsiteBreakdownOptions = {
   browser: false,
   topPages: true,
   newVsReturning: false,
+  dayOfWeek: false,
+  hourOfDay: false,
+  conversionEvents: false,
 };
 
 export const DEFAULT_WEBSITE_REPORT_CONFIG: WebsiteReportConfig = {
@@ -54,7 +60,7 @@ export const DEFAULT_WEBSITE_REPORT_CONFIG: WebsiteReportConfig = {
 };
 
 /** Max optional breakdown slides (excludes cover, overview, conversions). */
-export const MAX_WEBSITE_BREAKDOWN_SLIDES = 8;
+export const MAX_WEBSITE_BREAKDOWN_SLIDES = 10;
 
 const BREAKDOWN_TOGGLE_KEYS: Array<keyof WebsiteBreakdownOptions> = [
   "device",
@@ -67,6 +73,9 @@ const BREAKDOWN_TOGGLE_KEYS: Array<keyof WebsiteBreakdownOptions> = [
   "browser",
   "topPages",
   "newVsReturning",
+  "dayOfWeek",
+  "hourOfDay",
+  "conversionEvents",
 ];
 
 function flag(value: boolean | string | null | undefined, defaultOn: boolean): boolean {
@@ -88,7 +97,9 @@ function parseDatePreset(value: unknown): WebsiteDatePreset {
 }
 
 function parseClientKind(value: unknown): WebsiteClientKindSetting {
-  if (value === "auto" || value === "lead_gen" || value === "ecommerce" || value === "content") return value;
+  if (value === "auto" || value === "lead_gen" || value === "ecommerce" || value === "content" || value === "saas") {
+    return value;
+  }
   return "auto";
 }
 
@@ -110,6 +121,9 @@ export function parseWebsiteBreakdownOptions(input: Record<string, unknown>): We
     browser: flag(input.browser as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.browser),
     topPages: flag(input.topPages as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.topPages),
     newVsReturning: flag(input.newVsReturning as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.newVsReturning),
+    dayOfWeek: flag(input.dayOfWeek as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.dayOfWeek),
+    hourOfDay: flag(input.hourOfDay as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.hourOfDay),
+    conversionEvents: flag(input.conversionEvents as boolean | string | null | undefined, DEFAULT_WEBSITE_BREAKDOWNS.conversionEvents),
   };
 }
 
@@ -157,6 +171,9 @@ export function estimateWebsiteSlideCount(
   if (breakdowns.browser) slides += 1;
   if (breakdowns.topPages && opts?.hasTopPagesData !== false) slides += 1;
   if (breakdowns.newVsReturning) slides += 1;
+  if (breakdowns.dayOfWeek) slides += 1;
+  if (breakdowns.hourOfDay) slides += 1;
+  if (breakdowns.conversionEvents) slides += 1;
   return slides;
 }
 
@@ -284,6 +301,9 @@ export function websiteConfigToQueryString(config: WebsiteReportConfig): string 
   if (b.browser) params.set("browser", "1");
   if (!b.topPages) params.set("topPages", "0");
   if (b.newVsReturning) params.set("newVsReturning", "1");
+  if (b.dayOfWeek) params.set("dayOfWeek", "1");
+  if (b.hourOfDay) params.set("hourOfDay", "1");
+  if (b.conversionEvents) params.set("conversionEvents", "1");
   if (config.clientKind !== "auto") params.set("clientKind", config.clientKind);
   if (!config.comparePreviousPeriod) params.set("compare", "0");
   params.set("datePreset", config.datePreset);
@@ -314,6 +334,9 @@ export function parseWebsiteReportConfigFromSearchParams(searchParams: URLSearch
     "browser",
     "topPages",
     "newVsReturning",
+    "dayOfWeek",
+    "hourOfDay",
+    "conversionEvents",
     "clientKind",
     "comparePreviousPeriod",
     "compare",

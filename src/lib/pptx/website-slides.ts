@@ -115,7 +115,9 @@ export function buildWebsiteConversionSlideXml(template: TemplateSlide, data: We
       ? "Ecommerce Performance"
       : data.clientKind === "lead_gen"
         ? "Conversions"
-        : "Content Engagement";
+        : data.clientKind === "saas"
+          ? "Product Sign-ups"
+          : "Content Engagement";
   const slide = metricSlideData(title, data.dateRangeLabel, data.conversionMetrics);
   return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true);
 }
@@ -539,6 +541,48 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
   });
 
   return buildBlankSlideXml(shapes);
+}
+
+export function buildWebsiteTimeTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  title: string,
+  nameHeader: string,
+  rows: WebsiteReportData["dayOfWeek"],
+): string {
+  const columns = [
+    { header: nameHeader, widthPt: 220, align: "l" as const },
+    { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
+    { header: "ENGAGEMENT", widthPt: 160, align: "ctr" as const },
+    { header: "CONVERSIONS", widthPt: 140, align: "ctr" as const },
+    { header: "CONV. RATE", widthPt: 120, align: "ctr" as const },
+  ];
+  const tableRows = rows.map((row) => [
+    truncateCell(row.label, 20),
+    row.sessionsLabel,
+    row.engagementRateLabel,
+    row.conversionsLabel,
+    row.conversionRateLabel,
+  ]);
+  if (tableRows.length === 0) tableRows.push([`No ${nameHeader.toLowerCase()} data`, "—", "—", "—", "—"]);
+  return buildSimpleTableSlide(title, data.dateRangeLabel, columns, tableRows, background);
+}
+
+export function buildWebsiteConversionEventsSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+  const columns = [
+    { header: "EVENT", widthPt: 300, align: "l" as const },
+    { header: "COUNT", widthPt: 120, align: "ctr" as const },
+    { header: "SESSIONS", widthPt: 120, align: "ctr" as const },
+    { header: "RATE", widthPt: 120, align: "ctr" as const },
+  ];
+  const rows = data.conversionEvents.map((row) => [
+    truncateCell(row.event, 40),
+    row.countLabel,
+    row.sessionsLabel,
+    row.conversionRateLabel,
+  ]);
+  if (rows.length === 0) rows.push(["No conversion events", "—", "—", "—"]);
+  return buildSimpleTableSlide("Conversion Events", data.dateRangeLabel, columns, rows, background);
 }
 
 export { buildWebsiteSlideRels };

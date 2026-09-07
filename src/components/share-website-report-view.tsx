@@ -246,6 +246,53 @@ export function ShareWebsiteReportView({
           />
         ) : null}
 
+        {breakdowns.dayOfWeek ? (
+          <SimpleTable
+            title="Sessions by Day of Week"
+            columns={["Day", "Sessions", "Engagement", "Conversions", "Conv. Rate"]}
+            rows={(data.dayOfWeek ?? []).length
+              ? (data.dayOfWeek ?? []).map((t) => [
+                  t.label,
+                  t.sessionsLabel,
+                  t.engagementRateLabel,
+                  t.conversionsLabel,
+                  t.conversionRateLabel,
+                ])
+              : [["No data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.hourOfDay ? (
+          <SimpleTable
+            title="Sessions by Hour"
+            columns={["Hour", "Sessions", "Engagement", "Conversions", "Conv. Rate"]}
+            rows={(data.hourOfDay ?? []).length
+              ? (data.hourOfDay ?? []).map((t) => [
+                  t.label,
+                  t.sessionsLabel,
+                  t.engagementRateLabel,
+                  t.conversionsLabel,
+                  t.conversionRateLabel,
+                ])
+              : [["No data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.conversionEvents ? (
+          <SimpleTable
+            title="Conversion Events"
+            columns={["Event", "Count", "Sessions", "Rate"]}
+            rows={(data.conversionEvents ?? []).length
+              ? (data.conversionEvents ?? []).map((e) => [
+                  e.event,
+                  e.countLabel,
+                  e.sessionsLabel,
+                  e.conversionRateLabel,
+                ])
+              : [["No events", "—", "—", "—"]]}
+          />
+        ) : null}
+
         {breakdowns.topPages && data.topPages.length > 0 ? (
           <SimpleTable
             title="Top Landing Pages"

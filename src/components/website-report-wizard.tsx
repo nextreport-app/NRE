@@ -13,8 +13,11 @@ import {
 import type { WebsiteReportData } from "@/lib/nre/website-report-data";
 import { useToast } from "@/components/toast";
 
+import type { WebsiteDataSource } from "@/lib/nre/website-report-resolve";
+
 type PreviewStatus = "idle" | "loading" | "error" | "ready";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
+type AnalyzeStatus = "idle" | "loading" | "error" | "ready";
 
 const DATE_PRESETS: Array<{ value: WebsiteDatePreset; label: string; description: string }> = [
   { value: "month_to_date", label: "Month to date", description: "Current calendar month through yesterday" },
@@ -28,6 +31,7 @@ const CLIENT_KIND_OPTIONS: Array<{ value: WebsiteClientKindSetting; label: strin
   { value: "lead_gen", label: "Lead generation", description: "Form submissions and conversions are primary" },
   { value: "ecommerce", label: "Ecommerce", description: "Revenue, transactions, and AOV are primary" },
   { value: "content", label: "Content / media", description: "Page views and engagement time are primary" },
+  { value: "saas", label: "SaaS / app", description: "Sign-ups, trials, and product engagement are primary" },
 ];
 
 const GEO_DIMENSIONS: Array<{ value: WebsiteGeoDimension; label: string }> = [
@@ -102,6 +106,21 @@ const BREAKDOWN_OPTIONS: Array<{
     label: "New vs returning visitors",
     description: "Audience health — first-time vs returning session split.",
   },
+  {
+    key: "dayOfWeek",
+    label: "Day of week",
+    description: "Which days drive the most sessions and conversions.",
+  },
+  {
+    key: "hourOfDay",
+    label: "Hour of day",
+    description: "Peak traffic hours — useful for ad scheduling and support staffing.",
+  },
+  {
+    key: "conversionEvents",
+    label: "Conversion events",
+    description: "Individual GA4 events (form_submit, purchase, sign_up, etc.) with counts.",
+  },
 ];
 
 /**
@@ -119,6 +138,10 @@ export function WebsiteReportWizard({
   ga4Connected: boolean;
 }) {
   const { showToast } = useToast();
+  const [dataSource, setDataSource] = useState<WebsiteDataSource>(ga4Connected && hasGa4Property ? "api" : "csv");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
+  const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
   const [config, setConfig] = useState<WebsiteReportConfig>(DEFAULT_WEBSITE_REPORT_CONFIG);
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -141,33 +164,82 @@ export function WebsiteReportWizard({
     [config.breakdowns],
   );
 
+  const canUseApi = ga4Connected && hasGa4Property;
+  const canPreview =
+    !tooManyBreakdowns &&
+    selectedBreakdownCount > 0 &&
+    (dataSource === "csv" ? csvFile !== null && analyzeStatus === "ready" : canUseApi);
+
   const fetchPreview = useCallback(async () => {
-    if (tooManyBreakdowns || selectedBreakdownCount === 0) return;
+    if (!canPreview) return;
     setPreviewStatus("loading");
     setPreviewError(null);
     try {
-      const res = await fetch(`/api/clients/${clientId}/website-report/preview${websiteConfigToQueryString(config)}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Preview failed");
-      setPreview(json.data as WebsiteReportData);
-      setSlideCount(json.slideCount ?? 0);
+      if (dataSource === "csv" && csvFile) {
+        const form = new FormData();
+        form.append("ga4Csv", csvFile);
+        form.append("config", JSON.stringify(config));
+        const res = await fetch(`/api/clients/${clientId}/website-report/preview`, { method: "POST", body: form });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Preview failed");
+        setPreview(json.data as WebsiteReportData);
+        setSlideCount(json.slideCount ?? 0);
+      } else {
+        const res = await fetch(`/api/clients/${clientId}/website-report/preview${websiteConfigToQueryString(config)}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Preview failed");
+        setPreview(json.data as WebsiteReportData);
+        setSlideCount(json.slideCount ?? 0);
+      }
       setPreviewStatus("ready");
     } catch (err) {
       setPreviewStatus("error");
       setPreviewError(err instanceof Error ? err.message : "Preview failed");
       setPreview(null);
     }
-  }, [clientId, config, tooManyBreakdowns, selectedBreakdownCount]);
+  }, [clientId, config, canPreview, dataSource, csvFile]);
 
   useEffect(() => {
-    if (hasGa4Property && ga4Connected && !tooManyBreakdowns && selectedBreakdownCount > 0) {
-      void fetchPreview();
-    }
-    if (tooManyBreakdowns || selectedBreakdownCount === 0) {
+    if (canPreview) void fetchPreview();
+    if (!canPreview) {
       setPreviewStatus("idle");
       setPreview(null);
     }
-  }, [hasGa4Property, ga4Connected, fetchPreview, tooManyBreakdowns, selectedBreakdownCount]);
+  }, [canPreview, fetchPreview]);
+
+  async function analyzeCsv(file: File) {
+    setAnalyzeStatus("loading");
+    setAnalyzeMessage(null);
+    setCsvFile(file);
+    resetGenerateState();
+    try {
+      const form = new FormData();
+      form.append("ga4Csv", file);
+      const res = await fetch(`/api/clients/${clientId}/website-report/analyze`, { method: "POST", body: form });
+      const json = await res.json();
+      if (!res.ok || !json.valid) {
+        throw new Error(json.errors?.[0]?.message ?? json.error ?? "CSV validation failed");
+      }
+      const dims = (json.detectedDimensions as string[]) ?? [];
+      setAnalyzeMessage(
+        `CSV OK — ${json.rowCount} rows${dims.length ? `, dimensions: ${dims.join(", ")}` : ""}${
+          json.dateBounds ? `, dates ${json.dateBounds.startIso} – ${json.dateBounds.endIso}` : ""
+        }`,
+      );
+      if (json.dateBounds && config.datePreset === "custom") {
+        setConfig((prev) => ({
+          ...prev,
+          startIso: json.dateBounds.startIso,
+          endIso: json.dateBounds.endIso,
+        }));
+      }
+      setAnalyzeStatus("ready");
+    } catch (err) {
+      setAnalyzeStatus("error");
+      setAnalyzeMessage(err instanceof Error ? err.message : "CSV analysis failed");
+      setCsvFile(null);
+    }
+  }
 
   function resetGenerateState() {
     setGenerateStatus("idle");
@@ -193,17 +265,26 @@ export function WebsiteReportWizard({
   }
 
   async function handleGenerate() {
-    if (tooManyBreakdowns || selectedBreakdownCount === 0) return;
+    if (!canPreview) return;
     setGenerateStatus("loading");
     setGenerateError(null);
     setDownloadUrl(null);
     setShareToken(null);
     try {
-      const res = await fetch(`/api/clients/${clientId}/website-report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
+      let res: Response;
+      if (dataSource === "csv" && csvFile) {
+        const form = new FormData();
+        form.append("ga4Csv", csvFile);
+        form.append("config", JSON.stringify(config));
+        form.append("dataSource", "csv");
+        res = await fetch(`/api/clients/${clientId}/website-report`, { method: "POST", body: form });
+      } else {
+        res = await fetch(`/api/clients/${clientId}/website-report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...config, dataSource: "api" }),
+        });
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Generation failed");
       setDownloadUrl(json.downloadUrl ?? null);
@@ -216,7 +297,7 @@ export function WebsiteReportWizard({
     }
   }
 
-  if (!ga4Connected) {
+  if (dataSource === "api" && !ga4Connected) {
     return (
       <div className="rounded-lg border border-dash-border bg-dash-card p-6">
         <h2 className="text-[18px] font-semibold text-dash-ink">Website Traffic Report</h2>
@@ -229,11 +310,18 @@ export function WebsiteReportWizard({
         >
           Connect Google Analytics
         </Link>
+        <button
+          type="button"
+          onClick={() => setDataSource("csv")}
+          className="mt-3 block text-[13px] text-dash-accent underline"
+        >
+          Or upload a GA4 CSV export instead
+        </button>
       </div>
     );
   }
 
-  if (!hasGa4Property) {
+  if (dataSource === "api" && !hasGa4Property) {
     return (
       <div className="rounded-lg border border-dash-border bg-dash-card p-6">
         <h2 className="text-[18px] font-semibold text-dash-ink">Website Traffic Report</h2>
@@ -246,6 +334,13 @@ export function WebsiteReportWizard({
         >
           Link GA4 property
         </Link>
+        <button
+          type="button"
+          onClick={() => setDataSource("csv")}
+          className="mt-3 block text-[13px] text-dash-accent underline"
+        >
+          Or upload a GA4 CSV export instead
+        </button>
       </div>
     );
   }
@@ -260,6 +355,68 @@ export function WebsiteReportWizard({
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
           Configure date range, website type, and breakdown slides — then generate a client-ready PPT, share link, and PDF.
         </p>
+      </div>
+
+      {/* Data source */}
+      <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Data source</h2>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={!canUseApi}
+            onClick={() => {
+              setDataSource("api");
+              resetGenerateState();
+            }}
+            className={`rounded-md px-4 py-2 text-[13px] font-semibold ${
+              dataSource === "api"
+                ? "bg-dash-accent text-dash-ink"
+                : "border border-dash-border bg-dash-bg text-dash-ink-secondary hover:text-dash-ink disabled:opacity-40"
+            }`}
+          >
+            Sync from GA4 API
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDataSource("csv");
+              resetGenerateState();
+            }}
+            className={`rounded-md px-4 py-2 text-[13px] font-semibold ${
+              dataSource === "csv"
+                ? "bg-dash-accent text-dash-ink"
+                : "border border-dash-border bg-dash-bg text-dash-ink-secondary hover:text-dash-ink"
+            }`}
+          >
+            Upload GA4 CSV
+          </button>
+        </div>
+        {dataSource === "csv" ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-[13px] text-dash-ink-secondary">
+              Export from GA4 Reports or Explore with Sessions plus any breakdown dimensions you want (channel, device,
+              city, campaign, etc.).
+            </p>
+            <input
+              type="file"
+              accept=".csv,.tsv,.txt,.xlsx,.xls,.ods"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void analyzeCsv(file);
+              }}
+              className="block w-full text-[13px] text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[13px] file:font-semibold file:text-dash-ink"
+            />
+            {analyzeStatus === "loading" ? (
+              <p className="text-[13px] text-dash-ink-secondary">Analyzing CSV…</p>
+            ) : analyzeMessage ? (
+              <p className={`text-[13px] ${analyzeStatus === "error" ? "text-red-300" : "text-dash-accent"}`}>
+                {analyzeMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 text-[13px] text-dash-ink-secondary">Pulls live data from the GA4 property linked to this client.</p>
+        )}
       </div>
 
       {/* Date range */}
@@ -434,8 +591,8 @@ export function WebsiteReportWizard({
       {/* Preview */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Preview</h2>
-        {tooManyBreakdowns || selectedBreakdownCount === 0 ? (
-          <p className="mt-3 text-[14px] text-dash-ink-secondary">Adjust selections above to load a preview.</p>
+        {tooManyBreakdowns || selectedBreakdownCount === 0 || (dataSource === "csv" && analyzeStatus !== "ready") ? (
+          <p className="mt-3 text-[14px] text-dash-ink-secondary">Complete the steps above to load a preview.</p>
         ) : previewStatus === "loading" ? (
           <p className="mt-3 text-[14px] text-dash-ink-secondary">Loading GA4 data…</p>
         ) : previewError ? (
@@ -509,12 +666,7 @@ export function WebsiteReportWizard({
           <button
             type="button"
             onClick={() => void handleGenerate()}
-            disabled={
-              previewStatus !== "ready" ||
-              generateStatus === "loading" ||
-              tooManyBreakdowns ||
-              selectedBreakdownCount === 0
-            }
+            disabled={previewStatus !== "ready" || generateStatus === "loading" || !canPreview}
             className="mt-4 h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40 sm:w-auto sm:px-8"
           >
             {generateStatus === "loading" ? "Generating…" : "Generate Website Traffic Report"}

@@ -74,6 +74,21 @@ export interface ShareWebsiteTechRow {
   conversionsLabel: string;
 }
 
+export interface ShareWebsiteTimeRow {
+  label: string;
+  sessionsLabel: string;
+  engagementRateLabel: string;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
+export interface ShareWebsiteConversionEventRow {
+  event: string;
+  countLabel: string;
+  sessionsLabel: string;
+  conversionRateLabel: string;
+}
+
 export interface ShareWebsiteReportData {
   version: 1;
   kind: "website";
@@ -95,6 +110,9 @@ export interface ShareWebsiteReportData {
   audience?: ShareWebsiteAudienceRow[];
   operatingSystems?: ShareWebsiteTechRow[];
   browsers?: ShareWebsiteTechRow[];
+  dayOfWeek?: ShareWebsiteTimeRow[];
+  hourOfDay?: ShareWebsiteTimeRow[];
+  conversionEvents?: ShareWebsiteConversionEventRow[];
   topPages: ShareWebsitePageRow[];
   breakdowns?: WebsiteBreakdownOptions & { geoCities?: boolean };
   demographicsNote?: string;
@@ -185,6 +203,26 @@ export function buildShareWebsiteReportData(
       engagementRateLabel: t.engagementRateLabel,
       conversionsLabel: t.conversionsLabel,
     })),
+    dayOfWeek: data.dayOfWeek.map((t) => ({
+      label: t.label,
+      sessionsLabel: t.sessionsLabel,
+      engagementRateLabel: t.engagementRateLabel,
+      conversionsLabel: t.conversionsLabel,
+      conversionRateLabel: t.conversionRateLabel,
+    })),
+    hourOfDay: data.hourOfDay.map((t) => ({
+      label: t.label,
+      sessionsLabel: t.sessionsLabel,
+      engagementRateLabel: t.engagementRateLabel,
+      conversionsLabel: t.conversionsLabel,
+      conversionRateLabel: t.conversionRateLabel,
+    })),
+    conversionEvents: data.conversionEvents.map((e) => ({
+      event: e.event,
+      countLabel: e.countLabel,
+      sessionsLabel: e.sessionsLabel,
+      conversionRateLabel: e.conversionRateLabel,
+    })),
     topPages: data.topPages.map((p) => ({
       page: p.page,
       sessionsLabel: p.sessionsLabel,
@@ -200,7 +238,7 @@ export function buildShareWebsiteReportData(
 
 export function shareBreakdowns(data: ShareWebsiteReportData) {
   if (data.breakdowns) return normalizeBreakdowns(data.breakdowns);
-  return { ...DEFAULT_WEBSITE_BREAKDOWNS, geo: false, campaigns: false, sources: false, demographics: false, operatingSystem: false, browser: false, newVsReturning: false };
+  return { ...DEFAULT_WEBSITE_BREAKDOWNS, geo: false, campaigns: false, sources: false, demographics: false, operatingSystem: false, browser: false, newVsReturning: false, dayOfWeek: false, hourOfDay: false, conversionEvents: false };
 }
 
 export function isShareWebsiteReportData(value: unknown): value is ShareWebsiteReportData {

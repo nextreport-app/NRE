@@ -26,7 +26,7 @@ export {
   websiteConfigToQueryString,
 } from "./website-report-config";
 
-export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content";
+export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content" | "saas";
 
 export interface WebsiteMetricCard {
   key: string;
@@ -126,6 +126,26 @@ export interface WebsiteTechRow {
   conversionsLabel: string;
 }
 
+export interface WebsiteTimeRow {
+  label: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
+export interface WebsiteConversionEventRow {
+  event: string;
+  count: number;
+  countLabel: string;
+  sessions: number;
+  sessionsLabel: string;
+  conversionRateLabel: string;
+}
+
 export interface WebsiteReportData {
   version: 1;
   kind: "website";
@@ -151,6 +171,9 @@ export interface WebsiteReportData {
   operatingSystems: WebsiteTechRow[];
   browsers: WebsiteTechRow[];
   topPages: WebsitePageRow[];
+  dayOfWeek: WebsiteTimeRow[];
+  hourOfDay: WebsiteTimeRow[];
+  conversionEvents: WebsiteConversionEventRow[];
   breakdowns: WebsiteBreakdownOptions;
   /** Shown when demographics selected — Google Signals caveat */
   demographicsNote?: string;
@@ -307,6 +330,9 @@ export function buildWebsiteReportData(input: {
   operatingSystems?: Array<{ name: string; sessions: number; engagementRate: number; conversions: number }>;
   browsers?: Array<{ name: string; sessions: number; engagementRate: number; conversions: number }>;
   topPages: Array<{ page: string; sessions: number; engagementRate: number }>;
+  dayOfWeek?: Array<{ label: string; sessions: number; engagementRate: number; conversions: number }>;
+  hourOfDay?: Array<{ label: string; sessions: number; engagementRate: number; conversions: number }>;
+  conversionEvents?: Array<{ event: string; count: number; sessions: number; conversionRate: number }>;
   breakdowns?: WebsiteBreakdownOptions;
 }): WebsiteReportData {
   const { current, previous, currencySymbol } = input;
@@ -418,6 +444,41 @@ export function buildWebsiteReportData(input: {
         "pagesPerSession",
         "Pages / Session",
         current.sessions > 0 ? (current.screenPageViews / current.sessions).toFixed(1) : "0.0",
+      ),
+      metricCard(
+        "engagementRate",
+        "Engagement Rate",
+        fmtPct(current.engagementRate),
+        previous?.engagementRate,
+        current.engagementRate,
+        fmtPct,
+      ),
+    );
+  } else if (clientKind === "saas") {
+    conversionMetrics.push(
+      metricCard(
+        "conversions",
+        "Sign-ups / Key Events",
+        fmtInt(current.conversions),
+        previous?.conversions,
+        current.conversions,
+        fmtInt,
+      ),
+      metricCard(
+        "conversionRate",
+        "Conversion Rate",
+        current.sessions > 0 ? fmtPct(current.conversions / current.sessions) : "0.0%",
+        previous && previous.sessions > 0 ? previous.conversions / previous.sessions : undefined,
+        current.sessions > 0 ? current.conversions / current.sessions : 0,
+        fmtPct,
+      ),
+      metricCard(
+        "newUsers",
+        "New Users",
+        fmtInt(current.newUsers),
+        previous?.newUsers,
+        current.newUsers,
+        fmtInt,
       ),
       metricCard(
         "engagementRate",
@@ -551,6 +612,34 @@ export function buildWebsiteReportData(input: {
       engagementRate: p.engagementRate,
       engagementRateLabel: fmtPct(p.engagementRate),
     })),
+    dayOfWeek: (input.dayOfWeek ?? []).map((t) => ({
+      label: t.label,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
+      conversionRateLabel: t.sessions > 0 ? fmtPct(t.conversions / t.sessions) : "0.0%",
+    })),
+    hourOfDay: (input.hourOfDay ?? []).map((t) => ({
+      label: t.label,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
+      conversionRateLabel: t.sessions > 0 ? fmtPct(t.conversions / t.sessions) : "0.0%",
+    })),
+    conversionEvents: (input.conversionEvents ?? []).map((e) => ({
+      event: e.event,
+      count: e.count,
+      countLabel: fmtInt(e.count),
+      sessions: e.sessions,
+      sessionsLabel: fmtInt(e.sessions),
+      conversionRateLabel: fmtPct(e.conversionRate),
+    })),
     breakdowns: breakdowns ?? {
       device: true,
       geo: true,
@@ -563,6 +652,9 @@ export function buildWebsiteReportData(input: {
       browser: false,
       topPages: true,
       newVsReturning: false,
+      dayOfWeek: false,
+      hourOfDay: false,
+      conversionEvents: false,
     },
     demographicsNote,
     attributionNote:
