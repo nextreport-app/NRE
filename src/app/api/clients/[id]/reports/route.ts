@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
+import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
+import type { Platform } from "@/lib/nre/google-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
 import { buildShareReportData } from "@/lib/nre/share-report";
@@ -93,13 +95,14 @@ function dispatchReportNotifications(params: {
   });
 }
 
-/** Meta path: full campaign/ad-set selection + weekly/monthly date-range resolution + Previous Month Data comparison. Returns an error message on invalid input, or the built ReportData. */
+/** Meta/TikTok path: full campaign/ad-set selection + weekly/monthly date-range resolution + Previous Month Data. */
 async function buildMetaData(
   client: Client,
   mtdDailyBuffer: Buffer,
   formData: FormData | null,
+  platform: Platform = "META",
 ): Promise<{ error: string } | { data: ReportData }> {
-  const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+  const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
   if (!validation.valid) {
     return { error: validation.errors.map((e) => e.message).join(" ") };
@@ -164,6 +167,7 @@ async function buildMetaData(
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
     adNameColumn,
     creativeOnly: reportType === "CREATIVE",
+    platform,
   });
 
   return { data };
@@ -257,7 +261,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // section header) — handled fully here, never reaching buildMetaData/
   // buildGoogleData/renderPptx below, which stay exactly as they were.
   if (reportType === "COMPARISON") {
-    const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform === "TIKTOK" ? "TIKTOK" : "META");
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
@@ -289,7 +293,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           clientId: client.id,
           status: "GENERATING",
           reportType: "COMPARISON",
-          platform: "META",
+          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
           fileName,
           displayName: defaultReportDisplayName(
             "COMPARISON",
@@ -476,7 +480,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const result =
     platform === "GOOGLE"
       ? buildGoogleData(client, headers, dataRows, selectedMetrics)
-      : await buildMetaData(client, mtdDailyBuffer, formData);
+      : await buildMetaData(client, mtdDailyBuffer, formData, platform === "TIKTOK" ? "TIKTOK" : "META");
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

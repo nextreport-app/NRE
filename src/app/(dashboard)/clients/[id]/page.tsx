@@ -160,22 +160,29 @@ export default async function ClientDetailPage({
         <Card accent>
           <h2 className="mb-2 text-[18px] font-semibold text-dash-ink">Generate New Report</h2>
           <p className="text-[15px] text-dash-ink-secondary">
-            Upload ad CSVs or pull website traffic from GA4 — branded PPT, browser link, and PDF.
+            Meta, Google Ads, and TikTok campaign reports share one wizard. GA4 website traffic uses a separate flow
+            below.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Link
               href={`/clients/${client.id}/reports/new`}
               className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
             >
-              Meta / Google Ads Report
+              Meta · Google · TikTok Ads
             </Link>
             <Link
               href={`/clients/${client.id}/reports/website/new`}
               className="block w-full rounded-md border border-dash-border px-6 py-3 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-card"
             >
-              Website Traffic Report
+              Website Traffic (GA4)
             </Link>
           </div>
+          <p className="mt-3 text-[12px] text-dash-ink-secondary">
+            Meta and TikTok use the full 5-step wizard. Google Ads uses a faster 2-step flow.{" "}
+            <Link href="/help/download" className="text-dash-accent underline hover:text-dash-accent-hover">
+              CSV export guide →
+            </Link>
+          </p>
         </Card>
 
         <Card>

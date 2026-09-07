@@ -357,6 +357,14 @@ export function WebsiteReportWizard({
         </p>
       </div>
 
+      <div className="rounded-lg border border-[#4285f4]/30 bg-dash-card px-4 py-3.5">
+        <p className="text-[14px] font-semibold text-dash-ink">Website traffic — different from ad reports</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-dash-ink-secondary">
+          This wizard builds a GA4 deck (sessions, channels, landing pages, breakdowns you choose). Meta, Google Ads,
+          and TikTok campaign reports use the separate ad wizard from the client page.
+        </p>
+      </div>
+
       {/* Data source */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Data source</h2>

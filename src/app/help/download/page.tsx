@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
-import { isMetaApiConfigured, isGoogleAdsApiConfigured } from "@/lib/integrations-config";
+import { isMetaApiConfigured, isGoogleAdsApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -67,6 +67,17 @@ const META_AD_LEVEL_STEPS: Step[] = [
   { title: "Export as CSV", body: "Powers Creative reports and optional creative slides in any report." },
 ];
 
+const TIKTOK_STEPS: Step[] = [
+  { title: "TikTok Ads Manager → Campaign / Ad group report", body: "" },
+  { title: "Date range: Last 30 days", body: "USD reporting — built for US and global advertiser accounts." },
+  { title: "Breakdown: Day", body: "Required — one row per day for weekly slides and month-to-date." },
+  {
+    title: "Columns",
+    body: "Campaign name, Ad group name, Day, Cost, Impressions, Clicks, CTR, CPC, Conversions, Cost per conversion.",
+  },
+  { title: "Download CSV", body: "TikTok uses the same 5-step wizard as Meta — ad groups appear as ad-set slides." },
+];
+
 const GOOGLE_STEPS: Step[] = [
   { title: "Google Ads → Reports → Predefined → Basic → Campaign", body: "" },
   { title: "Segment → Day", body: "" },
@@ -104,6 +115,7 @@ export default async function DownloadGuidePage() {
   const loggedIn = !!session?.user;
   const metaApiLive = isMetaApiConfigured();
   const googleApiLive = isGoogleAdsApiConfigured();
+  const tiktokApiLive = isTikTokApiConfigured();
 
   return (
     <>
@@ -125,11 +137,13 @@ export default async function DownloadGuidePage() {
             <SectionHeading>Option A — Sync from API (recommended)</SectionHeading>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-secondary">
               NextReport syncs with{" "}
-              <span className="text-white">Meta&apos;s Marketing API</span> and{" "}
-              <span className="text-white">Google&apos;s Ads API</span>. Connect once in Account Settings and pull
-              campaign data directly — no CSV export from Ads Manager.
+              <span className="text-white">Meta&apos;s Marketing API</span>,{" "}
+              <span className="text-white">Google&apos;s Ads API</span>,{" "}
+              <span className="text-white">TikTok&apos;s Marketing API</span>, and{" "}
+              <span className="text-white">GA4&apos;s Data API</span>. Connect once in Account Settings and pull data
+              directly — no manual CSV export.
             </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg border border-[#63b3ed]/30 bg-navy-panel p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#63b3ed]">Meta Marketing API</p>
                 <h3 className="mt-2 text-base font-semibold text-white">Connect Meta Ads</h3>
@@ -160,15 +174,34 @@ export default async function DownloadGuidePage() {
                   </Link>
                 ) : null}
               </div>
+              <div className="rounded-lg border border-[#fe2c55]/30 bg-navy-panel p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#fe2c55]">TikTok Marketing API</p>
+                <h3 className="mt-2 text-base font-semibold text-white">Connect TikTok Ads</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+                  Read-only USD reporting for US and global accounts. Same 5-step wizard as Meta after you connect.
+                </p>
+                <p className="mt-3 text-xs text-ink-muted">
+                  {tiktokApiLive ? "Available on this site." : "Add TIKTOK_APP_ID and TIKTOK_APP_SECRET on Vercel."}
+                </p>
+                {loggedIn ? (
+                  <Link href="/account#tiktok-ads" className="mt-4 inline-block text-sm font-semibold text-accent-orange hover:underline">
+                    Open Account Settings →
+                  </Link>
+                ) : null}
+              </div>
             </div>
             <p className="mt-4 text-sm text-ink-muted">
-              In the report wizard, choose <span className="text-white">Sync from API</span> on Step 1 after connecting.
-              API-powered generation is rolling out — CSV upload below always works.
+              GA4 website reports use a separate wizard — connect Google Analytics in Account Settings, link a property
+              to each client, then open <span className="text-white">Website Traffic (GA4)</span> from the client page.
+            </p>
+            <p className="mt-2 text-sm text-ink-muted">
+              In the ad report wizard, choose <span className="text-white">Sync from API</span> on Step 1 after connecting.
+              CSV upload always works as a fallback.
             </p>
           </section>
 
           {/* CSV path */}
-          <section>
+          <section id="meta-ads">
             <SectionHeading>Option B — Upload CSV manually</SectionHeading>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-secondary">
               Two files power a full Meta weekly report: your <span className="text-white">main Last 30 Days CSV</span>{" "}
@@ -234,14 +267,27 @@ export default async function DownloadGuidePage() {
             </div>
           </section>
 
-          <section>
+          <section id="google-ads">
             <SectionHeading>Google Ads — CSV export</SectionHeading>
             <p className="mt-4 text-sm text-ink-secondary">
-              Google reports currently use CSV upload. API sync uses the same metrics once your Google Ads account is
-              connected.
+              Google uses a simplified 2-step wizard — every campaign in your CSV is included with month-to-date totals.
+              No campaign picker. API sync uses the same metrics once your Google Ads account is connected.
             </p>
             <div className="mt-6 space-y-4">
               {GOOGLE_STEPS.map((step, i) => (
+                <StepCard key={step.title} number={i + 1} step={step} />
+              ))}
+            </div>
+          </section>
+
+          <section id="tiktok-ads">
+            <SectionHeading>TikTok Ads — CSV export</SectionHeading>
+            <p className="mt-4 text-sm text-ink-secondary">
+              TikTok uses the same 5-step wizard as Meta (campaigns, objectives, metrics, report types). TikTok &quot;Ad
+              groups&quot; map to ad-set slides in your deck. Reporting is USD-only.
+            </p>
+            <div className="mt-6 space-y-4">
+              {TIKTOK_STEPS.map((step, i) => (
                 <StepCard key={step.title} number={i + 1} step={step} />
               ))}
             </div>

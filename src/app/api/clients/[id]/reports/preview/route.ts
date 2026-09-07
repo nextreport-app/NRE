@@ -193,6 +193,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
     adNameColumn: detectAdNameColumn(mtdParsed.headers),
     creativeOnly: reportType === "CREATIVE",
+    platform: platform === "TIKTOK" ? "TIKTOK" : "META",
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
