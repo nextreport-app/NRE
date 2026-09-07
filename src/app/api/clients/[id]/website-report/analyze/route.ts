@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fileFromFormData } from "@/lib/http-file";
-import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
+import { detectGa4CsvDimensions, readGa4RowsWithAutoMap } from "@/lib/nre/ga4-columns";
+import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateGa4Csv } from "@/lib/nre/validate-ga4";
 import { computeGa4CsvDateBounds } from "@/lib/nre/build-website-report-from-csv";
 
