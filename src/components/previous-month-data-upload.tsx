@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
@@ -151,21 +152,14 @@ export function PreviousMonthDataUpload({
   }
 
   return (
-    <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-      <div className="mb-3 space-y-2 text-[13px] text-dash-ink-secondary">
-        <p>
-          Upload your previous month campaign data at the start of each new month. This adds the
-          previous month row to your Monthly Overview slide.
-        </p>
-        <p>
-          <span className="font-medium text-dash-ink-secondary">How to download:</span> In Meta Ads Manager,
-          set the date range to the full previous month (e.g. July 1–31). Export with or without Day breakdown.
-        </p>
-        <p>
-          NextReport uses this automatically in every report for this client until you replace it with
-          the next month&rsquo;s data.
-        </p>
-      </div>
+    <div className="space-y-3">
+      <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
+        Upload once each month for the previous-month row on Monthly reports. Export{" "}
+        <span className="text-dash-ink">Last Month</span> from Meta Ads Manager.{" "}
+        <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent underline hover:no-underline">
+          CSV guide →
+        </Link>
+      </p>
 
       {fileName ? (
         <div className="flex items-center justify-between gap-3 rounded-md border border-dash-border bg-dash-bg p-3">

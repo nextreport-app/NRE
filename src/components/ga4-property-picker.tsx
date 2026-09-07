@@ -99,8 +99,8 @@ export function Ga4PropertyPicker({
   if (!ga4Connected) {
     return (
       <div className="space-y-3">
-        <p className="text-[14px] text-dash-ink-secondary">
-          Connect Google Analytics in Account Settings, then link a GA4 property here for Website Traffic reports.
+        <p className="text-[15px] text-dash-ink-secondary">
+          Connect Google Analytics in Account Settings, then link a property here.
         </p>
         <Link
           href="/account#ga4"
@@ -114,9 +114,7 @@ export function Ga4PropertyPicker({
 
   return (
     <div className="space-y-3">
-      <p className="text-[14px] text-dash-ink-secondary">
-        Choose which GA4 property powers Website Traffic reports for this client. One property per client.
-      </p>
+      <p className="text-[15px] text-dash-ink-secondary">One GA4 property per client for Google Analytics reports.</p>
       {initialPropertyId && initialPropertyName ? (
         <p className="text-[13px] text-dash-ink">
           Linked: <span className="font-medium">{initialPropertyName}</span>
