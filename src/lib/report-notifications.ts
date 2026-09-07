@@ -7,7 +7,7 @@ export interface ReportNotificationPayload {
   event: "report.generated";
   reportId: string;
   clientName: string;
-  platform: "META" | "GOOGLE" | "GA4";
+  platform: "META" | "GOOGLE" | "GA4" | "TIKTOK";
   reportType: string;
   displayName: string | null;
   shareUrl: string | null;
@@ -37,7 +37,15 @@ export function isValidAutomationWebhookUrl(url: string): boolean {
 function buildSlackBlocks(payload: ReportNotificationPayload) {
   const lines = [
     `*Client:* ${payload.clientName}`,
-    `*Platform:* ${payload.platform === "GOOGLE" ? "Google Ads" : "Meta Ads"}`,
+    `*Platform:* ${
+      payload.platform === "GOOGLE"
+        ? "Google Ads"
+        : payload.platform === "TIKTOK"
+          ? "TikTok Ads"
+          : payload.platform === "GA4"
+            ? "GA4 Website"
+            : "Meta Ads"
+    }`,
     `*Report:* ${payload.displayName ?? payload.reportType}`,
   ];
   if (payload.healthBadge) lines.push(`*Health:* ${payload.healthBadge}`);
@@ -107,7 +115,7 @@ export async function notifyReportGeneratedForUser(params: {
   reportId: string;
   shareToken: string | null;
   clientName: string;
-  platform: "META" | "GOOGLE" | "GA4";
+  platform: "META" | "GOOGLE" | "GA4" | "TIKTOK";
   reportType: string;
   displayName: string | null;
   healthScore?: number | null;

@@ -7,12 +7,14 @@ export type WizardDataSource = "csv" | "api";
 
 interface WizardDataSourcePanelProps {
   clientId: string;
-  platform: "META" | "GOOGLE";
+  platform: "META" | "GOOGLE" | "TIKTOK";
   metaConfigured: boolean;
   metaConnected: boolean;
   metaConnectedName: string | null;
   googleAdsConfigured: boolean;
   googleAdsConnected: boolean;
+  tiktokConfigured: boolean;
+  tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
   onSynced: (file: File) => void;
   syncStatus: "idle" | "loading" | "error";
@@ -30,6 +32,11 @@ interface MetaAccountOption {
 interface GoogleCustomerOption {
   id: string;
   resourceName: string;
+}
+
+interface TikTokAdvertiserOption {
+  id: string;
+  name: string;
 }
 
 function StatusPill({ ok, label }: { ok: boolean; label: string }) {
@@ -58,6 +65,8 @@ export function WizardDataSourcePanel({
   metaConnectedName,
   googleAdsConfigured,
   googleAdsConnected,
+  tiktokConfigured,
+  tiktokConnected,
   onSynced,
   syncStatus,
   syncError,
@@ -66,13 +75,16 @@ export function WizardDataSourcePanel({
 }: WizardDataSourcePanelProps) {
   const showMeta = platform === "META";
   const showGoogle = platform === "GOOGLE";
-  const connected = showMeta ? metaConnected : googleAdsConnected;
-  const configured = showMeta ? metaConfigured : googleAdsConfigured;
+  const showTikTok = platform === "TIKTOK";
+  const connected = showMeta ? metaConnected : showGoogle ? googleAdsConnected : tiktokConnected;
+  const configured = showMeta ? metaConfigured : showGoogle ? googleAdsConfigured : tiktokConfigured;
 
   const [metaAccounts, setMetaAccounts] = useState<MetaAccountOption[]>([]);
   const [googleCustomers, setGoogleCustomers] = useState<GoogleCustomerOption[]>([]);
+  const [tiktokAdvertisers, setTiktokAdvertisers] = useState<TikTokAdvertiserOption[]>([]);
   const [selectedMetaAccount, setSelectedMetaAccount] = useState("");
   const [selectedGoogleCustomer, setSelectedGoogleCustomer] = useState("");
+  const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
 
@@ -88,20 +100,27 @@ export function WizardDataSourcePanel({
         const accounts = (data.accounts ?? []) as MetaAccountOption[];
         setMetaAccounts(accounts);
         if (accounts.length === 1) setSelectedMetaAccount(accounts[0].id);
-      } else {
+      } else if (showGoogle) {
         const res = await fetch("/api/google-ads/customers");
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to load Google Ads customers");
         const customers = (data.customers ?? []) as GoogleCustomerOption[];
         setGoogleCustomers(customers);
         if (customers.length === 1) setSelectedGoogleCustomer(customers[0].id);
+      } else {
+        const res = await fetch("/api/tiktok/advertisers");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to load TikTok advertisers");
+        const advertisers = (data.advertisers ?? []) as TikTokAdvertiserOption[];
+        setTiktokAdvertisers(advertisers);
+        if (advertisers.length === 1) setSelectedTikTokAdvertiser(advertisers[0].id);
       }
     } catch (err) {
       setAccountsError(err instanceof Error ? err.message : "Failed to load accounts");
     } finally {
       setAccountsLoading(false);
     }
-  }, [connected, showMeta]);
+  }, [connected, showMeta, showGoogle]);
 
   useEffect(() => {
     void loadAccounts();
@@ -113,7 +132,9 @@ export function WizardDataSourcePanel({
       const body =
         platform === "META"
           ? { platform: "META" as const, metaAdAccountId: selectedMetaAccount }
-          : { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer };
+          : platform === "GOOGLE"
+            ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
+            : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
 
       if (platform === "META" && !selectedMetaAccount) {
         onSyncError("Select a Meta ad account first.");
@@ -121,6 +142,10 @@ export function WizardDataSourcePanel({
       }
       if (platform === "GOOGLE" && !selectedGoogleCustomer) {
         onSyncError("Select a Google Ads customer first.");
+        return;
+      }
+      if (platform === "TIKTOK" && !selectedTikTokAdvertiser) {
+        onSyncError("Select a TikTok advertiser first.");
         return;
       }
 
@@ -153,7 +178,7 @@ export function WizardDataSourcePanel({
     connected &&
     configured &&
     syncStatus !== "loading" &&
-    (showMeta ? !!selectedMetaAccount : !!selectedGoogleCustomer);
+    (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   return (
     <div className="space-y-4">
@@ -292,6 +317,71 @@ export function WizardDataSourcePanel({
               )}
               <Link href="/account#google-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Google Ads connection
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {showTikTok ? (
+        <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-[15px] font-semibold text-white">TikTok Marketing API</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only · USD reporting</p>
+            </div>
+            <StatusPill ok={tiktokConnected} label={tiktokConnected ? "Connected" : "Not connected"} />
+          </div>
+          {!tiktokConfigured ? (
+            <p className="mt-3 text-[13px] text-dash-ink-secondary">
+              TikTok API credentials are not configured on this server yet.
+            </p>
+          ) : !tiktokConnected ? (
+            <>
+              <p className="mt-3 text-[13px] text-dash-ink-secondary">Connect your TikTok Ads account to sync data directly.</p>
+              <Link
+                href="/account#tiktok-ads"
+                className="mt-3 inline-flex rounded-md border border-dash-border px-4 py-2 text-[13px] font-medium text-dash-ink hover:bg-dash-border"
+              >
+                Connect TikTok Ads
+              </Link>
+            </>
+          ) : (
+            <div className="mt-3 space-y-3">
+              <label className="block text-[12px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                Advertiser account
+              </label>
+              {accountsLoading ? (
+                <p className="text-[13px] text-dash-ink-secondary">Loading advertisers…</p>
+              ) : accountsError ? (
+                <div className="space-y-2">
+                  <p className="text-[13px] text-red-300">{accountsError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadAccounts()}
+                    className="text-[13px] text-dash-accent underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : tiktokAdvertisers.length === 0 ? (
+                <p className="text-[13px] text-amber-200">No TikTok advertisers found for this connection.</p>
+              ) : (
+                <select
+                  value={selectedTikTokAdvertiser}
+                  onChange={(e) => setSelectedTikTokAdvertiser(e.target.value)}
+                  className="w-full rounded-md border border-dash-border bg-[#0f172a] px-3 py-2.5 text-[14px] text-white"
+                >
+                  <option value="">Select advertiser…</option>
+                  {tiktokAdvertisers.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.id})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <Link href="/account#tiktok-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
+                Manage TikTok connection
               </Link>
             </div>
           )}

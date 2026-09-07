@@ -8,8 +8,9 @@ import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
+import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { Ga4Settings } from "@/components/ga4-settings";
+import { TikTokAdsSettings } from "@/components/tiktok-ads-settings";
 
 const PLAN_LABELS: Record<string, string> = {
   trial: "Free Trial",
@@ -36,6 +37,8 @@ export default async function AccountSettingsPage({
     google_ads_error?: string;
     ga4_connected?: string;
     ga4_error?: string;
+    tiktok_ads_connected?: string;
+    tiktok_ads_error?: string;
   }>;
 }) {
   const session = await auth();
@@ -54,6 +57,8 @@ export default async function AccountSettingsPage({
         googleAdsEnabled: true,
         ga4ConnectedEmail: true,
         ga4Enabled: true,
+        tiktokConnectedName: true,
+        tiktokAdsEnabled: true,
         slackWebhookUrl: true,
         automationWebhookUrl: true,
         planId: true,
@@ -64,10 +69,11 @@ export default async function AccountSettingsPage({
   ]);
   if (!user) notFound();
 
-  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error, google_ads_connected, google_ads_error, ga4_connected, ga4_error } = params;
+  const { google_drive_connected, google_drive_error, meta_ads_connected, meta_ads_error, google_ads_connected, google_ads_error, ga4_connected, ga4_error, tiktok_ads_connected, tiktok_ads_error } = params;
   const metaConfigured = isMetaApiConfigured();
   const googleAdsConfigured = isGoogleAdsApiConfigured();
   const ga4Configured = isGa4ApiConfigured();
+  const tiktokConfigured = isTikTokApiConfigured();
 
   const status = getSubscriptionStatus(user);
 
@@ -125,8 +131,18 @@ export default async function AccountSettingsPage({
         />
       </section>
 
+      <section id="tiktok-ads" className="mb-10 scroll-mt-6">
+        <SectionHeading>TikTok Ads</SectionHeading>
+        <TikTokAdsSettings
+          initialConnectedName={user.tiktokConnectedName}
+          initialConnected={user.tiktokAdsEnabled}
+          justConnected={tiktok_ads_connected === "1"}
+          connectError={tiktok_ads_error ?? null}
+          tiktokConfigured={tiktokConfigured}
+        />
+      </section>
+
       <section className="mb-10">
-        <SectionHeading>Slack &amp; automation</SectionHeading>
         <IntegrationSettings
           initialSlackWebhookUrl={user.slackWebhookUrl}
           initialAutomationWebhookUrl={user.automationWebhookUrl}

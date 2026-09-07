@@ -140,7 +140,7 @@ export function readGoogleRowsWithAutoMap(
   return { colMap, rows };
 }
 
-export type Platform = "META" | "GOOGLE";
+export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 /**
  * Detects which platform a CSV export came from, from its header row alone
@@ -148,10 +148,9 @@ export type Platform = "META" | "GOOGLE";
  * right column dictionary/validator/report pipeline. Per spec: Google Ads
  * is detected by the presence of Campaign + Clicks + Impressions + Avg. CPC
  * columns AND the absence of "Amount spent" (Meta-specific — Google Ads
- * exports never use that phrase, they use "Cost"). Defaults to META
- * whenever the Google signal isn't a confident match, matching this app's
- * original, only-ever-Meta behavior for any CSV that doesn't clearly look
- * like a Google Ads export.
+ * exports never use that phrase, they use "Cost"). TikTok Ads exports use
+ * "Ad group" naming (not Meta's "Ad set") with Cost/Spend and without
+ * Google's "Avg. CPC" column. Defaults to META whenever no confident match.
  */
 export function detectPlatform(headers: string[]): Platform {
   const normalized = headers.filter(Boolean).map((h) => String(h).toLowerCase().trim());
@@ -162,7 +161,14 @@ export function detectPlatform(headers: string[]): Platform {
   const hasImpressions = has("impr.", "impressions");
   const hasAvgCpc = has("avg. cpc", "average cpc");
   const hasAmountSpent = has("amount spent");
+  const hasAdGroup = has("ad group", "adgroup");
 
   const looksLikeGoogleAds = hasCampaign && hasClicks && hasImpressions && hasAvgCpc && !hasAmountSpent;
-  return looksLikeGoogleAds ? "GOOGLE" : "META";
+  if (looksLikeGoogleAds) return "GOOGLE";
+
+  const looksLikeTikTok =
+    hasCampaign && hasAdGroup && (has("cost", "spend")) && !hasAmountSpent && !hasAvgCpc;
+  if (looksLikeTikTok) return "TIKTOK";
+
+  return "META";
 }

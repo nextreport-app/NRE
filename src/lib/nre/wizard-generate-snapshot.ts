@@ -9,7 +9,7 @@ export interface WizardGenerateSnapshot {
   reportId: string;
   downloadUrl: string;
   shareToken: string | null;
-  platform: "META" | "GOOGLE";
+  platform: "META" | "GOOGLE" | "TIKTOK";
   reportType: WizardReportType;
   dateMode: "last7" | "prev7" | "custom";
   customStart: string;

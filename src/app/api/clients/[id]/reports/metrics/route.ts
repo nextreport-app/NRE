@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
+import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
+import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
@@ -64,7 +65,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
     }
 
-    const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json({ error: "CSV failed validation.", errors: validation.errors }, { status: 200 });

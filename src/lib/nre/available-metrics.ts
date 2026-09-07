@@ -23,7 +23,7 @@ import { autoClassifyUnknownColumn as autoClassifyGoogle, findGoogleMetric, find
 import type { GoogleObjectiveKey } from "./detect-objective";
 import { packForResultLabel } from "./packs";
 
-export type MetricPlatform = "META" | "GOOGLE";
+export type MetricPlatform = "META" | "GOOGLE" | "TIKTOK";
 
 /** A metric card's identity — enough to both aggregate its real value (dynamic-metrics.ts's MetricRef shape) and label a wizard card. This is the `SelectedMetric` shape carried through the wizard and the generate API. */
 export interface SelectedMetric {

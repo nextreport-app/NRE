@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
+import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
+import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
@@ -77,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
   }
 
-  const mtdParsed = parseUploadedFile(mtdDailyBuffer, "MTD Daily CSV");
+  const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
 
   if (!validation.valid) {

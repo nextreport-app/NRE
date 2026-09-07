@@ -300,7 +300,7 @@ export interface ObjectiveWarning {
 export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE";
 
 /** Which ad platform this report's data came from — drives template selection and a handful of label/prompt differences in the render and AI layers. Defaults to "META" everywhere in this file; only google-report-data.ts's buildGoogleReportData ever produces "GOOGLE". */
-export type Platform = "META" | "GOOGLE";
+export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 export interface ReportData {
   isPaused: boolean;

@@ -34,9 +34,10 @@ export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buff
  * gap versus Meta's per-color-template selection above, not an oversight.
  */
 export async function loadTemplateBufferForPlatform(
-  platform: "META" | "GOOGLE" | "GA4",
+  platform: "META" | "GOOGLE" | "GA4" | "TIKTOK",
   template: ReportTemplate,
 ): Promise<Buffer> {
   if (platform === "GOOGLE") return fs.readFile(path.join(TEMPLATES_DIR, "google-ads-dark.pptx"));
+  // TikTok reuses Meta-branded templates until a dedicated tiktok-ads-dark.pptx asset ships.
   return loadTemplateBuffer(template);
 }

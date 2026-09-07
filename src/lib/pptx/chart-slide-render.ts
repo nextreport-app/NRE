@@ -20,7 +20,7 @@ export async function buildChartSlideBundle(
   currencySymbol: string,
   background: TemplateBackgroundImage,
   isLightTemplate = false,
-  _platform: "META" | "GOOGLE" = "META",
+  _platform: "META" | "GOOGLE" | "TIKTOK" = "META",
   _options: ChartSlideRenderOptions = {},
   shareChartOverride?: ShareChartData | null,
 ): Promise<ChartSlideBundle> {

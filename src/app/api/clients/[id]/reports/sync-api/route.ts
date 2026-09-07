@@ -5,14 +5,17 @@ import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import { refreshGoogleAdsAccessToken } from "@/lib/google-ads-api";
+import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
 import { fetchMetaReportCsv } from "@/lib/nre/fetch-meta-report-rows";
 import { fetchGoogleReportCsv } from "@/lib/nre/fetch-google-report-rows";
+import { fetchTikTokReportCsv } from "@/lib/nre/fetch-tiktok-report-rows";
 import { platformSchema } from "@/lib/validators/report-wizard";
 
 const syncApiBodySchema = z.object({
   platform: platformSchema,
   metaAdAccountId: z.string().trim().min(1).optional(),
   googleCustomerId: z.string().trim().min(1).optional(),
+  tiktokAdvertiserId: z.string().trim().min(1).optional(),
 });
 
 /**
@@ -37,7 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { platform, metaAdAccountId, googleCustomerId } = parsed.data;
+    const { platform, metaAdAccountId, googleCustomerId, tiktokAdvertiserId } = parsed.data;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -47,6 +50,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         metaTokenExpiresAt: true,
         googleAdsRefreshToken: true,
         googleAdsAccessToken: true,
+        tiktokAdsEnabled: true,
+        tiktokAccessToken: true,
+        tiktokRefreshToken: true,
+        tiktokTokenExpiresAt: true,
       },
     });
 
@@ -86,6 +93,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
+      });
+    }
+
+    if (platform === "TIKTOK") {
+      if (!tiktokAdvertiserId) {
+        return NextResponse.json({ error: "tiktokAdvertiserId is required for TikTok sync" }, { status: 400 });
+      }
+      if (!user.tiktokAdsEnabled || !user.tiktokAccessToken) {
+        return NextResponse.json({ error: "TikTok Ads is not connected" }, { status: 400 });
+      }
+
+      const fresh = await ensureFreshTikTokAccessToken({
+        accessToken: user.tiktokAccessToken,
+        refreshToken: user.tiktokRefreshToken,
+        tokenExpiresAt: user.tiktokTokenExpiresAt,
+      });
+
+      if (fresh.refreshed) {
+        await prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            tiktokAccessToken: fresh.accessToken,
+            tiktokRefreshToken: fresh.refreshToken,
+            tiktokTokenExpiresAt: fresh.tokenExpiresAt,
+          },
+        });
+      }
+
+      const result = await fetchTikTokReportCsv({
+        accessToken: fresh.accessToken,
+        advertiserId: tiktokAdvertiserId,
+        timezone: client.timezone,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        platform: "TIKTOK",
+        csvText: result.csvText,
+        rowCount: result.rowCount,
+        sinceIso: result.sinceIso,
+        untilIso: result.untilIso,
+        fileName: `tiktok-api-sync-${result.untilIso}.csv`,
       });
     }
 
