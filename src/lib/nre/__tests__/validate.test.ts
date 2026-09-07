@@ -49,7 +49,7 @@ describe("validateMtdDailyCsv", () => {
     expect(result.errors.some((e) => e.field === "date" && e.message.includes("future"))).toBe(true);
   });
 
-  it("fails when the date range spans more than 90 days", () => {
+  it("warns but passes when the date range spans more than 90 days (Multi-Month Historical)", () => {
     const { colMap, rows } = parse(
       ["Campaign name", "Day", "Amount spent (USD)", "Results"],
       [
@@ -58,8 +58,21 @@ describe("validateMtdDailyCsv", () => {
       ],
     );
     const result = validateMtdDailyCsv(colMap, rows, NOW);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some((e) => e.field === "date" && e.message.includes("Multi-Month Historical"))).toBe(true);
+  });
+
+  it("fails when the date range spans more than 366 days", () => {
+    const { colMap, rows } = parse(
+      ["Campaign name", "Day", "Amount spent (USD)", "Results"],
+      [
+        ["Shoes", "01-01-2025", "100", "5"],
+        ["Shoes", "15-01-2026", "100", "5"],
+      ],
+    );
+    const result = validateMtdDailyCsv(colMap, rows, NOW);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.field === "date" && e.message.includes("90 days"))).toBe(true);
+    expect(result.errors.some((e) => e.field === "date" && e.message.includes("366"))).toBe(true);
   });
 
   it("passes when campaign name and date are populated but every metric column is blank (paused/zero-spend campaign)", () => {
