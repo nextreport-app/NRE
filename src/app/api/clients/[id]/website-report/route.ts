@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
-import { defaultWebsiteReportRanges, fetchGa4WebsiteReport } from "@/lib/nre/fetch-ga4-website-report";
+import { fetchGa4WebsiteReport, resolveWebsiteReportRanges } from "@/lib/nre/fetch-ga4-website-report";
 import { buildShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
@@ -13,24 +13,8 @@ import { saveReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
-
-function isoToUsDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}/${y}`;
-}
-
-import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
-
-function parseBreakdownsFromBody(body: unknown) {
-  if (!body || typeof body !== "object") return parseWebsiteBreakdownOptions({});
-  const b = body as Record<string, unknown>;
-  return parseWebsiteBreakdownOptions({
-    device: b.device as boolean | string | null | undefined,
-    geo: (b.geo ?? b.geoCities) as boolean | string | null | undefined,
-    channels: b.channels as boolean | string | null | undefined,
-    topPages: b.topPages as boolean | string | null | undefined,
-  });
-}
+import { parseWebsiteReportConfig } from "@/lib/nre/website-report-data";
+import { formatDateUS } from "@/lib/nre/dates";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -68,17 +52,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Connect Google Analytics in Account Settings first." }, { status: 400 });
   }
 
-  let breakdowns = parseWebsiteBreakdownOptions({});
+  let config = parseWebsiteReportConfig(null);
   try {
     const body = await req.json().catch(() => null);
-    breakdowns = parseBreakdownsFromBody(body);
+    config = parseWebsiteReportConfig(body);
   } catch {
     // Empty body — use defaults
   }
 
-  const ranges = defaultWebsiteReportRanges(client.timezone);
-  const weekStart = isoToUsDate(ranges.current.startIso);
-  const weekEnd = isoToUsDate(ranges.current.endIso);
+  const ranges = resolveWebsiteReportRanges(config, client.timezone);
+  const weekStart = formatDateUS(ranges.current.startIso).replace(/\//g, "-");
+  const weekEnd = formatDateUS(ranges.current.endIso).replace(/\//g, "-");
   const fileName = `Website Traffic Report - ${client.accountName} - ${weekStart} to ${weekEnd}.pptx`.replace(/[\s/]/g, "_");
   const displayName = defaultReportDisplayName("WEBSITE", weekStart, weekEnd);
 
@@ -109,7 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
       currentRange: ranges.current,
       comparisonRange: ranges.previous,
-      breakdowns,
+      config,
     });
 
     const templateBuffer = await loadTemplateBuffer(client.template);

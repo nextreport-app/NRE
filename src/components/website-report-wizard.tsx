@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { WebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
+import type { WebsiteClientKindSetting, WebsiteDatePreset, WebsiteGeoDimension, WebsiteReportConfig } from "@/lib/nre/website-report-config";
 import {
-  DEFAULT_WEBSITE_BREAKDOWNS,
+  DEFAULT_WEBSITE_REPORT_CONFIG,
   countSelectedBreakdowns,
   estimateWebsiteSlideCount,
   MAX_WEBSITE_BREAKDOWN_SLIDES,
+  websiteConfigToQueryString,
 } from "@/lib/nre/website-report-data";
 import type { WebsiteReportData } from "@/lib/nre/website-report-data";
 import { useToast } from "@/components/toast";
@@ -15,21 +16,35 @@ import { useToast } from "@/components/toast";
 type PreviewStatus = "idle" | "loading" | "error" | "ready";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
 
-function breakdownQueryString(options: WebsiteBreakdownOptions): string {
-  const params = new URLSearchParams();
-  if (!options.device) params.set("device", "0");
-  if (!options.geoCities) params.set("geo", "0");
-  if (!options.channels) params.set("channels", "0");
-  if (!options.topPages) params.set("topPages", "0");
-  const qs = params.toString();
-  return qs ? `?${qs}` : "";
-}
+const DATE_PRESETS: Array<{ value: WebsiteDatePreset; label: string; description: string }> = [
+  { value: "month_to_date", label: "Month to date", description: "Current calendar month through yesterday" },
+  { value: "last_30_days", label: "Last 30 days", description: "Rolling 30-day window ending yesterday" },
+  { value: "last_7_days", label: "Last 7 days", description: "Rolling 7-day window ending yesterday" },
+  { value: "custom", label: "Custom range", description: "Pick your own start and end dates" },
+];
+
+const CLIENT_KIND_OPTIONS: Array<{ value: WebsiteClientKindSetting; label: string; description: string }> = [
+  { value: "auto", label: "Auto-detect", description: "Infer from revenue, conversions, or content signals in GA4" },
+  { value: "lead_gen", label: "Lead generation", description: "Form submissions and conversions are primary" },
+  { value: "ecommerce", label: "Ecommerce", description: "Revenue, transactions, and AOV are primary" },
+  { value: "content", label: "Content / media", description: "Page views and engagement time are primary" },
+];
+
+const GEO_DIMENSIONS: Array<{ value: WebsiteGeoDimension; label: string }> = [
+  { value: "city", label: "Top cities" },
+  { value: "region", label: "States / regions" },
+  { value: "country", label: "Countries" },
+];
+
+type BreakdownKey = keyof WebsiteReportConfig["breakdowns"];
 
 const BREAKDOWN_OPTIONS: Array<{
-  key: keyof WebsiteBreakdownOptions;
+  key: BreakdownKey;
   label: string;
   description: string;
   recommended?: boolean;
+  warning?: string;
+  geoSelector?: boolean;
 }> = [
   {
     key: "device",
@@ -39,15 +54,42 @@ const BREAKDOWN_OPTIONS: Array<{
   },
   {
     key: "channels",
-    label: "Traffic sources",
-    description: "Organic, paid, direct, social, referral, and other channel groups.",
+    label: "Traffic sources (channel groups)",
+    description: "Organic, paid, direct, social, referral, and other default channel groups.",
     recommended: true,
   },
   {
-    key: "geoCities",
-    label: "Top cities",
-    description: "Top 10 cities by sessions with share of total and conversion rate.",
+    key: "geo",
+    label: "Geographic breakdown",
+    description: "Top locations by sessions with share of total and conversion rate.",
     recommended: true,
+    geoSelector: true,
+  },
+  {
+    key: "campaigns",
+    label: "Campaigns (UTM)",
+    description: "Sessions and conversions per session campaign name from GA4.",
+  },
+  {
+    key: "sources",
+    label: "Source / medium",
+    description: "Granular traffic sources — google/organic, facebook/cpc, etc.",
+  },
+  {
+    key: "demographics",
+    label: "Age & gender",
+    description: "Audience age brackets and gender split.",
+    warning: "Requires Google Signals enabled in GA4. Small sites often show mostly Unknown.",
+  },
+  {
+    key: "operatingSystem",
+    label: "Operating system",
+    description: "Android, iOS, Windows, macOS, and other OS splits.",
+  },
+  {
+    key: "browser",
+    label: "Browser",
+    description: "Chrome, Safari, Firefox, Edge, and other browser splits.",
   },
   {
     key: "topPages",
@@ -55,10 +97,15 @@ const BREAKDOWN_OPTIONS: Array<{
     description: "Top 10 landing pages by sessions and engagement rate.",
     recommended: true,
   },
+  {
+    key: "newVsReturning",
+    label: "New vs returning visitors",
+    description: "Audience health — first-time vs returning session split.",
+  },
 ];
 
 /**
- * Website Traffic (GA4) wizard — choose breakdowns, preview, then generate.
+ * Full Website Traffic (GA4) wizard — date range, website type, breakdowns, preview, generate.
  */
 export function WebsiteReportWizard({
   clientId,
@@ -72,7 +119,7 @@ export function WebsiteReportWizard({
   ga4Connected: boolean;
 }) {
   const { showToast } = useToast();
-  const [breakdowns, setBreakdowns] = useState<WebsiteBreakdownOptions>(DEFAULT_WEBSITE_BREAKDOWNS);
+  const [config, setConfig] = useState<WebsiteReportConfig>(DEFAULT_WEBSITE_REPORT_CONFIG);
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -82,24 +129,24 @@ export function WebsiteReportWizard({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
 
-  const selectedBreakdownCount = countSelectedBreakdowns(breakdowns);
+  const selectedBreakdownCount = countSelectedBreakdowns(config.breakdowns);
   const tooManyBreakdowns = selectedBreakdownCount > MAX_WEBSITE_BREAKDOWN_SLIDES;
 
   const estimatedSlides = useMemo(
     () =>
-      estimateWebsiteSlideCount(breakdowns, {
+      estimateWebsiteSlideCount(config.breakdowns, {
         hasConversionSlide: true,
-        hasTopPagesData: breakdowns.topPages,
+        hasTopPagesData: config.breakdowns.topPages,
       }),
-    [breakdowns],
+    [config.breakdowns],
   );
 
   const fetchPreview = useCallback(async () => {
-    if (tooManyBreakdowns) return;
+    if (tooManyBreakdowns || selectedBreakdownCount === 0) return;
     setPreviewStatus("loading");
     setPreviewError(null);
     try {
-      const res = await fetch(`/api/clients/${clientId}/website-report/preview${breakdownQueryString(breakdowns)}`);
+      const res = await fetch(`/api/clients/${clientId}/website-report/preview${websiteConfigToQueryString(config)}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Preview failed");
       setPreview(json.data as WebsiteReportData);
@@ -110,21 +157,39 @@ export function WebsiteReportWizard({
       setPreviewError(err instanceof Error ? err.message : "Preview failed");
       setPreview(null);
     }
-  }, [clientId, breakdowns, tooManyBreakdowns]);
+  }, [clientId, config, tooManyBreakdowns, selectedBreakdownCount]);
 
   useEffect(() => {
-    if (hasGa4Property && ga4Connected && !tooManyBreakdowns) void fetchPreview();
-    if (tooManyBreakdowns) {
+    if (hasGa4Property && ga4Connected && !tooManyBreakdowns && selectedBreakdownCount > 0) {
+      void fetchPreview();
+    }
+    if (tooManyBreakdowns || selectedBreakdownCount === 0) {
       setPreviewStatus("idle");
       setPreview(null);
     }
-  }, [hasGa4Property, ga4Connected, fetchPreview, tooManyBreakdowns]);
+  }, [hasGa4Property, ga4Connected, fetchPreview, tooManyBreakdowns, selectedBreakdownCount]);
 
-  function toggleBreakdown(key: keyof WebsiteBreakdownOptions) {
-    setBreakdowns((prev) => ({ ...prev, [key]: !prev[key] }));
+  function resetGenerateState() {
     setGenerateStatus("idle");
     setDownloadUrl(null);
     setShareToken(null);
+  }
+
+  function toggleBreakdown(key: BreakdownKey) {
+    if (key === "geoDimension") return;
+    setConfig((prev) => ({
+      ...prev,
+      breakdowns: { ...prev.breakdowns, [key]: !prev.breakdowns[key] },
+    }));
+    resetGenerateState();
+  }
+
+  function setGeoDimension(dimension: WebsiteGeoDimension) {
+    setConfig((prev) => ({
+      ...prev,
+      breakdowns: { ...prev.breakdowns, geoDimension: dimension, geo: true },
+    }));
+    resetGenerateState();
   }
 
   async function handleGenerate() {
@@ -137,7 +202,7 @@ export function WebsiteReportWizard({
       const res = await fetch(`/api/clients/${clientId}/website-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(breakdowns),
+        body: JSON.stringify(config),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Generation failed");
@@ -193,41 +258,166 @@ export function WebsiteReportWizard({
         </Link>
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">Website Traffic Report</h1>
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
-          Pulls sessions, engagement, channels, device, and location data from GA4 — month-to-date vs previous month.
+          Configure date range, website type, and breakdown slides — then generate a client-ready PPT, share link, and PDF.
         </p>
       </div>
 
+      {/* Date range */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[16px] font-semibold text-dash-ink">Breakdowns to include</h2>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Choose which breakdown slides appear after the traffic overview. Estimated deck:{" "}
-          <span className="font-medium text-dash-ink">{estimatedSlides} slides</span> (cover + overview + conversions
-          + selected breakdowns).
-        </p>
-        <div className="mt-4 space-y-3">
-          {BREAKDOWN_OPTIONS.map((opt) => (
+        <h2 className="text-[16px] font-semibold text-dash-ink">Report period</h2>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {DATE_PRESETS.map((preset) => (
             <label
-              key={opt.key}
-              className="flex cursor-pointer items-start gap-3 rounded-md border border-dash-border bg-dash-bg px-4 py-3 hover:border-dash-accent/40"
+              key={preset.value}
+              className={`flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 ${
+                config.datePreset === preset.value
+                  ? "border-dash-accent bg-dash-accent/10"
+                  : "border-dash-border bg-dash-bg hover:border-dash-accent/40"
+              }`}
             >
               <input
-                type="checkbox"
-                checked={breakdowns[opt.key]}
-                onChange={() => toggleBreakdown(opt.key)}
-                className="mt-1 h-4 w-4 rounded border-dash-border accent-dash-accent"
+                type="radio"
+                name="datePreset"
+                checked={config.datePreset === preset.value}
+                onChange={() => {
+                  setConfig((prev) => ({ ...prev, datePreset: preset.value }));
+                  resetGenerateState();
+                }}
+                className="mt-1 accent-dash-accent"
               />
               <span>
-                <span className="text-[14px] font-medium text-dash-ink">
-                  {opt.label}
-                  {opt.recommended ? (
-                    <span className="ml-2 text-[11px] font-normal uppercase tracking-wide text-dash-accent">
-                      Recommended
-                    </span>
-                  ) : null}
-                </span>
+                <span className="text-[14px] font-medium text-dash-ink">{preset.label}</span>
+                <span className="mt-0.5 block text-[13px] text-dash-ink-secondary">{preset.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {config.datePreset === "custom" ? (
+          <div className="mt-4 flex flex-wrap gap-4">
+            <label className="text-[13px] text-dash-ink-secondary">
+              Start
+              <input
+                type="date"
+                value={config.startIso ?? ""}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, startIso: e.target.value }));
+                  resetGenerateState();
+                }}
+                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
+              />
+            </label>
+            <label className="text-[13px] text-dash-ink-secondary">
+              End
+              <input
+                type="date"
+                value={config.endIso ?? ""}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, endIso: e.target.value }));
+                  resetGenerateState();
+                }}
+                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
+              />
+            </label>
+          </div>
+        ) : null}
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-[14px] text-dash-ink">
+          <input
+            type="checkbox"
+            checked={config.comparePreviousPeriod}
+            onChange={(e) => {
+              setConfig((prev) => ({ ...prev, comparePreviousPeriod: e.target.checked }));
+              resetGenerateState();
+            }}
+            className="h-4 w-4 accent-dash-accent"
+          />
+          Compare to previous period (same length, immediately before)
+        </label>
+      </div>
+
+      {/* Website type */}
+      <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Website type</h2>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Controls which metrics appear on the conversions slide. Auto-detect works for most clients.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {CLIENT_KIND_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 ${
+                config.clientKind === opt.value
+                  ? "border-dash-accent bg-dash-accent/10"
+                  : "border-dash-border bg-dash-bg hover:border-dash-accent/40"
+              }`}
+            >
+              <input
+                type="radio"
+                name="clientKind"
+                checked={config.clientKind === opt.value}
+                onChange={() => {
+                  setConfig((prev) => ({ ...prev, clientKind: opt.value }));
+                  resetGenerateState();
+                }}
+                className="mt-1 accent-dash-accent"
+              />
+              <span>
+                <span className="text-[14px] font-medium text-dash-ink">{opt.label}</span>
                 <span className="mt-0.5 block text-[13px] text-dash-ink-secondary">{opt.description}</span>
               </span>
             </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Breakdowns */}
+      <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Breakdown slides</h2>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Estimated deck: <span className="font-medium text-dash-ink">{estimatedSlides} slides</span> (cover + overview +
+          conversions + selected breakdowns). Max {MAX_WEBSITE_BREAKDOWN_SLIDES} breakdown slides.
+        </p>
+        <div className="mt-4 space-y-3">
+          {BREAKDOWN_OPTIONS.map((opt) => (
+            <div key={opt.key}>
+              <label className="flex cursor-pointer items-start gap-3 rounded-md border border-dash-border bg-dash-bg px-4 py-3 hover:border-dash-accent/40">
+                <input
+                  type="checkbox"
+                  checked={Boolean(config.breakdowns[opt.key])}
+                  onChange={() => toggleBreakdown(opt.key)}
+                  className="mt-1 h-4 w-4 rounded border-dash-border accent-dash-accent"
+                />
+                <span>
+                  <span className="text-[14px] font-medium text-dash-ink">
+                    {opt.label}
+                    {opt.recommended ? (
+                      <span className="ml-2 text-[11px] font-normal uppercase tracking-wide text-dash-accent">
+                        Recommended
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] text-dash-ink-secondary">{opt.description}</span>
+                  {opt.warning ? <span className="mt-1 block text-[12px] text-amber-400">{opt.warning}</span> : null}
+                </span>
+              </label>
+              {opt.geoSelector && config.breakdowns.geo ? (
+                <div className="ml-10 mt-2 flex flex-wrap gap-2">
+                  {GEO_DIMENSIONS.map((g) => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      onClick={() => setGeoDimension(g.value)}
+                      className={`rounded-full px-3 py-1 text-[12px] font-medium ${
+                        config.breakdowns.geoDimension === g.value
+                          ? "bg-dash-accent text-dash-ink"
+                          : "border border-dash-border bg-dash-card text-dash-ink-secondary hover:text-dash-ink"
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
         {selectedBreakdownCount === 0 ? (
@@ -235,16 +425,17 @@ export function WebsiteReportWizard({
         ) : null}
         {tooManyBreakdowns ? (
           <p className="mt-3 text-[13px] text-red-300">
-            Maximum {MAX_WEBSITE_BREAKDOWN_SLIDES} breakdown slides for readability. Deselect{" "}
+            Maximum {MAX_WEBSITE_BREAKDOWN_SLIDES} breakdown slides. Deselect{" "}
             {selectedBreakdownCount - MAX_WEBSITE_BREAKDOWN_SLIDES} to continue.
           </p>
         ) : null}
       </div>
 
+      {/* Preview */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Preview</h2>
-        {tooManyBreakdowns ? (
-          <p className="mt-3 text-[14px] text-dash-ink-secondary">Adjust breakdown selections to load a preview.</p>
+        {tooManyBreakdowns || selectedBreakdownCount === 0 ? (
+          <p className="mt-3 text-[14px] text-dash-ink-secondary">Adjust selections above to load a preview.</p>
         ) : previewStatus === "loading" ? (
           <p className="mt-3 text-[14px] text-dash-ink-secondary">Loading GA4 data…</p>
         ) : previewError ? (
@@ -282,40 +473,15 @@ export function WebsiteReportWizard({
                 </div>
               ))}
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {breakdowns.device && preview.devices.length > 0 ? (
-                <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-2">
-                  <p className="text-[11px] uppercase text-dash-ink-secondary">Top device</p>
-                  <p className="text-[14px] font-medium text-dash-ink">
-                    {preview.devices[0]?.device} · {preview.devices[0]?.sessionsLabel} sessions
-                  </p>
-                </div>
-              ) : null}
-              {breakdowns.channels && preview.channels.length > 0 ? (
-                <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-2">
-                  <p className="text-[11px] uppercase text-dash-ink-secondary">Top channel</p>
-                  <p className="text-[14px] font-medium text-dash-ink">
-                    {preview.channels[0]?.channel} · {preview.channels[0]?.sessionsLabel} sessions
-                  </p>
-                </div>
-              ) : null}
-              {breakdowns.geoCities && preview.geoCities.length > 0 ? (
-                <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-2">
-                  <p className="text-[11px] uppercase text-dash-ink-secondary">Top city</p>
-                  <p className="text-[14px] font-medium text-dash-ink">
-                    {preview.geoCities[0]?.location} · {preview.geoCities[0]?.sessionsLabel} sessions
-                  </p>
-                </div>
-              ) : null}
-            </div>
             <p className="text-[13px] text-dash-ink-secondary">
-              Deck includes {slideCount} slides based on your breakdown selections.
+              Deck includes {slideCount} slides · website type: {preview.clientKind.replace("_", " ")}
             </p>
             <p className="text-[12px] text-dash-ink-muted">{preview.attributionNote}</p>
           </div>
         ) : null}
       </div>
 
+      {/* Generate */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Generate</h2>
         <p className="mt-2 text-[14px] text-dash-ink-secondary">

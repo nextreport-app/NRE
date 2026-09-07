@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
-import { defaultWebsiteReportRanges, fetchGa4WebsiteReport } from "@/lib/nre/fetch-ga4-website-report";
+import { fetchGa4WebsiteReport, resolveWebsiteReportRanges } from "@/lib/nre/fetch-ga4-website-report";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
-import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
+import { estimateWebsiteSlideCount, parseWebsiteReportConfigFromSearchParams } from "@/lib/nre/website-report-data";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -46,14 +46,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const url = new URL(req.url);
-  const breakdowns = parseWebsiteBreakdownOptions({
-    device: url.searchParams.get("device"),
-    geo: url.searchParams.get("geo"),
-    channels: url.searchParams.get("channels"),
-    topPages: url.searchParams.get("topPages"),
-  });
+  const config = parseWebsiteReportConfigFromSearchParams(url.searchParams);
+  const ranges = resolveWebsiteReportRanges(config, client.timezone);
 
-  const ranges = defaultWebsiteReportRanges(client.timezone);
   try {
     const data = await fetchGa4WebsiteReport({
       accessToken,
@@ -62,14 +57,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
       currentRange: ranges.current,
       comparisonRange: ranges.previous,
-      breakdowns,
+      config,
     });
 
     return NextResponse.json({
       data,
+      config,
       accountName: client.accountName,
-      breakdowns,
-      slideCount: estimateWebsiteSlideCount(breakdowns, {
+      slideCount: estimateWebsiteSlideCount(config.breakdowns, {
         hasConversionSlide: data.conversionMetrics.length > 0,
         hasTopPagesData: data.topPages.length > 0,
       }),

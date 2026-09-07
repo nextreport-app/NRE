@@ -12,7 +12,7 @@
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { WebsiteReportData } from "../nre/website-report-data";
-import { DEFAULT_WEBSITE_BREAKDOWNS } from "../nre/website-report-data";
+import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-report-config";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
@@ -31,13 +31,18 @@ import {
 import { collectLegendEntries } from "./legend-collect";
 import { slideAiKey } from "./slide-keys";
 import {
+  buildWebsiteAudienceSlideXml,
+  buildWebsiteCampaignTableSlideXml,
   buildWebsiteChannelTableSlideXml,
   buildWebsiteConversionSlideXml,
   buildWebsiteCoverSlideXml,
+  buildWebsiteDemographicsSlideXml,
   buildWebsiteDeviceTableSlideXml,
   buildWebsiteGeoTableSlideXml,
   buildWebsiteOverviewSlideXml,
   buildWebsiteSlideRels,
+  buildWebsiteSourceTableSlideXml,
+  buildWebsiteTechTableSlideXml,
   buildWebsiteTopPagesSlideXml,
 } from "./website-slides";
 
@@ -356,7 +361,7 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
   const { templateBuffer, data, accountName, agencyName } = input;
   const template = await loadTemplate(templateBuffer);
   const tableRels = buildWebsiteSlideRels(template.background.mediaTarget);
-  const breakdowns = data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS;
+  const breakdowns = normalizeBreakdowns(data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS);
 
   const slides: SlideToInsert[] = [
     {
@@ -390,9 +395,51 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
     });
   }
 
-  if (breakdowns.geoCities) {
+  if (breakdowns.geo) {
     slides.push({
       xml: buildWebsiteGeoTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.campaigns) {
+    slides.push({
+      xml: buildWebsiteCampaignTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.sources) {
+    slides.push({
+      xml: buildWebsiteSourceTableSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.demographics) {
+    slides.push({
+      xml: buildWebsiteDemographicsSlideXml(data, template.background),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.operatingSystem) {
+    slides.push({
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Operating System", "OS", data.operatingSystems),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.browser) {
+    slides.push({
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Browser", "BROWSER", data.browsers),
+      rels: tableRels,
+    });
+  }
+
+  if (breakdowns.newVsReturning) {
+    slides.push({
+      xml: buildWebsiteAudienceSlideXml(data, template.background),
       rels: tableRels,
     });
   }
