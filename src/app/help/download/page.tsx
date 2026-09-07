@@ -237,6 +237,17 @@ export default async function DownloadGuidePage() {
               </p>
             </div>
 
+            <div className="mt-8 rounded-lg border border-[#63b3ed]/40 border-l-4 border-l-[#63b3ed] bg-navy-panel p-5">
+              <h3 className="text-lg font-semibold text-white">Multi-Month Historical reports</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink-secondary">
+                When a client asks for the last few months (e.g. May through August), choose{" "}
+                <span className="text-white">Multi-Month Historical Report</span> in Step 5 — not four separate CSV
+                uploads. Export <span className="text-white">one daily CSV</span> whose date range covers every month
+                you need (Custom date range in Ads Manager, Day breakdown). Each complete calendar month becomes its own
+                campaign slides with a month header (e.g. &quot;May Performance&quot;).
+              </p>
+            </div>
+
             <h3 className="mt-10 text-lg font-semibold text-white">Optional — Previous Month CSV (Meta)</h3>
             <p className="mt-2 text-sm text-ink-secondary">
               Upload once per client at the start of each month. Adds the{" "}

@@ -5,6 +5,7 @@ import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
+import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { buildGoogleReportData } from "@/lib/nre/google-report-data";
 import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
 import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
@@ -21,6 +22,7 @@ import {
   campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
+  historicalMonthCountSchema,
   dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
@@ -132,6 +134,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isComparison: true, data });
+  }
+
+  if (parsedReportType === "HISTORICAL") {
+    const monthCount =
+      formData ? parseJsonFormField(formData, "historicalMonthCount", historicalMonthCountSchema) : undefined;
+    const resolvedMonthCount = monthCount ?? 4;
+    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone);
+    if (!coverage.valid) {
+      return NextResponse.json(
+        {
+          valid: false,
+          errors: [{ field: "historicalMonthCount", message: coverage.error ?? "CSV does not cover the selected months." }],
+          warnings: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    const data = buildHistoricalReportData({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      monthlyBudget: client.monthlyBudget,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides,
+      objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+      monthCount: resolvedMonthCount,
+      platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+    });
+
+    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isHistorical: true, data });
   }
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {

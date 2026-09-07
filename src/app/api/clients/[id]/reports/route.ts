@@ -17,7 +17,8 @@ import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
-import { renderComparisonPptx, renderPptx } from "@/lib/pptx/render";
+import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
+import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
@@ -36,6 +37,7 @@ import {
   campaignObjectivesSchema,
   comparisonPeriodSchema,
   confirmedCampaignObjectivesSchema,
+  historicalMonthCountSchema,
   dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
@@ -363,6 +365,126 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         });
       } catch (updateErr) {
         console.error("[api:reports:generate] failed to record comparison failure status:", updateErr);
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  if (reportType === "HISTORICAL") {
+    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform === "TIKTOK" ? "TIKTOK" : "META");
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
+    }
+
+    const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+    const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
+    const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
+    const campaignMetricOverrides = formData
+      ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema)
+      : undefined;
+    const monthCount =
+      formData ? parseJsonFormField(formData, "historicalMonthCount", historicalMonthCountSchema) : undefined;
+    const resolvedMonthCount = monthCount ?? 4;
+    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone);
+    if (!coverage.valid) {
+      return NextResponse.json({ error: coverage.error ?? "CSV does not cover the selected months." }, { status: 400 });
+    }
+
+    const historicalData = buildHistoricalReportData({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      monthlyBudget: client.monthlyBudget,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides,
+      objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+      monthCount: resolvedMonthCount,
+      platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+    });
+
+    const fileName = `Multi-Month Report - ${historicalData.monthsLabel}.pptx`.replace(/[\s/]/g, "_");
+
+    let historicalReport;
+    try {
+      historicalReport = await prisma.report.create({
+        data: {
+          clientId: client.id,
+          status: "GENERATING",
+          reportType: "HISTORICAL",
+          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+          fileName,
+          displayName: defaultReportDisplayName("HISTORICAL", null, null, historicalData.monthsLabel),
+          summaryJson: JSON.stringify({
+            isPaused: historicalData.isPaused,
+            monthsLabel: historicalData.monthsLabel,
+            monthCount: historicalData.monthCount,
+            slideCount: historicalData.slides.length,
+          }),
+        },
+      });
+    } catch (err) {
+      return apiErrorResponse(err, "reports:generate:create-historical");
+    }
+
+    try {
+      const [user, clientLogo] = await Promise.all([
+        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
+        loadLogoAsset(client.logoUrl),
+      ]);
+
+      const templateBuffer = await loadTemplateBufferForPlatform(
+        platform === "TIKTOK" ? "TIKTOK" : "META",
+        client.template,
+      );
+      const pptxBuffer = await renderHistoricalPptx({
+        templateBuffer,
+        data: historicalData,
+        reportTitle,
+        agencyName: user?.agencyName,
+        clientLogo,
+        isLightTemplate: client.template === "LIGHT",
+      });
+
+      const filePath = await saveReportFile(historicalReport.id, pptxBuffer);
+
+      await prisma.report.update({
+        where: { id: historicalReport.id },
+        data: { status: "COMPLETE", filePath, shareToken: generateShareToken() },
+      });
+
+      const updatedHistorical = await prisma.report.findUnique({
+        where: { id: historicalReport.id },
+        select: { shareToken: true, displayName: true },
+      });
+
+      dispatchReportNotifications({
+        userId: session.user.id,
+        integrations: userIntegrations,
+        client,
+        report: {
+          id: historicalReport.id,
+          shareToken: updatedHistorical?.shareToken ?? null,
+          reportType: "HISTORICAL",
+          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+          displayName: updatedHistorical?.displayName ?? historicalReport.displayName,
+        },
+      });
+
+      return NextResponse.json({ ok: true, reportId: historicalReport.id });
+    } catch (err) {
+      console.error("[api:reports:generate] historical report failed:", err);
+      const message = err instanceof Error ? err.message : "Report generation failed.";
+      try {
+        await prisma.report.update({
+          where: { id: historicalReport.id },
+          data: { status: "FAILED", errorMessage: message },
+        });
+      } catch (updateErr) {
+        console.error("[api:reports:generate] failed to record historical failure status:", updateErr);
       }
       return NextResponse.json({ error: message }, { status: 500 });
     }
