@@ -195,7 +195,7 @@ export default async function DownloadGuidePage() {
             </div>
             <p className="mt-4 text-sm text-ink-muted">
               GA4 website reports are available from Step 1 of the report wizard — choose{" "}
-              <span className="text-white">Website Traffic (GA4)</span>. Connect Google Analytics in Account Settings
+              <span className="text-white">GA4 Website</span>. Connect Google Analytics in Account Settings
               and link a property to each client first.
             </p>
             <p className="mt-2 text-sm text-ink-muted">
