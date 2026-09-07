@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { fileFromFormData } from "@/lib/http-file";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { detectGa4CsvDimensions, readGa4RowsWithAutoMap } from "@/lib/nre/ga4-columns";
-import { parseUploadedFile } from "@/lib/nre/parse-file";
+import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { validateGa4Csv } from "@/lib/nre/validate-ga4";
 import { computeGa4CsvDateBounds } from "@/lib/nre/build-website-report-from-csv";
 
@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const parsed = parseUploadedFile(buffer, "GA4 CSV");
+    const parsed = parseUploadedFileHeadersAndRows(buffer, "GA4 CSV");
     const { colMap, rows } = readGa4RowsWithAutoMap(parsed.headers, parsed.dataRows);
     const validation = validateGa4Csv(colMap, rows, new Date(), parsed.headers);
     const dateBounds = computeGa4CsvDateBounds(rows);

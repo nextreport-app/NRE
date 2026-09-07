@@ -144,6 +144,9 @@ describe("website-report-config", () => {
         browser: false,
         topPages: false,
         newVsReturning: false,
+        dayOfWeek: false,
+        hourOfDay: false,
+        conversionEvents: false,
       }),
     ).toBe(7);
   });

@@ -3,7 +3,7 @@
  */
 
 import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
-import { parseUploadedFile } from "@/lib/nre/parse-file";
+import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { readGa4RowsWithAutoMap, detectGa4CsvDimensions } from "@/lib/nre/ga4-columns";
 import { validateGa4Csv } from "@/lib/nre/validate-ga4";
 import { buildWebsiteReportFromCsv, computeGa4CsvDateBounds } from "@/lib/nre/build-website-report-from-csv";
@@ -28,7 +28,7 @@ export async function resolveWebsiteReportData(input: {
 
   if (input.dataSource === "csv") {
     if (!input.csvBuffer) throw new Error("Upload a GA4 CSV export to generate from CSV.");
-    const parsed = parseUploadedFile(input.csvBuffer, "GA4 CSV");
+    const parsed = parseUploadedFileHeadersAndRows(input.csvBuffer, "GA4 CSV");
     const { colMap, rows } = readGa4RowsWithAutoMap(parsed.headers, parsed.dataRows);
     const validation = validateGa4Csv(colMap, rows, new Date(), parsed.headers);
     if (!validation.valid) {

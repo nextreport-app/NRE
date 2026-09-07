@@ -173,7 +173,7 @@ export async function runGa4Report(
     dimensions?: Array<{ name: string }>;
     metrics: Array<{ name: string }>;
     limit?: number;
-    orderBys?: Array<{ metric?: { metricName: string }; desc?: boolean }>;
+    orderBys?: Array<{ metric?: { metricName: string }; dimension?: { dimensionName: string }; desc?: boolean }>;
   },
 ): Promise<RunReportResponse> {
   const res = await fetch(`${GA4_DATA_BASE}/${propertyResource(propertyId)}:runReport`, {
