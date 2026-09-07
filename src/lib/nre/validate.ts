@@ -38,7 +38,9 @@ export interface ValidationResult {
   noCampaignData: boolean;
 }
 
-const MAX_RANGE_DAYS = 90;
+const MAX_RANGE_DAYS_STANDARD = 90;
+/** Multi-Month Historical reports need up to 12 complete calendar months in one CSV. */
+const MAX_RANGE_DAYS = 366;
 const FUTURE_GRACE_DAYS = 1; // small allowance for timezone edge effects at the CSV's export boundary
 
 /**
@@ -191,7 +193,12 @@ export function validateMtdDailyCsv(
       if (spanDays > MAX_RANGE_DAYS) {
         errors.push({
           field: "date",
-          message: `The date range spans ${Math.round(spanDays)} days — upload a single month's daily export (max ${MAX_RANGE_DAYS} days).`,
+          message: `The date range spans ${Math.round(spanDays)} days — max ${MAX_RANGE_DAYS} days (about 12 months). Shorten the export or split into smaller reports.`,
+        });
+      } else if (spanDays > MAX_RANGE_DAYS_STANDARD) {
+        warnings.push({
+          field: "date",
+          message: `The date range spans ${Math.round(spanDays)} days. For weekly/monthly reports use a single-month export (≤${MAX_RANGE_DAYS_STANDARD} days). For May–August-style requests, choose Multi-Month Historical Report on Step 5.`,
         });
       }
     }
