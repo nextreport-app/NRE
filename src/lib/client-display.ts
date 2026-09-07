@@ -85,22 +85,32 @@ export function getPreviousMonthListStatus(
   if (info.status === "missing") {
     return {
       status: "missing",
-      label: "Prev month — upload needed",
+      label: "Prev month — not uploaded",
       title: `Upload ${info.expectedMonthName} data on Manage for the previous-month overview row.`,
     };
   }
   if (info.status === "stale") {
+    const { monthName: currentMonthName } = getCalendarMonthInTimezone(now, timezone);
     return {
       status: "stale",
-      label: `Prev month — refresh for ${info.expectedMonthName}`,
-      title: `Previous month file is from before this calendar month. Re-upload ${info.expectedMonthName} on Manage.`,
+      label: "Prev month — re-upload this month",
+      title: `${info.expectedMonthName} data is saved but was uploaded before ${currentMonthName}. Re-upload the file on Manage so Monthly reports include the comparison row this month.`,
     };
   }
   return {
     status: "current",
     label: "Prev month ready",
-    title: `${info.expectedMonthName} comparison data is uploaded for this month.`,
+    title: `${info.expectedMonthName} comparison data is ready for reports this month.`,
   };
+}
+
+function getCalendarMonthInTimezone(now: Date, timezone: string): { monthName: string; year: number } {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: timezone, month: "long", year: "numeric" }).formatToParts(
+    now,
+  );
+  const monthName = parts.find((p) => p.type === "month")?.value ?? "this month";
+  const year = Number(parts.find((p) => p.type === "year")?.value ?? now.getUTCFullYear());
+  return { monthName, year };
 }
 
 export function getClientInitial(name: string): string {
