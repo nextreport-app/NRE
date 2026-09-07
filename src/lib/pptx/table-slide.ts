@@ -235,6 +235,14 @@ function cloneLastColumnPairInRow(rowXml: string, extraPairs: number): string {
   return rowXml.slice(0, insertAt) + lastPairXml.repeat(extraPairs) + rowXml.slice(insertAt);
 }
 
+/** Appends `extraRows` clones of the last <a:tr> in a table — for Multi-Month Historical comparison slides. */
+function cloneLastTableRows(tblXml: string, extraRows: number): string {
+  const rows = findSpans(tblXml, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
+  if (rows.length === 0 || extraRows <= 0) return tblXml;
+  const lastRow = rows[rows.length - 1];
+  return tblXml.slice(0, lastRow.end) + lastRow.xml.repeat(extraRows) + tblXml.slice(lastRow.end);
+}
+
 /** Rescales every <a:gridCol> width proportionally so the columns' total width equals `targetTotalWidth` — used after growing the table so it doesn't overflow the slide. */
 function rescaleGridColumnsToWidth(tblGridXml: string, targetTotalWidth: number): string {
   const cols = findSpans(tblGridXml, /<a:gridCol[^/]*\/>/g);
@@ -296,13 +304,13 @@ export function fillCombinedTotalTable(
     `[table-slide] fillCombinedTotalTable: ${objectivePairCount} objective pair(s) -> header ${headerFontSizeHundredths / 100}pt, row label ${ROW_LABEL_FONT_SIZE / 100}pt, data values ${DATA_VALUE_FONT_SIZE / 100}pt`,
   );
   const validShape =
-    grid.length === EXPECTED_ROWS &&
+    grid.length >= 2 &&
     grid.every((row) => row.length === targetCols) &&
     targetCols >= STATIC_COLS + 2 &&
     (targetCols - STATIC_COLS) % 2 === 0;
   if (!validShape) {
     throw new Error(
-      `Combined Total table grid must be ${EXPECTED_ROWS} rows, each with ${STATIC_COLS} + an even number ` +
+      `Combined Total table grid must be a header row plus one or more data rows, each with ${STATIC_COLS} + an even number ` +
         `(2 or more) of result columns — got ${grid.length} row(s)` +
         (grid[0] ? `, ${grid[0].length} column(s) in the first row` : "") +
         ".",
@@ -312,10 +320,16 @@ export function fillCombinedTotalTable(
   const tblMatch = /<a:tbl>[\s\S]*?<\/a:tbl>/.exec(xml);
   if (!tblMatch) throw new Error("Combined Total slide template has no <a:tbl> element to fill.");
 
-  const nativeRows = findSpans(tblMatch[0], /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
-  if (nativeRows.length !== EXPECTED_ROWS) {
+  let newTbl = tblMatch[0];
+  const nativeRowsBeforeGrow = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
+  if (grid.length > nativeRowsBeforeGrow.length) {
+    newTbl = cloneLastTableRows(newTbl, grid.length - nativeRowsBeforeGrow.length);
+  }
+
+  const nativeRows = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
+  if (nativeRows.length < grid.length) {
     throw new Error(
-      `Combined Total table must have ${EXPECTED_ROWS} rows in the template, found ${nativeRows.length}.`,
+      `Combined Total table must have at least ${grid.length} rows after growing, found ${nativeRows.length}.`,
     );
   }
   const nativeCells = findSpans(nativeRows[0].xml, /<a:tc[\s\S]*?<\/a:tc>/g);
@@ -324,8 +338,6 @@ export function fillCombinedTotalTable(
       `Combined Total table must have ${NATIVE_COLS} columns in the template, found ${nativeCells.length}.`,
     );
   }
-
-  let newTbl = tblMatch[0];
 
   // Grow beyond the template's native column count when 3+ objectives exist
   // (targetCols > NATIVE_COLS) — clone the last result-column pair as many
@@ -361,7 +373,7 @@ export function fillCombinedTotalTable(
   // (Period/MTD data) get the row-label size in column 0 and the data-value
   // size everywhere else.
   const rowsToFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
-  for (let r = EXPECTED_ROWS - 1; r >= 0; r--) {
+  for (let r = grid.length - 1; r >= 0; r--) {
     const row = rowsToFill[r];
     const isHeaderRow = r === 0;
     const rowValues = isHeaderRow && objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r];
@@ -396,7 +408,7 @@ export function fillCombinedTotalTable(
   // growing/hiding columns above so it covers whatever cells the row
   // actually ends up with, not just its native 10.
   const rowsForFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
-  if (rowsForFill[1]) {
+  if (rowsForFill[1] && grid.length === EXPECTED_ROWS) {
     const fillHex = options.isLightTemplate ? PERIOD_ROW_FILL_HEX_LIGHT : PERIOD_ROW_FILL_HEX;
     const filledRow = setRowCellFill(rowsForFill[1].xml, fillHex);
     newTbl = newTbl.slice(0, rowsForFill[1].start) + filledRow + newTbl.slice(rowsForFill[1].end);

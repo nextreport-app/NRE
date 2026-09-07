@@ -18,7 +18,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
-import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
@@ -449,17 +449,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         agencyName: user?.agencyName,
         clientLogo,
         isLightTemplate: client.template === "LIGHT",
+        aiCopyBySlideKey: buildHistoricalAiCopyMap(historicalData.slides),
       });
 
       const filePath = await saveReportFile(historicalReport.id, pptxBuffer);
 
-      const shareData = buildHistoricalShareReportData(historicalData, new Date(), {
+      const aiCopyMap = buildHistoricalAiCopyMap(historicalData.slides);
+      const shareData = buildHistoricalShareReportData(historicalData, aiCopyMap, new Date(), {
         agencyName: user?.agencyName,
       });
       const shareWithArchive = {
         ...shareData,
         _renderArchive: {
           historicalData,
+          aiCopy: Object.fromEntries(aiCopyMap),
           reportTitle,
           agencyName: user?.agencyName ?? null,
           isLightTemplate: client.template === "LIGHT",

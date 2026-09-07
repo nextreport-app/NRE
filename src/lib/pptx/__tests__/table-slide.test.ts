@@ -69,9 +69,19 @@ describe("fillCombinedTotalTable", () => {
     expect(mtdRowXml).toContain("<a:t>—</a:t>");
   });
 
-  it("throws when the grid doesn't have exactly 3 rows", () => {
+  it("throws when the grid has fewer than 2 rows", () => {
     const xml = buildFixtureTable();
-    expect(() => fillCombinedTotalTable(xml, grid3x10(() => "x").slice(0, 2))).toThrow(/3 rows/);
+    expect(() => fillCombinedTotalTable(xml, grid3x10(() => "x").slice(0, 1))).toThrow(/header row plus one or more data rows/);
+  });
+
+  it("grows the template table when the grid has more rows than the template", () => {
+    const xml = buildFixtureTable(2, NATIVE_COLS);
+    const header = [...COMBINED_TOTAL_STATIC_HEADERS, "WEBSITE LEADS", "COST PER WEBSITE LEAD"];
+    const dataRow = header.map((_, i) => (i === 0 ? "May 2026" : "x"));
+    const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow, dataRow]);
+    const rows = out.match(/<a:tr/g) ?? [];
+    expect(rows.length).toBe(4);
+    expect(out).toContain("<a:t>May 2026</a:t>");
   });
 
   it("throws when the grid's rows aren't all the same width", () => {
@@ -90,10 +100,11 @@ describe("fillCombinedTotalTable", () => {
     expect(() => fillCombinedTotalTable("<p:sp>no table here</p:sp>", grid)).toThrow(/<a:tbl>/);
   });
 
-  it("throws when the template's table doesn't have exactly 3 rows", () => {
-    const xml = buildFixtureTable(2, NATIVE_COLS);
+  it("grows even from a single-row template when the grid needs more data rows", () => {
+    const xml = buildFixtureTable(1, NATIVE_COLS);
     const grid = grid3x10(() => "x");
-    expect(() => fillCombinedTotalTable(xml, grid)).toThrow(/3 rows/);
+    const out = fillCombinedTotalTable(xml, grid);
+    expect((out.match(/<a:tr/g) ?? []).length).toBe(3);
   });
 
   it("throws when a template row doesn't have exactly 10 native columns", () => {

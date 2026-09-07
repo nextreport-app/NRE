@@ -1,4 +1,4 @@
-import { buildCombinedTotalTableGrid } from "@/lib/nre/report-data";
+import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid } from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
@@ -325,21 +325,31 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
  * row's own month.
  */
 function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; compact?: boolean }) {
-  const grid =
-    data.platform === "GOOGLE"
+  const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
+
+  const grid = isHistoricalMultiMonth
+    ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
+    : data.platform === "GOOGLE"
       ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels)
       : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
 
-  const hidePeriodRow = data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
+  const hidePeriodRow =
+    isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
-  const [headerRow, mtdRow, periodRow] = grid;
 
-  const bodyRows: { cells: string[]; isPeriod: boolean }[] = [
-    ...(hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }]),
-    ...(hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]),
-  ];
+  const bodyRows: { cells: string[]; isPeriod: boolean }[] = isHistoricalMultiMonth
+    ? grid.slice(1).map((cells) => ({ cells, isPeriod: false }))
+    : (() => {
+        const [, mtdRow, periodRow] = grid;
+        return [
+          ...(hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }]),
+          ...(hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]),
+        ];
+      })();
 
   if (bodyRows.length === 0) return null;
+
+  const headerRow = grid[0];
 
   return (
     <div className={compact ? "print-combined-table overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border"}>

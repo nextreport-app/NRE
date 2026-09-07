@@ -162,6 +162,8 @@ export interface ShareReportData {
   tableHeaderLabels: TableHeaderLabels;
   periodRow: TableRowData;
   mtdRow: TableRowData;
+  /** Multi-Month Historical — one row per calendar month for the final comparison table. */
+  historicalComparisonRows?: TableRowData[];
   /** Optional one-line Combined Total story (older share JSON omits this). */
   combinedTotalStory?: string;
   metricGuide: LegendEntry[];
@@ -328,26 +330,33 @@ function historicalSlideReportTypeLabel(performanceHeader?: string): string | un
   if (!performanceHeader) return undefined;
   return performanceHeader
     .replace(/^YOUR /, "")
-    .replace(/ PERFORMANCE REPORT$/, " Performance Report");
+    .replace(/ PERFORMANCE REPORT$/, " Performance Report")
+    .replace(/ MONTH TOTAL$/, " Month Total")
+    .replace(/^([A-Z]+)/, (word) => word.charAt(0) + word.slice(1).toLowerCase());
 }
 
 /** Share-page payload for Multi-Month Historical reports — parallel to buildShareReportData. */
 export function buildHistoricalShareReportData(
   data: HistoricalReportData,
+  aiCopyBySlideKey: Map<string, AiCopy>,
   now: Date = new Date(),
   extras: ShareReportExtras = {},
 ): ShareReportData {
-  const campaigns: ShareCampaignData[] = data.slides.map((slide) => ({
-    campaignName: historicalSlideShareKey(slide),
-    resultLabel: slide.resultLabel,
-    dateRange: slide.dateRangeLine.split("\n")[0]?.trim() ?? slide.dateRangeLine,
-    adFrequency: adFrequencyLabel(slide.avgFreq),
-    statusIndicator: slide.statusIndicator,
-    metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
-    slideReportTypeLabel: historicalSlideReportTypeLabel(slide.performanceHeader),
-    aiSummary: "",
-    aiInsights: "",
-  }));
+  const campaigns: ShareCampaignData[] = data.slides.map((slide) => {
+    const key = historicalSlideShareKey(slide);
+    const ai = aiCopyBySlideKey.get(`campaign:${key}`) ?? { summary: "", insights: "" };
+    return {
+      campaignName: key,
+      resultLabel: slide.resultLabel,
+      dateRange: slide.dateRangeLine.split("\n")[0]?.trim() ?? slide.dateRangeLine,
+      adFrequency: adFrequencyLabel(slide.avgFreq),
+      statusIndicator: slide.statusIndicator,
+      metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
+      slideReportTypeLabel: historicalSlideReportTypeLabel(slide.performanceHeader),
+      aiSummary: ai.summary,
+      aiInsights: ai.insights,
+    };
+  });
 
   return {
     version: 1,
@@ -367,16 +376,17 @@ export function buildHistoricalShareReportData(
     campaigns,
     adSets: [],
     chart: null,
-    tableHeaderLabels: { resultColumns: [] },
+    tableHeaderLabels: data.tableHeaderLabels,
     periodRow: EMPTY_TABLE_ROW,
     mtdRow: EMPTY_TABLE_ROW,
+    historicalComparisonRows: data.comparisonRows,
     metricGuide: [],
     agencyName: extras.agencyName ?? null,
     generatedAt: now.toISOString(),
     visibility: {
       cover: true,
       overview: false,
-      combinedTotal: false,
+      combinedTotal: data.comparisonRows.length > 0,
       metricGuide: false,
       campaigns: Object.fromEntries(campaigns.map((c) => [c.campaignName, true])),
       adSets: {},

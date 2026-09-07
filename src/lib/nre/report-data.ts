@@ -128,6 +128,8 @@ export interface AiContext {
 export interface CampaignSlideData {
   kind: "campaign";
   campaignName: string;
+  /** Multi-Month Historical — month-level totals slide (all campaigns combined). */
+  isMonthTotal?: boolean;
   resultLabel: string;
   costLabel: string;
   metrics: SlideMetrics;
@@ -778,6 +780,23 @@ export function buildCombinedTotalTableGrid(
     return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
   };
   return [headerRow, dataRow(mtdRow), dataRow(periodRow)];
+}
+
+/** Multi-Month Historical final slide — one data row per calendar month (oldest first). */
+export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers: TableHeaderLabels): string[][] {
+  const headerRow = [
+    ...COMBINED_TOTAL_STATIC_HEADERS,
+    ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel]),
+  ];
+  const dataRow = (row: TableRowData): string[] => {
+    const byLabel = new Map(row.resultColumns.map((c) => [c.label, c]));
+    const resultCells = headers.resultColumns.flatMap(({ label }) => {
+      const col = byLabel.get(label);
+      return col ? [col.value, col.cprValue] : ["—", "—"];
+    });
+    return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
+  };
+  return [headerRow, ...rows.filter((r) => r.hasData).map(dataRow)];
 }
 
 // ─────────────────────────── Main entry point ──────────────────────────────

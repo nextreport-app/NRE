@@ -24,6 +24,7 @@ export interface RenderArchive {
 
 export interface HistoricalRenderArchive {
   historicalData: HistoricalReportData;
+  aiCopy?: Record<string, AiCopy>;
   reportTitle?: string | null;
   agencyName?: string | null;
   isLightTemplate: boolean;
@@ -71,6 +72,7 @@ export async function regeneratePptxFromShare(
       agencyName: archive.agencyName,
       clientLogo,
       isLightTemplate: archive.isLightTemplate,
+      aiCopyBySlideKey: mergeShareCopyIntoAiMap(share, archive.aiCopy ?? {}),
     });
   }
 
