@@ -3797,7 +3797,7 @@ function ReportTypeCard({
             : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
       }`}
     >
-      <span className="inline-flex text-2xl" aria-hidden="true">
+      <span className="inline-flex shrink-0" aria-hidden="true">
         {icon}
       </span>
       <p
