@@ -5,8 +5,9 @@ import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
 import { defaultWebsiteReportRanges, fetchGa4WebsiteReport } from "@/lib/nre/fetch-ga4-website-report";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
+import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -44,6 +45,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
+  const url = new URL(req.url);
+  const breakdowns = parseWebsiteBreakdownOptions({
+    device: url.searchParams.get("device"),
+    geo: url.searchParams.get("geo"),
+    channels: url.searchParams.get("channels"),
+    topPages: url.searchParams.get("topPages"),
+  });
+
   const ranges = defaultWebsiteReportRanges(client.timezone);
   try {
     const data = await fetchGa4WebsiteReport({
@@ -53,12 +62,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
       currentRange: ranges.current,
       comparisonRange: ranges.previous,
+      breakdowns,
     });
 
     return NextResponse.json({
       data,
       accountName: client.accountName,
-      slideCount: 3 + (data.conversionMetrics.length > 0 ? 1 : 0) + (data.topPages.length > 0 ? 1 : 0),
+      breakdowns,
+      slideCount: estimateWebsiteSlideCount(breakdowns, {
+        hasConversionSlide: data.conversionMetrics.length > 0,
+        hasTopPagesData: data.topPages.length > 0,
+      }),
     });
   } catch (err) {
     console.error("[api:website-report:preview]", err);

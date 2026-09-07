@@ -7,7 +7,7 @@ import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, type AiCopy } from "./fill-tags";
 import type { CampaignSlideData } from "../nre/report-data";
 import { websiteMetricsToDynamicSlots } from "../nre/website-metrics-to-slots";
-import type { WebsiteChannelRow, WebsitePageRow, WebsiteReportData } from "../nre/website-report-data";
+import type { WebsiteChannelRow, WebsiteDeviceRow, WebsiteGeoRow, WebsitePageRow, WebsiteReportData } from "../nre/website-report-data";
 
 export const WEBSITE_BG_REL_ID = "rId2";
 
@@ -261,6 +261,46 @@ export function buildWebsiteTopPagesSlideXml(data: WebsiteReportData, background
     rows.push(["No page data", "—", "—"]);
   }
   return buildSimpleTableSlide("Top Landing Pages", data.dateRangeLabel, columns, rows, background);
+}
+
+export function buildWebsiteDeviceTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+  const columns = [
+    { header: "DEVICE", widthPt: 220, align: "l" as const },
+    { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
+    { header: "ENGAGEMENT", widthPt: 160, align: "ctr" as const },
+    { header: "CONVERSIONS", widthPt: 160, align: "ctr" as const },
+  ];
+  const rows = data.devices.map((row: WebsiteDeviceRow) => [
+    truncateCell(row.device, 24),
+    row.sessionsLabel,
+    row.engagementRateLabel,
+    row.conversionsLabel,
+  ]);
+  if (rows.length === 0) {
+    rows.push(["No device data", "—", "—", "—"]);
+  }
+  return buildSimpleTableSlide("Device Breakdown", data.dateRangeLabel, columns, rows, background);
+}
+
+export function buildWebsiteGeoTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+  const columns = [
+    { header: "CITY", widthPt: 260, align: "l" as const },
+    { header: "SESSIONS", widthPt: 120, align: "ctr" as const },
+    { header: "% OF TOTAL", widthPt: 120, align: "ctr" as const },
+    { header: "CONVERSIONS", widthPt: 120, align: "ctr" as const },
+    { header: "CONV. RATE", widthPt: 120, align: "ctr" as const },
+  ];
+  const rows = data.geoCities.map((row: WebsiteGeoRow) => [
+    truncateCell(row.location, 28),
+    row.sessionsLabel,
+    row.shareLabel,
+    row.conversionsLabel,
+    row.conversionRateLabel,
+  ]);
+  if (rows.length === 0) {
+    rows.push(["No location data", "—", "—", "—", "—"]);
+  }
+  return buildSimpleTableSlide("Top Cities", data.dateRangeLabel, columns, rows, background);
 }
 
 export { buildWebsiteSlideRels };

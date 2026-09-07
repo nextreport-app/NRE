@@ -19,7 +19,20 @@ function isoToUsDate(iso: string): string {
   return `${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}/${y}`;
 }
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
+
+function parseBreakdownsFromBody(body: unknown) {
+  if (!body || typeof body !== "object") return parseWebsiteBreakdownOptions({});
+  const b = body as Record<string, unknown>;
+  return parseWebsiteBreakdownOptions({
+    device: b.device as boolean | string | null | undefined,
+    geo: (b.geo ?? b.geoCities) as boolean | string | null | undefined,
+    channels: b.channels as boolean | string | null | undefined,
+    topPages: b.topPages as boolean | string | null | undefined,
+  });
+}
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -55,6 +68,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Connect Google Analytics in Account Settings first." }, { status: 400 });
   }
 
+  let breakdowns = parseWebsiteBreakdownOptions({});
+  try {
+    const body = await req.json().catch(() => null);
+    breakdowns = parseBreakdownsFromBody(body);
+  } catch {
+    // Empty body — use defaults
+  }
+
   const ranges = defaultWebsiteReportRanges(client.timezone);
   const weekStart = isoToUsDate(ranges.current.startIso);
   const weekEnd = isoToUsDate(ranges.current.endIso);
@@ -88,6 +109,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
       currentRange: ranges.current,
       comparisonRange: ranges.previous,
+      breakdowns,
     });
 
     const templateBuffer = await loadTemplateBuffer(client.template);

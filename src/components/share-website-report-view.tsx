@@ -1,4 +1,11 @@
 import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
+import type { WebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
+
+function shareBreakdowns(data: ShareWebsiteReportData): WebsiteBreakdownOptions {
+  if (data.breakdowns) return data.breakdowns;
+  // Legacy Phase 1 reports — channels + top pages only
+  return { device: false, geoCities: false, channels: true, topPages: true };
+}
 
 function MetricCardGrid({ title, metrics }: { title: string; metrics: ShareWebsiteReportData["overviewMetrics"] }) {
   if (metrics.length === 0) return null;
@@ -70,6 +77,8 @@ export function ShareWebsiteReportView({
   shareToken?: string;
   isPrint?: boolean;
 }) {
+  const breakdowns = shareBreakdowns(data);
+
   return (
     <div
       id={isPrint ? "share-report-print" : "share-report-page"}
@@ -90,13 +99,41 @@ export function ShareWebsiteReportView({
         <MetricCardGrid title="Traffic Overview" metrics={data.overviewMetrics} />
         <MetricCardGrid title="Conversions & Engagement" metrics={data.conversionMetrics} />
 
-        <SimpleTable
-          title="Traffic Sources"
-          columns={["Channel", "Sessions", "Engagement", "Conversions"]}
-          rows={data.channels.map((c) => [c.channel, c.sessionsLabel, c.engagementRateLabel, c.conversionsLabel])}
-        />
+        {breakdowns.device ? (
+          <SimpleTable
+            title="Device Breakdown"
+            columns={["Device", "Sessions", "Engagement", "Conversions"]}
+            rows={(data.devices ?? []).length
+              ? (data.devices ?? []).map((d) => [d.device, d.sessionsLabel, d.engagementRateLabel, d.conversionsLabel])
+              : [["No device data", "—", "—", "—"]]}
+          />
+        ) : null}
 
-        {data.topPages.length > 0 ? (
+        {breakdowns.channels ? (
+          <SimpleTable
+            title="Traffic Sources"
+            columns={["Channel", "Sessions", "Engagement", "Conversions"]}
+            rows={data.channels.map((c) => [c.channel, c.sessionsLabel, c.engagementRateLabel, c.conversionsLabel])}
+          />
+        ) : null}
+
+        {breakdowns.geoCities ? (
+          <SimpleTable
+            title="Top Cities"
+            columns={["City", "Sessions", "% of Total", "Conversions", "Conv. Rate"]}
+            rows={(data.geoCities ?? []).length
+              ? (data.geoCities ?? []).map((g) => [
+                  g.location,
+                  g.sessionsLabel,
+                  g.shareLabel,
+                  g.conversionsLabel,
+                  g.conversionRateLabel,
+                ])
+              : [["No location data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.topPages && data.topPages.length > 0 ? (
           <SimpleTable
             title="Top Landing Pages"
             columns={["Page", "Sessions", "Engagement"]}

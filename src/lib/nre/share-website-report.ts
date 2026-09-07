@@ -2,7 +2,8 @@
  * Share-page JSON for Website Traffic (GA4) reports — stored in Report.summaryJson.
  */
 
-import type { WebsiteReportData } from "./website-report-data";
+import type { WebsiteBreakdownOptions, WebsiteReportData } from "./website-report-data";
+import { DEFAULT_WEBSITE_BREAKDOWNS } from "./website-report-data";
 
 export interface ShareWebsiteMetricCard {
   label: string;
@@ -23,6 +24,21 @@ export interface ShareWebsitePageRow {
   engagementRateLabel: string;
 }
 
+export interface ShareWebsiteDeviceRow {
+  device: string;
+  sessionsLabel: string;
+  engagementRateLabel: string;
+  conversionsLabel: string;
+}
+
+export interface ShareWebsiteGeoRow {
+  location: string;
+  sessionsLabel: string;
+  shareLabel: string;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
 export interface ShareWebsiteReportData {
   version: 1;
   kind: "website";
@@ -34,7 +50,10 @@ export interface ShareWebsiteReportData {
   overviewMetrics: ShareWebsiteMetricCard[];
   conversionMetrics: ShareWebsiteMetricCard[];
   channels: ShareWebsiteChannelRow[];
+  devices?: ShareWebsiteDeviceRow[];
+  geoCities?: ShareWebsiteGeoRow[];
   topPages: ShareWebsitePageRow[];
+  breakdowns?: WebsiteBreakdownOptions;
   attributionNote: string;
   agencyName?: string | null;
   /** ISO timestamp when the agency published the share link */
@@ -67,11 +86,25 @@ export function buildShareWebsiteReportData(
       engagementRateLabel: c.engagementRateLabel,
       conversionsLabel: c.conversionsLabel,
     })),
+    devices: (data.devices ?? []).map((d) => ({
+      device: d.device,
+      sessionsLabel: d.sessionsLabel,
+      engagementRateLabel: d.engagementRateLabel,
+      conversionsLabel: d.conversionsLabel,
+    })),
+    geoCities: (data.geoCities ?? []).map((g) => ({
+      location: g.location,
+      sessionsLabel: g.sessionsLabel,
+      shareLabel: g.shareLabel,
+      conversionsLabel: g.conversionsLabel,
+      conversionRateLabel: g.conversionRateLabel,
+    })),
     topPages: data.topPages.map((p) => ({
       page: p.page,
       sessionsLabel: p.sessionsLabel,
       engagementRateLabel: p.engagementRateLabel,
     })),
+    breakdowns: data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS,
     attributionNote: data.attributionNote,
     agencyName: options.agencyName ?? null,
     publishedAt: null,

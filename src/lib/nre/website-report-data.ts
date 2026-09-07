@@ -1,14 +1,66 @@
 /**
  * Website Traffic report data — separate from Meta/Google Ads ReportData.
  *
- * Slide plan (Phase 1):
+ * Slide plan:
  * 1. Traffic overview — 8 metric cards
  * 2. Conversions / ecommerce — objective-specific cards
- * 3. Traffic sources table — channel breakdown
- * 4. Top pages table (optional)
+ * 3+. Optional breakdown tables (device, channels, geo, landing pages)
  */
 
 export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content";
+
+/** Which optional breakdown slides to include in a website report. */
+export interface WebsiteBreakdownOptions {
+  device: boolean;
+  geoCities: boolean;
+  channels: boolean;
+  topPages: boolean;
+}
+
+export const DEFAULT_WEBSITE_BREAKDOWNS: WebsiteBreakdownOptions = {
+  device: true,
+  geoCities: true,
+  channels: true,
+  topPages: true,
+};
+
+export const MAX_WEBSITE_BREAKDOWN_SLIDES = 4;
+
+export function parseWebsiteBreakdownOptions(input: {
+  device?: boolean | string | null;
+  geo?: boolean | string | null;
+  channels?: boolean | string | null;
+  topPages?: boolean | string | null;
+}): WebsiteBreakdownOptions {
+  const flag = (value: boolean | string | null | undefined, defaultOn: boolean) => {
+    if (value === undefined || value === null) return defaultOn;
+    if (typeof value === "boolean") return value;
+    return value !== "0" && value !== "false";
+  };
+  return {
+    device: flag(input.device, DEFAULT_WEBSITE_BREAKDOWNS.device),
+    geoCities: flag(input.geo, DEFAULT_WEBSITE_BREAKDOWNS.geoCities),
+    channels: flag(input.channels, DEFAULT_WEBSITE_BREAKDOWNS.channels),
+    topPages: flag(input.topPages, DEFAULT_WEBSITE_BREAKDOWNS.topPages),
+  };
+}
+
+export function countSelectedBreakdowns(options: WebsiteBreakdownOptions): number {
+  return [options.device, options.geoCities, options.channels, options.topPages].filter(Boolean).length;
+}
+
+export function estimateWebsiteSlideCount(
+  breakdowns: WebsiteBreakdownOptions,
+  opts?: { hasConversionSlide?: boolean; hasTopPagesData?: boolean },
+): number {
+  let slides = 2; // cover + traffic overview
+  if (opts?.hasConversionSlide !== false) slides += 1;
+  if (breakdowns.device) slides += 1;
+  if (breakdowns.channels) slides += 1;
+  if (breakdowns.geoCities) slides += 1;
+  if (breakdowns.topPages && opts?.hasTopPagesData !== false) slides += 1;
+  return slides;
+}
 
 export interface WebsiteMetricCard {
   key: string;
@@ -37,6 +89,27 @@ export interface WebsitePageRow {
   engagementRateLabel: string;
 }
 
+export interface WebsiteDeviceRow {
+  device: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+}
+
+export interface WebsiteGeoRow {
+  location: string;
+  sessions: number;
+  sessionsLabel: string;
+  shareOfSessions: number;
+  shareLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
 export interface WebsiteReportData {
   version: 1;
   kind: "website";
@@ -50,7 +123,11 @@ export interface WebsiteReportData {
   overviewMetrics: WebsiteMetricCard[];
   conversionMetrics: WebsiteMetricCard[];
   channels: WebsiteChannelRow[];
+  devices: WebsiteDeviceRow[];
+  geoCities: WebsiteGeoRow[];
   topPages: WebsitePageRow[];
+  /** Which breakdown slides were requested for this report */
+  breakdowns: WebsiteBreakdownOptions;
   /** Shown on cover / footnote — GA4 attribution differs from ad platforms */
   attributionNote: string;
 }
@@ -164,7 +241,10 @@ export function buildWebsiteReportData(input: {
   current: Ga4OverviewTotals;
   previous?: Ga4OverviewTotals;
   channels: Array<{ channel: string; sessions: number; engagementRate: number; conversions: number }>;
+  devices?: Array<{ device: string; sessions: number; engagementRate: number; conversions: number }>;
+  geoCities?: Array<{ location: string; sessions: number; conversions: number }>;
   topPages: Array<{ page: string; sessions: number; engagementRate: number }>;
+  breakdowns?: WebsiteBreakdownOptions;
 }): WebsiteReportData {
   const { current, previous, currencySymbol } = input;
   const clientKind = detectWebsiteClientKind(current);
@@ -314,6 +394,8 @@ export function buildWebsiteReportData(input: {
     );
   }
 
+  const totalSessions = Math.max(current.sessions, 1);
+
   return {
     version: 1,
     kind: "website",
@@ -335,6 +417,25 @@ export function buildWebsiteReportData(input: {
       conversions: c.conversions,
       conversionsLabel: fmtInt(c.conversions),
     })),
+    devices: (input.devices ?? []).map((d) => ({
+      device: d.device,
+      sessions: d.sessions,
+      sessionsLabel: fmtInt(d.sessions),
+      engagementRate: d.engagementRate,
+      engagementRateLabel: fmtPct(d.engagementRate),
+      conversions: d.conversions,
+      conversionsLabel: fmtInt(d.conversions),
+    })),
+    geoCities: (input.geoCities ?? []).map((g) => ({
+      location: g.location,
+      sessions: g.sessions,
+      sessionsLabel: fmtInt(g.sessions),
+      shareOfSessions: g.sessions / totalSessions,
+      shareLabel: fmtPct(g.sessions / totalSessions),
+      conversions: g.conversions,
+      conversionsLabel: fmtInt(g.conversions),
+      conversionRateLabel: g.sessions > 0 ? fmtPct(g.conversions / g.sessions) : "0.0%",
+    })),
     topPages: input.topPages.map((p) => ({
       page: p.page,
       sessions: p.sessions,
@@ -342,6 +443,7 @@ export function buildWebsiteReportData(input: {
       engagementRate: p.engagementRate,
       engagementRateLabel: fmtPct(p.engagementRate),
     })),
+    breakdowns: input.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS,
     attributionNote:
       "Website metrics come from Google Analytics 4. Conversion counts may differ from Meta or Google Ads due to different attribution models and tracking methods.",
   };
