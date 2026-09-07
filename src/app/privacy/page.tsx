@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
-  description: "NextReport privacy policy — how we handle your account data, CSV uploads, and Meta and Google Ads API connections.",
+  description: "NextReport privacy policy — how we handle your account data, CSV uploads, and Meta, Google Ads, and GA4 API connections.",
   path: "/privacy",
 });
 

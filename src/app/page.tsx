@@ -15,9 +15,9 @@ import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 
 export const metadata = pageMetadata({
-  title: "Automated Meta & Google Ads Reporting",
+  title: "Automated Ad & Website Reporting",
   description:
-    "Client-ready Meta and Google Ads reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser share link, and PDF export with AI insights. 7-day free trial.",
+    "Client-ready Meta Ads, Google Ads, and GA4 website reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser share link, and PDF export with AI insights. TikTok Ads reporting coming soon. 7-day free trial.",
   path: "/",
 });
 

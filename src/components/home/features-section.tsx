@@ -1,24 +1,30 @@
 const FEATURES = [
   {
     icon: "✅",
-    title: "Official Meta & Google Ads APIs",
+    title: "Official platform APIs",
     description:
-      "Meta Marketing API and Google Ads API sync — connect your accounts and skip the CSV export entirely.",
+      "Meta Marketing API, Google Ads API, and GA4 Data API — connect your accounts and skip manual CSV exports.",
+  },
+  {
+    icon: "📈",
+    title: "GA4 website reporting",
+    description:
+      "Traffic, channels, landing pages, device and geo breakdowns — a full website performance deck alongside your ad reports.",
   },
   {
     icon: "🎯",
     title: "Auto-detects campaign objectives",
-    description: "Identifies leads, purchases, traffic, reach and more — for both Meta and Google Ads.",
+    description: "Identifies leads, purchases, traffic, reach and more — for Meta and Google Ads campaigns.",
   },
   {
     icon: "🤖",
-    title: "AI-written campaign summaries",
+    title: "AI-written summaries",
     description: "Every slide gets an AI-written summary and key insights — no manual writing.",
   },
   {
     icon: "📊",
     title: "CSV upload still supported",
-    description: "Prefer a manual export? Standard Meta and Google Ads CSVs work when the recommended columns are included.",
+    description: "Prefer a manual export? Standard Meta, Google Ads, and GA4 CSVs work when the recommended columns are included.",
   },
   {
     icon: "🔀",
@@ -31,9 +37,9 @@ const FEATURES = [
     description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
   },
   {
-    icon: "📄",
-    title: "PDF download",
-    description: "Export a polished PDF from any published report — ready to attach or print.",
+    icon: "🎵",
+    title: "TikTok Ads reporting",
+    description: "Our fourth platform — TikTok Ads reporting is in development and launching soon for US and global accounts.",
   },
 ];
 
@@ -44,6 +50,9 @@ export function FeaturesSection() {
         <h2 className="text-center text-2xl font-semibold text-white sm:text-3xl">
           Everything you need to send better reports
         </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">
+          Meta Ads, Google Ads, GA4 website analytics — and TikTok Ads coming soon.
+        </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (

@@ -38,7 +38,7 @@ export function SiteChromeFooter() {
                 <span className="text-base font-bold text-white">NextReport</span>
               </Link>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-muted">
-                Automated Meta and Google Ads reporting for digital agencies — client-ready decks in under two minutes.
+                Automated Meta Ads, Google Ads, and GA4 reporting for digital agencies — client-ready decks in under two minutes.
               </p>
               <div className="mt-5">
                 <SocialLinks />
@@ -49,6 +49,9 @@ export function SiteChromeFooter() {
                 </span>
                 <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
                   Google Ads API Sync
+                </span>
+                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  GA4 Reporting
                 </span>
               </div>
             </div>
@@ -116,8 +119,8 @@ export function SiteChromeFooter() {
               </p>
             </div>
             <p className="text-center text-[11px] leading-relaxed text-ink-muted/80">
-              Meta and Google are trademarks of their respective owners. NextReport is an independent tool and is not
-              affiliated with Meta Platforms, Inc. or Google LLC.
+              Meta, Google, and TikTok are trademarks of their respective owners. NextReport is an independent tool and is not
+              affiliated with Meta Platforms, Inc., Google LLC, or TikTok Inc.
             </p>
           </div>
         </div>
