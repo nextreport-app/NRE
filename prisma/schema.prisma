@@ -237,6 +237,7 @@ enum ReportType {
   COMPARISON
   CREATIVE
   WEBSITE
+  HISTORICAL
 }
 
 // Which ad platform a report's CSV came from — detected automatically from

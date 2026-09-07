@@ -11,6 +11,7 @@
  */
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
+import type { HistoricalReportData } from "../nre/historical-report-data";
 import type { WebsiteReportData } from "../nre/website-report-data";
 import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-report-config";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
@@ -349,6 +350,79 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   });
 
+  return assemblePptx(template, slides);
+}
+
+export interface RenderHistoricalPptxInput {
+  templateBuffer: Buffer;
+  data: HistoricalReportData;
+  reportTitle?: string | null;
+  agencyName?: string | null;
+  clientLogo?: ImageAsset | null;
+  isLightTemplate?: boolean;
+}
+
+/** Multi-Month Historical — cover + one campaign slide per month (no chart/table/ad-sets). */
+export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Promise<Buffer> {
+  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
+  const template = await loadTemplate(templateBuffer);
+  const hasAgencyName = !!agencyName?.trim();
+
+  if (clientLogo) {
+    template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, clientLogo.extension, clientLogo.contentType);
+    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
+      baseName: "client-logo",
+      shapeName: "Client Logo",
+      style: CLIENT_LOGO_STYLE,
+    });
+    template.cover = embedded.slide;
+    template.staticFiles.set(embedded.mediaPath, embedded.mediaBytes);
+  }
+
+  const cover = {
+    accountName: data.accountName,
+    reportDate: data.reportDate,
+    dateRange: data.monthsLabel,
+    healthBadge: "Multi-Month",
+    healthScore: 0,
+    budgetSummary: "",
+  };
+
+  const slides: SlideToInsert[] = [
+    {
+      xml: buildCoverSlideXml(template.cover, cover, { reportTitle, agencyName, reportType: "HISTORICAL" }),
+      rels: template.cover.rels,
+    },
+  ];
+
+  if (data.isPaused) {
+    slides.push({
+      xml: buildPausedSlideXml(
+        template.campaign,
+        data.accountName,
+        "No campaign spend found in the selected months.",
+        data.monthsLabel,
+        "MONTHLY",
+        data.platform,
+      ),
+      rels: template.campaign.rels,
+    });
+  } else {
+    for (const slide of data.slides) {
+      slides.push({
+        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "MONTHLY", data.platform),
+        rels: template.campaign.rels,
+      });
+      if (slide.additionalMetricsSlide) {
+        slides.push({
+          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "MONTHLY", data.platform, true),
+          rels: template.campaign.rels,
+        });
+      }
+    }
+  }
+
+  void isLightTemplate;
   return assemblePptx(template, slides);
 }
 

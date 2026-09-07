@@ -11,6 +11,8 @@ import {
 } from "@/lib/nre/wizard-generate-snapshot";
 import type { WizardReportType } from "@/lib/validators/report-wizard";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
+import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
+import { computeHistoricalMonthRanges } from "@/lib/nre/date-range";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import {
@@ -161,7 +163,7 @@ type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
 // response's `isComparison` flag (see comparisonData/data below, and
 // applyPreviewResult, the one place that decides which of the two gets
 // populated for a given preview response).
-type PreviewKind = "normal" | "comparison";
+type PreviewKind = "normal" | "comparison" | "historical";
 // Which panel the download screen's Drive section shows: "collapsed" (just
 // the "Save to Google Drive" button, plus a "Saving to: X — Change" line
 // underneath if a folder is already remembered for this client) ->
@@ -197,6 +199,7 @@ interface DateSelection {
 const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
+const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
 
 const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
@@ -206,6 +209,7 @@ function defaultReportTitleFor(reportType: ReportTypeValue): string {
   if (reportType === "DAILY") return DEFAULT_DAILY_REPORT_TITLE;
   if (reportType === "CREATIVE") return DEFAULT_CREATIVE_REPORT_TITLE;
   if (reportType === "COMPARISON") return DEFAULT_COMPARISON_REPORT_TITLE;
+  if (reportType === "HISTORICAL") return DEFAULT_HISTORICAL_REPORT_TITLE;
   return DEFAULT_REPORT_TITLE;
 }
 
@@ -526,6 +530,7 @@ export function ReportUploadWizard({
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
   const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(null);
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
+  const [historicalMonthCount, setHistoricalMonthCount] = useState(4);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
   const [dailyRange, setDailyRange] = useState<DateRangeIso | null>(null);
   const [hasAdLevelCsv, setHasAdLevelCsv] = useState(false);
@@ -539,6 +544,7 @@ export function ReportUploadWizard({
   const [previewKind, setPreviewKind] = useState<PreviewKind>("normal");
   const [data, setData] = useState<ReportData | null>(null);
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
+  const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
   // False until the user actually types in the Report Title field — while
   // false, switching Report Type keeps swapping the title's own default
@@ -686,10 +692,12 @@ export function ReportUploadWizard({
       comparisonPreset,
       comparisonPeriodA,
       comparisonPeriodB,
+      historicalMonthCount,
       previewKind,
       previewStatus,
       data,
       comparisonData,
+      historicalData,
       reportTitle,
       reportTitleTouched,
       customTitleExpanded,
@@ -718,10 +726,12 @@ export function ReportUploadWizard({
     setComparisonPreset(snapshot.comparisonPreset);
     setComparisonPeriodA(snapshot.comparisonPeriodA);
     setComparisonPeriodB(snapshot.comparisonPeriodB);
+    setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
     setPreviewKind(snapshot.previewKind);
     setPreviewStatus(snapshot.previewStatus);
     setData(snapshot.data);
     setComparisonData(snapshot.comparisonData);
+    setHistoricalData(snapshot.historicalData ?? null);
     setReportTitle(snapshot.reportTitle);
     setReportTitleTouched(snapshot.reportTitleTouched);
     setCustomTitleExpanded(snapshot.customTitleExpanded);
@@ -843,11 +853,18 @@ export function ReportUploadWizard({
     if (json.isComparison) {
       setPreviewKind("comparison");
       setComparisonData(json.data);
+      setHistoricalData(null);
+      setData(null);
+    } else if (json.isHistorical) {
+      setPreviewKind("historical");
+      setHistoricalData(json.data);
+      setComparisonData(null);
       setData(null);
     } else {
       setPreviewKind("normal");
       setData(json.data);
       setComparisonData(null);
+      setHistoricalData(null);
     }
     setPreviewStatus("idle");
     resetGenerateState();
@@ -1429,6 +1446,12 @@ export function ReportUploadWizard({
       return;
     }
 
+    if (reportType === "HISTORICAL" && (historicalMonthCount < 2 || historicalMonthCount > 12)) {
+      setPreviewStatus("invalid");
+      setPreviewErrors([{ field: "historicalMonthCount", message: "Choose between 2 and 12 months." }]);
+      return;
+    }
+
     if (reportType === "CREATIVE" && !hasAdLevelCsv) {
       setPreviewStatus("invalid");
       setPreviewErrors([
@@ -1463,6 +1486,7 @@ export function ReportUploadWizard({
         platform,
         comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+        historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -1511,6 +1535,7 @@ export function ReportUploadWizard({
     comparisonPeriodA?.endIso,
     comparisonPeriodB?.startIso,
     comparisonPeriodB?.endIso,
+    historicalMonthCount,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -1546,6 +1571,7 @@ export function ReportUploadWizard({
         platform,
         comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+        historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -1753,6 +1779,7 @@ export function ReportUploadWizard({
    */
   function reportTypeLabel(): string {
     if (previewKind === "comparison") return "Comparison Report";
+    if (previewKind === "historical") return "Multi-Month Report";
     if (reportType === "MONTHLY") return "Monthly Report";
     if (reportType === "DAILY") return "Daily Report";
     if (reportType === "CREATIVE") return "Creative Report";
@@ -1772,12 +1799,21 @@ export function ReportUploadWizard({
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
   function summaryCampaignNames(): string[] {
     if (previewKind === "comparison" && comparisonData) return comparisonData.campaigns.map((c) => c.campaignName);
+    if (previewKind === "historical" && historicalData) {
+      return Array.from(new Set(historicalData.slides.map((s) => s.campaignName))).sort();
+    }
     if (data) return data.campaignSlides.map((s) => s.campaignName);
     return [];
   }
 
+  const historicalMonthLabels = useMemo(
+    () => computeHistoricalMonthRanges(historicalMonthCount, new Date(), clientTimezone).map((m) => m.fullMonthLabel),
+    [historicalMonthCount, clientTimezone],
+  );
+
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
+    if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
     if (reportType === "WEEKLY" && weeklyRangeIso) return formatIsoRange(weeklyRangeIso);
     if (mtdRange) return formatIsoRange(mtdRange);
     return "";
@@ -1785,7 +1821,11 @@ export function ReportUploadWizard({
 
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
-    if (previewKind === "comparison") return 1 + summaryCampaignNames().length;
+    if (previewKind === "comparison") return 1 + summaryCampaignNames().length + 1;
+    if (previewKind === "historical" && historicalData) {
+      const continuation = historicalData.slides.filter((s) => s.additionalMetricsSlide).length;
+      return 1 + historicalData.slides.length + continuation;
+    }
     return 1 + summaryCampaignNames().length + selectedAdSets.size + 1 + 1 + 1;
   }
 
@@ -2613,6 +2653,13 @@ export function ReportUploadWizard({
                 selected={reportType === "COMPARISON"}
                 onSelect={() => handleReportTypeChange("COMPARISON")}
               />
+              <ReportTypeCard
+                icon="📆"
+                heading="Multi-Month Historical Report"
+                description="One slide per month per campaign — ideal when clients ask for last few months' performance"
+                selected={reportType === "HISTORICAL"}
+                onSelect={() => handleReportTypeChange("HISTORICAL")}
+              />
             </div>
             {hasAdLevelCsv && reportType !== "CREATIVE" && (
               <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[13px] text-emerald-200">
@@ -2626,6 +2673,39 @@ export function ReportUploadWizard({
               <p className="mt-4 text-[13px] text-dash-ink-secondary">
                 Uses ad-level data from the last 30 days in your CSV — no date picker needed.
               </p>
+            )}
+            {reportType === "HISTORICAL" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-[13px] text-dash-ink-secondary">
+                  Upload one <strong className="text-white">daily CSV</strong> covering every month you need — not separate
+                  monthly files. Each complete calendar month becomes its own set of campaign slides (e.g. &quot;May
+                  Performance&quot;, &quot;June Performance&quot;).
+                </p>
+                <label className="block text-[13px] text-dash-ink-secondary">
+                  How many complete prior months?
+                  <select
+                    value={historicalMonthCount}
+                    onChange={(e) => setHistoricalMonthCount(Number(e.target.value))}
+                    className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[13px] text-white"
+                  >
+                    {[2, 3, 4, 5, 6, 8, 12].map((n) => (
+                      <option key={n} value={n}>
+                        Last {n} months
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="text-[13px] text-dash-ink-secondary">
+                  Months included:{" "}
+                  <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
+                </p>
+                {dateBounds && (
+                  <p className="text-[12px] text-dash-ink-muted">
+                    Your CSV spans {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}. It must include every
+                    day in the months above.
+                  </p>
+                )}
+              </div>
             )}
             {reportType === "DAILY" && dailyRange && (
               <p className="mt-4 text-[13px] text-dash-ink-secondary">
@@ -2876,7 +2956,7 @@ export function ReportUploadWizard({
                   {previewMessage}
                 </div>
               )}
-              {previewStatus === "loading" && !data && !comparisonData && (
+              {previewStatus === "loading" && !data && !comparisonData && !historicalData && (
                 <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] text-dash-ink-secondary">
                   <Spinner />
                   Loading preview…
@@ -2887,7 +2967,7 @@ export function ReportUploadWizard({
 
           {platform === "GOOGLE" && <WizardGoogleGenerateBanner />}
 
-          {(data || comparisonData) && (
+          {(data || comparisonData || historicalData) && (
             <>
             <div className="space-y-4">
               {/* Section 1 — Report summary card, amber left border. Merges
@@ -2923,6 +3003,11 @@ export function ReportUploadWizard({
                       <span className="text-[13px] text-white">
                         {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
                       </span>
+                    </p>
+                  ) : previewKind === "historical" && historicalData ? (
+                    <p className="text-[13px] text-[#94a3b8]">
+                      Months covered:{" "}
+                      <span className="text-[13px] text-white">{historicalData.monthsLabel}</span>
                     </p>
                   ) : (
                     <>
@@ -2969,6 +3054,12 @@ export function ReportUploadWizard({
             {previewKind === "normal" && data?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
                 {data.pausedMessage}
+              </div>
+            )}
+
+            {previewKind === "historical" && historicalData?.isPaused && (
+              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[13px] text-amber-200">
+                No campaign spend found in the selected months. Check your CSV date range and campaign selection.
               </div>
             )}
 
@@ -3355,7 +3446,7 @@ export function ReportUploadWizard({
               )}
 
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
-              {reportType !== "COMPARISON" && !previousMonthComparisonReady && (
+              {reportType !== "COMPARISON" && reportType !== "HISTORICAL" && !previousMonthComparisonReady && (
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[13px] text-dash-ink">
                   <p className="font-semibold">Previous month comparison not set up</p>
                   <p className="mt-1 text-dash-ink-secondary">

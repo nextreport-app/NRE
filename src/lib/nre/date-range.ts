@@ -187,6 +187,98 @@ export interface CustomRangeValidation {
   spanDays?: number;
 }
 
+export interface HistoricalMonthRange extends DateRangeIso {
+  /** Full month name, e.g. "May". */
+  monthName: string;
+  year: number;
+  /** Slide header chrome, e.g. "YOUR MAY PERFORMANCE REPORT". */
+  performanceHeader: string;
+  /** Human label for cover/summary, e.g. "May 2025". */
+  fullMonthLabel: string;
+}
+
+/**
+ * Last N complete calendar months ending before the current (partial) month —
+ * anchored to the client's timezone. E.g. on Sep 7 with monthCount=4 → May,
+ * Jun, Jul, Aug (oldest first).
+ */
+export function computeHistoricalMonthRanges(
+  monthCount: number,
+  now: Date = new Date(),
+  timezone = "UTC",
+): HistoricalMonthRange[] {
+  if (monthCount < 1) return [];
+
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  let year = calendarYesterday.year;
+  let month = calendarYesterday.month;
+
+  const ranges: HistoricalMonthRange[] = [];
+  for (let i = 0; i < monthCount; i++) {
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+    const lastDay = daysInMonth(year, month);
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(
+      new Date(Date.UTC(year, month - 1, 1)),
+    );
+    ranges.unshift({
+      startIso: toIsoDate({ year, month, day: 1 }),
+      endIso: toIsoDate({ year, month, day: lastDay }),
+      monthName,
+      year,
+      performanceHeader: `YOUR ${monthName.toUpperCase()} PERFORMANCE REPORT`,
+      fullMonthLabel: `${monthName} ${year}`,
+    });
+  }
+  return ranges;
+}
+
+/** Ensures the uploaded CSV spans every requested historical month. */
+export function validateHistoricalCsvCoverage(
+  bounds: CsvDateBounds,
+  monthRanges: HistoricalMonthRange[],
+): CustomRangeValidation {
+  if (monthRanges.length === 0) {
+    return { valid: false, error: "Choose at least one month." };
+  }
+  const first = monthRanges[0];
+  const last = monthRanges[monthRanges.length - 1];
+
+  const minTs = Date.parse(bounds.minIso + "T00:00:00Z");
+  const maxTs = Date.parse(bounds.maxIso + "T00:00:00Z");
+  const missing: string[] = [];
+  for (const range of monthRanges) {
+    const startTs = Date.parse(range.startIso + "T00:00:00Z");
+    const endTs = Date.parse(range.endIso + "T00:00:00Z");
+    const overlaps = minTs <= endTs && maxTs >= startTs;
+    if (!overlaps) {
+      missing.push(range.fullMonthLabel);
+    }
+  }
+  if (missing.length > 0) {
+    return {
+      valid: false,
+      error: `Your CSV is missing data for: ${missing.join(", ")}. Export one daily CSV covering ${first.fullMonthLabel} through ${last.fullMonthLabel}.`,
+    };
+  }
+  return { valid: true };
+}
+
+/** Filters parsed CSV rows to an inclusive ISO date window. */
+export function filterNreRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
+  const startTs = Date.parse(range.startIso + "T00:00:00Z");
+  const endTs = Date.parse(range.endIso + "T00:00:00Z");
+  return rows.filter((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return false;
+    const ts = Date.UTC(d.year, d.month - 1, d.day);
+    return ts >= startTs && ts <= endTs;
+  });
+}
+
 /** Validates a user-picked custom weekly range against what's actually in the CSV. */
 export function validateCustomWeeklyRange(
   startIso: string,

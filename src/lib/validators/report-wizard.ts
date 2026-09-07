@@ -50,7 +50,7 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // report-upload-wizard.tsx's PreviousMonthSummaryOption). The generated
 // Report row is still stored with reportType "MONTHLY" — the closest real
 // enum value — never this literal; no database/schema change needed.
-export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE", "PREVIOUS_MONTH_SUMMARY"]);
+export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE", "PREVIOUS_MONTH_SUMMARY", "HISTORICAL"]);
 
 /** Wizard Step 5 report types (excludes generate-only PREVIOUS_MONTH_SUMMARY). */
 export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIOUS_MONTH_SUMMARY">;
@@ -77,6 +77,9 @@ export const comparisonPeriodSchema = z.object({
   startIso: z.string().trim().min(1),
   endIso: z.string().trim().min(1),
 });
+
+/** Multi-Month Historical — how many complete prior calendar months to include (2–12). */
+export const historicalMonthCountSchema = z.number().int().min(2).max(12);
 
 // Part 3 — one metric card, as picked in the wizard's optional Metric
 // Review step. Matches available-metrics.ts's SelectedMetric shape

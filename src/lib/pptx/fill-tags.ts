@@ -173,6 +173,7 @@ const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
+const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
 
 const GENERIC_REPORT_TITLES = new Set(
@@ -182,6 +183,7 @@ const GENERIC_REPORT_TITLES = new Set(
     DEFAULT_DAILY_REPORT_TITLE,
     DEFAULT_CREATIVE_REPORT_TITLE,
     DEFAULT_COMPARISON_REPORT_TITLE,
+    DEFAULT_HISTORICAL_REPORT_TITLE,
     DEFAULT_WEBSITE_REPORT_TITLE,
   ].map((t) => t.toUpperCase()),
 );
@@ -189,7 +191,7 @@ const GENERIC_REPORT_TITLES = new Set(
 /** Resolves the cover subtitle — custom titles win; generic defaults follow reportType. */
 export function resolveCoverReportTitle(
   reportTitle: string | null | undefined,
-  reportType?: ReportType | "COMPARISON" | "WEBSITE",
+  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "WEBSITE",
 ): string {
   const defaultTitle =
     reportType === "MONTHLY"
@@ -200,6 +202,8 @@ export function resolveCoverReportTitle(
           ? DEFAULT_CREATIVE_REPORT_TITLE
           : reportType === "COMPARISON"
             ? DEFAULT_COMPARISON_REPORT_TITLE
+            : reportType === "HISTORICAL"
+              ? DEFAULT_HISTORICAL_REPORT_TITLE
             : reportType === "WEBSITE"
               ? DEFAULT_WEBSITE_REPORT_TITLE
               : DEFAULT_REPORT_TITLE;
@@ -226,7 +230,7 @@ export interface CoverSlideOptions {
    * `ReportType`, which stays WEEKLY/MONTHLY-only throughout the existing
    * engine this function otherwise serves unchanged.
    */
-  reportType?: ReportType | "COMPARISON" | "WEBSITE";
+  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "WEBSITE";
 }
 
 export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, options: CoverSlideOptions = {}): string {
@@ -397,6 +401,13 @@ function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): strin
   if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
   if (reportType === "WEBSITE") return "YOUR WEBSITE TRAFFIC REPORT";
   return "YOUR WEEKLY PERFORMANCE REPORT";
+}
+
+function resolveSlideReportHeader(slide: SlideData, reportType: ReportType | "WEBSITE"): string {
+  if (slide.kind === "campaign" && slide.performanceHeader) {
+    return slide.performanceHeader;
+  }
+  return slideReportHeader(reportType);
 }
 
 export function buildCampaignOrAdSetSlideXml(
@@ -621,7 +632,7 @@ export function buildCampaignOrAdSetSlideXml(
   // secondary to the bold-white campaign/ad-set name below it) but is now
   // the SAME 24pt size as every other slide's own main heading, not a
   // shrunken 14pt — see REPORT_HEADER_SIZE_PT's own doc comment.
-  const header = slideReportHeader(reportType);
+  const header = resolveSlideReportHeader(slide, reportType);
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
   xml = forceRunStyle(xml, header, { bold: true, sizePt: REPORT_HEADER_SIZE_PT, color: REPORT_HEADER_COLOR });
   return xml;

@@ -153,6 +153,8 @@ export interface CampaignSlideData {
    * previous slide)" slide immediately after the main one.
    */
   additionalMetricsSlide?: (DynamicMetricValue | null)[];
+  /** Multi-Month Historical reports — replaces the default report-type header on this slide (e.g. "YOUR MAY PERFORMANCE REPORT"). */
+  performanceHeader?: string;
 }
 
 export interface AdSetSlideData {
