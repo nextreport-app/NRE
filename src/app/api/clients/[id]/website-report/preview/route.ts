@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
-import { defaultWebsiteReportRanges, fetchGa4WebsiteReport } from "@/lib/nre/fetch-ga4-website-report";
+import { fileFromFormData } from "@/lib/http-file";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
-import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
+import { estimateWebsiteSlideCount, parseWebsiteReportConfig, parseWebsiteReportConfigFromSearchParams } from "@/lib/nre/website-report-data";
+import { resolveWebsiteReportData } from "@/lib/nre/website-report-resolve";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -30,46 +30,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (!client.ga4PropertyId) {
-    return NextResponse.json(
-      { error: "Link a GA4 property to this client first (Manage page → Website Analytics)." },
-      { status: 400 },
-    );
-  }
-
-  const accessToken = await getGa4AccessTokenForUser(session.user.id);
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: "Connect Google Analytics in Account Settings first." },
-      { status: 400 },
-    );
-  }
-
   const url = new URL(req.url);
-  const breakdowns = parseWebsiteBreakdownOptions({
-    device: url.searchParams.get("device"),
-    geo: url.searchParams.get("geo"),
-    channels: url.searchParams.get("channels"),
-    topPages: url.searchParams.get("topPages"),
-  });
+  const config = parseWebsiteReportConfigFromSearchParams(url.searchParams);
 
-  const ranges = defaultWebsiteReportRanges(client.timezone);
   try {
-    const data = await fetchGa4WebsiteReport({
-      accessToken,
-      propertyId: client.ga4PropertyId,
-      propertyName: client.ga4PropertyName ?? client.ga4PropertyId,
+    const { data, warnings } = await resolveWebsiteReportData({
+      userId: session.user.id,
+      timezone: client.timezone,
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
-      currentRange: ranges.current,
-      comparisonRange: ranges.previous,
-      breakdowns,
+      accountName: client.accountName,
+      ga4PropertyId: client.ga4PropertyId,
+      ga4PropertyName: client.ga4PropertyName,
+      config,
+      dataSource: "api",
     });
 
     return NextResponse.json({
       data,
+      config,
       accountName: client.accountName,
-      breakdowns,
-      slideCount: estimateWebsiteSlideCount(breakdowns, {
+      dataSource: "api",
+      warnings,
+      slideCount: estimateWebsiteSlideCount(config.breakdowns, {
         hasConversionSlide: data.conversionMetrics.length > 0,
         hasTopPagesData: data.topPages.length > 0,
       }),
@@ -79,6 +61,79 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not fetch GA4 data" },
       { status: 500 },
+    );
+  }
+}
+
+/** Preview from CSV upload (multipart) or JSON config with base64 — uses ga4Csv field. */
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const guard = await requireActiveSubscription(session.user.id);
+  if (guard) return guard;
+
+  const { id } = await params;
+  const client = await prisma.client.findUnique({
+    where: { id },
+    select: {
+      userId: true,
+      accountName: true,
+      timezone: true,
+      currency: true,
+      ga4PropertyId: true,
+      ga4PropertyName: true,
+    },
+  });
+  if (!client || client.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const formData = await req.formData();
+  const csvBuffer = await fileFromFormData(formData, "ga4Csv");
+  const configRaw = formData.get("config");
+  let config = parseWebsiteReportConfig(null);
+  if (typeof configRaw === "string") {
+    try {
+      config = parseWebsiteReportConfig(JSON.parse(configRaw));
+    } catch {
+      /* use defaults */
+    }
+  }
+
+  if (!csvBuffer) {
+    return NextResponse.json({ error: "Upload a GA4 CSV file (field: ga4Csv)." }, { status: 400 });
+  }
+
+  try {
+    const { data, warnings } = await resolveWebsiteReportData({
+      userId: session.user.id,
+      timezone: client.timezone,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
+      accountName: client.accountName,
+      ga4PropertyId: client.ga4PropertyId,
+      ga4PropertyName: client.ga4PropertyName,
+      config,
+      dataSource: "csv",
+      csvBuffer,
+    });
+
+    return NextResponse.json({
+      data,
+      config,
+      accountName: client.accountName,
+      dataSource: "csv",
+      warnings,
+      slideCount: estimateWebsiteSlideCount(config.breakdowns, {
+        hasConversionSlide: data.conversionMetrics.length > 0,
+        hasTopPagesData: data.topPages.length > 0,
+      }),
+    });
+  } catch (err) {
+    console.error("[api:website-report:preview:csv]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not build report from CSV" },
+      { status: 400 },
     );
   }
 }

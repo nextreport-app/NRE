@@ -1,11 +1,6 @@
 import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
-import type { WebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
-
-function shareBreakdowns(data: ShareWebsiteReportData): WebsiteBreakdownOptions {
-  if (data.breakdowns) return data.breakdowns;
-  // Legacy Phase 1 reports — channels + top pages only
-  return { device: false, geoCities: false, channels: true, topPages: true };
-}
+import { shareBreakdowns } from "@/lib/nre/share-website-report";
+import { geoColumnHeader, geoSlideTitle } from "@/lib/nre/website-report-config";
 
 function MetricCardGrid({ title, metrics }: { title: string; metrics: ShareWebsiteReportData["overviewMetrics"] }) {
   if (metrics.length === 0) return null;
@@ -29,14 +24,17 @@ function SimpleTable({
   title,
   columns,
   rows,
+  footnote,
 }: {
   title: string;
   columns: string[];
   rows: string[][];
+  footnote?: string;
 }) {
   return (
     <section className="print-slide mb-8 break-inside-avoid rounded-xl border border-slate-700/60 bg-[#0f172a] p-6">
       <h2 className="mb-4 text-lg font-semibold text-amber-400">{title}</h2>
+      {footnote ? <p className="mb-3 text-xs text-slate-500">{footnote}</p> : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] border-collapse text-sm">
           <thead>
@@ -65,6 +63,14 @@ function SimpleTable({
   );
 }
 
+function metricTableRows(
+  rows: Array<{ label: string; sessionsLabel: string; engagementRateLabel: string; conversionsLabel: string }>,
+  emptyLabel: string,
+): string[][] {
+  if (rows.length === 0) return [[emptyLabel, "—", "—", "—"]];
+  return rows.map((r) => [r.label, r.sessionsLabel, r.engagementRateLabel, r.conversionsLabel]);
+}
+
 /**
  * Public share page for Website Traffic (GA4) reports.
  */
@@ -78,6 +84,7 @@ export function ShareWebsiteReportView({
   isPrint?: boolean;
 }) {
   const breakdowns = shareBreakdowns(data);
+  const geoDim = data.geoDimension ?? "city";
 
   return (
     <div
@@ -103,9 +110,15 @@ export function ShareWebsiteReportView({
           <SimpleTable
             title="Device Breakdown"
             columns={["Device", "Sessions", "Engagement", "Conversions"]}
-            rows={(data.devices ?? []).length
-              ? (data.devices ?? []).map((d) => [d.device, d.sessionsLabel, d.engagementRateLabel, d.conversionsLabel])
-              : [["No device data", "—", "—", "—"]]}
+            rows={metricTableRows(
+              (data.devices ?? []).map((d) => ({
+                label: d.device,
+                sessionsLabel: d.sessionsLabel,
+                engagementRateLabel: d.engagementRateLabel,
+                conversionsLabel: d.conversionsLabel,
+              })),
+              "No device data",
+            )}
           />
         ) : null}
 
@@ -117,10 +130,10 @@ export function ShareWebsiteReportView({
           />
         ) : null}
 
-        {breakdowns.geoCities ? (
+        {breakdowns.geo ? (
           <SimpleTable
-            title="Top Cities"
-            columns={["City", "Sessions", "% of Total", "Conversions", "Conv. Rate"]}
+            title={geoSlideTitle(geoDim)}
+            columns={[geoColumnHeader(geoDim), "Sessions", "% of Total", "Conversions", "Conv. Rate"]}
             rows={(data.geoCities ?? []).length
               ? (data.geoCities ?? []).map((g) => [
                   g.location,
@@ -130,6 +143,153 @@ export function ShareWebsiteReportView({
                   g.conversionRateLabel,
                 ])
               : [["No location data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.campaigns ? (
+          <SimpleTable
+            title="Campaign Performance"
+            columns={["Campaign", "Sessions", "Engagement", "Conversions"]}
+            rows={metricTableRows(
+              (data.campaigns ?? []).map((c) => ({
+                label: c.campaign,
+                sessionsLabel: c.sessionsLabel,
+                engagementRateLabel: c.engagementRateLabel,
+                conversionsLabel: c.conversionsLabel,
+              })),
+              "No campaign data",
+            )}
+          />
+        ) : null}
+
+        {breakdowns.sources ? (
+          <SimpleTable
+            title="Traffic Sources (UTM)"
+            columns={["Source / Medium", "Sessions", "Engagement", "Conversions"]}
+            rows={metricTableRows(
+              (data.sources ?? []).map((s) => ({
+                label: s.label,
+                sessionsLabel: s.sessionsLabel,
+                engagementRateLabel: s.engagementRateLabel,
+                conversionsLabel: s.conversionsLabel,
+              })),
+              "No source data",
+            )}
+          />
+        ) : null}
+
+        {breakdowns.demographics ? (
+          <>
+            <SimpleTable
+              title="Age Groups"
+              columns={["Age", "Sessions", "Conversions", "Conv. Rate"]}
+              footnote={data.demographicsNote}
+              rows={(data.ageGroups ?? []).length
+                ? (data.ageGroups ?? []).map((a) => [a.segment, a.sessionsLabel, a.conversionsLabel, a.conversionRateLabel])
+                : [["No age data", "—", "—", "—"]]}
+            />
+            <SimpleTable
+              title="Gender"
+              columns={["Gender", "Sessions", "Conversions", "Conv. Rate"]}
+              rows={(data.genders ?? []).length
+                ? (data.genders ?? []).map((g) => [g.segment, g.sessionsLabel, g.conversionsLabel, g.conversionRateLabel])
+                : [["No gender data", "—", "—", "—"]]}
+            />
+          </>
+        ) : null}
+
+        {breakdowns.operatingSystem ? (
+          <SimpleTable
+            title="Operating System"
+            columns={["OS", "Sessions", "Engagement", "Conversions"]}
+            rows={metricTableRows(
+              (data.operatingSystems ?? []).map((t) => ({
+                label: t.name,
+                sessionsLabel: t.sessionsLabel,
+                engagementRateLabel: t.engagementRateLabel,
+                conversionsLabel: t.conversionsLabel,
+              })),
+              "No OS data",
+            )}
+          />
+        ) : null}
+
+        {breakdowns.browser ? (
+          <SimpleTable
+            title="Browser"
+            columns={["Browser", "Sessions", "Engagement", "Conversions"]}
+            rows={metricTableRows(
+              (data.browsers ?? []).map((t) => ({
+                label: t.name,
+                sessionsLabel: t.sessionsLabel,
+                engagementRateLabel: t.engagementRateLabel,
+                conversionsLabel: t.conversionsLabel,
+              })),
+              "No browser data",
+            )}
+          />
+        ) : null}
+
+        {breakdowns.newVsReturning ? (
+          <SimpleTable
+            title="New vs Returning"
+            columns={["Audience", "Sessions", "Engagement", "Conversions"]}
+            rows={metricTableRows(
+              (data.audience ?? []).map((a) => ({
+                label: a.segment,
+                sessionsLabel: a.sessionsLabel,
+                engagementRateLabel: a.engagementRateLabel,
+                conversionsLabel: a.conversionsLabel,
+              })),
+              "No audience data",
+            )}
+          />
+        ) : null}
+
+        {breakdowns.dayOfWeek ? (
+          <SimpleTable
+            title="Sessions by Day of Week"
+            columns={["Day", "Sessions", "Engagement", "Conversions", "Conv. Rate"]}
+            rows={(data.dayOfWeek ?? []).length
+              ? (data.dayOfWeek ?? []).map((t) => [
+                  t.label,
+                  t.sessionsLabel,
+                  t.engagementRateLabel,
+                  t.conversionsLabel,
+                  t.conversionRateLabel,
+                ])
+              : [["No data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.hourOfDay ? (
+          <SimpleTable
+            title="Sessions by Hour"
+            columns={["Hour", "Sessions", "Engagement", "Conversions", "Conv. Rate"]}
+            rows={(data.hourOfDay ?? []).length
+              ? (data.hourOfDay ?? []).map((t) => [
+                  t.label,
+                  t.sessionsLabel,
+                  t.engagementRateLabel,
+                  t.conversionsLabel,
+                  t.conversionRateLabel,
+                ])
+              : [["No data", "—", "—", "—", "—"]]}
+          />
+        ) : null}
+
+        {breakdowns.conversionEvents ? (
+          <SimpleTable
+            title="Conversion Events"
+            columns={["Event", "Count", "Sessions", "Rate"]}
+            rows={(data.conversionEvents ?? []).length
+              ? (data.conversionEvents ?? []).map((e) => [
+                  e.event,
+                  e.countLabel,
+                  e.sessionsLabel,
+                  e.conversionRateLabel,
+                ])
+              : [["No events", "—", "—", "—"]]}
           />
         ) : null}
 

@@ -3,10 +3,15 @@ import {
   buildWebsiteReportData,
   detectWebsiteClientKind,
   emptyGa4OverviewTotals,
-  estimateWebsiteSlideCount,
   ga4OverviewTotalsFromMetrics,
-  parseWebsiteBreakdownOptions,
 } from "@/lib/nre/website-report-data";
+import {
+  estimateWebsiteSlideCount,
+  parseWebsiteBreakdownOptions,
+  parseWebsiteReportConfig,
+  previousPeriodRange,
+  resolveWebsiteReportRanges,
+} from "@/lib/nre/website-report-config";
 
 describe("website-report-data", () => {
   it("detects ecommerce from revenue", () => {
@@ -66,13 +71,24 @@ describe("website-report-data", () => {
     expect(report.overviewMetrics[0]?.changeLabel).toBe("+25.0%");
     expect(report.clientKind).toBe("lead_gen");
     expect(report.channels).toHaveLength(1);
-    expect(report.devices).toEqual([]);
-    expect(report.geoCities).toEqual([]);
-    expect(report.breakdowns.device).toBe(true);
+    expect(report.campaigns).toEqual([]);
   });
 
   it("builds device and geo rows with share labels", () => {
-    const current = ga4OverviewTotalsFromMetrics({ sessions: 1000, totalUsers: 800, newUsers: 600, engagedSessions: 700, engagementRate: 0.7, bounceRate: 0.3, averageSessionDuration: 120, userEngagementDuration: 50000, screenPageViews: 2500, conversions: 40, purchaseRevenue: 0, transactions: 0 });
+    const current = ga4OverviewTotalsFromMetrics({
+      sessions: 1000,
+      totalUsers: 800,
+      newUsers: 600,
+      engagedSessions: 700,
+      engagementRate: 0.7,
+      bounceRate: 0.3,
+      averageSessionDuration: 120,
+      userEngagementDuration: 50000,
+      screenPageViews: 2500,
+      conversions: 40,
+      purchaseRevenue: 0,
+      transactions: 0,
+    });
 
     const report = buildWebsiteReportData({
       propertyId: "123",
@@ -82,7 +98,8 @@ describe("website-report-data", () => {
       current,
       channels: [],
       devices: [{ device: "mobile", sessions: 600, engagementRate: 0.65, conversions: 20 }],
-      geoCities: [{ location: "Mumbai", sessions: 240, conversions: 8 }],
+      geoLocations: [{ location: "Mumbai", sessions: 240, conversions: 8 }],
+      geoDimension: "city",
       topPages: [],
     });
 
@@ -91,13 +108,59 @@ describe("website-report-data", () => {
     expect(report.geoCities[0]?.conversionRateLabel).toBe("3.3%");
   });
 
-  it("parses breakdown query flags and estimates slide count", () => {
-    expect(parseWebsiteBreakdownOptions({ device: "0", geo: "1" })).toEqual({
-      device: false,
-      geoCities: true,
-      channels: true,
-      topPages: true,
+  it("respects client kind override", () => {
+    const current = ga4OverviewTotalsFromMetrics({ sessions: 100, conversions: 0, purchaseRevenue: 0, transactions: 0 });
+    const report = buildWebsiteReportData({
+      propertyId: "1",
+      propertyName: "Site",
+      dateRangeLabel: "Jan 1 – Jan 31",
+      currencySymbol: "$",
+      current,
+      clientKindOverride: "content",
+      channels: [],
+      topPages: [],
     });
-    expect(estimateWebsiteSlideCount({ device: true, geoCities: true, channels: true, topPages: false })).toBe(6);
+    expect(report.clientKind).toBe("content");
+  });
+});
+
+describe("website-report-config", () => {
+  it("parses legacy geoCities flag", () => {
+    expect(parseWebsiteBreakdownOptions({ geoCities: "0" }).geo).toBe(false);
+    expect(parseWebsiteBreakdownOptions({ geo: "1", geoDimension: "country" }).geoDimension).toBe("country");
+  });
+
+  it("estimates slide count with new breakdowns", () => {
+    expect(
+      estimateWebsiteSlideCount({
+        device: true,
+        geo: true,
+        geoDimension: "city",
+        channels: true,
+        campaigns: true,
+        sources: false,
+        demographics: false,
+        operatingSystem: false,
+        browser: false,
+        topPages: false,
+        newVsReturning: false,
+        dayOfWeek: false,
+        hourOfDay: false,
+        conversionEvents: false,
+      }),
+    ).toBe(7);
+  });
+
+  it("resolves last 30 days and previous period", () => {
+    const config = parseWebsiteReportConfig({ datePreset: "last_30_days", comparePreviousPeriod: true });
+    const { current, previous } = resolveWebsiteReportRanges(config, "UTC", new Date("2026-09-07T12:00:00Z"));
+    expect(current.endIso).toBe("2026-09-06");
+    expect(previous).toBeDefined();
+    expect(previous!.endIso < current.startIso).toBe(true);
+  });
+
+  it("computes equal-length previous period", () => {
+    const prev = previousPeriodRange({ startIso: "2026-09-01", endIso: "2026-09-07" });
+    expect(prev).toEqual({ startIso: "2026-08-25", endIso: "2026-08-31" });
   });
 });

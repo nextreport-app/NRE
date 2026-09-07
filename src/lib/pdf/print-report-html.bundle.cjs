@@ -671,6 +671,85 @@ function ShareReportView({
   );
 }
 
+// src/lib/nre/website-report-config.ts
+var DEFAULT_WEBSITE_BREAKDOWNS = {
+  device: true,
+  geo: true,
+  geoDimension: "city",
+  channels: true,
+  campaigns: false,
+  sources: false,
+  demographics: false,
+  operatingSystem: false,
+  browser: false,
+  topPages: true,
+  newVsReturning: false,
+  dayOfWeek: false,
+  hourOfDay: false,
+  conversionEvents: false
+};
+function flag(value, defaultOn) {
+  if (value === void 0 || value === null) return defaultOn;
+  if (typeof value === "boolean") return value;
+  return value !== "0" && value !== "false";
+}
+function parseGeoDimension(value) {
+  if (value === "region" || value === "country" || value === "city") return value;
+  return DEFAULT_WEBSITE_BREAKDOWNS.geoDimension;
+}
+function parseWebsiteBreakdownOptions(input) {
+  const legacyGeo = input.geoCities;
+  const geoDefault = legacyGeo !== void 0 ? flag(legacyGeo, DEFAULT_WEBSITE_BREAKDOWNS.geo) : DEFAULT_WEBSITE_BREAKDOWNS.geo;
+  return {
+    device: flag(input.device, DEFAULT_WEBSITE_BREAKDOWNS.device),
+    geo: flag(input.geo, geoDefault),
+    geoDimension: parseGeoDimension(input.geoDimension),
+    channels: flag(input.channels, DEFAULT_WEBSITE_BREAKDOWNS.channels),
+    campaigns: flag(input.campaigns, DEFAULT_WEBSITE_BREAKDOWNS.campaigns),
+    sources: flag(input.sources, DEFAULT_WEBSITE_BREAKDOWNS.sources),
+    demographics: flag(input.demographics, DEFAULT_WEBSITE_BREAKDOWNS.demographics),
+    operatingSystem: flag(input.operatingSystem, DEFAULT_WEBSITE_BREAKDOWNS.operatingSystem),
+    browser: flag(input.browser, DEFAULT_WEBSITE_BREAKDOWNS.browser),
+    topPages: flag(input.topPages, DEFAULT_WEBSITE_BREAKDOWNS.topPages),
+    newVsReturning: flag(input.newVsReturning, DEFAULT_WEBSITE_BREAKDOWNS.newVsReturning),
+    dayOfWeek: flag(input.dayOfWeek, DEFAULT_WEBSITE_BREAKDOWNS.dayOfWeek),
+    hourOfDay: flag(input.hourOfDay, DEFAULT_WEBSITE_BREAKDOWNS.hourOfDay),
+    conversionEvents: flag(input.conversionEvents, DEFAULT_WEBSITE_BREAKDOWNS.conversionEvents)
+  };
+}
+function geoSlideTitle(dimension) {
+  switch (dimension) {
+    case "country":
+      return "Top Countries";
+    case "region":
+      return "Top States / Regions";
+    default:
+      return "Top Cities";
+  }
+}
+function geoColumnHeader(dimension) {
+  switch (dimension) {
+    case "country":
+      return "Country";
+    case "region":
+      return "Region";
+    default:
+      return "City";
+  }
+}
+function normalizeBreakdowns(raw) {
+  return parseWebsiteBreakdownOptions(raw);
+}
+
+// src/lib/nre/share-website-report.ts
+function shareBreakdowns(data) {
+  if (data.breakdowns) return normalizeBreakdowns(data.breakdowns);
+  return { ...DEFAULT_WEBSITE_BREAKDOWNS, geo: false, campaigns: false, sources: false, demographics: false, operatingSystem: false, browser: false, newVsReturning: false, dayOfWeek: false, hourOfDay: false, conversionEvents: false };
+}
+function isShareWebsiteReportData(value) {
+  return typeof value === "object" && value !== null && value.version === 1 && value.kind === "website";
+}
+
 // src/components/share-website-report-view.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
 function MetricCardGrid({ title, metrics }) {
@@ -687,21 +766,29 @@ function MetricCardGrid({ title, metrics }) {
 function SimpleTable({
   title,
   columns,
-  rows
+  rows,
+  footnote
 }) {
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "print-slide mb-8 break-inside-avoid rounded-xl border border-slate-700/60 bg-[#0f172a] p-6", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { className: "mb-4 text-lg font-semibold text-amber-400", children: title }),
+    footnote ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mb-3 text-xs text-slate-500", children: footnote }) : null,
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("table", { className: "w-full min-w-[480px] border-collapse text-sm", children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tr", { children: columns.map((col) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("th", { className: "border-b border-slate-700 px-3 py-2 text-left text-xs uppercase text-slate-400", children: col }, col)) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tbody", { children: rows.map((row, i) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("tr", { className: "border-b border-slate-800/80", children: row.map((cell, j) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("td", { className: "px-3 py-2 text-slate-200", children: cell }, j)) }, i)) })
     ] }) })
   ] });
 }
+function metricTableRows(rows, emptyLabel) {
+  if (rows.length === 0) return [[emptyLabel, "\u2014", "\u2014", "\u2014"]];
+  return rows.map((r) => [r.label, r.sessionsLabel, r.engagementRateLabel, r.conversionsLabel]);
+}
 function ShareWebsiteReportView({
   data,
   shareToken,
   isPrint = false
 }) {
+  const breakdowns = shareBreakdowns(data);
+  const geoDim = data.geoDimension ?? "city";
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
     "div",
     {
@@ -724,15 +811,185 @@ function ShareWebsiteReportView({
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MetricCardGrid, { title: "Traffic Overview", metrics: data.overviewMetrics }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MetricCardGrid, { title: "Conversions & Engagement", metrics: data.conversionMetrics }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        breakdowns.device ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Device Breakdown",
+            columns: ["Device", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.devices ?? []).map((d) => ({
+                label: d.device,
+                sessionsLabel: d.sessionsLabel,
+                engagementRateLabel: d.engagementRateLabel,
+                conversionsLabel: d.conversionsLabel
+              })),
+              "No device data"
+            )
+          }
+        ) : null,
+        breakdowns.channels ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           SimpleTable,
           {
             title: "Traffic Sources",
             columns: ["Channel", "Sessions", "Engagement", "Conversions"],
             rows: data.channels.map((c) => [c.channel, c.sessionsLabel, c.engagementRateLabel, c.conversionsLabel])
           }
-        ),
-        data.topPages.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        ) : null,
+        breakdowns.geo ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: geoSlideTitle(geoDim),
+            columns: [geoColumnHeader(geoDim), "Sessions", "% of Total", "Conversions", "Conv. Rate"],
+            rows: (data.geoCities ?? []).length ? (data.geoCities ?? []).map((g) => [
+              g.location,
+              g.sessionsLabel,
+              g.shareLabel,
+              g.conversionsLabel,
+              g.conversionRateLabel
+            ]) : [["No location data", "\u2014", "\u2014", "\u2014", "\u2014"]]
+          }
+        ) : null,
+        breakdowns.campaigns ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Campaign Performance",
+            columns: ["Campaign", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.campaigns ?? []).map((c) => ({
+                label: c.campaign,
+                sessionsLabel: c.sessionsLabel,
+                engagementRateLabel: c.engagementRateLabel,
+                conversionsLabel: c.conversionsLabel
+              })),
+              "No campaign data"
+            )
+          }
+        ) : null,
+        breakdowns.sources ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Traffic Sources (UTM)",
+            columns: ["Source / Medium", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.sources ?? []).map((s) => ({
+                label: s.label,
+                sessionsLabel: s.sessionsLabel,
+                engagementRateLabel: s.engagementRateLabel,
+                conversionsLabel: s.conversionsLabel
+              })),
+              "No source data"
+            )
+          }
+        ) : null,
+        breakdowns.demographics ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            SimpleTable,
+            {
+              title: "Age Groups",
+              columns: ["Age", "Sessions", "Conversions", "Conv. Rate"],
+              footnote: data.demographicsNote,
+              rows: (data.ageGroups ?? []).length ? (data.ageGroups ?? []).map((a) => [a.segment, a.sessionsLabel, a.conversionsLabel, a.conversionRateLabel]) : [["No age data", "\u2014", "\u2014", "\u2014"]]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            SimpleTable,
+            {
+              title: "Gender",
+              columns: ["Gender", "Sessions", "Conversions", "Conv. Rate"],
+              rows: (data.genders ?? []).length ? (data.genders ?? []).map((g) => [g.segment, g.sessionsLabel, g.conversionsLabel, g.conversionRateLabel]) : [["No gender data", "\u2014", "\u2014", "\u2014"]]
+            }
+          )
+        ] }) : null,
+        breakdowns.operatingSystem ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Operating System",
+            columns: ["OS", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.operatingSystems ?? []).map((t) => ({
+                label: t.name,
+                sessionsLabel: t.sessionsLabel,
+                engagementRateLabel: t.engagementRateLabel,
+                conversionsLabel: t.conversionsLabel
+              })),
+              "No OS data"
+            )
+          }
+        ) : null,
+        breakdowns.browser ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Browser",
+            columns: ["Browser", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.browsers ?? []).map((t) => ({
+                label: t.name,
+                sessionsLabel: t.sessionsLabel,
+                engagementRateLabel: t.engagementRateLabel,
+                conversionsLabel: t.conversionsLabel
+              })),
+              "No browser data"
+            )
+          }
+        ) : null,
+        breakdowns.newVsReturning ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "New vs Returning",
+            columns: ["Audience", "Sessions", "Engagement", "Conversions"],
+            rows: metricTableRows(
+              (data.audience ?? []).map((a) => ({
+                label: a.segment,
+                sessionsLabel: a.sessionsLabel,
+                engagementRateLabel: a.engagementRateLabel,
+                conversionsLabel: a.conversionsLabel
+              })),
+              "No audience data"
+            )
+          }
+        ) : null,
+        breakdowns.dayOfWeek ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Sessions by Day of Week",
+            columns: ["Day", "Sessions", "Engagement", "Conversions", "Conv. Rate"],
+            rows: (data.dayOfWeek ?? []).length ? (data.dayOfWeek ?? []).map((t) => [
+              t.label,
+              t.sessionsLabel,
+              t.engagementRateLabel,
+              t.conversionsLabel,
+              t.conversionRateLabel
+            ]) : [["No data", "\u2014", "\u2014", "\u2014", "\u2014"]]
+          }
+        ) : null,
+        breakdowns.hourOfDay ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Sessions by Hour",
+            columns: ["Hour", "Sessions", "Engagement", "Conversions", "Conv. Rate"],
+            rows: (data.hourOfDay ?? []).length ? (data.hourOfDay ?? []).map((t) => [
+              t.label,
+              t.sessionsLabel,
+              t.engagementRateLabel,
+              t.conversionsLabel,
+              t.conversionRateLabel
+            ]) : [["No data", "\u2014", "\u2014", "\u2014", "\u2014"]]
+          }
+        ) : null,
+        breakdowns.conversionEvents ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          SimpleTable,
+          {
+            title: "Conversion Events",
+            columns: ["Event", "Count", "Sessions", "Rate"],
+            rows: (data.conversionEvents ?? []).length ? (data.conversionEvents ?? []).map((e) => [
+              e.event,
+              e.countLabel,
+              e.sessionsLabel,
+              e.conversionRateLabel
+            ]) : [["No events", "\u2014", "\u2014", "\u2014"]]
+          }
+        ) : null,
+        breakdowns.topPages && data.topPages.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           SimpleTable,
           {
             title: "Top Landing Pages",
@@ -749,11 +1006,6 @@ function ShareWebsiteReportView({
       ] })
     }
   );
-}
-
-// src/lib/nre/share-website-report.ts
-function isShareWebsiteReportData(value) {
-  return typeof value === "object" && value !== null && value.version === 1 && value.kind === "website";
 }
 
 // src/lib/pdf/print-report-css.ts

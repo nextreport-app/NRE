@@ -1,73 +1,38 @@
 /**
  * Website Traffic report data — separate from Meta/Google Ads ReportData.
- *
- * Slide plan:
- * 1. Traffic overview — 8 metric cards
- * 2. Conversions / ecommerce — objective-specific cards
- * 3+. Optional breakdown tables (device, channels, geo, landing pages)
  */
 
-export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content";
+import type { WebsiteBreakdownOptions, WebsiteGeoDimension } from "./website-report-config";
+export type {
+  WebsiteBreakdownOptions,
+  WebsiteClientKindSetting,
+  WebsiteDatePreset,
+  WebsiteGeoDimension,
+  WebsiteReportConfig,
+} from "./website-report-config";
+export {
+  DEFAULT_WEBSITE_BREAKDOWNS,
+  DEFAULT_WEBSITE_REPORT_CONFIG,
+  MAX_WEBSITE_BREAKDOWN_SLIDES,
+  countSelectedBreakdowns,
+  estimateWebsiteSlideCount,
+  geoColumnHeader,
+  geoSlideTitle,
+  parseWebsiteBreakdownOptions,
+  parseWebsiteReportConfig,
+  normalizeBreakdowns,
+  parseWebsiteReportConfigFromSearchParams,
+  resolveWebsiteReportRanges,
+  websiteConfigToQueryString,
+} from "./website-report-config";
 
-/** Which optional breakdown slides to include in a website report. */
-export interface WebsiteBreakdownOptions {
-  device: boolean;
-  geoCities: boolean;
-  channels: boolean;
-  topPages: boolean;
-}
-
-export const DEFAULT_WEBSITE_BREAKDOWNS: WebsiteBreakdownOptions = {
-  device: true,
-  geoCities: true,
-  channels: true,
-  topPages: true,
-};
-
-export const MAX_WEBSITE_BREAKDOWN_SLIDES = 4;
-
-export function parseWebsiteBreakdownOptions(input: {
-  device?: boolean | string | null;
-  geo?: boolean | string | null;
-  channels?: boolean | string | null;
-  topPages?: boolean | string | null;
-}): WebsiteBreakdownOptions {
-  const flag = (value: boolean | string | null | undefined, defaultOn: boolean) => {
-    if (value === undefined || value === null) return defaultOn;
-    if (typeof value === "boolean") return value;
-    return value !== "0" && value !== "false";
-  };
-  return {
-    device: flag(input.device, DEFAULT_WEBSITE_BREAKDOWNS.device),
-    geoCities: flag(input.geo, DEFAULT_WEBSITE_BREAKDOWNS.geoCities),
-    channels: flag(input.channels, DEFAULT_WEBSITE_BREAKDOWNS.channels),
-    topPages: flag(input.topPages, DEFAULT_WEBSITE_BREAKDOWNS.topPages),
-  };
-}
-
-export function countSelectedBreakdowns(options: WebsiteBreakdownOptions): number {
-  return [options.device, options.geoCities, options.channels, options.topPages].filter(Boolean).length;
-}
-
-export function estimateWebsiteSlideCount(
-  breakdowns: WebsiteBreakdownOptions,
-  opts?: { hasConversionSlide?: boolean; hasTopPagesData?: boolean },
-): number {
-  let slides = 2; // cover + traffic overview
-  if (opts?.hasConversionSlide !== false) slides += 1;
-  if (breakdowns.device) slides += 1;
-  if (breakdowns.channels) slides += 1;
-  if (breakdowns.geoCities) slides += 1;
-  if (breakdowns.topPages && opts?.hasTopPagesData !== false) slides += 1;
-  return slides;
-}
+export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content" | "saas";
 
 export interface WebsiteMetricCard {
   key: string;
   label: string;
   value: string;
   previousValue?: string;
-  /** e.g. "+12.4%" or "−3.1%" — empty when no comparison */
   changeLabel?: string;
 }
 
@@ -110,6 +75,77 @@ export interface WebsiteGeoRow {
   conversionRateLabel: string;
 }
 
+export interface WebsiteCampaignRow {
+  campaign: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+}
+
+export interface WebsiteSourceRow {
+  source: string;
+  medium: string;
+  label: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+}
+
+export interface WebsiteDemographicRow {
+  segment: string;
+  sessions: number;
+  sessionsLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
+export interface WebsiteAudienceRow {
+  segment: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+}
+
+export interface WebsiteTechRow {
+  name: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+}
+
+export interface WebsiteTimeRow {
+  label: string;
+  sessions: number;
+  sessionsLabel: string;
+  engagementRate: number;
+  engagementRateLabel: string;
+  conversions: number;
+  conversionsLabel: string;
+  conversionRateLabel: string;
+}
+
+export interface WebsiteConversionEventRow {
+  event: string;
+  count: number;
+  countLabel: string;
+  sessions: number;
+  sessionsLabel: string;
+  conversionRateLabel: string;
+}
+
 export interface WebsiteReportData {
   version: 1;
   kind: "website";
@@ -124,11 +160,23 @@ export interface WebsiteReportData {
   conversionMetrics: WebsiteMetricCard[];
   channels: WebsiteChannelRow[];
   devices: WebsiteDeviceRow[];
+  /** Geo rows — cities, states/regions, or countries depending on geoDimension */
   geoCities: WebsiteGeoRow[];
+  geoDimension: WebsiteGeoDimension;
+  campaigns: WebsiteCampaignRow[];
+  sources: WebsiteSourceRow[];
+  ageGroups: WebsiteDemographicRow[];
+  genders: WebsiteDemographicRow[];
+  audience: WebsiteAudienceRow[];
+  operatingSystems: WebsiteTechRow[];
+  browsers: WebsiteTechRow[];
   topPages: WebsitePageRow[];
-  /** Which breakdown slides were requested for this report */
+  dayOfWeek: WebsiteTimeRow[];
+  hourOfDay: WebsiteTimeRow[];
+  conversionEvents: WebsiteConversionEventRow[];
   breakdowns: WebsiteBreakdownOptions;
-  /** Shown on cover / footnote — GA4 attribution differs from ad platforms */
+  /** Shown when demographics selected — Google Signals caveat */
+  demographicsNote?: string;
   attributionNote: string;
 }
 
@@ -231,6 +279,35 @@ export function detectWebsiteClientKind(totals: Ga4OverviewTotals): WebsiteClien
   return "content";
 }
 
+function mapGeoRows(
+  rows: Array<{ location: string; sessions: number; conversions: number }>,
+  totalSessions: number,
+): WebsiteGeoRow[] {
+  return rows.map((g) => ({
+    location: g.location,
+    sessions: g.sessions,
+    sessionsLabel: fmtInt(g.sessions),
+    shareOfSessions: g.sessions / totalSessions,
+    shareLabel: fmtPct(g.sessions / totalSessions),
+    conversions: g.conversions,
+    conversionsLabel: fmtInt(g.conversions),
+    conversionRateLabel: g.sessions > 0 ? fmtPct(g.conversions / g.sessions) : "0.0%",
+  }));
+}
+
+function mapDemographicRows(
+  rows: Array<{ segment: string; sessions: number; conversions: number }>,
+): WebsiteDemographicRow[] {
+  return rows.map((r) => ({
+    segment: r.segment,
+    sessions: r.sessions,
+    sessionsLabel: fmtInt(r.sessions),
+    conversions: r.conversions,
+    conversionsLabel: fmtInt(r.conversions),
+    conversionRateLabel: r.sessions > 0 ? fmtPct(r.conversions / r.sessions) : "0.0%",
+  }));
+}
+
 export function buildWebsiteReportData(input: {
   propertyId: string;
   propertyName: string;
@@ -240,14 +317,28 @@ export function buildWebsiteReportData(input: {
   currencySymbol: string;
   current: Ga4OverviewTotals;
   previous?: Ga4OverviewTotals;
+  clientKindOverride?: WebsiteClientKind;
   channels: Array<{ channel: string; sessions: number; engagementRate: number; conversions: number }>;
   devices?: Array<{ device: string; sessions: number; engagementRate: number; conversions: number }>;
-  geoCities?: Array<{ location: string; sessions: number; conversions: number }>;
+  geoLocations?: Array<{ location: string; sessions: number; conversions: number }>;
+  geoDimension?: WebsiteGeoDimension;
+  campaigns?: Array<{ campaign: string; sessions: number; engagementRate: number; conversions: number }>;
+  sources?: Array<{ source: string; medium: string; sessions: number; engagementRate: number; conversions: number }>;
+  ageGroups?: Array<{ segment: string; sessions: number; conversions: number }>;
+  genders?: Array<{ segment: string; sessions: number; conversions: number }>;
+  audience?: Array<{ segment: string; sessions: number; engagementRate: number; conversions: number }>;
+  operatingSystems?: Array<{ name: string; sessions: number; engagementRate: number; conversions: number }>;
+  browsers?: Array<{ name: string; sessions: number; engagementRate: number; conversions: number }>;
   topPages: Array<{ page: string; sessions: number; engagementRate: number }>;
+  dayOfWeek?: Array<{ label: string; sessions: number; engagementRate: number; conversions: number }>;
+  hourOfDay?: Array<{ label: string; sessions: number; engagementRate: number; conversions: number }>;
+  conversionEvents?: Array<{ event: string; count: number; sessions: number; conversionRate: number }>;
   breakdowns?: WebsiteBreakdownOptions;
 }): WebsiteReportData {
   const { current, previous, currencySymbol } = input;
-  const clientKind = detectWebsiteClientKind(current);
+  const clientKind = input.clientKindOverride ?? detectWebsiteClientKind(current);
+  const breakdowns = input.breakdowns;
+  const totalSessions = Math.max(current.sessions, 1);
 
   const overviewMetrics: WebsiteMetricCard[] = [
     metricCard("sessions", "Sessions", fmtInt(current.sessions), previous?.sessions, current.sessions, fmtInt),
@@ -363,6 +454,41 @@ export function buildWebsiteReportData(input: {
         fmtPct,
       ),
     );
+  } else if (clientKind === "saas") {
+    conversionMetrics.push(
+      metricCard(
+        "conversions",
+        "Sign-ups / Key Events",
+        fmtInt(current.conversions),
+        previous?.conversions,
+        current.conversions,
+        fmtInt,
+      ),
+      metricCard(
+        "conversionRate",
+        "Conversion Rate",
+        current.sessions > 0 ? fmtPct(current.conversions / current.sessions) : "0.0%",
+        previous && previous.sessions > 0 ? previous.conversions / previous.sessions : undefined,
+        current.sessions > 0 ? current.conversions / current.sessions : 0,
+        fmtPct,
+      ),
+      metricCard(
+        "newUsers",
+        "New Users",
+        fmtInt(current.newUsers),
+        previous?.newUsers,
+        current.newUsers,
+        fmtInt,
+      ),
+      metricCard(
+        "engagementRate",
+        "Engagement Rate",
+        fmtPct(current.engagementRate),
+        previous?.engagementRate,
+        current.engagementRate,
+        fmtPct,
+      ),
+    );
   } else {
     conversionMetrics.push(
       metricCard(
@@ -394,7 +520,9 @@ export function buildWebsiteReportData(input: {
     );
   }
 
-  const totalSessions = Math.max(current.sessions, 1);
+  const demographicsNote = breakdowns?.demographics
+    ? "Demographics require Google Signals in GA4 and sufficient traffic. Small sites often show mostly Unknown."
+    : undefined;
 
   return {
     version: 1,
@@ -426,15 +554,56 @@ export function buildWebsiteReportData(input: {
       conversions: d.conversions,
       conversionsLabel: fmtInt(d.conversions),
     })),
-    geoCities: (input.geoCities ?? []).map((g) => ({
-      location: g.location,
-      sessions: g.sessions,
-      sessionsLabel: fmtInt(g.sessions),
-      shareOfSessions: g.sessions / totalSessions,
-      shareLabel: fmtPct(g.sessions / totalSessions),
-      conversions: g.conversions,
-      conversionsLabel: fmtInt(g.conversions),
-      conversionRateLabel: g.sessions > 0 ? fmtPct(g.conversions / g.sessions) : "0.0%",
+    geoCities: mapGeoRows(input.geoLocations ?? [], totalSessions),
+    geoDimension: input.geoDimension ?? "city",
+    campaigns: (input.campaigns ?? []).map((c) => ({
+      campaign: c.campaign,
+      sessions: c.sessions,
+      sessionsLabel: fmtInt(c.sessions),
+      engagementRate: c.engagementRate,
+      engagementRateLabel: fmtPct(c.engagementRate),
+      conversions: c.conversions,
+      conversionsLabel: fmtInt(c.conversions),
+    })),
+    sources: (input.sources ?? []).map((s) => ({
+      source: s.source,
+      medium: s.medium,
+      label: `${s.source} / ${s.medium}`,
+      sessions: s.sessions,
+      sessionsLabel: fmtInt(s.sessions),
+      engagementRate: s.engagementRate,
+      engagementRateLabel: fmtPct(s.engagementRate),
+      conversions: s.conversions,
+      conversionsLabel: fmtInt(s.conversions),
+    })),
+    ageGroups: mapDemographicRows(input.ageGroups ?? []),
+    genders: mapDemographicRows(input.genders ?? []),
+    audience: (input.audience ?? []).map((a) => ({
+      segment: a.segment,
+      sessions: a.sessions,
+      sessionsLabel: fmtInt(a.sessions),
+      engagementRate: a.engagementRate,
+      engagementRateLabel: fmtPct(a.engagementRate),
+      conversions: a.conversions,
+      conversionsLabel: fmtInt(a.conversions),
+    })),
+    operatingSystems: (input.operatingSystems ?? []).map((t) => ({
+      name: t.name,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
+    })),
+    browsers: (input.browsers ?? []).map((t) => ({
+      name: t.name,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
     })),
     topPages: input.topPages.map((p) => ({
       page: p.page,
@@ -443,7 +612,51 @@ export function buildWebsiteReportData(input: {
       engagementRate: p.engagementRate,
       engagementRateLabel: fmtPct(p.engagementRate),
     })),
-    breakdowns: input.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS,
+    dayOfWeek: (input.dayOfWeek ?? []).map((t) => ({
+      label: t.label,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
+      conversionRateLabel: t.sessions > 0 ? fmtPct(t.conversions / t.sessions) : "0.0%",
+    })),
+    hourOfDay: (input.hourOfDay ?? []).map((t) => ({
+      label: t.label,
+      sessions: t.sessions,
+      sessionsLabel: fmtInt(t.sessions),
+      engagementRate: t.engagementRate,
+      engagementRateLabel: fmtPct(t.engagementRate),
+      conversions: t.conversions,
+      conversionsLabel: fmtInt(t.conversions),
+      conversionRateLabel: t.sessions > 0 ? fmtPct(t.conversions / t.sessions) : "0.0%",
+    })),
+    conversionEvents: (input.conversionEvents ?? []).map((e) => ({
+      event: e.event,
+      count: e.count,
+      countLabel: fmtInt(e.count),
+      sessions: e.sessions,
+      sessionsLabel: fmtInt(e.sessions),
+      conversionRateLabel: fmtPct(e.conversionRate),
+    })),
+    breakdowns: breakdowns ?? {
+      device: true,
+      geo: true,
+      geoDimension: "city",
+      channels: true,
+      campaigns: false,
+      sources: false,
+      demographics: false,
+      operatingSystem: false,
+      browser: false,
+      topPages: true,
+      newVsReturning: false,
+      dayOfWeek: false,
+      hourOfDay: false,
+      conversionEvents: false,
+    },
+    demographicsNote,
     attributionNote:
       "Website metrics come from Google Analytics 4. Conversion counts may differ from Meta or Google Ads due to different attribution models and tracking methods.",
   };

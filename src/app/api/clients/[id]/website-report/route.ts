@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGa4AccessTokenForUser } from "@/lib/ga4-session";
-import { defaultWebsiteReportRanges, fetchGa4WebsiteReport } from "@/lib/nre/fetch-ga4-website-report";
+import { fileFromFormData } from "@/lib/http-file";
 import { buildShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
@@ -13,24 +12,9 @@ import { saveReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
-
-function isoToUsDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}/${y}`;
-}
-
-import { estimateWebsiteSlideCount, parseWebsiteBreakdownOptions } from "@/lib/nre/website-report-data";
-
-function parseBreakdownsFromBody(body: unknown) {
-  if (!body || typeof body !== "object") return parseWebsiteBreakdownOptions({});
-  const b = body as Record<string, unknown>;
-  return parseWebsiteBreakdownOptions({
-    device: b.device as boolean | string | null | undefined,
-    geo: (b.geo ?? b.geoCities) as boolean | string | null | undefined,
-    channels: b.channels as boolean | string | null | undefined,
-    topPages: b.topPages as boolean | string | null | undefined,
-  });
-}
+import { parseWebsiteReportConfig } from "@/lib/nre/website-report-data";
+import { formatDateUS } from "@/lib/nre/dates";
+import { resolveWebsiteReportData, type WebsiteDataSource } from "@/lib/nre/website-report-resolve";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -59,27 +43,47 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (!client.ga4PropertyId) {
+  const contentType = req.headers.get("content-type") ?? "";
+  let config = parseWebsiteReportConfig(null);
+  let csvBuffer: Buffer | null = null;
+  let dataSource: WebsiteDataSource = "api";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    csvBuffer = await fileFromFormData(formData, "ga4Csv");
+    const configRaw = formData.get("config");
+    if (typeof configRaw === "string") {
+      try {
+        config = parseWebsiteReportConfig(JSON.parse(configRaw));
+      } catch {
+        /* defaults */
+      }
+    }
+    const ds = formData.get("dataSource");
+    if (ds === "csv" || csvBuffer) dataSource = "csv";
+  } else {
+    try {
+      const body = await req.json().catch(() => null);
+      config = parseWebsiteReportConfig(body);
+      if (body && typeof body === "object" && (body as Record<string, unknown>).dataSource === "csv") {
+        dataSource = "csv";
+      }
+    } catch {
+      /* defaults */
+    }
+  }
+
+  if (dataSource === "api" && !client.ga4PropertyId) {
     return NextResponse.json({ error: "Link a GA4 property to this client first." }, { status: 400 });
   }
 
-  const accessToken = await getGa4AccessTokenForUser(session.user.id);
-  if (!accessToken) {
-    return NextResponse.json({ error: "Connect Google Analytics in Account Settings first." }, { status: 400 });
+  if (dataSource === "csv" && !csvBuffer) {
+    return NextResponse.json({ error: "Upload a GA4 CSV export (field: ga4Csv)." }, { status: 400 });
   }
 
-  let breakdowns = parseWebsiteBreakdownOptions({});
-  try {
-    const body = await req.json().catch(() => null);
-    breakdowns = parseBreakdownsFromBody(body);
-  } catch {
-    // Empty body — use defaults
-  }
-
-  const ranges = defaultWebsiteReportRanges(client.timezone);
-  const weekStart = isoToUsDate(ranges.current.startIso);
-  const weekEnd = isoToUsDate(ranges.current.endIso);
-  const fileName = `Website Traffic Report - ${client.accountName} - ${weekStart} to ${weekEnd}.pptx`.replace(/[\s/]/g, "_");
+  const weekStart = formatDateUS(new Date().toISOString().slice(0, 10)).replace(/\//g, "-");
+  const weekEnd = weekStart;
+  const fileName = `Website Traffic Report - ${client.accountName}.pptx`.replace(/[\s/]/g, "_");
   const displayName = defaultReportDisplayName("WEBSITE", weekStart, weekEnd);
 
   let report;
@@ -102,14 +106,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const websiteData = await fetchGa4WebsiteReport({
-      accessToken,
-      propertyId: client.ga4PropertyId,
-      propertyName: client.ga4PropertyName ?? client.ga4PropertyId,
+    const { data: websiteData } = await resolveWebsiteReportData({
+      userId: session.user.id,
+      timezone: client.timezone,
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",
-      currentRange: ranges.current,
-      comparisonRange: ranges.previous,
-      breakdowns,
+      accountName: client.accountName,
+      ga4PropertyId: client.ga4PropertyId,
+      ga4PropertyName: client.ga4PropertyName,
+      config,
+      dataSource,
+      csvBuffer,
     });
 
     const templateBuffer = await loadTemplateBuffer(client.template);
