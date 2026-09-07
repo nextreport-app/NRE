@@ -154,10 +154,10 @@ export function PreviousMonthDataUpload({
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
-        Upload once each month for the previous-month row on Monthly reports. Export{" "}
-        <span className="text-dash-ink">Last Month</span> from Meta Ads Manager.{" "}
+        For Monthly reports, export last month&rsquo;s performance from Meta Ads Manager and upload it here once per
+        calendar month. We add it as the previous-month comparison row on overview slides.{" "}
         <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent underline hover:no-underline">
-          CSV guide →
+          CSV export guide →
         </Link>
       </p>
 

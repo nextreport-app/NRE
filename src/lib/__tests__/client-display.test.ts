@@ -27,6 +27,7 @@ describe("client-display", () => {
   it("flags stale previous month data", () => {
     const status = getPreviousMonthListStatus(true, "2026-08-15T00:00:00.000Z", "UTC", new Date("2026-09-07T12:00:00Z"));
     expect(status.status).toBe("stale");
-    expect(status.label).toContain("refresh");
+    expect(status.label).toBe("Prev month — re-upload this month");
+    expect(status.title).toContain("September");
   });
 });
