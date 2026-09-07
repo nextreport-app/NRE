@@ -28,6 +28,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         googleAdsRefreshToken: true,
         tiktokAdsEnabled: true,
         tiktokAccessToken: true,
+        ga4Enabled: true,
+        ga4RefreshToken: true,
       },
     }),
   ]);
@@ -67,6 +69,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           googleAdsConnected={!!user.googleAdsRefreshToken}
           tiktokConfigured={isTikTokApiConfigured()}
           tiktokConnected={!!user.tiktokAccessToken}
+          hasGa4Property={!!client.ga4PropertyId}
+          ga4Connected={!!user.ga4RefreshToken || user.ga4Enabled}
         />
       </Suspense>
     </div>

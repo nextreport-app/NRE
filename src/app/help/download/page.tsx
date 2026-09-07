@@ -29,10 +29,13 @@ interface Step {
 const META_LAST_30_STEPS: Step[] = [
   { title: "Open Meta Ads Manager → Campaigns", body: "" },
   { title: "Reports → Export → Export Table Data", body: "" },
-  { title: "Date range: Last 30 Days", body: "Use this every day except the 1st of the month (see callout below)." },
+  {
+    title: "Date range: Last 30 Days",
+    body: "On the 1st of the month, use Previous Month instead — see the callout below.",
+  },
   {
     title: "Time Breakdown: Day",
-    body: "Required — one row per day. Weekly slides, month-to-date, and the visual chart all read from this file.",
+    body: "Required — one row per day.",
   },
   {
     title: "Columns to include",
@@ -69,13 +72,13 @@ const META_AD_LEVEL_STEPS: Step[] = [
 
 const TIKTOK_STEPS: Step[] = [
   { title: "TikTok Ads Manager → Campaign / Ad group report", body: "" },
-  { title: "Date range: Last 30 days", body: "USD reporting — built for US and global advertiser accounts." },
-  { title: "Breakdown: Day", body: "Required — one row per day for weekly slides and month-to-date." },
+  { title: "Date range: Last 30 days", body: "" },
+  { title: "Breakdown: Day", body: "Required — one row per day." },
   {
     title: "Columns",
     body: "Campaign name, Ad group name, Day, Cost, Impressions, Clicks, CTR, CPC, Conversions, Cost per conversion.",
   },
-  { title: "Download CSV", body: "TikTok uses the same 5-step wizard as Meta — ad groups appear as ad-set slides." },
+  { title: "Download CSV", body: "Same 5-step wizard as Meta — ad groups appear as ad-set slides." },
 ];
 
 const GOOGLE_STEPS: Step[] = [
@@ -191,8 +194,9 @@ export default async function DownloadGuidePage() {
               </div>
             </div>
             <p className="mt-4 text-sm text-ink-muted">
-              GA4 website reports use a separate wizard — connect Google Analytics in Account Settings, link a property
-              to each client, then open <span className="text-white">Website Traffic (GA4)</span> from the client page.
+              GA4 website reports are available from Step 1 of the report wizard — choose{" "}
+              <span className="text-white">Website Traffic (GA4)</span>. Connect Google Analytics in Account Settings
+              and link a property to each client first.
             </p>
             <p className="mt-2 text-sm text-ink-muted">
               In the ad report wizard, choose <span className="text-white">Sync from API</span> on Step 1 after connecting.
@@ -241,11 +245,34 @@ export default async function DownloadGuidePage() {
               <h3 className="text-lg font-semibold text-white">Multi-Month Historical reports</h3>
               <p className="mt-3 text-[15px] leading-relaxed text-ink-secondary">
                 When a client asks for the last few months (e.g. May through August), choose{" "}
-                <span className="text-white">Multi-Month Historical Report</span> in Step 5 — not four separate CSV
-                uploads. Export <span className="text-white">one daily CSV</span> whose date range covers every month
-                you need (Custom date range in Ads Manager, Day breakdown). Each complete calendar month becomes its own
-                campaign slides with a month header (e.g. &quot;May Performance&quot;).
+                <span className="text-white">Multi-Month Historical Report</span> in Step 5 — not a Monthly report and
+                not four separate uploads. Export <span className="text-white">one daily CSV</span> whose date range
+                covers every complete month you need (Custom date range in Ads Manager, Day breakdown).
               </p>
+              <ul className="mt-3 list-inside list-disc space-y-2 text-[15px] leading-relaxed text-ink-secondary">
+                <li>
+                  Each month gets campaign slides with a month header (e.g. &quot;May Performance&quot;), then a{" "}
+                  <span className="text-white">month total slide</span>.
+                </li>
+                <li>
+                  The deck ends with a <span className="text-white">comparison table</span> — one row per month.
+                </li>
+                <li>Campaigns under $10 spend in a month are excluded (same as other report types).</li>
+              </ul>
+            </div>
+
+            <div className="mt-8 rounded-lg border border-navy-border bg-navy-panel p-5">
+              <h3 className="text-lg font-semibold text-white">Monthly vs Multi-Month Historical</h3>
+              <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-ink-secondary">
+                <li>
+                  <span className="text-white">Monthly</span> — one current or recent month deck with an MTD chart and
+                  optional previous-month row on the overview slide.
+                </li>
+                <li>
+                  <span className="text-white">Multi-Month Historical</span> — several complete past months in one
+                  deck, with per-month totals and a final comparison table.
+                </li>
+              </ul>
             </div>
 
             <h3 className="mt-10 text-lg font-semibold text-white">Optional — Previous Month CSV (Meta)</h3>
@@ -294,8 +321,7 @@ export default async function DownloadGuidePage() {
           <section id="tiktok-ads">
             <SectionHeading>TikTok Ads — CSV export</SectionHeading>
             <p className="mt-4 text-sm text-ink-secondary">
-              TikTok uses the same 5-step wizard as Meta (campaigns, objectives, metrics, report types). TikTok &quot;Ad
-              groups&quot; map to ad-set slides in your deck. Reporting is USD-only.
+              TikTok uses the same 5-step wizard as Meta. Ad groups map to ad-set slides in your deck.
             </p>
             <div className="mt-6 space-y-4">
               {TIKTOK_STEPS.map((step, i) => (
