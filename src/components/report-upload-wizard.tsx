@@ -297,6 +297,8 @@ export function ReportUploadWizard({
   metaConfigured = false,
   googleAdsConfigured = false,
   googleAdsConnected = false,
+  tiktokConfigured = false,
+  tiktokConnected = false,
 }: {
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
@@ -323,6 +325,9 @@ export function ReportUploadWizard({
   /** Google Ads API — env configured; OAuth UI rolling out. */
   googleAdsConfigured?: boolean;
   googleAdsConnected?: boolean;
+  /** TikTok Marketing API — read-only USD reporting. */
+  tiktokConfigured?: boolean;
+  tiktokConnected?: boolean;
 }) {
   const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
@@ -344,13 +349,13 @@ export function ReportUploadWizard({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
-      if (stored === "META" || stored === "GOOGLE") setSelectedPlatformCard(stored);
+      if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") setSelectedPlatformCard(stored);
     } catch {
       /* private mode */
     }
   }, []);
 
-  function choosePlatform(next: "META" | "GOOGLE") {
+  function choosePlatform(next: "META" | "GOOGLE" | "TIKTOK") {
     setSelectedPlatformCard(next);
     setMismatchWarning(false);
     setAnalyzeStatus("idle");
@@ -373,7 +378,7 @@ export function ReportUploadWizard({
   // ultimately sent to the server). A mismatch between the two pauses on
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
-  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | null>("META");
+  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | "TIKTOK" | null>("META");
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -393,8 +398,8 @@ export function ReportUploadWizard({
   const [pmsError, setPmsError] = useState<string | null>(null);
   const [pmsResult, setPmsResult] = useState<{ reportId: string; downloadUrl: string; shareToken: string | null } | null>(null);
   const [mismatchWarning, setMismatchWarning] = useState(false);
-  const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | null>(null);
-  const [platform, setPlatform] = useState<"META" | "GOOGLE">("META");
+  const [detectedPlatform, setDetectedPlatform] = useState<"META" | "GOOGLE" | "TIKTOK" | null>(null);
+  const [platform, setPlatform] = useState<"META" | "GOOGLE" | "TIKTOK">("META");
   const [continueStatus, setContinueStatus] = useState<"idle" | "loading">("idle");
 
   // Step 2 — Campaigns (populated by /analyze). Always shown in full for
@@ -835,8 +840,8 @@ export function ReportUploadWizard({
   }
 
   /** Meta lands straight on Step 2 (Select Campaigns) — /metrics isn't fetched until that step's own Continue click (see handleCampaignsContinue), once selectedCampaigns has actually settled from user interaction rather than being read mid-render. Google Ads skips straight to the preview — no campaign selection, no report-type toggle, no Previous Month Data (see google-report-data.ts's own file header for why this pipeline is deliberately simpler for v1). */
-  async function dispatchAfterAnalyze(platformValue: "META" | "GOOGLE") {
-    if (platformValue === "META") {
+  async function dispatchAfterAnalyze(platformValue: "META" | "GOOGLE" | "TIKTOK") {
+    if (platformValue === "META" || platformValue === "TIKTOK") {
       setStep(2);
       return;
     }
@@ -899,7 +904,7 @@ export function ReportUploadWizard({
     // Platform is detected even on an invalid CSV (see the analyze route) —
     // shown alongside the error list so a wrong detection is diagnosable
     // even when validation also failed for an unrelated reason.
-    const detected: "META" | "GOOGLE" = json.detectedPlatform || "META";
+    const detected: "META" | "GOOGLE" | "TIKTOK" = json.detectedPlatform || "META";
     setDetectedPlatform(detected);
 
     if (!json.valid) {
@@ -979,7 +984,7 @@ export function ReportUploadWizard({
       return;
     }
 
-    const detected: "META" | "GOOGLE" = json.detectedPlatform || selectedPlatformCard;
+    const detected: "META" | "GOOGLE" | "TIKTOK" = json.detectedPlatform || selectedPlatformCard;
     setDetectedPlatform(detected);
     setPlatform(json.platform || selectedPlatformCard);
 
@@ -1663,7 +1668,7 @@ export function ReportUploadWizard({
     setSelectedPlatformCard("META");
     try {
       const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
-      if (stored === "META" || stored === "GOOGLE") setSelectedPlatformCard(stored);
+      if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") setSelectedPlatformCard(stored);
     } catch {
       /* private mode */
     }
@@ -1805,7 +1810,7 @@ export function ReportUploadWizard({
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <ReportTypeCard
               icon={<MetaAdsIcon />}
               heading="Meta Ads"
@@ -1819,6 +1824,13 @@ export function ReportUploadWizard({
               description="Sync via Ads API or upload a CSV export"
               selected={selectedPlatformCard === "GOOGLE"}
               onSelect={() => choosePlatform("GOOGLE")}
+            />
+            <ReportTypeCard
+              icon={<TikTokAdsIcon />}
+              heading="TikTok Ads"
+              description="Sync via Marketing API or upload a CSV export (USD)"
+              selected={selectedPlatformCard === "TIKTOK"}
+              onSelect={() => choosePlatform("TIKTOK")}
             />
           </div>
 
@@ -1835,6 +1847,8 @@ export function ReportUploadWizard({
                   metaConfigured={metaConfigured}
                   googleAdsConfigured={googleAdsConfigured}
                   googleAdsConnected={googleAdsConnected}
+                  tiktokConfigured={tiktokConfigured}
+                  tiktokConnected={tiktokConnected}
                   onSynced={(file) => void handleApiSynced(file)}
                   syncStatus={apiSyncStatus}
                   syncError={apiSyncError}
@@ -1861,6 +1875,11 @@ export function ReportUploadWizard({
                 </a>
                 {selectedPlatformCard === "META" ? (
                   <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
+                ) : selectedPlatformCard === "TIKTOK" ? (
+                  <span className="block text-[#e2e8f0]">
+                    Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group, Cost,
+                    Impressions, Clicks, and Conversions.
+                  </span>
                 ) : (
                   "Set date range to Last 30 days and segment by Day."
                 )}
@@ -1894,8 +1913,19 @@ export function ReportUploadWizard({
           {mismatchWarning && (
             <div className="space-y-2 rounded-md border border-amber-900 bg-amber-950/30 p-3">
               <p className="text-[13px] text-amber-200">
-                This looks like a {detectedPlatform === "GOOGLE" ? "Google Ads" : "Meta Ads"} CSV, but you selected{" "}
-                {selectedPlatformCard === "GOOGLE" ? "Google Ads" : "Meta Ads"} above.
+                This looks like a{" "}
+                {detectedPlatform === "GOOGLE"
+                  ? "Google Ads"
+                  : detectedPlatform === "TIKTOK"
+                    ? "TikTok Ads"
+                    : "Meta Ads"}{" "}
+                CSV, but you selected{" "}
+                {selectedPlatformCard === "GOOGLE"
+                  ? "Google Ads"
+                  : selectedPlatformCard === "TIKTOK"
+                    ? "TikTok Ads"
+                    : "Meta Ads"}{" "}
+                above.
               </p>
               <div className="flex gap-2">
                 <button
@@ -3461,6 +3491,23 @@ function MetaAdsIcon() {
   return (
     <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="20" cy="20" r="20" fill="#1877F2" />
+    </svg>
+  );
+}
+
+/** TikTok Ads platform-selector icon — solid black circle with accent note. */
+function TikTokAdsIcon() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="20" cy="20" r="20" fill="#010101" />
+      <path
+        d="M26 14v8.2c-1.6-.9-3.5-1.4-5.5-1.4-4.2 0-7.6 3.4-7.6 7.6s3.4 7.6 7.6 7.6 7.6-3.4 7.6-7.6V14h-2.1z"
+        fill="#25F4EE"
+      />
+      <path
+        d="M24 14v8.2c-1.6-.9-3.5-1.4-5.5-1.4-3.1 0-5.7 2-6.6 4.8 1.4-1.1 3.2-1.8 5.1-1.8 4.2 0 7.6 3.4 7.6 7.6V14h-1.6z"
+        fill="#FE2C55"
+      />
     </svg>
   );
 }

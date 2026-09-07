@@ -19,3 +19,8 @@ export function isGa4ApiConfigured(): boolean {
   const hasFallback = !!(process.env.GOOGLE_ADS_CLIENT_ID?.trim() && process.env.GOOGLE_ADS_CLIENT_SECRET?.trim());
   return hasDedicated || hasFallback;
 }
+
+/** TikTok Marketing API — OAuth app credentials (see .env.example). */
+export function isTikTokApiConfigured(): boolean {
+  return !!(process.env.TIKTOK_APP_ID?.trim() && process.env.TIKTOK_APP_SECRET?.trim());
+}

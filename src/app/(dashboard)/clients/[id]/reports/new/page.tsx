@@ -6,7 +6,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { ReportUploadWizard } from "@/components/report-upload-wizard";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import { isGoogleAdsApiConfigured, isMetaApiConfigured } from "@/lib/integrations-config";
+import { isGoogleAdsApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,6 +26,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         metaConnectedName: true,
         metaAccessToken: true,
         googleAdsRefreshToken: true,
+        tiktokAdsEnabled: true,
+        tiktokAccessToken: true,
       },
     }),
   ]);
@@ -63,6 +65,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           metaConfigured={isMetaApiConfigured()}
           googleAdsConfigured={isGoogleAdsApiConfigured()}
           googleAdsConnected={!!user.googleAdsRefreshToken}
+          tiktokConfigured={isTikTokApiConfigured()}
+          tiktokConnected={!!user.tiktokAccessToken}
         />
       </Suspense>
     </div>

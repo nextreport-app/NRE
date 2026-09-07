@@ -59,13 +59,14 @@ export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIO
 // server falls back to auto-detection from the CSV's own headers (see
 // lib/nre/google-columns.ts's detectPlatform) — sent explicitly only when
 // the wizard's user has manually overridden the detected platform.
-export const platformSchema = z.enum(["META", "GOOGLE"]);
+export const platformSchema = z.enum(["META", "GOOGLE", "TIKTOK"]);
 
 /** Wizard data source — CSV upload vs API sync. */
 export const dataSourceSchema = z.enum(["csv", "api"]);
 
 export const metaAdAccountIdSchema = z.string().trim().min(1);
 export const googleCustomerIdSchema = z.string().trim().min(1);
+export const tiktokAdvertiserIdSchema = z.string().trim().min(1);
 
 // Comparison Report's two wizard-picked date windows — plain ISO dates,
 // same shape as lib/nre/date-range.ts's own DateRangeIso (not imported

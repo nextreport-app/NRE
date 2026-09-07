@@ -119,6 +119,19 @@ model User {
   ga4AccessToken      String? @db.Text
   ga4ConnectedEmail   String?
 
+  // TikTok Ads connection (account settings) — separate OAuth grant for
+  // read-only Marketing API reporting. Tokens via /api/tiktok/connect +
+  // /api/tiktok/callback. USD-only reporting (no INR) — built for US and
+  // global advertiser accounts.
+  tiktokAdsEnabled       Boolean   @default(false)
+  tiktokAccessToken      String?   @db.Text
+  tiktokRefreshToken     String?   @db.Text
+  tiktokTokenExpiresAt   DateTime?
+  tiktokConnectedName    String?
+  // JSON string[] of advertiser_id values returned at OAuth — used to
+  // populate the wizard's advertiser picker without an extra API round trip.
+  tiktokAdvertiserIds    String?   @db.Text
+
   // Report delivery integrations (account settings) — optional incoming
   // webhooks fired after each report reaches COMPLETE status.
   // slackWebhookUrl: Slack incoming webhook (hooks.slack.com/...).
@@ -237,6 +250,7 @@ enum Platform {
   META
   GOOGLE
   GA4
+  TIKTOK
 }
 
 model Client {

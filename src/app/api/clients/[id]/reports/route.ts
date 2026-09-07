@@ -71,7 +71,7 @@ function dispatchReportNotifications(params: {
     id: string;
     shareToken: string | null;
     reportType: string;
-    platform: "META" | "GOOGLE";
+    platform: "META" | "GOOGLE" | "TIKTOK";
     displayName: string | null;
   };
   healthScore?: number | null;
@@ -486,7 +486,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
     : [undefined, undefined];
-  const filePrefix = platform === "GOOGLE" ? "Google Ads Report - " : "Meta Ads Report - ";
+  const filePrefix =
+    platform === "GOOGLE"
+      ? "Google Ads Report - "
+      : platform === "TIKTOK"
+        ? "TikTok Ads Report - "
+        : "Meta Ads Report - ";
   const fileName = filePrefix + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
 
   let report;

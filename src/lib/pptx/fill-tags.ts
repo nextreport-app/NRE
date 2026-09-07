@@ -419,7 +419,8 @@ export function buildCampaignOrAdSetSlideXml(
   /** Website Traffic reports — hide the "(Campaign)" badge and use website header chrome. */
   websiteMode = false,
 ): string {
-  const adGroupOrSetLabel = platform === "GOOGLE" ? " (Ad Group)" : " (Ad Set)";
+  const adGroupOrSetLabel =
+    platform === "GOOGLE" || platform === "TIKTOK" ? " (Ad Group)" : " (Ad Set)";
   const isAdSetKind = slide.kind === "adset";
   const nameOnly = isAdSetKind ? slide.adSetName || slide.campaignName : slide.campaignName;
   const heading = useAdditionalMetricsSlide ? additionalMetricsHeading(nameOnly) : nameOnly;
