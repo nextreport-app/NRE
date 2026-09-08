@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -58,12 +57,12 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
-            Client-ready ad and website reports in under 2 minutes.
+            Stop formatting slides. Start sending reports.
           </h1>
 
           <p className="mt-5 text-lg text-ink-muted">
-            {PLATFORM_LIST_SHORT} — connect via official API or upload a CSV. Same branded PowerPoint your clients
-            expect, with accurate data and AI-written insights. Share a live browser link or PDF.
+            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV. Branded PowerPoint (.pptx),
+            live browser link, or PDF in under 2 minutes, with AI-written insights on every slide.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
