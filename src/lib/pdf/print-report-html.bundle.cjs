@@ -144,7 +144,7 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
 var DONUT_HOLE_RATIO = 0.65;
 
 // src/lib/nre/visual-chart-slide.ts
-var LEGEND_NAME_MAX = 28;
+var LEGEND_NAME_MAX = 32;
 function truncateLegendName(name, max) {
   return name.length > max ? `${name.slice(0, Math.max(1, max - 1))}\u2026` : name;
 }
@@ -446,55 +446,93 @@ function AdSetCard({
   ] });
 }
 function VisualResultBar({
+  name,
   color,
   statLine,
   barPct
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold leading-tight text-ink", children: statLine }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-w-0 items-center gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "span",
+        {
+          className: "inline-block h-3 w-3 shrink-0 rounded-full",
+          style: { backgroundColor: `#${color}` },
+          "aria-hidden": "true"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-tight text-ink", children: name })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 overflow-hidden text-ellipsis whitespace-nowrap pl-5 text-[16px] font-bold leading-tight text-[#94a3b8]", children: statLine }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-2 h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
   ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SlideCard, { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-h-[520px] flex-col justify-center", children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]", children: model.title }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
-        model.groupedDonut && model.groupedDonut.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[204px] w-[204px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            ShareChartDonut,
-            {
-              segments: model.groupedDonut.map((s) => ({
-                name: s.name,
-                spendLabel: s.spendLabel,
-                percentage: s.percentage,
-                color: s.color
-              })),
-              totalSpendLabel: model.groupedDonutCenterLabel,
-              size: 204
-            }
-          ) }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-3 space-y-2", children: model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "p",
-            {
-              className: "overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink",
-              children: formatGroupedDonutLegendEntry(seg)
-            },
-            seg.name
-          )) })
-        ] }) : null
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "rounded-lg border border-navy-border p-4", style: { backgroundColor: "#111f35" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-7", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(VisualResultBar, { color: bar.color, statLine: bar.statLine, barPct: bar.barPct }, bar.name)) })
-      ] })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 items-center gap-3 min-[720px]:grid-cols-[348px_1fr]", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        "div",
+        {
+          className: "flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4",
+          style: { backgroundColor: "#111f35" },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
+            model.groupedDonut && model.groupedDonut.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[204px] w-[204px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                ShareChartDonut,
+                {
+                  segments: model.groupedDonut.map((s) => ({
+                    name: s.name,
+                    spendLabel: s.spendLabel,
+                    percentage: s.percentage,
+                    color: s.color
+                  })),
+                  totalSpendLabel: model.groupedDonutCenterLabel,
+                  size: 204
+                }
+              ) }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-3 space-y-2", children: model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center justify-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "span",
+                  {
+                    className: "inline-block h-3 w-3 shrink-0 rounded-full",
+                    style: { backgroundColor: `#${seg.color}` },
+                    "aria-hidden": "true"
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink", children: formatGroupedDonutLegendEntry(seg) })
+              ] }, seg.name)) })
+            ] }) : null
+          ]
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        "div",
+        {
+          className: "flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4",
+          style: { backgroundColor: "#111f35" },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-6", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              VisualResultBar,
+              {
+                name: bar.name,
+                color: bar.color,
+                statLine: bar.statLine,
+                barPct: bar.barPct
+              },
+              bar.name
+            )) })
+          ]
+        }
+      )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-5 text-center text-[16px] text-[#94a3b8]", children: model.summaryLine })
-  ] });
+  ] }) });
 }
 function CombinedTotalTable({ data, compact = false }) {
   const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;

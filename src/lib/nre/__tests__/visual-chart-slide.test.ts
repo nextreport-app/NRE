@@ -55,8 +55,8 @@ describe("buildVisualChartSlideModel", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     const lines = model.groupedDonut!.map(formatGroupedDonutLegendEntry);
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(/Alpha · .*% · \$/);
-    expect(lines[1]).toMatch(/Beta · .*% · \$/);
+    expect(lines[0]).toMatch(/1\. Alpha · .*% · \$/);
+    expect(lines[1]).toMatch(/2\. Beta · .*% · \$/);
   });
 
   it("builds grouped spend donut and result bars for single-objective accounts", () => {
@@ -67,7 +67,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.groupedDonut).toHaveLength(2);
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
-    expect(model.resultBars[0]!.name).toBe("Alpha");
+    expect(model.resultBars[0]!.name).toBe("1. Alpha");
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.summaryLine).toContain("Total Spend");
   });
@@ -210,6 +210,64 @@ describe("buildVisualChartSlideModel", () => {
     expect(byName["Meta Form Leads"]).toBe(100);
     expect(byName["Link Clicks"]).toBeGreaterThan(byName["Reach"]!);
     expect(byName["Link Clicks"]).not.toBe(byName["Reach"]);
+  });
+
+  it("uses ranked short labels for long shared-prefix campaign names", () => {
+    const names = [
+      "Sherwood Tractor Sales | LPV Campaign A",
+      "Sherwood Tractor Sales | LPV Campaign B",
+      "Sherwood Tractor Parts | LPV Campaign C",
+      "Sherwood Tractor Events | LPV Campaign D",
+    ];
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 2108,
+        campaigns: names.map((name, index) =>
+          campaign(name, {
+            spend: [602, 600, 454, 452][index]!,
+            results: [1593, 2387, 882, 1076][index]!,
+            resLabel: "LANDING PAGE VIEWS",
+            cprLabel: "COST PER LANDING PAGE VIEW",
+            cpr: [0.38, 0.25, 0.51, 0.42][index]!,
+          }),
+        ),
+        snapshot: {
+          mode: "single",
+          mtdSpendFormatted: "$2,108",
+          activeCampaignCount: 4,
+          objectives: [
+            {
+              label: "LANDING PAGE VIEWS",
+              resultsValue: "5,938",
+              cprValue: "$0.36",
+              cprLabel: "COST PER LANDING PAGE VIEW",
+              spendFormatted: "$2,108",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "5,938",
+          primaryResultsLabel: "LANDING PAGE VIEWS",
+          primaryCprValue: "$0.36",
+          primaryCprLabel: "COST PER LANDING PAGE VIEW",
+          primarySpendFormatted: "$2,108",
+        },
+      }),
+      "$",
+    );
+
+    expect(model.groupedDonut!.map((s) => s.name)).toEqual([
+      "1. LPV Campaign A",
+      "2. LPV Campaign B",
+      "3. LPV Campaign C",
+      "4. LPV Campaign D",
+    ]);
+    expect(model.resultBars.map((b) => b.name)).toEqual([
+      "1. LPV Campaign A",
+      "2. LPV Campaign B",
+      "3. LPV Campaign C",
+      "4. LPV Campaign D",
+    ]);
+    expect(model.resultBars[0]!.statLine).toContain("landing page views");
   });
 
   it("summary line shows fractional average CPC (not rounded to $0) and counts spend as active", () => {

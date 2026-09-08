@@ -3,7 +3,7 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { MTD_SLIDE_W, MTD_SLIDE_H, MTD_VISUAL, miniDonutPosition, resultBarGeometry } from "./chart-slide-layout";
+import { MTD_SLIDE_W, MTD_SLIDE_H, MTD_VISUAL, miniDonutPosition, resultBarGeometry, groupedDonutBlockTopY } from "./chart-slide-layout";
 import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
 import { formatGroupedDonutLegendEntry } from "../nre/visual-chart-slide";
 
@@ -35,7 +35,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
-    `<text x="${MTD_SLIDE_W / 2}" y="46" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.titleY + 28}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
     `<rect x="${MTD_VISUAL.leftX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.leftW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
     `<rect x="${MTD_VISUAL.rightX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.rightW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
     `<line x1="${MTD_VISUAL.sepX}" y1="${MTD_VISUAL.panelY}" x2="${MTD_VISUAL.sepX}" y2="${MTD_VISUAL.panelY + MTD_VISUAL.panelH}" stroke="${SEP}"/>`,
@@ -46,7 +46,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   if (model.groupedDonut && model.groupedDonut.length > 0) {
     const d = MTD_VISUAL.groupedDonutD;
     const x = MTD_VISUAL.leftX + (MTD_VISUAL.leftW - d) / 2;
-    const y = MTD_VISUAL.panelY + 36;
+    const y = groupedDonutBlockTopY(model.groupedDonut.length, MTD_VISUAL.panelY);
     let angle = 270;
     for (const seg of model.groupedDonut) {
       const sweep = (seg.percentage / 100) * 360;
@@ -97,10 +97,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   let rowY = startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const metricsY = rowY + 16;
-    const barY = metricsY + 8;
+    const nameY = rowY + 14;
+    const metricsY = rowY + MTD_VISUAL.barNameH + 8;
+    const barY = metricsY + MTD_VISUAL.barMetricsH + 4;
     parts.push(
-      `<text x="${cols.barX}" y="${metricsY}" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(bar.statLine)}</text>`,
+      `<text x="${cols.barX}" y="${nameY}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(bar.name)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(bar.statLine)}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="3" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {

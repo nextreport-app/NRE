@@ -8,6 +8,7 @@ import { fmtCurrency, fmtCurrency2dp } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { buildDonutSegments } from "../pptx/chart-slide";
+import { buildCampaignShortLabels, formatRankedCampaignLabel } from "./chart-campaign-labels";
 
 export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
 const INACTIVE_COLOR = "4a5568";
@@ -177,10 +178,26 @@ function buildSummaryMulti(
   return [...prefix, ...chunks].join("  |  ");
 }
 
-const LEGEND_NAME_MAX = 28;
+const LEGEND_NAME_MAX = 32;
 
 function truncateLegendName(name: string, max: number): string {
   return name.length > max ? `${name.slice(0, Math.max(1, max - 1))}…` : name;
+}
+
+function applyCampaignShortLabels(names: string[]): Map<string, string> {
+  const shortByFull = buildCampaignShortLabels(names);
+  const ranked = new Map<string, string>();
+  let rank = 1;
+  for (const full of names) {
+    if (full === "Other") {
+      ranked.set(full, "Other");
+      continue;
+    }
+    const short = shortByFull.get(full) ?? truncateLegendName(full, LEGEND_NAME_MAX);
+    ranked.set(full, formatRankedCampaignLabel(rank, short));
+    rank += 1;
+  }
+  return ranked;
 }
 
 /** One donut legend row — name · % · spend (single line, no wrap). */
@@ -245,17 +262,25 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   }
 
   const segments = buildDonutSegments(chart.campaigns, chart.totalAllSpend);
+  const segmentNames = segments.map((s) => s.name);
+  const displayLabels = applyCampaignShortLabels(segmentNames);
   const groupedDonut: VisualChartSegment[] = segments.map((s) => ({
-    name: truncateName(s.name),
+    name: displayLabels.get(s.name) ?? truncateName(s.name),
     color: s.color,
     percentage: s.percentage,
     spendLabel: fmtCurrency(s.spend, currencySymbol),
   }));
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
+  const topCampaignNames = chart.campaigns
+    .slice()
+    .sort((a, b) => b.spend - a.spend)
+    .slice(0, MAX_LEFT_ITEMS)
+    .map((c) => c.name);
+  const barDisplayLabels = applyCampaignShortLabels(topCampaignNames);
   const resultBars = buildResultBars(
     chart.campaigns.map((c) => ({
-      name: truncateName(c.name, 22),
+      name: barDisplayLabels.get(c.name) ?? truncateName(c.name, 22),
       color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
       spend: c.spend,
       results: c.results,
