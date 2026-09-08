@@ -7,9 +7,9 @@ import { isMetaApiConfigured, isGoogleAdsApiConfigured, isTikTokApiConfigured } 
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "CSV Export Guide",
+  title: "CSV & API Export Guide",
   description:
-    "Step-by-step guide to export Meta Ads, Google Ads, TikTok, and GA4 CSV files for NextReport — recommended columns, date ranges, and API sync alternatives.",
+    "How to export Meta Ads, Google Ads, TikTok, and GA4 data for NextReport — required CSV columns, date ranges, and API sync setup steps.",
   path: "/help/download",
   keywords: [
     "meta ads csv export",

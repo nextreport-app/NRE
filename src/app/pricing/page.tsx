@@ -5,13 +5,13 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { CurrencyPricing } from "@/components/currency-pricing";
 import { PricingCurrencyBanner } from "@/components/pricing-currency-banner";
-import { pageMetadata } from "@/lib/seo";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Pricing",
+  title: "Pricing — Agency Reporting Software",
   description:
-    `Simple pricing for automated ${PLATFORM_LIST_SHORT} reporting. Agency plan from $8/month, Professional from $20/month. 7-day free trial, live browser share link, and PDF download included.`,
+    "Simple pricing for Meta, Google, TikTok & GA4 reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). 7-day free trial.",
   path: "/pricing",
 });
 
@@ -76,6 +76,18 @@ export default async function PricingPage() {
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            breadcrumbJsonLd([
+              { name: "Home", path: "/" },
+              { name: "Pricing", path: "/pricing" },
+            ]),
+            faqPageJsonLd(FAQS.map((faq) => ({ question: faq.q, answer: faq.a }))),
+          ],
+        }}
+      />
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
@@ -86,8 +98,8 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Everything you need to automate {PLATFORM_LIST_SHORT} reporting. Connect via official API or upload a CSV —
-            then share a live browser link, download a PDF, or export PowerPoint.
+            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV, then share a live link,
+            download a PDF, or export PowerPoint (.pptx).
           </p>
         </div>
 
