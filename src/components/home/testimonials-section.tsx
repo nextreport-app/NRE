@@ -28,9 +28,6 @@ export function TestimonialsSection() {
       <div className="mx-auto max-w-5xl">
         <p className="text-center text-sm font-medium uppercase tracking-widest text-accent">Early users</p>
         <h2 className="mt-3 text-center text-3xl font-semibold text-white">Agencies are shipping reports faster</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-secondary">
-          Quotes from beta users. Replace with named testimonials and logos as you collect permission from clients.
-        </p>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {TESTIMONIALS.map((t) => (

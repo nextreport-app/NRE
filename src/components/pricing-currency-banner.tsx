@@ -20,9 +20,6 @@ export function PricingCurrencyBanner() {
       </p>
       <CurrencySelector />
       <p className="text-center text-xs leading-relaxed text-ink-muted">{PRICING_CURRENCY_NOTE[currency]}</p>
-      <p className="text-center text-[11px] text-ink-muted">
-        Change anytime with the currency toggle here or in the site header — checkout uses the same selection.
-      </p>
     </div>
   );
 }

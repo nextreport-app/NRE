@@ -5,6 +5,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileEntryFromFormData } from "@/lib/http-file";
 import { saveSupportTicketAttachment } from "@/lib/storage";
 import { supportTicketFieldsSchema } from "@/lib/validators/support-ticket";
+import { autoReplyFireAndForget, sendInboundEmail } from "@/lib/inbound-notifications";
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
@@ -106,6 +107,65 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    const teamSubject = `[Support] ${fields.category} — ${fields.name}`;
+    const contextLines = [
+      `Ticket ID: ${ticket.id}`,
+      clientName ? `Client: ${clientName}` : null,
+      reportDisplayName ? `Report: ${reportDisplayName}` : null,
+      `Plan: ${user.planId}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    void sendInboundEmail({
+      channel: "support",
+      subject: teamSubject,
+      text: [
+        "New in-app support ticket.",
+        "",
+        `Name: ${fields.name}`,
+        `Email: ${fields.email}`,
+        fields.phone ? `Phone: ${fields.phone}` : "",
+        `Category: ${fields.category}`,
+        contextLines,
+        "",
+        fields.message,
+        attachment ? `\nAttachment: ${attachment.fileName}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      html: `<p>New in-app support ticket.</p>
+<ul>
+<li><strong>Name:</strong> ${fields.name}</li>
+<li><strong>Email:</strong> ${fields.email}</li>
+<li><strong>Category:</strong> ${fields.category}</li>
+<li><strong>Plan:</strong> ${user.planId}</li>
+${clientName ? `<li><strong>Client:</strong> ${clientName}</li>` : ""}
+${reportDisplayName ? `<li><strong>Report:</strong> ${reportDisplayName}</li>` : ""}
+</ul>
+<p style="white-space:pre-wrap">${fields.message.replace(/</g, "&lt;")}</p>`,
+      replyTo: fields.email,
+    });
+
+    autoReplyFireAndForget({
+      to: fields.email,
+      subject: "Support ticket received — NextReport",
+      text: [
+        `Hi ${fields.name},`,
+        "",
+        "We received your support ticket and will reply within one business day.",
+        "",
+        `Category: ${fields.category}`,
+        "",
+        "— NextReport support",
+        "support@nextreport.in",
+      ].join("\n"),
+      html: `<p>Hi ${fields.name},</p>
+<p>We received your support ticket and will reply within one business day.</p>
+<p><strong>Category:</strong> ${fields.category}</p>
+<p>— NextReport support<br/>support@nextreport.in</p>`,
+    });
 
     return NextResponse.json({ ok: true, ticketId: ticket.id });
   } catch (err) {

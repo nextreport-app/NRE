@@ -107,6 +107,21 @@ function buildCombinedTotalTableGrid(periodRow, mtdRow, headers) {
   };
   return [headerRow, dataRow(mtdRow), dataRow(periodRow)];
 }
+function buildHistoricalComparisonTableGrid(rows, headers) {
+  const headerRow = [
+    ...COMBINED_TOTAL_STATIC_HEADERS,
+    ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])
+  ];
+  const dataRow = (row) => {
+    const byLabel = new Map(row.resultColumns.map((c) => [c.label, c]));
+    const resultCells = headers.resultColumns.flatMap(({ label }) => {
+      const col = byLabel.get(label);
+      return col ? [col.value, col.cprValue] : ["\u2014", "\u2014"];
+    });
+    return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc, ...resultCells];
+  };
+  return [headerRow, ...rows.filter((r) => r.hasData).map(dataRow)];
+}
 
 // src/lib/nre/google-report-data.ts
 var GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"];
@@ -284,7 +299,9 @@ function resolveMetricIconId(metric) {
 // src/components/share-report-view.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function reportTypeLabel(data) {
-  return data.reportType === "MONTHLY" ? "Monthly Performance Report" : "Weekly Performance Report";
+  if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
+  if (data.reportType === "MONTHLY") return "Monthly Performance Report";
+  return "Weekly Performance Report";
 }
 var ICON_FILE_BY_CATEGORY = {
   spend: "spend",
@@ -384,7 +401,7 @@ function CampaignCard({
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 flex-1 overflow-hidden", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CardReportTypeLabel, { label: reportType }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CardReportTypeLabel, { label: campaign.slideReportTypeLabel ?? reportType }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "box-border max-w-full break-words text-[22px] font-bold leading-snug text-ink [overflow-wrap:anywhere] sm:text-[28px]", children: [
           campaign.campaignName,
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-accent-orange", style: { fontSize: "14px", fontWeight: 400 }, children: [
@@ -480,15 +497,19 @@ function ShareMtdOverviewSlide({ chart }) {
   ] });
 }
 function CombinedTotalTable({ data, compact = false }) {
-  const grid = data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
-  const hidePeriodRow = data.reportType === "MONTHLY" || !data.periodRow.hasData;
+  const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
+  const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
+  const hidePeriodRow = isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
-  const [headerRow, mtdRow, periodRow] = grid;
-  const bodyRows = [
-    ...hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }],
-    ...hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]
-  ];
+  const bodyRows = isHistoricalMultiMonth ? grid.slice(1).map((cells) => ({ cells, isPeriod: false })) : (() => {
+    const [, mtdRow, periodRow] = grid;
+    return [
+      ...hideMtdRow ? [] : [{ cells: mtdRow, isPeriod: false }],
+      ...hidePeriodRow ? [] : [{ cells: periodRow, isPeriod: true }]
+    ];
+  })();
   if (bodyRows.length === 0) return null;
+  const headerRow = grid[0];
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: compact ? "print-combined-table overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
     "table",
     {
