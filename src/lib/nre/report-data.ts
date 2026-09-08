@@ -799,6 +799,93 @@ export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers
   return [headerRow, ...rows.filter((r) => r.hasData).map(dataRow)];
 }
 
+function buildLast30DaysChartSlide(params: {
+  filteredMtdDailyRows: NreRow[];
+  now: Date;
+  timezone: string;
+  campaignObjectiveMap: Map<string, CampaignObjectiveRef>;
+  hasDeliveryStatusData: boolean;
+  currencySymbol: string;
+  reportType: ReportType;
+  mtdRow: TableRowData;
+  slideCampaignNames?: string[];
+}): ChartSlideData | null {
+  const chartRange = computeCreativeRangeIso(params.filteredMtdDailyRows, params.now, 30, params.timezone);
+  const chartRawRows = chartRange
+    ? filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso)
+    : [];
+  const chartRows: AggRow[] = aggregateRows(chartRawRows);
+  const chartGroups: Record<string, AggRow[]> = {};
+  chartRows.forEach((row) => {
+    const name = String(row.campaign_name || "").trim();
+    if (!chartGroups[name]) chartGroups[name] = [];
+    chartGroups[name].push(row);
+  });
+  const chartCampaignNames = Array.from(
+    new Set([...Object.keys(chartGroups), ...(params.slideCampaignNames ?? [])]),
+  ).sort();
+
+  let totalAllSpend = 0;
+  const chartCampaigns: ChartCampaignData[] = chartCampaignNames.map((name) => {
+    const rows = chartGroups[name] || [];
+    const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
+    const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
+    const avgCtr = average(ctrs);
+    const chartObjective = params.campaignObjectiveMap.get(normalizeCampaignName(name)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
+    const resLabel = chartObjective.resultLabel;
+    const cprLabel = chartObjective.costLabel;
+    const { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
+    totalAllSpend += spend;
+
+    const isActive =
+      rows.some((r) => isActiveDeliveryStatus(r.delivery_status)) ||
+      (spend > 0 && !rows.some((r) => deliveryStatusIndicator(r.delivery_status) !== null));
+    const statusIndicator = params.hasDeliveryStatusData
+      ? campaignStatusIndicator(rows.map((r) => r.delivery_status))
+      : null;
+
+    return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
+  });
+
+  if (chartCampaigns.length === 0 || totalAllSpend <= 0) return null;
+
+  const chartRangeLabel = chartRange ? getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso) : "";
+  const chartRangeYear = chartRange ? parseDate(chartRange.endIso)?.year : undefined;
+  const periodSubLabel =
+    chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;
+  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, params.campaignObjectiveMap);
+  const chartSnapshotRow = computeTableRow(
+    chartRows as MetricRow[],
+    params.currencySymbol,
+    false,
+    params.campaignObjectiveMap,
+    params.now,
+    undefined,
+    params.timezone,
+  );
+  const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
+
+  return {
+    periodLabel: "Last30",
+    campaigns: chartCampaigns,
+    totalAllSpend,
+    activeCampaignCount,
+    snapshot: buildChartSnapshotKpis({
+      mtdResultColumns: chartSnapshotRow.resultColumns,
+      mtdGroups: chartObjectiveGroups,
+      totalAllSpendFormatted: fmtCurrency(totalAllSpend, params.currencySymbol),
+      activeCampaignCount,
+      currencySymbol: params.currencySymbol,
+    }),
+    reportType: params.reportType,
+    mtdMonthName: chartRange ? getMonthName(chartRange.endIso) : params.mtdRow.monthName,
+    periodSubLabel,
+  };
+}
+
 // ─────────────────────────── Main entry point ──────────────────────────────
 
 export function buildReportData(input: BuildReportDataInput): ReportData {
@@ -1129,12 +1216,26 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders };
   const combinedTotalStory = undefined;
 
-  // ── Paused case: single message slide, no campaign/ad-set/chart slides ──
+  // ── Paused case: message slide instead of campaign/ad-set slides ────────
+  // The last-30-days visual chart still renders when that window has spend,
+  // even if the selected weekly period is empty (campaigns paused this week).
   if (isPaused) {
     const pausedMessage =
       "Campaigns for " + accountName + " were paused during the selected reporting " +
       "period and did not generate impressions, spend, or results. " +
       "No action has been taken on the account during this period.";
+
+    const chart = buildLast30DaysChartSlide({
+      filteredMtdDailyRows,
+      now,
+      timezone,
+      campaignObjectiveMap,
+      hasDeliveryStatusData,
+      currencySymbol,
+      reportType,
+      mtdRow,
+      slideCampaignNames: selectedCampaigns ?? [],
+    });
 
     return {
       isPaused: true,
@@ -1144,7 +1245,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignSlides: [],
       adSetSlides: [],
       pausedMessage,
-      chart: null,
+      chart,
       periodRow,
       mtdRow,
       tableHeaderLabels,
@@ -1570,90 +1671,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   });
 
   // ── Visual chart slide (last 30 days) ───────────────────────────────────
-  // Always uses trailing-30-days ending calendar yesterday — not current-month
-  // MTD — so a report generated on the 1st or 2nd still shows a full month of
-  // context instead of one or two days of MTD data.
-  const chartRange = computeCreativeRangeIso(filteredMtdDailyRows, now, 30, timezone);
-  const chartRawRows = chartRange
-    ? filterRawRowsToRange(filteredMtdDailyRows, chartRange.startIso, chartRange.endIso)
-    : [];
-  const chartRows: AggRow[] = aggregateRows(chartRawRows);
-  const chartGroups: Record<string, AggRow[]> = {};
-  chartRows.forEach((row) => {
-    const name = String(row.campaign_name || "").trim();
-    if (!chartGroups[name]) chartGroups[name] = [];
-    chartGroups[name].push(row);
-  });
-  // A campaign in this report but with zero L30 delivery still gets a $0 slot.
-  const chartCampaignNames = Array.from(new Set([...Object.keys(chartGroups), ...campaignNames])).sort();
-
-  let totalAllSpend = 0;
-  const chartCampaigns: ChartCampaignData[] = chartCampaignNames.map((name) => {
-    const rows = chartGroups[name] || [];
-    const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
-    const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
-    const avgCtr = average(ctrs);
-    // Single source of truth (reported bug: the donut chart showed "ADD TO
-    // CART" for a purchase campaign) — this used to be a private port of
-    // addVisualScorecardSlide_'s own per-campaign result-type detection,
-    // based on the FIRST row's result_type only via getResultLabels'
-    // fuzzy-text match — an entirely separate, un-synced detection path
-    // from the one campaign/ad-set slides and the Combined Total table
-    // already read from (campaignObjectiveMap, Step 0 above), so the chart
-    // could disagree with what a campaign's own slide displayed for the
-    // exact same campaign. Same normalizeCampaignName lookup, same fallback,
-    // as every other campaignObjectiveMap consumer in this function.
-    const chartObjective = campaignObjectiveMap.get(normalizeCampaignName(name)) ?? {
-      resultLabel: "RESULTS",
-      costLabel: "COST PER RESULT",
-    };
-    const resLabel = chartObjective.resultLabel;
-    const cprLabel = chartObjective.costLabel;
-    const { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
-    totalAllSpend += spend;
-
-    const isActive =
-      rows.some((r) => isActiveDeliveryStatus(r.delivery_status)) ||
-      (spend > 0 && !rows.some((r) => deliveryStatusIndicator(r.delivery_status) !== null));
-    const statusIndicator = hasDeliveryStatusData
-      ? campaignStatusIndicator(rows.map((r) => r.delivery_status))
-      : null;
-
-    return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
-  });
-
-  const chartRangeLabel = chartRange ? getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso) : "";
-  const chartRangeYear = chartRange ? parseDate(chartRange.endIso)?.year : undefined;
-  const periodSubLabel =
-    chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;
-
-  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, campaignObjectiveMap);
-  const chartSnapshotRow = computeTableRow(
-    chartRows as MetricRow[],
-    currencySymbol,
-    false,
-    campaignObjectiveMap,
+  const chart = buildLast30DaysChartSlide({
+    filteredMtdDailyRows,
     now,
-    undefined,
     timezone,
-  );
-  const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
-  const chart: ChartSlideData = {
-    periodLabel: "Last30",
-    campaigns: chartCampaigns,
-    totalAllSpend,
-    activeCampaignCount,
-    snapshot: buildChartSnapshotKpis({
-      mtdResultColumns: chartSnapshotRow.resultColumns,
-      mtdGroups: chartObjectiveGroups,
-      totalAllSpendFormatted: fmtCurrency(totalAllSpend, currencySymbol),
-      activeCampaignCount,
-      currencySymbol,
-    }),
+    campaignObjectiveMap,
+    hasDeliveryStatusData,
+    currencySymbol,
     reportType,
-    mtdMonthName: chartRange ? getMonthName(chartRange.endIso) : mtdRow.monthName,
-    periodSubLabel,
-  };
+    mtdRow,
+    slideCampaignNames: campaignNames,
+  });
 
   return {
     isPaused: false,
