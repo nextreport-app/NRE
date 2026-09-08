@@ -3,7 +3,6 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
 import { HOME_JSON_LD, pageMetadata } from "@/lib/seo";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { PainPointSection } from "@/components/home/pain-point-section";
@@ -18,7 +17,7 @@ import { TestimonialsSection } from "@/components/home/testimonials-section";
 export const metadata = pageMetadata({
   title: "Automated Ad & Website Reporting",
   description:
-    `Client-ready ${PLATFORM_LIST_SHORT} reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser share link, and PDF export with AI insights. 7-day free trial.`,
+    "Stop formatting slides. Branded Meta, Google Ads, TikTok, and GA4 reports in under 2 minutes — API sync or CSV upload, PowerPoint (.pptx), live share link, and PDF with AI insights. 7-day free trial.",
   path: "/",
 });
 
