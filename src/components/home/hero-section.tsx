@@ -57,12 +57,12 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
-            Stop formatting slides. Start sending reports.
+            Send polished client reports in under 2 minutes.
           </h1>
 
           <p className="mt-5 text-lg text-ink-muted">
-            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV. Branded PowerPoint (.pptx),
-            live browser link, or PDF in under 2 minutes, with AI-written insights on every slide.
+            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV. Download a branded
+            PowerPoint (.pptx), share a live browser link, or export a PDF, with AI-written insights on every slide.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

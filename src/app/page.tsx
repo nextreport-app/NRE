@@ -17,7 +17,7 @@ import { TestimonialsSection } from "@/components/home/testimonials-section";
 export const metadata = pageMetadata({
   title: "Automated Ad & Website Reporting",
   description:
-    "Stop formatting slides. Branded Meta, Google Ads, TikTok, and GA4 reports in under 2 minutes — API sync or CSV upload, PowerPoint (.pptx), live share link, and PDF with AI insights. 7-day free trial.",
+    "Send polished Meta, Google Ads, TikTok, and GA4 client reports in under 2 minutes. API sync or CSV upload — PowerPoint (.pptx), live browser share link, and PDF export with AI insights. 7-day free trial.",
   path: "/",
 });
 
