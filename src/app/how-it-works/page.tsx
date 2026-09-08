@@ -12,6 +12,7 @@ import {
   pageMetadata,
   PRODUCT_FAQ_SCHEMA,
 } from "@/lib/seo";
+import { PLATFORM_LIST_API } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — 5-Step Report Wizard",
