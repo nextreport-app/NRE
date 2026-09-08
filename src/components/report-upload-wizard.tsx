@@ -143,6 +143,26 @@ const STEP_SUBTITLES: Record<Step, string> = {
 };
 
 const LAST_PLATFORM_STORAGE_KEY = "nre.lastAdPlatform";
+type WizardPlatformChoice = "META" | "GOOGLE" | "TIKTOK" | "GA4";
+
+function readStoredWizardPlatform(): WizardPlatformChoice | null {
+  try {
+    const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
+    if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK" || stored === "GA4") return stored;
+  } catch {
+    /* private mode */
+  }
+  return null;
+}
+
+function saveWizardPlatformChoice(choice: WizardPlatformChoice) {
+  try {
+    localStorage.setItem(LAST_PLATFORM_STORAGE_KEY, choice);
+  } catch {
+    /* private mode */
+  }
+}
+
 const ADD_FROM_CSV_VISIBLE = 8;
 const ADSET_CHIP_CLASS =
   "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[16px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
@@ -373,27 +393,39 @@ export function ReportUploadWizard({
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
-      if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") setSelectedPlatformCard(stored);
-    } catch {
-      /* private mode */
+  const [platformPickerExpanded, setPlatformPickerExpanded] = useState(true);
+  const [hasSavedPlatformPreference, setHasSavedPlatformPreference] = useState(false);
+
+  useLayoutEffect(() => {
+    const stored = readStoredWizardPlatform();
+    if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
+      setSelectedPlatformCard(stored);
+      setPlatformPickerExpanded(false);
+      setHasSavedPlatformPreference(true);
+    } else if (stored === "GA4") {
+      setWizardKind("website");
+      setPlatformPickerExpanded(false);
+      setHasSavedPlatformPreference(true);
     }
   }, []);
 
   function choosePlatform(next: "META" | "GOOGLE" | "TIKTOK") {
     setWizardKind("ads");
     setSelectedPlatformCard(next);
+    setPlatformPickerExpanded(false);
+    setHasSavedPlatformPreference(true);
     setMismatchWarning(false);
     setAnalyzeStatus("idle");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
-    try {
-      localStorage.setItem(LAST_PLATFORM_STORAGE_KEY, next);
-    } catch {
-      /* private mode */
-    }
+    saveWizardPlatformChoice(next);
+  }
+
+  function chooseWebsitePlatform() {
+    setWizardKind("website");
+    setPlatformPickerExpanded(false);
+    setHasSavedPlatformPreference(true);
+    saveWizardPlatformChoice("GA4");
   }
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
@@ -1717,12 +1749,21 @@ export function ReportUploadWizard({
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
-    setSelectedPlatformCard("META");
-    try {
-      const stored = localStorage.getItem(LAST_PLATFORM_STORAGE_KEY);
-      if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") setSelectedPlatformCard(stored);
-    } catch {
-      /* private mode */
+    const stored = readStoredWizardPlatform();
+    if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
+      setSelectedPlatformCard(stored);
+      setWizardKind("ads");
+      setPlatformPickerExpanded(false);
+      setHasSavedPlatformPreference(true);
+    } else if (stored === "GA4") {
+      setWizardKind("website");
+      setPlatformPickerExpanded(false);
+      setHasSavedPlatformPreference(true);
+    } else {
+      setSelectedPlatformCard("META");
+      setWizardKind("ads");
+      setPlatformPickerExpanded(true);
+      setHasSavedPlatformPreference(false);
     }
     setMtdFile(null);
     setAnalyzeStatus("idle");
@@ -1871,7 +1912,10 @@ export function ReportUploadWizard({
         </div>
         <button
           type="button"
-          onClick={() => setWizardKind("ads")}
+          onClick={() => {
+            setWizardKind("ads");
+            setPlatformPickerExpanded(true);
+          }}
           className="text-[15px] font-medium text-dash-accent underline hover:no-underline"
         >
           ← Back to ad platform reports
@@ -1909,43 +1953,72 @@ export function ReportUploadWizard({
 
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          <h3 className="text-[18px] font-semibold text-white">Select platform</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <ReportTypeCard
-              icon={<MetaAdsBrandIcon />}
-              heading="Meta Ads"
-              description="Sync via Marketing API or upload a CSV export"
-              selected={selectedPlatformCard === "META"}
-              onSelect={() => choosePlatform("META")}
-              singleLineHeading
+          {platformPickerExpanded ? (
+            <>
+              <h3 className="text-[18px] font-semibold text-white">Select platform</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <ReportTypeCard
+                  icon={<MetaAdsBrandIcon />}
+                  heading="Meta Ads"
+                  description="Sync via Marketing API or upload a CSV export"
+                  selected={selectedPlatformCard === "META"}
+                  onSelect={() => choosePlatform("META")}
+                  singleLineHeading
+                />
+                <ReportTypeCard
+                  icon={<GoogleAdsBrandIcon />}
+                  heading="Google Ads"
+                  description="Sync via Ads API or upload a CSV export"
+                  selected={selectedPlatformCard === "GOOGLE"}
+                  onSelect={() => choosePlatform("GOOGLE")}
+                  singleLineHeading
+                />
+                <ReportTypeCard
+                  icon={<TikTokAdsBrandIcon />}
+                  heading="TikTok Ads"
+                  description="Sync via Marketing API or upload a CSV export"
+                  selected={selectedPlatformCard === "TIKTOK"}
+                  onSelect={() => choosePlatform("TIKTOK")}
+                  singleLineHeading
+                />
+                <ReportTypeCard
+                  icon={<Ga4BrandIcon />}
+                  heading="Google Analytics"
+                  description="Sessions, channels, and landing pages"
+                  selected={false}
+                  onSelect={chooseWebsitePlatform}
+                  singleLineHeading
+                />
+              </div>
+            </>
+          ) : selectedPlatformCard ? (
+            <WizardPlatformCompactBar
+              icon={
+                selectedPlatformCard === "META" ? (
+                  <MetaAdsBrandIcon />
+                ) : selectedPlatformCard === "GOOGLE" ? (
+                  <GoogleAdsBrandIcon />
+                ) : (
+                  <TikTokAdsBrandIcon />
+                )
+              }
+              heading={
+                selectedPlatformCard === "META"
+                  ? "Meta Ads"
+                  : selectedPlatformCard === "GOOGLE"
+                    ? "Google Ads"
+                    : "TikTok Ads"
+              }
+              description={
+                selectedPlatformCard === "META" || selectedPlatformCard === "TIKTOK"
+                  ? "Sync via Marketing API or upload a CSV export"
+                  : "Sync via Ads API or upload a CSV export"
+              }
+              onChangePlatform={() => setPlatformPickerExpanded(true)}
             />
-            <ReportTypeCard
-              icon={<GoogleAdsBrandIcon />}
-              heading="Google Ads"
-              description="Sync via Ads API or upload a CSV export"
-              selected={selectedPlatformCard === "GOOGLE"}
-              onSelect={() => choosePlatform("GOOGLE")}
-              singleLineHeading
-            />
-            <ReportTypeCard
-              icon={<TikTokAdsBrandIcon />}
-              heading="TikTok Ads"
-              description="Sync via Marketing API or upload a CSV export"
-              selected={selectedPlatformCard === "TIKTOK"}
-              onSelect={() => choosePlatform("TIKTOK")}
-              singleLineHeading
-            />
-            <ReportTypeCard
-              icon={<Ga4BrandIcon />}
-              heading="Google Analytics"
-              description="Sessions, channels, and landing pages"
-              selected={false}
-              onSelect={() => setWizardKind("website")}
-              singleLineHeading
-            />
-          </div>
+          ) : null}
 
-          {selectedPlatformCard && (
+          {selectedPlatformCard && (!platformPickerExpanded || !hasSavedPlatformPreference) && (
             <div className="space-y-3">
               <WizardDataSourceToggle value={dataSourceMode} onChange={setDataSourceMode} />
 
@@ -3755,6 +3828,41 @@ function PreviousMonthSummaryOption({
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Step 1 — collapsed view for returning users who already picked a platform. */
+function WizardPlatformCompactBar({
+  icon,
+  heading,
+  description,
+  onChangePlatform,
+}: {
+  icon: ReactNode;
+  heading: string;
+  description: string;
+  onChangePlatform: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-accent bg-dash-accent/10 px-4 py-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="inline-flex shrink-0" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[17px] font-semibold text-white">{heading}</p>
+          <p className="text-[15px] text-dash-ink-secondary">{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onChangePlatform}
+        className="shrink-0 text-[15px] font-medium text-dash-accent hover:underline"
+        aria-expanded={false}
+      >
+        Change platform ▼
+      </button>
     </div>
   );
 }
