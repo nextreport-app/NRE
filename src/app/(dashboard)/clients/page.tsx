@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientList } from "@/components/client-list";
 import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 export default async function ClientsPage() {
   const session = await auth();
@@ -41,9 +42,7 @@ export default async function ClientsPage() {
       <div className="mb-6 rounded-lg border border-dash-border bg-dash-card/60 px-4 py-3 text-[15px] leading-relaxed text-dash-ink-secondary">
         Have a question or an issue?{" "}
         <SupportTicketLink openInNewTab /> or{" "}
-        <Link href="/contact" target="_blank" rel="noopener noreferrer" className="font-medium text-dash-accent underline hover:no-underline">
-          chat with us
-        </Link>
+        <WhatsAppChatLink message="Hi — I need help with NextReport." />
         .
       </div>
 

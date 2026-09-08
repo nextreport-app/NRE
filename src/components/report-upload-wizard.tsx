@@ -37,6 +37,7 @@ import {
 } from "@/components/wizard-data-source-panel";
 import { useToast } from "@/components/toast";
 import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { WizardGoogleGenerateBanner, WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import {
@@ -1901,14 +1902,7 @@ export function ReportUploadWizard({
         <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[16px] leading-relaxed text-dash-ink-secondary">
           Have a question or an issue with this report?{" "}
           <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
-          <Link
-            href="/contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-dash-accent underline hover:no-underline"
-          >
-            chat with us
-          </Link>
+          <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
           .
         </p>
       )}

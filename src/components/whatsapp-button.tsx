@@ -1,7 +1,6 @@
 "use client";
 
-// Support WhatsApp number — permanent, not a placeholder.
-const WHATSAPP_URL = "https://wa.me/918882578327";
+import { WHATSAPP_URL } from "@/lib/site-links";
 
 function WhatsAppIcon() {
   return (

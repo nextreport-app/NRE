@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { SupportTicketForm } from "@/components/support-ticket-form";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 export const metadata: Metadata = {
   title: "Support",
