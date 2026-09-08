@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isPlanId, verifyPaymentSignature } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
+import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
 
 /**
  * The only place a user's plan actually changes. The frontend reporting a
@@ -48,6 +49,14 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: { planId, subscribedAt: new Date() },
     });
+
+    notifyBillingNewSubscription({
+      email: session.user.email ?? "unknown",
+      name: session.user.name,
+      planId,
+      paymentId: razorpay_payment_id,
+    });
+
     return NextResponse.json({ success: true });
   } catch (err) {
     return apiErrorResponse(err, "payments:verify");
