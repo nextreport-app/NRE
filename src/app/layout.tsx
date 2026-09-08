@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Client-ready Meta Ads, Google Ads, TikTok Ads, and GA4 website reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser link, and PDF export with AI insights.",
+    "Send polished Meta Ads, Google Ads, TikTok Ads, and GA4 client reports in under 2 minutes. API sync or CSV upload — PowerPoint (.pptx), live browser link, and PDF export with AI insights.",
   keywords: [...DEFAULT_KEYWORDS],
   openGraph: {
     type: "website",
