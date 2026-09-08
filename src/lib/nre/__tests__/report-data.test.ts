@@ -2565,6 +2565,42 @@ describe("buildReportData — paused account", () => {
     expect(data.tableHeaderLabels.resultColumns[0].label).toBe("PURCHASES");
   });
 
+  it("still builds the last-30-days chart when the weekly period is empty but L30 has spend", () => {
+    const now = new Date("2026-09-08T12:00:00Z");
+    const augustDays = Array.from({ length: 23 }, (_, i) => {
+      const day = String(i + 9).padStart(2, "0");
+      return `${day}-08-2026`;
+    });
+    const rows: NreRow[] = augustDays.map((day) => ({
+      _raw: { Day: day },
+      campaign_name: "Turnbow Campaign",
+      ad_set_name: "Main",
+      result_type: "Landing Page View",
+      spend: "100",
+      reach: "500",
+      impressions: "1000",
+      results: "10",
+      ctr: "1",
+      cpc: "1",
+      date_start: day,
+      date_end: day,
+    }));
+
+    const data = buildReportData({
+      accountName: "Turnbow",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now,
+    });
+
+    expect(data.isPaused).toBe(true);
+    expect(data.chart).not.toBeNull();
+    expect(data.chart!.totalAllSpend).toBeGreaterThan(0);
+    expect(data.chart!.periodSubLabel).toContain("Aug");
+  });
+
   // Fix 5 — a zero-spend current month must never look like the MTD row is
   // missing from the Combined Total table: even with zero MTD Daily CSV
   // rows at all (mtdDailyRows: []), the row still needs to show the real

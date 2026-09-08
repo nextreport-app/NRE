@@ -682,6 +682,48 @@ describe("renderPptx — real template end-to-end", () => {
 
     fs.unlinkSync(outPath);
   }, 30000);
+
+  it("includes the last-30-days chart on a paused weekly report when L30 has spend", async () => {
+    const templateBuffer = fs.readFileSync(TEMPLATE_PATH);
+    const now = new Date("2026-09-08T12:00:00Z");
+    const augustDays = Array.from({ length: 23 }, (_, i) => {
+      const day = String(i + 9).padStart(2, "0");
+      return `${day}-08-2026`;
+    });
+    const rows: NreRow[] = augustDays.map((day) => ({
+      _raw: { Day: day },
+      campaign_name: "Turnbow Campaign",
+      ad_set_name: "Main",
+      result_type: "Landing Page View",
+      spend: "100",
+      reach: "500",
+      impressions: "1000",
+      results: "10",
+      ctr: "1",
+      cpc: "1",
+      date_start: day,
+      date_end: day,
+    }));
+    const data = buildReportData({
+      accountName: "Turnbow",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now,
+    });
+
+    const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "$" });
+    const outPath = path.join(os.tmpdir(), `nre-render-paused-chart-${Date.now()}.pptx`);
+    fs.writeFileSync(outPath, buffer);
+
+    const { slideCount, slideTexts } = inspectWithPythonPptx(outPath);
+    expect(slideCount).toBe(5);
+    expect(slideTexts[0]).toContain("Campaigns Paused");
+    expect(slideTexts.some((t) => t.includes("Last 30 Days Campaign Performance"))).toBe(true);
+
+    fs.unlinkSync(outPath);
+  }, 30000);
 });
 
 describe("renderPptx — client logo + agency name branding (real production template)", () => {

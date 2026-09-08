@@ -6,8 +6,9 @@
  * Slide order matches generateWeeklyReport()'s actual output order exactly:
  * Cover → ALL campaign summary slides → ALL ad-set slides (not interleaved
  * per campaign — see report-data.ts) → MTD chart → Period/MTD table →
- * Legend. The paused case replaces everything after Cover with a single
- * message slide, and skips the chart (both match the source).
+ * Legend. The paused case replaces campaign/ad-set slides with a single
+ * message slide, but still includes the last-30-days chart when that window
+ * has spend (see render.ts).
  */
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
@@ -227,22 +228,23 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         });
       }
     }
-    if (data.chart && showOverview) {
-      const { buildChartSlideBundle } = await import("./chart-slide-render");
-      const chartBundle = await buildChartSlideBundle(
-        data.chart,
-        currencySymbol,
-        template.background,
-        isLightTemplate,
-        data.platform,
-        {},
-        shareChart,
-      );
-      slides.push({
-        xml: chartBundle.xml,
-        rels: buildChartSlideRels(template.background.mediaTarget),
-      });
-    }
+  }
+
+  if (data.chart && showOverview && !skipStandardSlides) {
+    const { buildChartSlideBundle } = await import("./chart-slide-render");
+    const chartBundle = await buildChartSlideBundle(
+      data.chart,
+      currencySymbol,
+      template.background,
+      isLightTemplate,
+      data.platform,
+      {},
+      shareChart,
+    );
+    slides.push({
+      xml: chartBundle.xml,
+      rels: buildChartSlideRels(template.background.mediaTarget),
+    });
   }
 
   if (data.creative && !data.isPaused) {

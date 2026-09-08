@@ -5,7 +5,13 @@ import { adSetVisibilityKey, defaultShareVisibility } from "./share-report";
 export function countVisibleSlides(share: ShareReportData): number {
   const vis = share.visibility ?? defaultShareVisibility(share);
   let n = vis.cover !== false ? 1 : 0;
-  if (share.isPaused) return n + 1;
+  if (share.isPaused) {
+    n += 1;
+    if (vis.overview !== false && share.chart?.donutSegments?.length) n += 1;
+    if (vis.combinedTotal !== false) n += 1;
+    if (vis.metricGuide !== false && (share.metricGuide?.length ?? 0) > 0) n += 1;
+    return n;
+  }
   n += share.campaigns.filter((c) => vis.campaigns[c.campaignName] !== false).length;
   n += share.adSets.filter((a) => vis.adSets[adSetVisibilityKey(a.campaignName, a.adSetName)] !== false).length;
   if (vis.overview !== false && share.chart?.donutSegments?.length) n += 1;
