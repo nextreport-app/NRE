@@ -3,7 +3,6 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
 import { HOME_JSON_LD, pageMetadata } from "@/lib/seo";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { PainPointSection } from "@/components/home/pain-point-section";
@@ -16,9 +15,9 @@ import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 
 export const metadata = pageMetadata({
-  title: "Automated Ad & Website Reporting",
+  title: "Automated Ad & Website Reports in 2 Minutes",
   description:
-    `Client-ready ${PLATFORM_LIST_SHORT} reports in under 2 minutes. API sync or CSV upload — PowerPoint, live browser share link, and PDF export with AI insights. 7-day free trial.`,
+    "Send polished Meta, Google, TikTok & GA4 client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Free 7-day trial, no card required.",
   path: "/",
 });
 

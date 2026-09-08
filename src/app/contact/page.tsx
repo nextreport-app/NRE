@@ -6,8 +6,9 @@ import { ContactForm } from "@/components/contact-form";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact",
-  description: "Contact NextReport for demos, pricing questions, or product support. We reply within one business day.",
+  title: "Contact & Support",
+  description:
+    "Questions about NextReport? Email hello@nextreport.in — demos, pricing, billing, or product help. We reply within one business day.",
   path: "/contact",
 });
 

@@ -3,13 +3,20 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
-import { pageMetadata } from "@/lib/seo";
-import { PLATFORM_LIST_API, PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
+import { JsonLd } from "@/components/json-ld";
+import {
+  breadcrumbJsonLd,
+  faqPageJsonLd,
+  howToJsonLd,
+  HOW_IT_WORKS_STEPS_SCHEMA,
+  pageMetadata,
+  PRODUCT_FAQ_SCHEMA,
+} from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Getting Started",
+  title: "How It Works — 5-Step Report Wizard",
   description:
-    `Learn how NextReport works — connect ${PLATFORM_LIST_SHORT} via API, upload a CSV, generate PowerPoint reports, and share a live browser link or PDF with clients.`,
+    "Connect Meta, Google, TikTok, or GA4 via API — or upload a CSV. Confirm campaigns, review metrics, and generate a branded .pptx, live link, or PDF in under 2 minutes.",
   path: "/how-it-works",
 });
 
@@ -124,6 +131,23 @@ export default async function HowItWorksPage() {
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            breadcrumbJsonLd([
+              { name: "Home", path: "/" },
+              { name: "How It Works", path: "/how-it-works" },
+            ]),
+            faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
+            howToJsonLd(
+              "How to generate a client report with NextReport",
+              "Generate a branded Meta, Google, TikTok, or GA4 client report in under 2 minutes via API sync or CSV upload.",
+              HOW_IT_WORKS_STEPS_SCHEMA,
+            ),
+          ],
+        }}
+      />
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">

@@ -4,12 +4,11 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { pageMetadata } from "@/lib/seo";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About",
+  title: "About — Built for Agency Reporting",
   description:
-    `NextReport automates ${PLATFORM_LIST_SHORT} reporting for digital agencies — built to turn CSV exports and API sync into client-ready decks in minutes.`,
+    "NextReport automates Meta, Google, TikTok & GA4 client reporting — built by agency people tired of spending hours formatting weekly PowerPoint decks.",
   path: "/about",
 });
 
