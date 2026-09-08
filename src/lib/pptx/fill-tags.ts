@@ -657,7 +657,11 @@ export function buildPausedSlideXml(
 ): string {
   const summaryText = truncateToSentence(pausedMessage, CAMPAIGN_SUMMARY_MAX_CHARS);
   const insightsText = truncateToSentence(
-    "Campaigns paused — no data recorded for this period. Awaiting instructions to resume.",
+    reportType === "MONTHLY"
+      ? "No delivery was recorded for the selected month. Other slides may still show previous-month or last-30-days context."
+      : reportType === "DAILY"
+        ? "No delivery was recorded for the selected day(s). Other slides may still show previous-month or last-30-days context."
+        : "No delivery was recorded for the selected week. Other slides may still show previous-month or last-30-days context.",
     KEY_INSIGHTS_MAX_CHARS,
   );
   let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");

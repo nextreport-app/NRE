@@ -799,6 +799,18 @@ export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers
   return [headerRow, ...rows.filter((r) => r.hasData).map(dataRow)];
 }
 
+/** Client-facing copy when the selected reporting window has no delivery. */
+export function buildPausedAccountMessage(accountName: string, reportType: ReportType = "WEEKLY"): string {
+  const periodLabel =
+    reportType === "MONTHLY" ? "monthly" : reportType === "DAILY" ? "daily" : "weekly";
+  const windowLabel =
+    reportType === "MONTHLY" ? "this month" : reportType === "DAILY" ? "on the selected day(s)" : "in the last week";
+  return (
+    `Campaigns for ${accountName} were paused during the selected ${periodLabel} reporting period ` +
+    `and did not generate impressions, spend, or results ${windowLabel}.`
+  );
+}
+
 function buildLast30DaysChartSlide(params: {
   filteredMtdDailyRows: NreRow[];
   now: Date;
@@ -1220,10 +1232,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // The last-30-days visual chart still renders when that window has spend,
   // even if the selected weekly period is empty (campaigns paused this week).
   if (isPaused) {
-    const pausedMessage =
-      "Campaigns for " + accountName + " were paused during the selected reporting " +
-      "period and did not generate impressions, spend, or results. " +
-      "No action has been taken on the account during this period.";
+    const pausedMessage = buildPausedAccountMessage(accountName, reportType);
 
     const chart = buildLast30DaysChartSlide({
       filteredMtdDailyRows,
