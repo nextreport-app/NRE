@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     const teamSubject = `[Support] ${fields.category} — ${fields.name}`;
     const contextLines = [
       `Ticket ID: ${ticket.id}`,
-      fields.clientName ? `Client: ${fields.clientName}` : null,
+      clientName ? `Client: ${clientName}` : null,
       reportDisplayName ? `Report: ${reportDisplayName}` : null,
       `Plan: ${user.planId}`,
     ]
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
 <li><strong>Email:</strong> ${fields.email}</li>
 <li><strong>Category:</strong> ${fields.category}</li>
 <li><strong>Plan:</strong> ${user.planId}</li>
-${fields.clientName ? `<li><strong>Client:</strong> ${fields.clientName}</li>` : ""}
+${clientName ? `<li><strong>Client:</strong> ${clientName}</li>` : ""}
 ${reportDisplayName ? `<li><strong>Report:</strong> ${reportDisplayName}</li>` : ""}
 </ul>
 <p style="white-space:pre-wrap">${fields.message.replace(/</g, "&lt;")}</p>`,
