@@ -163,6 +163,37 @@ function saveWizardPlatformChoice(choice: WizardPlatformChoice) {
   }
 }
 
+function readInitialPlatformPickerState(): {
+  wizardKind: "ads" | "website";
+  selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
+  platformPickerExpanded: boolean;
+  hasSavedPlatformPreference: boolean;
+} {
+  const stored = typeof window === "undefined" ? null : readStoredWizardPlatform();
+  if (stored === "GA4") {
+    return {
+      wizardKind: "website",
+      selectedPlatformCard: null,
+      platformPickerExpanded: false,
+      hasSavedPlatformPreference: true,
+    };
+  }
+  if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
+    return {
+      wizardKind: "ads",
+      selectedPlatformCard: stored,
+      platformPickerExpanded: false,
+      hasSavedPlatformPreference: true,
+    };
+  }
+  return {
+    wizardKind: "ads",
+    selectedPlatformCard: "META",
+    platformPickerExpanded: true,
+    hasSavedPlatformPreference: false,
+  };
+}
+
 const ADD_FROM_CSV_VISIBLE = 8;
 const ADSET_CHIP_CLASS =
   "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[16px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
@@ -395,37 +426,36 @@ export function ReportUploadWizard({
 
   const [platformPickerExpanded, setPlatformPickerExpanded] = useState(true);
   const [hasSavedPlatformPreference, setHasSavedPlatformPreference] = useState(false);
+  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | "TIKTOK" | null>("META");
 
   useLayoutEffect(() => {
-    const stored = readStoredWizardPlatform();
-    if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
-      setSelectedPlatformCard(stored);
-      setPlatformPickerExpanded(false);
-      setHasSavedPlatformPreference(true);
-    } else if (stored === "GA4") {
-      setWizardKind("website");
-      setPlatformPickerExpanded(false);
-      setHasSavedPlatformPreference(true);
-    }
+    const initial = readInitialPlatformPickerState();
+    if (!initial.hasSavedPlatformPreference) return;
+    setWizardKind(initial.wizardKind);
+    setSelectedPlatformCard(initial.selectedPlatformCard);
+    setPlatformPickerExpanded(false);
+    setHasSavedPlatformPreference(true);
   }, []);
+
+  function rememberPlatformChoice(choice: WizardPlatformChoice) {
+    saveWizardPlatformChoice(choice);
+    setHasSavedPlatformPreference(true);
+    setPlatformPickerExpanded(false);
+  }
 
   function choosePlatform(next: "META" | "GOOGLE" | "TIKTOK") {
     setWizardKind("ads");
     setSelectedPlatformCard(next);
-    setPlatformPickerExpanded(false);
-    setHasSavedPlatformPreference(true);
+    rememberPlatformChoice(next);
     setMismatchWarning(false);
     setAnalyzeStatus("idle");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
-    saveWizardPlatformChoice(next);
   }
 
   function chooseWebsitePlatform() {
     setWizardKind("website");
-    setPlatformPickerExpanded(false);
-    setHasSavedPlatformPreference(true);
-    saveWizardPlatformChoice("GA4");
+    rememberPlatformChoice("GA4");
   }
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
@@ -438,7 +468,6 @@ export function ReportUploadWizard({
   // ultimately sent to the server). A mismatch between the two pauses on
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
-  const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | "TIKTOK" | null>("META");
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -999,6 +1028,7 @@ export function ReportUploadWizard({
     setPlatform(detected);
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
+    rememberPlatformChoice(detected);
     await dispatchAfterAnalyze(detected);
   }
 
@@ -1035,6 +1065,7 @@ export function ReportUploadWizard({
     setPlatform(selectedPlatformCard);
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
+    rememberPlatformChoice(selectedPlatformCard);
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
@@ -1070,6 +1101,7 @@ export function ReportUploadWizard({
     }
 
     applyAnalyzeResult(json);
+    rememberPlatformChoice(selectedPlatformCard);
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
