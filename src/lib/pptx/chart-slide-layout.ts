@@ -2,14 +2,34 @@
 export const MTD_SLIDE_W = 960;
 export const MTD_SLIDE_H = 540;
 
+const MTD_BLOCK = {
+  titleH: 50,
+  gapAfterTitle: 8,
+  panelH: 384,
+  gapBeforeSummary: 12,
+  summaryH: 36,
+} as const;
+
+function mtdContentBlockTop(): number {
+  const blockH =
+    MTD_BLOCK.titleH +
+    MTD_BLOCK.gapAfterTitle +
+    MTD_BLOCK.panelH +
+    MTD_BLOCK.gapBeforeSummary +
+    MTD_BLOCK.summaryH;
+  return Math.round((MTD_SLIDE_H - blockH) / 2);
+}
+
+const MTD_BLOCK_TOP = mtdContentBlockTop();
+
 export const MTD_VISUAL = {
   marginX: 52,
-  titleY: 18,
-  titleH: 50,
-  panelY: 76,
-  panelH: 384,
-  summaryY: 472,
-  summaryH: 36,
+  titleY: MTD_BLOCK_TOP,
+  titleH: MTD_BLOCK.titleH,
+  panelY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle,
+  panelH: MTD_BLOCK.panelH,
+  summaryY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary,
+  summaryH: MTD_BLOCK.summaryH,
   leftX: 52,
   leftW: 348,
   sepX: 412,
@@ -18,10 +38,9 @@ export const MTD_VISUAL = {
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
   barH: 26,
-  /** @deprecated Campaign names removed from result bars — kept for legacy geometry refs. */
-  barNameH: 0,
-  barMetricsH: 22,
-  barRowGap: 20,
+  barNameH: 18,
+  barMetricsH: 20,
+  barRowGap: 16,
   groupedDonutLegendRowH: 22,
   groupedDonutLegendRowGap: 8,
   groupedDonutLegendSizePt: 16,
@@ -92,9 +111,26 @@ export function miniDonutPosition(index: number, count: number): { x: number; y:
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
-  const ideal = MTD_VISUAL.barMetricsH + 6 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
-  const rowH = barCount > 0 ? Math.min(88, Math.max(ideal, Math.floor(available / barCount))) : ideal;
+  const ideal =
+    MTD_VISUAL.barNameH +
+    4 +
+    MTD_VISUAL.barMetricsH +
+    6 +
+    MTD_VISUAL.barH +
+    MTD_VISUAL.barRowGap;
+  const rowH = barCount > 0 ? Math.min(92, Math.max(ideal, Math.floor(available / barCount))) : ideal;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
   return { rowH, startY };
+}
+
+/** Vertically center the grouped donut + legend block inside the left panel. */
+export function groupedDonutBlockTopY(segmentCount: number, panelTopY: number): number {
+  const header = MTD_VISUAL.panelHeadingH + 8;
+  const legendH =
+    segmentCount * (MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap) -
+    MTD_VISUAL.groupedDonutLegendRowGap;
+  const blockH = MTD_VISUAL.groupedDonutD + 16 + legendH;
+  const available = MTD_VISUAL.panelH - header;
+  return panelTopY + header + Math.max(0, (available - blockH) / 2);
 }

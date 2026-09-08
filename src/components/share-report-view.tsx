@@ -242,10 +242,12 @@ function AdSetCard({
 }
 
 function VisualResultBar({
+  name,
   color,
   statLine,
   barPct,
 }: {
+  name: string;
   color: string;
   statLine: string;
   barPct: number;
@@ -253,7 +255,19 @@ function VisualResultBar({
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
     <div className="min-w-0">
-      <p className="overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold leading-tight text-ink">{statLine}</p>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: `#${color}` }}
+          aria-hidden="true"
+        />
+        <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-tight text-ink">
+          {name}
+        </p>
+      </div>
+      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap pl-5 text-[16px] font-bold leading-tight text-[#94a3b8]">
+        {statLine}
+      </p>
       <div className="mt-2 h-7 overflow-hidden rounded bg-[#1e293b]">
         <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
@@ -268,13 +282,19 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <h2 className="line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">{model.title}</h2>
+      <div className="flex min-h-[520px] flex-col justify-center">
+        <h2 className="line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">
+          {model.title}
+        </h2>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 min-[720px]:grid-cols-[348px_1fr]">
-        <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
-          <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
-          {model.groupedDonut && model.groupedDonut.length > 0 ? (
-            <div className="mt-4 space-y-3">
+        <div className="mt-5 grid grid-cols-1 items-center gap-3 min-[720px]:grid-cols-[348px_1fr]">
+          <div
+            className="flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4"
+            style={{ backgroundColor: "#111f35" }}
+          >
+            <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
+            {model.groupedDonut && model.groupedDonut.length > 0 ? (
+              <div className="mt-4 space-y-3">
               <div className="relative mx-auto h-[204px] w-[204px]">
                 <ShareChartDonut
                   segments={model.groupedDonut.map((s) => ({
@@ -289,29 +309,43 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
               </div>
               <div className="mt-3 space-y-2">
                 {model.groupedDonut.map((seg) => (
-                  <p
-                    key={seg.name}
-                    className="overflow-hidden text-ellipsis whitespace-nowrap text-center text-[16px] font-bold text-ink"
-                  >
-                    {formatGroupedDonutLegendEntry(seg)}
-                  </p>
+                  <div key={seg.name} className="flex items-center justify-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: `#${seg.color}` }}
+                      aria-hidden="true"
+                    />
+                    <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink">
+                      {formatGroupedDonutLegendEntry(seg)}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-navy-border p-4" style={{ backgroundColor: "#111f35" }}>
+        <div
+          className="flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4"
+          style={{ backgroundColor: "#111f35" }}
+        >
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
-          <div className="mt-4 space-y-7">
+          <div className="mt-4 space-y-6">
             {model.resultBars.map((bar) => (
-              <VisualResultBar key={bar.name} color={bar.color} statLine={bar.statLine} barPct={bar.barPct} />
+              <VisualResultBar
+                key={bar.name}
+                name={bar.name}
+                color={bar.color}
+                statLine={bar.statLine}
+                barPct={bar.barPct}
+              />
             ))}
           </div>
         </div>
       </div>
 
-      <p className="mt-5 text-center text-[16px] text-[#94a3b8]">{model.summaryLine}</p>
+        <p className="mt-5 text-center text-[16px] text-[#94a3b8]">{model.summaryLine}</p>
+      </div>
     </SlideCard>
   );
 }
