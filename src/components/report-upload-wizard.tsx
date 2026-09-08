@@ -3116,10 +3116,10 @@ export function ReportUploadWizard({
                 >
                   <h3 className="text-[17px] font-semibold text-white">Report Summary</h3>
                   <span
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-[#475569] bg-[#0f172a] text-[22px] leading-none text-[#f6ad55]"
+                    className={`text-[17px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
                     aria-hidden
                   >
-                    {reportSummaryExpanded ? "▲" : "▼"}
+                    ▾
                   </span>
                 </button>
                 {reportSummaryExpanded && (
