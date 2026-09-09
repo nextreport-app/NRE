@@ -3,7 +3,14 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import { MTD_SLIDE_W, MTD_SLIDE_H, MTD_VISUAL, miniDonutPosition, resultBarGeometry, groupedDonutBlockTopY } from "./chart-slide-layout";
+import {
+  MTD_SLIDE_W,
+  MTD_SLIDE_H,
+  MTD_VISUAL,
+  groupedDonutLayout,
+  miniDonutPosition,
+  resultBarLayout,
+} from "./chart-slide-layout";
 import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
 import { formatGroupedDonutLegendEntry } from "../nre/visual-chart-slide";
 
@@ -44,9 +51,10 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   ];
 
   if (model.groupedDonut && model.groupedDonut.length > 0) {
-    const d = MTD_VISUAL.groupedDonutD;
+    const donutLayout = groupedDonutLayout(model.groupedDonut.length, MTD_VISUAL.panelY);
+    const d = donutLayout.donutD;
     const x = MTD_VISUAL.leftX + (MTD_VISUAL.leftW - d) / 2;
-    const y = groupedDonutBlockTopY(model.groupedDonut.length, MTD_VISUAL.panelY);
+    const y = donutLayout.blockTopY;
     let angle = 270;
     for (const seg of model.groupedDonut) {
       const sweep = (seg.percentage / 100) * 360;
@@ -72,9 +80,9 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     let legendY = y + d + 24;
     for (const seg of model.groupedDonut) {
       parts.push(
-        `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${legendY}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(formatGroupedDonutLegendEntry(seg))}</text>`,
+        `<text x="${MTD_VISUAL.leftX + MTD_VISUAL.leftW / 2}" y="${legendY}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="${donutLayout.legendSizePt}" font-weight="700">${escapeXml(formatGroupedDonutLegendEntry(seg))}</text>`,
       );
-      legendY += MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap;
+      legendY += donutLayout.legendRowH + donutLayout.legendRowGap;
     }
   } else {
     model.miniDonuts.forEach((donut, i) => {
@@ -93,22 +101,22 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   }
 
   const cols = resultBarColumns();
-  const { rowH, startY } = resultBarGeometry(model.resultBars.length);
-  let rowY = startY;
+  const barLayout = resultBarLayout(model.resultBars.length);
+  let rowY = barLayout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const nameY = rowY + 14;
-    const metricsY = rowY + MTD_VISUAL.barNameH + 8;
-    const barY = metricsY + MTD_VISUAL.barMetricsH + 4;
+    const nameY = rowY + barLayout.nameH - 2;
+    const metricsY = rowY + barLayout.nameH + barLayout.nameMetricsGap + barLayout.metricsH - 2;
+    const barY = rowY + barLayout.nameH + barLayout.nameMetricsGap + barLayout.metricsH + barLayout.metricsBarGap;
     parts.push(
-      `<text x="${cols.barX}" y="${nameY}" fill="${INK}" font-family="Poppins" font-size="15" font-weight="700">${escapeXml(bar.name)}</text>`,
-      `<text x="${cols.barX}" y="${metricsY}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(bar.statLine)}</text>`,
-      `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${MTD_VISUAL.barH}" rx="3" fill="${TRACK}"/>`,
+      `<text x="${cols.barX}" y="${nameY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="700">${escapeXml(bar.name)}</text>`,
+      `<text x="${cols.barX}" y="${metricsY}" fill="${MUTED}" font-family="Poppins" font-size="${barLayout.metricsSizePt}" font-weight="700">${escapeXml(bar.statLine)}</text>`,
+      `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${barLayout.barH}" rx="3" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {
-      parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${MTD_VISUAL.barH}" rx="3" fill="#${bar.color}"/>`);
+      parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${barLayout.barH}" rx="3" fill="#${bar.color}"/>`);
     }
-    rowY += rowH;
+    rowY += barLayout.rowH;
   }
 
   parts.push(
