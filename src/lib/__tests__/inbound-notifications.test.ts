@@ -51,6 +51,31 @@ describe("inbound-notifications", () => {
     );
   });
 
+  it("forwards attachments to Resend", async () => {
+    const csv = Buffer.from("campaign,clicks\nA,10\n");
+    const result = await sendInboundEmail({
+      channel: "support",
+      subject: "Ticket with CSV",
+      text: "See attached CSV.",
+      html: "<p>See attached CSV.</p>",
+      attachments: [{ fileName: "report.csv", content: csv, contentType: "text/csv" }],
+    });
+
+    expect(result.success).toBe(true);
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ["support@nextreport.in"],
+        attachments: [
+          {
+            filename: "report.csv",
+            content: csv,
+            contentType: "text/csv",
+          },
+        ],
+      }),
+    );
+  });
+
   it("skips when RESEND_API_KEY is unset", async () => {
     delete process.env.RESEND_API_KEY;
     const result = await sendInboundEmail({

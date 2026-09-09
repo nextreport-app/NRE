@@ -50,6 +50,12 @@ export function inboundNotifyRecipients(channel: InboundChannel): string[] {
   return [fallback];
 }
 
+export interface InboundEmailAttachment {
+  fileName: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 export interface SendInboundEmailInput {
   channel: InboundChannel;
   subject: string;
@@ -57,6 +63,8 @@ export interface SendInboundEmailInput {
   html: string;
   /** When set, team replies in Gmail go straight to the visitor. */
   replyTo?: string;
+  /** Optional file attachments (e.g. support ticket CSV uploads). */
+  attachments?: InboundEmailAttachment[];
 }
 
 export interface SendInboundEmailResult {
@@ -85,6 +93,11 @@ export async function sendInboundEmail(input: SendInboundEmailInput): Promise<Se
       subject: input.subject,
       text: input.text,
       html: input.html,
+      attachments: input.attachments?.map((attachment) => ({
+        filename: attachment.fileName,
+        content: attachment.content,
+        contentType: attachment.contentType,
+      })),
     });
 
     if (error) {

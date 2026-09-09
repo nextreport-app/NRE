@@ -92,8 +92,9 @@ export async function POST(req: Request) {
       },
     });
 
+    let attachmentUrl: string | null = null;
     if (attachment && attachment.buffer.length > 0) {
-      const attachmentUrl = await saveSupportTicketAttachment(
+      attachmentUrl = await saveSupportTicketAttachment(
         ticket.id,
         attachment.buffer,
         attachment.fileName,
@@ -131,7 +132,8 @@ export async function POST(req: Request) {
         contextLines,
         "",
         fields.message,
-        attachment ? `\nAttachment: ${attachment.fileName}` : "",
+        attachment ? `\nAttachment: ${attachment.fileName} (included in this email)` : "",
+        attachmentUrl ? `\nStored copy: ${attachmentUrl}` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -144,8 +146,27 @@ export async function POST(req: Request) {
 ${clientName ? `<li><strong>Client:</strong> ${clientName}</li>` : ""}
 ${reportDisplayName ? `<li><strong>Report:</strong> ${reportDisplayName}</li>` : ""}
 </ul>
-<p style="white-space:pre-wrap">${fields.message.replace(/</g, "&lt;")}</p>`,
+<p style="white-space:pre-wrap">${fields.message.replace(/</g, "&lt;")}</p>
+${
+  attachment
+    ? `<p><strong>Attachment:</strong> ${attachment.fileName.replace(/</g, "&lt;")} (attached to this email)${
+        attachmentUrl
+          ? `<br/><a href="${attachmentUrl.replace(/"/g, "&quot;")}">Download stored copy</a>`
+          : ""
+      }</p>`
+    : ""
+}`,
       replyTo: fields.email,
+      attachments:
+        attachment && attachment.buffer.length > 0
+          ? [
+              {
+                fileName: attachment.fileName,
+                content: attachment.buffer,
+                contentType: attachment.contentType,
+              },
+            ]
+          : undefined,
     });
 
     autoReplyFireAndForget({
