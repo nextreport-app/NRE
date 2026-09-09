@@ -16,7 +16,7 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (file: File) => void;
+  onSynced: (file: File, meta?: { previousMonthSynced?: boolean }) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
@@ -168,7 +168,7 @@ export function WizardDataSourcePanel({
 
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
-      onSynced(file);
+      onSynced(file, { previousMonthSynced: !!data.previousMonthSynced });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
     }

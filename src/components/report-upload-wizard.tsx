@@ -1040,7 +1040,7 @@ export function ReportUploadWizard({
   }
 
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
-  async function handleApiSynced(file: File) {
+  async function handleApiSynced(file: File, meta?: { previousMonthSynced?: boolean }) {
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
@@ -1073,6 +1073,9 @@ export function ReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    if (meta?.previousMonthSynced) {
+      showToast("Previous month data synced from Meta — ready for the overview row and month-vs-month comparisons.");
+    }
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
@@ -2072,7 +2075,7 @@ export function ReportUploadWizard({
                   googleAdsConnected={googleAdsConnected}
                   tiktokConfigured={tiktokConfigured}
                   tiktokConnected={tiktokConnected}
-                  onSynced={(file) => void handleApiSynced(file)}
+                  onSynced={(file, meta) => void handleApiSynced(file, meta)}
                   syncStatus={apiSyncStatus}
                   syncError={apiSyncError}
                   onSyncStart={() => {

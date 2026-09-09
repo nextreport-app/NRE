@@ -10,6 +10,8 @@ import { filterNreRowsByDateRange, type CsvDateBounds, type CustomRangeValidatio
 export interface ComparisonCoverageResult extends CustomRangeValidation {
   /** Period B will include rows from stored Previous Month Data. */
   periodBUsesSupplemental?: boolean;
+  /** Informational message when supplemental data fills Period B gaps. */
+  warning?: string;
 }
 
 function periodWithinBounds(period: DateRangeIso, bounds: CsvDateBounds): boolean {
