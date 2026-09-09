@@ -24,7 +24,6 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
           accountName: client.accountName,
           currency: client.currency,
           timezone: client.timezone,
-          monthlyBudget: client.monthlyBudget,
           template: client.template,
         }}
         hasLogo={!!client.logoUrl}

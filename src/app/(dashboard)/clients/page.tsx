@@ -16,9 +16,6 @@ export default async function ClientsPage() {
           accountName: true,
           currency: true,
           timezone: true,
-          monthlyBudget: true,
-          ga4PropertyId: true,
-          ga4PropertyName: true,
           previousMonthDataUrl: true,
           previousMonthDataUpdatedAt: true,
         },
@@ -30,11 +27,8 @@ export default async function ClientsPage() {
     accountName: c.accountName,
     currency: c.currency,
     timezone: c.timezone,
-    monthlyBudget: c.monthlyBudget,
     hasPreviousMonthData: !!c.previousMonthDataUrl,
     previousMonthDataUpdatedAt: c.previousMonthDataUpdatedAt?.toISOString() ?? null,
-    hasGa4Property: !!c.ga4PropertyId,
-    ga4PropertyName: c.ga4PropertyName,
   }));
 
   return (

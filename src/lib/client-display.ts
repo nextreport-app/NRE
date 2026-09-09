@@ -1,5 +1,4 @@
 import { getPreviousMonthComparisonInfo, type PreviousMonthDataStatus } from "@/lib/nre/previous-month-data-status";
-import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import type { Currency } from "@/generated/prisma/enums";
 
 const FRIENDLY_TIMEZONES: Record<string, string> = {
@@ -60,12 +59,6 @@ export function formatRelativeReportDate(iso: string, now = new Date()): string 
   if (days < 30) return `${Math.floor(days / 7)} wk ago`;
   if (days < 365) return `${Math.floor(days / 30)} mo ago`;
   return formatAbsoluteReportDate(iso);
-}
-
-export function formatMonthlyBudget(currency: Currency, budget: number | null): string | null {
-  if (budget == null) return null;
-  const symbol = CURRENCY_SYMBOLS[currency] ?? "$";
-  return `${symbol}${budget.toLocaleString("en-US")} / month`;
 }
 
 export interface PreviousMonthListStatus {

@@ -17,7 +17,6 @@ export type ClientFormValues = {
   accountName: string;
   currency: (typeof CURRENCIES)[number];
   timezone: string;
-  monthlyBudget: number | null;
   template: (typeof TEMPLATES)[number];
   notes: string;
 };
@@ -64,7 +63,6 @@ export function ClientForm({
     accountName: initial?.accountName ?? "",
     currency: initial?.currency ?? "INR",
     timezone: initial?.timezone ?? "Asia/Kolkata",
-    monthlyBudget: initial?.monthlyBudget ?? null,
     template: initial?.template ?? "DARK",
     notes: initial?.notes ?? "",
   });
@@ -222,38 +220,19 @@ export function ClientForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="mb-1 block text-sm text-dash-ink-secondary">
-            Monthly Ad Spend Budget ({CURRENCY_SYMBOL[values.currency]}) — optional
-          </label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={values.monthlyBudget ?? ""}
-            onChange={(e) => set("monthlyBudget", e.target.value ? Number(e.target.value) : null)}
-            placeholder="e.g. 50000"
-            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-          />
-          <p className="mt-1 text-[13px] text-dash-ink-secondary">
-            Used to show budget utilisation on the cover slide.
-          </p>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
-          <select
-            value={values.template}
-            onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
-            className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-          >
-            {SELECTABLE_TEMPLATES.map((t) => (
-              <option key={t} value={t}>
-                {TEMPLATE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
+        <select
+          value={values.template}
+          onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
+          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+        >
+          {SELECTABLE_TEMPLATES.map((t) => (
+            <option key={t} value={t}>
+              {TEMPLATE_LABELS[t]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

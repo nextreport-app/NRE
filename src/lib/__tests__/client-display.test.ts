@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   formatClientTimezone,
-  formatMonthlyBudget,
   formatRelativeReportDate,
   getPreviousMonthListStatus,
 } from "@/lib/client-display";
@@ -11,11 +10,6 @@ describe("client-display", () => {
     expect(formatClientTimezone("America/New_York")).toBe("Eastern Time");
     expect(formatClientTimezone("Asia/Kolkata")).toBe("India");
     expect(formatClientTimezone("Europe/Berlin")).toBe("Berlin");
-  });
-
-  it("hides budget when unset", () => {
-    expect(formatMonthlyBudget("USD", null)).toBeNull();
-    expect(formatMonthlyBudget("USD", 5000)).toBe("$5,000 / month");
   });
 
   it("formats relative report dates", () => {
