@@ -5,6 +5,7 @@ import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { ShareChartDonut } from "@/components/share-chart-donut";
 import { formatGroupedDonutLegendEntry } from "@/lib/nre/visual-chart-slide";
+import { groupedDonutLayout, MTD_VISUAL, resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
@@ -246,29 +247,35 @@ function VisualResultBar({
   color,
   statLine,
   barPct,
+  compact = false,
 }: {
   name: string;
   color: string;
   statLine: string;
   barPct: number;
+  compact?: boolean;
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2">
         <span
-          className="inline-block h-3 w-3 shrink-0 rounded-full"
+          className={`inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`}
           style={{ backgroundColor: `#${color}` }}
           aria-hidden="true"
         />
-        <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-tight text-ink">
+        <p
+          className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold leading-tight text-ink ${compact ? "text-[13px]" : "text-[15px]"}`}
+        >
           {name}
         </p>
       </div>
-      <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap pl-5 text-[16px] font-bold leading-tight text-[#94a3b8]">
+      <p
+        className={`overflow-hidden text-ellipsis whitespace-nowrap pl-5 font-bold leading-tight text-[#94a3b8] ${compact ? "mt-0.5 text-[13px]" : "mt-1 text-[16px]"}`}
+      >
         {statLine}
       </p>
-      <div className="mt-2 h-7 overflow-hidden rounded bg-[#1e293b]">
+      <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`}>
         <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
       </div>
     </div>
@@ -279,6 +286,24 @@ function VisualResultBar({
 export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const model = chart.visualSlide;
   if (!model) return null;
+
+  const barCount = model.resultBars.length;
+  const barLayout = resultBarLayout(barCount);
+  const compactBars = barCount >= 4;
+  const barGapClass = barCount >= 5 ? "space-y-2" : barCount >= 4 ? "space-y-3" : "space-y-6";
+  const donutSegmentCount = model.groupedDonut?.length ?? 0;
+  const donutLayout =
+    donutSegmentCount > 0 ? groupedDonutLayout(donutSegmentCount, MTD_VISUAL.panelY) : null;
+  const donutSizePx = donutLayout ? Math.round((donutLayout.donutD / MTD_VISUAL.groupedDonutD) * 204) : 204;
+  const legendTextClass =
+    donutLayout && donutLayout.legendSizePt <= 12
+      ? "text-[12px]"
+      : donutLayout && donutLayout.legendSizePt <= 13
+        ? "text-[13px]"
+        : donutLayout && donutLayout.legendSizePt <= 14
+          ? "text-[14px]"
+          : "text-[16px]";
+  const legendGapClass = donutSegmentCount >= 5 ? "space-y-1" : "space-y-2";
 
   return (
     <SlideCard>
@@ -295,7 +320,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
             <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
             {model.groupedDonut && model.groupedDonut.length > 0 ? (
               <div className="mt-4 space-y-3">
-              <div className="relative mx-auto h-[204px] w-[204px]">
+              <div className="relative mx-auto" style={{ width: donutSizePx, height: donutSizePx }}>
                 <ShareChartDonut
                   segments={model.groupedDonut.map((s) => ({
                     name: s.name,
@@ -304,18 +329,18 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                     color: s.color,
                   }))}
                   totalSpendLabel={model.groupedDonutCenterLabel}
-                  size={204}
+                  size={donutSizePx}
                 />
               </div>
-              <div className="mt-3 space-y-2">
+              <div className={`mt-3 ${legendGapClass}`}>
                 {model.groupedDonut.map((seg) => (
                   <div key={seg.name} className="flex items-center justify-center gap-2">
                     <span
-                      className="inline-block h-3 w-3 shrink-0 rounded-full"
+                      className={`inline-block shrink-0 rounded-full ${donutSegmentCount >= 5 ? "h-2.5 w-2.5" : "h-3 w-3"}`}
                       style={{ backgroundColor: `#${seg.color}` }}
                       aria-hidden="true"
                     />
-                    <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink">
+                    <p className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-ink ${legendTextClass}`}>
                       {formatGroupedDonutLegendEntry(seg)}
                     </p>
                   </div>
@@ -330,7 +355,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           style={{ backgroundColor: "#111f35" }}
         >
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
-          <div className="mt-4 space-y-6">
+          <div className={`mt-4 ${barGapClass}`}>
             {model.resultBars.map((bar) => (
               <VisualResultBar
                 key={bar.name}
@@ -338,6 +363,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                 color={bar.color}
                 statLine={bar.statLine}
                 barPct={bar.barPct}
+                compact={compactBars || barLayout.rowH < 72}
               />
             ))}
           </div>

@@ -16,9 +16,9 @@ import {
 import {
   MTD_SLIDE_W,
   MTD_VISUAL,
-  groupedDonutBlockTopY,
+  groupedDonutLayout,
   miniDonutPosition,
-  resultBarGeometry,
+  resultBarLayout,
 } from "./chart-slide-layout";
 import { ptToEmu } from "./ooxml";
 import {
@@ -119,14 +119,14 @@ function appendGroupedDonut(
   shapes: string[],
   model: VisualChartSlideModel,
   leftX: number,
-  topY: number,
+  layout: ReturnType<typeof groupedDonutLayout>,
   holeFill: string,
   ink: string,
   muted: string,
 ): void {
-  const d = MTD_VISUAL.groupedDonutD;
+  const d = layout.donutD;
   const x = leftX + (MTD_VISUAL.leftW - d) / 2;
-  const y = topY;
+  const y = layout.blockTopY;
   const segments = model.groupedDonut ?? [];
   shapes.push(
     ...donutRing({
@@ -160,9 +160,9 @@ function appendGroupedDonut(
         x: leftX + 8,
         y: legendY,
         w: MTD_VISUAL.leftW - 16,
-        h: MTD_VISUAL.groupedDonutLegendRowH,
+        h: layout.legendRowH,
         text: formatGroupedDonutLegendEntry(seg),
-        sizePt: MTD_VISUAL.groupedDonutLegendSizePt,
+        sizePt: layout.legendSizePt,
         bold: true,
         colorHex: ink,
         align: "ctr",
@@ -171,14 +171,14 @@ function appendGroupedDonut(
         nowrap: true,
       }),
     );
-    legendY += MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap;
+    legendY += layout.legendRowH + layout.legendRowGap;
   }
 }
 
 function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, isLight: boolean): void {
   const c = palette(isLight);
   const cols = resultBarColumns();
-  const { rowH, startY } = resultBarGeometry(model.resultBars.length);
+  const layout = resultBarLayout(model.resultBars.length);
 
   shapes.push(
     textBox({
@@ -194,21 +194,21 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
     }),
   );
 
-  let rowY = startY;
+  let rowY = layout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
     const nameY = rowY;
-    const metricsY = rowY + MTD_VISUAL.barNameH + 4;
-    const barY = metricsY + MTD_VISUAL.barMetricsH + 6;
+    const metricsY = rowY + layout.nameH + layout.nameMetricsGap;
+    const barY = metricsY + layout.metricsH + layout.metricsBarGap;
 
     shapes.push(
       textBox({
         x: cols.barX,
         y: nameY,
         w: cols.trackW,
-        h: MTD_VISUAL.barNameH,
+        h: layout.nameH,
         text: bar.name,
-        sizePt: 15,
+        sizePt: layout.nameSizePt,
         bold: true,
         colorHex: c.ink,
         align: "l",
@@ -220,9 +220,9 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         x: cols.barX,
         y: metricsY,
         w: cols.trackW,
-        h: MTD_VISUAL.barMetricsH,
+        h: layout.metricsH,
         text: bar.statLine,
-        sizePt: 16,
+        sizePt: layout.metricsSizePt,
         bold: true,
         colorHex: c.inkMuted,
         align: "l",
@@ -230,12 +230,12 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         clipOverflow: true,
         nowrap: true,
       }),
-      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: MTD_VISUAL.barH, fillHex: c.track }),
+      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: layout.barH, fillHex: c.track }),
     );
     if (fillW > 0) {
-      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: MTD_VISUAL.barH, fillHex: bar.color }));
+      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
     }
-    rowY += rowH;
+    rowY += layout.rowH;
   }
 }
 
@@ -310,7 +310,7 @@ export function buildMtdOverviewOoxmlShapes(
       shapes,
       model,
       MTD_VISUAL.leftX,
-      groupedDonutBlockTopY(model.groupedDonut.length, MTD_VISUAL.panelY),
+      groupedDonutLayout(model.groupedDonut.length, MTD_VISUAL.panelY),
       holeFill,
       c.ink,
       c.inkMuted,

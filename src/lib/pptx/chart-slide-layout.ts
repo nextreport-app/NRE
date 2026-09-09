@@ -108,29 +108,99 @@ export function miniDonutPosition(index: number, count: number): { x: number; y:
   };
 }
 
-export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
+const IDEAL_RESULT_BAR_ROW_H =
+  MTD_VISUAL.barNameH +
+  4 +
+  MTD_VISUAL.barMetricsH +
+  6 +
+  MTD_VISUAL.barH +
+  MTD_VISUAL.barRowGap;
+
+export interface ResultBarLayout {
+  rowH: number;
+  startY: number;
+  nameH: number;
+  metricsH: number;
+  barH: number;
+  nameMetricsGap: number;
+  metricsBarGap: number;
+  nameSizePt: number;
+  metricsSizePt: number;
+}
+
+/** Scales right-panel result bars to fit inside the panel when campaign count is high. */
+export function resultBarLayout(barCount: number): ResultBarLayout {
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
-  const ideal =
-    MTD_VISUAL.barNameH +
-    4 +
-    MTD_VISUAL.barMetricsH +
-    6 +
-    MTD_VISUAL.barH +
-    MTD_VISUAL.barRowGap;
-  const rowH = barCount > 0 ? Math.min(92, Math.max(ideal, Math.floor(available / barCount))) : ideal;
+  const minRowH = 52;
+
+  const rowH =
+    barCount > 0
+      ? Math.max(minRowH, Math.min(IDEAL_RESULT_BAR_ROW_H, Math.floor(available / barCount)))
+      : IDEAL_RESULT_BAR_ROW_H;
+
+  const scale = Math.min(1, rowH / IDEAL_RESULT_BAR_ROW_H);
+  const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
+  const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
+  const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
+  const nameMetricsGap = Math.max(2, Math.round(4 * scale));
+  const metricsBarGap = Math.max(3, Math.round(6 * scale));
+  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 15;
+  const metricsSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 16;
+
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
-  return { rowH, startY };
+
+  return { rowH, startY, nameH, metricsH, barH, nameMetricsGap, metricsBarGap, nameSizePt, metricsSizePt };
+}
+
+export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
+  const layout = resultBarLayout(barCount);
+  return { rowH: layout.rowH, startY: layout.startY };
+}
+
+export interface GroupedDonutLayout {
+  donutD: number;
+  legendRowH: number;
+  legendRowGap: number;
+  legendSizePt: number;
+  blockTopY: number;
+}
+
+/** Scales grouped donut + legend on the left when many campaigns share the panel. */
+export function groupedDonutLayout(segmentCount: number, panelTopY: number): GroupedDonutLayout {
+  const header = MTD_VISUAL.panelHeadingH + 8;
+  const available = MTD_VISUAL.panelH - header;
+
+  let donutD: number = MTD_VISUAL.groupedDonutD;
+  let legendRowH: number = MTD_VISUAL.groupedDonutLegendRowH;
+  let legendRowGap: number = MTD_VISUAL.groupedDonutLegendRowGap;
+  let legendSizePt: number = MTD_VISUAL.groupedDonutLegendSizePt;
+
+  if (segmentCount >= 6) {
+    donutD = 158;
+    legendRowH = 16;
+    legendRowGap = 4;
+    legendSizePt = 11;
+  } else if (segmentCount >= 5) {
+    donutD = 168;
+    legendRowH = 18;
+    legendRowGap = 5;
+    legendSizePt = 12;
+  } else if (segmentCount >= 4) {
+    legendRowH = 20;
+    legendRowGap = 6;
+    legendSizePt = 14;
+  }
+
+  const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;
+  const blockH = donutD + 16 + legendH;
+  const blockTopY = panelTopY + header + Math.max(0, (available - blockH) / 2);
+
+  return { donutD, legendRowH, legendRowGap, legendSizePt, blockTopY };
 }
 
 /** Vertically center the grouped donut + legend block inside the left panel. */
 export function groupedDonutBlockTopY(segmentCount: number, panelTopY: number): number {
-  const header = MTD_VISUAL.panelHeadingH + 8;
-  const legendH =
-    segmentCount * (MTD_VISUAL.groupedDonutLegendRowH + MTD_VISUAL.groupedDonutLegendRowGap) -
-    MTD_VISUAL.groupedDonutLegendRowGap;
-  const blockH = MTD_VISUAL.groupedDonutD + 16 + legendH;
-  const available = MTD_VISUAL.panelH - header;
-  return panelTopY + header + Math.max(0, (available - blockH) / 2);
+  return groupedDonutLayout(segmentCount, panelTopY).blockTopY;
 }
