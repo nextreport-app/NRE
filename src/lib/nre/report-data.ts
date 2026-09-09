@@ -25,6 +25,7 @@
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
 import { adSetKey } from "./ad-sets";
+import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { filterRowsByCampaigns } from "./campaigns";
 import { getRowDate, hasRealRowDate, type NreRow } from "./columns";
 import type { DateRangeIso } from "./date-range";
@@ -1875,6 +1876,8 @@ export interface BuildComparisonReportDataInput {
   timezone: string;
   /** Raw column-mapped rows from the "MTD Daily CSV" upload — comparison reports read directly from this, not from splitMtdDaily's weekly/MTD split, since Period A/B are arbitrary wizard-picked windows. */
   mtdDailyRows: NreRow[];
+  /** Optional stored Previous Month Data — fills Period B dates missing from mtdDailyRows. */
+  periodBSupplementalRows?: NreRow[];
   /** See BuildReportDataInput.selectedCampaigns — same semantics. */
   selectedCampaigns?: string[] | null;
   periodA: DateRangeIso;
@@ -1974,11 +1977,24 @@ function sumField(rows: AggRow[], field: "spend" | "reach"): number {
 }
 
 export function buildComparisonReportData(input: BuildComparisonReportDataInput): ComparisonReportData {
-  const { accountName, currencySymbol, timezone, mtdDailyRows, selectedCampaigns, periodA, periodB, now = new Date() } = input;
+  const {
+    accountName,
+    currencySymbol,
+    timezone,
+    mtdDailyRows,
+    periodBSupplementalRows,
+    selectedCampaigns,
+    periodA,
+    periodB,
+    now = new Date(),
+  } = input;
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
+  const supplementalFiltered = periodBSupplementalRows?.length
+    ? filterRowsByCampaigns(periodBSupplementalRows, selectedCampaigns ?? null)
+    : undefined;
   const rowsA = filterRowsByDateRange(campaignFilteredRows, periodA);
-  const rowsB = filterRowsByDateRange(campaignFilteredRows, periodB);
+  const rowsB = mergeComparisonPeriodRows(campaignFilteredRows, supplementalFiltered, periodB);
 
   const byCampaignA = groupAggRowsByCampaign(rowsA);
   const byCampaignB = groupAggRowsByCampaign(rowsB);

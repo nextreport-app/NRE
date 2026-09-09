@@ -26,9 +26,10 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
+import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
-import { computeDailyRangeIso } from "@/lib/nre/date-range";
+import { computeCsvDateBounds, computeDailyRangeIso } from "@/lib/nre/date-range";
 import type { ReportType } from "@/lib/nre/report-data";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
@@ -276,11 +277,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Both comparison periods are required." }, { status: 400 });
     }
 
+    const primaryBounds = computeCsvDateBounds(mtdParsed.rows);
+    const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null);
+    const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
+    const coverage = validateComparisonReportCoverage(
+      { startIso: periodA.startIso, endIso: periodA.endIso },
+      { startIso: periodB.startIso, endIso: periodB.endIso },
+      primaryBounds,
+      supplementalBounds,
+    );
+    if (!coverage.valid) {
+      return NextResponse.json({ error: coverage.error ?? "Comparison periods are not covered by your CSV." }, { status: 400 });
+    }
+
     const comparisonData = buildComparisonReportData({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
+      periodBSupplementalRows: supplementalRows,
       selectedCampaigns: selectedCampaigns ?? null,
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },

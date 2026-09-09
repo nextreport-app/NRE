@@ -4302,6 +4302,30 @@ describe("buildComparisonReportData", () => {
     expect(shoes.objective).toBe("PURCHASES");
     expect(shoes.costLabel).toBe("COST PER PURCHASE");
   });
+
+  it("merges supplemental rows into Period B when the primary CSV starts later", () => {
+    const primaryOnlyAugust = comparisonRows("2026-08-01", "2026-08-06", {
+      campaign_name: "Shoes - Purchases",
+      result_type: "Purchase",
+      spend: 100,
+      reach: 1000,
+      results: 2,
+    });
+    const supplementalJuly = comparisonRows("2026-07-01", "2026-07-06", {
+      campaign_name: "Shoes - Purchases",
+      result_type: "Purchase",
+      spend: 50,
+      reach: 800,
+      results: 1,
+    });
+    const result = buildComparisonReportData({
+      ...baseInput(),
+      mtdDailyRows: primaryOnlyAugust,
+      periodBSupplementalRows: supplementalJuly,
+    });
+    const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
+    expect(shoes.metricsB.spend.value).toBe(300);
+  });
 });
 
 describe("buildPreviousMonthSummaryReportData — no current-period data, Previous Month Data only", () => {

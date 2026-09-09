@@ -603,6 +603,12 @@ export function ReportUploadWizard({
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
   const [historicalMonthCount, setHistoricalMonthCount] = useState(4);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
+  const [monthComparisonCoverage, setMonthComparisonCoverage] = useState<{
+    valid: boolean;
+    error?: string;
+    warning?: string;
+    periodBUsesSupplemental?: boolean;
+  } | null>(null);
   const [dailyRange, setDailyRange] = useState<DateRangeIso | null>(null);
   const [hasAdLevelCsv, setHasAdLevelCsv] = useState(false);
 
@@ -908,6 +914,7 @@ export function ReportUploadWizard({
     setWeeklyOptions(json.weeklyOptions || null);
     setMtdRange(json.mtdRange || null);
     setMonthComparisonOptions(json.monthComparisonOptions || null);
+    setMonthComparisonCoverage(json.monthComparisonCoverage || null);
     setDailyRange(json.dailyRange || null);
     setHasAdLevelCsv(!!json.hasAdLevelCsv);
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
@@ -1033,7 +1040,7 @@ export function ReportUploadWizard({
   }
 
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
-  async function handleApiSynced(file: File) {
+  async function handleApiSynced(file: File, meta?: { previousMonthSynced?: boolean }) {
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
@@ -1066,6 +1073,9 @@ export function ReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    if (meta?.previousMonthSynced) {
+      showToast("Previous month data synced from Meta — ready for the overview row and month-vs-month comparisons.");
+    }
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
@@ -2065,7 +2075,7 @@ export function ReportUploadWizard({
                   googleAdsConnected={googleAdsConnected}
                   tiktokConfigured={tiktokConfigured}
                   tiktokConnected={tiktokConnected}
-                  onSynced={(file) => void handleApiSynced(file)}
+                  onSynced={(file, meta) => void handleApiSynced(file, meta)}
                   syncStatus={apiSyncStatus}
                   syncError={apiSyncError}
                   onSyncStart={() => {
@@ -3045,11 +3055,22 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[15px] text-dash-ink-secondary">
-                Tip: Your CSV must cover both date ranges. Export a custom date range from{" "}
-                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes all dates from both
-                periods.
-              </p>
+              {monthComparisonCoverage && !monthComparisonCoverage.valid ? (
+                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[15px] text-amber-200">
+                  {monthComparisonCoverage.error ??
+                    "Your CSV does not cover both comparison periods. Export a longer custom range or upload Previous Month Data on Manage."}
+                </p>
+              ) : monthComparisonCoverage?.periodBUsesSupplemental ? (
+                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[15px] text-sky-200">
+                  Period B will use your stored Previous Month Data for dates before your main CSV starts.
+                </p>
+              ) : (
+                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[15px] text-dash-ink-secondary">
+                  Tip: Period A must fit your main CSV. For month-vs-month, upload Previous Month Data once on Manage — or
+                  export a custom range from{" "}
+                  {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes both periods.
+                </p>
+              )}
             </section>
           )}
 
