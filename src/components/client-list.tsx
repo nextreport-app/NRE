@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Currency } from "@/generated/prisma/enums";
-import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
-import { formatClientTimezone, getPreviousMonthListStatus } from "@/lib/client-display";
+import { formatClientCurrency, getPreviousMonthListStatus } from "@/lib/client-display";
 
 const PAGE_SIZE = 12;
 const MAX_PAGE_BUTTONS = 5;
@@ -115,6 +114,8 @@ interface ClientListItem {
   timezone: string;
   hasPreviousMonthData: boolean;
   previousMonthDataUpdatedAt: string | null;
+  hasGa4Property: boolean;
+  ga4PropertyName: string | null;
 }
 
 function SearchIcon() {
@@ -126,10 +127,38 @@ function SearchIcon() {
   );
 }
 
-function formatClientMeta(currency: Currency, timezone: string): string {
-  const symbol = CURRENCY_SYMBOLS[currency] ?? "";
-  const currencyLabel = symbol ? `${symbol} ${currency}` : currency;
-  return `${currencyLabel} · ${formatClientTimezone(timezone)}`;
+function StatusChip({
+  tone,
+  label,
+  title,
+}: {
+  tone: "neutral" | "good" | "warn" | "info";
+  label: string;
+  title?: string;
+}) {
+  const toneClass =
+    tone === "good"
+      ? "border-emerald-800/50 bg-emerald-950/40 text-emerald-200"
+      : tone === "warn"
+        ? "border-amber-800/50 bg-amber-950/40 text-amber-200"
+        : tone === "info"
+          ? "border-sky-800/50 bg-sky-950/40 text-sky-200"
+          : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium ${toneClass}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${
+          tone === "good" ? "bg-emerald-400" : tone === "warn" ? "bg-amber-400" : tone === "info" ? "bg-sky-400" : "bg-dash-ink-secondary"
+        }`}
+      />
+      {label}
+    </span>
+  );
 }
 
 function ClientCard({ client }: { client: ClientListItem }) {
@@ -138,32 +167,43 @@ function ClientCard({ client }: { client: ClientListItem }) {
     client.previousMonthDataUpdatedAt,
     client.timezone,
   );
-  const needsAttention = prevMonth.status !== "current";
 
   return (
-    <article className="group flex flex-col rounded-xl border border-dash-border bg-dash-card p-5 transition-colors hover:border-dash-accent/40">
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[17px] font-semibold text-dash-ink" title={client.accountName}>
+    <article className="flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/50">
+      <div className="border-b border-dash-border px-5 py-4">
+        <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
           {client.accountName}
         </h3>
-        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{formatClientMeta(client.currency, client.timezone)}</p>
-        {needsAttention ? (
-          <p className="mt-2.5 text-[13px] leading-snug text-amber-200/90" title={prevMonth.title}>
-            {prevMonth.label}
-          </p>
-        ) : null}
+        <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{formatClientCurrency(client.currency)}</p>
       </div>
 
-      <div className="mt-5 flex items-center gap-2">
+      <div className="flex flex-wrap gap-2 px-5 py-3">
+        <StatusChip
+          tone={prevMonth.status === "current" ? "good" : "warn"}
+          label={prevMonth.label}
+          title={prevMonth.title}
+        />
+        <StatusChip
+          tone={client.hasGa4Property ? "info" : "neutral"}
+          label={client.hasGa4Property ? "GA4 linked" : "GA4 not linked"}
+          title={
+            client.hasGa4Property
+              ? client.ga4PropertyName ?? "Google Analytics property linked on Manage."
+              : "Link Google Analytics on Manage for website reports."
+          }
+        />
+      </div>
+
+      <div className="mt-auto flex gap-3 border-t border-dash-border px-5 py-4">
         <Link
           href={`/clients/${client.id}/reports/new`}
-          className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           Generate Report
         </Link>
         <Link
           href={`/clients/${client.id}`}
-          className="rounded-md px-3 py-2.5 text-[14px] font-semibold text-dash-ink-secondary transition-colors hover:bg-dash-bg hover:text-dash-ink"
+          className="flex-1 rounded-md border border-dash-border bg-dash-bg px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-border/40"
         >
           Manage
         </Link>
@@ -240,7 +280,7 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {paginated.map((client) => (
               <ClientCard key={client.id} client={client} />
             ))}
