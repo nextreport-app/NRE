@@ -98,6 +98,9 @@ export interface FetchMetaReportCsvInput {
   timezone: string;
   now?: Date;
   days?: number;
+  /** When set, overrides the default last-N-days window (e.g. previous calendar month sync). */
+  sinceIso?: string;
+  untilIso?: string;
 }
 
 /** Fetches Meta insights and serializes to CSV bytes matching the NRE Meta export shape. */
@@ -107,11 +110,10 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   sinceIso: string;
   untilIso: string;
 }> {
-  const { sinceIso, untilIso } = computeLastNDaysIsoRange(
-    input.now ?? new Date(),
-    input.timezone,
-    input.days ?? 30,
-  );
+  const { sinceIso, untilIso } =
+    input.sinceIso && input.untilIso
+      ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
+      : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
 
   const insights = await fetchMetaAdAccountInsights({
     accessToken: input.accessToken,

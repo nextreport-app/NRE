@@ -7,6 +7,7 @@ import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import { refreshGoogleAdsAccessToken } from "@/lib/google-ads-api";
 import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
 import { fetchMetaReportCsv } from "@/lib/nre/fetch-meta-report-rows";
+import { maybeSyncPreviousMonthDataFromMetaApi } from "@/lib/nre/sync-previous-month-from-api";
 import { fetchGoogleReportCsv } from "@/lib/nre/fetch-google-report-rows";
 import { fetchTikTokReportCsv } from "@/lib/nre/fetch-tiktok-report-rows";
 import { platformSchema } from "@/lib/validators/report-wizard";
@@ -85,6 +86,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
       });
 
+      let previousMonthSynced = false;
+      try {
+        const prevMonth = await maybeSyncPreviousMonthDataFromMetaApi({
+          clientId: client.id,
+          accessToken: fresh.accessToken,
+          adAccountId: metaAdAccountId,
+          timezone: client.timezone,
+          previousMonthDataUrl: client.previousMonthDataUrl,
+          previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+        });
+        previousMonthSynced = prevMonth.synced;
+      } catch (err) {
+        console.error("[reports:sync-api] previous month auto-sync failed:", err);
+      }
+
       return NextResponse.json({
         ok: true,
         platform: "META",
@@ -93,6 +109,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
+        previousMonthSynced,
       });
     }
 

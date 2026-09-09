@@ -13,9 +13,10 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import { loadPreviousMonthDataRows } from "@/lib/nre/previous-month-data";
+import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
-import { computeDailyRangeIso } from "@/lib/nre/date-range";
+import { computeCsvDateBounds, computeDailyRangeIso } from "@/lib/nre/date-range";
 import type { ReportType } from "@/lib/nre/report-data";
 import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
@@ -123,17 +124,43 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
+    const primaryBounds = computeCsvDateBounds(mtdParsed.rows);
+    const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null);
+    const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
+    const coverage = validateComparisonReportCoverage(
+      { startIso: periodA.startIso, endIso: periodA.endIso },
+      { startIso: periodB.startIso, endIso: periodB.endIso },
+      primaryBounds,
+      supplementalBounds,
+    );
+    if (!coverage.valid) {
+      return NextResponse.json(
+        {
+          valid: false,
+          errors: [{ field: "comparisonPeriod", message: coverage.error ?? "Comparison periods are not covered by your CSV." }],
+          warnings: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    const comparisonWarnings = [...validation.warnings];
+    if (coverage.warning) {
+      comparisonWarnings.push({ field: "comparisonPeriod", message: coverage.warning });
+    }
+
     const data = buildComparisonReportData({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
+      periodBSupplementalRows: supplementalRows,
       selectedCampaigns: selectedCampaigns ?? null,
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isComparison: true, data });
+    return NextResponse.json({ valid: true, errors: [], warnings: comparisonWarnings, isComparison: true, data });
   }
 
   if (parsedReportType === "HISTORICAL") {

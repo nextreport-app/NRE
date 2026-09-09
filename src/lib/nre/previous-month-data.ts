@@ -44,6 +44,21 @@ function parseSelectedCampaigns(raw: string | null | undefined): string[] | null
   }
 }
 
+/**
+ * Raw Previous Month Data rows filtered by the report's campaign selection —
+ * used when comparison Period B spans dates outside the primary CSV (e.g.
+ * month-vs-month preset with a Last-30-Days export).
+ */
+export async function loadPreviousMonthDataRowsForCampaigns(
+  client: { previousMonthDataUrl: string | null },
+  selectedCampaigns: string[] | null,
+): Promise<NreRow[] | undefined> {
+  if (!client.previousMonthDataUrl) return undefined;
+  const buffer = await readPreviousMonthDataFile(client.previousMonthDataUrl);
+  const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
+  return filterRowsByCampaigns(rows, selectedCampaigns);
+}
+
 /** Part 1 — the client page's own server-side re-parse of the stored file, to render the campaign checkbox list's full universe (not just what's currently selected) on every page load, without a second upload. */
 export async function loadPreviousMonthDataCampaigns(previousMonthDataUrl: string): Promise<string[]> {
   const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
