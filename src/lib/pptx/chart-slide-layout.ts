@@ -172,10 +172,10 @@ export function groupedDonutLayout(segmentCount: number, panelTopY: number): Gro
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
 
-  let donutD = MTD_VISUAL.groupedDonutD;
-  let legendRowH = MTD_VISUAL.groupedDonutLegendRowH;
-  let legendRowGap = MTD_VISUAL.groupedDonutLegendRowGap;
-  let legendSizePt = MTD_VISUAL.groupedDonutLegendSizePt;
+  let donutD: number = MTD_VISUAL.groupedDonutD;
+  let legendRowH: number = MTD_VISUAL.groupedDonutLegendRowH;
+  let legendRowGap: number = MTD_VISUAL.groupedDonutLegendRowGap;
+  let legendSizePt: number = MTD_VISUAL.groupedDonutLegendSizePt;
 
   if (segmentCount >= 6) {
     donutD = 158;
