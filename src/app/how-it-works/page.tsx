@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
+import { ProductExplainerAnimation } from "@/components/home/product-explainer-animation";
 import {
   breadcrumbJsonLd,
   faqPageJsonLd,
@@ -12,12 +13,12 @@ import {
   pageMetadata,
   PRODUCT_FAQ_SCHEMA,
 } from "@/lib/seo";
-import { PLATFORM_LIST_API } from "@/lib/plan-labels";
+import { PLATFORM_LIST_API, PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — 5-Step Report Wizard",
   description:
-    "Connect Meta, Google, TikTok, or GA4 via API — or upload a CSV. Confirm campaigns, review metrics, and generate a branded .pptx, live link, or PDF in under 2 minutes.",
+    "Set up a client, connect Meta, Google, TikTok, or GA4 via API or CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes.",
   path: "/how-it-works",
 });
 
@@ -26,42 +27,63 @@ interface ReportType {
   description: string;
 }
 
+const SETUP_STEPS = [
+  {
+    title: "Create your free trial account",
+    body: "Sign up in under a minute — no credit card required. You get 7 days to try the full wizard.",
+  },
+  {
+    title: "Add a client with branding",
+    body: "From My Clients, add the client name and upload their logo. Every slide and export uses that branding automatically.",
+  },
+  {
+    title: "Connect ad accounts (optional)",
+    body: "In Account Settings, connect Meta, Google Ads, TikTok, or GA4 once. After that, choose Sync from API in the wizard instead of uploading CSVs.",
+  },
+];
+
 const REPORT_TYPES: ReportType[] = [
-  { name: "Weekly Performance Report", description: "Last 7 days vs month to date." },
-  { name: "Monthly Performance Report", description: "Full month summary." },
-  { name: "Bi-weekly Report", description: "Custom 14-day period." },
+  { name: "Weekly Performance Report", description: "Last 7 days vs month to date — the default for agency weekly check-ins." },
+  { name: "Monthly Performance Report", description: "Full calendar month summary with MTD context where applicable." },
+  { name: "Bi-weekly Report", description: "Custom 14-day reporting window." },
   {
     name: "Comparison Report",
-    description: "Compare any two periods side by side. This week vs last week. This month vs last month. Any custom date range you choose.",
+    description: "Compare any two periods side by side — this week vs last week, this month vs last month, or any custom range.",
   },
-  { name: "Custom Date Range", description: "Any period you choose." },
+  { name: "Custom Date Range", description: "Any start and end date you choose." },
 ];
 
 interface Step {
   title: string;
   body: string;
+  detail?: string;
 }
 
-const STEPS: Step[] = [
+const WIZARD_STEPS: Step[] = [
   {
-    title: "Connect or upload",
-    body: "Choose Sync from API (Meta Marketing API, Google Ads API, TikTok Marketing API, or GA4 Data API) or upload a CSV export. Meta users can also add an optional Previous Month CSV for the overview row.",
+    title: "Add your ad data",
+    body: "Open New Report on a client. Pick Meta, Google Ads, TikTok, or GA4, then choose Sync from API or upload a CSV export. Meta users can also attach an optional Previous Month CSV for the overview row.",
+    detail: "Step label in the app: Upload",
   },
   {
-    title: "Select campaigns",
-    body: "Choose which campaigns to include in your report, and select or deselect ad sets.",
+    title: "Select campaigns and ad sets",
+    body: "Check the campaigns that belong in this deck. Unchecked campaigns stay out entirely. Ad-set slides are optional — campaign totals still include their spend.",
+    detail: "Step label in the app: Campaigns",
   },
   {
     title: "Confirm objectives",
-    body: "Review what each campaign was optimising for — leads, purchases, traffic, reach and more. The engine detects this automatically; you just confirm or correct it.",
+    body: "NextReport detects whether each campaign optimised for leads, purchases, traffic, reach, or other goals. Confirm or correct anything flagged — wrong objectives mean wrong metric cards.",
+    detail: "Step label in the app: Objectives",
   },
   {
     title: "Review metric cards",
-    body: "See which metrics will appear on each campaign slide, and add or remove them as needed.",
+    body: "See the KPI chips that will appear on each campaign slide. Remove metrics you do not need or add extras from the CSV columns available.",
+    detail: "Step label in the app: Metrics",
   },
   {
-    title: "Choose period and generate",
-    body: "Select your report type and date range, then click Generate.",
+    title: "Choose report type and generate",
+    body: "Pick weekly, monthly, comparison, or custom dates. Review the summary, then generate. Download .pptx, share a live browser link, export PDF, email, WhatsApp, or save to Google Drive.",
+    detail: "Step label in the app: Generate",
   },
 ];
 
@@ -69,12 +91,17 @@ const OUTPUTS = [
   {
     icon: "📥",
     title: "Download as PowerPoint (.pptx)",
-    description: "The same format your clients already expect.",
+    description: "The same format your clients already expect — with your agency branding and AI-written insights.",
   },
   {
-    icon: "🌐",
-    title: "View in browser",
-    description: "Share a link your clients open on any device — no PowerPoint needed.",
+    icon: "🔗",
+    title: "Share a live browser link",
+    description: "Clients open the report on any device. No PowerPoint install required.",
+  },
+  {
+    icon: "📄",
+    title: "Export PDF",
+    description: "Print-ready PDF from the same report data — ideal for email attachments.",
   },
   {
     icon: "☁️",
@@ -84,7 +111,7 @@ const OUTPUTS = [
   {
     icon: "💬",
     title: "Share via WhatsApp or Email",
-    description: "One click from the download screen.",
+    description: "One click from the download screen after generation.",
   },
 ];
 
@@ -120,6 +147,7 @@ function StepRow({ number, step }: { number: number; step: Step }) {
       </div>
       <div>
         <h3 className="text-base font-semibold text-white">{step.title}</h3>
+        {step.detail ? <p className="mt-0.5 text-xs text-ink-muted">{step.detail}</p> : null}
         <p className="mt-1 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
       </div>
     </div>
@@ -156,33 +184,86 @@ export default async function HowItWorksPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              Official API sync or CSV upload — ad and website reports in under 2 minutes
+              From client setup to a branded client deck in under 2 minutes — API sync or CSV upload
+            </p>
+            <p className="mt-3 text-sm text-ink-secondary">
+              Supports {PLATFORM_LIST_SHORT}
+            </p>
+          </div>
+        </section>
+
+        <section className="border-b border-navy-border bg-navy-panel px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-center text-2xl font-semibold text-white">Watch the 5-step flow</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-secondary">
+              This animated walkthrough mirrors the actual report wizard in the app. Each step auto-advances — click the
+              dots to jump ahead.
+            </p>
+            <div className="mt-10">
+              <ProductExplainerAnimation />
+            </div>
+            <p className="mx-auto mt-6 max-w-xl text-center text-xs text-ink-muted">
+              Prefer a live walkthrough with your own accounts?{" "}
+              <Link href="/book-demo" className="text-accent-orange hover:underline">
+                Book a demo
+              </Link>
+              .
             </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
           <section>
-            <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
+            <h2 className="text-2xl font-semibold text-white">Before your first report</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport syncs with {PLATFORM_LIST_API}. Connect in Account Settings and choose{" "}
-              <span className="text-white">Sync from API</span> in the wizard — no CSV needed. Prefer a manual export?
-              CSV upload works the same way it always has.
+              Three one-time setup steps — then every report reuses the same client and connections.
             </p>
+            <ol className="mt-6 space-y-4">
+              {SETUP_STEPS.map((step, i) => (
+                <li key={step.title} className="flex gap-4 rounded-lg border border-navy-border bg-navy-panel p-5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-bold text-accent-orange">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">{step.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
             {loggedIn ? (
-              <p className="mt-3 text-sm">
+              <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                <Link href="/clients/new" className="text-accent-orange hover:underline">
+                  Add a client →
+                </Link>
                 <Link href="/account" className="text-accent-orange hover:underline">
-                  Connect your ad accounts in Account Settings →
+                  Account Settings →
+                </Link>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm">
+                <Link href="/signup" className="text-accent-orange hover:underline">
+                  Start free trial →
                 </Link>
               </p>
-            ) : null}
+            )}
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
+              NextReport syncs with {PLATFORM_LIST_API}. Connect once in Account Settings, then choose{" "}
+              <span className="text-white">Sync from API</span> in step 1 of the wizard — no CSV needed. Prefer a manual
+              export? CSV upload follows the same 5-step wizard.
+            </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold text-white">TikTok Ads</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Connect TikTok Ads in Account Settings, then choose API sync or upload a TikTok CSV export in the report
-              wizard. Campaign spend, results, and KPIs land in the same branded deck as your Meta and Google reports.
+              Connect TikTok Ads in Account Settings, then choose API sync or upload a TikTok CSV export. Campaign spend,
+              results, and KPIs land in the same branded deck as your Meta and Google reports. TikTok appears in the
+              wizard for supported regions; availability may vary by location.
             </p>
           </section>
 
@@ -232,9 +313,12 @@ export default async function HowItWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">The 5 steps</h2>
+            <h2 className="text-2xl font-semibold text-white">The 5 wizard steps</h2>
+            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
+              These match the report wizard exactly — same order, same labels you see in the app.
+            </p>
             <div className="mt-6 space-y-4">
-              {STEPS.map((step, i) => (
+              {WIZARD_STEPS.map((step, i) => (
                 <StepRow key={step.title} number={i + 1} step={step} />
               ))}
             </div>
@@ -260,12 +344,21 @@ export default async function HowItWorksPage() {
 
         <section className="bg-navy-panel px-6 py-16 text-center">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Ready to try it yourself?</h2>
-          <div className="mt-6">
+          <p className="mx-auto mt-3 max-w-lg text-sm text-ink-secondary">
+            Start a free 7-day trial — or book a live demo if you want us to walk through your workflow first.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href={loggedIn ? "/clients" : "/signup"}
               className="inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
             >
               {loggedIn ? "Go to Dashboard" : "Start free trial"}
+            </Link>
+            <Link
+              href="/book-demo"
+              className="inline-block rounded-md border border-navy-border px-6 py-3 text-sm font-semibold text-white hover:bg-navy"
+            >
+              Book a demo
             </Link>
           </div>
         </section>

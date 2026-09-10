@@ -20,6 +20,7 @@ export const FOOTER_PRODUCT_LINKS: SiteLink[] = [
 
 export const FOOTER_COMPANY_LINKS: SiteLink[] = [
   { href: "/about", label: "About Us" },
+  { href: "/book-demo", label: "Book a Demo" },
   { href: "/contact", label: "Contact" },
   { href: "/refer", label: "Refer an Agency" },
 ];
