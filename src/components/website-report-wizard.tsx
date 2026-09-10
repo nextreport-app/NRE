@@ -303,20 +303,20 @@ export function WebsiteReportWizard({
   if (dataSource === "api" && !ga4Connected) {
     return (
       <div className="rounded-lg border border-dash-border bg-dash-card p-6">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Website Traffic Report</h2>
-        <p className="mt-2 text-[16px] text-dash-ink-secondary">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Website Traffic Report</h2>
+        <p className="mt-2 text-[14px] text-dash-ink-secondary">
           Connect Google Analytics 4 in Account Settings to generate website performance reports for {clientName}.
         </p>
         <Link
           href="/account#ga4"
-          className="mt-4 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="mt-4 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           Connect Google Analytics
         </Link>
         <button
           type="button"
           onClick={() => setDataSource("csv")}
-          className="mt-3 block text-[15px] text-dash-accent underline"
+          className="mt-3 block text-[14px] text-dash-accent underline"
         >
           Or upload a GA4 CSV export instead
         </button>
@@ -327,20 +327,20 @@ export function WebsiteReportWizard({
   if (dataSource === "api" && !hasGa4Property) {
     return (
       <div className="rounded-lg border border-dash-border bg-dash-card p-6">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Website Traffic Report</h2>
-        <p className="mt-2 text-[16px] text-dash-ink-secondary">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Website Traffic Report</h2>
+        <p className="mt-2 text-[14px] text-dash-ink-secondary">
           Link a GA4 property to {clientName} before generating a Website Traffic report.
         </p>
         <Link
           href={`/clients/${clientId}#website-analytics`}
-          className="mt-4 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="mt-4 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           Link GA4 property
         </Link>
         <button
           type="button"
           onClick={() => setDataSource("csv")}
-          className="mt-3 block text-[15px] text-dash-accent underline"
+          className="mt-3 block text-[14px] text-dash-accent underline"
         >
           Or upload a GA4 CSV export instead
         </button>
@@ -352,18 +352,18 @@ export function WebsiteReportWizard({
     <div className="space-y-6">
       {!embedded ? (
         <div>
-          <Link href={`/clients/${clientId}`} className="text-[15px] text-dash-ink-secondary hover:text-dash-ink">
+          <Link href={`/clients/${clientId}`} className="text-[14px] text-dash-ink-secondary hover:text-dash-ink">
             ← Back to {clientName}
           </Link>
-          <h1 className="mt-2 text-[24px] font-bold text-dash-ink">Website Traffic Report</h1>
-          <p className="mt-1 text-[17px] text-dash-ink-secondary">Pick dates, website type, and breakdown slides.</p>
+          <h1 className="mt-2 text-[20px] font-bold text-dash-ink">Website Traffic Report</h1>
+          <p className="mt-1 text-[15px] text-dash-ink-secondary">Pick dates, website type, and breakdown slides.</p>
         </div>
       ) : null}
 
       {!embedded ? (
         <div className="rounded-lg border border-[#4285f4]/30 bg-dash-card px-4 py-3.5">
-          <p className="text-[16px] font-semibold text-dash-ink">Website traffic — different from ad reports</p>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-dash-ink-secondary">
+          <p className="text-[14px] font-semibold text-dash-ink">Website traffic — different from ad reports</p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-dash-ink-secondary">
             GA4 sessions, channels, and landing pages. Ad campaign reports use the ad wizard.
           </p>
         </div>
@@ -371,7 +371,7 @@ export function WebsiteReportWizard({
 
       {/* Data source */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Data source</h2>
+        <h2 className="text-[16px] font-semibold text-dash-ink">Data source</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
@@ -380,7 +380,7 @@ export function WebsiteReportWizard({
               setDataSource("api");
               resetGenerateState();
             }}
-            className={`rounded-md px-4 py-2 text-[15px] font-semibold ${
+            className={`rounded-md px-4 py-2 text-[14px] font-semibold ${
               dataSource === "api"
                 ? "bg-dash-accent text-dash-ink"
                 : "border border-dash-border bg-dash-bg text-dash-ink-secondary hover:text-dash-ink disabled:opacity-40"
@@ -394,7 +394,7 @@ export function WebsiteReportWizard({
               setDataSource("csv");
               resetGenerateState();
             }}
-            className={`rounded-md px-4 py-2 text-[15px] font-semibold ${
+            className={`rounded-md px-4 py-2 text-[14px] font-semibold ${
               dataSource === "csv"
                 ? "bg-dash-accent text-dash-ink"
                 : "border border-dash-border bg-dash-bg text-dash-ink-secondary hover:text-dash-ink"
@@ -405,7 +405,7 @@ export function WebsiteReportWizard({
         </div>
         {dataSource === "csv" ? (
           <div className="mt-4 space-y-2">
-            <p className="text-[15px] text-dash-ink-secondary">Export from GA4 with Sessions and your chosen breakdown dimensions.</p>
+            <p className="text-[14px] text-dash-ink-secondary">Export from GA4 with Sessions and your chosen breakdown dimensions.</p>
             <input
               type="file"
               accept=".csv,.tsv,.txt,.xlsx,.xls,.ods"
@@ -413,24 +413,24 @@ export function WebsiteReportWizard({
                 const file = e.target.files?.[0];
                 if (file) void analyzeCsv(file);
               }}
-              className="block w-full text-[15px] text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[15px] file:font-semibold file:text-dash-ink"
+              className="block w-full text-[14px] text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[14px] file:font-semibold file:text-dash-ink"
             />
             {analyzeStatus === "loading" ? (
-              <p className="text-[15px] text-dash-ink-secondary">Analyzing CSV…</p>
+              <p className="text-[14px] text-dash-ink-secondary">Analyzing CSV…</p>
             ) : analyzeMessage ? (
-              <p className={`text-[15px] ${analyzeStatus === "error" ? "text-red-300" : "text-dash-accent"}`}>
+              <p className={`text-[14px] ${analyzeStatus === "error" ? "text-red-300" : "text-dash-accent"}`}>
                 {analyzeMessage}
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 text-[15px] text-dash-ink-secondary">Pulls live data from the GA4 property linked to this client.</p>
+          <p className="mt-3 text-[14px] text-dash-ink-secondary">Pulls live data from the GA4 property linked to this client.</p>
         )}
       </div>
 
       {/* Date range */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Report period</h2>
+        <h2 className="text-[16px] font-semibold text-dash-ink">Report period</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {DATE_PRESETS.map((preset) => (
             <label
@@ -452,15 +452,15 @@ export function WebsiteReportWizard({
                 className="mt-1 accent-dash-accent"
               />
               <span>
-                <span className="text-[16px] font-medium text-dash-ink">{preset.label}</span>
-                <span className="mt-0.5 block text-[15px] text-dash-ink-secondary">{preset.description}</span>
+                <span className="text-[14px] font-medium text-dash-ink">{preset.label}</span>
+                <span className="mt-0.5 block text-[14px] text-dash-ink-secondary">{preset.description}</span>
               </span>
             </label>
           ))}
         </div>
         {config.datePreset === "custom" ? (
           <div className="mt-4 flex flex-wrap gap-4">
-            <label className="text-[15px] text-dash-ink-secondary">
+            <label className="text-[14px] text-dash-ink-secondary">
               Start
               <input
                 type="date"
@@ -469,10 +469,10 @@ export function WebsiteReportWizard({
                   setConfig((prev) => ({ ...prev, startIso: e.target.value }));
                   resetGenerateState();
                 }}
-                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[16px] text-dash-ink"
+                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
             </label>
-            <label className="text-[15px] text-dash-ink-secondary">
+            <label className="text-[14px] text-dash-ink-secondary">
               End
               <input
                 type="date"
@@ -481,12 +481,12 @@ export function WebsiteReportWizard({
                   setConfig((prev) => ({ ...prev, endIso: e.target.value }));
                   resetGenerateState();
                 }}
-                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[16px] text-dash-ink"
+                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
             </label>
           </div>
         ) : null}
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-[16px] text-dash-ink">
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-[14px] text-dash-ink">
           <input
             type="checkbox"
             checked={config.comparePreviousPeriod}
@@ -502,8 +502,8 @@ export function WebsiteReportWizard({
 
       {/* Website type */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Website type</h2>
-        <p className="mt-1 text-[15px] text-dash-ink-secondary">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Website type</h2>
+        <p className="mt-1 text-[14px] text-dash-ink-secondary">
           Controls which metrics appear on the conversions slide. Auto-detect works for most clients.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -527,8 +527,8 @@ export function WebsiteReportWizard({
                 className="mt-1 accent-dash-accent"
               />
               <span>
-                <span className="text-[16px] font-medium text-dash-ink">{opt.label}</span>
-                <span className="mt-0.5 block text-[15px] text-dash-ink-secondary">{opt.description}</span>
+                <span className="text-[14px] font-medium text-dash-ink">{opt.label}</span>
+                <span className="mt-0.5 block text-[14px] text-dash-ink-secondary">{opt.description}</span>
               </span>
             </label>
           ))}
@@ -537,8 +537,8 @@ export function WebsiteReportWizard({
 
       {/* Breakdowns */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Breakdown slides</h2>
-        <p className="mt-1 text-[15px] text-dash-ink-secondary">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Breakdown slides</h2>
+        <p className="mt-1 text-[14px] text-dash-ink-secondary">
           Estimated deck: <span className="font-medium text-dash-ink">{estimatedSlides} slides</span> (cover + overview +
           conversions + selected breakdowns). Max {MAX_WEBSITE_BREAKDOWN_SLIDES} breakdown slides.
         </p>
@@ -553,16 +553,16 @@ export function WebsiteReportWizard({
                   className="mt-1 h-4 w-4 rounded border-dash-border accent-dash-accent"
                 />
                 <span>
-                  <span className="text-[16px] font-medium text-dash-ink">
+                  <span className="text-[14px] font-medium text-dash-ink">
                     {opt.label}
                     {opt.recommended ? (
-                      <span className="ml-2 text-[15px] font-normal uppercase tracking-wide text-dash-accent">
+                      <span className="ml-2 text-[14px] font-normal uppercase tracking-wide text-dash-accent">
                         Recommended
                       </span>
                     ) : null}
                   </span>
-                  <span className="mt-0.5 block text-[15px] text-dash-ink-secondary">{opt.description}</span>
-                  {opt.warning ? <span className="mt-1 block text-[16px] text-amber-400">{opt.warning}</span> : null}
+                  <span className="mt-0.5 block text-[14px] text-dash-ink-secondary">{opt.description}</span>
+                  {opt.warning ? <span className="mt-1 block text-[14px] text-amber-400">{opt.warning}</span> : null}
                 </span>
               </label>
               {opt.geoSelector && config.breakdowns.geo ? (
@@ -572,7 +572,7 @@ export function WebsiteReportWizard({
                       key={g.value}
                       type="button"
                       onClick={() => setGeoDimension(g.value)}
-                      className={`rounded-full px-3 py-1 text-[16px] font-medium ${
+                      className={`rounded-full px-3 py-1 text-[14px] font-medium ${
                         config.breakdowns.geoDimension === g.value
                           ? "bg-dash-accent text-dash-ink"
                           : "border border-dash-border bg-dash-card text-dash-ink-secondary hover:text-dash-ink"
@@ -587,10 +587,10 @@ export function WebsiteReportWizard({
           ))}
         </div>
         {selectedBreakdownCount === 0 ? (
-          <p className="mt-3 text-[15px] text-amber-400">Select at least one breakdown to generate a report.</p>
+          <p className="mt-3 text-[14px] text-amber-400">Select at least one breakdown to generate a report.</p>
         ) : null}
         {tooManyBreakdowns ? (
-          <p className="mt-3 text-[15px] text-red-300">
+          <p className="mt-3 text-[14px] text-red-300">
             Maximum {MAX_WEBSITE_BREAKDOWN_SLIDES} breakdown slides. Deselect{" "}
             {selectedBreakdownCount - MAX_WEBSITE_BREAKDOWN_SLIDES} to continue.
           </p>
@@ -599,18 +599,18 @@ export function WebsiteReportWizard({
 
       {/* Preview */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Preview</h2>
+        <h2 className="text-[16px] font-semibold text-dash-ink">Preview</h2>
         {tooManyBreakdowns || selectedBreakdownCount === 0 || (dataSource === "csv" && analyzeStatus !== "ready") ? (
-          <p className="mt-3 text-[16px] text-dash-ink-secondary">Complete the steps above to load a preview.</p>
+          <p className="mt-3 text-[14px] text-dash-ink-secondary">Complete the steps above to load a preview.</p>
         ) : previewStatus === "loading" ? (
-          <p className="mt-3 text-[16px] text-dash-ink-secondary">Loading GA4 data…</p>
+          <p className="mt-3 text-[14px] text-dash-ink-secondary">Loading GA4 data…</p>
         ) : previewError ? (
           <div className="mt-3 space-y-2">
-            <p className="text-[16px] text-red-300">{previewError}</p>
+            <p className="text-[14px] text-red-300">{previewError}</p>
             <button
               type="button"
               onClick={() => void fetchPreview()}
-              className="text-[15px] text-dash-accent underline"
+              className="text-[14px] text-dash-accent underline"
             >
               Retry preview
             </button>
@@ -619,51 +619,51 @@ export function WebsiteReportWizard({
           <div className="mt-4 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="text-[16px] uppercase tracking-wide text-dash-ink-secondary">Property</p>
-                <p className="text-[16px] font-medium text-dash-ink">{preview.propertyName}</p>
+                <p className="text-[14px] uppercase tracking-wide text-dash-ink-secondary">Property</p>
+                <p className="text-[14px] font-medium text-dash-ink">{preview.propertyName}</p>
               </div>
               <div>
-                <p className="text-[16px] uppercase tracking-wide text-dash-ink-secondary">Date range</p>
-                <p className="text-[16px] font-medium text-dash-ink">{preview.dateRangeLabel}</p>
+                <p className="text-[14px] uppercase tracking-wide text-dash-ink-secondary">Date range</p>
+                <p className="text-[14px] font-medium text-dash-ink">{preview.dateRangeLabel}</p>
                 {preview.comparisonRangeLabel ? (
-                  <p className="text-[16px] text-dash-ink-muted">vs {preview.comparisonRangeLabel}</p>
+                  <p className="text-[14px] text-dash-ink-muted">vs {preview.comparisonRangeLabel}</p>
                 ) : null}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {preview.overviewMetrics.slice(0, 4).map((m) => (
                 <div key={m.key} className="rounded-md border border-dash-border bg-dash-bg px-3 py-2">
-                  <p className="text-[15px] uppercase text-dash-ink-secondary">{m.label}</p>
-                  <p className="text-[17px] font-semibold text-dash-ink">{m.value}</p>
-                  {m.changeLabel ? <p className="text-[15px] text-dash-accent">{m.changeLabel}</p> : null}
+                  <p className="text-[14px] uppercase text-dash-ink-secondary">{m.label}</p>
+                  <p className="text-[15px] font-semibold text-dash-ink">{m.value}</p>
+                  {m.changeLabel ? <p className="text-[14px] text-dash-accent">{m.changeLabel}</p> : null}
                 </div>
               ))}
             </div>
-            <p className="text-[15px] text-dash-ink-secondary">
+            <p className="text-[14px] text-dash-ink-secondary">
               Deck includes {slideCount} slides · website type: {preview.clientKind.replace("_", " ")}
             </p>
-            <p className="text-[16px] text-dash-ink-muted">{preview.attributionNote}</p>
+            <p className="text-[14px] text-dash-ink-muted">{preview.attributionNote}</p>
           </div>
         ) : null}
       </div>
 
       {/* Generate */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h2 className="text-[18px] font-semibold text-dash-ink">Generate</h2>
-        <p className="mt-2 text-[16px] text-dash-ink-secondary">
+        <h2 className="text-[16px] font-semibold text-dash-ink">Generate</h2>
+        <p className="mt-2 text-[14px] text-dash-ink-secondary">
           Creates a branded PPT, browser share link, and PDF — same delivery as Meta and Google Ads reports.
         </p>
-        {generateError ? <p className="mt-3 text-[16px] text-red-300">{generateError}</p> : null}
+        {generateError ? <p className="mt-3 text-[14px] text-red-300">{generateError}</p> : null}
         {generateStatus === "done" && downloadUrl ? (
           <div className="mt-4 space-y-3">
             <a
               href={downloadUrl}
-              className="inline-flex rounded-md bg-dash-accent px-5 py-2.5 text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+              className="inline-flex rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
             >
               Download PPT
             </a>
             {shareToken ? (
-              <p className="text-[15px] text-dash-ink-secondary">
+              <p className="text-[14px] text-dash-ink-secondary">
                 Browser link:{" "}
                 <a href={`/r/${shareToken}`} className="text-dash-accent underline" target="_blank" rel="noreferrer">
                   Open share page
@@ -676,7 +676,7 @@ export function WebsiteReportWizard({
             type="button"
             onClick={() => void handleGenerate()}
             disabled={previewStatus !== "ready" || generateStatus === "loading" || !canPreview}
-            className="mt-4 h-12 w-full rounded-md bg-dash-accent text-[17px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40 sm:w-auto sm:px-8"
+            className="mt-4 h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40 sm:w-auto sm:px-8"
           >
             {generateStatus === "loading" ? "Generating…" : "Generate Website Traffic Report"}
           </button>
