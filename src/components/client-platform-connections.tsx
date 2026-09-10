@@ -18,10 +18,12 @@ export interface ClientPlatformConnectionsProps {
   googleAds: PlatformConnectionRow;
   tiktok: PlatformConnectionRow;
   ga4: PlatformConnectionRow;
+  /** False for India visitors — TikTok Ads is not available in India. */
+  showTikTok?: boolean;
 }
 
-const PLATFORMS: {
-  key: keyof ClientPlatformConnectionsProps;
+const ALL_PLATFORMS: {
+  key: keyof Omit<ClientPlatformConnectionsProps, "showTikTok">;
   name: string;
   hash: string;
   Icon: typeof MetaAdsBrandIcon;
@@ -59,6 +61,9 @@ function StatusBadge({ connected, configured }: { connected: boolean; configured
  * GA4 property linking stays in Ga4PropertyPicker below this summary.
  */
 export function ClientPlatformConnections(props: ClientPlatformConnectionsProps) {
+  const { showTikTok = true, ...rows } = props;
+  const platforms = showTikTok ? ALL_PLATFORMS : ALL_PLATFORMS.filter((p) => p.key !== "tiktok");
+
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
@@ -66,8 +71,8 @@ export function ClientPlatformConnections(props: ClientPlatformConnectionsProps)
         wizard.
       </p>
       <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-        {PLATFORMS.map(({ key, name, hash, Icon }) => {
-          const row = props[key];
+        {platforms.map(({ key, name, hash, Icon }) => {
+          const row = rows[key];
           const actionLabel = !row.configured
             ? "Unavailable"
             : row.connected
