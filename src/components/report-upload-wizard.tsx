@@ -40,7 +40,7 @@ import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
-import { budgetPacingWarning } from "@/lib/nre/budget-pacing";
+import { budgetPacingWarning, budgetReferenceNote } from "@/lib/nre/budget-pacing";
 import {
   Ga4BrandIcon,
   GoogleAdsBrandIcon,
@@ -1907,6 +1907,11 @@ export function ReportUploadWizard({
     return budgetPacingWarning(spend, clientMonthlyBudget, clientShowBudgetPacingOnCover);
   }, [previewKind, data, clientMonthlyBudget, clientShowBudgetPacingOnCover]);
 
+  const coverBudgetReferenceNote = useMemo(
+    () => budgetReferenceNote(clientMonthlyBudget, clientShowBudgetPacingOnCover, currencySymbol),
+    [clientMonthlyBudget, clientShowBudgetPacingOnCover, currencySymbol],
+  );
+
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
@@ -3150,6 +3155,11 @@ export function ReportUploadWizard({
           {coverBudgetPacingWarning && (
             <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
               {coverBudgetPacingWarning}
+            </p>
+          )}
+          {!coverBudgetPacingWarning && coverBudgetReferenceNote && (
+            <p className="rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
+              {coverBudgetReferenceNote}
             </p>
           )}
 

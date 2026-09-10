@@ -28,6 +28,20 @@ export function buildBudgetSummary(
   return `Monthly Ad Budget: ${fmtCurrency(mtdSpend, currencySymbol)} of ${fmtCurrency(monthlyBudget, currencySymbol)} used (${pct}%)`;
 }
 
+/** Generate-step note when a reference budget exists but cover pacing is off. */
+export function budgetReferenceNote(
+  monthlyBudget: number | null | undefined,
+  showOnCover: boolean,
+  currencySymbol: string,
+): string | null {
+  if (showOnCover) return null;
+  if (monthlyBudget == null || monthlyBudget <= 0) return null;
+  return (
+    `Reference budget ${fmtCurrency(monthlyBudget, currencySymbol)} is saved for your records — ` +
+    `not shown on the cover slide (pacing is off in Client Settings).`
+  );
+}
+
 /** Wizard-time warning before generate — null when pacing is fine or disabled. */
 export function budgetPacingWarning(
   mtdSpend: number,

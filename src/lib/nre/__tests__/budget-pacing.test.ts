@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBudgetSummary, budgetPacingWarning } from "../budget-pacing";
+import { buildBudgetSummary, budgetPacingWarning, budgetReferenceNote } from "../budget-pacing";
 
 describe("buildBudgetSummary", () => {
   it("returns empty when cover pacing is disabled", () => {
@@ -20,6 +20,18 @@ describe("buildBudgetSummary", () => {
     const line = buildBudgetSummary(3000, 1000, "₹", { showOnCover: true });
     expect(line).toContain("over");
     expect(line).not.toContain("300%");
+  });
+});
+
+describe("budgetReferenceNote", () => {
+  it("returns note when budget is set but cover pacing is off", () => {
+    const note = budgetReferenceNote(50000, false, "₹");
+    expect(note).toContain("₹50,000");
+    expect(note).toMatch(/not shown on the cover/i);
+  });
+
+  it("returns null when cover pacing is on", () => {
+    expect(budgetReferenceNote(50000, true, "₹")).toBeNull();
   });
 });
 
