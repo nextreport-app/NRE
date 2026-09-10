@@ -41,7 +41,7 @@ We use **advertising spend share** as the best proxy for what agencies need to r
 | TikTok | **☆☆☆☆☆** | **Banned — zero ad spend.** Do not show in UI for India visitors |
 | Retail / Q-comm | ★★★★☆ | Fast growth (Blinkit, Zepto, Amazon IN) — different report model |
 
-**India UI:** Meta · Google · GA4 only (no TikTok card in wizard, account, or client connections).
+**India UI:** Meta · Google · GA4 in the **report wizard only** (homepage and account settings unchanged).
 
 ### United States
 
@@ -134,12 +134,12 @@ Indian agencies serving US/EU clients at small scale can use a VPN or ask suppor
 
 ## Geo visibility rules
 
-| Visitor country (Vercel `x-vercel-ip-country`) | Wizard & dashboard platforms shown |
-|------------------------------------------------|-------------------------------------|
+| Visitor country (Vercel `x-vercel-ip-country`) | Report wizard platforms shown |
+|------------------------------------------------|----------------------------|
 | `IN` (India) | Meta · Google · GA4 |
 | All other / unknown | Meta · Google · TikTok · GA4 |
 
-Implementation: `src/lib/visitor-geo.ts` + `showTikTokOption` prop on wizard and connection components.
+Implementation: `src/lib/visitor-geo.ts` + `showTikTokOption` on `ReportUploadWizard` only (passed from the new-report page).
 
 ---
 
