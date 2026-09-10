@@ -1240,10 +1240,15 @@ export function ReportUploadWizard({
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
     const selectionKey = selectedCampaignsKey();
-    if (metricsFetchedForSelection !== selectionKey) {
+    const objectivesReady = metricsFetchedForSelection === selectionKey;
+
+    if (!objectivesReady) {
       await fetchObjectivesAndMetrics();
       setMetricsFetchedForSelection(selectionKey);
+      // First Continue only loads objectives inline — stay on step 2 so the user can review.
+      return;
     }
+
     if (hasBlockingObjectives()) return;
     setStep(3);
   }
@@ -2549,7 +2554,11 @@ export function ReportUploadWizard({
               }
               className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
-              {metricsStatus === "loading" ? "Loading…" : "Continue"}
+              {metricsStatus === "loading"
+                ? "Loading…"
+                : metricsFetchedForSelection === selectedCampaignsKey()
+                  ? "Continue to metrics"
+                  : "Continue"}
             </button>
           </div>
         </div>
