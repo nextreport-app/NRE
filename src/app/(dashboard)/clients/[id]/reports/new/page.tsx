@@ -7,6 +7,7 @@ import { ReportUploadWizard } from "@/components/report-upload-wizard";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { isGoogleAdsApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
+import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,6 +38,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   if (!user) notFound();
 
   const status = getSubscriptionStatus(user);
+  const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
 
   if (status.isBlocked) {
     return (
@@ -71,6 +73,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           tiktokConnected={!!user.tiktokAccessToken}
           hasGa4Property={!!client.ga4PropertyId}
           ga4Connected={!!user.ga4RefreshToken || user.ga4Enabled}
+          showTikTokOption={showTikTokOption}
         />
       </Suspense>
     </div>

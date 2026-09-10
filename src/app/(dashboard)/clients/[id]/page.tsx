@@ -19,6 +19,7 @@ import {
   isMetaApiConfigured,
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
+import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 
 const RECENT_REPORTS_LIMIT = 5;
 
@@ -58,6 +59,8 @@ export default async function ClientDetailPage({
 
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
+
+  const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
 
   const [reports, reportCount, owner] = await Promise.all([
     prisma.report.findMany({
@@ -153,6 +156,7 @@ export default async function ClientDetailPage({
               detail: owner?.ga4ConnectedEmail ?? null,
               configured: isGa4ApiConfigured(),
             }}
+            showTikTok={showTikTokOption}
           />
         </Card>
 
@@ -231,7 +235,13 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Meta, Google Ads, TikTok, and Google Analytics — all in one wizard.">
+          <CardHeading
+            hint={
+              showTikTokOption
+                ? "Meta, Google Ads, TikTok, and Google Analytics — all in one wizard."
+                : "Meta, Google Ads, and Google Analytics — all in one wizard."
+            }
+          >
             Generate report
           </CardHeading>
           <Link

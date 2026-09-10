@@ -12,6 +12,7 @@ import { getPlanDisplayName } from "@/lib/plan-labels";
 import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { Ga4Settings } from "@/components/ga4-settings";
 import { TikTokAdsSettings } from "@/components/tiktok-ads-settings";
+import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 
 const PLAN_LABELS: Record<string, string> = {
   trial: getPlanDisplayName("trial"),
@@ -75,6 +76,7 @@ export default async function AccountSettingsPage({
   const googleAdsConfigured = isGoogleAdsApiConfigured();
   const ga4Configured = isGa4ApiConfigured();
   const tiktokConfigured = isTikTokApiConfigured();
+  const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
 
   const status = getSubscriptionStatus(user);
 
@@ -132,16 +134,18 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section id="tiktok-ads" className="mb-10 scroll-mt-6">
-        <SectionHeading>TikTok Ads</SectionHeading>
-        <TikTokAdsSettings
-          initialConnectedName={user.tiktokConnectedName}
-          initialConnected={user.tiktokAdsEnabled}
-          justConnected={tiktok_ads_connected === "1"}
-          connectError={tiktok_ads_error ?? null}
-          tiktokConfigured={tiktokConfigured}
-        />
-      </section>
+      {showTikTokOption ? (
+        <section id="tiktok-ads" className="mb-10 scroll-mt-6">
+          <SectionHeading>TikTok Ads</SectionHeading>
+          <TikTokAdsSettings
+            initialConnectedName={user.tiktokConnectedName}
+            initialConnected={user.tiktokAdsEnabled}
+            justConnected={tiktok_ads_connected === "1"}
+            connectError={tiktok_ads_error ?? null}
+            tiktokConfigured={tiktokConfigured}
+          />
+        </section>
+      ) : null}
 
       <section className="mb-10">
         <IntegrationSettings

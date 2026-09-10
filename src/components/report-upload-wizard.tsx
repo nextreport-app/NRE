@@ -163,7 +163,7 @@ function saveWizardPlatformChoice(choice: WizardPlatformChoice) {
   }
 }
 
-function readInitialPlatformPickerState(): {
+function readInitialPlatformPickerState(showTikTokOption: boolean): {
   wizardKind: "ads" | "website";
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
   platformPickerExpanded: boolean;
@@ -176,6 +176,14 @@ function readInitialPlatformPickerState(): {
       selectedPlatformCard: null,
       platformPickerExpanded: false,
       hasSavedPlatformPreference: true,
+    };
+  }
+  if (stored === "TIKTOK" && !showTikTokOption) {
+    return {
+      wizardKind: "ads",
+      selectedPlatformCard: "META",
+      platformPickerExpanded: true,
+      hasSavedPlatformPreference: false,
     };
   }
   if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
@@ -373,6 +381,8 @@ export function ReportUploadWizard({
   tiktokConnected = false,
   hasGa4Property = false,
   ga4Connected = false,
+  /** False for India visitors — TikTok is banned there. */
+  showTikTokOption = true,
 }: {
   clientId: string;
   /** Client.accountName — used for the "Generate Another Report for [Client Name]" button (B3) and the friendly Drive link label. */
@@ -405,6 +415,7 @@ export function ReportUploadWizard({
   /** GA4 website reports — optional fourth path on Step 1. */
   hasGa4Property?: boolean;
   ga4Connected?: boolean;
+  showTikTokOption?: boolean;
 }) {
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
   const [step, setStepState] = useState<Step>(1);
@@ -429,13 +440,13 @@ export function ReportUploadWizard({
   const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | "TIKTOK" | null>("META");
 
   useLayoutEffect(() => {
-    const initial = readInitialPlatformPickerState();
+    const initial = readInitialPlatformPickerState(showTikTokOption);
     if (!initial.hasSavedPlatformPreference) return;
     setWizardKind(initial.wizardKind);
     setSelectedPlatformCard(initial.selectedPlatformCard);
     setPlatformPickerExpanded(false);
     setHasSavedPlatformPreference(true);
-  }, []);
+  }, [showTikTokOption]);
 
   function rememberPlatformChoice(choice: WizardPlatformChoice) {
     saveWizardPlatformChoice(choice);
@@ -1998,7 +2009,9 @@ export function ReportUploadWizard({
           {platformPickerExpanded ? (
             <>
               <h3 className="text-[18px] font-semibold text-white">Select platform</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div
+                className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showTikTokOption ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+              >
                 <ReportTypeCard
                   icon={<MetaAdsBrandIcon />}
                   heading="Meta Ads"
@@ -2015,14 +2028,16 @@ export function ReportUploadWizard({
                   onSelect={() => choosePlatform("GOOGLE")}
                   singleLineHeading
                 />
-                <ReportTypeCard
-                  icon={<TikTokAdsBrandIcon />}
-                  heading="TikTok Ads"
-                  description="Sync via Marketing API or upload a CSV export"
-                  selected={selectedPlatformCard === "TIKTOK"}
-                  onSelect={() => choosePlatform("TIKTOK")}
-                  singleLineHeading
-                />
+                {showTikTokOption ? (
+                  <ReportTypeCard
+                    icon={<TikTokAdsBrandIcon />}
+                    heading="TikTok Ads"
+                    description="Sync via Marketing API or upload a CSV export"
+                    selected={selectedPlatformCard === "TIKTOK"}
+                    onSelect={() => choosePlatform("TIKTOK")}
+                    singleLineHeading
+                  />
+                ) : null}
                 <ReportTypeCard
                   icon={<Ga4BrandIcon />}
                   heading="Google Analytics"
