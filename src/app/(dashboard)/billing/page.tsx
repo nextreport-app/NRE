@@ -14,8 +14,6 @@ const PLAN_LABELS: Record<string, string> = {
   cancelled: getPlanDisplayName("cancelled"),
 };
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
@@ -83,8 +81,16 @@ export default async function BillingPage() {
           </p>
         )}
 
-        {status.isSubscribed && nextBillingDate && (
-          <p className="mt-3 text-[15px] text-dash-ink-secondary">Next billing date: {formatDate(nextBillingDate)}</p>
+        {status.isSubscribed && (
+          <p className="mt-3 text-[15px] text-dash-ink-secondary">
+            Paid via one-time checkout — no automatic monthly charge. Access stays active until you cancel below.
+            {user.subscribedAt ? (
+              <>
+                {" "}
+                Subscribed on {formatDate(user.subscribedAt)}.
+              </>
+            ) : null}
+          </p>
         )}
 
         {status.planId === "cancelled" && (
