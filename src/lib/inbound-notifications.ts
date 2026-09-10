@@ -8,10 +8,11 @@
 import { getResendClient, FROM_ADDRESS } from "@/lib/email";
 import { getPlanDisplayName } from "@/lib/plan-labels";
 
-export type InboundChannel = "contact" | "newsletter" | "support" | "billing";
+export type InboundChannel = "contact" | "demo" | "newsletter" | "support" | "billing";
 
 const CHANNEL_ENV: Record<InboundChannel, string> = {
   contact: "CONTACT_NOTIFY_EMAILS",
+  demo: "DEMO_NOTIFY_EMAILS",
   newsletter: "NEWSLETTER_NOTIFY_EMAILS",
   support: "SUPPORT_NOTIFY_EMAILS",
   billing: "BILLING_NOTIFY_EMAILS",
@@ -20,6 +21,7 @@ const CHANNEL_ENV: Record<InboundChannel, string> = {
 /** Default routing — override with env vars on Vercel. */
 const CHANNEL_DEFAULT: Record<InboundChannel, string> = {
   contact: "hello@nextreport.in",
+  demo: "hello@nextreport.in",
   newsletter: "hello@nextreport.in",
   support: "support@nextreport.in",
   billing: "billing@nextreport.in",

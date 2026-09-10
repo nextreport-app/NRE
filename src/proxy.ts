@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/data-deletion",
   "/terms",
   "/contact",
+  "/book-demo",
   "/about",
   "/pricing",
   "/help/download",
@@ -62,6 +63,7 @@ export default auth((req) => {
     // The /contact form (public page) is filled out by anonymous visitors
     // too — same reasoning as /api/waitlist above.
     pathname === "/api/contact" ||
+    pathname === "/api/book-demo" ||
     // Meta-required data deletion callback — server-to-server POST with
     // signed_request, no NextAuth session (see api/meta/data-deletion).
     pathname === "/api/meta/data-deletion";

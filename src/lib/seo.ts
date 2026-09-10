@@ -52,6 +52,7 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/book-demo", changeFrequency: "monthly", priority: 0.75 },
   { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.3 },
@@ -355,23 +356,23 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
 
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
-    name: "Connect or upload",
-    text: "Connect Meta, Google Ads, TikTok, or GA4 via official API in Account settings, or upload a CSV export in the report wizard.",
+    name: "Add your ad data",
+    text: "Connect Meta, Google Ads, TikTok, or GA4 via official API in Account Settings, or upload a CSV export in the report wizard.",
   },
   {
-    name: "Select campaigns and dates",
-    text: "Choose which campaigns and ad sets to include and pick your reporting period.",
+    name: "Select campaigns and ad sets",
+    text: "Choose which campaigns and ad sets to include in the client deck.",
   },
   {
     name: "Confirm objectives",
     text: "Review auto-detected campaign objectives — leads, purchases, traffic, reach, and more — and correct any that look wrong.",
   },
   {
-    name: "Review metrics",
-    text: "Preview the metric cards on each campaign slide and add or remove metrics as needed.",
+    name: "Review metric cards",
+    text: "Preview the KPI chips on each campaign slide and add or remove metrics as needed.",
   },
   {
-    name: "Generate and share",
-    text: "Click Generate to download a branded PowerPoint (.pptx), share a live browser link, or export a PDF.",
+    name: "Choose report type and generate",
+    text: "Pick weekly, monthly, comparison, or custom dates, then download .pptx, share a live link, export PDF, or save to Google Drive.",
   },
 ];

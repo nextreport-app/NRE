@@ -56,7 +56,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
         <div className="hidden items-center gap-2 lg:flex">
           <CurrencySelector compact />
           <Link
-            href="/contact"
+            href="/book-demo"
             className="rounded-md px-3 py-2 text-sm text-ink-secondary transition-colors hover:text-white"
           >
             Book a demo
@@ -116,7 +116,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
               </Link>
             ))}
             <Link
-              href="/contact"
+              href="/book-demo"
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2.5 text-sm text-ink-secondary hover:bg-navy-panel hover:text-white"
             >

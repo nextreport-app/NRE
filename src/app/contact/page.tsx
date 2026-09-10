@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
@@ -25,7 +26,11 @@ export default async function ContactPage() {
           <h1 className="text-3xl font-semibold text-white">Get in Touch</h1>
           <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
             Have a question, feedback, or need help with your NextReport account? We will respond
-            within one business day.
+            within one business day. Want a live product walkthrough?{" "}
+            <Link href="/book-demo" className="text-[#f5b45a] hover:underline">
+              Book a demo
+            </Link>{" "}
+            instead.
           </p>
           <p className="mt-3 text-sm text-ink-muted">
             Or email us directly:{" "}

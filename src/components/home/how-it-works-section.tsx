@@ -1,19 +1,21 @@
+import Link from "next/link";
+
 const STEPS = [
   {
     number: "1",
     title: "Connect or upload",
     description:
-      "Sync from Meta Ads, Google Ads, TikTok, or GA4 via official API — or upload a CSV export. Pick the path that suits your workflow.",
+      "Sync Meta, Google Ads, TikTok, or GA4 via official API — or upload a CSV export.",
   },
   {
     number: "2",
-    title: "Select campaigns and dates",
-    description: "Filter to only the campaigns you manage. Choose your reporting period.",
+    title: "Confirm & review",
+    description: "Select campaigns, verify objectives, and preview metric cards before you generate.",
   },
   {
     number: "3",
-    title: "Download or share",
-    description: "Get a branded PowerPoint or save directly to Google Drive with a shareable link.",
+    title: "Generate & share",
+    description: "Branded .pptx, live link, PDF, Google Drive, WhatsApp, or email — often under 2 minutes.",
   },
 ];
 
@@ -22,8 +24,11 @@ export function HowItWorksSection() {
     <section className="bg-navy px-6 py-20">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center text-2xl font-semibold text-white sm:text-3xl">
-          Three steps to your weekly report
+          Client reports in three moves
         </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">
+          The wizard has five detailed steps — here is the short version.
+        </p>
 
         <div className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
           {STEPS.map((step) => (
@@ -36,6 +41,12 @@ export function HowItWorksSection() {
             </div>
           ))}
         </div>
+
+        <p className="mt-10 text-center text-sm">
+          <Link href="/how-it-works" className="text-accent-orange hover:underline">
+            See the full 5-step walkthrough →
+          </Link>
+        </p>
       </div>
     </section>
   );
