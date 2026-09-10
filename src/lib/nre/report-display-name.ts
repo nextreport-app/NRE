@@ -1,9 +1,20 @@
-export type ReportDisplayNameType = "WEEKLY" | "MONTHLY" | "DAILY" | "COMPARISON" | "CREATIVE" | "WEBSITE" | "HISTORICAL";
+export type ReportDisplayNameType =
+  | "WEEKLY"
+  | "MONTHLY"
+  | "DAILY"
+  | "QUARTER"
+  | "YTD"
+  | "COMPARISON"
+  | "CREATIVE"
+  | "WEBSITE"
+  | "HISTORICAL";
 
 const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
   DAILY: "Daily",
+  QUARTER: "Quarterly",
+  YTD: "Year-to-Date",
   COMPARISON: "Comparison",
   CREATIVE: "Creative",
   WEBSITE: "Website Traffic",

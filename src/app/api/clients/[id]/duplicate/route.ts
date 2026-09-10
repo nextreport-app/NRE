@@ -51,6 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         currency: source.currency,
         timezone: source.timezone,
         monthlyBudget: source.monthlyBudget,
+        showBudgetPacingOnCover: source.showBudgetPacingOnCover,
         template: source.template,
       },
     });

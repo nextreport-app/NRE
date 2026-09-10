@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "ReportType" ADD VALUE 'QUARTER';
+ALTER TYPE "ReportType" ADD VALUE 'YTD';

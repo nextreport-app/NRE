@@ -60,6 +60,8 @@ export interface DateRangeIso {
 export interface WeeklyRangeOptions {
   last7: DateRangeIso;
   prev7: DateRangeIso;
+  /** Trailing 14 days ending calendar yesterday — bi-weekly reporting preset. */
+  last14: DateRangeIso;
 }
 
 /** "Last 7 days ending calendar yesterday" and the 7 days before that — anchored to the client's timezone, not the CSV's latest row. */
@@ -72,10 +74,27 @@ export function computeWeeklyRangeOptions(
   const last7Start = addDays(calendarYesterday, -6);
   const prev7End = addDays(last7Start, -1);
   const prev7Start = addDays(prev7End, -6);
+  const last14Start = addDays(calendarYesterday, -13);
   return {
     last7: { startIso: toIsoDate(last7Start), endIso: toIsoDate(calendarYesterday) },
     prev7: { startIso: toIsoDate(prev7Start), endIso: toIsoDate(prev7End) },
+    last14: { startIso: toIsoDate(last14Start), endIso: toIsoDate(calendarYesterday) },
   };
+}
+
+/** Current calendar quarter through yesterday — QTD window in the client's timezone. */
+export function computeQuarterRangeIso(now: Date = new Date(), timezone = "UTC"): DateRangeIso {
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const quarterStartMonth = Math.floor((calendarYesterday.month - 1) / 3) * 3 + 1;
+  const quarterStart: ParsedDate = { year: calendarYesterday.year, month: quarterStartMonth, day: 1 };
+  return { startIso: toIsoDate(quarterStart), endIso: toIsoDate(calendarYesterday) };
+}
+
+/** Year to date — Jan 1 through yesterday in the client's timezone. */
+export function computeYtdRangeIso(now: Date = new Date(), timezone = "UTC"): DateRangeIso {
+  const calendarYesterday = getCalendarYesterday(now, timezone);
+  const yearStart: ParsedDate = { year: calendarYesterday.year, month: 1, day: 1 };
+  return { startIso: toIsoDate(yearStart), endIso: toIsoDate(calendarYesterday) };
 }
 
 function daysInMonth(year: number, month: number): number {

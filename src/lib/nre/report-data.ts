@@ -65,7 +65,17 @@ import { listAvailableMetrics, objectiveMetricKeys, splitMetricsForSlides, type 
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { detectAdNameColumn } from "./ad-level";
 import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
-import { computeCreativeRangeIso, computeEffectiveYesterday, computeMtdRangeIso, computeWeeklyRangeOptions, toIsoDate } from "./date-range";
+import {
+  computeCreativeRangeIso,
+  computeEffectiveYesterday,
+  computeMtdRangeIso,
+  computeQuarterRangeIso,
+  computeWeeklyRangeOptions,
+  computeYtdRangeIso,
+  filterNreRowsByDateRange,
+  toIsoDate,
+} from "./date-range";
+import { buildBudgetSummary } from "./budget-pacing";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
 function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
@@ -302,7 +312,7 @@ export interface ObjectiveWarning {
  * "Weekly", and the Combined Total table shows only its MTD row (see
  * pptx/fill-tags.ts's buildTableSlideXml).
  */
-export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE";
+export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE" | "QUARTER" | "YTD";
 
 /** Which ad platform this report's data came from — drives template selection and a handful of label/prompt differences in the render and AI layers. Defaults to "META" everywhere in this file; only google-report-data.ts's buildGoogleReportData ever produces "GOOGLE". */
 export type Platform = "META" | "GOOGLE" | "TIKTOK";
@@ -334,6 +344,8 @@ export interface BuildReportDataInput {
   currencySymbol: string;
   timezone: string;
   monthlyBudget: number | null;
+  /** When true (and monthlyBudget set), cover slide shows budget pacing — see Client.showBudgetPacingOnCover. */
+  showBudgetPacingOnCover?: boolean;
   /** Raw column-mapped rows from the "MTD Daily CSV" upload (required). */
   mtdDailyRows: NreRow[];
   /** Raw column-mapped rows from the client's optional Previous Month Data upload (previous full month) — see lib/nre/previous-month-data.ts. */
@@ -803,9 +815,25 @@ export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers
 /** Client-facing copy when the selected reporting window has no delivery. */
 export function buildPausedAccountMessage(accountName: string, reportType: ReportType = "WEEKLY"): string {
   const periodLabel =
-    reportType === "MONTHLY" ? "monthly" : reportType === "DAILY" ? "daily" : "weekly";
+    reportType === "MONTHLY"
+      ? "monthly"
+      : reportType === "QUARTER"
+        ? "quarterly"
+        : reportType === "YTD"
+          ? "year-to-date"
+          : reportType === "DAILY"
+            ? "daily"
+            : "weekly";
   const windowLabel =
-    reportType === "MONTHLY" ? "this month" : reportType === "DAILY" ? "on the selected day(s)" : "in the last week";
+    reportType === "MONTHLY"
+      ? "this month"
+      : reportType === "QUARTER"
+        ? "this quarter"
+        : reportType === "YTD"
+          ? "year to date"
+          : reportType === "DAILY"
+            ? "on the selected day(s)"
+            : "in the last week";
   return (
     `Campaigns for ${accountName} were paused during the selected ${periodLabel} reporting period ` +
     `and did not generate impressions, spend, or results ${windowLabel}.`
@@ -907,6 +935,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     currencySymbol,
     timezone,
     monthlyBudget,
+    showBudgetPacingOnCover = false,
     mtdDailyRows,
     periodRows,
     selectedCampaigns,
@@ -924,6 +953,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   } = input;
   const platform = platformInput ?? "META";
   const isMonthlyReport = reportType === "MONTHLY";
+  const isQuarterReport = reportType === "QUARTER";
+  const isYtdReport = reportType === "YTD";
+  const isCalendarSpanReport = isMonthlyReport || isQuarterReport || isYtdReport;
   const isDailyReport = reportType === "DAILY";
   const isCreativeReport = reportType === "CREATIVE" || creativeOnly;
 
@@ -932,42 +964,38 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // BuildReportDataInput: it only prunes which ad-set slides get built
   // (Phase A2 below), never the rows that feed MTD/weekly totals.
   const filteredMtdDailyRows = campaignFilteredRows;
-  const mtdCalendarRange = computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
+  const mtdCalendarRange =
+    isQuarterReport
+      ? computeQuarterRangeIso(now, timezone)
+      : isYtdReport
+        ? computeYtdRangeIso(now, timezone)
+        : computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
   const resolvedWeeklyRange =
-    weeklyRange ?? (!isMonthlyReport ? computeWeeklyRangeOptions(filteredMtdDailyRows, now, timezone).last7 : undefined);
-  // A Monthly report has no weekly window at all — weeklyRange is ignored
-  // (never even resolved by the caller in that case) and splitMtdDaily's
-  // own weekly split is simply never used below (see primaryRows).
+    weeklyRange ?? (!isCalendarSpanReport ? computeWeeklyRangeOptions(filteredMtdDailyRows, now, timezone).last7 : undefined);
   const split = splitMtdDaily(filteredMtdDailyRows, now, {
     ...(weeklyRange ? { weeklyRange } : resolvedWeeklyRange ? { weeklyRange: resolvedWeeklyRange } : {}),
     timezone,
   });
 
-  // The optional Previous Month Data (previous full month) feeds the table
-  // slide's separate "Period" row. Its campaign selection is independent of
-  // the MTD Daily CSV's — it's made against the Previous Month Data upload's
-  // own campaign list (Client.previousMonthSelectedCampaigns) and applied by
-  // the caller via loadPreviousMonthDataRows() *before* periodRows ever
-  // reaches this function. Re-filtering here with the MTD CSV's own
-  // selectedCampaigns/selectedAdSets (an unrelated selection, scoped to a
-  // different month's data and often a different set of campaigns/ad sets
-  // entirely) would silently drop previous-month campaigns that aren't
-  // present in — or selectable from — the current month's MTD CSV, e.g. a
-  // campaign paused this month that still had spend last month. So
-  // periodRows is used as-is here, already filtered exactly once, correctly.
   const filteredPeriodRows = periodRows ?? [];
-  const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
-  const mtdRows: AggRow[] = split?.mtdRows ?? [];
-  // The rows campaign/ad-set slides, the health score, and the report-wide
-  // date range are all built from — the trailing-7-day (or custom) window
-  // normally, or the full MTD dataset for a Monthly report ("the report
-  // generates using the full MTD data only, no separate weekly period" —
-  // see ReportType's doc comment). mtdRows itself is untouched either way:
-  // the MTD chart slide and Combined Total table's MTD row always use it
-  // directly, regardless of reportType.
-  const primaryRows: AggRow[] = isMonthlyReport ? mtdRows : weeklyRows;
+  let weeklyRows: AggRow[] = split?.weeklyRows ?? [];
+  let mtdRows: AggRow[] = split?.mtdRows ?? [];
+  let primaryRows: AggRow[];
+  let primaryRawRows: NreRow[];
+
+  if (isQuarterReport || isYtdReport) {
+    primaryRawRows = filterNreRowsByDateRange(filteredMtdDailyRows, mtdCalendarRange);
+    primaryRows = aggregateRows(primaryRawRows);
+    mtdRows = primaryRows;
+  } else if (isMonthlyReport) {
+    primaryRows = mtdRows;
+    primaryRawRows = split?.mtdRawRows ?? [];
+  } else {
+    primaryRows = weeklyRows;
+    primaryRawRows = split?.weeklyRawRows ?? [];
+  }
+
   const isPaused = primaryRows.length === 0;
-  const primaryRawRows: NreRow[] = isMonthlyReport ? (split?.mtdRawRows ?? []) : (split?.weeklyRawRows ?? []);
 
   const adNameColumn =
     adNameColumnInput ??
@@ -1027,7 +1055,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         dateRange: dateLine,
         healthBadge: badge,
         healthScore: score,
-        budgetSummary: "",
+        budgetSummary: buildBudgetSummary(
+          creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0),
+          monthlyBudget,
+          currencySymbol,
+          { showOnCover: showBudgetPacingOnCover },
+        ),
       },
       campaignSlides: [],
       adSetSlides: [],
@@ -1123,7 +1156,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // Global reporting date range — the intended weekly or MTD window, not the
   // min/max dates of whichever campaigns happened to deliver during it.
   let globalWeekDateRange = "";
-  if (isMonthlyReport) {
+  if (isCalendarSpanReport) {
     globalWeekDateRange = getDateRangeShortLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
   } else if (resolvedWeeklyRange) {
     globalWeekDateRange = getDateRangeShortLabel(resolvedWeeklyRange.startIso, resolvedWeeklyRange.endIso);
@@ -1159,6 +1192,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     }, { month: "", day: "", year: "" } as { month: string; day: string; year: string });
   const reportDateStr = `${reportDate.month}-${reportDate.day}-${reportDate.year}`;
 
+  const mtdSpendTotal = mtdRows.reduce((sum, row) => sum + (row.spend || 0), 0);
+  const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
+    showOnCover: showBudgetPacingOnCover,
+  });
+
   // ── Cover ──────────────────────────────────────────────────────────────
   let cover: CoverData;
   if (isPaused) {
@@ -1171,7 +1209,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       budgetSummary: "",
     };
   } else {
-    const periodLabel = isMonthlyReport ? "Monthly" : isDailyReport ? "Daily" : "Weekly";
+    const periodLabel = isMonthlyReport
+      ? "Monthly"
+      : isQuarterReport
+        ? "Quarterly"
+        : isYtdReport
+          ? "Year-to-date"
+          : isDailyReport
+            ? "Daily"
+            : "Weekly";
     const { score, badge } = calculateAccountHealth(primaryRows, periodLabel);
     cover = {
       accountName,
@@ -1179,7 +1225,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       dateRange: globalWeekDateRange,
       healthBadge: badge,
       healthScore: score,
-      budgetSummary: "",
+      budgetSummary: budgetSummaryLine,
     };
   }
 

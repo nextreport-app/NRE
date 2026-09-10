@@ -17,6 +17,8 @@ export type ClientFormValues = {
   accountName: string;
   currency: (typeof CURRENCIES)[number];
   timezone: string;
+  monthlyBudget: string;
+  showBudgetPacingOnCover: boolean;
   template: (typeof TEMPLATES)[number];
   notes: string;
 };
@@ -63,6 +65,8 @@ export function ClientForm({
     accountName: initial?.accountName ?? "",
     currency: initial?.currency ?? "INR",
     timezone: initial?.timezone ?? "Asia/Kolkata",
+    monthlyBudget: initial?.monthlyBudget ?? "",
+    showBudgetPacingOnCover: initial?.showBudgetPacingOnCover ?? false,
     template: initial?.template ?? "DARK",
     notes: initial?.notes ?? "",
   });
@@ -127,10 +131,21 @@ export function ClientForm({
     const url = clientId ? `/api/clients/${clientId}` : "/api/clients";
     const method = clientId ? "PATCH" : "POST";
 
+    const budgetNum = values.monthlyBudget.trim() ? Number(values.monthlyBudget) : null;
+    const payload = {
+      accountName: values.accountName,
+      currency: values.currency,
+      timezone: values.timezone,
+      template: values.template,
+      notes: values.notes,
+      monthlyBudget: budgetNum != null && !Number.isNaN(budgetNum) && budgetNum > 0 ? budgetNum : null,
+      showBudgetPacingOnCover: values.showBudgetPacingOnCover,
+    };
+
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -218,6 +233,39 @@ export function ClientForm({
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Monthly ad budget — optional</label>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dash-ink-secondary">
+            {CURRENCY_SYMBOL[values.currency]}
+          </span>
+          <input
+            type="number"
+            min={0}
+            step="any"
+            value={values.monthlyBudget}
+            onChange={(e) => set("monthlyBudget", e.target.value)}
+            placeholder="e.g. 50000"
+            className="w-full rounded-md border border-dash-border bg-dash-card py-2 pl-8 pr-3 text-sm text-dash-ink outline-none focus:border-dash-accent"
+          />
+        </div>
+        <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-dash-border bg-dash-sidebar/50 px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={values.showBudgetPacingOnCover}
+            onChange={(e) => set("showBudgetPacingOnCover", e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-dash-border"
+          />
+          <span className="text-sm text-dash-ink-secondary">
+            Show budget pacing on report cover
+            <span className="mt-0.5 block text-xs text-dash-ink-muted">
+              Off by default. When on, client-facing decks show spend vs this reference budget. Update the figure when
+              budgets change mid-month.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div>

@@ -6,9 +6,7 @@ import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
-import { buildGoogleReportData } from "@/lib/nre/google-report-data";
-import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
-import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
+import { detectPlatform } from "@/lib/nre/google-columns";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
@@ -63,24 +61,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const platform = platformOverride ?? detectPlatform(headers);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
-  if (platform === "GOOGLE") {
-    const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
-    const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
-    if (!validation.valid) {
-      return NextResponse.json({ valid: false, errors: validation.errors, warnings: validation.warnings }, { status: 200 });
-    }
-
-    const data = buildGoogleReportData({
-      accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
-      monthlyBudget: client.monthlyBudget,
-      mtdDailyRows: rows,
-      selectedMetrics,
-    });
-
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
-  }
-
   const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
 
@@ -114,6 +94,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
   else if (parsedReportType === "DAILY") reportType = "DAILY";
   else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
+  else if (parsedReportType === "QUARTER") reportType = "QUARTER";
+  else if (parsedReportType === "YTD") reportType = "YTD";
   else if (parsedReportType === "COMPARISON") {
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
     const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
@@ -191,7 +173,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignMetricOverrides,
       objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
       monthCount: resolvedMonthCount,
-      platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+      platform,
     });
 
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isHistorical: true, data });
@@ -226,7 +208,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
     weeklyRange = daily;
-  } else if (reportType !== "CREATIVE") {
+  } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
     const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
     if (!dateResolution.ok) {
       return NextResponse.json(
@@ -244,6 +226,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
+    showBudgetPacingOnCover: client.showBudgetPacingOnCover,
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
@@ -256,7 +239,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
     adNameColumn: detectAdNameColumn(mtdParsed.headers),
     creativeOnly: reportType === "CREATIVE",
-    platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+    platform,
   });
 
   return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });

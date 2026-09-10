@@ -39,5 +39,7 @@ export function resolveDateSelection(
   }
 
   const options = computeWeeklyRangeOptions(rows, now, timezone);
-  return { ok: true, weeklyRange: selection.mode === "prev7" ? options.prev7 : options.last7 };
+  if (selection.mode === "prev7") return { ok: true, weeklyRange: options.prev7 };
+  if (selection.mode === "last14") return { ok: true, weeklyRange: options.last14 };
+  return { ok: true, weeklyRange: options.last7 };
 }

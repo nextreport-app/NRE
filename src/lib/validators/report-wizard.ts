@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DATE_SELECTION_MODES = ["last7", "prev7", "custom"] as const;
+export const DATE_SELECTION_MODES = ["last7", "prev7", "last14", "custom"] as const;
 
 export const dateSelectionSchema = z
   .object({
@@ -50,7 +50,17 @@ export const reportTitleSchema = z.string().trim().min(1).max(100);
 // report-upload-wizard.tsx's PreviousMonthSummaryOption). The generated
 // Report row is still stored with reportType "MONTHLY" — the closest real
 // enum value — never this literal; no database/schema change needed.
-export const reportTypeSchema = z.enum(["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE", "PREVIOUS_MONTH_SUMMARY", "HISTORICAL"]);
+export const reportTypeSchema = z.enum([
+  "WEEKLY",
+  "MONTHLY",
+  "DAILY",
+  "QUARTER",
+  "YTD",
+  "COMPARISON",
+  "CREATIVE",
+  "PREVIOUS_MONTH_SUMMARY",
+  "HISTORICAL",
+]);
 
 /** Wizard Step 5 report types (excludes generate-only PREVIOUS_MONTH_SUMMARY). */
 export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIOUS_MONTH_SUMMARY">;

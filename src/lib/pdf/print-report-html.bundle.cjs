@@ -254,6 +254,95 @@ function ShareChartDonut({
   ] });
 }
 
+// src/lib/pptx/chart-slide-layout.ts
+var MTD_SLIDE_H = 540;
+var MTD_BLOCK = {
+  titleH: 50,
+  gapAfterTitle: 8,
+  panelH: 384,
+  gapBeforeSummary: 12,
+  summaryH: 36
+};
+function mtdContentBlockTop() {
+  const blockH = MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary + MTD_BLOCK.summaryH;
+  return Math.round((MTD_SLIDE_H - blockH) / 2);
+}
+var MTD_BLOCK_TOP = mtdContentBlockTop();
+var MTD_VISUAL = {
+  marginX: 52,
+  titleY: MTD_BLOCK_TOP,
+  titleH: MTD_BLOCK.titleH,
+  panelY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle,
+  panelH: MTD_BLOCK.panelH,
+  summaryY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary,
+  summaryH: MTD_BLOCK.summaryH,
+  leftX: 52,
+  leftW: 348,
+  sepX: 412,
+  rightX: 428,
+  rightW: 480,
+  miniDonutCaptionH: 28,
+  groupedDonutD: 188,
+  barH: 26,
+  barNameH: 18,
+  barMetricsH: 20,
+  barRowGap: 16,
+  groupedDonutLegendRowH: 22,
+  groupedDonutLegendRowGap: 8,
+  groupedDonutLegendSizePt: 16,
+  barTrackMaxW: 448,
+  labelColW: 0,
+  panelHeadingH: 26,
+  panelPad: 14
+};
+var MTD_DONUT_D = 220;
+var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
+var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 6 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
+function resultBarLayout(barCount) {
+  const header = MTD_VISUAL.panelHeadingH + 8;
+  const available = MTD_VISUAL.panelH - header;
+  const minRowH = 52;
+  const rowH = barCount > 0 ? Math.max(minRowH, Math.min(IDEAL_RESULT_BAR_ROW_H, Math.floor(available / barCount))) : IDEAL_RESULT_BAR_ROW_H;
+  const scale = Math.min(1, rowH / IDEAL_RESULT_BAR_ROW_H);
+  const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
+  const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
+  const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
+  const nameMetricsGap = Math.max(2, Math.round(4 * scale));
+  const metricsBarGap = Math.max(3, Math.round(6 * scale));
+  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 15;
+  const metricsSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 16;
+  const blockH = barCount * rowH;
+  const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
+  return { rowH, startY, nameH, metricsH, barH, nameMetricsGap, metricsBarGap, nameSizePt, metricsSizePt };
+}
+function groupedDonutLayout(segmentCount, panelTopY) {
+  const header = MTD_VISUAL.panelHeadingH + 8;
+  const available = MTD_VISUAL.panelH - header;
+  let donutD = MTD_VISUAL.groupedDonutD;
+  let legendRowH = MTD_VISUAL.groupedDonutLegendRowH;
+  let legendRowGap = MTD_VISUAL.groupedDonutLegendRowGap;
+  let legendSizePt = MTD_VISUAL.groupedDonutLegendSizePt;
+  if (segmentCount >= 6) {
+    donutD = 158;
+    legendRowH = 16;
+    legendRowGap = 4;
+    legendSizePt = 11;
+  } else if (segmentCount >= 5) {
+    donutD = 168;
+    legendRowH = 18;
+    legendRowGap = 5;
+    legendSizePt = 12;
+  } else if (segmentCount >= 4) {
+    legendRowH = 20;
+    legendRowGap = 6;
+    legendSizePt = 14;
+  }
+  const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;
+  const blockH = donutD + 16 + legendH;
+  const blockTopY = panelTopY + header + Math.max(0, (available - blockH) / 2);
+  return { donutD, legendRowH, legendRowGap, legendSizePt, blockTopY };
+}
+
 // src/lib/pptx/metric-icons.ts
 function resolveMetricIconId(metric) {
   switch (metric.key) {
@@ -449,7 +538,8 @@ function VisualResultBar({
   name,
   color,
   statLine,
-  barPct
+  barPct,
+  compact = false
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
@@ -457,20 +547,41 @@ function VisualResultBar({
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
         "span",
         {
-          className: "inline-block h-3 w-3 shrink-0 rounded-full",
+          className: `inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`,
           style: { backgroundColor: `#${color}` },
           "aria-hidden": "true"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-tight text-ink", children: name })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "p",
+        {
+          className: `min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold leading-tight text-ink ${compact ? "text-[13px]" : "text-[15px]"}`,
+          children: name
+        }
+      )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 overflow-hidden text-ellipsis whitespace-nowrap pl-5 text-[16px] font-bold leading-tight text-[#94a3b8]", children: statLine }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-2 h-7 overflow-hidden rounded bg-[#1e293b]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      "p",
+      {
+        className: `overflow-hidden text-ellipsis whitespace-nowrap pl-5 font-bold leading-tight text-[#94a3b8] ${compact ? "mt-0.5 text-[13px]" : "mt-1 text-[16px]"}`,
+        children: statLine
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
   ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
   if (!model) return null;
+  const barCount = model.resultBars.length;
+  const barLayout = resultBarLayout(barCount);
+  const compactBars = barCount >= 4;
+  const barGapClass = barCount >= 5 ? "space-y-2" : barCount >= 4 ? "space-y-3" : "space-y-6";
+  const donutSegmentCount = model.groupedDonut?.length ?? 0;
+  const donutLayout = donutSegmentCount > 0 ? groupedDonutLayout(donutSegmentCount, MTD_VISUAL.panelY) : null;
+  const donutSizePx = donutLayout ? Math.round(donutLayout.donutD / MTD_VISUAL.groupedDonutD * 204) : 204;
+  const legendTextClass = donutLayout && donutLayout.legendSizePt <= 12 ? "text-[12px]" : donutLayout && donutLayout.legendSizePt <= 13 ? "text-[13px]" : donutLayout && donutLayout.legendSizePt <= 14 ? "text-[14px]" : "text-[16px]";
+  const legendGapClass = donutSegmentCount >= 5 ? "space-y-1" : "space-y-2";
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SlideCard, { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-h-[520px] flex-col justify-center", children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]", children: model.title }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-5 grid grid-cols-1 items-center gap-3 min-[720px]:grid-cols-[348px_1fr]", children: [
@@ -482,7 +593,7 @@ function ShareMtdOverviewSlide({ chart }) {
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.leftHeading }),
             model.groupedDonut && model.groupedDonut.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-4 space-y-3", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto h-[204px] w-[204px]", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "relative mx-auto", style: { width: donutSizePx, height: donutSizePx }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                 ShareChartDonut,
                 {
                   segments: model.groupedDonut.map((s) => ({
@@ -492,19 +603,19 @@ function ShareMtdOverviewSlide({ chart }) {
                     color: s.color
                   })),
                   totalSpendLabel: model.groupedDonutCenterLabel,
-                  size: 204
+                  size: donutSizePx
                 }
               ) }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-3 space-y-2", children: model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center justify-center gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `mt-3 ${legendGapClass}`, children: model.groupedDonut.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center justify-center gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                   "span",
                   {
-                    className: "inline-block h-3 w-3 shrink-0 rounded-full",
+                    className: `inline-block shrink-0 rounded-full ${donutSegmentCount >= 5 ? "h-2.5 w-2.5" : "h-3 w-3"}`,
                     style: { backgroundColor: `#${seg.color}` },
                     "aria-hidden": "true"
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-bold text-ink", children: formatGroupedDonutLegendEntry(seg) })
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-ink ${legendTextClass}`, children: formatGroupedDonutLegendEntry(seg) })
               ] }, seg.name)) })
             ] }) : null
           ]
@@ -517,13 +628,14 @@ function ShareMtdOverviewSlide({ chart }) {
           style: { backgroundColor: "#111f35" },
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]", children: model.rightHeading }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-4 space-y-6", children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `mt-4 ${barGapClass}`, children: model.resultBars.map((bar) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               VisualResultBar,
               {
                 name: bar.name,
                 color: bar.color,
                 statLine: bar.statLine,
-                barPct: bar.barPct
+                barPct: bar.barPct,
+                compact: compactBars || barLayout.rowH < 72
               },
               bar.name
             )) })

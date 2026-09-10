@@ -4,13 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
-import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
+import { detectPlatform } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
-import { detectGoogleObjectiveKey } from "@/lib/nre/detect-objective";
-import { defaultGoogleSelection, defaultMetaSelection, filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import { defaultMetaSelection, filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
@@ -51,19 +49,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
     const platform = platformOverride ?? detectPlatform(headers);
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-
-    if (platform === "GOOGLE") {
-      const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
-      const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
-      if (!validation.valid) {
-        return NextResponse.json({ error: "CSV failed validation.", errors: validation.errors }, { status: 200 });
-      }
-      const objectiveKey = detectGoogleObjectiveKey(headers);
-      return NextResponse.json({
-        defaultSelection: defaultGoogleSelection(objectiveKey),
-        availableMetrics: listSelectableMetrics(headers, "GOOGLE"),
-      });
-    }
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
@@ -123,7 +108,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // even if defaultMetaSelection's own per-objective switch ever assigned
     // a forbidden cross-objective key, it's stripped here before the wizard
     // ever sees it.
-    const fullPool = listSelectableMetrics(mtdParsed.headers, "META");
+    const metricsPlatform = platform === "GOOGLE" ? "GOOGLE" : platform === "TIKTOK" ? "TIKTOK" : "META";
+    const fullPool = listSelectableMetrics(mtdParsed.headers, metricsPlatform);
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
 

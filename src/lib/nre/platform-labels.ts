@@ -12,14 +12,14 @@ export function getPlatformLabel(platform: Platform): string {
   }
 }
 
-/** Meta and TikTok share the full 5-step ad wizard (campaigns → objectives → metrics → generate). */
+/** Meta, Google, and TikTok share the full 5-step ad wizard (campaigns → objectives → metrics → generate). */
 export function usesFullAdWizard(platform: Platform): boolean {
-  return platform === "META" || platform === "TIKTOK";
+  return platform === "META" || platform === "GOOGLE" || platform === "TIKTOK";
 }
 
-/** Google uses a simplified 2-step flow (upload → generate). */
+/** Reserved for future simplified flows — all ad platforms use the full wizard today. */
 export function usesSimpleAdWizard(platform: Platform): boolean {
-  return platform === "GOOGLE";
+  return false;
 }
 
 export type AdWizardFlow = "full" | "simple";
@@ -28,9 +28,9 @@ export function getAdWizardFlow(platform: Platform): AdWizardFlow {
   return usesSimpleAdWizard(platform) ? "simple" : "full";
 }
 
-/** Step indicator labels — Google shows Upload → Generate only. */
-export function getVisibleWizardSteps(flow: AdWizardFlow): Array<1 | 2 | 3 | 4 | 5> {
-  return flow === "simple" ? [1, 5] : [1, 2, 3, 4, 5];
+/** Step indicator labels for the full 5-step ad wizard. */
+export function getVisibleWizardSteps(_flow: AdWizardFlow): Array<1 | 2 | 3 | 4 | 5> {
+  return [1, 2, 3, 4, 5];
 }
 
 export function getWizardStepLabel(step: 1 | 2 | 3 | 4 | 5, flow: AdWizardFlow): string {
@@ -48,12 +48,12 @@ export function getWizardStepLabel(step: 1 | 2 | 3 | 4 | 5, flow: AdWizardFlow):
 }
 
 export function getWizardStepHeading(step: 1 | 2 | 3 | 4 | 5, platform: Platform): string {
-  if (usesSimpleAdWizard(platform)) {
-    return step === 1 ? "Add your Google Ads data" : "Review and generate";
-  }
   const headings: Record<1 | 2 | 3 | 4 | 5, string> = {
-    1: "Add your ad data",
-    2: platform === "TIKTOK" ? "Select campaigns & ad groups" : "Select campaigns",
+    1: platform === "GOOGLE" ? "Add your Google Ads data" : "Add your ad data",
+    2:
+      platform === "TIKTOK" || platform === "GOOGLE"
+        ? "Select campaigns & ad groups"
+        : "Select campaigns",
     3: "Confirm objectives",
     4: "Review metric cards",
     5: "Choose report type and generate",
@@ -62,10 +62,7 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4 | 5, platform: Platform
 }
 
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
-export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4 | 5, platform: Platform): string {
-  if (usesSimpleAdWizard(platform)) {
-    return step === 1 ? "API sync or CSV upload." : "";
-  }
+export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4 | 5, _platform: Platform): string {
   if (step === 5) return "Pick a report type, then generate.";
   return "";
 }

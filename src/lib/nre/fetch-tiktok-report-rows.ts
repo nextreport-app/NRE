@@ -63,6 +63,9 @@ export interface FetchTikTokReportCsvInput {
   timezone: string;
   now?: Date;
   days?: number;
+  /** When set, overrides the default last-N-days window (e.g. previous calendar month sync). */
+  sinceIso?: string;
+  untilIso?: string;
 }
 
 export interface FetchTikTokReportCsvResult {
@@ -74,8 +77,10 @@ export interface FetchTikTokReportCsvResult {
 
 /** Fetches TikTok ad-group daily insights and returns Meta-shaped CSV for the NRE pipeline. */
 export async function fetchTikTokReportCsv(input: FetchTikTokReportCsvInput): Promise<FetchTikTokReportCsvResult> {
-  const days = input.days ?? 30;
-  const { sinceIso, untilIso } = computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, days);
+  const { sinceIso, untilIso } =
+    input.sinceIso && input.untilIso
+      ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
+      : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
 
   const apiRows = await fetchTikTokIntegratedReport({
     accessToken: input.accessToken,

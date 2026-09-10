@@ -24,6 +24,7 @@ import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from
 import { getDateRangeShortLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { compactSameMonthRangeLabel, fmtCpm } from "./report-data";
 import { buildChartSnapshotKpis } from "./chart-snapshot-kpis";
+import { buildBudgetSummary } from "./budget-pacing";
 import type { GoogleRow } from "./google-columns";
 import type {
   AdSetSlideData,
@@ -50,6 +51,7 @@ export interface BuildGoogleReportDataInput {
   accountName: string;
   currencySymbol: string;
   monthlyBudget: number | null;
+  showBudgetPacingOnCover?: boolean;
   /** Column-mapped rows from the Google Ads MTD Daily CSV upload. */
   mtdDailyRows: GoogleRow[];
   now?: Date;
@@ -165,7 +167,15 @@ export function buildGoogleCombinedTotalTableGrid(mtdRow: TableRowData, headers:
 }
 
 export function buildGoogleReportData(input: BuildGoogleReportDataInput): ReportData {
-  const { accountName, currencySymbol, monthlyBudget, mtdDailyRows, now = new Date(), selectedMetrics } = input;
+  const {
+    accountName,
+    currencySymbol,
+    monthlyBudget,
+    showBudgetPacingOnCover = false,
+    mtdDailyRows,
+    now = new Date(),
+    selectedMetrics,
+  } = input;
 
   // Account-wide campaign-type classification (see slot-assignment.ts's
   // buildGoogleSlots doc comment for why this is account-wide, not
@@ -252,6 +262,9 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
   const totalCost = campaigns.reduce((sum, g) => sum + g.cost, 0);
   const totalConversions = campaigns.reduce((sum, g) => sum + g.conversions, 0);
   const isPaused = campaigns.length === 0 || totalCost === 0;
+  const budgetSummaryLine = buildBudgetSummary(totalCost, monthlyBudget, currencySymbol, {
+    showOnCover: showBudgetPacingOnCover,
+  });
 
   const reportDate = new Intl.DateTimeFormat("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
     .formatToParts(now)
@@ -288,7 +301,7 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
       dateRange: dateRangeLabel,
       healthBadge: avgCpaOk ? "✅ Campaigns On Track" : "⚠️ Needs Attention",
       healthScore: avgCpaOk ? 90 : 60,
-      budgetSummary: "",
+      budgetSummary: budgetSummaryLine,
     };
   }
 
