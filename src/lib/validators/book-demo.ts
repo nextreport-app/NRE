@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { whatsappNumberSchema } from "@/lib/validators/whatsapp-number";
 
 export const BOOK_DEMO_TEAM_SIZES = [
   "Just me",
@@ -10,6 +11,7 @@ export const BOOK_DEMO_TEAM_SIZES = [
 export const bookDemoSchema = z.object({
   name: z.string().trim().min(1, "Enter your name"),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  whatsapp: whatsappNumberSchema,
   company: z.string().trim().min(1, "Enter your agency or company name"),
   teamSize: z.enum(BOOK_DEMO_TEAM_SIZES, { message: "Choose a team size" }),
   message: z

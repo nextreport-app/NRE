@@ -13,6 +13,7 @@ const ERROR_MESSAGE = "Something went wrong. Please email us directly at hello@n
 export function BookDemoForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [company, setCompany] = useState("");
   const [teamSize, setTeamSize] = useState<string>(BOOK_DEMO_TEAM_SIZES[0]);
   const [message, setMessage] = useState("");
@@ -27,7 +28,7 @@ export function BookDemoForm() {
       const res = await fetch("/api/book-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, company, teamSize, message }),
+        body: JSON.stringify({ name, email, whatsapp, company, teamSize, message }),
       });
       if (!res.ok) {
         setStatus("error");
@@ -37,6 +38,7 @@ export function BookDemoForm() {
       setSentEmail(email);
       setName("");
       setEmail("");
+      setWhatsapp("");
       setCompany("");
       setTeamSize(BOOK_DEMO_TEAM_SIZES[0]);
       setMessage("");
@@ -84,6 +86,25 @@ export function BookDemoForm() {
           placeholder="you@agency.com"
           className={inputClassName}
         />
+      </div>
+
+      <div>
+        <label htmlFor="demo-whatsapp" className="mb-1 block text-sm text-ink-secondary">
+          WhatsApp Number
+        </label>
+        <input
+          id="demo-whatsapp"
+          type="tel"
+          required
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          placeholder="+91 …, +1 …, or +44 …"
+          autoComplete="tel"
+          className={inputClassName}
+        />
+        <p className="mt-1 text-xs text-ink-muted">
+          Include country code (India +91, US +1, UK +44). We&apos;ll use this to confirm your demo — usually faster than email.
+        </p>
       </div>
 
       <div>

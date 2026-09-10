@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { contactSchema } from "@/lib/validators/contact";
 import { apiErrorResponse } from "@/lib/api-error";
 import { autoReplyFireAndForget, sendInboundEmail } from "@/lib/inbound-notifications";
+import { whatsappNotifyLines } from "@/lib/inbound-form-notify";
 
 /**
  * /contact form submissions. Deliberately public, same reasoning as
@@ -20,11 +21,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, subject, message } = parsed.data;
+  const { name, email, whatsapp, subject, message } = parsed.data;
+  const wa = whatsappNotifyLines(whatsapp);
 
   let dbSaved = false;
   try {
-    await prisma.contactMessage.create({ data: { name, email, subject, message } });
+    await prisma.contactMessage.create({ data: { name, email, whatsapp, subject, message } });
     dbSaved = true;
   } catch (err) {
     console.error("[api:contact:submit] DB save failed:", err);
@@ -36,6 +38,7 @@ export async function POST(req: Request) {
     "",
     `Name: ${name}`,
     `Email: ${email}`,
+    ...wa.textLines,
     `Subject: ${subject}`,
     "",
     message,
@@ -44,6 +47,7 @@ export async function POST(req: Request) {
 <ul>
 <li><strong>Name:</strong> ${name}</li>
 <li><strong>Email:</strong> ${email}</li>
+${wa.htmlItems}
 <li><strong>Subject:</strong> ${subject}</li>
 </ul>
 <p style="white-space:pre-wrap">${message.replace(/</g, "&lt;")}</p>`;
