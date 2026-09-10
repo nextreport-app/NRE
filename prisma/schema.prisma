@@ -465,11 +465,12 @@ model WaitlistEntry {
 // WaitlistEntry isn't — most visitors submitting this form are anonymous,
 // pre-signup or logged-out traffic, not necessarily an existing account.
 model ContactMessage {
-  id      String @id @default(cuid())
-  name    String
-  email   String
-  subject String
-  message String @db.Text
+  id       String  @id @default(cuid())
+  name     String
+  email    String
+  whatsapp String?
+  subject  String
+  message  String  @db.Text
 
   createdAt DateTime @default(now())
 }

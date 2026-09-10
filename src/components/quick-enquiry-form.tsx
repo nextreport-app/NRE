@@ -12,16 +12,13 @@ const inputClassName =
 export function QuickEnquiryForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("loading");
-    const body = phone.trim()
-      ? `Phone: ${phone.trim()}\n\n${message.trim()}`
-      : message.trim();
 
     try {
       const res = await fetch("/api/contact", {
@@ -30,8 +27,9 @@ export function QuickEnquiryForm() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
+          whatsapp: whatsapp.trim(),
           subject: CONTACT_SUBJECTS[0],
-          message: body,
+          message: message.trim(),
         }),
       });
       if (!res.ok) {
@@ -40,7 +38,7 @@ export function QuickEnquiryForm() {
       }
       setName("");
       setEmail("");
-      setPhone("");
+      setWhatsapp("");
       setMessage("");
       setStatus("done");
     } catch {
@@ -80,10 +78,12 @@ export function QuickEnquiryForm() {
       </div>
       <input
         type="tel"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="Phone (optional)"
-        aria-label="Phone number"
+        required
+        value={whatsapp}
+        onChange={(e) => setWhatsapp(e.target.value)}
+        placeholder="WhatsApp number (+91 …)"
+        aria-label="WhatsApp number"
+        autoComplete="tel"
         className={inputClassName}
       />
       <textarea

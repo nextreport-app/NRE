@@ -17,6 +17,7 @@ const ERROR_MESSAGE = "Something went wrong. Please email us directly at hello@n
 export function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [subject, setSubject] = useState<string>(CONTACT_SUBJECTS[0]);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -33,7 +34,7 @@ export function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({ name, email, whatsapp, subject, message }),
       });
       if (!res.ok) {
         setStatus("error");
@@ -43,6 +44,7 @@ export function ContactForm() {
       setSentEmail(email);
       setName("");
       setEmail("");
+      setWhatsapp("");
       setSubject(CONTACT_SUBJECTS[0]);
       setMessage("");
       setStatus("done");
@@ -89,6 +91,23 @@ export function ContactForm() {
           placeholder="your@email.com"
           className={inputClassName}
         />
+      </div>
+
+      <div>
+        <label htmlFor="contact-whatsapp" className="mb-1 block text-sm text-ink-secondary">
+          WhatsApp Number
+        </label>
+        <input
+          id="contact-whatsapp"
+          type="tel"
+          required
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          placeholder="+91 98765 43210"
+          autoComplete="tel"
+          className={inputClassName}
+        />
+        <p className="mt-1 text-xs text-ink-muted">We often reply faster on WhatsApp than email.</p>
       </div>
 
       <div>

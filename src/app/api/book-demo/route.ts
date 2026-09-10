@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { bookDemoSchema } from "@/lib/validators/book-demo";
 import { apiErrorResponse } from "@/lib/api-error";
 import { autoReplyFireAndForget, sendInboundEmail } from "@/lib/inbound-notifications";
+import { whatsappNotifyLines } from "@/lib/inbound-form-notify";
 
 const DEMO_SUBJECT = "Book a Demo";
 
@@ -21,13 +22,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, company, teamSize, message } = parsed.data;
+  const { name, email, whatsapp, company, teamSize, message } = parsed.data;
+  const wa = whatsappNotifyLines(whatsapp);
   const storedMessage = [`Company: ${company}`, `Team size: ${teamSize}`, "", message].join("\n");
 
   let dbSaved = false;
   try {
     await prisma.contactMessage.create({
-      data: { name, email, subject: DEMO_SUBJECT, message: storedMessage },
+      data: { name, email, whatsapp, subject: DEMO_SUBJECT, message: storedMessage },
     });
     dbSaved = true;
   } catch (err) {
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
     "",
     `Name: ${name}`,
     `Email: ${email}`,
+    ...wa.textLines,
     `Company: ${company}`,
     `Team size: ${teamSize}`,
     "",
@@ -49,6 +52,7 @@ export async function POST(req: Request) {
 <ul>
 <li><strong>Name:</strong> ${name}</li>
 <li><strong>Email:</strong> ${email}</li>
+${wa.htmlItems}
 <li><strong>Company:</strong> ${company}</li>
 <li><strong>Team size:</strong> ${teamSize}</li>
 </ul>
