@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-/** Increment lifetime client slots after a successful Client.create. */
+/** Analytics counter — incremented on every Client.create; not used for plan enforcement. */
 export async function recordClientCreated(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
@@ -8,7 +8,7 @@ export async function recordClientCreated(userId: string): Promise<void> {
   });
 }
 
-/** Active clients + lifetime slots for Agency cap checks. */
+/** Active client rows for Agency cap checks (concurrent limit, not lifetime). */
 export async function getClientCapacityUsage(userId: string): Promise<{
   activeClientCount: number;
   clientsCreatedCount: number;
@@ -22,6 +22,6 @@ export async function getClientCapacityUsage(userId: string): Promise<{
   ]);
   return {
     activeClientCount,
-    clientsCreatedCount: user?.clientsCreatedCount ?? activeClientCount,
+    clientsCreatedCount: user?.clientsCreatedCount ?? 0,
   };
 }
