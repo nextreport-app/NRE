@@ -204,7 +204,7 @@ function readInitialPlatformPickerState(showTikTokOption: boolean): {
 
 const ADD_FROM_CSV_VISIBLE = 8;
 const ADSET_CHIP_CLASS =
-  "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[16px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
+  "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
 
 const MIN_SELECTED_METRICS = 4;
 
@@ -329,7 +329,7 @@ function isSpecificFieldError(e: ValidationIssue): boolean {
 
 function SpecificFieldWarning({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200">
+    <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
       <p>{message}</p>
       <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-amber-300 underline hover:text-amber-100">
         See our CSV Export Guide →
@@ -1945,9 +1945,9 @@ export function ReportUploadWizard({
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-0.5 text-[15px] font-semibold text-[#f6ad55]">{clientName}</p>
-          <h1 className="mb-1 text-[22px] font-bold text-white">Choose report type and generate</h1>
-          <p className="text-[15px] text-dash-ink-secondary">Loading your report…</p>
+          <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{clientName}</p>
+          <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
+          <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
       </div>
     );
@@ -1959,9 +1959,9 @@ export function ReportUploadWizard({
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-0.5 text-[15px] font-semibold text-[#f6ad55]">{clientName}</p>
-          <h1 className="mb-1 text-[22px] font-bold text-white">Google Analytics</h1>
-          <p className="text-[15px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
+          <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{clientName}</p>
+          <h1 className="mb-1 text-[20px] font-bold text-white">Google Analytics</h1>
+          <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
         <button
           type="button"
@@ -1969,7 +1969,7 @@ export function ReportUploadWizard({
             setWizardKind("ads");
             setPlatformPickerExpanded(true);
           }}
-          className="text-[15px] font-medium text-dash-accent underline hover:no-underline"
+          className="text-[14px] font-medium text-dash-accent underline hover:no-underline"
         >
           ← Back to ad platform reports
         </button>
@@ -1987,16 +1987,16 @@ export function ReportUploadWizard({
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-0.5 text-[15px] font-semibold text-[#f6ad55]">{clientName}</p>
-        <h1 className="mb-1 text-[22px] font-bold text-white">{getWizardStepHeading(step, platform)}</h1>
+        <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{clientName}</p>
+        <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(step, platform)}</h1>
         {getWizardStepSubtitle(step, platform) ? (
-          <p className="text-[15px] text-dash-ink-secondary">{getWizardStepSubtitle(step, platform)}</p>
+          <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(step, platform)}</p>
         ) : null}
       </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} flow={wizardFlow} />
 
       {step === 5 && (
-        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[16px] leading-relaxed text-dash-ink-secondary">
+        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
           Have a question or an issue with this report?{" "}
           <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
           <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
@@ -2008,7 +2008,7 @@ export function ReportUploadWizard({
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           {platformPickerExpanded ? (
             <>
-              <h3 className="text-[18px] font-semibold text-white">Select platform</h3>
+              <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
               <div
                 className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showTikTokOption ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
               >
@@ -2105,12 +2105,12 @@ export function ReportUploadWizard({
               ) : (
                 <>
               <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
-              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[16px] leading-relaxed text-dash-ink">
+              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
                 <a
                   href="https://nextreport.in/help/download"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mb-1 block text-[17px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
+                  className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
                 >
                   How to download your CSV
                 </a>
@@ -2142,7 +2142,7 @@ export function ReportUploadWizard({
               <button
                 onClick={handleAnalyze}
                 disabled={!mtdFile || analyzeStatus === "loading"}
-                className="h-12 w-full rounded-md bg-dash-accent text-[17px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+                className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
               >
                 {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
               </button>
@@ -2153,7 +2153,7 @@ export function ReportUploadWizard({
 
           {mismatchWarning && (
             <div className="space-y-2 rounded-md border border-amber-900 bg-amber-950/30 p-3">
-              <p className="text-[15px] text-amber-200">
+              <p className="text-[14px] text-amber-200">
                 This looks like a{" "}
                 {detectedPlatform === "GOOGLE"
                   ? "Google Ads"
@@ -2172,13 +2172,13 @@ export function ReportUploadWizard({
                 <button
                   onClick={handleMismatchContinueAnyway}
                   disabled={continueStatus === "loading"}
-                  className="rounded-md bg-dash-accent px-3 py-1.5 text-[15px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                  className="rounded-md bg-dash-accent px-3 py-1.5 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                 >
                   {continueStatus === "loading" ? "Loading…" : "Continue anyway"}
                 </button>
                 <button
                   onClick={handleMismatchGoBack}
-                  className="rounded-md border border-dash-border px-3 py-1.5 text-[15px] text-dash-ink-secondary hover:bg-dash-border"
+                  className="rounded-md border border-dash-border px-3 py-1.5 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
                 >
                   Go back
                 </button>
@@ -2207,10 +2207,10 @@ export function ReportUploadWizard({
               ))}
               {analyzeErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
                 <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
-                  <p className="mb-2 text-[15px] font-medium text-red-300">
+                  <p className="mb-2 text-[14px] font-medium text-red-300">
                     This CSV can&apos;t be used to generate a report yet:
                   </p>
-                  <ul className="list-inside list-disc space-y-1 text-[15px] text-red-300">
+                  <ul className="list-inside list-disc space-y-1 text-[14px] text-red-300">
                     {analyzeErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
                       <li key={i}>{e.message}</li>
                     ))}
@@ -2220,7 +2220,7 @@ export function ReportUploadWizard({
             </div>
           )}
           {analyzeStatus === "error" && analyzeMessage && (
-            <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[15px] text-red-300">
+            <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
               {analyzeMessage}
             </div>
           )}
@@ -2253,7 +2253,7 @@ export function ReportUploadWizard({
                 onChange={(e) => setSelectedCampaigns(e.target.checked ? new Set(campaigns) : new Set())}
                 className="h-4 w-4 flex-shrink-0 accent-accent"
               />
-              <span className="text-[15px] text-dash-ink-secondary">
+              <span className="text-[14px] text-dash-ink-secondary">
                 {selectedCampaigns.size} of {campaigns.length} campaigns selected
               </span>
             </label>
@@ -2263,13 +2263,13 @@ export function ReportUploadWizard({
                 value={campaignSearch}
                 onChange={(e) => setCampaignSearch(e.target.value)}
                 placeholder="Search campaigns"
-                className="w-full max-w-xs rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent sm:w-56"
+                className="w-full max-w-xs rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent sm:w-56"
               />
             )}
           </div>
 
           {lowSpendCampaigns.length > 0 && (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[16px] text-dash-ink">
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[14px] text-dash-ink">
               <strong>{lowSpendCampaigns.length} campaign{lowSpendCampaigns.length === 1 ? "" : "s"}</strong> had less than{" "}
               {currencySymbol}
               {LOW_SPEND_CAMPAIGN_THRESHOLD} last-30-days spend and {lowSpendCampaigns.length === 1 ? "was" : "were"} excluded by default.
@@ -2283,7 +2283,7 @@ export function ReportUploadWizard({
               const visible = query ? campaigns.filter((name) => name.toLowerCase().includes(query)) : campaigns;
               if (visible.length === 0) {
                 return (
-                  <li className="px-4 py-3 text-[15px] text-dash-ink-secondary">
+                  <li className="px-4 py-3 text-[14px] text-dash-ink-secondary">
                     No campaigns match “{campaignSearch.trim()}”.
                   </li>
                 );
@@ -2308,11 +2308,11 @@ export function ReportUploadWizard({
                       onChange={() => toggleCampaign(name)}
                       className="h-4 w-4 flex-shrink-0 accent-accent"
                     />
-                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[15px] text-dash-ink" title={name}>
+                    <label htmlFor={`campaign-${name}`} className="min-w-0 flex-1 cursor-pointer truncate text-[14px] text-dash-ink" title={name}>
                       {name}
                     </label>
                     {lowSpend ? (
-                      <span className="shrink-0 text-[15px] font-semibold tabular-nums text-amber-400">
+                      <span className="shrink-0 text-[14px] font-semibold tabular-nums text-amber-400">
                         Last 30 days spend detected · {currencySymbol}
                         {Math.round(spend).toLocaleString("en-US")}
                       </span>
@@ -2346,21 +2346,21 @@ export function ReportUploadWizard({
                     return (
                       <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-[16px] text-dash-ink-secondary">
+                          <p className="text-[14px] text-dash-ink-secondary">
                             {selectedCount} of {group.adSetNames.length} ad sets selected
                           </p>
                           <div className="flex gap-2">
                             <button
                               type="button"
                               onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
-                              className="text-[16px] text-dash-accent hover:underline"
+                              className="text-[14px] text-dash-accent hover:underline"
                             >
                               Select all
                             </button>
                             <button
                               type="button"
                               onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
-                              className="text-[16px] text-dash-accent hover:underline"
+                              className="text-[14px] text-dash-accent hover:underline"
                             >
                               Deselect all
                             </button>
@@ -2378,18 +2378,18 @@ export function ReportUploadWizard({
                                   onChange={() => toggleAdSet(name, adSetName)}
                                   className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
                                 />
-                                <label htmlFor={`adset-${key}`} className="min-w-0 flex-1 cursor-pointer truncate text-[16px] text-dash-ink-secondary" title={adSetName}>
+                                <label htmlFor={`adset-${key}`} className="min-w-0 flex-1 cursor-pointer truncate text-[14px] text-dash-ink-secondary" title={adSetName}>
                                   {adSetName}
                                 </label>
                               </li>
                             );
                           })}
                         </ul>
-                        <p className="text-[16px] text-dash-ink-secondary">
+                        <p className="text-[14px] text-dash-ink-secondary">
                           Uncheck any ad sets you do not want as separate slides in your report.
                         </p>
                         {allAdSetsDeselected && (
-                          <p className="text-[16px] text-amber-300">No ad set slides will be generated for this campaign.</p>
+                          <p className="text-[14px] text-amber-300">No ad set slides will be generated for this campaign.</p>
                         )}
                       </div>
                     );
@@ -2397,7 +2397,7 @@ export function ReportUploadWizard({
 
                   {isSelected && group && isSingleAdSet && isExpanded && (
                     <div className="mt-3 rounded-md border border-dash-border bg-dash-bg p-3">
-                      <p className="mb-2 truncate text-[16px] font-medium text-dash-ink" title={group.adSetNames[0]}>
+                      <p className="mb-2 truncate text-[14px] font-medium text-dash-ink" title={group.adSetNames[0]}>
                         {group.adSetNames[0]}
                       </p>
                       <label className="flex cursor-pointer items-center gap-2.5">
@@ -2408,7 +2408,7 @@ export function ReportUploadWizard({
                           onChange={() => toggleAdSet(name, group.adSetNames[0])}
                           className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
                         />
-                        <span className="text-[16px] text-dash-ink-secondary">
+                        <span className="text-[14px] text-dash-ink-secondary">
                           Optional ad set slide — mirrors campaign data. Enable only if you want a separate slide.
                         </span>
                       </label>
@@ -2423,14 +2423,14 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
             <button
               onClick={handleCampaignsContinue}
               disabled={selectedCampaigns.size === 0 || metricsStatus === "loading"}
-              className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+              className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {metricsStatus === "loading" ? "Loading…" : "Continue"}
             </button>
@@ -2446,7 +2446,7 @@ export function ReportUploadWizard({
             const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
             return (
               allConfirmed && (
-                <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[15px] text-amber-200">
+                <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[14px] text-amber-200">
                   All objectives confirmed from your previous report. Review or click Continue.
                 </div>
               )
@@ -2465,7 +2465,7 @@ export function ReportUploadWizard({
             }).length;
             return (
               blockingCount > 0 && (
-                <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[15px] text-[#fc8181]">
+                <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[14px] text-[#fc8181]">
                   {blockingCount === 1
                     ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
                     : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
@@ -2495,13 +2495,13 @@ export function ReportUploadWizard({
                 return (
                   <li key={name} className={`px-4 py-3 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-[15px] text-white" title={name}>
+                      <span className="truncate text-[14px] text-white" title={name}>
                         {name}
                       </span>
                       <select
                         value={currentKey}
                         onChange={(e) => setCampaignObjective(name, e.target.value)}
-                        className={`rounded-md border px-3 py-1.5 text-[15px] text-dash-ink outline-none focus:border-[#f6ad55] ${
+                        className={`rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
                           isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
                         } bg-dash-bg`}
                       >
@@ -2514,14 +2514,14 @@ export function ReportUploadWizard({
                     </div>
                     {badge && badge.pill && (
                       <div className="mt-2 flex justify-end">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[15px] font-semibold ${badge.className}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[14px] font-semibold ${badge.className}`}>
                           <span aria-hidden="true">{badge.icon}</span>
                           <span>{badge.text}</span>
                         </span>
                       </div>
                     )}
                     {badge && !badge.pill && (
-                      <div className={`mt-1 flex items-center justify-end gap-1 text-[15px] font-medium ${badge.className}`}>
+                      <div className={`mt-1 flex items-center justify-end gap-1 text-[14px] font-medium ${badge.className}`}>
                         <span aria-hidden="true">{badge.icon}</span>
                         <span>{badge.text}</span>
                       </div>
@@ -2534,7 +2534,7 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               onClick={() => setStep(2)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
@@ -2548,7 +2548,7 @@ export function ReportUploadWizard({
                   !touchedObjectiveCampaigns.has(normalized)
                 );
               })}
-              className="rounded-md bg-dash-accent px-6 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-dash-accent"
+              className="rounded-md bg-dash-accent px-6 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-dash-accent"
             >
               Continue →
             </button>
@@ -2559,7 +2559,7 @@ export function ReportUploadWizard({
       {step === 4 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           {metricsStatus === "error" && (
-            <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[15px] text-amber-200">
+            <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[14px] text-amber-200">
               Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
             </div>
           )}
@@ -2580,25 +2580,25 @@ export function ReportUploadWizard({
                     style={{ borderTop: `3px solid ${accent.borderHex}` }}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="truncate text-[17px] font-bold text-white" title={name}>
+                      <span className="truncate text-[15px] font-bold text-white" title={name}>
                         {name}
                       </span>
                       {objective && (
                         <span
-                          className={`flex-shrink-0 rounded-[20px] text-[15px] font-medium uppercase ${accent.badgeClassName}`}
+                          className={`flex-shrink-0 rounded-[20px] text-[14px] font-medium uppercase ${accent.badgeClassName}`}
                           style={{ padding: "6px 10px" }}
                         >
                           {objective.resultLabel}
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-[16px] text-dash-ink-secondary">
+                    <p className="mt-0.5 text-[14px] text-dash-ink-secondary">
                       {selectedForCampaign.length <= MAX_METRICS_PER_SLIDE
                         ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
                         : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on a continuation slide`}
                     </p>
 
-                    <p className="mt-3 text-[15px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                    <p className="mt-3 text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Included metrics
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
@@ -2608,7 +2608,7 @@ export function ReportUploadWizard({
                           className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
                           style={{ padding: "8px 12px" }}
                         >
-                          <span className="text-[16px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
+                          <span className="text-[14px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
                             {m.label}
                           </span>
                           <button
@@ -2624,18 +2624,18 @@ export function ReportUploadWizard({
                     </div>
 
                     {perCampaignMinWarning && (
-                      <p className="mt-2 text-[15px] text-amber-300">{perCampaignMinWarning}</p>
+                      <p className="mt-2 text-[14px] text-amber-300">{perCampaignMinWarning}</p>
                     )}
 
                     <div className="my-3 border-t border-[#334155]" />
-                    <p className="text-[15px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                    <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Add from your CSV
                     </p>
-                    <p className="mt-0.5 text-[16px] text-dash-ink-secondary">
+                    <p className="mt-0.5 text-[14px] text-dash-ink-secondary">
                       Columns in this file that are not already chips.
                     </p>
                     {availableForCampaign.length === 0 ? (
-                      <p className="mt-1.5 text-[16px] text-dash-ink-secondary">No extra columns in this export.</p>
+                      <p className="mt-1.5 text-[14px] text-dash-ink-secondary">No extra columns in this export.</p>
                     ) : (
                       <>
                         <div className="mt-1.5 flex flex-wrap gap-2">
@@ -2647,7 +2647,7 @@ export function ReportUploadWizard({
                               key={candidate.key}
                               type="button"
                               onClick={() => addCampaignMetric(normalized, candidate, name)}
-                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[16px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
+                              className="rounded-md border border-[#1e3a5f] bg-transparent text-[14px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
                               style={{ padding: "8px 12px" }}
                             >
                               <span className="text-[#68d391]">+</span> {candidate.label}
@@ -2658,7 +2658,7 @@ export function ReportUploadWizard({
                           <button
                             type="button"
                             onClick={() => setExpandedCsvExtras((prev) => new Set(prev).add(normalized))}
-                            className="mt-2 text-[16px] text-dash-accent hover:underline"
+                            className="mt-2 text-[14px] text-dash-accent hover:underline"
                           >
                             Show {availableForCampaign.length - ADD_FROM_CSV_VISIBLE} more
                           </button>
@@ -2673,7 +2673,7 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               onClick={() => setStep(3)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
@@ -2682,7 +2682,7 @@ export function ReportUploadWizard({
               disabled={[...perCampaignMetrics.values()].some(
                 (metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS,
               )}
-              className="rounded-md bg-dash-accent px-6 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+              className="rounded-md bg-dash-accent px-6 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               Continue to dates
             </button>
@@ -2693,16 +2693,16 @@ export function ReportUploadWizard({
               <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-dash-border bg-dash-card p-5">
                 {overflowDialog.mode === "blocked_max" && (
                   <>
-                    <p className="text-[17px] font-semibold text-dash-ink">Maximum {MAX_TOTAL_METRICS} metrics (2 slides)</p>
-                    <p className="mt-2 text-[15px] text-dash-ink-secondary">
+                    <p className="text-[15px] font-semibold text-dash-ink">Maximum {MAX_TOTAL_METRICS} metrics (2 slides)</p>
+                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
                       Remove a chip before adding {overflowDialog.metric.label}.
                     </p>
                   </>
                 )}
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <>
-                    <p className="text-[17px] font-semibold text-dash-ink">This extra opens a second slide</p>
-                    <p className="mt-2 text-[15px] text-dash-ink-secondary">
+                    <p className="text-[15px] font-semibold text-dash-ink">This extra opens a second slide</p>
+                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
                       {(() => {
                         const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
                         const objective = campaignObjectives.get(overflowDialog.normalized);
@@ -2733,7 +2733,7 @@ export function ReportUploadWizard({
 
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <div className="mt-3">
-                    <p className="text-[15px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                    <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">
                       Optional — replace one of the current {MAX_METRICS_PER_SLIDE} instead
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
@@ -2742,7 +2742,7 @@ export function ReportUploadWizard({
                           key={m.key}
                           type="button"
                           onClick={() => replaceCampaignMetric(m.key)}
-                          className="rounded-md border border-dash-border px-3 py-1.5 text-[16px] text-dash-ink hover:border-dash-accent"
+                          className="rounded-md border border-dash-border px-3 py-1.5 text-[14px] text-dash-ink hover:border-dash-accent"
                         >
                           Replace {m.label}
                         </button>
@@ -2756,7 +2756,7 @@ export function ReportUploadWizard({
                     <button
                       type="button"
                       onClick={confirmOpenSecondSlide}
-                      className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                      className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                     >
                       Add anyway
                     </button>
@@ -2764,7 +2764,7 @@ export function ReportUploadWizard({
                   <button
                     type="button"
                     onClick={() => setOverflowDialog(null)}
-                    className="rounded-md border border-dash-border px-4 py-2 text-[15px] text-dash-ink-secondary"
+                    className="rounded-md border border-dash-border px-4 py-2 text-[14px] text-dash-ink-secondary"
                   >
                     Cancel
                   </button>
@@ -2781,7 +2781,7 @@ export function ReportUploadWizard({
             <button
               type="button"
               onClick={() => setStep(platform === "GOOGLE" ? 1 : 4)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-border"
+              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
             </button>
@@ -2789,7 +2789,7 @@ export function ReportUploadWizard({
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
-            <h4 className="text-[17px] font-semibold text-white">Report Type</h4>
+            <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <ReportTypeCard
                 icon="📊"
@@ -2825,7 +2825,7 @@ export function ReportUploadWizard({
                 disabled={!hasAdLevelCsv || platform === "TIKTOK"}
               />
               {platform === "TIKTOK" && (
-                <p className="text-[15px] text-dash-ink-secondary">Creative reports are not available for TikTok yet.</p>
+                <p className="text-[14px] text-dash-ink-secondary">Creative reports are not available for TikTok yet.</p>
               )}
               <ReportTypeCard
                 icon="🔀"
@@ -2843,18 +2843,18 @@ export function ReportUploadWizard({
               />
             </div>
             {hasAdLevelCsv && reportType !== "CREATIVE" && (
-              <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[15px] text-emerald-200">
+              <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[14px] text-emerald-200">
                 Ad-level data detected — creative slides will be included automatically.
               </p>
             )}
             {reportType === "HISTORICAL" && (
               <div className="mt-4 space-y-3">
-                <label className="block text-[15px] text-dash-ink-secondary">
+                <label className="block text-[14px] text-dash-ink-secondary">
                   How many complete prior months?
                   <select
                     value={historicalMonthCount}
                     onChange={(e) => setHistoricalMonthCount(Number(e.target.value))}
-                    className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[15px] text-white"
+                    className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
                   >
                     {[2, 3, 4, 5, 6, 8, 12].map((n) => (
                       <option key={n} value={n}>
@@ -2863,18 +2863,18 @@ export function ReportUploadWizard({
                     ))}
                   </select>
                 </label>
-                <p className="text-[15px] text-dash-ink-secondary">
+                <p className="text-[14px] text-dash-ink-secondary">
                   Months: <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
                 </p>
                 {dateBounds && (
-                  <p className="text-[15px] text-dash-ink-muted">
+                  <p className="text-[14px] text-dash-ink-muted">
                     CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
                   </p>
                 )}
               </div>
             )}
             {reportType === "DAILY" && dailyRange && (
-              <p className="mt-4 text-[15px] text-dash-ink-secondary">
+              <p className="mt-4 text-[14px] text-dash-ink-secondary">
                 Reporting on <span className="text-white">{formatIsoRange(dailyRange)}</span>.
               </p>
             )}
@@ -2883,9 +2883,9 @@ export function ReportUploadWizard({
           {/* Section 2 — Date range (Weekly only) */}
           {reportType === "WEEKLY" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[18px] font-semibold text-white">Select report period</h4>
+              <h4 className="text-[16px] font-semibold text-white">Select report period</h4>
 
-              <p className="mt-4 text-[15px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks · 7 days</p>
+              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks · 7 days</p>
               <div className="mt-2 flex flex-wrap gap-3">
                 {weeklyOptions && (
                   <WeeklyPeriodOption
@@ -2911,7 +2911,7 @@ export function ReportUploadWizard({
                 )}
               </div>
 
-              <p className="mt-4 text-[15px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Custom dates</p>
+              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Custom dates</p>
               <div className="mt-2 flex flex-wrap gap-3">
                 <WeeklyPeriodOption
                   selected={dateMode === "custom"}
@@ -2929,7 +2929,7 @@ export function ReportUploadWizard({
                 <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
                   <div className="flex flex-wrap gap-3">
                     <div>
-                      <label className="mb-1 block text-[15px] text-dash-ink-secondary">Start date</label>
+                      <label className="mb-1 block text-[14px] text-dash-ink-secondary">Start date</label>
                       <input
                         type="date"
                         value={customStart}
@@ -2940,11 +2940,11 @@ export function ReportUploadWizard({
                           setLongRangeConfirmed(false);
                           setCustomRangeError(null);
                         }}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-[15px] text-dash-ink-secondary">End date</label>
+                      <label className="mb-1 block text-[14px] text-dash-ink-secondary">End date</label>
                       <input
                         type="date"
                         value={customEnd}
@@ -2955,29 +2955,29 @@ export function ReportUploadWizard({
                           setLongRangeConfirmed(false);
                           setCustomRangeError(null);
                         }}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
                     </div>
                   </div>
 
-                  {customRangeError && <p className="text-[15px] text-red-400">{customRangeError}</p>}
+                  {customRangeError && <p className="text-[14px] text-red-400">{customRangeError}</p>}
 
                   {needsLongRangeConfirm && (
                     <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                      <p className="mb-2 text-[15px] text-amber-200">
+                      <p className="mb-2 text-[14px] text-amber-200">
                         You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
                         longer period anyway?
                       </p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setLongRangeConfirmed(true)}
-                          className="rounded-md bg-dash-accent px-3 py-1 text-[15px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                          className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                         >
                           Yes
                         </button>
                         <button
                           onClick={() => setCustomEnd("")}
-                          className="rounded-md border border-dash-border px-3 py-1 text-[15px] text-dash-ink-secondary hover:bg-dash-border"
+                          className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
                         >
                           No
                         </button>
@@ -2992,7 +2992,7 @@ export function ReportUploadWizard({
           {/* Section 2 (Comparison variant) — Period A/B presets (A1) */}
           {reportType === "COMPARISON" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[18px] font-semibold text-white">Select comparison periods</h4>
+              <h4 className="text-[16px] font-semibold text-white">Select comparison periods</h4>
               <div className="mt-4 flex flex-wrap gap-3">
                 <WeeklyPeriodOption
                   selected={comparisonPreset === "thisWeek"}
@@ -3024,7 +3024,7 @@ export function ReportUploadWizard({
               {comparisonPreset === "custom" && (
                 <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
                   <div>
-                    <p className="mb-1 text-[15px] text-dash-ink-secondary">Period A (current)</p>
+                    <p className="mb-1 text-[14px] text-dash-ink-secondary">Period A (current)</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="date"
@@ -3032,21 +3032,21 @@ export function ReportUploadWizard({
                         min={dateBounds?.minIso}
                         max={dateBounds?.maxIso}
                         onChange={(e) => updateComparisonPeriodA("startIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
-                      <span className="text-[15px] text-dash-ink-secondary">to</span>
+                      <span className="text-[14px] text-dash-ink-secondary">to</span>
                       <input
                         type="date"
                         value={comparisonPeriodA?.endIso ?? ""}
                         min={dateBounds?.minIso}
                         max={dateBounds?.maxIso}
                         onChange={(e) => updateComparisonPeriodA("endIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1 text-[15px] text-dash-ink-secondary">Period B (compare)</p>
+                    <p className="mb-1 text-[14px] text-dash-ink-secondary">Period B (compare)</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="date"
@@ -3054,16 +3054,16 @@ export function ReportUploadWizard({
                         min={dateBounds?.minIso}
                         max={dateBounds?.maxIso}
                         onChange={(e) => updateComparisonPeriodB("startIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
-                      <span className="text-[15px] text-dash-ink-secondary">to</span>
+                      <span className="text-[14px] text-dash-ink-secondary">to</span>
                       <input
                         type="date"
                         value={comparisonPeriodB?.endIso ?? ""}
                         min={dateBounds?.minIso}
                         max={dateBounds?.maxIso}
                         onChange={(e) => updateComparisonPeriodB("endIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
                     </div>
                   </div>
@@ -3071,16 +3071,16 @@ export function ReportUploadWizard({
               )}
 
               {monthComparisonCoverage && !monthComparisonCoverage.valid ? (
-                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[15px] text-amber-200">
+                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
                   {monthComparisonCoverage.error ??
                     "Your CSV does not cover both comparison periods. Export a longer custom range or upload Previous Month Data on Manage."}
                 </p>
               ) : monthComparisonCoverage?.periodBUsesSupplemental ? (
-                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[15px] text-sky-200">
+                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
                   Period B will use your stored Previous Month Data for dates before your main CSV starts.
                 </p>
               ) : (
-                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[15px] text-dash-ink-secondary">
+                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
                   Tip: Period A must fit your main CSV. For month-vs-month, upload Previous Month Data once on Manage — or
                   export a custom range from{" "}
                   {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes both periods.
@@ -3110,8 +3110,8 @@ export function ReportUploadWizard({
                   ))}
                   {previewErrors.some((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)) && (
                     <div className="rounded-lg border border-red-900 bg-red-950/40 p-4">
-                      <p className="mb-2 text-[15px] font-medium text-red-300">Can&apos;t build a preview yet:</p>
-                      <ul className="list-inside list-disc space-y-1 text-[15px] text-red-300">
+                      <p className="mb-2 text-[14px] font-medium text-red-300">Can&apos;t build a preview yet:</p>
+                      <ul className="list-inside list-disc space-y-1 text-[14px] text-red-300">
                         {previewErrors.filter((e) => !isNoDataRowsError(e) && !isSpecificFieldError(e)).map((e, i) => (
                           <li key={i}>{e.message}</li>
                         ))}
@@ -3121,12 +3121,12 @@ export function ReportUploadWizard({
                 </div>
               )}
               {previewStatus === "error" && previewMessage && (
-                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[15px] text-red-300">
+                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                   {previewMessage}
                 </div>
               )}
               {previewStatus === "loading" && !data && !comparisonData && !historicalData && (
-                <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[15px] text-dash-ink-secondary">
+                <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
                   <Spinner />
                   Loading preview…
                 </div>
@@ -3150,9 +3150,9 @@ export function ReportUploadWizard({
                   aria-expanded={reportSummaryExpanded}
                   className="flex w-full items-center justify-between gap-3 text-left"
                 >
-                  <h3 className="text-[17px] font-semibold text-white">Report Summary</h3>
+                  <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
                   <span
-                    className={`text-[17px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
+                    className={`text-[15px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
                     aria-hidden
                   >
                     ▾
@@ -3162,75 +3162,75 @@ export function ReportUploadWizard({
                   <>
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
-                  <p className="text-[15px] text-[#94a3b8]">
-                    Report type: <span className="text-[15px] text-white">{reportTypeLabel()}</span>
+                  <p className="text-[14px] text-[#94a3b8]">
+                    Report type: <span className="text-[14px] text-white">{reportTypeLabel()}</span>
                   </p>
-                  <p className="text-[15px] text-[#94a3b8]">
-                    Client: <span className="text-[15px] text-white">{clientName}</span>
+                  <p className="text-[14px] text-[#94a3b8]">
+                    Client: <span className="text-[14px] text-white">{clientName}</span>
                   </p>
                   <div>
-                    <p className="text-[15px] text-[#94a3b8]">
+                    <p className="text-[14px] text-[#94a3b8]">
                       Campaigns:{" "}
-                      <span className="text-[15px] text-white">{summaryCampaignNames().length} selected</span>
+                      <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
                     </p>
                     <ul className="mt-1 space-y-0.5 pl-4">
                       {summaryCampaignNames().map((name) => (
-                        <li key={name} className="truncate text-[16px] text-[#64748b]" title={name}>
+                        <li key={name} className="truncate text-[14px] text-[#64748b]" title={name}>
                           {name}
                         </li>
                       ))}
                     </ul>
                   </div>
                   {previewKind === "comparison" && comparisonData ? (
-                    <p className="text-[15px] text-[#94a3b8]">
+                    <p className="text-[14px] text-[#94a3b8]">
                       Comparison periods:{" "}
-                      <span className="text-[15px] text-white">
+                      <span className="text-[14px] text-white">
                         {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
                       </span>
                     </p>
                   ) : previewKind === "historical" && historicalData ? (
-                    <p className="text-[15px] text-[#94a3b8]">
+                    <p className="text-[14px] text-[#94a3b8]">
                       Months covered:{" "}
-                      <span className="text-[15px] text-white">{historicalData.monthsLabel}</span>
+                      <span className="text-[14px] text-white">{historicalData.monthsLabel}</span>
                     </p>
                   ) : (
                     <>
                       {reportType === "DAILY" && dailyRange && (
-                        <p className="text-[15px] text-[#94a3b8]">
-                          Daily period: <span className="text-[15px] text-white">{formatSummaryRange(dailyRange)}</span>
+                        <p className="text-[14px] text-[#94a3b8]">
+                          Daily period: <span className="text-[14px] text-white">{formatSummaryRange(dailyRange)}</span>
                         </p>
                       )}
                       {reportType === "WEEKLY" && weeklyRangeIso && (
-                        <p className="text-[15px] text-[#94a3b8]">
+                        <p className="text-[14px] text-[#94a3b8]">
                           {weeklyPeriodSummaryLabel()}:{" "}
-                          <span className="text-[15px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                          <span className="text-[14px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
                         </p>
                       )}
                       {reportType === "MONTHLY" && mtdRange && (
-                        <p className="text-[15px] text-[#94a3b8]">
-                          Full month: <span className="text-[15px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        <p className="text-[14px] text-[#94a3b8]">
+                          Full month: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "CREATIVE" && mtdRange && (
-                        <p className="text-[15px] text-[#94a3b8]">
-                          Data window: <span className="text-[15px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        <p className="text-[14px] text-[#94a3b8]">
+                          Data window: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "WEEKLY" && mtdRange && (
-                        <p className="text-[15px] text-[#94a3b8]">
-                          Month to date: <span className="text-[15px] text-white">{formatSummaryRange(mtdRange)}</span>
+                        <p className="text-[14px] text-[#94a3b8]">
+                          Month to date: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                     </>
                   )}
-                  <p className="text-[15px] text-[#94a3b8]">
-                    Template: <span className="text-[15px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                  <p className="text-[14px] text-[#94a3b8]">
+                    Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
                   </p>
-                  <p className="text-[15px] text-[#94a3b8]">
+                  <p className="text-[14px] text-[#94a3b8]">
                     Platform: <WizardPlatformSummaryLabel platform={platform} />
                   </p>
-                  <p className="text-[15px] text-[#94a3b8]">
-                    Estimated slides: <span className="text-[15px] text-white">{estimatedSlideCount()}</span>
+                  <p className="text-[14px] text-[#94a3b8]">
+                    Estimated slides: <span className="text-[14px] text-white">{estimatedSlideCount()}</span>
                   </p>
                 </div>
                   </>
@@ -3238,7 +3238,7 @@ export function ReportUploadWizard({
               </div>
 
             {previewKind === "normal" && data?.isPaused && (
-              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200">
+              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
                 <p>{data.pausedMessage}</p>
                 {(data.chart || data.periodRow.hasData) ? (
                   <p className="mt-2">
@@ -3250,7 +3250,7 @@ export function ReportUploadWizard({
             )}
 
             {previewKind === "historical" && historicalData?.isPaused && (
-              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200">
+              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
                 No campaign spend found in the selected months. Check your CSV date range and campaign selection.
               </div>
             )}
@@ -3260,7 +3260,7 @@ export function ReportUploadWizard({
                 {data.objectiveWarnings.map((w) => (
                   <div
                     key={w.campaignName}
-                    className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200"
+                    className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200"
                   >
                     <p>
                       <span className="font-medium">{w.campaignName}:</span> Objective auto-detected as{" "}
@@ -3282,13 +3282,13 @@ export function ReportUploadWizard({
                 <button
                   type="button"
                   onClick={() => setCustomTitleExpanded(true)}
-                  className="text-[15px] text-dash-accent hover:underline"
+                  className="text-[14px] text-dash-accent hover:underline"
                 >
                   Add custom PPT report title +
                 </button>
               ) : (
                 <>
-                  <label className="mb-1 block text-[15px] text-[#94a3b8]">Custom report title</label>
+                  <label className="mb-1 block text-[14px] text-[#94a3b8]">Custom report title</label>
                   <input
                     value={reportTitle}
                     onChange={(e) => {
@@ -3298,9 +3298,9 @@ export function ReportUploadWizard({
                     placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
                     maxLength={100}
                     disabled={generateStatus === "loading" || generateStatus === "done"}
-                    className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
+                    className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
                   />
-                  <p className="mt-1 text-[16px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
+                  <p className="mt-1 text-[14px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
                 </>
               )}
             </div>
@@ -3313,17 +3313,17 @@ export function ReportUploadWizard({
               <div>
                 <button
                   onClick={handleGenerate}
-                  className="h-12 w-full rounded-md bg-dash-accent text-[18px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                 >
                   Generate Report
                 </button>
-                <p className="mt-2 text-center text-[16px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
               </div>
             )}
           </div>
 
           {generateStatus === "loading" && (
-            <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[15px] text-dash-ink-secondary">
+            <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
               <Spinner />
               Generating your report…
             </div>
@@ -3331,12 +3331,12 @@ export function ReportUploadWizard({
 
           {generateStatus === "error" && (
             <div className="space-y-3">
-              <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[15px] text-red-300">
+              <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                 {generateMessage}
               </div>
               <button
                 onClick={handleGenerate}
-                className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
               >
                 Try Again
               </button>
@@ -3346,8 +3346,8 @@ export function ReportUploadWizard({
           {generateStatus === "done" && downloadUrl && (
             <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
               <div className="border-b border-dash-border px-5 py-4">
-                <p className="text-[18px] font-semibold text-[#68d391]">Report ready</p>
-                <p className="mt-1 text-[15px] text-dash-ink-secondary">
+                <p className="text-[16px] font-semibold text-[#68d391]">Report ready</p>
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
                   Share the live link with your client or download files below.
                 </p>
               </div>
@@ -3359,19 +3359,19 @@ export function ReportUploadWizard({
                       href={`https://${buildShareReportUrl(shareToken)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex w-full items-center justify-center rounded-lg text-[17px] font-semibold transition-opacity hover:opacity-90"
+                      className="flex w-full items-center justify-center rounded-lg text-[15px] font-semibold transition-opacity hover:opacity-90"
                       style={{ height: "48px", backgroundColor: "#f5b45a", color: "#0d1b2e" }}
                     >
                       View in browser
                     </a>
                     <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
-                      <span className="min-w-0 flex-1 truncate font-mono text-[16px] text-[#94a3b8]">
+                      <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
                         {buildShareReportUrl(shareToken)}
                       </span>
                       <button
                         type="button"
                         onClick={handleCopyShareLink}
-                        className="shrink-0 rounded-md px-2.5 py-1 text-[16px] font-medium text-dash-accent hover:bg-dash-border"
+                        className="shrink-0 rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
                       >
                         Copy
                       </button>
@@ -3392,18 +3392,18 @@ export function ReportUploadWizard({
 
                   return (
                 <div>
-                  <p className="mb-2 text-[15px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
+                  <p className="mb-2 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
                   <div className={gridClass}>
                     <a
                       href={downloadUrl}
-                      className="flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-3 py-3 text-[15px] font-medium text-white hover:border-[#f5b45a]"
+                      className="flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-3 py-3 text-[14px] font-medium text-white hover:border-[#f5b45a]"
                     >
                       PPTX
                     </a>
                     {showPdf ? (
                       <a
                         href={`/api/reports/${reportId}/download-pdf`}
-                        className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[15px] font-medium text-white hover:border-[#63b3ed]"
+                        className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[14px] font-medium text-white hover:border-[#63b3ed]"
                       >
                         PDF
                       </a>
@@ -3413,19 +3413,19 @@ export function ReportUploadWizard({
                         type="button"
                         onClick={handleSaveButtonClick}
                         disabled={driveSaving}
-                        className="flex items-center justify-center rounded-lg border border-[#68d391]/50 bg-[#0d1b2e] px-3 py-3 text-[15px] font-medium text-white hover:border-[#68d391] disabled:opacity-50"
+                        className="flex items-center justify-center rounded-lg border border-[#68d391]/50 bg-[#0d1b2e] px-3 py-3 text-[14px] font-medium text-white hover:border-[#68d391] disabled:opacity-50"
                       >
                         {driveSaving ? "Saving…" : driveSaveUrl ? "Drive (update)" : "Google Drive"}
                       </button>
                     ) : null}
                   </div>
                   {shareToken && reportId && !showPdf ? (
-                    <p className="mt-2 text-[16px] text-dash-ink-secondary">
+                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
                       PDF unlocks after you review and publish.
                     </p>
                   ) : null}
                   {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
-                    <p className="mt-2 text-[16px] text-dash-ink-secondary">
+                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
                       Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
                       <button
                         type="button"
@@ -3445,12 +3445,12 @@ export function ReportUploadWizard({
 
                 {shareToken && reportId ? (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
-                    <p className="text-[15px] leading-snug text-dash-ink">
-                      Review slide wording and choose which slides to include before sharing or downloading.
+                    <p className="min-w-0 flex-1 text-[14px] leading-snug text-dash-ink sm:whitespace-nowrap">
+                      Review slides and copy before sharing or downloading.
                     </p>
                     <Link
                       href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="shrink-0 text-[15px] font-semibold text-dash-accent hover:underline"
+                      className="shrink-0 text-[14px] font-semibold text-dash-accent hover:underline"
                       onClick={() => {
                         if (reportId && downloadUrl) {
                           persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
@@ -3464,17 +3464,17 @@ export function ReportUploadWizard({
 
                 {shareToken ? (
                   <details className="group rounded-lg border border-dash-border bg-[#0d1b2e]">
-                    <summary className="cursor-pointer list-none px-4 py-3 text-[15px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
+                    <summary className="cursor-pointer list-none px-4 py-3 text-[14px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center justify-between gap-2">
                         Share with client
-                        <span className="text-[17px] leading-none text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
+                        <span className="text-[15px] leading-none text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
                       </span>
                     </summary>
                     <div className="border-t border-dash-border px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <a
                           href={buildMailtoShareUrl(`https://${buildShareReportUrl(shareToken)}`, clientName)}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[16px] text-dash-ink hover:bg-dash-border"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
                         >
                           <MailIcon />
                           Email
@@ -3483,7 +3483,7 @@ export function ReportUploadWizard({
                           href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[16px] text-dash-ink hover:bg-dash-border"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
                         >
                           <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
@@ -3495,7 +3495,7 @@ export function ReportUploadWizard({
                           href={buildTelegramShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[16px] text-dash-ink hover:bg-dash-border"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
                         >
                           <svg viewBox="0 0 24 24" fill="#26A5E4" width={16} height={16} aria-hidden="true">
                             <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
@@ -3506,7 +3506,7 @@ export function ReportUploadWizard({
                           href={buildSlackShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[16px] text-dash-ink hover:bg-dash-border"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
                         >
                           <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
                             <path
@@ -3532,7 +3532,7 @@ export function ReportUploadWizard({
                           <button
                             type="button"
                             onClick={handleCopyLink}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[16px] text-dash-ink hover:bg-dash-border"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
                           >
                             <CopyIcon />
                             {copied ? "Copied!" : "Copy Drive link"}
@@ -3546,7 +3546,7 @@ export function ReportUploadWizard({
                 {hasGoogleDriveConnected && driveView === "editing" && (
                 <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
                   <div>
-                    <label className="block text-[15px] text-dash-ink-secondary">Folder link:</label>
+                    <label className="block text-[14px] text-dash-ink-secondary">Folder link:</label>
                     <input
                       type="text"
                       value={driveFolderLinkInput}
@@ -3555,17 +3555,17 @@ export function ReportUploadWizard({
                         setDriveLinkFormatError(null);
                       }}
                       placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                     />
-                    <p className="mt-1 text-[15px] text-dash-ink-secondary">
+                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
                       Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it
                       here
                     </p>
-                    {driveLinkFormatError && <p className="mt-1 text-[15px] text-red-400">{driveLinkFormatError}</p>}
+                    {driveLinkFormatError && <p className="mt-1 text-[14px] text-red-400">{driveLinkFormatError}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-[15px] text-dash-ink-secondary">
+                    <label className="block text-[14px] text-dash-ink-secondary">
                       Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
                     </label>
                     <input
@@ -3573,9 +3573,9 @@ export function ReportUploadWizard({
                       value={driveFolderNameInput}
                       onChange={(e) => setDriveFolderNameInput(e.target.value)}
                       placeholder="e.g. Reports or Alonzo Carr / Reports"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent"
+                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                     />
-                    <p className="mt-1 text-[15px] text-dash-ink-secondary">
+                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
                       Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
                     </p>
                   </div>
@@ -3584,7 +3584,7 @@ export function ReportUploadWizard({
                     <button
                       onClick={handleSaveToFolderLink}
                       disabled={!driveFolderLinkInput.trim() || driveSaving}
-                      className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                      className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                     >
                       {driveSaving ? "Saving…" : "Save to this folder"}
                     </button>
@@ -3598,7 +3598,7 @@ export function ReportUploadWizard({
                         setDriveLinkFormatError(null);
                         setDriveSaveError(null);
                       }}
-                      className="rounded-md border border-dash-border px-3 py-2 text-[15px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
+                      className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -3606,7 +3606,7 @@ export function ReportUploadWizard({
                 </div>
               )}
 
-              {driveSaveError && <p className="text-[15px] text-red-400">{driveSaveError}</p>}
+              {driveSaveError && <p className="text-[14px] text-red-400">{driveSaveError}</p>}
 
               {/* State 3: button/input are both gone, replaced by the saved-file
                   link. The share link + Email/WhatsApp/Copy Link row now live
@@ -3614,14 +3614,14 @@ export function ReportUploadWizard({
                   here. */}
               {driveView === "success" && driveSaveUrl && (
                 <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-                  <p className="mb-2 text-[15px] uppercase tracking-wide text-emerald-300">
+                  <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">
                     Saved to Google Drive ✓
                   </p>
                   <a
                     href={driveSaveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block break-all text-[15px] text-dash-accent hover:underline"
+                    className="block break-all text-[14px] text-dash-accent hover:underline"
                   >
                     {driveDisplayLabel()}
                   </a>
@@ -3630,7 +3630,7 @@ export function ReportUploadWizard({
                       setDriveView("editing");
                       setDriveSaveUrl(null);
                     }}
-                    className="mt-3 text-[15px] text-dash-ink-secondary hover:underline"
+                    className="mt-3 text-[14px] text-dash-ink-secondary hover:underline"
                   >
                     Save to a different folder
                   </button>
@@ -3639,7 +3639,7 @@ export function ReportUploadWizard({
 
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
               {reportType !== "COMPARISON" && reportType !== "HISTORICAL" && !previousMonthComparisonReady && (
-                <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[15px] text-dash-ink">
+                <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
                   <p className="font-semibold">Previous month comparison not set up</p>
                   <p className="mt-1 text-dash-ink-secondary">
                     Combined Total won&apos;t include a previous-month row.{" "}
@@ -3655,7 +3655,7 @@ export function ReportUploadWizard({
                 <button
                   type="button"
                   onClick={handleGenerateAnother}
-                  className="w-full text-center text-[15px] font-medium text-[#63b3ed] hover:underline"
+                  className="w-full text-center text-[14px] font-medium text-[#63b3ed] hover:underline"
                 >
                   Generate another report for {clientName}
                 </button>
@@ -3698,21 +3698,21 @@ function CsvDateGuidanceBanner({
   return (
     <div className="space-y-3 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-4">
       <div className="space-y-1.5">
-        <p className="text-[17px] font-semibold leading-snug text-white">{warning.title}</p>
-        <p className="text-[16px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
+        <p className="text-[15px] font-semibold leading-snug text-white">{warning.title}</p>
+        <p className="text-[14px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
       </div>
       <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="button"
           onClick={onContinue}
-          className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           Continue anyway →
         </button>
         <button
           type="button"
           onClick={onRedownload}
-          className="rounded-md border border-dash-border px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-dash-border"
+          className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
         >
           I&apos;ll re-download
         </button>
@@ -3734,7 +3734,7 @@ function StepIndicator({
 }) {
   const steps = getVisibleWizardSteps(flow);
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[16px]">
+    <div className="flex flex-wrap items-center gap-2 text-[14px]">
       {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
         return (
@@ -3808,7 +3808,7 @@ function NoDataRowsWarning({ message }: { message: string }) {
   const blocks = message.split("\n\n").map((block) => block.split("\n").filter((line) => line.trim() !== ""));
 
   return (
-    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200">
+    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
       {blocks.map((lines, i) => {
         if (lines.every((l) => l.startsWith("• "))) {
           return (
@@ -3862,12 +3862,12 @@ function PreviousMonthSummaryOption({
 }) {
   if (status === "done" && result) {
     return (
-      <div className="space-y-3 rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-[15px] text-emerald-200">
+      <div className="space-y-3 rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-[14px] text-emerald-200">
         <p className="font-medium text-emerald-100">Previous Month Summary report generated!</p>
         <div className="flex flex-wrap gap-3">
           <a
             href={result.downloadUrl}
-            className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-[15px] font-medium text-dash-ink hover:bg-emerald-500"
+            className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-emerald-500"
           >
             Download PPTX
           </a>
@@ -3877,7 +3877,7 @@ function PreviousMonthSummaryOption({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[15px] text-amber-200">
+    <div className="space-y-3 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
       <p>No active campaigns found in this date range. Your campaigns did not run during this period.</p>
       <p>
         However, we found previous month data for this client. You can still generate a report showing your previous
@@ -3889,7 +3889,7 @@ function PreviousMonthSummaryOption({
           type="button"
           onClick={onGenerate}
           disabled={status === "loading"}
-          className="rounded-md bg-dash-accent px-4 py-2 text-[15px] font-medium text-white hover:bg-dash-accent-hover disabled:opacity-60"
+          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-white hover:bg-dash-accent-hover disabled:opacity-60"
         >
           {status === "loading" ? "Generating…" : "Generate Previous Month Summary Report"}
         </button>
@@ -3897,7 +3897,7 @@ function PreviousMonthSummaryOption({
           type="button"
           onClick={onCancel}
           disabled={status === "loading"}
-          className="rounded-md border border-dash-border px-4 py-2 text-[15px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-60"
+          className="rounded-md border border-dash-border px-4 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-60"
         >
           Cancel
         </button>
@@ -3925,14 +3925,14 @@ function WizardPlatformCompactBar({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[17px] font-semibold text-white">{heading}</p>
-          <p className="text-[15px] text-dash-ink-secondary">{description}</p>
+          <p className="text-[15px] font-semibold text-white">{heading}</p>
+          <p className="text-[14px] text-dash-ink-secondary">{description}</p>
         </div>
       </div>
       <button
         type="button"
         onClick={onChangePlatform}
-        className="shrink-0 text-[15px] font-medium text-dash-accent hover:underline"
+        className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
         aria-expanded={false}
       >
         Change platform ▼
@@ -3977,11 +3977,11 @@ function ReportTypeCard({
         {icon}
       </span>
       <p
-        className={`mt-2 text-[17px] font-semibold text-white${singleLineHeading ? " whitespace-nowrap" : ""}`}
+        className={`mt-2 text-[15px] font-semibold text-white${singleLineHeading ? " whitespace-nowrap" : ""}`}
       >
         {heading}
       </p>
-      <p className="mt-1 text-[15px] text-dash-ink-secondary">{description}</p>
+      <p className="mt-1 text-[14px] text-dash-ink-secondary">{description}</p>
     </button>
   );
 }
@@ -4009,8 +4009,8 @@ function WeeklyPeriodOption({
           : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
       }`}
     >
-      <span className="block text-[15px] font-medium text-white">{label}</span>
-      {sublabel && <span className="mt-0.5 block text-[16px] text-dash-ink-secondary">{sublabel}</span>}
+      <span className="block text-[14px] font-medium text-white">{label}</span>
+      {sublabel && <span className="mt-0.5 block text-[14px] text-dash-ink-secondary">{sublabel}</span>}
     </button>
   );
 }
@@ -4041,10 +4041,10 @@ function UploadDropzone({ file, onFileSelected }: { file: File | null; onFileSel
         onChange={(e) => onFileSelected(e.target.files?.[0] ?? null)}
         className="hidden"
       />
-      <span className="text-[15px] font-medium text-dash-ink">
+      <span className="text-[14px] font-medium text-dash-ink">
         {file ? file.name : "Drop your CSV here or click to browse"}
       </span>
-      {!file && <span className="text-[15px] text-dash-ink-secondary">CSV, Excel, TSV, TXT</span>}
+      {!file && <span className="text-[14px] text-dash-ink-secondary">CSV, Excel, TSV, TXT</span>}
     </label>
   );
 }

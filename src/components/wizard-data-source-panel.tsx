@@ -194,7 +194,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[15px] font-semibold text-white">Meta Marketing API</p>
+              <p className="text-[14px] font-semibold text-white">Meta Marketing API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Approved · read-only ads reporting</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
@@ -262,7 +262,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[15px] font-semibold text-white">Google Ads API</p>
+              <p className="text-[14px] font-semibold text-white">Google Ads API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Approved · read-only campaign metrics</p>
             </div>
             <StatusPill ok={googleAdsConnected} label={googleAdsConnected ? "Connected" : "Not connected"} />
@@ -327,7 +327,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[15px] font-semibold text-white">TikTok Marketing API</p>
+              <p className="text-[14px] font-semibold text-white">TikTok Marketing API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only · USD reporting</p>
             </div>
             <StatusPill ok={tiktokConnected} label={tiktokConnected ? "Connected" : "Not connected"} />
@@ -402,7 +402,7 @@ export function WizardDataSourcePanel({
             type="button"
             onClick={() => void handleSync()}
             disabled={!canSync}
-            className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+            className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
             {syncStatus === "loading" ? "Syncing from API…" : "Sync data & analyze"}
           </button>
