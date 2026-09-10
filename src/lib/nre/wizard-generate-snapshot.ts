@@ -12,11 +12,15 @@ export interface WizardGenerateSnapshot {
   shareToken: string | null;
   platform: "META" | "GOOGLE" | "TIKTOK";
   reportType: WizardReportType;
-  dateMode: "last7" | "prev7" | "custom";
+  dateMode: "last7" | "prev7" | "last14" | "custom";
   customStart: string;
   customEnd: string;
   dateBounds: { minIso: string; maxIso: string } | null;
-  weeklyOptions: { last7: { startIso: string; endIso: string }; prev7: { startIso: string; endIso: string } } | null;
+  weeklyOptions: {
+    last7: { startIso: string; endIso: string };
+    prev7: { startIso: string; endIso: string };
+    last14: { startIso: string; endIso: string };
+  } | null;
   mtdRange: { startIso: string; endIso: string } | null;
   monthComparisonOptions: { periodA: { startIso: string; endIso: string }; periodB: { startIso: string; endIso: string } } | null;
   comparisonPreset: "thisWeek" | "thisMonth" | "custom";

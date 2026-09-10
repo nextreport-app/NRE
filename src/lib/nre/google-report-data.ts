@@ -24,6 +24,7 @@ import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from
 import { getDateRangeShortLabel, formatDateUS, getMonthName, parseDate } from "./dates";
 import { compactSameMonthRangeLabel, fmtCpm } from "./report-data";
 import { buildChartSnapshotKpis } from "./chart-snapshot-kpis";
+import { buildBudgetSummary } from "./budget-pacing";
 import type { GoogleRow } from "./google-columns";
 import type {
   AdSetSlideData,
@@ -252,6 +253,7 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
   const totalCost = campaigns.reduce((sum, g) => sum + g.cost, 0);
   const totalConversions = campaigns.reduce((sum, g) => sum + g.conversions, 0);
   const isPaused = campaigns.length === 0 || totalCost === 0;
+  const budgetSummaryLine = buildBudgetSummary(totalCost, monthlyBudget, currencySymbol);
 
   const reportDate = new Intl.DateTimeFormat("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
     .formatToParts(now)
@@ -288,7 +290,7 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
       dateRange: dateRangeLabel,
       healthBadge: avgCpaOk ? "✅ Campaigns On Track" : "⚠️ Needs Attention",
       healthScore: avgCpaOk ? 90 : 60,
-      budgetSummary: "",
+      budgetSummary: budgetSummaryLine,
     };
   }
 

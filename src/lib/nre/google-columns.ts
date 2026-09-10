@@ -143,6 +143,35 @@ export function readGoogleRowsWithAutoMap(
 export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 /**
+ * Maps Google Ads Manager / Editor export headers to the Meta-shaped names
+ * the NRE pipeline expects — same strategy as tiktok-columns.ts's
+ * normalizeTikTokCsvHeaders, so Google can reuse analyze/metrics/preview/
+ * generate routes with platform=GOOGLE instead of a parallel simplified path.
+ */
+export function normalizeGoogleCsvHeaders(headers: string[]): string[] {
+  return headers.map((h) => {
+    const lower = String(h).toLowerCase().trim();
+    if (lower === "cost" || lower === "total cost") return "Amount spent";
+    if (lower === "campaign" || lower === "campaign name") return "Campaign name";
+    if (lower === "ad group" || lower === "ad group name" || lower === "adgroup name") return "Ad set name";
+    if (lower === "clicks" || lower === "interactions") return "Link clicks";
+    if (lower === "avg. cpc" || lower === "average cpc" || lower === "avg. cost") return "CPC (cost per link click)";
+    if (lower === "ctr" || lower === "click-through rate" || lower === "interaction rate") return "CTR (All)";
+    if (lower === "conversions" || lower === "all conv." || lower === "conv.") return "Results";
+    if (
+      lower === "cost / conv." ||
+      lower === "cost per conversion" ||
+      lower === "cost / all conv."
+    ) {
+      return "Cost per result";
+    }
+    if (lower === "day" || lower === "date") return "Day";
+    if (lower === "campaign state" || lower === "campaign status" || lower === "status") return "Delivery status";
+    return h;
+  });
+}
+
+/**
  * Detects which platform a CSV export came from, from its header row alone
  * — used right after upload, before any row parsing, to route to the
  * right column dictionary/validator/report pipeline. Per spec: Google Ads

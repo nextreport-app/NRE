@@ -11,9 +11,7 @@ import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildRe
 import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
-import { buildGoogleReportData } from "@/lib/nre/google-report-data";
-import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
-import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
+import { detectPlatform } from "@/lib/nre/google-columns";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
@@ -98,7 +96,7 @@ function dispatchReportNotifications(params: {
   });
 }
 
-/** Meta/TikTok path: full campaign/ad-set selection + weekly/monthly date-range resolution + Previous Month Data. */
+/** Meta/Google/TikTok path: full campaign/ad-set selection + date-range resolution + Previous Month Data. */
 async function buildMetaData(
   client: Client,
   mtdDailyBuffer: Buffer,
@@ -130,6 +128,8 @@ async function buildMetaData(
   if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
   else if (parsedReportType === "DAILY") reportType = "DAILY";
   else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
+  else if (parsedReportType === "QUARTER") reportType = "QUARTER";
+  else if (parsedReportType === "YTD") reportType = "YTD";
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
     return {
@@ -143,7 +143,7 @@ async function buildMetaData(
     const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
     if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
     weeklyRange = daily;
-  } else if (reportType !== "CREATIVE") {
+  } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
     const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
     if (!dateResolution.ok) {
       return { error: dateResolution.error || "Invalid date selection." };
@@ -171,30 +171,6 @@ async function buildMetaData(
     adNameColumn,
     creativeOnly: reportType === "CREATIVE",
     platform,
-  });
-
-  return { data };
-}
-
-/** Google Ads path — deliberately simpler than Meta's: no campaign selection, no weekly/monthly toggle, no Previous Month Data — always the full MTD dataset (see google-report-data.ts's own file header for why). */
-function buildGoogleData(
-  client: Client,
-  headers: string[],
-  dataRows: string[][],
-  selectedMetrics: z.infer<typeof selectedMetricsSchema> | undefined,
-): { error: string } | { data: ReportData } {
-  const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
-  const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
-  if (!validation.valid) {
-    return { error: validation.errors.map((e) => e.message).join(" ") };
-  }
-
-  const data = buildGoogleReportData({
-    accountName: client.accountName,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
-    monthlyBudget: client.monthlyBudget,
-    mtdDailyRows: rows,
-    selectedMetrics,
   });
 
   return { data };
@@ -264,7 +240,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // section header) — handled fully here, never reaching buildMetaData/
   // buildGoogleData/renderPptx below, which stay exactly as they were.
   if (reportType === "COMPARISON") {
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform === "TIKTOK" ? "TIKTOK" : "META");
+    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
@@ -310,7 +286,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           clientId: client.id,
           status: "GENERATING",
           reportType: "COMPARISON",
-          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+          platform,
           fileName,
           displayName: defaultReportDisplayName(
             "COMPARISON",
@@ -336,7 +312,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       // logo — out of scope for this feature, so no loadLogoAsset call here.
       const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } });
 
-      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
       const pptxBuffer = await renderComparisonPptx({
         templateBuffer,
         data: comparisonData,
@@ -364,7 +340,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           id: comparisonReport.id,
           shareToken: updatedComparison?.shareToken ?? null,
           reportType: "COMPARISON",
-          platform: "META",
+          platform,
           displayName: updatedComparison?.displayName ?? comparisonReport.displayName,
         },
       });
@@ -386,7 +362,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   if (reportType === "HISTORICAL") {
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform === "TIKTOK" ? "TIKTOK" : "META");
+    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
@@ -418,7 +394,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignMetricOverrides,
       objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
       monthCount: resolvedMonthCount,
-      platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+      platform,
     });
 
     const fileName = `Multi-Month Report - ${historicalData.monthsLabel}.pptx`.replace(/[\s/]/g, "_");
@@ -431,7 +407,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           clientId: client.id,
           status: "GENERATING",
           reportType: "HISTORICAL",
-          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
+          platform,
           fileName,
           displayName: defaultReportDisplayName("HISTORICAL", null, null, historicalData.monthsLabel),
           shareToken,
@@ -635,11 +611,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
-  const result =
-    platform === "GOOGLE"
-      ? buildGoogleData(client, headers, dataRows, selectedMetrics)
-      : await buildMetaData(client, mtdDailyBuffer, formData, platform === "TIKTOK" ? "TIKTOK" : "META");
+  const result = await buildMetaData(client, mtdDailyBuffer, formData, platform);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

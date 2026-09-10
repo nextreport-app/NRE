@@ -13,8 +13,7 @@ import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
-import { detectPlatform, readGoogleRowsWithAutoMap } from "@/lib/nre/google-columns";
-import { validateGoogleAdsCsv } from "@/lib/nre/validate-google";
+import { detectPlatform } from "@/lib/nre/google-columns";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 
@@ -59,34 +58,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
     const detectedPlatform = detectPlatform(headers);
     const platform = platformOverride ?? detectedPlatform;
-
-    if (platform === "GOOGLE") {
-      const { colMap, rows } = readGoogleRowsWithAutoMap(headers, dataRows);
-      const validation = validateGoogleAdsCsv(colMap, rows, undefined, headers);
-      if (!validation.valid) {
-        return NextResponse.json(
-          { valid: false, errors: validation.errors, warnings: validation.warnings, detectedPlatform, platform },
-          { status: 200 },
-        );
-      }
-
-      return NextResponse.json({
-        valid: true,
-        errors: [],
-        warnings: validation.warnings,
-        detectedPlatform,
-        platform,
-        headers,
-        campaigns: [],
-        selectedCampaigns: [],
-        campaignStepMode: "choose",
-        adSetGroups: [],
-        dateBounds: null,
-        weeklyOptions: null,
-        mtdRange: null,
-        dateSelection: DEFAULT_DATE_SELECTION,
-      });
-    }
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
     const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);

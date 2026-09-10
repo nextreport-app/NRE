@@ -39,7 +39,7 @@ import { useToast } from "@/components/toast";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
-import { WizardGoogleGenerateBanner, WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
+import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import {
   Ga4BrandIcon,
   GoogleAdsBrandIcon,
@@ -218,7 +218,7 @@ function joinMetricLabels(metrics: SelectedMetric[]): string {
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
-type DateMode = "last7" | "prev7" | "custom";
+type DateMode = "last7" | "prev7" | "last14" | "custom";
 type ReportTypeValue = WizardReportType;
 type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
 // Which data shape the current preview holds — set from the /preview
@@ -265,6 +265,8 @@ const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
 
 const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
+const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
+const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 
 function defaultReportTitleFor(reportType: ReportTypeValue): string {
   if (reportType === "MONTHLY") return DEFAULT_MONTHLY_REPORT_TITLE;
@@ -272,6 +274,8 @@ function defaultReportTitleFor(reportType: ReportTypeValue): string {
   if (reportType === "CREATIVE") return DEFAULT_CREATIVE_REPORT_TITLE;
   if (reportType === "COMPARISON") return DEFAULT_COMPARISON_REPORT_TITLE;
   if (reportType === "HISTORICAL") return DEFAULT_HISTORICAL_REPORT_TITLE;
+  if (reportType === "QUARTER") return DEFAULT_QUARTER_REPORT_TITLE;
+  if (reportType === "YTD") return DEFAULT_YTD_REPORT_TITLE;
   return DEFAULT_REPORT_TITLE;
 }
 
@@ -590,7 +594,7 @@ export function ReportUploadWizard({
       "current",
     [previousMonthHasFile, previousMonthUpdatedAt, clientTimezone],
   );
-  const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso } | null>(null);
+  const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso; last14: DateRangeIso } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
   const [dateMode, setDateMode] = useState<DateMode>("last7");
   const [customStart, setCustomStart] = useState("");
@@ -695,7 +699,9 @@ export function ReportUploadWizard({
       return customStart && customEnd ? { startIso: customStart, endIso: customEnd } : null;
     }
     if (!weeklyOptions) return null;
-    return dateMode === "prev7" ? weeklyOptions.prev7 : weeklyOptions.last7;
+    if (dateMode === "prev7") return weeklyOptions.prev7;
+    if (dateMode === "last14") return weeklyOptions.last14;
+    return weeklyOptions.last7;
   }
 
   function customSpanDays(): number | null {
@@ -961,39 +967,9 @@ export function ReportUploadWizard({
     resetGenerateState();
   }
 
-  /** Meta lands straight on Step 2 (Select Campaigns) — /metrics isn't fetched until that step's own Continue click (see handleCampaignsContinue), once selectedCampaigns has actually settled from user interaction rather than being read mid-render. Google Ads skips straight to the preview — no campaign selection, no report-type toggle, no Previous Month Data (see google-report-data.ts's own file header for why this pipeline is deliberately simpler for v1). */
-  async function dispatchAfterAnalyze(platformValue: "META" | "GOOGLE" | "TIKTOK") {
-    if (platformValue === "META" || platformValue === "TIKTOK") {
-      setStep(2);
-      return;
-    }
-
-    if (!mtdFile) return;
-    setContinueStatus("loading");
-    setPreviewStatus("loading");
-    setPreviewErrors([]);
-    setPreviewMessage(null);
-
-    const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
-      method: "POST",
-      body: buildUploadFormData(mtdFile, { platform: platformValue }),
-    });
-    const json = await res.json().catch(() => null);
-    setContinueStatus("idle");
-
-    if (!res.ok || !json) {
-      setPreviewStatus("error");
-      setPreviewMessage("Something went wrong building the preview. Please try again.");
-      return;
-    }
-    if (!json.valid) {
-      setPreviewStatus("invalid");
-      setPreviewErrors(json.errors || []);
-      return;
-    }
-
-    applyPreviewResult(json);
-    setStep(5);
+  /** All ad platforms land on Step 2 (Select Campaigns) after analyze — /metrics is fetched on that step's Continue click. */
+  async function dispatchAfterAnalyze(_platformValue: "META" | "GOOGLE" | "TIKTOK") {
+    setStep(2);
   }
 
   // ── Step 1 -> 2: Analyze ────────────────────────────────────────────────
@@ -1887,6 +1863,8 @@ export function ReportUploadWizard({
     if (previewKind === "comparison") return "Comparison Report";
     if (previewKind === "historical") return "Multi-Month Report";
     if (reportType === "MONTHLY") return "Monthly Report";
+    if (reportType === "QUARTER") return "Quarterly Report";
+    if (reportType === "YTD") return "Year-to-Date Report";
     if (reportType === "DAILY") return "Daily Report";
     if (reportType === "CREATIVE") return "Creative Report";
     return "Weekly Report";
@@ -2780,7 +2758,7 @@ export function ReportUploadWizard({
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setStep(platform === "GOOGLE" ? 1 : 4)}
+              onClick={() => setStep(4)}
               className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -2813,6 +2791,20 @@ export function ReportUploadWizard({
                 onSelect={() => handleReportTypeChange("MONTHLY")}
               />
               <ReportTypeCard
+                icon="📈"
+                heading="Quarterly Performance Report"
+                description="Current quarter to date with campaign breakdown."
+                selected={reportType === "QUARTER"}
+                onSelect={() => handleReportTypeChange("QUARTER")}
+              />
+              <ReportTypeCard
+                icon="🗓️"
+                heading="Year-to-Date Report"
+                description="Jan 1 through yesterday — full YTD view."
+                selected={reportType === "YTD"}
+                onSelect={() => handleReportTypeChange("YTD")}
+              />
+              <ReportTypeCard
                 icon="🎨"
                 heading="Creative Performance Report"
                 description={
@@ -2822,11 +2814,8 @@ export function ReportUploadWizard({
                 }
                 selected={reportType === "CREATIVE"}
                 onSelect={() => handleReportTypeChange("CREATIVE")}
-                disabled={!hasAdLevelCsv || platform === "TIKTOK"}
+                disabled={!hasAdLevelCsv}
               />
-              {platform === "TIKTOK" && (
-                <p className="text-[14px] text-dash-ink-secondary">Creative reports are not available for TikTok yet.</p>
-              )}
               <ReportTypeCard
                 icon="🔀"
                 heading="Comparison Report"
@@ -2885,7 +2874,7 @@ export function ReportUploadWizard({
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
               <h4 className="text-[16px] font-semibold text-white">Select report period</h4>
 
-              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks · 7 days</p>
+              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks</p>
               <div className="mt-2 flex flex-wrap gap-3">
                 {weeklyOptions && (
                   <WeeklyPeriodOption
@@ -2905,6 +2894,17 @@ export function ReportUploadWizard({
                     sublabel={formatIsoRange(weeklyOptions.prev7)}
                     onSelect={() => {
                       setDateMode("prev7");
+                      setCustomRangeError(null);
+                    }}
+                  />
+                )}
+                {weeklyOptions && (
+                  <WeeklyPeriodOption
+                    selected={dateMode === "last14"}
+                    label="Last 14 days (bi-weekly)"
+                    sublabel={formatIsoRange(weeklyOptions.last14)}
+                    onSelect={() => {
+                      setDateMode("last14");
                       setCustomRangeError(null);
                     }}
                   />
@@ -3006,7 +3006,7 @@ export function ReportUploadWizard({
                 />
                 <WeeklyPeriodOption
                   selected={comparisonPreset === "thisMonth"}
-                  label="This month vs Last month"
+                  label="Month-on-month (this month vs last)"
                   sublabel={
                     monthComparisonOptions
                       ? `${formatIsoRange(monthComparisonOptions.periodA)} vs ${formatIsoRange(monthComparisonOptions.periodB)}`
@@ -3134,7 +3134,6 @@ export function ReportUploadWizard({
             </div>
           )}
 
-          {platform === "GOOGLE" && <WizardGoogleGenerateBanner />}
 
           {(data || comparisonData || historicalData) && (
             <>

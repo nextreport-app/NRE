@@ -89,7 +89,8 @@ describe("ad-set filter — full pipeline reproduction (CSV parse -> selection -
     expect(data.chart!.campaigns).toEqual([expect.objectContaining({ name: "Growth Campaign", spend: 1200 })]);
     expect(data.campaignSlides).toEqual([expect.objectContaining({ campaignName: "Growth Campaign" })]);
     expect(data.campaignSlides[0].metrics.spend).toBe("$1,200");
-    expect(data.cover.budgetSummary).toBe("");
+    expect(data.cover.budgetSummary).toContain("Monthly Ad Budget");
+    expect(data.cover.budgetSummary).toContain("$5,000");
 
     // What DOES change: "broad" gets no ad-set slide of its own; the other
     // two (still 2+, so still slide-worthy) do, each showing its OWN

@@ -219,8 +219,9 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(data.cover.healthBadge).toContain("On Track");
   });
 
-  it("leaves the cover budget summary empty", () => {
-    expect(data.cover.budgetSummary).toBe("");
+  it("shows budget pacing on the cover when monthlyBudget is set", () => {
+    expect(data.cover.budgetSummary).toContain("Monthly Ad Budget");
+    expect(data.cover.budgetSummary).toContain("₹100,000");
   });
 
   it("builds the MTD chart with default-sorted campaign order", () => {

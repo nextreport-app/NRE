@@ -175,6 +175,8 @@ const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
+const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
+const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
 
 const GENERIC_REPORT_TITLES = new Set(
@@ -185,6 +187,8 @@ const GENERIC_REPORT_TITLES = new Set(
     DEFAULT_CREATIVE_REPORT_TITLE,
     DEFAULT_COMPARISON_REPORT_TITLE,
     DEFAULT_HISTORICAL_REPORT_TITLE,
+    DEFAULT_QUARTER_REPORT_TITLE,
+    DEFAULT_YTD_REPORT_TITLE,
     DEFAULT_WEBSITE_REPORT_TITLE,
   ].map((t) => t.toUpperCase()),
 );
@@ -197,17 +201,21 @@ export function resolveCoverReportTitle(
   const defaultTitle =
     reportType === "MONTHLY"
       ? DEFAULT_MONTHLY_REPORT_TITLE
-      : reportType === "DAILY"
-        ? DEFAULT_DAILY_REPORT_TITLE
-        : reportType === "CREATIVE"
-          ? DEFAULT_CREATIVE_REPORT_TITLE
-          : reportType === "COMPARISON"
-            ? DEFAULT_COMPARISON_REPORT_TITLE
-            : reportType === "HISTORICAL"
-              ? DEFAULT_HISTORICAL_REPORT_TITLE
-            : reportType === "WEBSITE"
-              ? DEFAULT_WEBSITE_REPORT_TITLE
-              : DEFAULT_REPORT_TITLE;
+      : reportType === "QUARTER"
+        ? DEFAULT_QUARTER_REPORT_TITLE
+        : reportType === "YTD"
+          ? DEFAULT_YTD_REPORT_TITLE
+          : reportType === "DAILY"
+            ? DEFAULT_DAILY_REPORT_TITLE
+            : reportType === "CREATIVE"
+              ? DEFAULT_CREATIVE_REPORT_TITLE
+              : reportType === "COMPARISON"
+                ? DEFAULT_COMPARISON_REPORT_TITLE
+                : reportType === "HISTORICAL"
+                  ? DEFAULT_HISTORICAL_REPORT_TITLE
+                  : reportType === "WEBSITE"
+                    ? DEFAULT_WEBSITE_REPORT_TITLE
+                    : DEFAULT_REPORT_TITLE;
   const trimmed = reportTitle?.trim() ?? "";
   if (!trimmed || GENERIC_REPORT_TITLES.has(trimmed.toUpperCase())) {
     return defaultTitle.toUpperCase();
@@ -256,7 +264,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       REPORT_DATE: cover.reportDate,
       DATE_RANGE: cover.dateRange,
       ACCOUNT_HEALTH_BADGE: cover.healthBadge,
-      BUDGET_SUMMARY: "",
+      BUDGET_SUMMARY: cover.budgetSummary,
       ...(agencyName ? { PREPARED_BY: `Prepared by ${agencyName}` } : {}),
     },
     {
@@ -398,6 +406,8 @@ const CARD_SLOT_DEFAULT_ICON: MetricIconId[] = ["spend", "reach", "impressions",
 
 function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): string {
   if (reportType === "MONTHLY") return "YOUR MONTHLY PERFORMANCE REPORT";
+  if (reportType === "QUARTER") return "YOUR QUARTERLY PERFORMANCE REPORT";
+  if (reportType === "YTD") return "YOUR YEAR-TO-DATE PERFORMANCE REPORT";
   if (reportType === "DAILY") return "YOUR DAILY PERFORMANCE REPORT";
   if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
   if (reportType === "WEBSITE") return "YOUR WEBSITE TRAFFIC REPORT";
@@ -769,7 +779,8 @@ export function buildTableSlideXml(
   // slide shows only one data row (MTD) with no weekly column distinction"
   // (Fix 8) — a Monthly report has no separate weekly/period comparison at
   // all, only the month itself.
-  const hidePeriodRow = reportType === "MONTHLY" || !periodRow.hasData;
+  const hidePeriodRow =
+    reportType === "MONTHLY" || reportType === "QUARTER" || reportType === "YTD" || !periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
   const xml = fillCombinedTotalTable(template.xml, grid, {
     hideRowIndexes: [...(hidePeriodRow ? [2] : []), ...(hideMtdRow ? [1] : [])],
