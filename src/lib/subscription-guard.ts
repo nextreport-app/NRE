@@ -32,7 +32,7 @@ export async function requireActiveSubscription(userId: string): Promise<NextRes
 export async function requireClientCapacity(userId: string): Promise<NextResponse | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, planId: true, trialEndsAt: true, clientsCreatedCount: true },
+    select: { email: true, planId: true, trialEndsAt: true },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -42,11 +42,13 @@ export async function requireClientCapacity(userId: string): Promise<NextRespons
   }
 
   if (status.clientLimit !== null) {
-    // Lifetime slots — deleting a client does not free a slot on Agency plan.
-    if (user.clientsCreatedCount >= status.clientLimit) {
+    // Concurrent cap — active rows in My Clients. Deleting a client frees a
+    // slot so agencies can replace churned accounts without upgrading.
+    const activeClientCount = await prisma.client.count({ where: { userId } });
+    if (activeClientCount >= status.clientLimit) {
       return NextResponse.json(
         {
-          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client accounts (lifetime). Upgrade to Professional for unlimited clients.`,
+          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} active client accounts. Delete an unused client or upgrade to Professional for unlimited clients.`,
         },
         { status: 403 },
       );

@@ -32,7 +32,7 @@ export default async function NewClientPage() {
     );
   }
 
-  if (status.clientLimit !== null && capacity.clientsCreatedCount >= status.clientLimit) {
+  if (status.clientLimit !== null && capacity.activeClientCount >= status.clientLimit) {
     return <UpgradePrompt clientLimit={status.clientLimit} userEmail={user.email} userName={user.name} />;
   }
 
