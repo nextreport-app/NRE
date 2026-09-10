@@ -4,11 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { ClientList } from "@/components/client-list";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
-import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 
 export default async function ClientsPage() {
   const session = await auth();
-  const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
   const clients = session?.user
     ? await prisma.client.findMany({
         where: { userId: session.user.id },
@@ -75,10 +73,7 @@ export default async function ClientsPage() {
           </div>
           <h2 className="text-[20px] font-semibold text-dash-ink">No clients yet</h2>
           <p className="mt-2 max-w-sm text-[16px] leading-relaxed text-dash-ink-secondary">
-            Add your first client account — set currency and timezone once, then generate{" "}
-            {showTikTokOption
-              ? "Meta, Google, TikTok, or Google Analytics reports anytime."
-              : "Meta, Google, or Google Analytics reports anytime."}
+            Add your first client account — set currency and timezone once, then generate Meta, Google, TikTok, or Google Analytics reports anytime.
           </p>
           <Link
             href="/clients/new"
