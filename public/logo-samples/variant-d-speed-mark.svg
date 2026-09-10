@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="NextReport logo  speed chevron concept">
+  <!-- Forward motion + report stack  "next report in 2 minutes" -->
+  <rect width="120" height="120" rx="16" fill="#0d1b2e"/>
+  <rect x="22" y="36" width="56" height="56" rx="6" fill="#f5b45a" opacity="0.4"/>
+  <rect x="30" y="28" width="56" height="56" rx="6" fill="#f5b45a"/>
+  <path fill="#0d1b2e" d="M46 44h6v12l14-12h6L58 56l12 14h-6L52 58v12h-6V44z"/>
+  <path fill="#ffffff" d="M78 58l14-10v20L78 58z" opacity="0.9"/>
+</svg>

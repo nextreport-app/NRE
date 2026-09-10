@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="NextReport logo  report lines concept">
+  <!-- N + horizontal report lines (data/slides metaphor) -->
+  <rect width="120" height="120" rx="16" fill="#0d1b2e"/>
+  <rect x="24" y="28" width="72" height="64" rx="8" fill="#f5b45a"/>
+  <path fill="#0d1b2e" d="M44 40h7v14l18-14h8L63 54l20 22h-8L51 58v18h-7V40z"/>
+  <rect x="68" y="68" width="20" height="3" rx="1.5" fill="#0d1b2e" opacity="0.5"/>
+  <rect x="68" y="76" width="14" height="3" rx="1.5" fill="#0d1b2e" opacity="0.35"/>
+  <rect x="68" y="84" width="17" height="3" rx="1.5" fill="#0d1b2e" opacity="0.25"/>
+</svg>

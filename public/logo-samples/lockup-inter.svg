@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" role="img" aria-label="NextReport wordmark lockup">
+  <!-- Horizontal lockup  icon + Inter-style wordmark paths -->
+  <rect x="4" y="12" width="52" height="52" rx="8" fill="#f5b45a" opacity="0.35"/>
+  <rect x="10" y="6" width="52" height="52" rx="8" fill="#f5b45a"/>
+  <path fill="#ffffff" d="M26 22h5v14l16-14h5L43 36l18 20h-5L36 38v18h-5V22z"/>
+  <text x="78" y="52" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.5">NextReport</text>
+</svg>

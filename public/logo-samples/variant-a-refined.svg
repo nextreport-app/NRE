@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="NextReport">
-  <!-- Icon mark: stacked reports, white N on brand orange (transparent bg for navy nav) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="NextReport logo  refined stacked reports">
+  <!-- Refined version of current mark: cleaner stack, brand orange -->
   <rect x="18" y="34" width="72" height="72" rx="6" fill="#f5b45a" opacity="0.35"/>
   <rect x="26" y="26" width="72" height="72" rx="6" fill="#f5b45a" opacity="0.55"/>
   <rect x="34" y="18" width="72" height="72" rx="6" fill="#f5b45a"/>
