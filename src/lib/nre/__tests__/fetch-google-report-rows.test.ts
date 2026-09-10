@@ -13,6 +13,7 @@ describe("fetchGoogleReportCsv", () => {
           results: [
             {
               campaign: { name: "Shoes - Search" },
+              adGroup: { name: "Brand Terms" },
               segments: { date: "2026-07-13" },
               metrics: {
                 costMicros: "100000000",
@@ -20,6 +21,8 @@ describe("fetchGoogleReportCsv", () => {
                 impressions: "3000",
                 ctr: 0.015,
                 averageCpc: 2000000,
+                conversions: 4,
+                costPerConversion: 25,
               },
             },
           ],
@@ -52,5 +55,7 @@ describe("fetchGoogleReportCsv", () => {
     const validation = validateGoogleAdsCsv(colMap, rows, new Date("2026-07-20T12:00:00Z"), headers);
     expect(validation.valid).toBe(true);
     expect(rows[0].cost).toBe("100.00");
+    expect(rows[0].conversions).toBe("4");
+    expect(rows[0].ad_group_name).toBe("Brand Terms");
   });
 });

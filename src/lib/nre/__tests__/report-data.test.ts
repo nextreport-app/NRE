@@ -107,6 +107,7 @@ describe("buildReportData — multi-campaign integration", () => {
     currencySymbol: "₹",
     timezone: "Asia/Kolkata",
     monthlyBudget: 100000,
+    showBudgetPacingOnCover: true,
     mtdDailyRows,
     now: NOW,
   });

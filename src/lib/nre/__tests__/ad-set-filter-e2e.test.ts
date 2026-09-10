@@ -76,6 +76,7 @@ describe("ad-set filter — full pipeline reproduction (CSV parse -> selection -
       currencySymbol: "$",
       timezone: "UTC",
       monthlyBudget: 5000,
+      showBudgetPacingOnCover: true,
       mtdDailyRows: parsed.rows,
       selectedAdSets,
       now: NOW,

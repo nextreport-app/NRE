@@ -18,6 +18,7 @@ export type ClientFormValues = {
   currency: (typeof CURRENCIES)[number];
   timezone: string;
   monthlyBudget: string;
+  showBudgetPacingOnCover: boolean;
   template: (typeof TEMPLATES)[number];
   notes: string;
 };
@@ -65,6 +66,7 @@ export function ClientForm({
     currency: initial?.currency ?? "INR",
     timezone: initial?.timezone ?? "Asia/Kolkata",
     monthlyBudget: initial?.monthlyBudget ?? "",
+    showBudgetPacingOnCover: initial?.showBudgetPacingOnCover ?? false,
     template: initial?.template ?? "DARK",
     notes: initial?.notes ?? "",
   });
@@ -137,6 +139,7 @@ export function ClientForm({
       template: values.template,
       notes: values.notes,
       monthlyBudget: budgetNum != null && !Number.isNaN(budgetNum) && budgetNum > 0 ? budgetNum : null,
+      showBudgetPacingOnCover: values.showBudgetPacingOnCover,
     };
 
     const res = await fetch(url, {
@@ -248,7 +251,21 @@ export function ClientForm({
             className="w-full rounded-md border border-dash-border bg-dash-card py-2 pl-8 pr-3 text-sm text-dash-ink outline-none focus:border-dash-accent"
           />
         </div>
-        <p className="mt-1 text-xs text-dash-ink-muted">Shown on report cover as budget pacing when set.</p>
+        <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-dash-border bg-dash-sidebar/50 px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={values.showBudgetPacingOnCover}
+            onChange={(e) => set("showBudgetPacingOnCover", e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-dash-border"
+          />
+          <span className="text-sm text-dash-ink-secondary">
+            Show budget pacing on report cover
+            <span className="mt-0.5 block text-xs text-dash-ink-muted">
+              Off by default. When on, client-facing decks show spend vs this reference budget. Update the figure when
+              budgets change mid-month.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div>

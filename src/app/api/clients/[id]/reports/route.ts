@@ -158,6 +158,7 @@ async function buildMetaData(
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
+    showBudgetPacingOnCover: client.showBudgetPacingOnCover,
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,

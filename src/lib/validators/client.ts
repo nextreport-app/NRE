@@ -129,6 +129,7 @@ export const clientSchema = z.object({
     .union([z.number().positive(), z.nan(), z.null()])
     .optional()
     .transform((v) => (typeof v === "number" && !Number.isNaN(v) ? v : null)),
+  showBudgetPacingOnCover: z.boolean().optional().default(false),
   template: z.enum(TEMPLATES),
   notes: z
     .string()

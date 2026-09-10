@@ -151,8 +151,9 @@ export async function listAccessibleGoogleAdsCustomers(accessToken: string): Pro
 }
 
 export interface GoogleAdsSearchRow {
-  campaign?: { name?: string; resourceName?: string };
+  campaign?: { name?: string; resourceName?: string; advertisingChannelType?: string };
   adGroup?: { name?: string; resourceName?: string };
+  ad_group?: { name?: string; resourceName?: string };
   segments?: { date?: string };
   metrics?: {
     costMicros?: string;
@@ -165,6 +166,8 @@ export interface GoogleAdsSearchRow {
     conversions?: number;
     conversionsValue?: number;
     conversions_value?: number;
+    costPerConversion?: number;
+    cost_per_conversion?: number;
   };
 }
 

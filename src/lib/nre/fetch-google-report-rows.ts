@@ -2,11 +2,22 @@ import { searchGoogleAds, type GoogleAdsSearchRow } from "@/lib/google-ads-api";
 import { computeLastNDaysIsoRange } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
 
-const GOOGLE_CSV_HEADERS = ["Campaign", "Day", "Cost", "Clicks", "Impr.", "CTR", "Avg. CPC"] as const;
+const GOOGLE_CSV_HEADERS = [
+  "Campaign",
+  "Ad group",
+  "Day",
+  "Cost",
+  "Clicks",
+  "Impr.",
+  "CTR",
+  "Avg. CPC",
+  "Conversions",
+  "Cost / conv.",
+] as const;
 
-function formatMicrosCost(micros: string | undefined): string {
-  if (!micros) return "0";
-  const n = Number(micros);
+function formatMicrosCost(micros: string | number | undefined): string {
+  if (micros === undefined || micros === null || micros === "") return "0";
+  const n = typeof micros === "number" ? micros : Number(micros);
   if (!Number.isFinite(n)) return "0";
   return (n / 1_000_000).toFixed(2);
 }
@@ -21,19 +32,34 @@ function formatAvgCpc(micros: number | undefined): string {
   return (micros / 1_000_000).toFixed(2);
 }
 
+function formatConversions(value: number | undefined): string {
+  if (value === undefined || value === null || !Number.isFinite(value)) return "0";
+  return String(value);
+}
+
+function formatCostPerConversion(value: number | undefined): string {
+  if (value === undefined || value === null || !Number.isFinite(value) || value <= 0) return "";
+  return value.toFixed(2);
+}
+
 function searchRowToCsvRow(row: GoogleAdsSearchRow): string[] {
   const metrics = row.metrics ?? {};
   const costMicros = metrics.costMicros ?? metrics.cost_micros;
   const avgCpc = metrics.averageCpc ?? metrics.average_cpc;
+  const conversions = metrics.conversions;
+  const costPerConv = metrics.costPerConversion ?? metrics.cost_per_conversion;
 
   return [
     row.campaign?.name ?? "",
+    row.adGroup?.name ?? row.ad_group?.name ?? "",
     row.segments?.date ? isoToCsvDay(row.segments.date) : "",
     formatMicrosCost(costMicros),
     metrics.clicks ?? "0",
     metrics.impressions ?? "0",
     formatCtr(metrics.ctr),
     formatAvgCpc(avgCpc),
+    formatConversions(conversions),
+    formatCostPerConversion(costPerConv),
   ];
 }
 
@@ -43,32 +69,36 @@ export interface FetchGoogleReportCsvInput {
   timezone: string;
   now?: Date;
   days?: number;
+  sinceIso?: string;
+  untilIso?: string;
   loginCustomerId?: string;
 }
 
-/** Fetches Google Ads campaign metrics via GAQL and serializes to CSV bytes. */
+/** Fetches Google Ads ad-group daily metrics via GAQL and serializes to CSV bytes. */
 export async function fetchGoogleReportCsv(input: FetchGoogleReportCsvInput): Promise<{
   csvText: string;
   rowCount: number;
   sinceIso: string;
   untilIso: string;
 }> {
-  const { sinceIso, untilIso } = computeLastNDaysIsoRange(
-    input.now ?? new Date(),
-    input.timezone,
-    input.days ?? 30,
-  );
+  const { sinceIso, untilIso } =
+    input.sinceIso && input.untilIso
+      ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
+      : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
 
   const query = `
     SELECT
       campaign.name,
+      ad_group.name,
       segments.date,
       metrics.cost_micros,
       metrics.clicks,
       metrics.impressions,
       metrics.ctr,
-      metrics.average_cpc
-    FROM campaign
+      metrics.average_cpc,
+      metrics.conversions,
+      metrics.cost_per_conversion
+    FROM ad_group
     WHERE segments.date BETWEEN '${sinceIso}' AND '${untilIso}'
       AND metrics.impressions > 0
     ORDER BY segments.date

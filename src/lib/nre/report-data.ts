@@ -344,6 +344,8 @@ export interface BuildReportDataInput {
   currencySymbol: string;
   timezone: string;
   monthlyBudget: number | null;
+  /** When true (and monthlyBudget set), cover slide shows budget pacing — see Client.showBudgetPacingOnCover. */
+  showBudgetPacingOnCover?: boolean;
   /** Raw column-mapped rows from the "MTD Daily CSV" upload (required). */
   mtdDailyRows: NreRow[];
   /** Raw column-mapped rows from the client's optional Previous Month Data upload (previous full month) — see lib/nre/previous-month-data.ts. */
@@ -933,6 +935,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     currencySymbol,
     timezone,
     monthlyBudget,
+    showBudgetPacingOnCover = false,
     mtdDailyRows,
     periodRows,
     selectedCampaigns,
@@ -1056,6 +1059,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
           creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0),
           monthlyBudget,
           currencySymbol,
+          { showOnCover: showBudgetPacingOnCover },
         ),
       },
       campaignSlides: [],
@@ -1189,7 +1193,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const reportDateStr = `${reportDate.month}-${reportDate.day}-${reportDate.year}`;
 
   const mtdSpendTotal = mtdRows.reduce((sum, row) => sum + (row.spend || 0), 0);
-  const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol);
+  const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
+    showOnCover: showBudgetPacingOnCover,
+  });
 
   // ── Cover ──────────────────────────────────────────────────────────────
   let cover: CoverData;

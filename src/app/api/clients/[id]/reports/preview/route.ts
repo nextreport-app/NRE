@@ -226,6 +226,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
+    showBudgetPacingOnCover: client.showBudgetPacingOnCover,
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,

@@ -74,6 +74,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           hasGa4Property={!!client.ga4PropertyId}
           ga4Connected={!!user.ga4RefreshToken || user.ga4Enabled}
           showTikTokOption={showTikTokOption}
+          clientMonthlyBudget={client.monthlyBudget}
+          clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
         />
       </Suspense>
     </div>
