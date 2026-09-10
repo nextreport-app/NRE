@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import authConfig from "@/lib/auth.config";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
+import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -55,6 +56,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         name: user.name,
         provider: "google",
       });
+      if (user.id && user.email) {
+        const row = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { email: true, name: true, trialEndsAt: true },
+        });
+        if (row) {
+          sendWelcomeTrialEmail({ to: row.email, name: row.name, trialEndsAt: row.trialEndsAt });
+        }
+      }
     },
     // The adapter only calls `linkAccount` (which persists tokens) the first
     // time an OAuth account is linked — on every subsequent "Continue with

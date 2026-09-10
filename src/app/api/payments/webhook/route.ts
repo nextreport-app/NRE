@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { planIdForAmount, razorpayClient, verifyWebhookSignature } from "@/lib/razorpay";
+import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
 import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
 
 /**
@@ -116,6 +117,7 @@ async function handlePaymentCaptured(payment: WebhookPaymentEntity): Promise<voi
       planId,
       paymentId: payment.id,
     });
+    sendSubscriptionConfirmedEmail({ to: user.email, name: user.name, planId });
   } catch (err) {
     console.error(`[webhook:payments] payment.captured ${payment.id}: failed to update user ${userId}:`, err);
   }

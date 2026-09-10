@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isPlanId, verifyPaymentSignature } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
+import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
 import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
 
 /**
@@ -50,12 +51,16 @@ export async function POST(req: Request) {
       data: { planId, subscribedAt: new Date() },
     });
 
+    const email = session.user.email ?? "unknown";
     notifyBillingNewSubscription({
-      email: session.user.email ?? "unknown",
+      email,
       name: session.user.name,
       planId,
       paymentId: razorpay_payment_id,
     });
+    if (email !== "unknown") {
+      sendSubscriptionConfirmedEmail({ to: email, name: session.user.name, planId });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

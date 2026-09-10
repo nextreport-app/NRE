@@ -30,7 +30,10 @@ export async function requireActiveSubscription(userId: string): Promise<NextRes
 
 /** Same trial/cancelled check as requireActiveSubscription, plus the Starter plan's 10-client cap. null means "allowed, proceed." */
 export async function requireClientCapacity(userId: string): Promise<NextResponse | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, planId: true, trialEndsAt: true, clientsCreatedCount: true },
+  });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const status = getSubscriptionStatus(user);
@@ -39,11 +42,11 @@ export async function requireClientCapacity(userId: string): Promise<NextRespons
   }
 
   if (status.clientLimit !== null) {
-    const clientCount = await prisma.client.count({ where: { userId } });
-    if (clientCount >= status.clientLimit) {
+    // Lifetime slots — deleting a client does not free a slot on Agency plan.
+    if (user.clientsCreatedCount >= status.clientLimit) {
       return NextResponse.json(
         {
-          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client accounts. Upgrade to Professional for unlimited clients.`,
+          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client accounts (lifetime). Upgrade to Professional for unlimited clients.`,
         },
         { status: 403 },
       );
