@@ -116,31 +116,28 @@ import {
 // google-report-data.ts's own file header) skips the Reporting Period
 // section and the refetch effect entirely, landing here with whatever
 // /preview response dispatchAfterAnalyze already fetched directly.
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
   2: "Campaigns",
-  3: "Objectives",
-  4: "Metrics",
-  5: "Generate",
+  3: "Metrics",
+  4: "Generate",
 };
 
 // Fix 2 — context-specific wizard heading per step, replacing the generic
 // "Generate Report" heading that used to be static on every screen.
 const STEP_HEADINGS: Record<Step, string> = {
   1: "Add your ad data",
-  2: "Select Campaigns",
-  3: "Confirm Objectives",
-  4: "Review Metric Cards",
-  5: "Choose report type and generate",
+  2: "Select Campaigns & Objectives",
+  3: "Review Metric Cards",
+  4: "Choose report type and generate",
 };
 
 const STEP_SUBTITLES: Record<Step, string> = {
   1: "Connect via official API or upload a CSV — the tip below shows the correct date range for today.",
-  2: "Unchecked campaigns stay out of the deck. Ad-set slides are extra; campaign totals still include them.",
-  3: "Wrong objective means wrong cards and Combined Total. Fix it here.",
-  4: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
-  5: "Pick a report type, set dates if needed, review the summary, then generate.",
+  2: "Pick campaigns and ad sets, then confirm objectives below.",
+  3: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
+  4: "Pick a report type, set dates if needed, review the summary, then generate.",
 };
 
 const LAST_PLATFORM_STORAGE_KEY = "nre.lastAdPlatform";
@@ -580,6 +577,14 @@ export function ReportUploadWizard({
   const [perCampaignMetrics, setPerCampaignMetrics] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [perCampaignAvailablePool, setPerCampaignAvailablePool] = useState<Map<string, SelectedMetric[]>>(new Map());
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
+  /** Sorted campaign names the last /metrics fetch used — refetch when selection changes. */
+  const [metricsFetchedForSelection, setMetricsFetchedForSelection] = useState<string | null>(null);
+  useEffect(() => {
+    const key = [...selectedCampaigns].sort().join("\0");
+    if (metricsFetchedForSelection && metricsFetchedForSelection !== key) {
+      setMetricsFetchedForSelection(null);
+    }
+  }, [selectedCampaigns, metricsFetchedForSelection]);
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
   const [overflowDialog, setOverflowDialog] = useState<{
     campaignName: string;
@@ -863,8 +868,8 @@ export function ReportUploadWizard({
     const snapshot = loadWizardGenerateSnapshot(clientId, resumeReportId);
     if (snapshot) {
       applyGenerateSnapshot(snapshot);
-      setStepState(5);
-      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
+      setStepState(4);
+      setVisitedSteps(new Set([1, 2, 3, 4]));
       router.replace(`/clients/${clientId}/reports/new`);
       setResumeBootstrapping(false);
       return;
@@ -900,8 +905,8 @@ export function ReportUploadWizard({
           pdfAvailable: !!json.pdfAvailable,
         },
       );
-      setStepState(5);
-      setVisitedSteps(new Set([1, 2, 3, 4, 5]));
+      setStepState(4);
+      setVisitedSteps(new Set([1, 2, 3, 4]));
       router.replace(`/clients/${clientId}/reports/new`);
       setResumeBootstrapping(false);
       showToast("Download links restored — open this report from history if the full screen looks incomplete.");
@@ -1216,22 +1221,37 @@ export function ReportUploadWizard({
     setMetricsStatus("idle");
   }
 
-  // ── Step 2 -> 3: Select Campaigns -> Confirm Objectives ─────────────────
+  function selectedCampaignsKey(): string {
+    return [...selectedCampaigns].sort().join("\0");
+  }
+
+  function hasBlockingObjectives(): boolean {
+    return campaigns.some((name) => {
+      const normalized = normalizeCampaignName(name);
+      return (
+        selectedCampaigns.has(name) &&
+        campaignRequiresConfirmation.get(normalized) === true &&
+        !touchedObjectiveCampaigns.has(normalized)
+      );
+    });
+  }
+
+  // ── Step 2: Campaigns + Objectives -> Metric Cards ──────────────────────
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
-    await fetchObjectivesAndMetrics();
+    const selectionKey = selectedCampaignsKey();
+    if (metricsFetchedForSelection !== selectionKey) {
+      await fetchObjectivesAndMetrics();
+      setMetricsFetchedForSelection(selectionKey);
+    }
+    if (hasBlockingObjectives()) return;
     setStep(3);
   }
 
-  // ── Step 3 -> 4: Confirm Objectives -> Metric Cards ─────────────────────
-  function handleObjectivesContinue() {
-    setStep(4);
-  }
-
-  // ── Step 4 -> 5: Metric Cards -> Report Period & Generate ───────────────
+  // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
     setPerCampaignMinWarning(null);
-    setStep(5);
+    setStep(4);
   }
 
   // ── Improvement 2: ad-set selection (nested under each campaign row) ────
@@ -1594,7 +1614,7 @@ export function ReportUploadWizard({
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
   useEffect(() => {
-    if (step !== 5 || !usesFullAdWizard(platform)) return;
+    if (step !== 4 || !usesFullAdWizard(platform)) return;
     // fetchPreview's first line sets state (previewStatus "loading") — a
     // microtask hop keeps that out of this effect's own synchronous call
     // stack, matching react-hooks/set-state-in-effect's expectations
@@ -1822,6 +1842,7 @@ export function ReportUploadWizard({
     setPerCampaignMetrics(new Map());
     setPerCampaignAvailablePool(new Map());
     setMetricsStatus("idle");
+    setMetricsFetchedForSelection(null);
     setPerCampaignMinWarning(null);
     setCampaignRequiresConfirmation(new Map());
 
@@ -1990,7 +2011,7 @@ export function ReportUploadWizard({
       </div>
       <StepIndicator step={step} visitedSteps={visitedSteps} onNavigate={setStep} flow={wizardFlow} />
 
-      {step === 5 && (
+      {step === 4 && (
         <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
           Have a question or an issue with this report?{" "}
           <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
@@ -2415,6 +2436,103 @@ export function ReportUploadWizard({
             })()}
           </ul>
 
+          {metricsFetchedForSelection === selectedCampaignsKey() && (
+            <div className="space-y-4 border-t border-dash-border pt-4">
+              <h3 className="text-[15px] font-semibold text-white">Confirm objectives</h3>
+
+              {(() => {
+                const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
+                const confidenceTiers = shownCampaigns.map((name) =>
+                  campaignObjectiveConfidence.get(normalizeCampaignName(name)),
+                );
+                const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
+                return (
+                  allConfirmed && (
+                    <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[14px] text-amber-200">
+                      All objectives confirmed from your previous report. Review or click Continue.
+                    </div>
+                  )
+                );
+              })()}
+
+              {(() => {
+                const blockingCount = campaigns.filter((name) => {
+                  const normalized = normalizeCampaignName(name);
+                  return (
+                    selectedCampaigns.has(name) &&
+                    campaignRequiresConfirmation.get(normalized) === true &&
+                    !touchedObjectiveCampaigns.has(normalized)
+                  );
+                }).length;
+                return (
+                  blockingCount > 0 && (
+                    <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[14px] text-[#fc8181]">
+                      {blockingCount === 1
+                        ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
+                        : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
+                    </div>
+                  )
+                );
+              })()}
+
+              <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
+                {campaigns
+                  .filter((name) => selectedCampaigns.has(name))
+                  .map((name) => {
+                    const normalized = normalizeCampaignName(name);
+                    const current = campaignObjectives.get(normalized);
+                    const currentKey = current?.key ?? "results";
+                    const options = OBJECTIVE_DROPDOWN_OPTIONS.some((o) => o.key === currentKey)
+                      ? OBJECTIVE_DROPDOWN_OPTIONS
+                      : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
+                    const tier = campaignObjectiveConfidence.get(normalized);
+                    const badge = objectiveConfidenceBadge(tier);
+                    const isBlocking =
+                      campaignRequiresConfirmation.get(normalized) === true &&
+                      !touchedObjectiveCampaigns.has(normalized);
+                    return (
+                      <li key={name} className={`px-4 py-3 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate text-[14px] text-white" title={name}>
+                            {name}
+                          </span>
+                          <select
+                            value={currentKey}
+                            onChange={(e) => setCampaignObjective(name, e.target.value)}
+                            className={`rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
+                              isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
+                            } bg-dash-bg`}
+                          >
+                            {options.map((o) => (
+                              <option key={o.key} value={o.key}>
+                                {o.resultLabel}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {badge && badge.pill && (
+                          <div className="mt-2 flex justify-end">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[14px] font-semibold ${badge.className}`}
+                            >
+                              <span aria-hidden="true">{badge.icon}</span>
+                              <span>{badge.text}</span>
+                            </span>
+                          </div>
+                        )}
+                        {badge && !badge.pill && (
+                          <div className={`mt-1 flex items-center justify-end gap-1 text-[14px] font-medium ${badge.className}`}>
+                            <span aria-hidden="true">{badge.icon}</span>
+                            <span>{badge.text}</span>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
@@ -2424,7 +2542,11 @@ export function ReportUploadWizard({
             </button>
             <button
               onClick={handleCampaignsContinue}
-              disabled={selectedCampaigns.size === 0 || metricsStatus === "loading"}
+              disabled={
+                selectedCampaigns.size === 0 ||
+                metricsStatus === "loading" ||
+                (metricsFetchedForSelection === selectedCampaignsKey() && hasBlockingObjectives())
+              }
               className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {metricsStatus === "loading" ? "Loading…" : "Continue"}
@@ -2434,124 +2556,6 @@ export function ReportUploadWizard({
       )}
 
       {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          {(() => {
-            const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
-            const confidenceTiers = shownCampaigns.map((name) => campaignObjectiveConfidence.get(normalizeCampaignName(name)));
-            const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
-            return (
-              allConfirmed && (
-                <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[14px] text-amber-200">
-                  All objectives confirmed from your previous report. Review or click Continue.
-                </div>
-              )
-            );
-          })()}
-
-          {/* Thing 2 — campaigns still blocking Continue: requiresConfirmation is true AND the user hasn't picked a value yet. */}
-          {(() => {
-            const blockingCount = campaigns.filter((name) => {
-              const normalized = normalizeCampaignName(name);
-              return (
-                selectedCampaigns.has(name) &&
-                campaignRequiresConfirmation.get(normalized) === true &&
-                !touchedObjectiveCampaigns.has(normalized)
-              );
-            }).length;
-            return (
-              blockingCount > 0 && (
-                <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[14px] text-[#fc8181]">
-                  {blockingCount === 1
-                    ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
-                    : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
-                </div>
-              )
-            );
-          })()}
-
-          <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-            {campaigns
-              .filter((name) => selectedCampaigns.has(name))
-              .map((name) => {
-                const normalized = normalizeCampaignName(name);
-                const current = campaignObjectives.get(normalized);
-                // The dropdown always has a real, selectable value — a
-                // campaign the engine (or a fetch failure) never resolved
-                // falls back to the generic RESULTS option rather than
-                // showing nothing selected.
-                const currentKey = current?.key ?? "results";
-                const options = OBJECTIVE_DROPDOWN_OPTIONS.some((o) => o.key === currentKey)
-                  ? OBJECTIVE_DROPDOWN_OPTIONS
-                  : [current!, ...OBJECTIVE_DROPDOWN_OPTIONS];
-                const tier = campaignObjectiveConfidence.get(normalized);
-                const badge = objectiveConfidenceBadge(tier);
-                const isBlocking =
-                  campaignRequiresConfirmation.get(normalized) === true && !touchedObjectiveCampaigns.has(normalized);
-                return (
-                  <li key={name} className={`px-4 py-3 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-[14px] text-white" title={name}>
-                        {name}
-                      </span>
-                      <select
-                        value={currentKey}
-                        onChange={(e) => setCampaignObjective(name, e.target.value)}
-                        className={`rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
-                          isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
-                        } bg-dash-bg`}
-                      >
-                        {options.map((o) => (
-                          <option key={o.key} value={o.key}>
-                            {o.resultLabel}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {badge && badge.pill && (
-                      <div className="mt-2 flex justify-end">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[14px] font-semibold ${badge.className}`}>
-                          <span aria-hidden="true">{badge.icon}</span>
-                          <span>{badge.text}</span>
-                        </span>
-                      </div>
-                    )}
-                    {badge && !badge.pill && (
-                      <div className={`mt-1 flex items-center justify-end gap-1 text-[14px] font-medium ${badge.className}`}>
-                        <span aria-hidden="true">{badge.icon}</span>
-                        <span>{badge.text}</span>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-          </ul>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep(2)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleObjectivesContinue}
-              disabled={campaigns.some((name) => {
-                const normalized = normalizeCampaignName(name);
-                return (
-                  selectedCampaigns.has(name) &&
-                  campaignRequiresConfirmation.get(normalized) === true &&
-                  !touchedObjectiveCampaigns.has(normalized)
-                );
-              })}
-              className="rounded-md bg-dash-accent px-6 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-dash-accent"
-            >
-              Continue →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           {metricsStatus === "error" && (
             <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[14px] text-amber-200">
@@ -2667,7 +2671,7 @@ export function ReportUploadWizard({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -2770,12 +2774,12 @@ export function ReportUploadWizard({
         </div>
       )}
 
-      {step === 5 && (
+      {step === 4 && (
         <div className="space-y-6">
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setStep(4)}
+              onClick={() => setStep(3)}
               className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
             >
               Back
@@ -3158,7 +3162,7 @@ export function ReportUploadWizard({
             </p>
           )}
           {!coverBudgetPacingWarning && coverBudgetReferenceNote && (
-            <p className="rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
+            <p className="overflow-x-auto rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-nowrap text-sky-200">
               {coverBudgetReferenceNote}
             </p>
           )}
@@ -3701,8 +3705,8 @@ export function ReportUploadWizard({
 
 /**
  * `visitedSteps` (not just "s < step") decides whether a step is completed
- * and clickable — the Google Ads flow jumps straight from step 1 to step 5
- * (dispatchAfterAnalyze), so steps 2-4 are numerically "less than" step 5
+ * and clickable — the Google Ads flow jumps straight from step 1 to step 4
+ * (dispatchAfterAnalyze), so steps 2-3 are numerically "less than" step 4
  * without ever having been shown; those must stay muted/unclickable rather
  * than falsely offering navigation into a step that was never populated.
  * Clicking a completed step just calls onNavigate(s) — a plain setStep,
