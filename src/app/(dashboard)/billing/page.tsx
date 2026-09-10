@@ -41,14 +41,6 @@ export default async function BillingPage() {
 
   const status = getSubscriptionStatus(user);
 
-  // Estimated, not authoritative — see lib/razorpay.ts's file header: this
-  // integration is Razorpay's one-time Orders API, not the Subscriptions
-  // API, so there's no server-side recurring charge to read a real renewal
-  // date from. Shown for information only, 30 days after the last payment.
-  const nextBillingDate = user.subscribedAt
-    ? new Date(user.subscribedAt.getTime() + 30 * MS_PER_DAY)
-    : null;
-
   const badge =
     status.isAdminOverride || status.isSubscribed
       ? { label: "Active", tone: "success" as const }
