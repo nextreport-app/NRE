@@ -81,7 +81,7 @@ export function QuickEnquiryForm() {
         required
         value={whatsapp}
         onChange={(e) => setWhatsapp(e.target.value)}
-        placeholder="WhatsApp number (+91 …)"
+        placeholder="WhatsApp (+91, +1, +44 …)"
         aria-label="WhatsApp number"
         autoComplete="tel"
         className={inputClassName}

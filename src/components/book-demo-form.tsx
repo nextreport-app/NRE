@@ -98,11 +98,13 @@ export function BookDemoForm() {
           required
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
-          placeholder="+91 98765 43210"
+          placeholder="+91 …, +1 …, or +44 …"
           autoComplete="tel"
           className={inputClassName}
         />
-        <p className="mt-1 text-xs text-ink-muted">We&apos;ll use this to confirm your demo time — usually faster than email.</p>
+        <p className="mt-1 text-xs text-ink-muted">
+          Include country code (India +91, US +1, UK +44). We&apos;ll use this to confirm your demo — usually faster than email.
+        </p>
       </div>
 
       <div>

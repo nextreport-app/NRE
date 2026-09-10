@@ -103,11 +103,13 @@ export function ContactForm() {
           required
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
-          placeholder="+91 98765 43210"
+          placeholder="+91 …, +1 …, or +44 …"
           autoComplete="tel"
           className={inputClassName}
         />
-        <p className="mt-1 text-xs text-ink-muted">We often reply faster on WhatsApp than email.</p>
+        <p className="mt-1 text-xs text-ink-muted">
+          Include country code (India +91, US +1, UK +44). We often reply faster on WhatsApp than email.
+        </p>
       </div>
 
       <div>

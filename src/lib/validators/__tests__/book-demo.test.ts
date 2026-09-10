@@ -5,7 +5,7 @@ function validInput(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     name: "Alex",
     email: "alex@agency.com",
-    whatsapp: "8882578327",
+    whatsapp: "+91 88825 78327",
     company: "Bright Media",
     teamSize: "2–5 people",
     message: "We run Meta reports for 12 clients weekly.",
