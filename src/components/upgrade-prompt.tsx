@@ -16,7 +16,7 @@ export function UpgradePrompt({
     <div className="mx-auto max-w-md rounded-lg border border-dash-border bg-dash-card p-8 text-center">
       <h1 className="text-xl font-semibold text-dash-ink">Client limit reached</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        You have reached the {clientLimit} client limit on the {getPlanDisplayName("starter")} plan. Upgrade to Professional for unlimited clients.
+        You have used all {clientLimit} client slots on the {getPlanDisplayName("starter")} plan (lifetime limit). Upgrade to Professional for unlimited clients.
       </p>
       <SubscribeButton
         planId="professional"

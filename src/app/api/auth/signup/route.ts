@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { signupSchema } from "@/lib/validators/auth";
 import { apiErrorResponse } from "@/lib/api-error";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
+import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -24,11 +25,13 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: { name, email, passwordHash },
+      select: { email: true, name: true, trialEndsAt: true },
     });
 
     notifyAdminNewSignup({ email, name, provider: "credentials" });
+    sendWelcomeTrialEmail({ to: user.email, name: user.name, trialEndsAt: user.trialEndsAt });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

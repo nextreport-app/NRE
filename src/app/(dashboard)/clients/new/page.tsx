@@ -4,18 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { ClientForm } from "@/components/client-form";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
+import { getClientCapacityUsage } from "@/lib/client-capacity";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 export default async function NewClientPage() {
   const session = await auth();
   if (!session?.user) notFound();
 
-  const [user, clientCount] = await Promise.all([
+  const [user, capacity] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { name: true, email: true, planId: true, trialEndsAt: true },
     }),
-    prisma.client.count({ where: { userId: session.user.id } }),
+    getClientCapacityUsage(session.user.id),
   ]);
   if (!user) notFound();
 
@@ -31,7 +32,7 @@ export default async function NewClientPage() {
     );
   }
 
-  if (status.clientLimit !== null && clientCount >= status.clientLimit) {
+  if (status.clientLimit !== null && capacity.clientsCreatedCount >= status.clientLimit) {
     return <UpgradePrompt clientLimit={status.clientLimit} userEmail={user.email} userName={user.name} />;
   }
 

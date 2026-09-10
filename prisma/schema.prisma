@@ -45,6 +45,11 @@ model User {
   subscribedAt           DateTime?
   razorpayCustomerId     String?
   razorpaySubscriptionId String?
+  // Lifetime client slots consumed on Agency plan — incremented on create,
+  // never decremented on delete (prevents delete-and-recreate loophole).
+  clientsCreatedCount    Int       @default(0)
+  // Set when the "trial ending tomorrow" email is sent (daily cron).
+  trialEndingEmailSentAt DateTime?
 
   // Agency branding (account settings) — appears on every report this user
   // generates for any of their clients: agencyName as the cover slide's
