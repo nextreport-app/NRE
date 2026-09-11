@@ -40,7 +40,7 @@ import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
-import { budgetPacingWarning, budgetReferenceNote } from "@/lib/nre/budget-pacing";
+import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
 import {
   Ga4BrandIcon,
   GoogleAdsBrandIcon,
@@ -660,7 +660,7 @@ export function ReportUploadWizard({
   const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
-  const [budgetNoteExpanded, setBudgetNoteExpanded] = useState(false);
+  const [showBudgetOnCover, setShowBudgetOnCover] = useState(clientShowBudgetPacingOnCover ?? false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -1592,6 +1592,7 @@ export function ReportUploadWizard({
         comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
+        showBudgetPacingOnCover: showBudgetOnCover,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -1641,6 +1642,7 @@ export function ReportUploadWizard({
     comparisonPeriodB?.startIso,
     comparisonPeriodB?.endIso,
     historicalMonthCount,
+    showBudgetOnCover,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -1677,6 +1679,7 @@ export function ReportUploadWizard({
         comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
+        showBudgetPacingOnCover: showBudgetOnCover,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -1861,6 +1864,7 @@ export function ReportUploadWizard({
     setCustomRangeError(null);
     setLongRangeConfirmed(false);
     setReportType("WEEKLY");
+    setShowBudgetOnCover(clientShowBudgetPacingOnCover ?? false);
     setComparisonPreset("thisWeek");
     setComparisonPeriodA(null);
     setComparisonPeriodB(null);
@@ -1931,13 +1935,14 @@ export function ReportUploadWizard({
   const coverBudgetPacingWarning = useMemo(() => {
     if (previewKind !== "normal" || !data) return null;
     const spend = data.chart?.totalAllSpend ?? 0;
-    return budgetPacingWarning(spend, clientMonthlyBudget, clientShowBudgetPacingOnCover);
-  }, [previewKind, data, clientMonthlyBudget, clientShowBudgetPacingOnCover]);
+    return budgetPacingWarning(spend, clientMonthlyBudget, showBudgetOnCover);
+  }, [previewKind, data, clientMonthlyBudget, showBudgetOnCover]);
 
-  const coverBudgetReferenceNote = useMemo(
-    () => budgetReferenceNote(clientMonthlyBudget, clientShowBudgetPacingOnCover, currencySymbol),
-    [clientMonthlyBudget, clientShowBudgetPacingOnCover, currencySymbol],
-  );
+  const coverBudgetPreviewLine = useMemo(() => {
+    if (previewKind !== "normal" || !data) return null;
+    const spend = data.chart?.totalAllSpend ?? 0;
+    return buildBudgetCoverPreview(spend, clientMonthlyBudget, currencySymbol, clientTimezone);
+  }, [previewKind, data, clientMonthlyBudget, currencySymbol, clientTimezone]);
 
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
@@ -3169,30 +3174,43 @@ export function ReportUploadWizard({
           )}
 
 
-          {coverBudgetPacingWarning && (
-            <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-              {coverBudgetPacingWarning}
-            </p>
-          )}
-          {!coverBudgetPacingWarning && coverBudgetReferenceNote && (
-            <div className="rounded-md border border-sky-800/50 bg-sky-950/30">
-              <button
-                type="button"
-                onClick={() => setBudgetNoteExpanded((open) => !open)}
-                aria-expanded={budgetNoteExpanded}
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[14px] text-sky-200"
-              >
-                <span>Reference budget saved — not on cover slide</span>
-                <span
-                  className={`shrink-0 text-[15px] leading-none text-sky-300/80 transition-transform${budgetNoteExpanded ? " rotate-180" : ""}`}
-                  aria-hidden
-                >
-                  ▾
-                </span>
-              </button>
-              {budgetNoteExpanded && (
-                <p className="overflow-x-auto border-t border-sky-800/50 px-3 py-2 text-[14px] text-nowrap text-sky-200/90">
-                  {coverBudgetReferenceNote}
+          {previewKind === "normal" && data && (
+            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <h4 className="text-[15px] font-semibold text-white">Cover slide budget</h4>
+              {clientMonthlyBudget != null && clientMonthlyBudget > 0 && coverBudgetPreviewLine ? (
+                <div className="mt-3 space-y-3">
+                  <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
+                    {coverBudgetPreviewLine}
+                  </p>
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={showBudgetOnCover}
+                      onChange={(e) => setShowBudgetOnCover(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                    />
+                    <span className="text-[14px] leading-relaxed text-dash-ink-secondary">
+                      Show this line on the cover slide of your report
+                    </span>
+                  </label>
+                  {coverBudgetPacingWarning && (
+                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
+                      {coverBudgetPacingWarning}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
+                  No monthly budget set for this client.{" "}
+                  <Link
+                    href={`/clients/${clientId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-dash-accent hover:underline"
+                  >
+                    Set budget in Client Settings
+                  </Link>{" "}
+                  <span className="text-dash-ink-secondary">(opens in a new tab — your report setup stays on this page)</span>
                 </p>
               )}
             </div>

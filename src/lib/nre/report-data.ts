@@ -1059,7 +1059,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
           creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0),
           monthlyBudget,
           currencySymbol,
-          { showOnCover: showBudgetPacingOnCover },
+          { showOnCover: showBudgetPacingOnCover, timezone },
         ),
       },
       campaignSlides: [],
@@ -1195,6 +1195,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const mtdSpendTotal = mtdRows.reduce((sum, row) => sum + (row.spend || 0), 0);
   const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
     showOnCover: showBudgetPacingOnCover,
+    timezone,
   });
 
   // ── Cover ──────────────────────────────────────────────────────────────

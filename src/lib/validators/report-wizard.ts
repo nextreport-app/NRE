@@ -147,6 +147,19 @@ export const confirmedObjectiveSchema = objectiveInfoSchema.extend({
 });
 export const confirmedCampaignObjectivesSchema = z.record(z.string(), confirmedObjectiveSchema);
 
+/** Parses a plain "true"/"false" FormData field — used for wizard toggles sent alongside file uploads. */
+export function parseBooleanFormField(formData: FormData | null, field: string): boolean | undefined {
+  if (!formData) return undefined;
+  const raw = formData.get(field);
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  return undefined;
+}
+
+export function resolveShowBudgetPacingOnCover(formData: FormData | null, clientDefault: boolean): boolean {
+  return parseBooleanFormField(formData, "showBudgetPacingOnCover") ?? clientDefault;
+}
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

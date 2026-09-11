@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildBudgetSummary, budgetPacingWarning, budgetReferenceNote } from "../budget-pacing";
+import {
+  buildBudgetCoverPreview,
+  buildBudgetSummary,
+  budgetPacingWarning,
+  monthDaysRemaining,
+} from "../budget-pacing";
 
 describe("buildBudgetSummary", () => {
   it("returns empty when cover pacing is disabled", () => {
@@ -11,36 +16,43 @@ describe("buildBudgetSummary", () => {
   });
 
   it("returns pacing line when enabled and in budget", () => {
-    const line = buildBudgetSummary(25000, 100000, "₹", { showOnCover: true });
+    const line = buildBudgetSummary(25000, 100000, "₹", { showOnCover: true, timezone: "UTC" });
     expect(line).toContain("Monthly Ad Budget");
     expect(line).toContain("25%");
+    expect(line).toContain("days remaining");
   });
 
   it("uses over-budget wording instead of extreme percentages", () => {
-    const line = buildBudgetSummary(3000, 1000, "₹", { showOnCover: true });
+    const line = buildBudgetSummary(3000, 1000, "₹", { showOnCover: true, timezone: "UTC" });
     expect(line).toContain("over");
     expect(line).not.toContain("300%");
   });
 });
 
-describe("budgetReferenceNote", () => {
-  it("returns note when budget is set but cover pacing is off", () => {
-    const note = budgetReferenceNote(50000, false, "₹");
-    expect(note).toContain("₹50,000");
-    expect(note).toMatch(/not shown on the cover/i);
+describe("buildBudgetCoverPreview", () => {
+  it("shows a preview even when cover toggle is off", () => {
+    const line = buildBudgetCoverPreview(25000, 100000, "₹", "UTC");
+    expect(line).toContain("Monthly Ad Budget");
+    expect(line).toContain("₹25,000");
   });
 
-  it("returns null when cover pacing is on", () => {
-    expect(budgetReferenceNote(50000, true, "₹")).toBeNull();
+  it("returns null when no budget is set", () => {
+    expect(buildBudgetCoverPreview(1000, null, "₹", "UTC")).toBeNull();
+  });
+});
+
+describe("monthDaysRemaining", () => {
+  it("returns non-negative days", () => {
+    expect(monthDaysRemaining("Asia/Kolkata", new Date("2026-09-11T12:00:00Z"))).toBeGreaterThanOrEqual(0);
   });
 });
 
 describe("budgetPacingWarning", () => {
   it("warns when pacing is on but budget missing", () => {
-    expect(budgetPacingWarning(1000, null, true)).toMatch(/no monthly budget/i);
+    expect(budgetPacingWarning(1000, null, true)).toMatch(/set a monthly budget/i);
   });
 
   it("warns when spend exceeds budget", () => {
-    expect(budgetPacingWarning(3000, 1000, true)).toMatch(/update the reference budget/i);
+    expect(budgetPacingWarning(3000, 1000, true)).toMatch(/turn off the cover toggle/i);
   });
 });

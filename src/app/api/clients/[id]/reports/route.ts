@@ -45,6 +45,7 @@ import {
   selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
+  resolveShowBudgetPacingOnCover,
 } from "@/lib/validators/report-wizard";
 import type { Client } from "@/generated/prisma/client";
 import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
@@ -158,7 +159,7 @@ async function buildMetaData(
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
-    showBudgetPacingOnCover: client.showBudgetPacingOnCover,
+    showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
