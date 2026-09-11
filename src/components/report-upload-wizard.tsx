@@ -119,7 +119,7 @@ import {
 type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
-  2: "Campaigns",
+  2: "Setup",
   3: "Metrics",
   4: "Generate",
 };
