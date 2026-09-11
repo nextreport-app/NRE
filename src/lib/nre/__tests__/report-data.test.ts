@@ -223,6 +223,7 @@ describe("buildReportData — multi-campaign integration", () => {
   it("shows budget pacing on the cover when monthlyBudget is set", () => {
     expect(data.cover.budgetSummary).toContain("Monthly Ad Budget");
     expect(data.cover.budgetSummary).toContain("₹100,000");
+    expect(data.mtdSpendTotal).toBe(2450);
   });
 
   it("builds the MTD chart with default-sorted campaign order", () => {
@@ -4475,6 +4476,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     expect(data.mtdRow.spend).toBe("—");
     // Chart uses last-30-days — August delivery still counts even though MTD is empty.
     expect(data.chart!.totalAllSpend).toBe(500);
+    expect(data.mtdSpendTotal).toBe(0);
   });
 
   it("chart slide uses last-30-days data on Sep 2 — not just Sep 1-2 MTD", () => {
@@ -4492,6 +4494,27 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     expect(data.chart!.periodLabel).toBe("Last30");
     expect(data.chart!.periodSubLabel).toBe("Aug 3 - Sep 1, 2026");
     expect(data.chart!.totalAllSpend).toBeGreaterThan(500);
+    expect(data.mtdSpendTotal).toBeCloseTo(186.4);
+    expect(data.chart!.totalAllSpend).toBeGreaterThan(data.mtdSpendTotal);
+  });
+
+  it("cover budget pacing uses mtdSpendTotal, not last-30-days chart spend", () => {
+    const data = buildReportData({
+      accountName: "Nope",
+      currencySymbol: "C$",
+      timezone: "America/Toronto",
+      monthlyBudget: 4000,
+      showBudgetPacingOnCover: true,
+      mtdDailyRows: [...augustOnlyMtdRows, septemberRow],
+      periodRows: [pmMonthlyRow],
+      selectedCampaigns: ["ABO - Testing", "Purchase Campaign | Remarketing"],
+      now,
+    });
+
+    expect(data.mtdSpendTotal).toBeCloseTo(186.4);
+    expect(data.chart!.totalAllSpend).toBeGreaterThan(data.mtdSpendTotal);
+    expect(data.cover.budgetSummary).toContain("C$186");
+    expect(data.cover.budgetSummary).not.toContain("C$686");
   });
 
   it("when the active September campaign is selected, MTD reflects only September spend", () => {
@@ -4508,6 +4531,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
 
     expect(data.mtdRow.monthLabel).toBe("Sep 1");
     expect(data.mtdRow.spend).toBe("C$186");
+    expect(data.mtdSpendTotal).toBeCloseTo(186.4);
     expect(data.chart!.totalAllSpend).toBe(186.4);
   });
 

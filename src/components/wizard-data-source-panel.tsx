@@ -185,8 +185,8 @@ export function WizardDataSourcePanel({
       <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3.5">
         <p className="text-[14px] font-semibold text-white">Official API access — skip the CSV export</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Connect once in Account Settings, pick your ad account here, and we&apos;ll pull the last 30 days of
-          daily campaign data — same report pipeline as CSV upload.
+          Connect once in Account Settings, pick your ad account here, and we&apos;ll pull the last 30 complete
+          days of daily campaign data (ending yesterday) — same range as our CSV download guide.
         </p>
       </div>
 
@@ -391,7 +391,7 @@ export function WizardDataSourcePanel({
       {connected && configured ? (
         <>
           <p className="text-[12px] text-dash-ink-secondary">
-            Syncs the last 30 days with daily breakdown — same date range as our CSV download guide.
+            Syncs the last 30 days with daily breakdown, ending yesterday — same date range as our CSV download guide.
           </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">

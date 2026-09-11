@@ -1,4 +1,5 @@
 import { getCalendarDateInTimezone } from "./dates";
+import { getCalendarYesterday } from "./date-range";
 
 function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -25,14 +26,14 @@ export function computePreviousCalendarMonthIsoRange(
   return { sinceIso: formatIsoUtc(since), untilIso: formatIsoUtc(until) };
 }
 
-/** Last N calendar days ending today in the client's timezone (inclusive). */
+/** Last N calendar days ending yesterday in the client's timezone (inclusive). Today's data is incomplete. */
 export function computeLastNDaysIsoRange(
   now: Date,
   timezone: string,
   days = 30,
 ): { sinceIso: string; untilIso: string } {
-  const today = getCalendarDateInTimezone(now, timezone);
-  const until = new Date(Date.UTC(today.year, today.month - 1, today.day));
+  const yesterday = getCalendarYesterday(now, timezone);
+  const until = new Date(Date.UTC(yesterday.year, yesterday.month - 1, yesterday.day));
   const since = new Date(until);
   since.setUTCDate(since.getUTCDate() - (days - 1));
 

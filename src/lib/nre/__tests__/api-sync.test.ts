@@ -25,10 +25,16 @@ describe("isoToCsvDay", () => {
 });
 
 describe("computeLastNDaysIsoRange", () => {
-  it("returns 30 inclusive days ending today in the client timezone", () => {
+  it("returns 30 inclusive days ending yesterday in the client timezone", () => {
     const now = new Date("2026-07-20T12:00:00Z");
     const { sinceIso, untilIso } = computeLastNDaysIsoRange(now, "UTC", 30);
-    expect(untilIso).toBe("2026-07-20");
-    expect(sinceIso).toBe("2026-06-21");
+    expect(untilIso).toBe("2026-07-19");
+    expect(sinceIso).toBe("2026-06-20");
+  });
+
+  it("ends on client-timezone yesterday, not UTC today", () => {
+    const now = new Date("2026-09-11T08:00:00Z"); // Sep 11 01:00 in US Pacific
+    const { untilIso } = computeLastNDaysIsoRange(now, "America/Los_Angeles", 30);
+    expect(untilIso).toBe("2026-09-10");
   });
 });
