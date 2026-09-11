@@ -391,7 +391,7 @@ export function WizardDataSourcePanel({
       {connected && configured ? (
         <>
           <p className="text-[12px] text-dash-ink-secondary">
-            Syncs the last 30 days with daily breakdown, ending yesterday — same date range as our CSV download guide.
+            Syncs the last 30 days with daily breakdown, ending yesterday — same columns and date range as our CSV download guide.
           </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">

@@ -138,6 +138,8 @@ export interface MetaInsightRow {
   frequency?: string;
   date_start?: string;
   date_stop?: string;
+  /** Ad-set optimization goal — used to pick the objective-aligned result from actions[]. */
+  optimization_goal?: string;
   actions?: MetaInsightAction[];
   cost_per_action_type?: MetaInsightAction[];
 }
@@ -158,6 +160,7 @@ const META_INSIGHT_FIELDS = [
   "cpc",
   "inline_link_clicks",
   "frequency",
+  "optimization_goal",
   "actions",
   "cost_per_action_type",
   "date_start",
@@ -188,6 +191,7 @@ export async function fetchMetaAdAccountInsights(params: {
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
     );
     url.searchParams.set("limit", "500");
+    url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("access_token", params.accessToken);
     return url.toString();
   };
