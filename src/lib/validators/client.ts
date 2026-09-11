@@ -129,7 +129,7 @@ export const clientSchema = z.object({
     .union([z.number().positive(), z.nan(), z.null()])
     .optional()
     .transform((v) => (typeof v === "number" && !Number.isNaN(v) ? v : null)),
-  showBudgetPacingOnCover: z.boolean().optional().default(false),
+  showBudgetPacingOnCover: z.boolean().optional(),
   template: z.enum(TEMPLATES),
   notes: z
     .string()
@@ -139,3 +139,8 @@ export const clientSchema = z.object({
 });
 
 export type ClientInput = z.infer<typeof clientSchema>;
+
+/** Partial updates for PATCH /api/clients/[id] — e.g. wizard cover-budget toggle only. */
+export const clientPatchSchema = clientSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one field is required.",
+});

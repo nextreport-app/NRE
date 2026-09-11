@@ -661,6 +661,7 @@ export function ReportUploadWizard({
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
   const [showBudgetOnCover, setShowBudgetOnCover] = useState(clientShowBudgetPacingOnCover ?? false);
+  const [budgetToggleSaving, setBudgetToggleSaving] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -1944,6 +1945,28 @@ export function ReportUploadWizard({
     return buildBudgetCoverPreview(spend, clientMonthlyBudget, currencySymbol, clientTimezone);
   }, [previewKind, data, clientMonthlyBudget, currencySymbol, clientTimezone]);
 
+  async function handleShowBudgetOnCoverChange(next: boolean) {
+    const previous = showBudgetOnCover;
+    setShowBudgetOnCover(next);
+    setBudgetToggleSaving(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showBudgetPacingOnCover: next }),
+      });
+      if (!res.ok) {
+        setShowBudgetOnCover(previous);
+        showToast("Couldn't save cover budget preference.", "error");
+      }
+    } catch {
+      setShowBudgetOnCover(previous);
+      showToast("Couldn't save cover budget preference.", "error");
+    } finally {
+      setBudgetToggleSaving(false);
+    }
+  }
+
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
@@ -3182,15 +3205,17 @@ export function ReportUploadWizard({
                   <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
                     {coverBudgetPreviewLine}
                   </p>
-                  <label className="flex cursor-pointer items-start gap-3">
+                  <label className={`flex items-start gap-3 ${budgetToggleSaving ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
                       checked={showBudgetOnCover}
-                      onChange={(e) => setShowBudgetOnCover(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                      disabled={budgetToggleSaving}
+                      onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
                     <span className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                      Show this line on the cover slide of your report
+                      Show this line on the cover slide{" "}
+                      <span className="text-dash-ink-secondary">(saved as default for this client)</span>
                     </span>
                   </label>
                   {coverBudgetPacingWarning && (

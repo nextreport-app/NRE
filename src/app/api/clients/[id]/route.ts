@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { clientSchema } from "@/lib/validators/client";
+import { clientPatchSchema } from "@/lib/validators/client";
 import { apiErrorResponse } from "@/lib/api-error";
 
 async function getOwnedClient(userId: string, id: string) {
@@ -35,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const body = await req.json().catch(() => null);
-    const parsed = clientSchema.safeParse(body);
+    const parsed = clientPatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message ?? "Invalid input" },
