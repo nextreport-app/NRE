@@ -454,5 +454,6 @@ export function buildGoogleReportData(input: BuildGoogleReportDataInput): Report
     tableHeaderLabels,
     fileDateRange,
     objectiveWarnings: [],
+    mtdSpendTotal: totalCost,
   };
 }
