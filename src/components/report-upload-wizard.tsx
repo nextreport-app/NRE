@@ -2709,8 +2709,8 @@ export function ReportUploadWizard({
                 )}
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <>
-                    <p className="text-[15px] font-semibold text-dash-ink">This extra opens a second slide</p>
-                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
+                    <p className="text-[15px] font-semibold text-dash-ink">Add a 9th metric?</p>
+                    <div className="mt-2 space-y-2 text-[14px] leading-relaxed text-dash-ink-secondary">
                       {(() => {
                         const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
                         const objective = campaignObjectives.get(overflowDialog.normalized);
@@ -2721,28 +2721,31 @@ export function ReportUploadWizard({
                         );
                         const remainingAfter = Math.max(0, campaignAvailableMetrics(overflowDialog.normalized).length - 1);
                         const fillText =
-                          fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost-per-result";
+                          fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost";
                         return (
                           <>
-                            Slide 1 will keep the first {MAX_METRICS_PER_SLIDE} chips. Adding{" "}
-                            {overflowDialog.metric.label} would leave the continuation looking empty, so we will also
-                            repeat {fillText}
-                            {" "}on that slide — at least 3 cards (your extra plus this campaign&apos;s result and cost).
-                            {remainingAfter > 0
-                              ? " Add more extras from your CSV after this if you want those on the second slide too."
-                              : ""}{" "}
-                            Or replace a chip below to keep everything on one slide.
+                            <p>Slide 1 keeps your first {MAX_METRICS_PER_SLIDE} chips.</p>
+                            <p>
+                              <span className="font-medium text-dash-ink">{overflowDialog.metric.label}</span> goes on a
+                              second slide — with{" "}
+                              <span className="font-medium text-dash-ink">{fillText}</span> so that slide isn&apos;t
+                              empty.
+                            </p>
+                            {remainingAfter > 0 ? (
+                              <p>You can add more CSV metrics to slide 2 after this.</p>
+                            ) : null}
+                            <p>Or swap a chip below to stay on one slide.</p>
                           </>
                         );
                       })()}
-                    </p>
+                    </div>
                   </>
                 )}
 
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <div className="mt-3">
                     <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">
-                      Optional — replace one of the current {MAX_METRICS_PER_SLIDE} instead
+                      Swap a chip on slide 1 instead
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
                       {(perCampaignMetrics.get(overflowDialog.normalized) ?? []).slice(0, MAX_METRICS_PER_SLIDE).map((m) => (
@@ -2766,7 +2769,7 @@ export function ReportUploadWizard({
                       onClick={confirmOpenSecondSlide}
                       className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                     >
-                      Add anyway
+                      Add second slide
                     </button>
                   )}
                   <button
