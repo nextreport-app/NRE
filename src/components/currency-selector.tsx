@@ -22,7 +22,7 @@ export function CurrencySelector({ compact = false, className = "" }: CurrencySe
 
   return (
     <div
-      className={`flex items-center gap-0.5 rounded-full border border-navy-border bg-navy-panel p-0.5 ${className}`}
+      className={`inline-flex w-fit max-w-full items-center gap-0.5 rounded-full border border-navy-border bg-navy-panel p-0.5 ${className}`}
       role="group"
       aria-label="Display currency"
     >
@@ -33,7 +33,7 @@ export function CurrencySelector({ compact = false, className = "" }: CurrencySe
           onClick={() => setCurrency(code)}
           aria-pressed={currency === code}
           aria-label={code === "INR" ? "Show prices in Indian Rupees" : "Show prices in US Dollars"}
-          className={`rounded-full font-medium transition-colors ${pad} ${
+          className={`shrink-0 rounded-full font-medium transition-colors ${pad} ${
             currency === code ? "bg-accent text-navy" : "text-ink-muted hover:text-white"
           }`}
         >

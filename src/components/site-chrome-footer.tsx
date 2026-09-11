@@ -28,7 +28,7 @@ export function SiteChromeFooter() {
 
   return (
     <>
-      <footer className="site-footer border-t border-navy-border bg-navy px-6 py-12 sm:py-14">
+      <footer className="site-footer border-t border-navy-border bg-navy px-4 py-12 sm:px-6 sm:py-14">
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {/* 1 — Brand */}
@@ -111,14 +111,17 @@ export function SiteChromeFooter() {
           </div>
 
           <div className="mt-10 space-y-4 border-t border-navy-border pt-8">
-            <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
+            <div className="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
               <p className="text-xs text-ink-muted">© 2026 NextReport. All rights reserved.</p>
-              <p className="flex items-center justify-center gap-1.5 text-xs text-ink-muted">
-                Made with
+              <p className="mx-auto max-w-xs text-xs leading-relaxed text-ink-muted sm:mx-0 sm:max-w-md sm:text-right lg:max-w-none">
+                Made with{" "}
                 <span className="text-red-400" aria-label="love">
                   ♥
-                </span>
-                for digital agencies. Automate your ad reporting.
+                </span>{" "}
+                for digital agencies.
+                <br className="sm:hidden" />
+                <span className="hidden sm:inline"> </span>
+                Automate your ad reporting.
               </p>
             </div>
             <p className="text-center text-[11px] leading-relaxed text-ink-muted/80">
