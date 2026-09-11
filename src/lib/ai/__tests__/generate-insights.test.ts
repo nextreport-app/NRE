@@ -125,6 +125,7 @@ function makeReportData(
     tableHeaderLabels: { resultColumns: [{ label: "RESULTS", costLabel: "COST PER RESULT" }] },
     fileDateRange: "07/13/2026 to 07/19/2026",
     objectiveWarnings: [],
+    mtdSpendTotal: 0,
   };
 }
 

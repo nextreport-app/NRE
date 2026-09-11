@@ -337,6 +337,8 @@ export interface ReportData {
   combinedTotalStory?: string;
   fileDateRange: string;
   objectiveWarnings: ObjectiveWarning[];
+  /** Raw MTD spend total (selected campaigns, month start through yesterday) — used for cover budget pacing, distinct from chart.totalAllSpend (last 30 days). */
+  mtdSpendTotal: number;
 }
 
 export interface BuildReportDataInput {
@@ -1041,6 +1043,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       : "";
     const creative = buildCreativeSections(dateLine, creativeRaw);
     const creativeAgg = aggregateRows(creativeRaw);
+    const creativeMtdSpendTotal = creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0);
     const { score, badge } = calculateAccountHealth(creativeAgg, "Weekly");
     const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now, timezone);
     const coverDate = yesterday ? formatDateUS(toIsoDate(yesterday)) : "";
@@ -1056,7 +1059,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         healthBadge: badge,
         healthScore: score,
         budgetSummary: buildBudgetSummary(
-          creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0),
+          creativeMtdSpendTotal,
           monthlyBudget,
           currencySymbol,
           { showOnCover: showBudgetPacingOnCover, timezone },
@@ -1076,6 +1079,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       tableHeaderLabels: { resultColumns: [] },
       fileDateRange: dateLine,
       objectiveWarnings: [],
+      mtdSpendTotal: creativeMtdSpendTotal,
     };
   }
 
@@ -1309,6 +1313,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       combinedTotalStory,
       fileDateRange,
       objectiveWarnings: [],
+      mtdSpendTotal,
     };
   }
 
@@ -1757,6 +1762,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     combinedTotalStory,
     fileDateRange,
     objectiveWarnings,
+    mtdSpendTotal,
   };
 }
 
@@ -1842,6 +1848,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
     combinedTotalStory: undefined,
     fileDateRange: periodRow.fullMonthLabel,
     objectiveWarnings: [],
+    mtdSpendTotal: 0,
   };
 }
 

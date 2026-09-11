@@ -1935,14 +1935,12 @@ export function ReportUploadWizard({
 
   const coverBudgetPacingWarning = useMemo(() => {
     if (previewKind !== "normal" || !data) return null;
-    const spend = data.chart?.totalAllSpend ?? 0;
-    return budgetPacingWarning(spend, clientMonthlyBudget, showBudgetOnCover);
+    return budgetPacingWarning(data.mtdSpendTotal, clientMonthlyBudget, showBudgetOnCover);
   }, [previewKind, data, clientMonthlyBudget, showBudgetOnCover]);
 
   const coverBudgetPreviewLine = useMemo(() => {
     if (previewKind !== "normal" || !data) return null;
-    const spend = data.chart?.totalAllSpend ?? 0;
-    return buildBudgetCoverPreview(spend, clientMonthlyBudget, currencySymbol, clientTimezone);
+    return buildBudgetCoverPreview(data.mtdSpendTotal, clientMonthlyBudget, currencySymbol, clientTimezone);
   }, [previewKind, data, clientMonthlyBudget, currencySymbol, clientTimezone]);
 
   async function handleShowBudgetOnCoverChange(next: boolean) {
@@ -3204,6 +3202,9 @@ export function ReportUploadWizard({
                 <div className="mt-3 space-y-3">
                   <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
                     {coverBudgetPreviewLine}
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                    Month-to-date for selected campaigns, through yesterday in the client timezone.
                   </p>
                   <label className={`flex items-start gap-3 ${budgetToggleSaving ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
                     <input
