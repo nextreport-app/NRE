@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
 import { CurrencySelector } from "@/components/currency-selector";
-import { PUBLIC_NAV_LINKS, SUPPORT_EMAIL, filterBetaLinks, type SiteLink } from "@/lib/site-links";
+import { PUBLIC_NAV_LINKS, filterBetaLinks, type SiteLink } from "@/lib/site-links";
 
 const ALL_LINKS: SiteLink[] = [
   ...PUBLIC_NAV_LINKS,
@@ -35,7 +35,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <img src="/logo.png" alt="NextReport logo" className="h-9 w-9 sm:h-10 sm:w-10" />
           <span className="text-lg font-bold tracking-tight text-white sm:text-xl">NextReport</span>
@@ -103,7 +103,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
       </div>
 
       {open ? (
-        <nav className="border-t border-navy-border bg-navy px-6 py-4 lg:hidden" aria-label="Mobile">
+        <nav className="border-t border-navy-border bg-navy px-4 py-4 sm:px-6 lg:hidden" aria-label="Mobile">
           <div className="flex flex-col gap-1">
             {LINKS.map((link) => (
               <Link
@@ -122,13 +122,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             >
               Book a demo
             </Link>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="rounded-md px-3 py-2.5 text-sm text-ink-muted hover:text-white"
-            >
-              {SUPPORT_EMAIL}
-            </a>
-            <div className="px-3 py-2">
+            <div className="mt-2 border-t border-navy-border px-3 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Currency</p>
               <CurrencySelector compact className="mt-2" />
             </div>

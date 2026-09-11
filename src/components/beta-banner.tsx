@@ -45,12 +45,16 @@ export function BetaBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-3 px-4 py-1 text-center sm:py-2"
+      className="flex items-center justify-center gap-2 px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-2"
       style={{ backgroundColor: "#f5b45a", color: "#0d1b2e" }}
     >
-      <p className="text-xs font-medium sm:text-[13px]">
-        🚀 Now in beta — 7-day free trial, no card required ·{" "}
-        <a href="mailto:hello@nextreport.in" className="underline hover:no-underline">
+      <p className="min-w-0 flex-1 text-center text-[11px] font-medium leading-snug sm:text-[13px]">
+        <span className="block sm:inline">🚀 Now in beta — 7-day free trial, no card required</span>
+        <span className="hidden sm:inline"> · </span>
+        <a
+          href="mailto:hello@nextreport.in"
+          className="mt-0.5 hidden underline hover:no-underline sm:mt-0 sm:inline"
+        >
           hello@nextreport.in
         </a>
       </p>
