@@ -660,6 +660,7 @@ export function ReportUploadWizard({
   const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
+  const [budgetNoteExpanded, setBudgetNoteExpanded] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
@@ -3174,9 +3175,27 @@ export function ReportUploadWizard({
             </p>
           )}
           {!coverBudgetPacingWarning && coverBudgetReferenceNote && (
-            <p className="overflow-x-auto rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-nowrap text-sky-200">
-              {coverBudgetReferenceNote}
-            </p>
+            <div className="rounded-md border border-sky-800/50 bg-sky-950/30">
+              <button
+                type="button"
+                onClick={() => setBudgetNoteExpanded((open) => !open)}
+                aria-expanded={budgetNoteExpanded}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[14px] text-sky-200"
+              >
+                <span>Reference budget saved — not on cover slide</span>
+                <span
+                  className={`shrink-0 text-[15px] leading-none text-sky-300/80 transition-transform${budgetNoteExpanded ? " rotate-180" : ""}`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </button>
+              {budgetNoteExpanded && (
+                <p className="overflow-x-auto border-t border-sky-800/50 px-3 py-2 text-[14px] text-nowrap text-sky-200/90">
+                  {coverBudgetReferenceNote}
+                </p>
+              )}
+            </div>
           )}
 
           {(data || comparisonData || historicalData) && (
