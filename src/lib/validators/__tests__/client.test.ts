@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENCIES, clientSchema, SELECTABLE_CURRENCIES, TIMEZONE_GROUPS, TIMEZONES } from "../client";
+import { CURRENCIES, clientPatchSchema, clientSchema, SELECTABLE_CURRENCIES, TIMEZONE_GROUPS, TIMEZONES } from "../client";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 
 describe("CURRENCIES", () => {
@@ -123,6 +123,17 @@ describe("clientSchema — notes (Feature 2)", () => {
     });
     expect(result.success).toBe(true);
     expect(result.success && result.data.notes).toBeNull();
+  });
+});
+
+describe("clientPatchSchema", () => {
+  it("accepts a single showBudgetPacingOnCover toggle", () => {
+    const result = clientPatchSchema.safeParse({ showBudgetPacingOnCover: true });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty patch body", () => {
+    expect(clientPatchSchema.safeParse({}).success).toBe(false);
   });
 });
 
