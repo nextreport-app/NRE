@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 export type WizardDataSource = "csv" | "api";
 
@@ -15,7 +15,6 @@ interface WizardDataSourcePanelProps {
   googleAdsConnected: boolean;
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
-  /** Called after a successful API sync with a CSV File ready for analyze. */
   onSynced: (
     file: File,
     meta?: {
@@ -59,6 +58,157 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function CsvFileIcon() {
+  return (
+    <svg className="h-6 w-6 text-[#f6ad55]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 2v6h6M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ApiCloudIcon() {
+  return (
+    <svg className="h-6 w-6 text-[#63b3ed]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12v4M10 14h4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FeatureChip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "good" | "warn" }) {
+  const toneClass =
+    tone === "good"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : tone === "warn"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+        : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${toneClass}`}>
+      {children}
+    </span>
+  );
+}
+
+/** Side-by-side cards — same selectable pattern as platform / report-type cards. */
+export function WizardDataSourceToggle({
+  value,
+  onChange,
+  apiAvailable,
+}: {
+  value: WizardDataSource;
+  onChange: (value: WizardDataSource) => void;
+  /** When false, API card shows a connect hint instead of Recommended badge. */
+  apiAvailable?: boolean;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={() => onChange("csv")}
+        aria-pressed={value === "csv"}
+        className={`rounded-lg border p-4 text-left transition-colors ${
+          value === "csv"
+            ? "border-[#f6ad55]/60 bg-[#f6ad55]/10 ring-1 ring-[#f6ad55]/30"
+            : "border-dash-border bg-dash-bg hover:border-dash-border/80 hover:bg-dash-border/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <CsvFileIcon />
+          {value === "csv" ? (
+            <span className="rounded-full bg-[#f6ad55]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#fbd38d]">
+              Selected
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2.5 text-[15px] font-semibold text-white">Upload CSV</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Export from Ads Manager — full control over columns and date range.
+        </p>
+        <ul className="mt-3 space-y-1 text-[12px] text-dash-ink-secondary">
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Any column your export includes</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Ad-level Creative reports</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Manual previous-month upload</span>
+          </li>
+        </ul>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange("api")}
+        aria-pressed={value === "api"}
+        className={`rounded-lg border p-4 text-left transition-colors ${
+          value === "api"
+            ? "border-[#63b3ed]/60 bg-[#63b3ed]/10 ring-1 ring-[#63b3ed]/30"
+            : "border-dash-border bg-dash-bg hover:border-dash-border/80 hover:bg-dash-border/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <ApiCloudIcon />
+          {apiAvailable ? (
+            <span className="rounded-full bg-[#63b3ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#90cdf4]">
+              {value === "api" ? "Selected" : "Recommended"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-dash-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-dash-ink-secondary">
+              Connect first
+            </span>
+          )}
+        </div>
+        <p className="mt-2.5 text-[15px] font-semibold text-white">Sync from API</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          One click — last 30 days plus previous month, no export step.
+        </p>
+        <ul className="mt-3 space-y-1 text-[12px] text-dash-ink-secondary">
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Last 30 days ending yesterday</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Previous month auto-fetched</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Comparison &amp; multi-month reports</span>
+          </li>
+        </ul>
+      </button>
+    </div>
+  );
+}
+
+/** Compact feature row shown under the active data-source panel. */
+export function WizardDataSourceSummary({ mode }: { mode: WizardDataSource }) {
+  if (mode === "api") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <FeatureChip tone="good">Same engine as CSV</FeatureChip>
+        <FeatureChip>30-day daily breakdown</FeatureChip>
+        <FeatureChip>Previous month included</FeatureChip>
+        <FeatureChip tone="warn">Creative needs Ad-level CSV</FeatureChip>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <FeatureChip tone="good">Full column control</FeatureChip>
+      <FeatureChip>Ad-level Creative reports</FeatureChip>
+      <FeatureChip>Previous month optional upload</FeatureChip>
+      <FeatureChip>Works offline</FeatureChip>
+    </div>
   );
 }
 
@@ -197,15 +347,19 @@ export function WizardDataSourcePanel({
     syncStatus !== "loading" &&
     (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
+  const platformLabel = showMeta ? "Meta" : showGoogle ? "Google Ads" : "TikTok";
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3.5">
-        <p className="text-[14px] font-semibold text-white">Official API access — skip the CSV export</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Connect once in Account Settings, pick your ad account here, and we&apos;ll pull the last 30 complete
-          days of daily campaign data (ending yesterday) — same range as our CSV download guide.
+    <div className="space-y-4 rounded-lg border border-[#63b3ed]/25 bg-[#0d1b2e]/40 p-4">
+      <div>
+        <p className="text-[14px] font-semibold text-white">Connect &amp; sync</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Pick your {platformLabel} account below. We pull last 30 complete days (ending yesterday) and auto-fetch
+          previous month when needed — then run the same analyze pipeline as a CSV upload.
         </p>
       </div>
+
+      <WizardDataSourceSummary mode="api" />
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -407,12 +561,6 @@ export function WizardDataSourcePanel({
 
       {connected && configured ? (
         <>
-          <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
-            Syncs the last 30 complete days (ending yesterday) with daily breakdown — same date range and columns as our CSV
-            guide. Previous month is auto-fetched when missing or stale; use the campaign checkboxes below to exclude
-            campaigns you don&apos;t manage. Weekly, Monthly, Comparison, Multi-month, and Demo reports all work from API
-            sync. Creative reports still need an Ad-level CSV upload.
-          </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
               {syncError}
@@ -422,53 +570,25 @@ export function WizardDataSourcePanel({
             type="button"
             onClick={() => void handleSync()}
             disabled={!canSync}
-            className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
-            {syncStatus === "loading" ? "Syncing from API…" : "Sync data & analyze"}
+            {syncStatus === "loading" ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Syncing from API…
+              </>
+            ) : (
+              "Sync data & analyze"
+            )}
           </button>
+          <p className="text-center text-[12px] text-dash-ink-secondary">
+            After sync, review previous-month campaign checkboxes below.
+          </p>
         </>
       ) : null}
-
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
-        Prefer a manual export? Switch to <span className="text-dash-ink">Upload CSV</span> above.
-      </p>
-    </div>
-  );
-}
-
-export function WizardDataSourceToggle({
-  value,
-  onChange,
-}: {
-  value: WizardDataSource;
-  onChange: (value: WizardDataSource) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg border border-dash-border bg-dash-bg p-1">
-      <button
-        type="button"
-        onClick={() => onChange("csv")}
-        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
-          value === "csv" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        <span className="block text-[13px] font-semibold">Upload CSV</span>
-        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-dash-ink/80" : ""}`}>
-          Manual export from Ads Manager
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("api")}
-        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
-          value === "api" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        <span className="block text-[13px] font-semibold">Sync from API</span>
-        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-          Last 30 days + previous month auto-fetch
-        </span>
-      </button>
     </div>
   );
 }

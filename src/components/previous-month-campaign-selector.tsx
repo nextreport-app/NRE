@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /** Checkbox list for Previous Month Data campaign inclusion — shared by client page and wizard. */
 export function PreviousMonthCampaignSelector({
@@ -21,7 +21,14 @@ export function PreviousMonthCampaignSelector({
   );
   const [savingSelection, setSavingSelection] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const filteredCampaigns = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return campaigns;
+    return campaigns.filter((name) => name.toLowerCase().includes(q));
+  }, [campaigns, search]);
 
   useEffect(() => {
     setSelected(new Set(initialSelected ?? campaigns));
@@ -101,8 +108,20 @@ export function PreviousMonthCampaignSelector({
         Uncheck campaigns you don&apos;t manage — only checked campaigns appear in the Combined Total
         previous-month comparison.
       </p>
+      {campaigns.length > 6 ? (
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search campaigns…"
+          className="mb-2 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink placeholder:text-dash-ink-secondary"
+        />
+      ) : null}
       <ul className="max-h-48 divide-y divide-dash-border overflow-y-auto rounded-md border border-dash-border">
-        {campaigns.map((name) => (
+        {filteredCampaigns.length === 0 ? (
+          <li className="px-3 py-3 text-[13px] text-dash-ink-secondary">No campaigns match your search.</li>
+        ) : null}
+        {filteredCampaigns.map((name) => (
           <li key={name} className="flex items-center gap-3 px-3 py-2">
             <input
               type="checkbox"
