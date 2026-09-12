@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -31,10 +31,13 @@ import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import {
+  isWizardApiAvailable,
+  WizardDataSourceCompareTable,
   WizardDataSourcePanel,
   WizardDataSourceToggle,
   type WizardDataSource,
 } from "@/components/wizard-data-source-panel";
+import { WizardCsvUploadPanel } from "@/components/wizard-csv-upload-panel";
 import { useToast } from "@/components/toast";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
@@ -373,6 +376,8 @@ export function ReportUploadWizard({
   initialLastDriveFolderName,
   hasPreviousMonthData,
   initialPreviousMonthDataUpdatedAt,
+  initialPreviousMonthCampaigns = [],
+  initialPreviousMonthSelectedCampaigns = null,
   clientTemplate,
   metaConnected = false,
   metaConnectedName = null,
@@ -404,6 +409,10 @@ export function ReportUploadWizard({
   hasPreviousMonthData: boolean;
   /** ISO timestamp of the last Previous Month Data upload — drives stale detection in the wizard. */
   initialPreviousMonthDataUpdatedAt: string | null;
+  /** Campaigns detected in the stored Previous Month Data file. */
+  initialPreviousMonthCampaigns?: string[];
+  /** Saved campaign inclusion for the previous-month row. */
+  initialPreviousMonthSelectedCampaigns?: string[] | null;
   /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
   clientTemplate: string;
   /** Meta Marketing API — connected in Account Settings. */
@@ -487,6 +496,10 @@ export function ReportUploadWizard({
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
+  /** When true, auto-default to API on platform change is suppressed until platform changes again. */
+  const userPickedDataSourceRef = useRef(false);
+  const dataSourcePlatformRef = useRef<"META" | "GOOGLE" | "TIKTOK" | null>(null);
+  const [dataSourceAutoSelected, setDataSourceAutoSelected] = useState(false);
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
@@ -599,6 +612,55 @@ export function ReportUploadWizard({
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
   const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
+  const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
+  const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
+    initialPreviousMonthSelectedCampaigns,
+  );
+
+  const wizardApiAvailable = selectedPlatformCard
+    ? isWizardApiAvailable(selectedPlatformCard, {
+        metaConfigured,
+        metaConnected,
+        googleAdsConfigured,
+        googleAdsConnected,
+        tiktokConfigured,
+        tiktokConnected,
+      })
+    : false;
+
+  useLayoutEffect(() => {
+    if (!selectedPlatformCard) return;
+    if (dataSourcePlatformRef.current !== selectedPlatformCard) {
+      dataSourcePlatformRef.current = selectedPlatformCard;
+      userPickedDataSourceRef.current = false;
+    }
+    if (userPickedDataSourceRef.current) return;
+
+    const apiAvailable = isWizardApiAvailable(selectedPlatformCard, {
+      metaConfigured,
+      metaConnected,
+      googleAdsConfigured,
+      googleAdsConnected,
+      tiktokConfigured,
+      tiktokConnected,
+    });
+    setDataSourceMode(apiAvailable ? "api" : "csv");
+    setDataSourceAutoSelected(apiAvailable);
+  }, [
+    selectedPlatformCard,
+    metaConfigured,
+    metaConnected,
+    googleAdsConfigured,
+    googleAdsConnected,
+    tiktokConfigured,
+    tiktokConnected,
+  ]);
+
+  function handleDataSourceModeChange(mode: WizardDataSource) {
+    userPickedDataSourceRef.current = true;
+    setDataSourceAutoSelected(false);
+    setDataSourceMode(mode);
+  }
   const previousMonthComparisonReady = useMemo(
     () =>
       getPreviousMonthComparisonInfo(previousMonthHasFile, previousMonthUpdatedAt, clientTimezone).status ===
@@ -1039,8 +1101,16 @@ export function ReportUploadWizard({
     await dispatchAfterAnalyze(detected);
   }
 
+  type ApiSyncMeta = {
+    previousMonthSynced?: boolean;
+    hasPreviousMonthData?: boolean;
+    previousMonthCampaigns?: string[];
+    previousMonthSelectedCampaigns?: string[] | null;
+    previousMonthUpdatedAt?: string | null;
+  };
+
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
-  async function handleApiSynced(file: File, meta?: { previousMonthSynced?: boolean }) {
+  async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
@@ -1073,8 +1143,18 @@ export function ReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
+      setPreviousMonthHasFile(true);
+      if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
+      if (meta.previousMonthCampaigns) setPreviousMonthCampaigns(meta.previousMonthCampaigns);
+      if (meta.previousMonthSelectedCampaigns !== undefined) {
+        setPreviousMonthSelectedCampaigns(meta.previousMonthSelectedCampaigns);
+      }
+    }
     if (meta?.previousMonthSynced) {
-      showToast("Previous month data synced from Meta — ready for the overview row and month-vs-month comparisons.");
+      showToast(
+        "Previous month data synced — review campaign checkboxes below, then uncheck any you don't manage.",
+      );
     }
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
@@ -2124,9 +2204,30 @@ export function ReportUploadWizard({
           ) : null}
 
           {selectedPlatformCard && (!platformPickerExpanded || !hasSavedPlatformPreference) && (
-            <div className="space-y-3">
-              <WizardDataSourceToggle value={dataSourceMode} onChange={setDataSourceMode} />
+            <div className="space-y-4">
+              <div>
+                <p className="text-[13px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                  Step 1 — Load your data
+                </p>
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
+                  Choose how to bring in campaign performance for this report.
+                  {wizardApiAvailable && dataSourceMode === "api" && dataSourceAutoSelected ? (
+                    <span className="mt-1 block text-[13px] text-[#90cdf4]">
+                      Sync from API is selected automatically because your account is connected.
+                    </span>
+                  ) : null}
+                </p>
+              </div>
 
+              <WizardDataSourceToggle
+                value={dataSourceMode}
+                onChange={handleDataSourceModeChange}
+                apiAvailable={wizardApiAvailable}
+              />
+
+              <WizardDataSourceCompareTable highlightMode={dataSourceMode} />
+
+              <div key={dataSourceMode} className="wizard-panel-enter">
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
                   clientId={clientId}
@@ -2151,51 +2252,47 @@ export function ReportUploadWizard({
                   }}
                 />
               ) : (
-                <>
-              <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
-              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
-                <a
-                  href="https://nextreport.in/help/download"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
-                >
-                  How to download your CSV
-                </a>
-                {selectedPlatformCard === "META" ? (
-                  <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
-                ) : selectedPlatformCard === "TIKTOK" ? (
-                  <span className="block text-[#e2e8f0]">
-                    Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group, Cost,
-                    Impressions, Clicks, and Conversions.
-                  </span>
-                ) : (
-                  "Set date range to Last 30 days and segment by Day."
-                )}
-              </p>
-
-              {selectedPlatformCard === "META" ? (
-                <PreviousMonthDataWizardPanel
-                  clientId={clientId}
-                  clientTimezone={clientTimezone}
-                  initialHasFile={previousMonthHasFile}
-                  initialUpdatedAt={previousMonthUpdatedAt}
-                  onUploaded={() => {
-                    setPreviousMonthHasFile(true);
-                    setPreviousMonthUpdatedAt(new Date().toISOString());
-                  }}
+                <WizardCsvUploadPanel
+                  file={mtdFile}
+                  onFileSelected={setMtdFile}
+                  analyzeStatus={analyzeStatus}
+                  onAnalyze={() => void handleAnalyze()}
+                  downloadTip={
+                    selectedPlatformCard === "META" ? (
+                      getMetaCsvDownloadTip(new Date(), clientTimezone)
+                    ) : selectedPlatformCard === "TIKTOK" ? (
+                      <>
+                        Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group,
+                        Cost, Impressions, Clicks, and Conversions.
+                      </>
+                    ) : (
+                      "Set date range to Last 30 days and segment by Day."
+                    )
+                  }
                 />
-              ) : null}
-
-              <button
-                onClick={handleAnalyze}
-                disabled={!mtdFile || analyzeStatus === "loading"}
-                className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
-              >
-                {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
-              </button>
-                </>
               )}
+              </div>
+
+              <PreviousMonthDataWizardPanel
+                clientId={clientId}
+                clientTimezone={clientTimezone}
+                initialHasFile={previousMonthHasFile}
+                initialUpdatedAt={previousMonthUpdatedAt}
+                initialCampaigns={previousMonthCampaigns}
+                initialSelectedCampaigns={previousMonthSelectedCampaigns}
+                onUploaded={(meta) => {
+                  setPreviousMonthHasFile(true);
+                  setPreviousMonthUpdatedAt(new Date().toISOString());
+                  if (meta) {
+                    setPreviousMonthCampaigns(meta.campaigns);
+                    setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                  }
+                }}
+                onCampaignsChange={(meta) => {
+                  setPreviousMonthCampaigns(meta.campaigns);
+                  setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                }}
+              />
             </div>
           )}
 

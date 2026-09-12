@@ -34,7 +34,7 @@ export async function loadPreviousMonthDataRows(client: {
   return filterRowsByCampaigns(rows, selectedCampaigns);
 }
 
-function parseSelectedCampaigns(raw: string | null | undefined): string[] | null {
+export function parsePreviousMonthSelectedCampaigns(raw: string | null | undefined): string[] | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -42,6 +42,10 @@ function parseSelectedCampaigns(raw: string | null | undefined): string[] | null
   } catch {
     return null;
   }
+}
+
+function parseSelectedCampaigns(raw: string | null | undefined): string[] | null {
+  return parsePreviousMonthSelectedCampaigns(raw);
 }
 
 /**

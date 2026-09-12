@@ -8,6 +8,10 @@ import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { isGoogleAdsApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
+import {
+  loadPreviousMonthDataCampaigns,
+  parsePreviousMonthSelectedCampaigns,
+} from "@/lib/nre/previous-month-data";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +44,16 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   const status = getSubscriptionStatus(user);
   const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
 
+  let previousMonthCampaigns: string[] = [];
+  if (client.previousMonthDataUrl) {
+    try {
+      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+    } catch {
+      previousMonthCampaigns = [];
+    }
+  }
+  const previousMonthSelectedCampaigns = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
+
   if (status.isBlocked) {
     return (
       <PaywallScreen
@@ -63,6 +77,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           initialLastDriveFolderName={client.lastDriveFolderName}
           hasPreviousMonthData={!!client.previousMonthDataUrl}
           initialPreviousMonthDataUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+          initialPreviousMonthCampaigns={previousMonthCampaigns}
+          initialPreviousMonthSelectedCampaigns={previousMonthSelectedCampaigns}
           clientTemplate={client.template}
           metaConnected={!!user.metaAccessToken}
           metaConnectedName={user.metaConnectedName}

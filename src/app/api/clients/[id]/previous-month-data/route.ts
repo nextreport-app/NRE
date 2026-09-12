@@ -5,6 +5,11 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileEntryFromFormData } from "@/lib/http-file";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { extractSpendingCampaignNames } from "@/lib/nre/campaigns";
+import { mergePreviousMonthSelection } from "@/lib/nre/merge-previous-month-selection";
+import {
+  loadPreviousMonthDataCampaigns,
+  parsePreviousMonthSelectedCampaigns,
+} from "@/lib/nre/previous-month-data";
 import {
   deletePreviousMonthDataFile,
   previousMonthDataFileName,
@@ -50,6 +55,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // saved selection always exactly matches what's actually in the file
   // that was just saved.
   const campaigns = extractSpendingCampaignNames(parsed.rows);
+  const previousSelected = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
+  let previousAllCampaigns: string[] = [];
+  if (client.previousMonthDataUrl) {
+    try {
+      previousAllCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+    } catch {
+      previousAllCampaigns = [];
+    }
+  }
+  const selectedCampaigns = mergePreviousMonthSelection(campaigns, previousSelected, previousAllCampaigns);
 
   try {
     const previousUrl = client.previousMonthDataUrl;
@@ -64,7 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         previousMonthDataUrl,
         previousMonthDataUpdatedAt: new Date(),
-        previousMonthSelectedCampaigns: JSON.stringify(campaigns),
+        previousMonthSelectedCampaigns: JSON.stringify(selectedCampaigns),
       },
     });
     // Best-effort cleanup of the old blob — after the DB points at the new
@@ -77,7 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ok: true,
       fileName: previousMonthDataFileName(previousMonthDataUrl),
       campaigns,
-      selectedCampaigns: campaigns,
+      selectedCampaigns,
     });
   } catch (err) {
     return apiErrorResponse(err, "clients:previous-month-data:upload");

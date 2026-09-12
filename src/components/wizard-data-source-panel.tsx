@@ -1,9 +1,134 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 export type WizardDataSource = "csv" | "api";
+
+export function isWizardApiAvailable(
+  platform: "META" | "GOOGLE" | "TIKTOK",
+  opts: {
+    metaConfigured: boolean;
+    metaConnected: boolean;
+    googleAdsConfigured: boolean;
+    googleAdsConnected: boolean;
+    tiktokConfigured: boolean;
+    tiktokConnected: boolean;
+  },
+): boolean {
+  if (platform === "META") return opts.metaConfigured && opts.metaConnected;
+  if (platform === "GOOGLE") return opts.googleAdsConfigured && opts.googleAdsConnected;
+  return opts.tiktokConfigured && opts.tiktokConnected;
+}
+
+type CompareCell = "yes" | "no" | "partial" | "text";
+
+const COMPARE_ROWS: { label: string; csv: CompareCell | string; api: CompareCell | string; csvNote?: string; apiNote?: string }[] = [
+  { label: "Setup", csv: "text", api: "text", csvNote: "Export from Ads Manager", apiNote: "Connect once, sync each report" },
+  { label: "Main date range", csv: "text", api: "text", csvNote: "You choose in export", apiNote: "Last 30 days ending yesterday" },
+  { label: "Previous month row", csv: "partial", api: "yes", csvNote: "Manual upload", apiNote: "Auto-fetched when needed" },
+  { label: "Campaign selection (prev. month)", csv: "yes", api: "yes" },
+  { label: "Comparison & multi-month", csv: "yes", api: "yes" },
+  { label: "Creative (Ad-level) reports", csv: "yes", api: "no" },
+  { label: "Custom / extra columns", csv: "yes", api: "partial", apiNote: "Standard column set" },
+  { label: "Works offline", csv: "yes", api: "no" },
+];
+
+function CompareValue({ value, note }: { value: CompareCell | string; note?: string }) {
+  if (value === "yes") {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-400">
+        <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Yes
+      </span>
+    );
+  }
+  if (value === "no") {
+    return (
+      <span className="inline-flex items-center gap-1 text-dash-ink-secondary">
+        <svg className="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+        No
+      </span>
+    );
+  }
+  if (value === "partial") {
+    return (
+      <span className="inline-flex items-center gap-1 text-amber-300">
+        <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+        </svg>
+        {note ?? "Partial"}
+      </span>
+    );
+  }
+  if (value === "text") {
+    return <span className="text-[12px] leading-snug text-dash-ink-secondary">{note}</span>;
+  }
+  return <span className="text-[12px] text-dash-ink-secondary">{value}</span>;
+}
+
+/** Side-by-side feature comparison — compact reference under the toggle cards. */
+export function WizardDataSourceCompareTable({
+  highlightMode,
+}: {
+  highlightMode: WizardDataSource;
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-dash-border bg-dash-bg/50">
+      <div className="border-b border-dash-border px-3 py-2">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-dash-ink-secondary">Quick comparison</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[320px] text-left text-[12px]">
+          <thead>
+            <tr className="border-b border-dash-border text-dash-ink-secondary">
+              <th className="px-3 py-2 font-medium">Feature</th>
+              <th
+                className={`px-3 py-2 font-medium transition-colors duration-200 ${
+                  highlightMode === "csv" ? "bg-[#f6ad55]/10 text-[#fbd38d]" : ""
+                }`}
+              >
+                Upload CSV
+              </th>
+              <th
+                className={`px-3 py-2 font-medium transition-colors duration-200 ${
+                  highlightMode === "api" ? "bg-[#63b3ed]/10 text-[#90cdf4]" : ""
+                }`}
+              >
+                Sync from API
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-dash-border/70">
+            {COMPARE_ROWS.map((row) => (
+              <tr key={row.label} className="text-dash-ink-secondary">
+                <td className="px-3 py-2 font-medium text-dash-ink">{row.label}</td>
+                <td
+                  className={`px-3 py-2 transition-colors duration-200 ${
+                    highlightMode === "csv" ? "bg-[#f6ad55]/5" : ""
+                  }`}
+                >
+                  <CompareValue value={row.csv} note={row.csvNote} />
+                </td>
+                <td
+                  className={`px-3 py-2 transition-colors duration-200 ${
+                    highlightMode === "api" ? "bg-[#63b3ed]/5" : ""
+                  }`}
+                >
+                  <CompareValue value={row.api} note={row.apiNote} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 interface WizardDataSourcePanelProps {
   clientId: string;
@@ -15,8 +140,16 @@ interface WizardDataSourcePanelProps {
   googleAdsConnected: boolean;
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
-  /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (file: File, meta?: { previousMonthSynced?: boolean }) => void;
+  onSynced: (
+    file: File,
+    meta?: {
+      previousMonthSynced?: boolean;
+      hasPreviousMonthData?: boolean;
+      previousMonthCampaigns?: string[];
+      previousMonthSelectedCampaigns?: string[] | null;
+      previousMonthUpdatedAt?: string | null;
+    },
+  ) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
@@ -50,6 +183,161 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function CsvFileIcon() {
+  return (
+    <svg className="h-6 w-6 text-[#f6ad55]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 2v6h6M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ApiCloudIcon() {
+  return (
+    <svg className="h-6 w-6 text-[#63b3ed]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12v4M10 14h4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FeatureChip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "good" | "warn" }) {
+  const toneClass =
+    tone === "good"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : tone === "warn"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+        : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${toneClass}`}>
+      {children}
+    </span>
+  );
+}
+
+/** Side-by-side cards — same selectable pattern as platform / report-type cards. */
+export function WizardDataSourceToggle({
+  value,
+  onChange,
+  apiAvailable,
+}: {
+  value: WizardDataSource;
+  onChange: (value: WizardDataSource) => void;
+  /** When false, API card shows a connect hint instead of Recommended badge. */
+  apiAvailable?: boolean;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={() => onChange("csv")}
+        aria-pressed={value === "csv"}
+        className={`rounded-lg border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.99] ${
+          value === "csv"
+            ? "wizard-card-selected border-[#f6ad55]/60 bg-[#f6ad55]/10 shadow-[0_4px_20px_rgba(246,173,85,0.12)] ring-1 ring-[#f6ad55]/30"
+            : "border-dash-border bg-dash-bg hover:border-[#f6ad55]/30 hover:bg-dash-border/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className={`transition-transform duration-200 ${value === "csv" ? "scale-110" : ""}`}>
+            <CsvFileIcon />
+          </span>
+          {value === "csv" ? (
+            <span className="rounded-full bg-[#f6ad55]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#fbd38d]">
+              Selected
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2.5 text-[15px] font-semibold text-white">Upload CSV</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Export from Ads Manager — full control over columns and date range.
+        </p>
+        <ul className="mt-3 space-y-1 text-[12px] text-dash-ink-secondary">
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Any column your export includes</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Ad-level Creative reports</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#f6ad55]">✓</span>
+            <span>Manual previous-month upload</span>
+          </li>
+        </ul>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange("api")}
+        aria-pressed={value === "api"}
+        className={`rounded-lg border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.99] ${
+          value === "api"
+            ? "wizard-card-selected border-[#63b3ed]/60 bg-[#63b3ed]/10 shadow-[0_4px_20px_rgba(99,179,237,0.12)] ring-1 ring-[#63b3ed]/30"
+            : "border-dash-border bg-dash-bg hover:border-[#63b3ed]/30 hover:bg-dash-border/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className={`transition-transform duration-200 ${value === "api" ? "scale-110" : ""}`}>
+            <ApiCloudIcon />
+          </span>
+          {apiAvailable ? (
+            <span className="rounded-full bg-[#63b3ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#90cdf4]">
+              {value === "api" ? "Selected" : "Recommended"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-dash-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-dash-ink-secondary">
+              Connect first
+            </span>
+          )}
+        </div>
+        <p className="mt-2.5 text-[15px] font-semibold text-white">Sync from API</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          One click — last 30 days plus previous month, no export step.
+        </p>
+        <ul className="mt-3 space-y-1 text-[12px] text-dash-ink-secondary">
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Last 30 days ending yesterday</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Previous month auto-fetched</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="mt-0.5 text-[#63b3ed]">✓</span>
+            <span>Comparison &amp; multi-month reports</span>
+          </li>
+        </ul>
+      </button>
+    </div>
+  );
+}
+
+/** Compact feature row shown under the active data-source panel. */
+export function WizardDataSourceSummary({ mode }: { mode: WizardDataSource }) {
+  if (mode === "api") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <FeatureChip tone="good">Same engine as CSV</FeatureChip>
+        <FeatureChip>30-day daily breakdown</FeatureChip>
+        <FeatureChip>Previous month included</FeatureChip>
+        <FeatureChip tone="warn">Creative needs Ad-level CSV</FeatureChip>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <FeatureChip tone="good">Full column control</FeatureChip>
+      <FeatureChip>Ad-level Creative reports</FeatureChip>
+      <FeatureChip>Previous month optional upload</FeatureChip>
+      <FeatureChip>Works offline</FeatureChip>
+    </div>
   );
 }
 
@@ -168,7 +456,15 @@ export function WizardDataSourcePanel({
 
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
-      onSynced(file, { previousMonthSynced: !!data.previousMonthSynced });
+      onSynced(file, {
+        previousMonthSynced: !!data.previousMonthSynced,
+        hasPreviousMonthData: !!data.hasPreviousMonthData,
+        previousMonthCampaigns: Array.isArray(data.previousMonthCampaigns) ? data.previousMonthCampaigns : [],
+        previousMonthSelectedCampaigns: Array.isArray(data.previousMonthSelectedCampaigns)
+          ? data.previousMonthSelectedCampaigns
+          : null,
+        previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+      });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
     }
@@ -180,15 +476,19 @@ export function WizardDataSourcePanel({
     syncStatus !== "loading" &&
     (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
+  const platformLabel = showMeta ? "Meta" : showGoogle ? "Google Ads" : "TikTok";
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3.5">
-        <p className="text-[14px] font-semibold text-white">Official API access — skip the CSV export</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Connect once in Account Settings, pick your ad account here, and we&apos;ll pull the last 30 complete
-          days of daily campaign data (ending yesterday) — same range as our CSV download guide.
+    <div className="space-y-4 rounded-lg border border-[#63b3ed]/25 bg-[#0d1b2e]/40 p-4">
+      <div>
+        <p className="text-[14px] font-semibold text-white">Connect &amp; sync</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Pick your {platformLabel} account below. We pull last 30 complete days (ending yesterday) and auto-fetch
+          previous month when needed — then run the same analyze pipeline as a CSV upload.
         </p>
       </div>
+
+      <WizardDataSourceSummary mode="api" />
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -390,9 +690,6 @@ export function WizardDataSourcePanel({
 
       {connected && configured ? (
         <>
-          <p className="text-[12px] text-dash-ink-secondary">
-            Syncs the last 30 days with daily breakdown, ending yesterday — same columns and date range as our CSV download guide.
-          </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
               {syncError}
@@ -402,47 +699,25 @@ export function WizardDataSourcePanel({
             type="button"
             onClick={() => void handleSync()}
             disabled={!canSync}
-            className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
-            {syncStatus === "loading" ? "Syncing from API…" : "Sync data & analyze"}
+            {syncStatus === "loading" ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Syncing from API…
+              </>
+            ) : (
+              "Sync data & analyze"
+            )}
           </button>
+          <p className="text-center text-[12px] text-dash-ink-secondary">
+            After sync, review previous-month campaign checkboxes below.
+          </p>
         </>
       ) : null}
-
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
-        Prefer a manual export? Switch to <span className="text-dash-ink">Upload CSV</span> above.
-      </p>
-    </div>
-  );
-}
-
-export function WizardDataSourceToggle({
-  value,
-  onChange,
-}: {
-  value: WizardDataSource;
-  onChange: (value: WizardDataSource) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg border border-dash-border bg-dash-bg p-1">
-      <button
-        type="button"
-        onClick={() => onChange("csv")}
-        className={`rounded-md px-3 py-2.5 text-[13px] font-semibold transition-colors ${
-          value === "csv" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        Upload CSV
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("api")}
-        className={`rounded-md px-3 py-2.5 text-[13px] font-semibold transition-colors ${
-          value === "api" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        Sync from API
-      </button>
     </div>
   );
 }

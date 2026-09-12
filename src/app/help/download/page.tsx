@@ -202,6 +202,66 @@ export default async function DownloadGuidePage() {
               In the ad report wizard, choose <span className="text-white">Sync from API</span> on Step 1 after connecting.
               CSV upload always works as a fallback.
             </p>
+
+            <div className="mt-8 rounded-lg border border-[#63b3ed]/40 border-l-4 border-l-[#63b3ed] bg-navy-panel p-5">
+              <h3 className="text-lg font-semibold text-white">API sync — limits, previous month &amp; metrics</h3>
+              <ul className="mt-4 space-y-4 text-[15px] leading-relaxed text-ink-secondary">
+                <li>
+                  <span className="font-semibold text-white">NextReport billing:</span> API sync costs the same as CSV
+                  upload — unlimited report generation on both plans. No per-sync credits.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Meta API limits:</span> Each sync uses a small number of
+                  read-only Marketing API calls (typically a handful per account). Meta applies hourly rate limits per ad
+                  account — normal weekly reporting is well within these. If sync fails with a rate-limit message, wait a
+                  few minutes and retry, or upload CSV that week. The 15,000/day figure applies to{" "}
+                  <span className="text-white">Google Ads API</span>, not Meta.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Two date ranges, not one file:</span> API sync pulls{" "}
+                  <span className="text-white">last 30 complete days ending yesterday</span> for the main report (weekly
+                  slides, MTD row, chart).{" "}
+                  <span className="text-white">Previous calendar month</span> is fetched separately when missing or stale
+                  — you usually do <span className="text-white">not</span> need a manual previous-month CSV upload after
+                  a successful sync. If the account had no spend last month, the previous-month row is simply skipped — no
+                  error. Upload previous month manually only if auto-sync did not run or you prefer a custom export.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Previous-month campaign selection:</span> After sync or
+                  upload, the wizard shows a checkbox list of campaigns detected in last month&apos;s data. Uncheck any
+                  campaigns you don&apos;t manage (e.g. run by another agency) — only checked campaigns appear in the
+                  Combined Total previous-month row. Your selection is saved per client and preserved on re-sync; newly
+                  appearing campaigns default to included.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Report types supported:</span> Weekly, Monthly, Daily,
+                  Quarterly, YTD, Comparison, Multi-month Historical, and Demo reports all work from API sync the same
+                  way as CSV. <span className="text-white">Creative reports</span> still require an Ad-level CSV export
+                  (API sync is campaign/ad-set level only).
+                </li>
+                <li>
+                  <span className="font-semibold text-white">How metrics are chosen:</span> API sync does not use
+                  Ads Manager&apos;s column picker. It pulls a{" "}
+                  <span className="text-white">fixed standard column set</span> (same as our CSV download guide — spend,
+                  reach, impressions, frequency, link clicks, results, lead columns, landing page views, etc.). After
+                  sync, the wizard runs the <span className="text-white">same pipeline as CSV</span>: objectives are
+                  detected per campaign, then Step 3 (Metrics) pre-selects eight chips per objective (e.g. Frequency +
+                  CPM for Reach, Meta form leads + cost per lead for Instant Forms). You can add or remove chips on Step
+                  3 — but only from metrics present in the synced data. CPM and cost per 1K reach are computed from
+                  spend/impressions/reach even when not separate columns.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Mixed objectives:</span> An account with Reach, Instant
+                  Form, and Landing Page View campaigns gets the correct default chips{" "}
+                  <span className="text-white">per campaign</span>, not one global set.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">When to use CSV instead:</span> Video metrics (ThruPlays,
+                  3-second views), purchase conversion value, CPC (all), or any column not in the standard API export —
+                  download from Ads Manager with those columns and upload manually for that report.
+                </li>
+              </ul>
+            </div>
           </section>
 
           {/* CSV path */}

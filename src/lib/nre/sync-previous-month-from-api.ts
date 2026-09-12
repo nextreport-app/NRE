@@ -4,27 +4,47 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { deletePreviousMonthDataFile, savePreviousMonthDataFile } from "@/lib/storage";
+import { deletePreviousMonthDataFile, readPreviousMonthDataFile, savePreviousMonthDataFile } from "@/lib/storage";
 import { computePreviousCalendarMonthIsoRange } from "./api-date-range";
 import { extractSpendingCampaignNames } from "./campaigns";
 import type { NreRow } from "./columns";
 import { fetchGoogleReportCsv } from "./fetch-google-report-rows";
 import { fetchMetaReportCsv } from "./fetch-meta-report-rows";
 import { fetchTikTokReportCsv } from "./fetch-tiktok-report-rows";
-import { parseMtdCsvForAdPlatform } from "./tiktok-columns";
+import { mergePreviousMonthSelection } from "./merge-previous-month-selection";
 import { parseUploadedFile } from "./parse-file";
+import { parsePreviousMonthSelectedCampaigns } from "./previous-month-data";
 import { getPreviousMonthComparisonInfo } from "./previous-month-data-status";
+import { parseMtdCsvForAdPlatform } from "./tiktok-columns";
+
+export type PreviousMonthSyncResult = {
+  synced: boolean;
+  reason?: string;
+  campaigns?: string[];
+  selectedCampaigns?: string[];
+};
+
+async function loadPreviousMonthCampaignsFromUrl(url: string | null): Promise<string[]> {
+  if (!url) return [];
+  try {
+    const buffer = await readPreviousMonthDataFile(url);
+    return extractSpendingCampaignNames(parseUploadedFile(buffer, "Previous Month Data").rows);
+  } catch {
+    return [];
+  }
+}
 
 async function maybeSyncPreviousMonthDataFromFetch(input: {
   clientId: string;
   timezone: string;
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
+  previousMonthSelectedCampaigns: string | null;
   now?: Date;
   fileNamePrefix: string;
   fetchCsv: (sinceIso: string, untilIso: string) => Promise<{ csvText: string; rowCount: number }>;
   extractCampaigns: (buffer: Buffer) => string[];
-}): Promise<{ synced: boolean; reason?: string }> {
+}): Promise<PreviousMonthSyncResult> {
   const info = getPreviousMonthComparisonInfo(
     !!input.previousMonthDataUrl,
     input.previousMonthDataUpdatedAt?.toISOString() ?? null,
@@ -32,7 +52,10 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
     input.now,
   );
   if (info.status === "current") {
-    return { synced: false, reason: "already current" };
+    const campaigns = await loadPreviousMonthCampaignsFromUrl(input.previousMonthDataUrl);
+    const selected =
+      parsePreviousMonthSelectedCampaigns(input.previousMonthSelectedCampaigns) ?? campaigns;
+    return { synced: false, reason: "already current", campaigns, selectedCampaigns: selected };
   }
 
   const { sinceIso, untilIso } = computePreviousCalendarMonthIsoRange(input.now ?? new Date(), input.timezone);
@@ -44,6 +67,9 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
 
   const buffer = Buffer.from(result.csvText, "utf-8");
   const campaigns = input.extractCampaigns(buffer);
+  const previousSelected = parsePreviousMonthSelectedCampaigns(input.previousMonthSelectedCampaigns);
+  const previousAllCampaigns = await loadPreviousMonthCampaignsFromUrl(input.previousMonthDataUrl);
+  const selectedCampaigns = mergePreviousMonthSelection(campaigns, previousSelected, previousAllCampaigns);
 
   const previousUrl = input.previousMonthDataUrl;
   const previousMonthDataUrl = await savePreviousMonthDataFile(
@@ -58,7 +84,7 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
     data: {
       previousMonthDataUrl,
       previousMonthDataUpdatedAt: new Date(),
-      previousMonthSelectedCampaigns: JSON.stringify(campaigns),
+      previousMonthSelectedCampaigns: JSON.stringify(selectedCampaigns),
     },
   });
 
@@ -66,7 +92,7 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
     await deletePreviousMonthDataFile(previousUrl);
   }
 
-  return { synced: true };
+  return { synced: true, campaigns, selectedCampaigns };
 }
 
 function metaCampaignsFromBuffer(buffer: Buffer): string[] {
@@ -90,13 +116,15 @@ export async function maybeSyncPreviousMonthDataFromMetaApi(input: {
   timezone: string;
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
+  previousMonthSelectedCampaigns: string | null;
   now?: Date;
-}): Promise<{ synced: boolean; reason?: string }> {
+}): Promise<PreviousMonthSyncResult> {
   return maybeSyncPreviousMonthDataFromFetch({
     clientId: input.clientId,
     timezone: input.timezone,
     previousMonthDataUrl: input.previousMonthDataUrl,
     previousMonthDataUpdatedAt: input.previousMonthDataUpdatedAt,
+    previousMonthSelectedCampaigns: input.previousMonthSelectedCampaigns,
     now: input.now,
     fileNamePrefix: "meta-api-prev-month",
     fetchCsv: async (sinceIso, untilIso) =>
@@ -119,13 +147,15 @@ export async function maybeSyncPreviousMonthDataFromTikTokApi(input: {
   timezone: string;
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
+  previousMonthSelectedCampaigns: string | null;
   now?: Date;
-}): Promise<{ synced: boolean; reason?: string }> {
+}): Promise<PreviousMonthSyncResult> {
   return maybeSyncPreviousMonthDataFromFetch({
     clientId: input.clientId,
     timezone: input.timezone,
     previousMonthDataUrl: input.previousMonthDataUrl,
     previousMonthDataUpdatedAt: input.previousMonthDataUpdatedAt,
+    previousMonthSelectedCampaigns: input.previousMonthSelectedCampaigns,
     now: input.now,
     fileNamePrefix: "tiktok-api-prev-month",
     fetchCsv: async (sinceIso, untilIso) =>
@@ -148,14 +178,16 @@ export async function maybeSyncPreviousMonthDataFromGoogleApi(input: {
   timezone: string;
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
+  previousMonthSelectedCampaigns: string | null;
   now?: Date;
   loginCustomerId?: string;
-}): Promise<{ synced: boolean; reason?: string }> {
+}): Promise<PreviousMonthSyncResult> {
   return maybeSyncPreviousMonthDataFromFetch({
     clientId: input.clientId,
     timezone: input.timezone,
     previousMonthDataUrl: input.previousMonthDataUrl,
     previousMonthDataUpdatedAt: input.previousMonthDataUpdatedAt,
+    previousMonthSelectedCampaigns: input.previousMonthSelectedCampaigns,
     now: input.now,
     fileNamePrefix: "google-api-prev-month",
     fetchCsv: async (sinceIso, untilIso) =>

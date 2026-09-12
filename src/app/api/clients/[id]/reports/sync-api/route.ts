@@ -11,9 +11,14 @@ import {
   maybeSyncPreviousMonthDataFromGoogleApi,
   maybeSyncPreviousMonthDataFromMetaApi,
   maybeSyncPreviousMonthDataFromTikTokApi,
+  type PreviousMonthSyncResult,
 } from "@/lib/nre/sync-previous-month-from-api";
 import { fetchGoogleReportCsv } from "@/lib/nre/fetch-google-report-rows";
 import { fetchTikTokReportCsv } from "@/lib/nre/fetch-tiktok-report-rows";
+import {
+  loadPreviousMonthDataCampaigns,
+  parsePreviousMonthSelectedCampaigns,
+} from "@/lib/nre/previous-month-data";
 import { platformSchema } from "@/lib/validators/report-wizard";
 
 const syncApiBodySchema = z.object({
@@ -22,6 +27,57 @@ const syncApiBodySchema = z.object({
   googleCustomerId: z.string().trim().min(1).optional(),
   tiktokAdvertiserId: z.string().trim().min(1).optional(),
 });
+
+async function previousMonthPayloadFromClient(client: {
+  previousMonthDataUrl: string | null;
+  previousMonthDataUpdatedAt: Date | null;
+  previousMonthSelectedCampaigns: string | null;
+}) {
+  if (!client.previousMonthDataUrl) {
+    return {
+      hasPreviousMonthData: false,
+      previousMonthSynced: false,
+      previousMonthCampaigns: [] as string[],
+      previousMonthSelectedCampaigns: null as string[] | null,
+      previousMonthUpdatedAt: null as string | null,
+    };
+  }
+
+  let campaigns: string[] = [];
+  try {
+    campaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+  } catch {
+    campaigns = [];
+  }
+  const selected =
+    parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns) ?? campaigns;
+
+  return {
+    hasPreviousMonthData: true,
+    previousMonthSynced: false,
+    previousMonthCampaigns: campaigns,
+    previousMonthSelectedCampaigns: selected,
+    previousMonthUpdatedAt: client.previousMonthDataUpdatedAt?.toISOString() ?? null,
+  };
+}
+
+function previousMonthPayloadFromSync(
+  sync: PreviousMonthSyncResult,
+  client: {
+    previousMonthDataUrl: string | null;
+    previousMonthDataUpdatedAt: Date | null;
+  },
+) {
+  return {
+    hasPreviousMonthData: true,
+    previousMonthSynced: sync.synced,
+    previousMonthCampaigns: sync.campaigns ?? [],
+    previousMonthSelectedCampaigns: sync.selectedCampaigns ?? sync.campaigns ?? [],
+    previousMonthUpdatedAt: sync.synced
+      ? new Date().toISOString()
+      : client.previousMonthDataUpdatedAt?.toISOString() ?? null,
+  };
+}
 
 /**
  * Fetches campaign data from Meta Marketing API or Google Ads API and returns
@@ -90,7 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
       });
 
-      let previousMonthSynced = false;
+      let previousMonth = await previousMonthPayloadFromClient(client);
       try {
         const prevMonth = await maybeSyncPreviousMonthDataFromMetaApi({
           clientId: client.id,
@@ -99,8 +155,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           timezone: client.timezone,
           previousMonthDataUrl: client.previousMonthDataUrl,
           previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+          previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
         });
-        previousMonthSynced = prevMonth.synced;
+        if (prevMonth.campaigns) {
+          previousMonth = previousMonthPayloadFromSync(prevMonth, client);
+        }
       } catch (err) {
         console.error("[reports:sync-api] previous month auto-sync failed:", err);
       }
@@ -113,7 +172,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
-        previousMonthSynced,
+        ...previousMonth,
       });
     }
 
@@ -148,7 +207,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
       });
 
-      let previousMonthSynced = false;
+      let previousMonth = await previousMonthPayloadFromClient(client);
       try {
         const prevMonth = await maybeSyncPreviousMonthDataFromTikTokApi({
           clientId: client.id,
@@ -157,8 +216,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           timezone: client.timezone,
           previousMonthDataUrl: client.previousMonthDataUrl,
           previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+          previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
         });
-        previousMonthSynced = prevMonth.synced;
+        if (prevMonth.campaigns) {
+          previousMonth = previousMonthPayloadFromSync(prevMonth, client);
+        }
       } catch (err) {
         console.error("[reports:sync-api] TikTok previous month auto-sync failed:", err);
       }
@@ -171,7 +233,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `tiktok-api-sync-${result.untilIso}.csv`,
-        previousMonthSynced,
+        ...previousMonth,
       });
     }
 
@@ -200,7 +262,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       timezone: client.timezone,
     });
 
-    let previousMonthSynced = false;
+    let previousMonth = await previousMonthPayloadFromClient(client);
     try {
       const prevMonth = await maybeSyncPreviousMonthDataFromGoogleApi({
         clientId: client.id,
@@ -209,8 +271,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
         previousMonthDataUrl: client.previousMonthDataUrl,
         previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+        previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
       });
-      previousMonthSynced = prevMonth.synced;
+      if (prevMonth.campaigns) {
+        previousMonth = previousMonthPayloadFromSync(prevMonth, client);
+      }
     } catch (err) {
       console.error("[reports:sync-api] Google previous month auto-sync failed:", err);
     }
@@ -223,7 +288,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       sinceIso: result.sinceIso,
       untilIso: result.untilIso,
       fileName: `google-ads-api-sync-${result.untilIso}.csv`,
-      previousMonthSynced,
+      ...previousMonth,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:sync-api");
