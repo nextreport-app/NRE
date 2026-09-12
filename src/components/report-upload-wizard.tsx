@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -31,6 +31,8 @@ import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import {
+  isWizardApiAvailable,
+  WizardDataSourceCompareTable,
   WizardDataSourcePanel,
   WizardDataSourceToggle,
   type WizardDataSource,
@@ -494,6 +496,10 @@ export function ReportUploadWizard({
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
+  /** When true, auto-default to API on platform change is suppressed until platform changes again. */
+  const userPickedDataSourceRef = useRef(false);
+  const dataSourcePlatformRef = useRef<"META" | "GOOGLE" | "TIKTOK" | null>(null);
+  const [dataSourceAutoSelected, setDataSourceAutoSelected] = useState(false);
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
@@ -610,6 +616,51 @@ export function ReportUploadWizard({
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
     initialPreviousMonthSelectedCampaigns,
   );
+
+  const wizardApiAvailable = selectedPlatformCard
+    ? isWizardApiAvailable(selectedPlatformCard, {
+        metaConfigured,
+        metaConnected,
+        googleAdsConfigured,
+        googleAdsConnected,
+        tiktokConfigured,
+        tiktokConnected,
+      })
+    : false;
+
+  useLayoutEffect(() => {
+    if (!selectedPlatformCard) return;
+    if (dataSourcePlatformRef.current !== selectedPlatformCard) {
+      dataSourcePlatformRef.current = selectedPlatformCard;
+      userPickedDataSourceRef.current = false;
+    }
+    if (userPickedDataSourceRef.current) return;
+
+    const apiAvailable = isWizardApiAvailable(selectedPlatformCard, {
+      metaConfigured,
+      metaConnected,
+      googleAdsConfigured,
+      googleAdsConnected,
+      tiktokConfigured,
+      tiktokConnected,
+    });
+    setDataSourceMode(apiAvailable ? "api" : "csv");
+    setDataSourceAutoSelected(apiAvailable);
+  }, [
+    selectedPlatformCard,
+    metaConfigured,
+    metaConnected,
+    googleAdsConfigured,
+    googleAdsConnected,
+    tiktokConfigured,
+    tiktokConnected,
+  ]);
+
+  function handleDataSourceModeChange(mode: WizardDataSource) {
+    userPickedDataSourceRef.current = true;
+    setDataSourceAutoSelected(false);
+    setDataSourceMode(mode);
+  }
   const previousMonthComparisonReady = useMemo(
     () =>
       getPreviousMonthComparisonInfo(previousMonthHasFile, previousMonthUpdatedAt, clientTimezone).status ===
@@ -2160,21 +2211,23 @@ export function ReportUploadWizard({
                 </p>
                 <p className="mt-1 text-[14px] text-dash-ink-secondary">
                   Choose how to bring in campaign performance for this report.
+                  {wizardApiAvailable && dataSourceMode === "api" && dataSourceAutoSelected ? (
+                    <span className="mt-1 block text-[13px] text-[#90cdf4]">
+                      Sync from API is selected automatically because your account is connected.
+                    </span>
+                  ) : null}
                 </p>
               </div>
 
               <WizardDataSourceToggle
                 value={dataSourceMode}
-                onChange={setDataSourceMode}
-                apiAvailable={
-                  selectedPlatformCard === "META"
-                    ? metaConfigured && metaConnected
-                    : selectedPlatformCard === "GOOGLE"
-                      ? googleAdsConfigured && googleAdsConnected
-                      : tiktokConfigured && tiktokConnected
-                }
+                onChange={handleDataSourceModeChange}
+                apiAvailable={wizardApiAvailable}
               />
 
+              <WizardDataSourceCompareTable highlightMode={dataSourceMode} />
+
+              <div key={dataSourceMode} className="wizard-panel-enter">
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
                   clientId={clientId}
@@ -2218,6 +2271,7 @@ export function ReportUploadWizard({
                   }
                 />
               )}
+              </div>
 
               <PreviousMonthDataWizardPanel
                 clientId={clientId}

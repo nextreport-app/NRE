@@ -5,6 +5,131 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 export type WizardDataSource = "csv" | "api";
 
+export function isWizardApiAvailable(
+  platform: "META" | "GOOGLE" | "TIKTOK",
+  opts: {
+    metaConfigured: boolean;
+    metaConnected: boolean;
+    googleAdsConfigured: boolean;
+    googleAdsConnected: boolean;
+    tiktokConfigured: boolean;
+    tiktokConnected: boolean;
+  },
+): boolean {
+  if (platform === "META") return opts.metaConfigured && opts.metaConnected;
+  if (platform === "GOOGLE") return opts.googleAdsConfigured && opts.googleAdsConnected;
+  return opts.tiktokConfigured && opts.tiktokConnected;
+}
+
+type CompareCell = "yes" | "no" | "partial" | "text";
+
+const COMPARE_ROWS: { label: string; csv: CompareCell | string; api: CompareCell | string; csvNote?: string; apiNote?: string }[] = [
+  { label: "Setup", csv: "text", api: "text", csvNote: "Export from Ads Manager", apiNote: "Connect once, sync each report" },
+  { label: "Main date range", csv: "text", api: "text", csvNote: "You choose in export", apiNote: "Last 30 days ending yesterday" },
+  { label: "Previous month row", csv: "partial", api: "yes", csvNote: "Manual upload", apiNote: "Auto-fetched when needed" },
+  { label: "Campaign selection (prev. month)", csv: "yes", api: "yes" },
+  { label: "Comparison & multi-month", csv: "yes", api: "yes" },
+  { label: "Creative (Ad-level) reports", csv: "yes", api: "no" },
+  { label: "Custom / extra columns", csv: "yes", api: "partial", apiNote: "Standard column set" },
+  { label: "Works offline", csv: "yes", api: "no" },
+];
+
+function CompareValue({ value, note }: { value: CompareCell | string; note?: string }) {
+  if (value === "yes") {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-400">
+        <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Yes
+      </span>
+    );
+  }
+  if (value === "no") {
+    return (
+      <span className="inline-flex items-center gap-1 text-dash-ink-secondary">
+        <svg className="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+        No
+      </span>
+    );
+  }
+  if (value === "partial") {
+    return (
+      <span className="inline-flex items-center gap-1 text-amber-300">
+        <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+        </svg>
+        {note ?? "Partial"}
+      </span>
+    );
+  }
+  if (value === "text") {
+    return <span className="text-[12px] leading-snug text-dash-ink-secondary">{note}</span>;
+  }
+  return <span className="text-[12px] text-dash-ink-secondary">{value}</span>;
+}
+
+/** Side-by-side feature comparison — compact reference under the toggle cards. */
+export function WizardDataSourceCompareTable({
+  highlightMode,
+}: {
+  highlightMode: WizardDataSource;
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-dash-border bg-dash-bg/50">
+      <div className="border-b border-dash-border px-3 py-2">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-dash-ink-secondary">Quick comparison</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[320px] text-left text-[12px]">
+          <thead>
+            <tr className="border-b border-dash-border text-dash-ink-secondary">
+              <th className="px-3 py-2 font-medium">Feature</th>
+              <th
+                className={`px-3 py-2 font-medium transition-colors duration-200 ${
+                  highlightMode === "csv" ? "bg-[#f6ad55]/10 text-[#fbd38d]" : ""
+                }`}
+              >
+                Upload CSV
+              </th>
+              <th
+                className={`px-3 py-2 font-medium transition-colors duration-200 ${
+                  highlightMode === "api" ? "bg-[#63b3ed]/10 text-[#90cdf4]" : ""
+                }`}
+              >
+                Sync from API
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-dash-border/70">
+            {COMPARE_ROWS.map((row) => (
+              <tr key={row.label} className="text-dash-ink-secondary">
+                <td className="px-3 py-2 font-medium text-dash-ink">{row.label}</td>
+                <td
+                  className={`px-3 py-2 transition-colors duration-200 ${
+                    highlightMode === "csv" ? "bg-[#f6ad55]/5" : ""
+                  }`}
+                >
+                  <CompareValue value={row.csv} note={row.csvNote} />
+                </td>
+                <td
+                  className={`px-3 py-2 transition-colors duration-200 ${
+                    highlightMode === "api" ? "bg-[#63b3ed]/5" : ""
+                  }`}
+                >
+                  <CompareValue value={row.api} note={row.apiNote} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 interface WizardDataSourcePanelProps {
   clientId: string;
   platform: "META" | "GOOGLE" | "TIKTOK";
@@ -110,14 +235,16 @@ export function WizardDataSourceToggle({
         type="button"
         onClick={() => onChange("csv")}
         aria-pressed={value === "csv"}
-        className={`rounded-lg border p-4 text-left transition-colors ${
+        className={`rounded-lg border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.99] ${
           value === "csv"
-            ? "border-[#f6ad55]/60 bg-[#f6ad55]/10 ring-1 ring-[#f6ad55]/30"
-            : "border-dash-border bg-dash-bg hover:border-dash-border/80 hover:bg-dash-border/20"
+            ? "wizard-card-selected border-[#f6ad55]/60 bg-[#f6ad55]/10 shadow-[0_4px_20px_rgba(246,173,85,0.12)] ring-1 ring-[#f6ad55]/30"
+            : "border-dash-border bg-dash-bg hover:border-[#f6ad55]/30 hover:bg-dash-border/20"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
-          <CsvFileIcon />
+          <span className={`transition-transform duration-200 ${value === "csv" ? "scale-110" : ""}`}>
+            <CsvFileIcon />
+          </span>
           {value === "csv" ? (
             <span className="rounded-full bg-[#f6ad55]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#fbd38d]">
               Selected
@@ -148,14 +275,16 @@ export function WizardDataSourceToggle({
         type="button"
         onClick={() => onChange("api")}
         aria-pressed={value === "api"}
-        className={`rounded-lg border p-4 text-left transition-colors ${
+        className={`rounded-lg border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.99] ${
           value === "api"
-            ? "border-[#63b3ed]/60 bg-[#63b3ed]/10 ring-1 ring-[#63b3ed]/30"
-            : "border-dash-border bg-dash-bg hover:border-dash-border/80 hover:bg-dash-border/20"
+            ? "wizard-card-selected border-[#63b3ed]/60 bg-[#63b3ed]/10 shadow-[0_4px_20px_rgba(99,179,237,0.12)] ring-1 ring-[#63b3ed]/30"
+            : "border-dash-border bg-dash-bg hover:border-[#63b3ed]/30 hover:bg-dash-border/20"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
-          <ApiCloudIcon />
+          <span className={`transition-transform duration-200 ${value === "api" ? "scale-110" : ""}`}>
+            <ApiCloudIcon />
+          </span>
           {apiAvailable ? (
             <span className="rounded-full bg-[#63b3ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#90cdf4]">
               {value === "api" ? "Selected" : "Recommended"}
