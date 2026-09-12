@@ -125,7 +125,9 @@ function PreviousMonthDataWizardContent({
     <div className="space-y-2">
       <p className="text-[14px] font-medium text-[#f6ad55]">{title}</p>
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-        Upload once per month — powers the previous-month row on the Monthly Overview slide. Export{" "}
+        Upload once per month — powers the previous-month row on the Monthly Overview slide. If you use{" "}
+        <span className="text-dash-ink">Sync from API</span>, we auto-fetch last month when it&apos;s missing or stale;
+        manual upload is only needed when you skip API sync or prefer your own export. Export{" "}
         <span className="text-dash-ink">Last Month</span> CSV from Meta with or without Day breakdown.
       </p>
       {needsUpload ? (

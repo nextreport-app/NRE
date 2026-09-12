@@ -99,6 +99,14 @@ export function MetaAdsSettings({
             Read-only access — NextReport can list ad accounts and campaign metrics. It cannot create or edit
             ads.
           </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-emerald-200/70">
+            API sync uses the same report pipeline as CSV upload — no extra NextReport credits. Each sync is a
+            few read-only Meta API calls; normal weekly use stays within Meta&apos;s rate limits. See our{" "}
+            <a href="/help/download" className="font-medium text-emerald-300 underline hover:text-emerald-200">
+              data guide
+            </a>{" "}
+            for previous-month auto-sync and how metrics are selected.
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"

@@ -392,6 +392,10 @@ export function WizardDataSourcePanel({
         <>
           <p className="text-[12px] text-dash-ink-secondary">
             Syncs the last 30 days with daily breakdown, ending yesterday — same columns and date range as our CSV download guide.
+<<<<<<< Updated upstream
+=======
+            Previous month is auto-fetched when missing. Step 3 lets you adjust metric chips; only columns in the sync can be added.
+>>>>>>> Stashed changes
           </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
