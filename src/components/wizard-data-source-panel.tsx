@@ -16,7 +16,16 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (file: File, meta?: { previousMonthSynced?: boolean }) => void;
+  onSynced: (
+    file: File,
+    meta?: {
+      previousMonthSynced?: boolean;
+      hasPreviousMonthData?: boolean;
+      previousMonthCampaigns?: string[];
+      previousMonthSelectedCampaigns?: string[] | null;
+      previousMonthUpdatedAt?: string | null;
+    },
+  ) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
@@ -168,7 +177,15 @@ export function WizardDataSourcePanel({
 
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
-      onSynced(file, { previousMonthSynced: !!data.previousMonthSynced });
+      onSynced(file, {
+        previousMonthSynced: !!data.previousMonthSynced,
+        hasPreviousMonthData: !!data.hasPreviousMonthData,
+        previousMonthCampaigns: Array.isArray(data.previousMonthCampaigns) ? data.previousMonthCampaigns : [],
+        previousMonthSelectedCampaigns: Array.isArray(data.previousMonthSelectedCampaigns)
+          ? data.previousMonthSelectedCampaigns
+          : null,
+        previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+      });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
     }
@@ -390,12 +407,11 @@ export function WizardDataSourcePanel({
 
       {connected && configured ? (
         <>
-          <p className="text-[12px] text-dash-ink-secondary">
-            Syncs the last 30 days with daily breakdown, ending yesterday — same columns and date range as our CSV download guide.
-<<<<<<< Updated upstream
-=======
-            Previous month is auto-fetched when missing. Step 3 lets you adjust metric chips; only columns in the sync can be added.
->>>>>>> Stashed changes
+          <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
+            Syncs the last 30 complete days (ending yesterday) with daily breakdown — same date range and columns as our CSV
+            guide. Previous month is auto-fetched when missing or stale; use the campaign checkboxes below to exclude
+            campaigns you don&apos;t manage. Weekly, Monthly, Comparison, Multi-month, and Demo reports all work from API
+            sync. Creative reports still need an Ad-level CSV upload.
           </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
@@ -432,20 +448,26 @@ export function WizardDataSourceToggle({
       <button
         type="button"
         onClick={() => onChange("csv")}
-        className={`rounded-md px-3 py-2.5 text-[13px] font-semibold transition-colors ${
+        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
           value === "csv" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
         }`}
       >
-        Upload CSV
+        <span className="block text-[13px] font-semibold">Upload CSV</span>
+        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-dash-ink/80" : ""}`}>
+          Manual export from Ads Manager
+        </span>
       </button>
       <button
         type="button"
         onClick={() => onChange("api")}
-        className={`rounded-md px-3 py-2.5 text-[13px] font-semibold transition-colors ${
+        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
           value === "api" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
         }`}
       >
-        Sync from API
+        <span className="block text-[13px] font-semibold">Sync from API</span>
+        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
+          Last 30 days + previous month auto-fetch
+        </span>
       </button>
     </div>
   );

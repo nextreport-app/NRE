@@ -223,8 +223,21 @@ export default async function DownloadGuidePage() {
                   slides, MTD row, chart).{" "}
                   <span className="text-white">Previous calendar month</span> is fetched separately when missing or stale
                   — you usually do <span className="text-white">not</span> need a manual previous-month CSV upload after
-                  a successful Meta sync. Upload previous month manually only if auto-sync did not run or you prefer a
-                  custom export.
+                  a successful sync. If the account had no spend last month, the previous-month row is simply skipped — no
+                  error. Upload previous month manually only if auto-sync did not run or you prefer a custom export.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Previous-month campaign selection:</span> After sync or
+                  upload, the wizard shows a checkbox list of campaigns detected in last month&apos;s data. Uncheck any
+                  campaigns you don&apos;t manage (e.g. run by another agency) — only checked campaigns appear in the
+                  Combined Total previous-month row. Your selection is saved per client and preserved on re-sync; newly
+                  appearing campaigns default to included.
+                </li>
+                <li>
+                  <span className="font-semibold text-white">Report types supported:</span> Weekly, Monthly, Daily,
+                  Quarterly, YTD, Comparison, Multi-month Historical, and Demo reports all work from API sync the same
+                  way as CSV. <span className="text-white">Creative reports</span> still require an Ad-level CSV export
+                  (API sync is campaign/ad-set level only).
                 </li>
                 <li>
                   <span className="font-semibold text-white">How metrics are chosen:</span> API sync does not use

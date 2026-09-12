@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
+import { PreviousMonthCampaignSelector } from "@/components/previous-month-campaign-selector";
 
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
@@ -13,16 +14,7 @@ function formatUploadDate(iso: string): string {
  * Previous Month Data — uploaded once per client, here on the client's own
  * page, and reused automatically by every report generated for this client
  * (see api/clients/[id]/reports/route.ts) instead of the old per-report
- * "Period CSV" upload. Immediate upload-on-select (no separate save step —
- * this section isn't part of the surrounding ClientForm) mirroring the
- * account settings page's Google Drive connect/disconnect widget more than
- * the client logo's stage-then-submit-with-the-form flow.
- *
- * Part 1 — the uploaded file's own campaigns get a simple checkbox list
- * (inline, right below the file info) so the user can exclude campaigns
- * they don't manage from the Combined Total table's Period row. All
- * pre-checked by default; each toggle saves immediately (same
- * immediate-save philosophy as the upload itself).
+ * "Period CSV" upload.
  */
 export function PreviousMonthDataUpload({
   clientId,
@@ -35,32 +27,17 @@ export function PreviousMonthDataUpload({
   initialFileName: string | null;
   /** ISO date string, or null if nothing has been uploaded yet. */
   initialUpdatedAt: string | null;
-  /** Every campaign found in the currently-uploaded file (server-parsed on page load) — empty when no file is uploaded. */
   initialCampaigns: string[];
-  /** Client.previousMonthSelectedCampaigns, already parsed — null means "everything selected" (no exclusions saved yet). */
   initialSelectedCampaigns: string[] | null;
 }) {
   const [fileName, setFileName] = useState(initialFileName);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [campaigns, setCampaigns] = useState(initialCampaigns);
-  const [selected, setSelected] = useState<Set<string>>(new Set(initialSelectedCampaigns ?? initialCampaigns));
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[] | null>(initialSelectedCampaigns);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [savingSelection, setSavingSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectionError, setSelectionError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectAllRef = useRef<HTMLInputElement>(null);
-
-  // Fix 2 — the master checkbox's "indeterminate" (dash) state can only be
-  // set via the DOM property, not a JSX/HTML attribute, so it's applied
-  // imperatively here whenever the selection changes relative to the full
-  // campaign list.
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = selected.size > 0 && selected.size < campaigns.length;
-    }
-  }, [selected, campaigns]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -83,8 +60,9 @@ export function PreviousMonthDataUpload({
       setFileName(data.fileName ?? file.name);
       setUpdatedAt(new Date().toISOString());
       const newCampaigns: string[] = Array.isArray(data.campaigns) ? data.campaigns : [];
+      const newSelected: string[] = Array.isArray(data.selectedCampaigns) ? data.selectedCampaigns : newCampaigns;
       setCampaigns(newCampaigns);
-      setSelected(new Set(newCampaigns));
+      setSelectedCampaigns(newSelected);
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -106,7 +84,7 @@ export function PreviousMonthDataUpload({
       setFileName(null);
       setUpdatedAt(null);
       setCampaigns([]);
-      setSelected(new Set());
+      setSelectedCampaigns(null);
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -114,48 +92,12 @@ export function PreviousMonthDataUpload({
     }
   }
 
-  async function saveSelection(next: Set<string>) {
-    setSelectionError(null);
-    setSavingSelection(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/previous-month-data`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedCampaigns: Array.from(next) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setSelectionError(data.error || "Could not save your selection. Please try again.");
-      }
-    } catch {
-      setSelectionError("Could not reach the server. Please try again.");
-    } finally {
-      setSavingSelection(false);
-    }
-  }
-
-  function toggleCampaign(name: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      void saveSelection(next);
-      return next;
-    });
-  }
-
-  /** Fix 2 — native checkbox semantics: checking selects every campaign, unchecking clears the selection. A click while indeterminate (some selected) always lands on `checked`, so this also covers "some → all" without special-casing it. */
-  function handleSelectAllChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const next = e.target.checked ? new Set(campaigns) : new Set<string>();
-    setSelected(next);
-    void saveSelection(next);
-  }
-
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
         For Monthly reports, export last month&rsquo;s performance from Meta Ads Manager and upload it here once per
-        calendar month. We add it as the previous-month comparison row on overview slides.{" "}
+        calendar month. We add it as the previous-month comparison row on overview slides. API sync can also fetch this
+        automatically.{" "}
         <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent underline hover:no-underline">
           CSV export guide →
         </Link>
@@ -193,7 +135,6 @@ export function PreviousMonthDataUpload({
       {uploading && <p className="mt-2 text-[13px] text-dash-ink-secondary">Uploading…</p>}
       {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
 
-      {/* Fix 1 can legitimately leave zero campaigns (a file where nothing had real spend) — say so explicitly rather than silently showing nothing below the file card. */}
       {fileName && campaigns.length === 0 && (
         <p className="mt-4 border-t border-dash-border pt-4 text-[13px] text-dash-ink-secondary">
           No campaigns with spend were found in this file.
@@ -201,45 +142,12 @@ export function PreviousMonthDataUpload({
       )}
 
       {fileName && campaigns.length > 0 && (
-        <div className="mt-4 border-t border-dash-border pt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <label className="flex items-center gap-2 text-[13px] font-medium text-dash-ink">
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={campaigns.length > 0 && selected.size === campaigns.length}
-                onChange={handleSelectAllChange}
-                className="h-4 w-4 accent-accent"
-              />
-              Select All
-            </label>
-            {savingSelection && <span className="text-[12px] text-dash-ink-secondary">Saving…</span>}
-          </div>
-          <p className="mb-2 text-[13px] text-dash-ink">
-            {selected.size} of {campaigns.length} campaigns selected
-          </p>
-          <p className="mb-2 text-[12px] text-dash-ink-secondary">
-            Uncheck any campaigns you don&rsquo;t manage — only checked campaigns are included in the
-            Combined Total table&rsquo;s previous-month comparison.
-          </p>
-          <ul className="max-h-56 divide-y divide-dash-border overflow-y-auto rounded-md border border-dash-border">
-            {campaigns.map((name) => (
-              <li key={name} className="flex items-center gap-3 px-3 py-2">
-                <input
-                  type="checkbox"
-                  id={`pmd-campaign-${name}`}
-                  checked={selected.has(name)}
-                  onChange={() => toggleCampaign(name)}
-                  className="h-4 w-4 accent-accent"
-                />
-                <label htmlFor={`pmd-campaign-${name}`} className="cursor-pointer truncate text-[13px] text-dash-ink">
-                  {name}
-                </label>
-              </li>
-            ))}
-          </ul>
-          {selectionError && <p className="mt-2 text-[13px] text-red-400">{selectionError}</p>}
-        </div>
+        <PreviousMonthCampaignSelector
+          clientId={clientId}
+          campaigns={campaigns}
+          initialSelected={selectedCampaigns}
+          onSelectionChange={setSelectedCampaigns}
+        />
       )}
     </div>
   );

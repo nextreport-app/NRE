@@ -373,6 +373,8 @@ export function ReportUploadWizard({
   initialLastDriveFolderName,
   hasPreviousMonthData,
   initialPreviousMonthDataUpdatedAt,
+  initialPreviousMonthCampaigns = [],
+  initialPreviousMonthSelectedCampaigns = null,
   clientTemplate,
   metaConnected = false,
   metaConnectedName = null,
@@ -404,6 +406,10 @@ export function ReportUploadWizard({
   hasPreviousMonthData: boolean;
   /** ISO timestamp of the last Previous Month Data upload — drives stale detection in the wizard. */
   initialPreviousMonthDataUpdatedAt: string | null;
+  /** Campaigns detected in the stored Previous Month Data file. */
+  initialPreviousMonthCampaigns?: string[];
+  /** Saved campaign inclusion for the previous-month row. */
+  initialPreviousMonthSelectedCampaigns?: string[] | null;
   /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
   clientTemplate: string;
   /** Meta Marketing API — connected in Account Settings. */
@@ -599,6 +605,10 @@ export function ReportUploadWizard({
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
   const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
+  const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
+  const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
+    initialPreviousMonthSelectedCampaigns,
+  );
   const previousMonthComparisonReady = useMemo(
     () =>
       getPreviousMonthComparisonInfo(previousMonthHasFile, previousMonthUpdatedAt, clientTimezone).status ===
@@ -1039,8 +1049,16 @@ export function ReportUploadWizard({
     await dispatchAfterAnalyze(detected);
   }
 
+  type ApiSyncMeta = {
+    previousMonthSynced?: boolean;
+    hasPreviousMonthData?: boolean;
+    previousMonthCampaigns?: string[];
+    previousMonthSelectedCampaigns?: string[] | null;
+    previousMonthUpdatedAt?: string | null;
+  };
+
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
-  async function handleApiSynced(file: File, meta?: { previousMonthSynced?: boolean }) {
+  async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
@@ -1073,8 +1091,18 @@ export function ReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
+      setPreviousMonthHasFile(true);
+      if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
+      if (meta.previousMonthCampaigns) setPreviousMonthCampaigns(meta.previousMonthCampaigns);
+      if (meta.previousMonthSelectedCampaigns !== undefined) {
+        setPreviousMonthSelectedCampaigns(meta.previousMonthSelectedCampaigns);
+      }
+    }
     if (meta?.previousMonthSynced) {
-      showToast("Previous month data synced from Meta — ready for the overview row and month-vs-month comparisons.");
+      showToast(
+        "Previous month data synced — review campaign checkboxes below, then uncheck any you don't manage.",
+      );
     }
     await dispatchAfterAnalyze(selectedPlatformCard);
   }
@@ -2174,19 +2202,6 @@ export function ReportUploadWizard({
                 )}
               </p>
 
-              {selectedPlatformCard === "META" ? (
-                <PreviousMonthDataWizardPanel
-                  clientId={clientId}
-                  clientTimezone={clientTimezone}
-                  initialHasFile={previousMonthHasFile}
-                  initialUpdatedAt={previousMonthUpdatedAt}
-                  onUploaded={() => {
-                    setPreviousMonthHasFile(true);
-                    setPreviousMonthUpdatedAt(new Date().toISOString());
-                  }}
-                />
-              ) : null}
-
               <button
                 onClick={handleAnalyze}
                 disabled={!mtdFile || analyzeStatus === "loading"}
@@ -2196,6 +2211,27 @@ export function ReportUploadWizard({
               </button>
                 </>
               )}
+
+              <PreviousMonthDataWizardPanel
+                clientId={clientId}
+                clientTimezone={clientTimezone}
+                initialHasFile={previousMonthHasFile}
+                initialUpdatedAt={previousMonthUpdatedAt}
+                initialCampaigns={previousMonthCampaigns}
+                initialSelectedCampaigns={previousMonthSelectedCampaigns}
+                onUploaded={(meta) => {
+                  setPreviousMonthHasFile(true);
+                  setPreviousMonthUpdatedAt(new Date().toISOString());
+                  if (meta) {
+                    setPreviousMonthCampaigns(meta.campaigns);
+                    setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                  }
+                }}
+                onCampaignsChange={(meta) => {
+                  setPreviousMonthCampaigns(meta.campaigns);
+                  setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                }}
+              />
             </div>
           )}
 
