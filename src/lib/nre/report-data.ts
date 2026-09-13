@@ -52,7 +52,7 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
-import { detectGoogleObjectiveKey } from "./detect-objective";
+import { detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
 import {
   metricsDictionaryPlatform,
   slotAssignmentPlatform,
@@ -66,7 +66,6 @@ import {
   filterMetricsForCampaignObjective,
   objectiveKeyFor,
   stripNeverKeys,
-  type GoogleObjectiveKey,
   type CampaignObjectiveRef,
   type MetaSlotBaseline,
 } from "./slot-assignment";

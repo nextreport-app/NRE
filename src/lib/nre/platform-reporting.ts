@@ -6,8 +6,7 @@
 
 import type { Platform } from "./google-columns";
 import type { MetricPlatform } from "./available-metrics";
-import type { GoogleObjectiveKey } from "./slot-assignment";
-import { detectGoogleObjectiveKey } from "./detect-objective";
+import { detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
 import {
   defaultGoogleSelection,
   defaultMetaSelection,
