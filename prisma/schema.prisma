@@ -211,10 +211,12 @@ enum Currency {
 enum ReportTemplate {
   DARK
   LIGHT
-  EMERALD
-  PURPLE
-  CRIMSON
-  GRAPHITE
+  OCEAN
+  INDIGO
+  MOSS
+  BURGUNDY
+  STEEL
+  COPPER
 }
 
 enum ReportStatus {

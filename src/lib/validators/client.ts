@@ -34,27 +34,26 @@ export const SELECTABLE_CURRENCIES = CURRENCIES.filter(
 export const TEMPLATES = [
   "DARK",
   "LIGHT",
-  "EMERALD",
-  "PURPLE",
-  "CRIMSON",
-  "GRAPHITE",
+  "OCEAN",
+  "INDIGO",
+  "MOSS",
+  "BURGUNDY",
+  "STEEL",
+  "COPPER",
 ] as const;
 
-// The only two templates a client can actually pick going forward — EMERALD/
-// PURPLE/CRIMSON/GRAPHITE never had real template assets (see
-// lib/pptx/templates.ts's TODO comments) and are removed from the UI, but
-// stay in the Prisma enum so an existing client row set to one of them
-// doesn't fail validation; report generation falls back to DARK for those
-// (lib/pptx/templates.ts's TEMPLATE_FILES already maps them there).
-export const SELECTABLE_TEMPLATES = ["DARK", "LIGHT"] as const;
+/** All eight Meta color templates exposed for preview — trim to five (Dark + Light + your top 3) after you pick. */
+export const SELECTABLE_TEMPLATES = TEMPLATES;
 
 export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
   DARK: "Deep Navy (Dark) — primary, most tested",
   LIGHT: "Warm Amber (Light) — premium, warm-tinted",
-  EMERALD: "Dark Forest Green (Emerald)",
-  PURPLE: "Royal Indigo (Purple)",
-  CRIMSON: "Deep Crimson Red (Crimson)",
-  GRAPHITE: "Near-Black Graphite",
+  OCEAN: "Deep Ocean Teal",
+  INDIGO: "Royal Indigo",
+  MOSS: "Forest Moss",
+  BURGUNDY: "Deep Burgundy",
+  STEEL: "Cool Steel Blue",
+  COPPER: "Warm Copper Bronze",
 };
 
 export interface TimezoneOption {
