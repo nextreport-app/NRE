@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultMetricSelectionForCampaign,
+  googleSlideObjectiveLabels,
   metricsDictionaryPlatform,
   sharePlatformBadge,
   slotAssignmentPlatform,
@@ -33,6 +34,12 @@ describe("platform-reporting", () => {
     });
     expect(selection).toHaveLength(8);
     expect(selection.some((m) => m.key === "conversions")).toBe(true);
+  });
+
+  it("maps Google campaign types to slot-engine slide labels", () => {
+    expect(googleSlideObjectiveLabels("search").resultLabel).toBe("CONVERSIONS");
+    expect(googleSlideObjectiveLabels("display").resultLabel).toBe("VIEWABLE IMPR.");
+    expect(googleSlideObjectiveLabels("video").costLabel).toBe("AVG. CPV");
   });
 
   it("exposes distinct share badges per platform", () => {

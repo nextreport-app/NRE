@@ -57,7 +57,8 @@ import {
   metricsDictionaryPlatform,
   slotAssignmentPlatform,
   usesGoogleSlotEngine,
-  googleCampaignObjectiveLabels,
+  googleSlideObjectiveLabels,
+  googleCampaignResultDisplay,
 } from "./platform-reporting";
 import {
   buildGoogleSlots,
@@ -1546,12 +1547,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     let totalSpend = 0;
     let totalReach = 0;
     let totalImpr = 0;
+    let totalConversions = 0;
     const ctrs: number[] = [];
     const cpcs: number[] = [];
     campRows.forEach((row) => {
       totalSpend += parseCellNum(row.spend);
       totalReach += parseCellNum(row.reach);
       totalImpr += parseCellNum(row.impressions);
+      totalConversions += parseCellNum(row.results);
       const ctr = parseCellNum(row.ctr);
       const cpc = parseCellNum(row.cpc);
       if (ctr > 0) ctrs.push(ctr);
@@ -1559,23 +1562,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
-    // Step 0's single source of truth — see buildReportData's own Step 0
-    // comment and objective.ts's buildCampaignObjectiveMap doc comment.
-    // normalizeCampaignName closes the case-sensitivity loophole: the map's
-    // own keys are normalized (see buildCampaignObjectiveMap), so a
-    // display-cased lookup here must be normalized identically or it would
-    // silently miss. Falls back to the generic RESULTS bucket only
-    // defensively (every campaign here came from primaryRows, which
-    // campaignObjectiveMap was itself built from — this should never
-    // actually miss).
+    const googleKey = googleObjectiveKey ?? "search";
     const campaignObjective =
       platform === "GOOGLE"
-        ? googleCampaignObjectiveLabels()
+        ? googleSlideObjectiveLabels(googleKey)
         : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
             resultLabel: "RESULTS",
             costLabel: "COST PER RESULT",
           });
-    const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
+    const campaignRaw = campaignRawGroups[campaignName] ?? [];
+    const { resultLabel, costLabel, resultValue, cprValue } =
+      platform === "GOOGLE"
+        ? googleCampaignResultDisplay(campaignRaw, googleKey, currencySymbol, {
+            spend: totalSpend,
+            conversions: totalConversions,
+          })
+        : getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
     if (platform !== "GOOGLE" && campRows.some((r) => !r.objectiveConfident)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
@@ -1608,13 +1610,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // The campaign template's 8 fixed card slots — automatically assigned by
     // objective (slot-assignment.ts's buildMetaSlots), or built from the
     // wizard's own selectedMetrics — see computeMetaSlideMetrics above.
-    const slideResultLabel = platform === "GOOGLE" ? "CONVERSIONS" : resultLabel;
-    const slideCostLabel = platform === "GOOGLE" ? "COST PER CONVERSION" : costLabel;
-
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       {
-        resultLabel: slideResultLabel,
-        costLabel: slideCostLabel,
+        resultLabel,
+        costLabel,
         spend: metrics.spend,
         reach: metrics.reach,
         impressions: metrics.impressions,
@@ -1631,8 +1630,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return {
       kind: "campaign" as const,
       campaignName,
-      resultLabel: slideResultLabel,
-      costLabel: slideCostLabel,
+      resultLabel,
+      costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
@@ -1640,10 +1639,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       dynamicMetrics,
       additionalMetricsSlide,
       ai: {
-        // Fix 3 — no internal grouping detail ("(combined N ad sets)") in
-        // what gets sent to the AI: this is bookkeeping about how the
-        // report engine rolled up the data, not something a client-facing
-        // summary should ever mention.
         ctx: campaignName,
         dateRange: globalWeekDateRange,
         spend: metrics.spend,
@@ -1721,14 +1716,22 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // campaign's own summary slide and with the Combined Total table.
     // normalizeCampaignName matches the map's own normalized keys (see
     // buildCampaignObjectiveMap) — same case-sensitivity fix as above.
+    const googleKey = googleObjectiveKey ?? "search";
     const campaignObjective =
       platform === "GOOGLE"
-        ? googleCampaignObjectiveLabels()
+        ? googleSlideObjectiveLabels(googleKey)
         : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
             resultLabel: "RESULTS",
             costLabel: "COST PER RESULT",
           });
-    const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
+    const adSetRaw = adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [];
+    const { resultLabel, costLabel, resultValue, cprValue } =
+      platform === "GOOGLE"
+        ? googleCampaignResultDisplay(adSetRaw, googleKey, currencySymbol, {
+            spend: parseCellNum(row.spend),
+            conversions: parseCellNum(row.results),
+          })
+        : getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
     const rowFreq = rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
@@ -1748,13 +1751,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
-    const adSetResultLabel = platform === "GOOGLE" ? "CONVERSIONS" : resultLabel;
-    const adSetCostLabel = platform === "GOOGLE" ? "COST PER CONVERSION" : costLabel;
-
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
       {
-        resultLabel: adSetResultLabel,
-        costLabel: adSetCostLabel,
+        resultLabel,
+        costLabel,
         spend: metrics.spend,
         reach: metrics.reach,
         impressions: metrics.impressions,
@@ -1772,8 +1772,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       kind: "adset",
       campaignName,
       adSetName,
-      resultLabel: adSetResultLabel,
-      costLabel: adSetCostLabel,
+      resultLabel,
+      costLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
@@ -1869,11 +1869,13 @@ export interface BuildPreviousMonthSummaryReportDataInput {
   timezone: string;
   /** Raw column-mapped rows from the client's Previous Month Data upload — see lib/nre/previous-month-data.ts. Must be non-empty; the caller is responsible for confirming Client.previousMonthDataUrl produced real rows before calling this. */
   periodRows: NreRow[];
+  platform?: Platform;
   now?: Date;
 }
 
 export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSummaryReportDataInput): ReportData {
-  const { accountName, currencySymbol, timezone, periodRows, now = new Date() } = input;
+  const { accountName, currencySymbol, timezone, periodRows, platform: platformInput, now = new Date() } = input;
+  const platform = platformInput ?? "META";
 
   const objectiveMap = buildCampaignObjectiveMap(periodRows as MetricRow[]);
   const periodRow: TableRowData = {
@@ -1903,7 +1905,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
 
   return {
     isPaused: false,
-    platform: "META",
+    platform,
     reportType: "WEEKLY",
     cover: {
       accountName,

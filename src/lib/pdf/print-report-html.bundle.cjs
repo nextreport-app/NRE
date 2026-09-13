@@ -123,7 +123,7 @@ function buildHistoricalComparisonTableGrid(rows, headers) {
   return [headerRow, ...rows.filter((r) => r.hasData).map(dataRow)];
 }
 
-// src/lib/nre/google-report-data.ts
+// src/lib/nre/google-combined-total.ts
 var GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"];
 function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers) {
   const headerRow = [...GOOGLE_TABLE_STATIC_HEADERS, ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])];

@@ -7,7 +7,7 @@
 
 import { additionalMetricsHeading } from "../nre/available-metrics";
 import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
-import { buildGoogleCombinedTotalTableGrid } from "../nre/google-report-data";
+import { buildGoogleCombinedTotalTableGrid } from "../nre/google-combined-total";
 import {
   cloneShapeAsTag,
   ensureCardLabelValueGap,
