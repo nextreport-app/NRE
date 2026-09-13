@@ -28,8 +28,8 @@ export const METRICS_TABLE_COLORS_DARK: MetricsTableColors = {
 
 export const METRICS_TABLE_COLORS_LIGHT: MetricsTableColors = {
   ink: "0d1b2e",
-  inkMuted: "64748b",
-  accent: "d97706",
+  inkMuted: "475569",
+  accent: "0d1b2e",
   headerBg: "e2e8f0",
   rowBg: "f8fafc",
   rowAltBg: "f1f5f9",

@@ -26,12 +26,12 @@ export const VISUAL_CHART_COLORS_DARK: CampaignBarColors = {
 
 export const VISUAL_CHART_COLORS_LIGHT: CampaignBarColors = {
   ink: "0d1b2e",
-  inkMuted: "64748b",
+  inkMuted: "475569",
   accent: "d97706",
   track: "e5e0d8",
   panelFill: "f0ede8",
   separator: "cbd5e1",
-  heading: "64748b",
+  heading: "0d1b2e",
 };
 
 /** @deprecated Use VISUAL_CHART_COLORS_DARK */

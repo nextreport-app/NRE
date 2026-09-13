@@ -179,7 +179,12 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const slides: SlideToInsert[] = [];
 
   slides.push({
-    xml: buildCoverSlideXml(template.cover, data.cover, { reportTitle, agencyName, reportType: data.reportType }),
+    xml: buildCoverSlideXml(template.cover, data.cover, {
+      reportTitle,
+      agencyName,
+      reportType: data.reportType,
+      isLightTemplate,
+    }),
     rels: template.cover.rels,
   });
 
@@ -194,6 +199,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         data.cover.dateRange,
         data.reportType,
         data.platform,
+        isLightTemplate,
       ),
       rels: template.campaign.rels,
     });
@@ -202,14 +208,32 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       if (!campaignVisible(slide.campaignName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
+        xml: buildCampaignOrAdSetSlideXml(
+          template.campaign,
+          slide,
+          ai,
+          data.reportType,
+          data.platform,
+          false,
+          false,
+          isLightTemplate,
+        ),
         rels: template.campaign.rels,
       });
       // Part 4 — a second "[Name] — Additional Metrics" slide, present only
       // when the wizard's selectedMetrics exceeded 8 for this campaign.
       if (slide.additionalMetricsSlide) {
         slides.push({
-          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, true),
+          xml: buildCampaignOrAdSetSlideXml(
+            template.campaign,
+            slide,
+            ai,
+            data.reportType,
+            data.platform,
+            true,
+            false,
+            isLightTemplate,
+          ),
           rels: template.campaign.rels,
         });
       }
@@ -218,12 +242,30 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       if (!adSetVisible(slide.campaignName, slide.adSetName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform),
+        xml: buildCampaignOrAdSetSlideXml(
+          template.campaign,
+          slide,
+          ai,
+          data.reportType,
+          data.platform,
+          false,
+          false,
+          isLightTemplate,
+        ),
         rels: template.campaign.rels,
       });
       if (slide.additionalMetricsSlide) {
         slides.push({
-          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, data.reportType, data.platform, true),
+          xml: buildCampaignOrAdSetSlideXml(
+            template.campaign,
+            slide,
+            ai,
+            data.reportType,
+            data.platform,
+            true,
+            false,
+            isLightTemplate,
+          ),
           rels: template.campaign.rels,
         });
       }
@@ -292,7 +334,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   }
   if (showMetricGuide) {
   slides.push({
-    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data)),
+    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data), isLightTemplate),
     rels: template.legend.rels,
   });
   }
@@ -396,7 +438,12 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
 
   const slides: SlideToInsert[] = [
     {
-      xml: buildCoverSlideXml(template.cover, cover, { reportTitle, agencyName, reportType: "HISTORICAL" }),
+      xml: buildCoverSlideXml(template.cover, cover, {
+        reportTitle,
+        agencyName,
+        reportType: "HISTORICAL",
+        isLightTemplate,
+      }),
       rels: template.cover.rels,
     },
   ];
@@ -410,6 +457,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         data.monthsLabel,
         "MONTHLY",
         data.platform,
+        isLightTemplate,
       ),
       rels: template.campaign.rels,
     });
@@ -417,12 +465,30 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     for (const slide of data.slides) {
       const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
       slides.push({
-        xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform),
+        xml: buildCampaignOrAdSetSlideXml(
+          template.campaign,
+          slide,
+          ai,
+          "MONTHLY",
+          data.platform,
+          false,
+          false,
+          isLightTemplate,
+        ),
         rels: template.campaign.rels,
       });
       if (slide.additionalMetricsSlide) {
         slides.push({
-          xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform, true),
+          xml: buildCampaignOrAdSetSlideXml(
+            template.campaign,
+            slide,
+            ai,
+            "MONTHLY",
+            data.platform,
+            true,
+            false,
+            isLightTemplate,
+          ),
           rels: template.campaign.rels,
         });
       }

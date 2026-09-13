@@ -39,8 +39,8 @@ export const SLIDE_SURFACE_DARK: SlideSurfacePalette = {
 
 export const SLIDE_SURFACE_LIGHT: SlideSurfacePalette = {
   text: "0d1b2e",
-  label: "64748b",
-  heading: "c17d0a",
+  label: "475569",
+  heading: "0d1b2e",
   cardFill: "f0ede8",
   cardStroke: "cbd5e1",
   tableHeaderFill: "0d1b2e",
