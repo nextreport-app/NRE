@@ -7,6 +7,7 @@ import type { ReportData } from "./report-data";
 import type { ShareReportData, ShareVisibility } from "./share-report";
 import { defaultShareVisibility } from "./share-report";
 import { applyShareEditsToReportData } from "./apply-share-edits";
+import type { ReportTemplate } from "@/generated/prisma/enums";
 import type { AiCopy } from "../pptx/fill-tags";
 import type { HistoricalReportData } from "./historical-report-data";
 import { historicalSlideShareKey } from "./share-report";
@@ -18,6 +19,7 @@ export interface RenderArchive {
   aiCopy: Record<string, AiCopy>;
   currencySymbol: string;
   isLightTemplate: boolean;
+  reportTemplate?: ReportTemplate;
   reportTitle?: string | null;
   agencyName?: string | null;
 }
@@ -28,6 +30,7 @@ export interface HistoricalRenderArchive {
   reportTitle?: string | null;
   agencyName?: string | null;
   isLightTemplate: boolean;
+  reportTemplate?: ReportTemplate;
 }
 
 export type ShareReportWithArchive = ShareReportData & {
@@ -72,6 +75,7 @@ export async function regeneratePptxFromShare(
       agencyName: archive.agencyName,
       clientLogo,
       isLightTemplate: archive.isLightTemplate,
+      reportTemplate: archive.reportTemplate,
       aiCopyBySlideKey: mergeShareCopyIntoAiMap(share, archive.aiCopy ?? {}),
     });
   }
@@ -88,6 +92,7 @@ export async function regeneratePptxFromShare(
     agencyName: archive.agencyName,
     clientLogo,
     isLightTemplate: archive.isLightTemplate,
+    reportTemplate: archive.reportTemplate,
     shareVisibility: visibility,
     shareChart: share.chart ?? null,
   });

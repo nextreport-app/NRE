@@ -125,6 +125,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       accountName: client.accountName,
       agencyName: user?.agencyName,
       isLightTemplate: isLightReportTemplate(client.template),
+      reportTemplate: client.template,
     });
 
     const storedPath = await saveReportFile(report.id, pptxBuffer);

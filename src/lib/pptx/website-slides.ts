@@ -2,7 +2,9 @@
  * Website Traffic (GA4) slide builders — separate from Meta/Google Ads render path.
  */
 
+import type { ReportTemplate } from "@/generated/prisma/enums";
 import { backgroundImage, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
+import { isLightReportTemplate } from "./templates";
 import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, type AiCopy } from "./fill-tags";
 import type { CampaignSlideData } from "../nre/report-data";
@@ -99,16 +101,16 @@ const WEBSITE_AI: AiCopy = {
 export function buildWebsiteOverviewSlideXml(
   template: TemplateSlide,
   data: WebsiteReportData,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
   const slide = metricSlideData("Traffic Overview", data.dateRangeLabel, data.overviewMetrics);
-  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightTemplate);
+  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightReportTemplate(reportTemplate));
 }
 
 export function buildWebsiteConversionSlideXml(
   template: TemplateSlide,
   data: WebsiteReportData,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
   const title =
     data.clientKind === "ecommerce"
@@ -119,7 +121,7 @@ export function buildWebsiteConversionSlideXml(
           ? "Product Sign-ups"
           : "Content Engagement";
   const slide = metricSlideData(title, data.dateRangeLabel, data.conversionMetrics);
-  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightTemplate);
+  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightReportTemplate(reportTemplate));
 }
 
 function truncateCell(text: string, max = 42): string {
@@ -243,9 +245,9 @@ function buildSimpleTableSlide(
 export function buildWebsiteChannelTableSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = [
     { header: "CHANNEL", widthPt: 280, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -267,9 +269,9 @@ export function buildWebsiteChannelTableSlideXml(
 export function buildWebsiteTopPagesSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = [
     { header: "PAGE", widthPt: 420, align: "l" as const },
     { header: "SESSIONS", widthPt: 160, align: "ctr" as const },
@@ -289,9 +291,9 @@ export function buildWebsiteTopPagesSlideXml(
 export function buildWebsiteDeviceTableSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = [
     { header: "DEVICE", widthPt: 220, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -313,9 +315,9 @@ export function buildWebsiteDeviceTableSlideXml(
 export function buildWebsiteGeoTableSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const geoHeader = geoColumnHeader(data.geoDimension ?? "city").toUpperCase();
   const columns = [
     { header: geoHeader, widthPt: 260, align: "l" as const },
@@ -349,9 +351,9 @@ function standardMetricColumns(nameHeader: string, nameWidth = 280) {
 export function buildWebsiteCampaignTableSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = standardMetricColumns("CAMPAIGN", 300);
   const rows = data.campaigns.map((row: WebsiteCampaignRow) => [
     truncateCell(row.campaign, 40),
@@ -366,9 +368,9 @@ export function buildWebsiteCampaignTableSlideXml(
 export function buildWebsiteSourceTableSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = standardMetricColumns("SOURCE / MEDIUM", 320);
   const rows = data.sources.map((row: WebsiteSourceRow) => [
     truncateCell(row.label, 44),
@@ -383,9 +385,9 @@ export function buildWebsiteSourceTableSlideXml(
 export function buildWebsiteAudienceSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = standardMetricColumns("AUDIENCE", 240);
   const rows = data.audience.map((row) => [
     truncateCell(row.segment, 24),
@@ -403,9 +405,9 @@ export function buildWebsiteTechTableSlideXml(
   title: string,
   nameHeader: string,
   rows: Array<{ name: string; sessionsLabel: string; engagementRateLabel: string; conversionsLabel: string }>,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = standardMetricColumns(nameHeader, 260);
   const tableRows = rows.map((row) => [
     truncateCell(row.name, 32),
@@ -501,9 +503,9 @@ function buildCompactTableBlock(
 export function buildWebsiteDemographicsSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: WEBSITE_BG_REL_ID, ...background }));
@@ -593,9 +595,9 @@ export function buildWebsiteTimeTableSlideXml(
   title: string,
   nameHeader: string,
   rows: WebsiteReportData["dayOfWeek"],
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = [
     { header: nameHeader, widthPt: 220, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -617,9 +619,9 @@ export function buildWebsiteTimeTableSlideXml(
 export function buildWebsiteConversionEventsSlideXml(
   data: WebsiteReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   const columns = [
     { header: "EVENT", widthPt: 300, align: "l" as const },
     { header: "COUNT", widthPt: 120, align: "ctr" as const },

@@ -5,6 +5,7 @@
  * appearance (see the long comment above buildCampaignOrAdSetSlideXml).
  */
 
+import type { ReportTemplate } from "@/generated/prisma/enums";
 import { additionalMetricsHeading } from "../nre/available-metrics";
 import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-combined-total";
@@ -779,6 +780,7 @@ export function buildTableSlideXml(
   isLightTemplate = false,
   platform: Platform = "META",
   combinedTotalStory = "",
+  reportTemplate?: ReportTemplate,
 ): string {
   // Google Ads reports have their own static header words (Cost/Clicks/
   // Avg. CPC instead of Meta's Ad Spend/Reach/CPC (All)) — see
@@ -803,6 +805,7 @@ export function buildTableSlideXml(
     hideRowIndexes: [...(hidePeriodRow ? [2] : []), ...(hideMtdRow ? [1] : [])],
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
+    reportTemplate,
   });
   const headerColor = reportHeaderColor(isLightTemplate);
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {

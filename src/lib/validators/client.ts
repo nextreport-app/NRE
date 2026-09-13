@@ -31,13 +31,15 @@ export const SELECTABLE_CURRENCIES = CURRENCIES.filter(
 // Kept as the full Prisma enum (still required for clientSchema to accept
 // existing rows that have one of the 4 disabled values — see
 // SELECTABLE_TEMPLATES below for what the form's dropdown actually offers).
-export const TEMPLATES = ["DARK", "LIGHT"] as const;
+export const TEMPLATES = ["DARK", "LIGHT_CREAM", "LIGHT_PEARL", "LIGHT_SAND"] as const;
 
 export const SELECTABLE_TEMPLATES = TEMPLATES;
 
 export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
   DARK: "Deep Navy (Dark) — primary, most tested",
-  LIGHT: "Light — cream background, dark text",
+  LIGHT_CREAM: "Light — Warm Cream (#FDF6EC)",
+  LIGHT_PEARL: "Light — Cool Pearl (#F8FAFC)",
+  LIGHT_SAND: "Light — Soft Sand (#F5F0E8)",
 };
 
 export interface TimezoneOption {

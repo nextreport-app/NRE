@@ -210,7 +210,9 @@ enum Currency {
 
 enum ReportTemplate {
   DARK
-  LIGHT
+  LIGHT_CREAM
+  LIGHT_PEARL
+  LIGHT_SAND
 }
 
 enum ReportStatus {

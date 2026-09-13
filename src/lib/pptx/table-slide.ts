@@ -1,3 +1,6 @@
+import type { ReportTemplate } from "@/generated/prisma/enums";
+import { periodRowFillHex } from "./light-theme-variants";
+
 /**
  * Combined Total ("Campaign Overview") slide table filler.
  *
@@ -271,6 +274,7 @@ export interface TableVisibilityOptions {
   hideColIndexes?: number[];
   /** Selects the Previous Month row's highlight fill (see PERIOD_ROW_FILL_HEX below) — the dark-theme shade reads as a near-invisible near-black smudge against the light template's own light card background, so the light template needs its own, lighter shade. Defaults to false (the original dark-template shade), matching every existing caller. */
   isLightTemplate?: boolean;
+  reportTemplate?: ReportTemplate;
 }
 
 /**
@@ -409,7 +413,11 @@ export function fillCombinedTotalTable(
   // actually ends up with, not just its native 10.
   const rowsForFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
   if (rowsForFill[1] && grid.length === EXPECTED_ROWS) {
-    const fillHex = options.isLightTemplate ? PERIOD_ROW_FILL_HEX_LIGHT : PERIOD_ROW_FILL_HEX;
+    const fillHex = options.reportTemplate
+      ? periodRowFillHex(options.reportTemplate)
+      : options.isLightTemplate
+        ? PERIOD_ROW_FILL_HEX_LIGHT
+        : PERIOD_ROW_FILL_HEX;
     const filledRow = setRowCellFill(rowsForFill[1].xml, fillHex);
     newTbl = newTbl.slice(0, rowsForFill[1].start) + filledRow + newTbl.slice(rowsForFill[1].end);
   }

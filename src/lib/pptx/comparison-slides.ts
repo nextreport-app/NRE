@@ -14,6 +14,7 @@ import { backgroundImage, buildBlankSlideXml, rectangle, resetShapeIdCounter, ro
 import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCoverSlideXml } from "./fill-tags";
 import type { ComparisonCampaignData, ComparisonChange, ComparisonReportData } from "../nre/report-data";
+import type { ReportTemplate } from "@/generated/prisma/enums";
 import { slideSurfacePalette, type SlideSurfacePalette } from "./slide-surface-palette";
 
 /** Relationship id the comparison campaign/summary slides' own generated rels (see render.ts) register the copied background picture under — mirrors chart-slide.ts's CHART_BG_REL_ID. */
@@ -100,9 +101,9 @@ export function buildComparisonCampaignSlideXml(
   periodALabel: string,
   periodBLabel: string,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background }));
@@ -267,9 +268,9 @@ function tableCellXml(x: number, y: number, w: number, h: number, text: string, 
 export function buildComparisonSummarySlideXml(
   comparison: ComparisonReportData,
   background: TemplateBackgroundImage,
-  isLightTemplate = false,
+  reportTemplate: ReportTemplate = "DARK",
 ): string {
-  const palette = slideSurfacePalette(isLightTemplate);
+  const palette = slideSurfacePalette(reportTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background }));
