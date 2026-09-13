@@ -18,17 +18,9 @@ import type {
   WebsiteReportData,
   WebsiteSourceRow,
 } from "../nre/website-report-data";
+import { slideSurfacePalette, type SlideSurfacePalette } from "./slide-surface-palette";
 
 export const WEBSITE_BG_REL_ID = "rId2";
-
-const TEXT_COLOR = "FFFFFF";
-const LABEL_COLOR = "94a3b8";
-const HEADING_COLOR = "f6ad55";
-const CARD_FILL = "111f35";
-const CARD_STROKE = "1e3a5f";
-const TABLE_HEADER_FILL = "0d1b2e";
-const TABLE_ROW_FILL = CARD_FILL;
-const TABLE_ALT_FILL = "16233d";
 
 function buildWebsiteSlideRels(backgroundMediaTarget: string): string {
   return (
@@ -104,12 +96,21 @@ const WEBSITE_AI: AiCopy = {
   insights: "Compare sessions, engagement rate, and conversions to see how visitors behaved on the site.",
 };
 
-export function buildWebsiteOverviewSlideXml(template: TemplateSlide, data: WebsiteReportData): string {
+export function buildWebsiteOverviewSlideXml(
+  template: TemplateSlide,
+  data: WebsiteReportData,
+  isLightTemplate = false,
+): string {
   const slide = metricSlideData("Traffic Overview", data.dateRangeLabel, data.overviewMetrics);
+  void isLightTemplate;
   return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true);
 }
 
-export function buildWebsiteConversionSlideXml(template: TemplateSlide, data: WebsiteReportData): string {
+export function buildWebsiteConversionSlideXml(
+  template: TemplateSlide,
+  data: WebsiteReportData,
+  isLightTemplate = false,
+): string {
   const title =
     data.clientKind === "ecommerce"
       ? "Ecommerce Performance"
@@ -119,6 +120,7 @@ export function buildWebsiteConversionSlideXml(template: TemplateSlide, data: We
           ? "Product Sign-ups"
           : "Content Engagement";
   const slide = metricSlideData(title, data.dateRangeLabel, data.conversionMetrics);
+  void isLightTemplate;
   return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true);
 }
 
@@ -134,6 +136,7 @@ function buildSimpleTableSlide(
   columns: Array<{ header: string; widthPt: number; align?: "l" | "ctr" }>,
   rows: string[][],
   background: TemplateBackgroundImage,
+  palette: SlideSurfacePalette,
 ): string {
   resetShapeIdCounter();
   const shapes: string[] = [];
@@ -149,7 +152,7 @@ function buildSimpleTableSlide(
       text: title,
       sizePt: 22,
       bold: true,
-      colorHex: HEADING_COLOR,
+      colorHex: palette.heading,
     }),
   );
   shapes.push(
@@ -160,7 +163,7 @@ function buildSimpleTableSlide(
       h: 18,
       text: subtitle,
       sizePt: 12,
-      colorHex: LABEL_COLOR,
+      colorHex: palette.label,
     }),
   );
 
@@ -177,8 +180,8 @@ function buildSimpleTableSlide(
         y: tableTop,
         w: col.widthPt,
         h: headerH,
-        fillHex: TABLE_HEADER_FILL,
-        strokeHex: CARD_STROKE,
+        fillHex: palette.tableHeaderFill,
+        strokeHex: palette.cardStroke,
         radiusPt: 6,
       }),
     );
@@ -191,7 +194,7 @@ function buildSimpleTableSlide(
         text: col.header,
         sizePt: 11,
         bold: true,
-        colorHex: LABEL_COLOR,
+        colorHex: palette.tableHeaderLabel,
         align: col.align ?? "l",
       }),
     );
@@ -201,7 +204,7 @@ function buildSimpleTableSlide(
   rows.forEach((row, rowIndex) => {
     const y = tableTop + headerH + rowIndex * rowH;
     let colX = MARGIN;
-    const fill = rowIndex % 2 === 0 ? TABLE_ROW_FILL : TABLE_ALT_FILL;
+    const fill = rowIndex % 2 === 0 ? palette.tableNameFill : palette.tablePeriodAFill;
     row.forEach((cell, colIndex) => {
       const col = columns[colIndex];
       shapes.push(
@@ -211,7 +214,7 @@ function buildSimpleTableSlide(
           w: col.widthPt,
           h: rowH,
           fillHex: fill,
-          strokeHex: CARD_STROKE,
+          strokeHex: palette.cardStroke,
           radiusPt: 4,
         }),
       );
@@ -223,7 +226,7 @@ function buildSimpleTableSlide(
           h: 16,
           text: cell,
           sizePt: 11,
-          colorHex: TEXT_COLOR,
+          colorHex: palette.text,
           align: col.align ?? "l",
         }),
       );
@@ -239,7 +242,12 @@ function buildSimpleTableSlide(
   return buildBlankSlideXml(shapes);
 }
 
-export function buildWebsiteChannelTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteChannelTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = [
     { header: "CHANNEL", widthPt: 280, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -255,10 +263,15 @@ export function buildWebsiteChannelTableSlideXml(data: WebsiteReportData, backgr
   if (rows.length === 0) {
     rows.push(["No channel data", "—", "—", "—"]);
   }
-  return buildSimpleTableSlide("Traffic Sources", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Traffic Sources", data.dateRangeLabel, columns, rows, background, palette);
 }
 
-export function buildWebsiteTopPagesSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteTopPagesSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = [
     { header: "PAGE", widthPt: 420, align: "l" as const },
     { header: "SESSIONS", widthPt: 160, align: "ctr" as const },
@@ -272,10 +285,15 @@ export function buildWebsiteTopPagesSlideXml(data: WebsiteReportData, background
   if (rows.length === 0) {
     rows.push(["No page data", "—", "—"]);
   }
-  return buildSimpleTableSlide("Top Landing Pages", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Top Landing Pages", data.dateRangeLabel, columns, rows, background, palette);
 }
 
-export function buildWebsiteDeviceTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteDeviceTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = [
     { header: "DEVICE", widthPt: 220, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -291,10 +309,15 @@ export function buildWebsiteDeviceTableSlideXml(data: WebsiteReportData, backgro
   if (rows.length === 0) {
     rows.push(["No device data", "—", "—", "—"]);
   }
-  return buildSimpleTableSlide("Device Breakdown", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Device Breakdown", data.dateRangeLabel, columns, rows, background, palette);
 }
 
-export function buildWebsiteGeoTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteGeoTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const geoHeader = geoColumnHeader(data.geoDimension ?? "city").toUpperCase();
   const columns = [
     { header: geoHeader, widthPt: 260, align: "l" as const },
@@ -313,7 +336,7 @@ export function buildWebsiteGeoTableSlideXml(data: WebsiteReportData, background
   if (rows.length === 0) {
     rows.push(["No location data", "—", "—", "—", "—"]);
   }
-  return buildSimpleTableSlide(geoSlideTitle(data.geoDimension ?? "city"), data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide(geoSlideTitle(data.geoDimension ?? "city"), data.dateRangeLabel, columns, rows, background, palette);
 }
 
 function standardMetricColumns(nameHeader: string, nameWidth = 280) {
@@ -325,7 +348,12 @@ function standardMetricColumns(nameHeader: string, nameWidth = 280) {
   ];
 }
 
-export function buildWebsiteCampaignTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteCampaignTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = standardMetricColumns("CAMPAIGN", 300);
   const rows = data.campaigns.map((row: WebsiteCampaignRow) => [
     truncateCell(row.campaign, 40),
@@ -334,10 +362,15 @@ export function buildWebsiteCampaignTableSlideXml(data: WebsiteReportData, backg
     row.conversionsLabel,
   ]);
   if (rows.length === 0) rows.push(["No campaign data", "—", "—", "—"]);
-  return buildSimpleTableSlide("Campaign Performance", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Campaign Performance", data.dateRangeLabel, columns, rows, background, palette);
 }
 
-export function buildWebsiteSourceTableSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteSourceTableSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = standardMetricColumns("SOURCE / MEDIUM", 320);
   const rows = data.sources.map((row: WebsiteSourceRow) => [
     truncateCell(row.label, 44),
@@ -346,10 +379,15 @@ export function buildWebsiteSourceTableSlideXml(data: WebsiteReportData, backgro
     row.conversionsLabel,
   ]);
   if (rows.length === 0) rows.push(["No source data", "—", "—", "—"]);
-  return buildSimpleTableSlide("Traffic Sources (UTM)", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Traffic Sources (UTM)", data.dateRangeLabel, columns, rows, background, palette);
 }
 
-export function buildWebsiteAudienceSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteAudienceSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = standardMetricColumns("AUDIENCE", 240);
   const rows = data.audience.map((row) => [
     truncateCell(row.segment, 24),
@@ -358,7 +396,7 @@ export function buildWebsiteAudienceSlideXml(data: WebsiteReportData, background
     row.conversionsLabel,
   ]);
   if (rows.length === 0) rows.push(["No audience data", "—", "—", "—"]);
-  return buildSimpleTableSlide("New vs Returning", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("New vs Returning", data.dateRangeLabel, columns, rows, background, palette);
 }
 
 export function buildWebsiteTechTableSlideXml(
@@ -367,7 +405,9 @@ export function buildWebsiteTechTableSlideXml(
   title: string,
   nameHeader: string,
   rows: Array<{ name: string; sessionsLabel: string; engagementRateLabel: string; conversionsLabel: string }>,
+  isLightTemplate = false,
 ): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = standardMetricColumns(nameHeader, 260);
   const tableRows = rows.map((row) => [
     truncateCell(row.name, 32),
@@ -376,11 +416,12 @@ export function buildWebsiteTechTableSlideXml(
     row.conversionsLabel,
   ]);
   if (tableRows.length === 0) tableRows.push([`No ${nameHeader.toLowerCase()} data`, "—", "—", "—"]);
-  return buildSimpleTableSlide(title, data.dateRangeLabel, columns, tableRows, background);
+  return buildSimpleTableSlide(title, data.dateRangeLabel, columns, tableRows, background, palette);
 }
 
 function buildCompactTableBlock(
   shapes: string[],
+  palette: SlideSurfacePalette,
   opts: {
     title: string;
     x: number;
@@ -401,7 +442,7 @@ function buildCompactTableBlock(
       text: opts.title,
       sizePt: 14,
       bold: true,
-      colorHex: HEADING_COLOR,
+      colorHex: palette.heading,
     }),
   );
   const tableTop = opts.y + 24;
@@ -413,8 +454,8 @@ function buildCompactTableBlock(
         y: tableTop,
         w: col.widthPt,
         h: headerH,
-        fillHex: TABLE_HEADER_FILL,
-        strokeHex: CARD_STROKE,
+        fillHex: palette.tableHeaderFill,
+        strokeHex: palette.cardStroke,
         radiusPt: 4,
       }),
     );
@@ -427,7 +468,7 @@ function buildCompactTableBlock(
         text: col.header,
         sizePt: 9,
         bold: true,
-        colorHex: LABEL_COLOR,
+        colorHex: palette.tableHeaderLabel,
         align: col.align ?? "l",
       }),
     );
@@ -436,11 +477,11 @@ function buildCompactTableBlock(
   opts.rows.slice(0, 6).forEach((row, rowIndex) => {
     const y = tableTop + headerH + rowIndex * rowH;
     let colX = opts.x;
-    const fill = rowIndex % 2 === 0 ? TABLE_ROW_FILL : TABLE_ALT_FILL;
+    const fill = rowIndex % 2 === 0 ? palette.tableNameFill : palette.tablePeriodAFill;
     row.forEach((cell, colIndex) => {
       const col = opts.columns[colIndex]!;
       shapes.push(
-        roundedCard({ x: colX, y, w: col.widthPt, h: rowH, fillHex: fill, strokeHex: CARD_STROKE, radiusPt: 3 }),
+        roundedCard({ x: colX, y, w: col.widthPt, h: rowH, fillHex: fill, strokeHex: palette.cardStroke, radiusPt: 3 }),
       );
       shapes.push(
         textBox({
@@ -450,7 +491,7 @@ function buildCompactTableBlock(
           h: 14,
           text: cell,
           sizePt: 9,
-          colorHex: TEXT_COLOR,
+          colorHex: palette.text,
           align: col.align ?? "l",
         }),
       );
@@ -459,7 +500,12 @@ function buildCompactTableBlock(
   });
 }
 
-export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteDemographicsSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: WEBSITE_BG_REL_ID, ...background }));
@@ -473,7 +519,7 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
       text: "Demographics",
       sizePt: 22,
       bold: true,
-      colorHex: HEADING_COLOR,
+      colorHex: palette.heading,
     }),
   );
   shapes.push(
@@ -484,7 +530,7 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
       h: 18,
       text: data.dateRangeLabel,
       sizePt: 12,
-      colorHex: LABEL_COLOR,
+      colorHex: palette.label,
     }),
   );
   if (data.demographicsNote) {
@@ -496,7 +542,7 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
         h: 16,
         text: data.demographicsNote,
         sizePt: 10,
-        colorHex: LABEL_COLOR,
+        colorHex: palette.label,
       }),
     );
   }
@@ -523,7 +569,7 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
   ]);
   if (genderRows.length === 0) genderRows.push(["No gender data", "—", "—", "—"]);
 
-  buildCompactTableBlock(shapes, {
+  buildCompactTableBlock(shapes, palette, {
     title: "Age Groups",
     x: MARGIN,
     y: 100,
@@ -531,7 +577,7 @@ export function buildWebsiteDemographicsSlideXml(data: WebsiteReportData, backgr
     columns: demoCols,
     rows: ageRows,
   });
-  buildCompactTableBlock(shapes, {
+  buildCompactTableBlock(shapes, palette, {
     title: "Gender",
     x: 480,
     y: 100,
@@ -549,7 +595,9 @@ export function buildWebsiteTimeTableSlideXml(
   title: string,
   nameHeader: string,
   rows: WebsiteReportData["dayOfWeek"],
+  isLightTemplate = false,
 ): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = [
     { header: nameHeader, widthPt: 220, align: "l" as const },
     { header: "SESSIONS", widthPt: 140, align: "ctr" as const },
@@ -565,10 +613,15 @@ export function buildWebsiteTimeTableSlideXml(
     row.conversionRateLabel,
   ]);
   if (tableRows.length === 0) tableRows.push([`No ${nameHeader.toLowerCase()} data`, "—", "—", "—", "—"]);
-  return buildSimpleTableSlide(title, data.dateRangeLabel, columns, tableRows, background);
+  return buildSimpleTableSlide(title, data.dateRangeLabel, columns, tableRows, background, palette);
 }
 
-export function buildWebsiteConversionEventsSlideXml(data: WebsiteReportData, background: TemplateBackgroundImage): string {
+export function buildWebsiteConversionEventsSlideXml(
+  data: WebsiteReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   const columns = [
     { header: "EVENT", widthPt: 300, align: "l" as const },
     { header: "COUNT", widthPt: 120, align: "ctr" as const },
@@ -582,7 +635,7 @@ export function buildWebsiteConversionEventsSlideXml(data: WebsiteReportData, ba
     row.conversionRateLabel,
   ]);
   if (rows.length === 0) rows.push(["No conversion events", "—", "—", "—"]);
-  return buildSimpleTableSlide("Conversion Events", data.dateRangeLabel, columns, rows, background);
+  return buildSimpleTableSlide("Conversion Events", data.dateRangeLabel, columns, rows, background, palette);
 }
 
 export { buildWebsiteSlideRels };
