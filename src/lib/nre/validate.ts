@@ -12,6 +12,8 @@
 import type { ColumnMap, NreRow } from "./columns";
 import { getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
+import type { Platform } from "./google-columns";
+import { adsManagerName } from "./platform-reporting";
 
 export interface ValidationIssue {
   field: string;
@@ -53,15 +55,22 @@ const FUTURE_GRACE_DAYS = 1; // small allowance for timezone edge effects at the
  * to do about it" is a real, actionable step for the user, not just a
  * malformed-file error.
  */
-export const NO_DATA_ROWS_MESSAGE =
-  "Your CSV contains no campaign data. This usually happens when:\n\n" +
-  "• Campaigns had zero delivery during the selected date range\n" +
-  "• The wrong date range was selected when downloading\n" +
-  "• Campaigns were not active during this period\n\n" +
-  "What to do:\n\n" +
-  "1. Check Meta Ads Manager to confirm your campaigns were active during this period\n" +
-  "2. Try downloading the CSV again with the correct date range\n" +
-  "3. If campaigns were truly inactive for the entire period, no report can be generated as there is no data to show";
+export function noDataRowsMessage(platform: Platform = "META"): string {
+  const manager = adsManagerName(platform);
+  return (
+    "Your CSV contains no campaign data. This usually happens when:\n\n" +
+    "• Campaigns had zero delivery during the selected date range\n" +
+    "• The wrong date range was selected when downloading\n" +
+    "• Campaigns were not active during this period\n\n" +
+    "What to do:\n\n" +
+    `1. Check ${manager} to confirm your campaigns were active during this period\n` +
+    "2. Try downloading the CSV again with the correct date range\n" +
+    "3. If campaigns were truly inactive for the entire period, no report can be generated as there is no data to show"
+  );
+}
+
+/** @deprecated Prefer noDataRowsMessage(platform) — kept for existing tests. */
+export const NO_DATA_ROWS_MESSAGE = noDataRowsMessage("META");
 
 /**
  * `headers` is the raw, as-parsed header row (from parseCsvText). It isn't
@@ -78,7 +87,11 @@ export function validateMtdDailyCsv(
   rows: NreRow[],
   now: Date = new Date(),
   headers: string[] = [],
+  platform: Platform = "META",
 ): ValidationResult {
+  const manager = adsManagerName(platform);
+  const spendColumnHint =
+    platform === "GOOGLE" ? "Cost" : platform === "TIKTOK" ? "Cost or Amount spent" : "Amount Spent";
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
 
@@ -92,8 +105,7 @@ export function validateMtdDailyCsv(
   if (!colMap.spend) {
     errors.push({
       field: "spend",
-      message:
-        "Your CSV is missing the Amount Spent column. Please add Amount Spent to your column selection in Meta Ads Manager and re-download.",
+      message: `Your CSV is missing the ${spendColumnHint} column. Please add it to your column selection in ${manager} and re-download.`,
     });
   }
   const hasDateColumn =
@@ -115,8 +127,7 @@ export function validateMtdDailyCsv(
     // which would otherwise silently produce a garbage or empty report.
     errors.push({
       field: "date_granularity",
-      message:
-        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with the Time Increment set to Day before uploading.",
+      message: `Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from ${manager} with daily (Day) breakdown before uploading.`,
     });
   }
   if (!colMap.results) {
@@ -143,7 +154,7 @@ export function validateMtdDailyCsv(
   }
 
   if (rows.length === 0) {
-    errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
+    errors.push({ field: "rows", message: noDataRowsMessage(platform) });
     return { valid: false, errors, warnings, noCampaignData: true };
   }
 
@@ -163,7 +174,7 @@ export function validateMtdDailyCsv(
   const usableRows = nonEmptyCampaignRows.filter((r) => !!getRowDate(r));
   const noUsableDatedRows = nonEmptyCampaignRows.length > 0 && usableRows.length === 0;
   if (noUsableDatedRows) {
-    errors.push({ field: "rows", message: NO_DATA_ROWS_MESSAGE });
+    errors.push({ field: "rows", message: noDataRowsMessage(platform) });
   }
 
   // Date range sanity — skip if we already know there's no usable date column.

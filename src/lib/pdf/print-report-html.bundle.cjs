@@ -125,10 +125,18 @@ function buildHistoricalComparisonTableGrid(rows, headers) {
 
 // src/lib/nre/google-report-data.ts
 var GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"];
-function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
+function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers) {
   const headerRow = [...GOOGLE_TABLE_STATIC_HEADERS, ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])];
-  const emptyPeriodRow = ["\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", ...headers.resultColumns.flatMap(() => ["\u2014", "\u2014"])];
-  const dataRow = [
+  const periodDataRow = periodRow.hasData ? [
+    periodRow.monthLabel,
+    periodRow.spend,
+    periodRow.reach,
+    periodRow.impressions,
+    periodRow.ctr,
+    periodRow.cpc,
+    ...periodRow.resultColumns.flatMap((c) => [c.value, c.cprValue])
+  ] : ["\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", ...headers.resultColumns.flatMap(() => ["\u2014", "\u2014"])];
+  const mtdDataRow = [
     mtdRow.monthLabel,
     mtdRow.spend,
     mtdRow.reach,
@@ -137,7 +145,7 @@ function buildGoogleCombinedTotalTableGrid(mtdRow, headers) {
     mtdRow.cpc,
     ...mtdRow.resultColumns.flatMap((c) => [c.value, c.cprValue])
   ];
-  return [headerRow, emptyPeriodRow, dataRow];
+  return [headerRow, mtdDataRow, periodDataRow];
 }
 
 // src/lib/pptx/chart-slide-constants.ts
@@ -648,7 +656,7 @@ function ShareMtdOverviewSlide({ chart }) {
 }
 function CombinedTotalTable({ data, compact = false }) {
   const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
-  const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
+  const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
   const hidePeriodRow = isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const bodyRows = isHistoricalMultiMonth ? grid.slice(1).map((cells) => ({ cells, isPeriod: false })) : (() => {
@@ -798,10 +806,12 @@ function ShareReportView({
                           "span",
                           {
                             className: "h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2",
-                            style: { backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }
+                            style: {
+                              backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : visibleData.platform === "TIKTOK" ? "#FE2C55" : "#1877F2"
+                            }
                           }
                         ),
-                        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]", style: { letterSpacing: "0.08em" }, children: visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS" })
+                        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]", style: { letterSpacing: "0.08em" }, children: visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : visibleData.platform === "TIKTOK" ? "TIKTOK ADS" : "META ADS" })
                       ]
                     }
                   ),

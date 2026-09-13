@@ -8,8 +8,15 @@ import { detectPlatform } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
-import { defaultMetaSelection, filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
+import { filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
+import {
+  defaultMetricSelectionForCampaign,
+  googleCampaignObjectiveLabels,
+  googleObjectiveKeyFromHeaders,
+  metricsDictionaryPlatform,
+  usesMetaObjectiveEngine,
+} from "@/lib/nre/platform-reporting";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
@@ -51,37 +58,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
     if (!validation.valid) {
       return NextResponse.json({ error: "CSV failed validation.", errors: validation.errors }, { status: 200 });
     }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
+    const metricsPlatform = metricsDictionaryPlatform(platform);
+    const googleObjectiveKey = platform === "GOOGLE" ? googleObjectiveKeyFromHeaders(mtdParsed.headers) : undefined;
+    const googleLabels = googleCampaignObjectiveLabels();
 
-    // Objective Confirmation wizard step — one entry per selected campaign
-    // (keyed by objective.ts's own normalizeCampaignName, so the wizard's
-    // lookup and the eventual campaignObjectives override sent back to
-    // buildReportData use identical keys), from the SAME algorithm
-    // buildReportData itself uses (resolveCampaignObjective, via
-    // buildCampaignObjectiveMap) — so the dropdown's pre-selected value is
-    // never a different guess than what the report would generate if the
-    // user changed nothing.
-    //
-    // Objective Confirmation memory cache — a campaign this client has
-    // confirmed on any PRIOR report's Objective Confirmation step (see
-    // objective-cache.ts) always wins over a fresh engine re-detection: it's
-    // the single most reliable signal available, since it came from a human
-    // actually looking at the campaign, not an inference from column data —
-    // treated as "high" confidence, requiring no further confirmation.
-    // Every other campaign keeps the engine's own 4-tier confidence
-    // (high/medium/low/verify — see objective.ts's ObjectiveConfidence) so
-    // the wizard can show the right badge and block Continue for a "verify"
-    // campaign until the user picks a value.
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
     const campaignObjectiveEntries: [
       string,
       { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
     ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
+      if (platform === "GOOGLE") {
+        return [name, { ...googleLabels, confidence: "high" as const, requiresConfirmation: false }];
+      }
       const cached = lookupCachedObjective(objectiveCache, name);
       if (cached) {
         return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, confidence: "cached", requiresConfirmation: false }];
@@ -98,31 +92,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
-    // Thing 3 (three-layer objective architecture rebuild) — each SELECTED
-    // campaign gets its OWN correct pre-selected 8 metrics, from
-    // defaultMetaSelection called with THAT campaign's own confirmed
-    // objective (never an account-wide union across every objective
-    // present) — a campaign whose objective is META FORM LEADS never sees
-    // another campaign's WEBSITE LEADS pair in its own pre-selected list,
-    // and vice versa. Thing 1's stripNeverKeys is the hard backstop on top:
-    // even if defaultMetaSelection's own per-objective switch ever assigned
-    // a forbidden cross-objective key, it's stripped here before the wizard
-    // ever sees it.
-    const metricsPlatform = platform === "GOOGLE" ? "GOOGLE" : platform === "TIKTOK" ? "TIKTOK" : "META";
     const fullPool = listSelectableMetrics(mtdParsed.headers, metricsPlatform);
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
 
     for (const [normalizedName, info] of Object.entries(campaignObjectives)) {
-      const objectiveKey = objectiveKeyFor(info.resultLabel);
-      const selection = stripNeverKeys(defaultMetaSelection(info.resultLabel, info.costLabel, mtdParsed.headers), objectiveKey).filter(
-        (m): m is SelectedMetric => m !== null,
-      );
-      perCampaignSelection[normalizedName] = selection;
+      const objectiveKey = usesMetaObjectiveEngine(platform) ? objectiveKeyFor(info.resultLabel) : undefined;
+      const selection = defaultMetricSelectionForCampaign(platform, {
+        resultLabel: info.resultLabel,
+        costLabel: info.costLabel,
+        headers: mtdParsed.headers,
+        googleObjectiveKey,
+      }).filter((m): m is SelectedMetric => m !== null);
+
+      const strippedSelection = objectiveKey ? stripNeverKeys(selection, objectiveKey).filter((m): m is SelectedMetric => m !== null) : selection;
+      perCampaignSelection[normalizedName] = strippedSelection;
 
       perCampaignAvailable[normalizedName] = filterAddableMetrics(
-        stripNeverKeys(fullPool, objectiveKey).filter((m): m is AvailableMetric => m !== null),
-        selection,
+        (objectiveKey ? stripNeverKeys(fullPool, objectiveKey) : fullPool).filter((m): m is AvailableMetric => m !== null),
+        strippedSelection,
       );
     }
 

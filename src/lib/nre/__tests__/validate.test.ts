@@ -295,7 +295,7 @@ describe("validateMtdDailyCsv", () => {
       const result = validateMtdDailyCsv(colMap, rows, NOW);
       const err = result.errors.find((e) => e.field === "spend");
       expect(err?.message).toBe(
-        "Your CSV is missing the Amount Spent column. Please add Amount Spent to your column selection in Meta Ads Manager and re-download.",
+        "Your CSV is missing the Amount Spent column. Please add it to your column selection in Meta Ads Manager and re-download.",
       );
     });
 
@@ -321,7 +321,7 @@ describe("validateMtdDailyCsv", () => {
       expect(result.valid).toBe(false);
       const err = result.errors.find((e) => e.field === "date_granularity");
       expect(err?.message).toBe(
-        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with the Time Increment set to Day before uploading.",
+        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with daily (Day) breakdown before uploading.",
       );
     });
 

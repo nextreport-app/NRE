@@ -150,11 +150,25 @@ function buildMetrics(group: GoogleGroupTotals, currencySymbol: string): SlideMe
   };
 }
 
-/** Google Ads counterpart of report-data.ts's buildCombinedTotalTableGrid — Google's own static header words (Cost/Clicks/Avg. CPC) instead of Meta's (Ad Spend/Reach/CPC (All)), single [Conversions, Cost per Conversion] result-column pair always. */
-export function buildGoogleCombinedTotalTableGrid(mtdRow: TableRowData, headers: TableHeaderLabels): string[][] {
+/** Google Ads counterpart of report-data.ts's buildCombinedTotalTableGrid — Cost/Clicks/Avg. CPC headers with optional previous-month period row. */
+export function buildGoogleCombinedTotalTableGrid(
+  periodRow: TableRowData,
+  mtdRow: TableRowData,
+  headers: TableHeaderLabels,
+): string[][] {
   const headerRow = [...GOOGLE_TABLE_STATIC_HEADERS, ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])];
-  const emptyPeriodRow = ["—", "—", "—", "—", "—", "—", ...headers.resultColumns.flatMap(() => ["—", "—"])];
-  const dataRow = [
+  const periodDataRow = periodRow.hasData
+    ? [
+        periodRow.monthLabel,
+        periodRow.spend,
+        periodRow.reach,
+        periodRow.impressions,
+        periodRow.ctr,
+        periodRow.cpc,
+        ...periodRow.resultColumns.flatMap((c) => [c.value, c.cprValue]),
+      ]
+    : ["—", "—", "—", "—", "—", "—", ...headers.resultColumns.flatMap(() => ["—", "—"])];
+  const mtdDataRow = [
     mtdRow.monthLabel,
     mtdRow.spend,
     mtdRow.reach,
@@ -163,7 +177,8 @@ export function buildGoogleCombinedTotalTableGrid(mtdRow: TableRowData, headers:
     mtdRow.cpc,
     ...mtdRow.resultColumns.flatMap((c) => [c.value, c.cprValue]),
   ];
-  return [headerRow, emptyPeriodRow, dataRow];
+  // Same row order as report-data.ts's buildCombinedTotalTableGrid: [header, mtd, period].
+  return [headerRow, mtdDataRow, periodDataRow];
 }
 
 export function buildGoogleReportData(input: BuildGoogleReportDataInput): ReportData {

@@ -52,12 +52,21 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
+import { detectGoogleObjectiveKey } from "./detect-objective";
 import {
+  metricsDictionaryPlatform,
+  slotAssignmentPlatform,
+  usesGoogleSlotEngine,
+  googleCampaignObjectiveLabels,
+} from "./platform-reporting";
+import {
+  buildGoogleSlots,
   buildMetaSlots,
   buildSlotsFromSelection,
   filterMetricsForCampaignObjective,
   objectiveKeyFor,
   stripNeverKeys,
+  type GoogleObjectiveKey,
   type CampaignObjectiveRef,
   type MetaSlotBaseline,
 } from "./slot-assignment";
@@ -314,7 +323,7 @@ export interface ObjectiveWarning {
  */
 export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE" | "QUARTER" | "YTD";
 
-/** Which ad platform this report's data came from — drives template selection and a handful of label/prompt differences in the render and AI layers. Defaults to "META" everywhere in this file; only google-report-data.ts's buildGoogleReportData ever produces "GOOGLE". */
+/** Which ad platform this report's data came from — drives template, slots, metrics dictionary, and label differences. */
 export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 export interface ReportData {
@@ -1357,8 +1366,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // headers — every row in one upload shares the same columns, so the first
   // row's `_raw` keys stand in for the full header set without needing a
   // separate headers input threaded all the way in.
+  const metricsPlatform = metricsDictionaryPlatform(platform);
+  const slotPlatform = slotAssignmentPlatform(platform);
+  const googleObjectiveKey: GoogleObjectiveKey | null =
+    platform === "GOOGLE" ? detectGoogleObjectiveKey(Object.keys(primaryRawRows[0]?._raw ?? {})) : null;
+
   const availableMetricsPool: AvailableMetric[] | null =
-    selectedMetrics && selectedMetrics.length > 0 ? listAvailableMetrics(Object.keys(primaryRawRows[0]?._raw ?? {}), "META") : null;
+    selectedMetrics && selectedMetrics.length > 0
+      ? listAvailableMetrics(Object.keys(primaryRawRows[0]?._raw ?? {}), metricsPlatform)
+      : null;
 
   /**
    * One slide's worth of metric cards — the automatic per-objective 8-slot
@@ -1373,22 +1389,50 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
    * loop's own comment below).
    */
   function computeMetaSlideMetrics(
-    baseline: MetaSlotBaseline,
+    baseline: MetaSlotBaseline & { cpc?: string },
     rawRows: NreRow[],
     campaignObjective: CampaignObjectiveRef | null,
     campaignName: string,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
+      if (usesGoogleSlotEngine(platform)) {
+        return {
+          dynamicMetrics: buildGoogleSlots(
+            googleObjectiveKey ?? "search",
+            {
+              spend: baseline.spend,
+              reach: baseline.reach,
+              impressions: baseline.impressions,
+              ctr: baseline.ctr,
+              cpc: baseline.cpc ?? "—",
+              results: baseline.resultValue,
+              cpr: baseline.cprValue,
+            },
+            rawRows,
+            currencySymbol,
+          ),
+        };
+      }
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
-    const baselineValues: Partial<Record<string, string>> = {
-      spend: baseline.spend,
-      reach: baseline.reach,
-      impressions: baseline.impressions,
-      ctr: baseline.ctr,
-      results: baseline.resultValue,
-      cost_per_result: baseline.cprValue,
-    };
+    const baselineValues: Partial<Record<string, string>> = usesGoogleSlotEngine(platform)
+      ? {
+          spend: baseline.spend,
+          reach: baseline.reach,
+          impressions: baseline.impressions,
+          ctr: baseline.ctr,
+          avg_cpc: baseline.cpc ?? "—",
+          conversions: baseline.resultValue,
+          cost_per_conv: baseline.cprValue,
+        }
+      : {
+          spend: baseline.spend,
+          reach: baseline.reach,
+          impressions: baseline.impressions,
+          ctr: baseline.ctr,
+          results: baseline.resultValue,
+          cost_per_result: baseline.cprValue,
+        };
     // Part 8 — a mixed-objective selection's own per-campaign pair uses a
     // SYNTHETIC key (e.g. "website_leads"/"cost_per_website_leads", see
     // objectiveMetricKeys/buildMultiObjectiveSelection), not the generic
@@ -1462,9 +1506,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // metric with no real data for THIS campaign keeps its label and
     // shows "—" (buildSlotsFromSelection). fill-tags.ts must still retext
     // that slot so template "CPC (All)" cannot linger.
-    const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, "meta", currencySymbol);
+    const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, slotPlatform, currencySymbol);
     const additionalMetricsSlide = slide2Keys
-      ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, "meta", currencySymbol)
+      ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, slotPlatform, currencySymbol)
       : undefined;
     return { dynamicMetrics, additionalMetricsSlide };
   }
@@ -1525,12 +1569,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // defensively (every campaign here came from primaryRows, which
     // campaignObjectiveMap was itself built from — this should never
     // actually miss).
-    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
-      resultLabel: "RESULTS",
-      costLabel: "COST PER RESULT",
-    };
+    const campaignObjective =
+      platform === "GOOGLE"
+        ? googleCampaignObjectiveLabels()
+        : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
+            resultLabel: "RESULTS",
+            costLabel: "COST PER RESULT",
+          });
     const { resultLabel, costLabel, resultValue, cprValue } = getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
-    if (campRows.some((r) => !r.objectiveConfident)) {
+    if (platform !== "GOOGLE" && campRows.some((r) => !r.objectiveConfident)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
 
@@ -1562,8 +1609,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // The campaign template's 8 fixed card slots — automatically assigned by
     // objective (slot-assignment.ts's buildMetaSlots), or built from the
     // wizard's own selectedMetrics — see computeMetaSlideMetrics above.
+    const slideResultLabel = platform === "GOOGLE" ? "CONVERSIONS" : resultLabel;
+    const slideCostLabel = platform === "GOOGLE" ? "COST PER CONVERSION" : costLabel;
+
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
-      { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
+      {
+        resultLabel: slideResultLabel,
+        costLabel: slideCostLabel,
+        spend: metrics.spend,
+        reach: metrics.reach,
+        impressions: metrics.impressions,
+        ctr: metrics.ctr,
+        resultValue,
+        cprValue,
+        cpc: metrics.cpc,
+      },
       campaignRawGroups[campaignName] ?? [],
       campaignObjective,
       campaignName,
@@ -1572,8 +1632,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     return {
       kind: "campaign" as const,
       campaignName,
-      resultLabel,
-      costLabel,
+      resultLabel: slideResultLabel,
+      costLabel: slideCostLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(avgFreq),
       avgFreq,
@@ -1662,10 +1722,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // campaign's own summary slide and with the Combined Total table.
     // normalizeCampaignName matches the map's own normalized keys (see
     // buildCampaignObjectiveMap) — same case-sensitivity fix as above.
-    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
-      resultLabel: "RESULTS",
-      costLabel: "COST PER RESULT",
-    };
+    const campaignObjective =
+      platform === "GOOGLE"
+        ? googleCampaignObjectiveLabels()
+        : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
+            resultLabel: "RESULTS",
+            costLabel: "COST PER RESULT",
+          });
     const { resultLabel, costLabel, resultValue, cprValue } = getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
     const rowFreq = rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
@@ -1686,8 +1749,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
     };
 
+    const adSetResultLabel = platform === "GOOGLE" ? "CONVERSIONS" : resultLabel;
+    const adSetCostLabel = platform === "GOOGLE" ? "COST PER CONVERSION" : costLabel;
+
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
-      { resultLabel, costLabel, spend: metrics.spend, reach: metrics.reach, impressions: metrics.impressions, ctr: metrics.ctr, resultValue, cprValue },
+      {
+        resultLabel: adSetResultLabel,
+        costLabel: adSetCostLabel,
+        spend: metrics.spend,
+        reach: metrics.reach,
+        impressions: metrics.impressions,
+        ctr: metrics.ctr,
+        resultValue,
+        cprValue,
+        cpc: metrics.cpc,
+      },
       adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
       campaignObjective,
       campaignName,
@@ -1697,8 +1773,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       kind: "adset",
       campaignName,
       adSetName,
-      resultLabel,
-      costLabel,
+      resultLabel: adSetResultLabel,
+      costLabel: adSetCostLabel,
       metrics,
       dateRangeLine: globalWeekDateRange + freqLine(rowFreq),
       rowFreq,
