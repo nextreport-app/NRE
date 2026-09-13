@@ -52,6 +52,8 @@ export function PreviousMonthDataWizardPanel({
   initialUpdatedAt,
   initialCampaigns,
   initialSelectedCampaigns,
+  includeInReport,
+  onIncludeInReportChange,
   onUploaded,
   onCampaignsChange,
 }: {
@@ -61,6 +63,8 @@ export function PreviousMonthDataWizardPanel({
   initialUpdatedAt: string | null;
   initialCampaigns: string[];
   initialSelectedCampaigns: string[] | null;
+  includeInReport: boolean;
+  onIncludeInReportChange: (include: boolean) => void;
   onUploaded?: (meta?: { campaigns: string[]; selectedCampaigns: string[] }) => void;
   onCampaignsChange?: (meta: { campaigns: string[]; selectedCampaigns: string[] }) => void;
 }) {
@@ -70,7 +74,6 @@ export function PreviousMonthDataWizardPanel({
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[] | null>(initialSelectedCampaigns);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [campaignsExpanded, setCampaignsExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -107,7 +110,6 @@ export function PreviousMonthDataWizardPanel({
       setUpdatedAt(new Date().toISOString());
       setCampaigns(newCampaigns);
       setSelectedCampaigns(newSelected);
-      setCampaignsExpanded(true);
       onUploaded?.({ campaigns: newCampaigns, selectedCampaigns: newSelected });
     } catch {
       setError("Could not reach the server. Please try again.");
@@ -124,36 +126,63 @@ export function PreviousMonthDataWizardPanel({
 
   return (
     <div className="rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <CalendarIcon />
-          <div>
+          <div className="min-w-0">
             <p className="text-[14px] font-semibold text-white">Previous month comparison</p>
             <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-              {info.status === "current"
-                ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
-                : `Optional row for ${info.expectedMonthName} on Monthly Overview`}
+              {includeInReport
+                ? info.status === "current"
+                  ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
+                  : `Optional row for ${info.expectedMonthName} on Monthly Overview`
+                : "Won't appear in this report"}
             </p>
           </div>
         </div>
-        <StatusBadge status={info.status} />
+        <div className="flex shrink-0 items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <span className="text-[12px] font-medium text-dash-ink-secondary">Include in report</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={includeInReport}
+              onClick={() => onIncludeInReportChange(!includeInReport)}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                includeInReport ? "bg-dash-accent" : "bg-dash-border"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  includeInReport ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+          {includeInReport ? <StatusBadge status={info.status} /> : null}
+        </div>
       </div>
 
-      <div className="mt-3 border-t border-dash-border pt-3">
-        <PreviousMonthDataWizardContent
-          clientId={clientId}
-          info={info}
-          uploading={uploading}
-          error={error}
-          inputRef={inputRef}
-          onFileChange={handleFileChange}
-          campaigns={campaigns}
-          selectedCampaigns={selectedCampaigns}
-          onSelectionChange={handleSelectionChange}
-          campaignsExpanded={campaignsExpanded}
-          onToggleCampaigns={() => setCampaignsExpanded((v) => !v)}
-        />
-      </div>
+      {includeInReport ? (
+        <div className="mt-3 border-t border-dash-border pt-3">
+          <PreviousMonthDataWizardContent
+            clientId={clientId}
+            info={info}
+            uploading={uploading}
+            error={error}
+            inputRef={inputRef}
+            onFileChange={handleFileChange}
+            campaigns={campaigns}
+            selectedCampaigns={selectedCampaigns}
+            onSelectionChange={handleSelectionChange}
+          />
+        </div>
+      ) : (
+        <p className="mt-3 border-t border-dash-border pt-3 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Turn this on to add a previous-month row to Combined Total. Your saved previous-month file stays on the client
+          for next time.
+        </p>
+      )}
     </div>
   );
 }
@@ -168,8 +197,6 @@ function PreviousMonthDataWizardContent({
   campaigns,
   selectedCampaigns,
   onSelectionChange,
-  campaignsExpanded,
-  onToggleCampaigns,
 }: {
   clientId: string;
   info: PreviousMonthComparisonInfo;
@@ -180,8 +207,6 @@ function PreviousMonthDataWizardContent({
   campaigns: string[];
   selectedCampaigns: string[] | null;
   onSelectionChange: (selected: string[]) => void;
-  campaignsExpanded: boolean;
-  onToggleCampaigns: () => void;
 }) {
   const manageHref = `/clients/${clientId}#previous-month-data`;
   const selectedCount = selectedCampaigns?.length ?? campaigns.length;
@@ -198,31 +223,22 @@ function PreviousMonthDataWizardContent({
         </p>
 
         {campaigns.length > 0 ? (
-          <div className="rounded-md border border-dash-border bg-dash-bg/80">
-            <button
-              type="button"
-              onClick={onToggleCampaigns}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
-            >
-              <span className="text-[13px] font-medium text-dash-ink">
-                Campaigns for previous-month row
-                <span className="ml-2 font-normal text-dash-ink-secondary">
-                  ({selectedCount}/{campaigns.length} selected)
-                </span>
+          <div className="rounded-md border border-dash-border bg-dash-bg/80 px-3 pb-3 pt-2">
+            <p className="text-[13px] font-medium text-dash-ink">
+              Campaigns for previous-month row
+              <span className="ml-2 font-normal text-dash-ink-secondary">
+                ({selectedCount}/{campaigns.length} selected)
               </span>
-              <span className="text-[12px] text-dash-accent">{campaignsExpanded ? "Hide" : "Show"}</span>
-            </button>
-            {campaignsExpanded ? (
-              <div className="border-t border-dash-border px-3 pb-3 pt-1">
-                <PreviousMonthCampaignSelector
-                  clientId={clientId}
-                  campaigns={campaigns}
-                  initialSelected={selectedCampaigns}
-                  onSelectionChange={onSelectionChange}
-                  compact
-                />
-              </div>
-            ) : null}
+            </p>
+            <div className="mt-2">
+              <PreviousMonthCampaignSelector
+                clientId={clientId}
+                campaigns={campaigns}
+                initialSelected={selectedCampaigns}
+                onSelectionChange={onSelectionChange}
+                compact
+              />
+            </div>
           </div>
         ) : (
           <p className="text-[12px] text-dash-ink-secondary">No campaigns with spend were found in the previous month data.</p>
