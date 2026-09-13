@@ -610,6 +610,7 @@ export function ReportUploadWizard({
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
     initialPreviousMonthSelectedCampaigns,
   );
+  const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(true);
 
   const previousMonthComparisonReady = useMemo(
     () =>
@@ -1624,6 +1625,7 @@ export function ReportUploadWizard({
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
         showBudgetPacingOnCover: showBudgetOnCover,
+        includePreviousMonthComparison,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -1674,6 +1676,7 @@ export function ReportUploadWizard({
     comparisonPeriodB?.endIso,
     historicalMonthCount,
     showBudgetOnCover,
+    includePreviousMonthComparison,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -1711,6 +1714,7 @@ export function ReportUploadWizard({
         comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
         showBudgetPacingOnCover: showBudgetOnCover,
+        includePreviousMonthComparison,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -2221,6 +2225,8 @@ export function ReportUploadWizard({
                 initialUpdatedAt={previousMonthUpdatedAt}
                 initialCampaigns={previousMonthCampaigns}
                 initialSelectedCampaigns={previousMonthSelectedCampaigns}
+                includeInReport={includePreviousMonthComparison}
+                onIncludeInReportChange={setIncludePreviousMonthComparison}
                 onUploaded={(meta) => {
                   setPreviousMonthHasFile(true);
                   setPreviousMonthUpdatedAt(new Date().toISOString());
@@ -3782,7 +3788,10 @@ export function ReportUploadWizard({
               )}
 
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
-              {reportType !== "COMPARISON" && reportType !== "HISTORICAL" && !previousMonthComparisonReady && (
+              {reportType !== "COMPARISON" &&
+                reportType !== "HISTORICAL" &&
+                includePreviousMonthComparison &&
+                !previousMonthComparisonReady && (
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
                   <p className="font-semibold">Previous month comparison not set up</p>
                   <p className="mt-1 text-dash-ink-secondary">

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { comparisonPeriodSchema, parseJsonFormField, reportTypeSchema } from "../report-wizard";
+import {
+  comparisonPeriodSchema,
+  parseJsonFormField,
+  reportTypeSchema,
+  resolveIncludePreviousMonthComparison,
+} from "../report-wizard";
 
 describe("reportTypeSchema", () => {
   it("accepts WEEKLY, MONTHLY, and COMPARISON", () => {
@@ -49,5 +54,18 @@ describe("parseJsonFormField — Comparison Report period fields", () => {
     const formData = new FormData();
     formData.append("comparisonPeriodA", JSON.stringify({ startIso: "2026-08-01" })); // missing endIso
     expect(parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema)).toBeUndefined();
+  });
+});
+
+describe("resolveIncludePreviousMonthComparison", () => {
+  it("defaults to true when the field is absent", () => {
+    expect(resolveIncludePreviousMonthComparison(new FormData())).toBe(true);
+    expect(resolveIncludePreviousMonthComparison(null)).toBe(true);
+  });
+
+  it("reads false from a JSON-encoded form field", () => {
+    const formData = new FormData();
+    formData.append("includePreviousMonthComparison", JSON.stringify(false));
+    expect(resolveIncludePreviousMonthComparison(formData)).toBe(false);
   });
 });

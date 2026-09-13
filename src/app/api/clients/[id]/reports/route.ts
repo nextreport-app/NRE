@@ -46,6 +46,7 @@ import {
   selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
+  resolveIncludePreviousMonthComparison,
   resolveShowBudgetPacingOnCover,
 } from "@/lib/validators/report-wizard";
 import type { Client } from "@/generated/prisma/client";
@@ -152,7 +153,8 @@ async function buildMetaData(
     weeklyRange = dateResolution.weeklyRange;
   }
 
-  const periodRows = await loadPreviousMonthDataRows(client);
+  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+  const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
 
   const data = buildReportData({
     accountName: client.accountName,
@@ -255,8 +257,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Both comparison periods are required." }, { status: 400 });
     }
 
+    const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
     const primaryBounds = computeCsvDateBounds(mtdParsed.rows);
-    const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null);
+    const supplementalRows = includePreviousMonthComparison
+      ? await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null)
+      : undefined;
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
     const coverage = validateComparisonReportCoverage(
       { startIso: periodA.startIso, endIso: periodA.endIso },

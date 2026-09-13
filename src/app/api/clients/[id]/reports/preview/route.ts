@@ -27,6 +27,7 @@ import {
   parseJsonFormField,
   platformSchema,
   reportTypeSchema,
+  resolveIncludePreviousMonthComparison,
   resolveShowBudgetPacingOnCover,
   selectedAdSetsSchema,
   selectedCampaignsSchema,
@@ -108,8 +109,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
+    const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
     const primaryBounds = computeCsvDateBounds(mtdParsed.rows);
-    const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null);
+    const supplementalRows = includePreviousMonthComparison
+      ? await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null)
+      : undefined;
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
     const coverage = validateComparisonReportCoverage(
       { startIso: periodA.startIso, endIso: periodA.endIso },
@@ -223,7 +227,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     weeklyRange = dateResolution.weeklyRange;
   }
 
-  const periodRows = await loadPreviousMonthDataRows(client);
+  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+  const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
 
   const data = buildReportData({
     accountName: client.accountName,
