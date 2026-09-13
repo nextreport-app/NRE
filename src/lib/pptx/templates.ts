@@ -38,6 +38,6 @@ export async function loadTemplateBufferForPlatform(
   template: ReportTemplate,
 ): Promise<Buffer> {
   if (platform === "GOOGLE") return fs.readFile(path.join(TEMPLATES_DIR, "google-ads-dark.pptx"));
-  // TikTok reuses Meta-branded templates until a dedicated tiktok-ads-dark.pptx asset ships.
+  if (platform === "TIKTOK") return fs.readFile(path.join(TEMPLATES_DIR, "tiktok-ads-dark.pptx"));
   return loadTemplateBuffer(template);
 }

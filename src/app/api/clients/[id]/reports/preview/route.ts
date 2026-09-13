@@ -142,6 +142,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       selectedCampaigns: selectedCampaigns ?? null,
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+      platform,
+      csvHeaders: mtdParsed.headers,
     });
 
     return NextResponse.json({ valid: true, errors: [], warnings: comparisonWarnings, isComparison: true, data });

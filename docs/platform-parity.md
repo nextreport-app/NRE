@@ -29,12 +29,13 @@ GA4 stays on its own pipeline — out of scope here.
 - [x] Deprecate orphan `buildGoogleReportData` — removed; `google-combined-total.ts` retains table grid helper
 - [x] Previous Month Summary `ReportData.platform` respects wizard platform
 
-## Phase 3 — Render / share / historical polish
+## Phase 3 — Render / share / historical polish (complete)
 
-- [ ] Dedicated `tiktok-ads-dark.pptx` template asset
-- [ ] TikTok-specific metric guide copy on share page
-- [ ] Creative ad-level API sync for Google/TikTok (Meta-only today)
-- [ ] Historical / comparison edge cases audited per platform
+- [x] Dedicated `tiktok-ads-dark.pptx` template asset (fork of `dark.pptx`; wired in `templates.ts`)
+- [x] Platform-aware metric guide copy on share page (Google + TikTok terms in `share-report-view.tsx`)
+- [x] Creative ad-level CSV error — platform-aware Ads Manager name in generate route (API sync remains Meta-only; Google/TikTok use Ad-level CSV)
+- [x] Comparison reports — `platform` + `csvHeaders` passed to `buildComparisonReportData`; Google uses campaign-type slot labels via `googleComparisonObjectiveTotals`
+- [x] Historical reports — already pass `platform` through `buildHistoricalReportData` → unified `buildReportData`
 
 ## Testing
 
