@@ -32,13 +32,10 @@ import { TEMPLATE_LABELS, type TEMPLATES } from "@/lib/validators/client";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import {
-  isWizardApiAvailable,
-  WizardDataSourceCompareTable,
   WizardDataSourcePanel,
   WizardDataSourceToggle,
   type WizardDataSource,
 } from "@/components/wizard-data-source-panel";
-import { WizardCsvUploadPanel } from "@/components/wizard-csv-upload-panel";
 import { useToast } from "@/components/toast";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
@@ -497,10 +494,6 @@ export function ReportUploadWizard({
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
-  /** When true, auto-default to API on platform change is suppressed until platform changes again. */
-  const userPickedDataSourceRef = useRef(false);
-  const dataSourcePlatformRef = useRef<"META" | "GOOGLE" | "TIKTOK" | null>(null);
-  const [dataSourceAutoSelected, setDataSourceAutoSelected] = useState(false);
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
@@ -618,50 +611,6 @@ export function ReportUploadWizard({
     initialPreviousMonthSelectedCampaigns,
   );
 
-  const wizardApiAvailable = selectedPlatformCard
-    ? isWizardApiAvailable(selectedPlatformCard, {
-        metaConfigured,
-        metaConnected,
-        googleAdsConfigured,
-        googleAdsConnected,
-        tiktokConfigured,
-        tiktokConnected,
-      })
-    : false;
-
-  useLayoutEffect(() => {
-    if (!selectedPlatformCard) return;
-    if (dataSourcePlatformRef.current !== selectedPlatformCard) {
-      dataSourcePlatformRef.current = selectedPlatformCard;
-      userPickedDataSourceRef.current = false;
-    }
-    if (userPickedDataSourceRef.current) return;
-
-    const apiAvailable = isWizardApiAvailable(selectedPlatformCard, {
-      metaConfigured,
-      metaConnected,
-      googleAdsConfigured,
-      googleAdsConnected,
-      tiktokConfigured,
-      tiktokConnected,
-    });
-    setDataSourceMode(apiAvailable ? "api" : "csv");
-    setDataSourceAutoSelected(apiAvailable);
-  }, [
-    selectedPlatformCard,
-    metaConfigured,
-    metaConnected,
-    googleAdsConfigured,
-    googleAdsConnected,
-    tiktokConfigured,
-    tiktokConnected,
-  ]);
-
-  function handleDataSourceModeChange(mode: WizardDataSource) {
-    userPickedDataSourceRef.current = true;
-    setDataSourceAutoSelected(false);
-    setDataSourceMode(mode);
-  }
   const previousMonthComparisonReady = useMemo(
     () =>
       getPreviousMonthComparisonInfo(previousMonthHasFile, previousMonthUpdatedAt, clientTimezone).status ===
@@ -2205,30 +2154,9 @@ export function ReportUploadWizard({
           ) : null}
 
           {selectedPlatformCard && (!platformPickerExpanded || !hasSavedPlatformPreference) && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-[13px] font-medium uppercase tracking-wide text-dash-ink-secondary">
-                  Step 1 — Load your data
-                </p>
-                <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                  Choose how to bring in campaign performance for this report.
-                  {wizardApiAvailable && dataSourceMode === "api" && dataSourceAutoSelected ? (
-                    <span className="mt-1 block text-[13px] text-[#90cdf4]">
-                      Sync from API is selected automatically because your account is connected.
-                    </span>
-                  ) : null}
-                </p>
-              </div>
+            <div className="space-y-3">
+              <WizardDataSourceToggle value={dataSourceMode} onChange={setDataSourceMode} />
 
-              <WizardDataSourceToggle
-                value={dataSourceMode}
-                onChange={handleDataSourceModeChange}
-                apiAvailable={wizardApiAvailable}
-              />
-
-              <WizardDataSourceCompareTable highlightMode={dataSourceMode} />
-
-              <div key={dataSourceMode} className="wizard-panel-enter">
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
                   clientId={clientId}
@@ -2253,26 +2181,38 @@ export function ReportUploadWizard({
                   }}
                 />
               ) : (
-                <WizardCsvUploadPanel
-                  file={mtdFile}
-                  onFileSelected={setMtdFile}
-                  analyzeStatus={analyzeStatus}
-                  onAnalyze={() => void handleAnalyze()}
-                  downloadTip={
-                    selectedPlatformCard === "META" ? (
-                      getMetaCsvDownloadTip(new Date(), clientTimezone)
+                <>
+                  <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
+                  <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
+                    <a
+                      href="https://nextreport.in/help/download"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
+                    >
+                      How to download your CSV
+                    </a>
+                    {selectedPlatformCard === "META" ? (
+                      <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
                     ) : selectedPlatformCard === "TIKTOK" ? (
-                      <>
+                      <span className="block text-[#e2e8f0]">
                         Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group,
                         Cost, Impressions, Clicks, and Conversions.
-                      </>
+                      </span>
                     ) : (
                       "Set date range to Last 30 days and segment by Day."
-                    )
-                  }
-                />
+                    )}
+                  </p>
+
+                  <button
+                    onClick={() => void handleAnalyze()}
+                    disabled={!mtdFile || analyzeStatus === "loading"}
+                    className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+                  >
+                    {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
+                  </button>
+                </>
               )}
-              </div>
 
               <PreviousMonthDataWizardPanel
                 clientId={clientId}
