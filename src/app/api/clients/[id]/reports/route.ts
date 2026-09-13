@@ -328,6 +328,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         reportTitle,
         agencyName: user?.agencyName,
         isLightTemplate: isLightReportTemplate(client.template),
+        reportTemplate: client.template,
       });
 
       const filePath = await saveReportFile(comparisonReport.id, pptxBuffer);
@@ -450,6 +451,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         agencyName: user?.agencyName,
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
+        reportTemplate: client.template,
         aiCopyBySlideKey: buildHistoricalAiCopyMap(historicalData.slides),
       });
 
@@ -467,6 +469,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           reportTitle,
           agencyName: user?.agencyName ?? null,
           isLightTemplate: isLightReportTemplate(client.template),
+        reportTemplate: client.template,
         },
       };
 
@@ -583,6 +586,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         agencyName: user?.agencyName,
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
+        reportTemplate: client.template,
       });
 
       const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
@@ -687,6 +691,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       agencyName: user?.agencyName,
       clientLogo,
       isLightTemplate: isLightReportTemplate(client.template),
+      reportTemplate: client.template,
     });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);
@@ -706,6 +711,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         aiCopy: Object.fromEntries(aiCopyBySlideKey),
         currencySymbol,
         isLightTemplate: isLightReportTemplate(client.template),
+        reportTemplate: client.template,
         reportTitle,
         agencyName: user?.agencyName ?? null,
       },

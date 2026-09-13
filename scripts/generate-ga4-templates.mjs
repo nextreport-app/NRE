@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds GA4-branded template assets (dark and light only).
+ * Builds GA4-branded template assets (dark + three light variants).
  *
  * Usage: node scripts/generate-ga4-templates.mjs
  */
@@ -11,6 +11,12 @@ import JSZip from "jszip";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "templates");
+
+const LIGHT_SOURCES = [
+  { src: "meta-ads-light-cream.pptx", out: "ga4-light-cream.pptx" },
+  { src: "meta-ads-light-pearl.pptx", out: "ga4-light-pearl.pptx" },
+  { src: "meta-ads-light-sand.pptx", out: "ga4-light-sand.pptx" },
+];
 
 /** Meta-branded cover → Google Analytics (matches Google Ads layout: Google + Analytics). */
 function patchGa4Cover(xml) {
@@ -43,14 +49,24 @@ async function writePptx(sourcePath, outFile, { patchCover = false }) {
 
 async function main() {
   const darkSrc = path.join(OUT_DIR, "dark.pptx");
-  const lightSrc = path.join(OUT_DIR, "meta-ads-light.pptx");
-  if (!fs.existsSync(darkSrc) || !fs.existsSync(lightSrc)) {
-    console.error("Missing dark.pptx or meta-ads-light.pptx — run from repo root after Meta templates exist.");
+  if (!fs.existsSync(darkSrc)) {
+    console.error("Missing dark.pptx — run from repo root after Meta templates exist.");
     process.exit(1);
   }
 
   await writePptx(darkSrc, "ga4-dark.pptx", { patchCover: true });
-  await writePptx(lightSrc, "ga4-light.pptx", { patchCover: true });
+
+  for (const { src, out } of LIGHT_SOURCES) {
+    const lightSrc = path.join(OUT_DIR, src);
+    if (!fs.existsSync(lightSrc)) {
+      console.error(`Missing ${src} — run node scripts/generate-light-templates.mjs first.`);
+      process.exit(1);
+    }
+    await writePptx(lightSrc, out, { patchCover: true });
+  }
+
+  fs.copyFileSync(path.join(OUT_DIR, "ga4-light-cream.pptx"), path.join(OUT_DIR, "ga4-light.pptx"));
+  console.log("Updated templates/ga4-light.pptx (cream alias)");
 }
 
 main().catch((err) => {
