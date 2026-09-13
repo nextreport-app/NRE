@@ -28,6 +28,7 @@ import { normalizeCampaignName } from "@/lib/nre/objective";
 import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
 import { getMetaCsvDownloadTip, type CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
+import { TEMPLATE_LABELS, type TEMPLATES } from "@/lib/validators/client";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import {
@@ -413,8 +414,8 @@ export function ReportUploadWizard({
   initialPreviousMonthCampaigns?: string[];
   /** Saved campaign inclusion for the previous-month row. */
   initialPreviousMonthSelectedCampaigns?: string[] | null;
-  /** Client.template (Prisma ReportTemplate enum) — shown as a read-only "Template: Dark/Light" line on the Preview & Generate step's summary card. Only DARK/LIGHT are user-selectable (see the client form), so anything else falls back to "Dark". */
-  clientTemplate: string;
+  /** Client.template (Prisma ReportTemplate enum) — shown on the Preview & Generate summary card via TEMPLATE_LABELS. */
+  clientTemplate: (typeof TEMPLATES)[number];
   /** Meta Marketing API — connected in Account Settings. */
   metaConnected?: boolean;
   metaConnectedName?: string | null;
@@ -3427,7 +3428,7 @@ export function ReportUploadWizard({
                     </>
                   )}
                   <p className="text-[14px] text-[#94a3b8]">
-                    Template: <span className="text-[14px] text-white">{clientTemplate === "LIGHT" ? "Light" : "Dark"}</span>
+                    Template: <span className="text-[14px] text-white">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
                     Platform: <WizardPlatformSummaryLabel platform={platform} />
