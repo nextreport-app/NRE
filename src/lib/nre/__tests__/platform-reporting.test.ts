@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultMetricSelectionForCampaign,
+  googleComparisonObjectiveTotals,
   googleSlideObjectiveLabels,
   metricsDictionaryPlatform,
   sharePlatformBadge,
@@ -8,6 +9,7 @@ import {
   usesGoogleSlotEngine,
   usesMetaObjectiveEngine,
 } from "../platform-reporting";
+import { parseMtdCsvForAdPlatform } from "../tiktok-columns";
 
 describe("platform-reporting", () => {
   it("routes TikTok through the Meta metric dictionary and slot engine", () => {
@@ -46,5 +48,18 @@ describe("platform-reporting", () => {
     expect(sharePlatformBadge("META").label).toBe("META ADS");
     expect(sharePlatformBadge("GOOGLE").label).toBe("GOOGLE ADS");
     expect(sharePlatformBadge("TIKTOK").label).toBe("TIKTOK ADS");
+  });
+
+  it("aggregates Google comparison totals from slot-engine metrics", () => {
+    const header = "Campaign,Ad group,Day,Cost,Clicks,Impr.,Conversions";
+    const lines = [
+      header,
+      "Shoes,Prospecting,01-08-2026,100,20,1000,5",
+      "Shoes,Prospecting,02-08-2026,100,20,1000,3",
+    ];
+    const { rows } = parseMtdCsvForAdPlatform(Buffer.from(lines.join("\n"), "utf8"), "GOOGLE");
+    const totals = googleComparisonObjectiveTotals(rows, "search", 200);
+    expect(totals.count).toBe(8);
+    expect(totals.cpr).toBe(25);
   });
 });

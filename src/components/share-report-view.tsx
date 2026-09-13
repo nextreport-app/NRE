@@ -43,7 +43,7 @@ function metricIconFile(metric: DynamicMetricValue): string {
 }
 
 /** Share-page-only Metric Guide copy — more specific than the PPT legend's own dictionary explanations (lib/nre/meta-dictionary.ts / google-dictionary.ts), which stay untouched since they're shared with the actual deck. Keyed by the same uppercase term the guide already displays (ShareReportData["metricGuide"][number]["term"]). */
-const METRIC_EXPLANATIONS: Record<string, string> = {
+const META_METRIC_EXPLANATIONS: Record<string, string> = {
   "QUOTE REQUEST SUBMITTED": "Number of quote requests submitted through your ads",
   "WEBSITE LEADS": "Number of leads submitted through your website landing page",
   "META FORM LEADS": "Number of leads submitted through Meta instant forms",
@@ -65,6 +65,45 @@ const METRIC_EXPLANATIONS: Record<string, string> = {
   ROAS: "Return on ad spend — revenue generated for every dollar spent on ads",
 };
 
+const GOOGLE_METRIC_EXPLANATIONS: Record<string, string> = {
+  COST: "Total amount spent on ads during this period",
+  CLICKS: "Total number of clicks on your ad",
+  IMPRESSIONS: "Total number of times your ad was displayed",
+  CTR: "Percentage of people who clicked after seeing your ad",
+  "AVG. CPC": "Average cost per click",
+  CONVERSIONS: "Number of desired actions completed after seeing your ad",
+  "COST PER CONVERSION": "Average spend for each conversion",
+  "COST PER CONV.": "Average spend for each conversion",
+  "CONV. VALUE": "Total conversion value attributed to your ads",
+  "VIEWABLE IMPR.": "Number of impressions that were viewable on screen",
+  "VIEWABLE RATE": "Percentage of measurable impressions that were viewable",
+  "VIDEO VIEWS": "Number of times your video ad was watched",
+  "AVG. CPV": "Average cost per video view",
+  ROAS: "Return on ad spend — revenue generated for every dollar spent on ads",
+  ENGAGEMENTS: "Total interactions with your ad (clicks, swipes, and other actions)",
+  "ENGAGEMENT RATE": "Percentage of impressions that resulted in an engagement",
+};
+
+const TIKTOK_METRIC_EXPLANATIONS: Record<string, string> = {
+  ...META_METRIC_EXPLANATIONS,
+  "COMPLETE PAYMENT": "Number of completed purchases attributed to your TikTok ads",
+  "TOTAL PURCHASE VALUE": "Total purchase value attributed to your TikTok ads",
+  "COST PER COMPLETE PAYMENT": "Average cost for each completed purchase",
+  "VIDEO VIEWS": "Number of times your TikTok video was watched",
+  "2-SECOND VIDEO VIEWS": "Number of times your video was watched for at least 2 seconds",
+  "6-SECOND VIDEO VIEWS": "Number of times your video was watched for at least 6 seconds",
+  "AVERAGE WATCH TIME": "Average time people spent watching your video ad",
+  "PROFILE VISITS": "Number of visits to your TikTok profile from your ads",
+  "FOLLOWS": "Number of new followers gained from your ads",
+  REACH: "Number of unique people who saw your TikTok ad at least once",
+};
+
+function metricExplanationsForPlatform(platform: ShareReportData["platform"]): Record<string, string> {
+  if (platform === "GOOGLE") return GOOGLE_METRIC_EXPLANATIONS;
+  if (platform === "TIKTOK") return TIKTOK_METRIC_EXPLANATIONS;
+  return META_METRIC_EXPLANATIONS;
+}
+
 /**
  * Fix 6 — the generic fallback for any metric term not given its own
  * specific copy above. "Cost per X" terms get "Average cost to achieve
@@ -72,8 +111,8 @@ const METRIC_EXPLANATIONS: Record<string, string> = {
  * which reads oddly for a cost metric — nothing is "generated"); every
  * other term gets "X delivered through your ads".
  */
-function getExplanation(label: string): string {
-  const known = METRIC_EXPLANATIONS[label];
+function getExplanation(label: string, platform: ShareReportData["platform"]): string {
+  const known = metricExplanationsForPlatform(platform)[label];
   if (known) return known;
   const titleCased = label.charAt(0) + label.slice(1).toLowerCase();
   if (label.startsWith("COST PER ")) {
@@ -460,7 +499,13 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
   );
 }
 
-function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["metricGuide"] }) {
+function MetricGuideSection({
+  metricGuide,
+  platform,
+}: {
+  metricGuide: ShareReportData["metricGuide"];
+  platform: ShareReportData["platform"];
+}) {
   if (metricGuide.length === 0) return null;
   return (
     <SlideCard>
@@ -472,7 +517,7 @@ function MetricGuideSection({ metricGuide }: { metricGuide: ShareReportData["met
               {entry.term}
             </p>
             <p className="mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted">
-              {getExplanation(entry.term)}
+              {getExplanation(entry.term, platform)}
             </p>
           </div>
         ))}
@@ -657,7 +702,7 @@ export function ShareReportView({
 
         {showMetricGuide && (
         <section className={slideClass}>
-          <MetricGuideSection metricGuide={metricGuide} />
+          <MetricGuideSection metricGuide={metricGuide} platform={visibleData.platform} />
         </section>
         )}
       </main>

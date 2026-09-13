@@ -12,7 +12,7 @@ import {
   defaultMetaSelection,
   type SelectedMetric,
 } from "./available-metrics";
-import { lookupMetricValue, type RawMetricRow } from "./dynamic-metrics";
+import { aggregateDynamicMetrics, lookupMetricValue, type MetricRef, type RawMetricRow } from "./dynamic-metrics";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { fmtCurrency2dp, fmtNumber } from "./format";
 
@@ -130,6 +130,41 @@ export function googleCampaignResultDisplay(
     resultValue: googleMetricLookup(rawRows, primaryKey, currencySymbol),
     cprValue: googleMetricLookup(rawRows, secondaryKey, currencySymbol),
   };
+}
+
+function googleMetricRef(key: string): MetricRef | null {
+  const def = findGoogleMetricByKey(key);
+  if (!def?.format) return null;
+  return {
+    key: def.key,
+    format: def.format,
+    csvName: def.csvName,
+    perUnitOf: def.perUnitOf,
+    perUnitScale: def.perUnitScale,
+  };
+}
+
+/** Comparison-report result/cost totals for Google — uses slot-engine metrics, not Meta objective.ts. */
+export function googleComparisonObjectiveTotals(
+  rawRows: RawMetricRow[],
+  objectiveKey: GoogleObjectiveKey,
+  spend: number,
+): { count: number; cpr: number } {
+  const primaryKey = GOOGLE_PRIMARY_METRIC_KEY[objectiveKey];
+  if (!primaryKey) {
+    const convRef = googleMetricRef("conversions");
+    const count = convRef ? (aggregateDynamicMetrics(rawRows, [convRef], "google").conversions ?? 0) : 0;
+    return { count, cpr: count > 0 ? spend / count : 0 };
+  }
+  const primaryRef = googleMetricRef(primaryKey);
+  const count = primaryRef ? (aggregateDynamicMetrics(rawRows, [primaryRef], "google")[primaryKey] ?? 0) : 0;
+  const secondaryKey = GOOGLE_SECONDARY_METRIC_KEY[objectiveKey];
+  if (secondaryKey) {
+    const secRef = googleMetricRef(secondaryKey);
+    const cpr = secRef ? (aggregateDynamicMetrics(rawRows, [secRef], "google")[secondaryKey] ?? 0) : 0;
+    return { count, cpr };
+  }
+  return { count, cpr: count > 0 ? spend / count : 0 };
 }
 
 export function sharePlatformBadge(platform: Platform): { label: string; color: string } {

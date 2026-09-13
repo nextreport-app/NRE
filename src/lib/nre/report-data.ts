@@ -59,6 +59,7 @@ import {
   usesGoogleSlotEngine,
   googleSlideObjectiveLabels,
   googleCampaignResultDisplay,
+  googleComparisonObjectiveTotals,
 } from "./platform-reporting";
 import {
   buildGoogleSlots,
@@ -2014,6 +2015,9 @@ export interface BuildComparisonReportDataInput {
   periodA: DateRangeIso;
   periodB: DateRangeIso;
   now?: Date;
+  platform?: Platform;
+  /** CSV headers — required for Google comparison objective labels (campaign-type slots). */
+  csvHeaders?: string[];
 }
 
 function filterRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
@@ -2032,6 +2036,15 @@ function groupAggRowsByCampaign(rows: NreRow[]): Record<string, AggRow[]> {
   const agg = aggregateRows(rows);
   const byCampaign: Record<string, AggRow[]> = {};
   agg.forEach((row) => {
+    const name = (row.campaign_name || "Unknown Campaign").trim();
+    (byCampaign[name] ??= []).push(row);
+  });
+  return byCampaign;
+}
+
+function groupRawRowsByCampaign(rows: NreRow[]): Record<string, NreRow[]> {
+  const byCampaign: Record<string, NreRow[]> = {};
+  rows.forEach((row) => {
     const name = (row.campaign_name || "Unknown Campaign").trim();
     (byCampaign[name] ??= []).push(row);
   });
@@ -2118,7 +2131,17 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     periodA,
     periodB,
     now = new Date(),
+    platform = "META",
+    csvHeaders,
   } = input;
+
+  const isGoogle = platform === "GOOGLE";
+  const googleObjectiveKey: GoogleObjectiveKey | null = isGoogle
+    ? csvHeaders?.length
+      ? detectGoogleObjectiveKey(csvHeaders)
+      : "search"
+    : null;
+  const googleLabels = googleObjectiveKey ? googleSlideObjectiveLabels(googleObjectiveKey) : null;
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
   const supplementalFiltered = periodBSupplementalRows?.length
@@ -2129,6 +2152,8 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
 
   const byCampaignA = groupAggRowsByCampaign(rowsA);
   const byCampaignB = groupAggRowsByCampaign(rowsB);
+  const byCampaignRawA = isGoogle ? groupRawRowsByCampaign(rowsA) : null;
+  const byCampaignRawB = isGoogle ? groupRawRowsByCampaign(rowsB) : null;
 
   const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort();
 
@@ -2141,7 +2166,10 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   // different way. Built from every row in this report's scope (both
   // periods combined, campaign-filtered), same aggregateRows-then-classify
   // pipeline every other campaignObjectiveMap in this file uses.
-  const campaignObjectiveMap = buildCampaignObjectiveMap(aggregateRows([...rowsA, ...rowsB]));
+  // Google uses account-wide campaign-type slot labels instead (Phase 3).
+  const campaignObjectiveMap = isGoogle
+    ? null
+    : buildCampaignObjectiveMap(aggregateRows([...rowsA, ...rowsB]));
 
   const campaigns: ComparisonCampaignData[] = campaignNames.map((campaignName) => {
     const campRowsA = byCampaignA[campaignName] ?? [];
@@ -2152,14 +2180,20 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     const reachA = sumField(campRowsA, "reach");
     const reachB = sumField(campRowsB, "reach");
 
-    const campaignObjective = campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
-      resultLabel: "RESULTS",
-      costLabel: "COST PER RESULT",
-    };
+    const campaignObjective = isGoogle
+      ? googleLabels ?? { resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION" }
+      : campaignObjectiveMap!.get(normalizeCampaignName(campaignName)) ?? {
+          resultLabel: "RESULTS",
+          costLabel: "COST PER RESULT",
+        };
     const objective = campaignObjective.resultLabel;
     const costLabel = campaignObjective.costLabel;
-    const totalsA = comparisonObjectiveTotals(campRowsA, campaignObjective);
-    const totalsB = comparisonObjectiveTotals(campRowsB, campaignObjective);
+    const totalsA = isGoogle
+      ? googleComparisonObjectiveTotals(byCampaignRawA![campaignName] ?? [], googleObjectiveKey!, spendA)
+      : comparisonObjectiveTotals(campRowsA, campaignObjective);
+    const totalsB = isGoogle
+      ? googleComparisonObjectiveTotals(byCampaignRawB![campaignName] ?? [], googleObjectiveKey!, spendB)
+      : comparisonObjectiveTotals(campRowsB, campaignObjective);
     const resultsA = totalsA.count;
     const resultsB = totalsB.count;
     const cprA = totalsA.cpr;

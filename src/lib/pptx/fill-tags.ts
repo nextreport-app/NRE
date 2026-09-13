@@ -769,7 +769,7 @@ export function buildTableSlideXml(
 ): string {
   // Google Ads reports have their own static header words (Cost/Clicks/
   // Avg. CPC instead of Meta's Ad Spend/Reach/CPC (All)) — see
-  // google-report-data.ts's buildGoogleCombinedTotalTableGrid, which fills
+  // google-combined-total.ts's buildGoogleCombinedTotalTableGrid, which fills
   // the SAME positional 3-row/N-column grid shape table-slide.ts expects,
   // just with different header text, so no other table-filling logic here
   // needs to change.

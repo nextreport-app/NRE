@@ -12,6 +12,7 @@ import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { detectPlatform } from "@/lib/nre/google-columns";
+import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
@@ -134,8 +135,7 @@ async function buildMetaData(
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
     return {
-      error:
-        "Creative reporting requires an Ad-level CSV with an Ad Name column. Export from Meta Ads Manager → Ads tab with daily breakdown.",
+      error: `Creative reporting requires an Ad-level CSV with an Ad Name column. Export from ${adsManagerName(platform)} → Ads tab with daily breakdown.`,
     };
   }
 
@@ -277,6 +277,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       selectedCampaigns: selectedCampaigns ?? null,
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+      platform,
+      csvHeaders: mtdParsed.headers,
     });
 
     const fileName = `Comparison Report - ${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}.pptx`.replace(/[\s/]/g, "_");

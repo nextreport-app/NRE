@@ -412,7 +412,7 @@ var ICON_FILE_BY_CATEGORY = {
 function metricIconFile(metric) {
   return ICON_FILE_BY_CATEGORY[resolveMetricIconId(metric)];
 }
-var METRIC_EXPLANATIONS = {
+var META_METRIC_EXPLANATIONS = {
   "QUOTE REQUEST SUBMITTED": "Number of quote requests submitted through your ads",
   "WEBSITE LEADS": "Number of leads submitted through your website landing page",
   "META FORM LEADS": "Number of leads submitted through Meta instant forms",
@@ -433,8 +433,44 @@ var METRIC_EXPLANATIONS = {
   "APP INSTALLS": "Number of times your app was installed through your ads",
   ROAS: "Return on ad spend \u2014 revenue generated for every dollar spent on ads"
 };
-function getExplanation(label) {
-  const known = METRIC_EXPLANATIONS[label];
+var GOOGLE_METRIC_EXPLANATIONS = {
+  COST: "Total amount spent on ads during this period",
+  CLICKS: "Total number of clicks on your ad",
+  IMPRESSIONS: "Total number of times your ad was displayed",
+  CTR: "Percentage of people who clicked after seeing your ad",
+  "AVG. CPC": "Average cost per click",
+  CONVERSIONS: "Number of desired actions completed after seeing your ad",
+  "COST PER CONVERSION": "Average spend for each conversion",
+  "COST PER CONV.": "Average spend for each conversion",
+  "CONV. VALUE": "Total conversion value attributed to your ads",
+  "VIEWABLE IMPR.": "Number of impressions that were viewable on screen",
+  "VIEWABLE RATE": "Percentage of measurable impressions that were viewable",
+  "VIDEO VIEWS": "Number of times your video ad was watched",
+  "AVG. CPV": "Average cost per video view",
+  ROAS: "Return on ad spend \u2014 revenue generated for every dollar spent on ads",
+  ENGAGEMENTS: "Total interactions with your ad (clicks, swipes, and other actions)",
+  "ENGAGEMENT RATE": "Percentage of impressions that resulted in an engagement"
+};
+var TIKTOK_METRIC_EXPLANATIONS = {
+  ...META_METRIC_EXPLANATIONS,
+  "COMPLETE PAYMENT": "Number of completed purchases attributed to your TikTok ads",
+  "TOTAL PURCHASE VALUE": "Total purchase value attributed to your TikTok ads",
+  "COST PER COMPLETE PAYMENT": "Average cost for each completed purchase",
+  "VIDEO VIEWS": "Number of times your TikTok video was watched",
+  "2-SECOND VIDEO VIEWS": "Number of times your video was watched for at least 2 seconds",
+  "6-SECOND VIDEO VIEWS": "Number of times your video was watched for at least 6 seconds",
+  "AVERAGE WATCH TIME": "Average time people spent watching your video ad",
+  "PROFILE VISITS": "Number of visits to your TikTok profile from your ads",
+  "FOLLOWS": "Number of new followers gained from your ads",
+  REACH: "Number of unique people who saw your TikTok ad at least once"
+};
+function metricExplanationsForPlatform(platform) {
+  if (platform === "GOOGLE") return GOOGLE_METRIC_EXPLANATIONS;
+  if (platform === "TIKTOK") return TIKTOK_METRIC_EXPLANATIONS;
+  return META_METRIC_EXPLANATIONS;
+}
+function getExplanation(label, platform) {
+  const known = metricExplanationsForPlatform(platform)[label];
   if (known) return known;
   const titleCased = label.charAt(0) + label.slice(1).toLowerCase();
   if (label.startsWith("COST PER ")) {
@@ -693,13 +729,16 @@ function CombinedTotalTable({ data, compact = false }) {
     }
   ) });
 }
-function MetricGuideSection({ metricGuide }) {
+function MetricGuideSection({
+  metricGuide,
+  platform
+}) {
   if (metricGuide.length === 0) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(SlideCard, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "text-[22px] font-bold text-ink sm:text-[28px]", children: "Metric Abbreviation Guide" }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2", children: metricGuide.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 overflow-hidden", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "line-clamp-2 break-words text-[15px] font-bold uppercase tracking-wide text-accent-orange", children: entry.term }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted", children: getExplanation(entry.term) })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted", children: getExplanation(entry.term, platform) })
     ] }, `${entry.term}-${i}`)) })
   ] });
 }
@@ -838,7 +877,7 @@ function ShareReportView({
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "mb-4 text-[22px] font-bold text-ink sm:text-[28px]", children: "Monthly Campaign Performance Overview" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CombinedTotalTable, { data: visibleData, compact: isPrint })
           ] }) }),
-          showMetricGuide && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MetricGuideSection, { metricGuide }) })
+          showMetricGuide && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MetricGuideSection, { metricGuide, platform: visibleData.platform }) })
         ] }),
         !isPrint && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("footer", { style: { textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "#94a3b8", fontSize: "13px" }, children: "This report was generated using NextReport \xB7 nextreport.in" }),
