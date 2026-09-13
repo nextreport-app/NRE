@@ -14,33 +14,27 @@ import { backgroundImage, buildBlankSlideXml, rectangle, resetShapeIdCounter, ro
 import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCoverSlideXml } from "./fill-tags";
 import type { ComparisonCampaignData, ComparisonChange, ComparisonReportData } from "../nre/report-data";
+import { slideSurfacePalette, type SlideSurfacePalette } from "./slide-surface-palette";
 
 /** Relationship id the comparison campaign/summary slides' own generated rels (see render.ts) register the copied background picture under — mirrors chart-slide.ts's CHART_BG_REL_ID. */
 export const COMPARISON_BG_REL_ID = "rId2";
-
-const TEXT_COLOR = "FFFFFF";
-const LABEL_COLOR = "94a3b8"; // muted grey — same token used across the wizard's own design polish (B4)
-const HEADING_COLOR = "f6ad55"; // amber accent, matching the deck's other accent usage (legend card terms, health badges, etc.)
-const CARD_FILL = "111f35";
-const CARD_STROKE = "1e3a5f";
 
 const CHANGE_UP_BG = "68d391";
 const CHANGE_DOWN_BG = "fc8181";
 const CHANGE_FLAT_BG = "64748b";
 const CHANGE_NEW_BG = "f6ad55";
-const CHANGE_DARK_TEXT = "0d1b2e";
 
-function changeBadgeColors(change: ComparisonChange): { bg: string; text: string } {
+function changeBadgeColors(change: ComparisonChange, palette: SlideSurfacePalette): { bg: string; text: string } {
   switch (change.direction) {
     case "up":
-      return { bg: CHANGE_UP_BG, text: CHANGE_DARK_TEXT };
+      return { bg: CHANGE_UP_BG, text: palette.changeDarkText };
     case "down":
-      return { bg: CHANGE_DOWN_BG, text: CHANGE_DARK_TEXT };
+      return { bg: CHANGE_DOWN_BG, text: palette.changeDarkText };
     case "new":
-      return { bg: CHANGE_NEW_BG, text: CHANGE_DARK_TEXT };
+      return { bg: CHANGE_NEW_BG, text: palette.changeDarkText };
     case "flat":
     default:
-      return { bg: CHANGE_FLAT_BG, text: TEXT_COLOR };
+      return { bg: CHANGE_FLAT_BG, text: palette.changeFlatText };
   }
 }
 
@@ -106,7 +100,9 @@ export function buildComparisonCampaignSlideXml(
   periodALabel: string,
   periodBLabel: string,
   background: TemplateBackgroundImage,
+  isLightTemplate = false,
 ): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background }));
@@ -123,13 +119,13 @@ export function buildComparisonCampaignSlideXml(
       text: `${campaign.campaignName} (Campaign)`,
       sizePt: 22,
       bold: true,
-      colorHex: TEXT_COLOR,
+      colorHex: palette.text,
       align: "l",
     }),
   );
 
   const DIVIDER_Y = TITLE_Y + TITLE_H + 6;
-  shapes.push(rectangle({ x: MARGIN, y: DIVIDER_Y, w: W - MARGIN * 2, h: 1, fillHex: CARD_STROKE }));
+  shapes.push(rectangle({ x: MARGIN, y: DIVIDER_Y, w: W - MARGIN * 2, h: 1, fillHex: palette.cardStroke }));
 
   // Column geometry — Period A (left), a narrow change-badge gutter
   // (center), Period B (right); see the file header's own layout note.
@@ -143,14 +139,14 @@ export function buildComparisonCampaignSlideXml(
 
   const HEADER_Y = DIVIDER_Y + 18;
   const HEADER_H = 22;
-  shapes.push(textBox({ x: colAX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD A", sizePt: 15, bold: true, colorHex: HEADING_COLOR }));
-  shapes.push(textBox({ x: badgeX, y: HEADER_Y, w: BADGE_W, h: HEADER_H, text: "vs", sizePt: 13, colorHex: LABEL_COLOR }));
-  shapes.push(textBox({ x: colBX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD B", sizePt: 15, bold: true, colorHex: HEADING_COLOR }));
+  shapes.push(textBox({ x: colAX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD A", sizePt: 15, bold: true, colorHex: palette.heading }));
+  shapes.push(textBox({ x: badgeX, y: HEADER_Y, w: BADGE_W, h: HEADER_H, text: "vs", sizePt: 13, colorHex: palette.label }));
+  shapes.push(textBox({ x: colBX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD B", sizePt: 15, bold: true, colorHex: palette.heading }));
 
   const SUBHEADER_Y = HEADER_Y + HEADER_H + 2;
   const SUBHEADER_H = 16;
-  shapes.push(textBox({ x: colAX, y: SUBHEADER_Y, w: COL_W, h: SUBHEADER_H, text: periodALabel, sizePt: 12, colorHex: LABEL_COLOR }));
-  shapes.push(textBox({ x: colBX, y: SUBHEADER_Y, w: COL_W, h: SUBHEADER_H, text: periodBLabel, sizePt: 12, colorHex: LABEL_COLOR }));
+  shapes.push(textBox({ x: colAX, y: SUBHEADER_Y, w: COL_W, h: SUBHEADER_H, text: periodALabel, sizePt: 12, colorHex: palette.label }));
+  shapes.push(textBox({ x: colBX, y: SUBHEADER_Y, w: COL_W, h: SUBHEADER_H, text: periodBLabel, sizePt: 12, colorHex: palette.label }));
 
   const ROWS_TOP = SUBHEADER_Y + SUBHEADER_H + 22;
   const CARD_H = 64;
@@ -171,7 +167,7 @@ export function buildComparisonCampaignSlideXml(
       [colAX, row.valueA],
       [colBX, row.valueB],
     ] as const) {
-      shapes.push(roundedCard({ x, y, w: COL_W, h: CARD_H, fillHex: CARD_FILL, strokeHex: CARD_STROKE, radiusPt: 6 }));
+      shapes.push(roundedCard({ x, y, w: COL_W, h: CARD_H, fillHex: palette.cardFill, strokeHex: palette.cardStroke, radiusPt: 6 }));
       shapes.push(
         textBox({
           x: x + CARD_PAD_X,
@@ -181,7 +177,7 @@ export function buildComparisonCampaignSlideXml(
           text: row.label,
           sizePt: 12,
           bold: true,
-          colorHex: LABEL_COLOR,
+          colorHex: palette.label,
         }),
       );
       shapes.push(
@@ -193,12 +189,12 @@ export function buildComparisonCampaignSlideXml(
           text: value,
           sizePt: 22,
           bold: true,
-          colorHex: TEXT_COLOR,
+          colorHex: palette.text,
         }),
       );
     }
 
-    const { bg, text } = changeBadgeColors(row.change);
+    const { bg, text } = changeBadgeColors(row.change, palette);
     const BADGE_H = 30;
     const badgeY = y + (CARD_H - BADGE_H) / 2;
     shapes.push(roundedCard({ x: badgeX, y: badgeY, w: BADGE_W, h: BADGE_H, fillHex: bg, strokeHex: bg, radiusPt: 15 }));
@@ -221,11 +217,6 @@ export function buildComparisonCampaignSlideXml(
 
 // ─────────────────────────── Summary table slide ────────────────────────────
 
-const TABLE_HEADER_FILL = "0d1b2e";
-const TABLE_PERIOD_A_FILL = "16233d"; // slightly lighter than Period B's card fill, per spec
-const TABLE_PERIOD_B_FILL = CARD_FILL;
-const TABLE_NAME_FILL = CARD_FILL;
-const TABLE_TOTAL_FILL = CARD_STROKE;
 const DELTA_UP_TEXT = "68d391";
 const DELTA_DOWN_TEXT = "fc8181";
 
@@ -236,27 +227,26 @@ function deltaText(change: ComparisonChange): string {
   return `${sign}${Math.round(pct)}%`;
 }
 
-function deltaColor(change: ComparisonChange): string {
+function deltaColor(change: ComparisonChange, palette: SlideSurfacePalette): string {
   if (change.direction === "up") return DELTA_UP_TEXT;
   if (change.direction === "down") return DELTA_DOWN_TEXT;
-  return TEXT_COLOR;
+  return palette.text;
 }
 
 interface TableCol {
   header: string;
   widthPt: number;
-  fill: string;
   align: "l" | "ctr";
 }
 
 const TABLE_COLS: TableCol[] = [
-  { header: "CAMPAIGN", widthPt: 220, fill: TABLE_NAME_FILL, align: "l" },
-  { header: "SPEND A", widthPt: 105, fill: TABLE_PERIOD_A_FILL, align: "ctr" },
-  { header: "SPEND B", widthPt: 105, fill: TABLE_PERIOD_B_FILL, align: "ctr" },
-  { header: "Δ%", widthPt: 75, fill: TABLE_NAME_FILL, align: "ctr" },
-  { header: "RESULTS A", widthPt: 105, fill: TABLE_PERIOD_A_FILL, align: "ctr" },
-  { header: "RESULTS B", widthPt: 105, fill: TABLE_PERIOD_B_FILL, align: "ctr" },
-  { header: "Δ%", widthPt: 75, fill: TABLE_NAME_FILL, align: "ctr" },
+  { header: "CAMPAIGN", widthPt: 220, align: "l" },
+  { header: "SPEND A", widthPt: 105, align: "ctr" },
+  { header: "SPEND B", widthPt: 105, align: "ctr" },
+  { header: "Δ%", widthPt: 75, align: "ctr" },
+  { header: "RESULTS A", widthPt: 105, align: "ctr" },
+  { header: "RESULTS B", widthPt: 105, align: "ctr" },
+  { header: "Δ%", widthPt: 75, align: "ctr" },
 ];
 
 function tableCellXml(x: number, y: number, w: number, h: number, text: string, fill: string, textColor: string, bold: boolean, align: "l" | "ctr"): string {
@@ -274,14 +264,19 @@ function tableCellXml(x: number, y: number, w: number, h: number, text: string, 
  * in this codebase (chart/legend) already uses the same
  * shapes-composed-into-a-grid approach rather than raw `<a:tbl>` markup.
  */
-export function buildComparisonSummarySlideXml(comparison: ComparisonReportData, background: TemplateBackgroundImage): string {
+export function buildComparisonSummarySlideXml(
+  comparison: ComparisonReportData,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+): string {
+  const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
   shapes.push(backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background }));
 
   const TITLE_Y = 24;
   shapes.push(
-    textBox({ x: 0, y: TITLE_Y, w: W, h: 32, text: "CAMPAIGN COMPARISON SUMMARY", sizePt: 24, bold: true, colorHex: HEADING_COLOR }),
+    textBox({ x: 0, y: TITLE_Y, w: W, h: 32, text: "CAMPAIGN COMPARISON SUMMARY", sizePt: 24, bold: true, colorHex: palette.heading }),
   );
   shapes.push(
     textBox({
@@ -291,7 +286,7 @@ export function buildComparisonSummarySlideXml(comparison: ComparisonReportData,
       h: 20,
       text: `Period A: ${comparison.periodALabel}   vs   Period B: ${comparison.periodBLabel}`,
       sizePt: 14,
-      colorHex: LABEL_COLOR,
+      colorHex: palette.label,
     }),
   );
 
@@ -308,7 +303,7 @@ export function buildComparisonSummarySlideXml(comparison: ComparisonReportData,
   let y = tableTop;
   let x = tableX;
   TABLE_COLS.forEach((col) => {
-    shapes.push(tableCellXml(x, y, col.widthPt, rowH, col.header, TABLE_HEADER_FILL, TEXT_COLOR, true, col.align));
+    shapes.push(tableCellXml(x, y, col.widthPt, rowH, col.header, palette.tableHeaderFill, palette.text, true, col.align));
     x += col.widthPt;
   });
   y += rowH;
@@ -316,18 +311,18 @@ export function buildComparisonSummarySlideXml(comparison: ComparisonReportData,
   comparison.campaigns.forEach((c) => {
     x = tableX;
     const cells: [string, string, "l" | "ctr"][] = [
-      [c.campaignName.length > 28 ? c.campaignName.slice(0, 28) + "…" : c.campaignName, TABLE_NAME_FILL, "l"],
-      [c.metricsA.spend.formatted, TABLE_PERIOD_A_FILL, "ctr"],
-      [c.metricsB.spend.formatted, TABLE_PERIOD_B_FILL, "ctr"],
-      [deltaText(c.changes.spend), TABLE_NAME_FILL, "ctr"],
-      [c.metricsA.results.formatted, TABLE_PERIOD_A_FILL, "ctr"],
-      [c.metricsB.results.formatted, TABLE_PERIOD_B_FILL, "ctr"],
-      [deltaText(c.changes.results), TABLE_NAME_FILL, "ctr"],
+      [c.campaignName.length > 28 ? c.campaignName.slice(0, 28) + "…" : c.campaignName, palette.tableNameFill, "l"],
+      [c.metricsA.spend.formatted, palette.tablePeriodAFill, "ctr"],
+      [c.metricsB.spend.formatted, palette.tablePeriodBFill, "ctr"],
+      [deltaText(c.changes.spend), palette.tableNameFill, "ctr"],
+      [c.metricsA.results.formatted, palette.tablePeriodAFill, "ctr"],
+      [c.metricsB.results.formatted, palette.tablePeriodBFill, "ctr"],
+      [deltaText(c.changes.results), palette.tableNameFill, "ctr"],
     ];
     cells.forEach(([text, fill, align], i) => {
       const col = TABLE_COLS[i];
       const isDeltaCol = i === 3 || i === 6;
-      const textColor = isDeltaCol ? deltaColor(i === 3 ? c.changes.spend : c.changes.results) : TEXT_COLOR;
+      const textColor = isDeltaCol ? deltaColor(i === 3 ? c.changes.spend : c.changes.results, palette) : palette.text;
       shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, fill, textColor, isDeltaCol, align));
       x += col.widthPt;
     });
@@ -349,8 +344,8 @@ export function buildComparisonSummarySlideXml(comparison: ComparisonReportData,
   totalCells.forEach(([text, align], i) => {
     const col = TABLE_COLS[i];
     const isDeltaCol = i === 3 || i === 6;
-    const textColor = isDeltaCol ? deltaColor(i === 3 ? totals.changes.spend : totals.changes.results) : TEXT_COLOR;
-    shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, TABLE_TOTAL_FILL, textColor, true, align));
+    const textColor = isDeltaCol ? deltaColor(i === 3 ? totals.changes.spend : totals.changes.results, palette) : palette.text;
+    shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, palette.tableTotalFill, textColor, true, align));
     x += col.widthPt;
   });
 

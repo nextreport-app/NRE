@@ -251,25 +251,25 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     const creativeRels = buildCreativeSlideRels(template.background.mediaTarget);
     for (const slide of data.creative.overviewSlides) {
       slides.push({
-        xml: buildCreativeOverviewSlideXml(slide, template.background),
+        xml: buildCreativeOverviewSlideXml(slide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     for (const slide of data.creative.topSlides) {
       slides.push({
-        xml: buildCreativeTopSlideXml(slide, template.background),
+        xml: buildCreativeTopSlideXml(slide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     if (data.creative.videoSlide) {
       slides.push({
-        xml: buildCreativeVideoSlideXml(data.creative.videoSlide, template.background),
+        xml: buildCreativeVideoSlideXml(data.creative.videoSlide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     if (data.creative.fatigueSlide) {
       slides.push({
-        xml: buildCreativeFatigueSlideXml(data.creative.fatigueSlide, template.background),
+        xml: buildCreativeFatigueSlideXml(data.creative.fatigueSlide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
@@ -328,10 +328,12 @@ export interface RenderComparisonPptxInput {
   reportTitle?: string | null;
   /** Agency name from account settings — drives the cover slide's "Prepared by ..." line, same as renderPptx. */
   agencyName?: string | null;
+  /** Light-template palette for from-scratch comparison slides — see renderPptx.isLightTemplate. */
+  isLightTemplate?: boolean;
 }
 
 export async function renderComparisonPptx(input: RenderComparisonPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, reportTitle, agencyName } = input;
+  const { templateBuffer, data, reportTitle, agencyName, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
 
   const slides: SlideToInsert[] = [];
@@ -343,13 +345,13 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
 
   for (const campaign of data.campaigns) {
     slides.push({
-      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background),
+      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
     });
   }
 
   slides.push({
-    xml: buildComparisonSummarySlideXml(data, template.background),
+    xml: buildComparisonSummarySlideXml(data, template.background, isLightTemplate),
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   });
 

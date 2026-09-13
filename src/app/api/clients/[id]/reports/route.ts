@@ -19,7 +19,7 @@ import { generateInsights } from "@/lib/ai/generate-insights";
 import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
 import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
-import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
+import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -322,6 +322,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         data: comparisonData,
         reportTitle,
         agencyName: user?.agencyName,
+        isLightTemplate: isLightReportTemplate(client.template),
       });
 
       const filePath = await saveReportFile(comparisonReport.id, pptxBuffer);
@@ -443,7 +444,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         reportTitle,
         agencyName: user?.agencyName,
         clientLogo,
-        isLightTemplate: client.template === "LIGHT",
+        isLightTemplate: isLightReportTemplate(client.template),
         aiCopyBySlideKey: buildHistoricalAiCopyMap(historicalData.slides),
       });
 
@@ -460,7 +461,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           aiCopy: Object.fromEntries(aiCopyMap),
           reportTitle,
           agencyName: user?.agencyName ?? null,
-          isLightTemplate: client.template === "LIGHT",
+          isLightTemplate: isLightReportTemplate(client.template),
         },
       };
 
@@ -576,7 +577,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
         agencyName: user?.agencyName,
         clientLogo,
-        isLightTemplate: client.template === "LIGHT",
+        isLightTemplate: isLightReportTemplate(client.template),
       });
 
       const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
@@ -680,7 +681,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reportTitle,
       agencyName: user?.agencyName,
       clientLogo,
-      isLightTemplate: client.template === "LIGHT",
+      isLightTemplate: isLightReportTemplate(client.template),
     });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);
@@ -699,7 +700,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         reportData: data,
         aiCopy: Object.fromEntries(aiCopyBySlideKey),
         currencySymbol,
-        isLightTemplate: client.template === "LIGHT",
+        isLightTemplate: isLightReportTemplate(client.template),
         reportTitle,
         agencyName: user?.agencyName ?? null,
       },

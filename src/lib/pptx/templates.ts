@@ -1,10 +1,11 @@
 /**
  * Maps a client's chosen ReportTemplate to its .pptx template asset.
  *
- * TODO: only DARK and LIGHT have real template files so far. The other 4
- * (EMERALD/PURPLE/CRIMSON/GRAPHITE) from the spec's template library fall
- * back to DARK until those files are provided — this is a deliberate,
- * flagged gap, not a silent one.
+ * DARK and LIGHT are the two fully tested base themes. OCEAN/INDIGO/MOSS/
+ * BURGUNDY/STEEL/COPPER are color-background forks of dark.pptx — same slide
+ * layout, tags, fonts, and fill-tags logic; only theme accent5/6 gradient and
+ * card surface fills differ. Generate fresh assets with:
+ *   node scripts/generate-meta-template-variants.mjs
  */
 
 import fs from "node:fs/promises";
@@ -13,14 +14,21 @@ import type { ReportTemplate } from "@/generated/prisma/enums";
 
 const TEMPLATES_DIR = path.join(process.cwd(), "templates");
 
-const TEMPLATE_FILES: Record<ReportTemplate, string> = {
+export const TEMPLATE_FILES: Record<ReportTemplate, string> = {
   DARK: "dark.pptx",
   LIGHT: "meta-ads-light.pptx",
-  EMERALD: "dark.pptx", // TODO: replace once EMERALD template asset is supplied
-  PURPLE: "dark.pptx", // TODO: replace once PURPLE template asset is supplied
-  CRIMSON: "dark.pptx", // TODO: replace once CRIMSON template asset is supplied
-  GRAPHITE: "dark.pptx", // TODO: replace once GRAPHITE template asset is supplied
+  OCEAN: "meta-ads-ocean.pptx",
+  INDIGO: "meta-ads-indigo.pptx",
+  MOSS: "meta-ads-moss.pptx",
+  BURGUNDY: "meta-ads-burgundy.pptx",
+  STEEL: "meta-ads-steel.pptx",
+  COPPER: "meta-ads-copper.pptx",
 };
+
+/** True only for meta-ads-light.pptx — drives chart/table/comparison/creative light palettes. */
+export function isLightReportTemplate(template: ReportTemplate): boolean {
+  return template === "LIGHT";
+}
 
 export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buffer> {
   const fileName = TEMPLATE_FILES[template];
@@ -29,9 +37,8 @@ export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buff
 
 /**
  * Google Ads reports always use templates/google-ads-dark.pptx, regardless
- * of the client's own DARK/LIGHT/... color-template choice — there's only
- * one Google Ads template asset (matching the spec's ask), a real, flagged
- * gap versus Meta's per-color-template selection above, not an oversight.
+ * of the client's own color-template choice — there's only one Google Ads
+ * template asset today. TikTok uses tiktok-ads-dark.pptx (dark-style only).
  */
 export async function loadTemplateBufferForPlatform(
   platform: "META" | "GOOGLE" | "GA4" | "TIKTOK",
