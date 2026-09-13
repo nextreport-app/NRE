@@ -37,6 +37,8 @@ describe("buildReportData — Google platform", () => {
     expect(slide.costLabel).toBe("COST PER CONVERSION");
     expect(slide.metrics.spend).toBe("$350");
     expect(slide.dynamicMetrics.some((m) => m?.key === "conversions")).toBe(true);
+    const spendSlot = slide.dynamicMetrics.find((m) => m?.key === "cost" || m?.key === "spend");
+    expect(spendSlot?.value).not.toBe("—");
     expect(data.objectiveWarnings).toEqual([]);
   });
 });

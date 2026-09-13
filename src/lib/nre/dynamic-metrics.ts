@@ -51,6 +51,19 @@ export interface DynamicMetricValue {
  * variant of the same underlying metric — a real bug caught by
  * dynamic-metrics.test.ts, not just a hypothetical.
  */
+/**
+ * After normalizeGoogleCsvHeaders, unified-pipeline Google CSV uses Meta-shaped
+ * column names — map Google metric keys to those headers for slot lookup.
+ */
+const GOOGLE_UNIFIED_CSV_ALIASES: Partial<Record<string, string[]>> = {
+  cost: ["amount spent"],
+  clicks: ["link clicks"],
+  ctr: ["ctr (all)"],
+  avg_cpc: ["cpc (cost per link click)"],
+  conversions: ["results"],
+  cost_per_conv: ["cost per result"],
+};
+
 function resolveActualHeader(key: string, platform: "meta" | "google", headerMap: Map<string, string>): string | undefined {
   const dictionary = platform === "google" ? GOOGLE_METRIC_DICTIONARY : META_METRIC_DICTIONARY;
   for (const entry of dictionary) {
@@ -58,6 +71,12 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
     if (entry.type !== "primary" && entry.type !== "secondary") continue;
     const header = headerMap.get(entry.csvName);
     if (header) return header;
+  }
+  if (platform === "google") {
+    for (const alias of GOOGLE_UNIFIED_CSV_ALIASES[key] ?? []) {
+      const header = headerMap.get(alias);
+      if (header) return header;
+    }
   }
   return undefined;
 }
@@ -190,7 +209,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     }
 
     if (metric.format === "currency" && metric.perUnitOf) {
-      const actualHeader = headerMap.get(metric.csvName);
+      const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
       if (metric.perUnitOf === "__avg__") {
         if (!actualHeader) continue;
         const rawValues = rows.map((r) => parseCellNum(r._raw?.[actualHeader]));
@@ -204,7 +223,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       continue;
     }
 
-    const actualHeader = headerMap.get(metric.csvName);
+    const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
     if (!actualHeader) continue;
 
     if (metric.format === "text") {

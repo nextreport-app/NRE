@@ -1,13 +1,14 @@
 import { fetchTikTokIntegratedReport } from "@/lib/tiktok-api";
 import { computeLastNDaysIsoRange } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
+import { resolveTikTokApiResultFields } from "./tiktok-result-type";
 
 /** Meta-compatible CSV headers so TikTok reuses the existing NRE Meta pipeline. */
 const TIKTOK_AS_META_CSV_HEADERS = [
   "Campaign name",
   "Ad set name",
   "Day",
-  "Amount spent (USD)",
+  "Amount spent",
   "Reach",
   "Impressions",
   "CTR (All)",
@@ -37,8 +38,7 @@ function formatMoney(raw: string | undefined): string {
 function tiktokRowToCsvRow(row: { dimensions?: Record<string, string>; metrics?: Record<string, string> }): string[] {
   const m = row.metrics ?? {};
   const d = row.dimensions ?? {};
-  const conversions = m.conversion ?? "";
-  const hasConversions = conversions && parseFloat(conversions) > 0;
+  const { results, resultType, costPerResult } = resolveTikTokApiResultFields(m);
 
   return [
     m.campaign_name ?? "",
@@ -51,9 +51,9 @@ function tiktokRowToCsvRow(row: { dimensions?: Record<string, string>; metrics?:
     formatMoney(m.cpc),
     m.clicks ?? "",
     m.frequency ?? "",
-    hasConversions ? conversions : m.clicks ?? "",
-    hasConversions ? "Conversions" : "Link clicks",
-    hasConversions ? formatMoney(m.cost_per_conversion) : formatMoney(m.cpc),
+    results,
+    resultType,
+    costPerResult,
   ];
 }
 

@@ -37,7 +37,7 @@ export function detectGoogleObjectiveKey(headers: string[]): GoogleObjectiveKey 
   if (has("store visits", "cost per store visit")) return "local";
   if (has("asset group", "listing group")) return "performance_max";
   if (has("orders", "conv. value / cost", "units sold", "avg. cart size", "gross profit")) return "shopping";
-  if (has("trueview", "video played to", "avg. cpv")) return "video";
+  if (has("trueview", "video played to", "avg. cpv", "video views")) return "video";
   if (has("engagements", "engagement rate", "avg. cpe")) return "demand_gen";
   if (has("viewable impr.", "viewable rate", "avg. viewable cpm")) return "display";
   if (has("avg. cost") && !has("avg. cpc")) return "app";

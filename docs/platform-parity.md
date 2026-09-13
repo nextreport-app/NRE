@@ -17,12 +17,15 @@ GA4 stays on its own pipeline — out of scope here.
 - [x] Previous Month Summary — respects wizard platform (template + DB row)
 - [x] Creative preview error — platform-aware export instructions
 
-## Phase 2 — API sync & objective intelligence
+## Phase 2 — API sync & objective intelligence (in progress)
 
-- [ ] Google Ads API sync column richness (match CSV metric coverage)
-- [ ] TikTok API objective / result-type mapping beyond CSV parity
-- [ ] Google per-campaign-type objective engine (not only account-wide CONVERSIONS)
-- [ ] Dedicated TikTok AI prompt templates (today: Meta prompts, acceptable for CSV-shaped reports)
+- [x] Google unified-pipeline header aliases in dynamic-metrics (Meta-normalized CSV → Google slot lookup)
+- [x] Google Ads API sync — extra columns for campaign-type detection (conv. value, viewable impr., engagements, video views)
+- [x] TikTok API result-type mapping (`tiktok-result-type.ts` — not Meta pickResultAction)
+- [x] TikTok spend header currency-neutral; dedicated TikTok AI prompts
+- [x] TikTok deck labels — REACH no longer swapped to CLICKS (Google-only retext)
+- [x] Meta-only AI guard rules gated to `platform === "META"`
+- [ ] Google per-campaign-type objective on slides (still account-wide CONVERSIONS labels on slides; slots use detected type)
 - [ ] Deprecate unused `buildGoogleReportData` production path once parity tests pass
 
 ## Phase 3 — Render / share / historical polish

@@ -62,6 +62,7 @@ import type { AiCopy } from "../pptx/fill-tags";
 import { slideAiKey } from "../pptx/slide-keys";
 import { AI_UNAVAILABLE_TEXT, callAI, type AiKeys } from "./client";
 import { buildGoogleAdsInsightPrompt, buildGoogleAdsSummaryPrompt } from "./google-prompts";
+import { buildTikTokInsightPrompt, buildTikTokSummaryPrompt } from "./tiktok-prompts";
 import {
   buildFallbackInsights,
   buildFallbackSummary,
@@ -139,9 +140,13 @@ function endsComplete(trimmedText: string): boolean {
 
 /** Picks the platform-appropriate prompt-builder pair — see google-prompts.ts's own doc comment for why only the prompt templates themselves (not the surrounding fallback/cap/truncation-safety-net logic below, which is already generic over AiContext) need a Google Ads variant. */
 function promptBuildersFor(platform: Platform): { summary: typeof buildSummaryPrompt; insight: typeof buildInsightPrompt } {
-  return platform === "GOOGLE"
-    ? { summary: buildGoogleAdsSummaryPrompt, insight: buildGoogleAdsInsightPrompt }
-    : { summary: buildSummaryPrompt, insight: buildInsightPrompt };
+  if (platform === "GOOGLE") {
+    return { summary: buildGoogleAdsSummaryPrompt, insight: buildGoogleAdsInsightPrompt };
+  }
+  if (platform === "TIKTOK") {
+    return { summary: buildTikTokSummaryPrompt, insight: buildTikTokInsightPrompt };
+  }
+  return { summary: buildSummaryPrompt, insight: buildInsightPrompt };
 }
 
 export async function generateInsights(data: ReportData, keys: AiKeys): Promise<Map<string, AiCopy>> {
@@ -193,7 +198,7 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         const trimmedSummary = rawSummary!.trim();
         const countMismatch = resultCountMismatch(trimmedSummary, slide.ai.resultsNum);
         summaryFallback = isUnusableAi(trimmedSummary) || !endsComplete(trimmedSummary) || countMismatch
-          || aiCopyViolatesObjectiveRules(trimmedSummary, slide.ai);
+          || aiCopyViolatesObjectiveRules(trimmedSummary, slide.ai, data.platform);
         if (countMismatch) {
           console.warn(`[ai:generate-insights] AI summary result count mismatch for ${name} — forcing structured fallback`);
         }
@@ -233,7 +238,7 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
         const trimmedInsight = rawInsight!.trim();
         insightsFallback =
           isUnusableAi(trimmedInsight) || !endsComplete(trimmedInsight) || insightsLooksLikeLaundryList(trimmedInsight)
-          || aiCopyViolatesObjectiveRules(trimmedInsight, slide.ai);
+          || aiCopyViolatesObjectiveRules(trimmedInsight, slide.ai, data.platform);
         insights = insightsFallback ? buildFallbackInsights(slide.ai) : capInsights(trimmedInsight);
       }
 
