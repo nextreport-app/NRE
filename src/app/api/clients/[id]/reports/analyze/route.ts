@@ -60,7 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platform = platformOverride ?? detectedPlatform;
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
     if (!validation.valid) {
       return NextResponse.json(
         {

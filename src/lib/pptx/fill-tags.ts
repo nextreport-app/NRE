@@ -343,8 +343,9 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  * "CONVERSIONS"/"COST PER CONVERSION" for Google), so the Conversions/
  * Cost-per-Conversion cards need no template changes at all.
  */
+/** Google + TikTok exports use Cost/Clicks wording instead of Meta Ad Spend/Reach. */
 function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
-  if (platform !== "GOOGLE") return xml;
+  if (platform !== "GOOGLE" && platform !== "TIKTOK") return xml;
   let out = replaceLiteralText(xml, "AD SPEND", "COST");
   out = replaceLiteralText(out, "REACH", "CLICKS");
   out = replaceLiteralText(out, "CPC (All)", "AVG. CPC (All)");
@@ -738,9 +739,6 @@ export function buildHistoricalTableSlideXml(
   isLightTemplate = false,
   platform: Platform = "META",
 ): string {
-  if (platform === "GOOGLE") {
-    throw new Error("Historical comparison table is not supported for Google Ads yet.");
-  }
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
   const xml = fillCombinedTotalTable(template.xml, grid, {
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
@@ -772,7 +770,9 @@ export function buildTableSlideXml(
   // just with different header text, so no other table-filling logic here
   // needs to change.
   const grid =
-    platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(mtdRow, headers) : buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
+    platform === "GOOGLE"
+      ? buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers)
+      : buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
   // Row 1 (Period) is hidden whenever there's nothing to show it (no
   // Previous Month Data uploaded) — and ALWAYS for a Monthly report,
   // regardless of whether Previous Month Data exists: "the Combined Total

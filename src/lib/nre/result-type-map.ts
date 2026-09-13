@@ -46,6 +46,10 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
 
   // TRAFFIC
   link_click: { key: "link_clicks", resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", isReach: false },
+  // TikTok API sync + normalized exports
+  conversions: { key: "conversions", resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION", isReach: false },
+  "link clicks": { key: "link_clicks", resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", isReach: false },
+  "link click": { key: "link_clicks", resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", isReach: false },
   landing_page_view: { key: "landing_page_views", resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV", isReach: false },
   instagram_profile_visit: { key: "profile_visits", resultLabel: "PROFILE VISITS", costLabel: "COST PER VISIT", isReach: false },
 

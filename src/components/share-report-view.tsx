@@ -390,7 +390,7 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
   const grid = isHistoricalMultiMonth
     ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
     : data.platform === "GOOGLE"
-      ? buildGoogleCombinedTotalTableGrid(data.mtdRow, data.tableHeaderLabels)
+      ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels)
       : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
 
   const hidePeriodRow =
@@ -586,10 +586,21 @@ export function ShareReportView({
               >
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2"
-                  style={{ backgroundColor: visibleData.platform === "GOOGLE" ? "#4285F4" : "#1877F2" }}
+                  style={{
+                    backgroundColor:
+                      visibleData.platform === "GOOGLE"
+                        ? "#4285F4"
+                        : visibleData.platform === "TIKTOK"
+                          ? "#FE2C55"
+                          : "#1877F2",
+                  }}
                 />
                 <span className="text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]" style={{ letterSpacing: "0.08em" }}>
-                  {visibleData.platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}
+                  {visibleData.platform === "GOOGLE"
+                    ? "GOOGLE ADS"
+                    : visibleData.platform === "TIKTOK"
+                      ? "TIKTOK ADS"
+                      : "META ADS"}
                 </span>
               </div>
               <h1

@@ -7,6 +7,7 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { detectPlatform } from "@/lib/nre/google-columns";
+import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
@@ -63,7 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
 
   if (!validation.valid) {
     return NextResponse.json(
@@ -188,7 +189,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           {
             field: "mtdDailyCsv",
             message:
-              "Creative reporting requires an Ad-level CSV with an Ad Name column. Export from Meta Ads Manager → Ads tab.",
+              `Creative reporting requires an Ad-level CSV with an Ad Name column. Export from ${adsManagerName(platform)} → Ads tab.`,
           },
         ],
         warnings: [],

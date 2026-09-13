@@ -22,6 +22,8 @@
 import { useState, type ReactNode } from "react";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
+import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
+import type { Platform } from "@/lib/nre/google-columns";
 
 const SLIDE_BG = "#0d1b2e";
 const ACCENT = "#f6ad55";
@@ -94,15 +96,16 @@ function CoverSlide({
   clientName,
   dateRangeText,
 }: {
-  platform: "META" | "GOOGLE";
+  platform: Platform;
   reportType: WizardReportType;
   clientName: string;
   dateRangeText: string;
 }) {
+  const badge = sharePlatformBadge(platform);
   return (
     <div className="flex h-full flex-col justify-between">
       <div>
-        <SlideLabel>{platform === "GOOGLE" ? "GOOGLE ADS" : "META ADS"}</SlideLabel>
+        <SlideLabel>{badge.label}</SlideLabel>
         <SlideHeading>{reportTypeHeading(reportType)}</SlideHeading>
         <p className="mt-3 text-[12px] font-semibold text-white sm:text-sm">{clientName}</p>
         {dateRangeText && (
@@ -283,7 +286,7 @@ interface PreviewSlideDescriptor {
 }
 
 interface SlidePreviewCarouselProps {
-  platform: "META" | "GOOGLE";
+  platform: Platform;
   reportType: WizardReportType;
   previewKind: "normal" | "comparison";
   clientName: string;

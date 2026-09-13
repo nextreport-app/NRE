@@ -105,7 +105,7 @@ async function buildMetaData(
   platform: Platform = "META",
 ): Promise<{ error: string } | { data: ReportData }> {
   const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
   if (!validation.valid) {
     return { error: validation.errors.map((e) => e.message).join(" ") };
   }
@@ -243,7 +243,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // buildGoogleData/renderPptx below, which stay exactly as they were.
   if (reportType === "COMPARISON") {
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
     }
@@ -365,7 +365,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (reportType === "HISTORICAL") {
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers);
+    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
     }
@@ -541,7 +541,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           clientId: client.id,
           status: "GENERATING",
           reportType: "MONTHLY",
-          platform: "META",
+          platform,
           fileName,
           displayName: `Previous Month Summary — ${summaryData.periodRow.fullMonthLabel}`,
           shareToken: generateShareToken(),
@@ -565,7 +565,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         loadLogoAsset(client.logoUrl),
       ]);
 
-      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
       const pptxBuffer = await renderPptx({
         templateBuffer,
         data: summaryData,
@@ -677,7 +677,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reportTitle,
       agencyName: user?.agencyName,
       clientLogo,
-      isLightTemplate: platform === "META" && client.template === "LIGHT",
+      isLightTemplate: client.template === "LIGHT",
     });
 
     const filePath = await saveReportFile(report.id, pptxBuffer);
@@ -696,7 +696,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         reportData: data,
         aiCopy: Object.fromEntries(aiCopyBySlideKey),
         currencySymbol,
-        isLightTemplate: platform === "META" && client.template === "LIGHT",
+        isLightTemplate: client.template === "LIGHT",
         reportTitle,
         agencyName: user?.agencyName ?? null,
       },
