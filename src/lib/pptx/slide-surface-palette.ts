@@ -15,6 +15,8 @@ export interface SlideSurfacePalette {
   tablePeriodBFill: string;
   tableNameFill: string;
   tableTotalFill: string;
+  /** Header row label color — light templates keep a dark navy header bar with white text. */
+  tableHeaderLabel: string;
   changeFlatText: string;
   changeDarkText: string;
 }
@@ -30,6 +32,7 @@ export const SLIDE_SURFACE_DARK: SlideSurfacePalette = {
   tablePeriodBFill: "111f35",
   tableNameFill: "111f35",
   tableTotalFill: "1e3a5f",
+  tableHeaderLabel: "94a3b8",
   changeFlatText: "FFFFFF",
   changeDarkText: "0d1b2e",
 };
@@ -45,6 +48,7 @@ export const SLIDE_SURFACE_LIGHT: SlideSurfacePalette = {
   tablePeriodBFill: "f0ede8",
   tableNameFill: "f0ede8",
   tableTotalFill: "e5e0d8",
+  tableHeaderLabel: "FFFFFF",
   changeFlatText: "64748b",
   changeDarkText: "0d1b2e",
 };

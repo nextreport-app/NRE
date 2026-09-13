@@ -451,10 +451,11 @@ export interface RenderWebsitePptxInput {
   data: WebsiteReportData;
   accountName: string;
   agencyName?: string | null;
+  isLightTemplate?: boolean;
 }
 
 export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<Buffer> {
-  const { templateBuffer, data, accountName, agencyName } = input;
+  const { templateBuffer, data, accountName, agencyName, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
   const tableRels = buildWebsiteSlideRels(template.background.mediaTarget);
   const breakdowns = normalizeBreakdowns(data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS);
@@ -465,105 +466,105 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
       rels: template.cover.rels,
     },
     {
-      xml: buildWebsiteOverviewSlideXml(template.campaign, data),
+      xml: buildWebsiteOverviewSlideXml(template.campaign, data, isLightTemplate),
       rels: template.campaign.rels,
     },
   ];
 
   if (data.conversionMetrics.length > 0) {
     slides.push({
-      xml: buildWebsiteConversionSlideXml(template.campaign, data),
+      xml: buildWebsiteConversionSlideXml(template.campaign, data, isLightTemplate),
       rels: template.campaign.rels,
     });
   }
 
   if (breakdowns.device) {
     slides.push({
-      xml: buildWebsiteDeviceTableSlideXml(data, template.background),
+      xml: buildWebsiteDeviceTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.channels) {
     slides.push({
-      xml: buildWebsiteChannelTableSlideXml(data, template.background),
+      xml: buildWebsiteChannelTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.geo) {
     slides.push({
-      xml: buildWebsiteGeoTableSlideXml(data, template.background),
+      xml: buildWebsiteGeoTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.campaigns) {
     slides.push({
-      xml: buildWebsiteCampaignTableSlideXml(data, template.background),
+      xml: buildWebsiteCampaignTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.sources) {
     slides.push({
-      xml: buildWebsiteSourceTableSlideXml(data, template.background),
+      xml: buildWebsiteSourceTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.demographics) {
     slides.push({
-      xml: buildWebsiteDemographicsSlideXml(data, template.background),
+      xml: buildWebsiteDemographicsSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.operatingSystem) {
     slides.push({
-      xml: buildWebsiteTechTableSlideXml(data, template.background, "Operating System", "OS", data.operatingSystems),
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Operating System", "OS", data.operatingSystems, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.browser) {
     slides.push({
-      xml: buildWebsiteTechTableSlideXml(data, template.background, "Browser", "BROWSER", data.browsers),
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Browser", "BROWSER", data.browsers, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.newVsReturning) {
     slides.push({
-      xml: buildWebsiteAudienceSlideXml(data, template.background),
+      xml: buildWebsiteAudienceSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.dayOfWeek) {
     slides.push({
-      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Day of Week", "DAY", data.dayOfWeek),
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Day of Week", "DAY", data.dayOfWeek, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.hourOfDay) {
     slides.push({
-      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Hour", "HOUR", data.hourOfDay),
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Hour", "HOUR", data.hourOfDay, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.conversionEvents) {
     slides.push({
-      xml: buildWebsiteConversionEventsSlideXml(data, template.background),
+      xml: buildWebsiteConversionEventsSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.topPages && data.topPages.length > 0) {
     slides.push({
-      xml: buildWebsiteTopPagesSlideXml(data, template.background),
+      xml: buildWebsiteTopPagesSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }

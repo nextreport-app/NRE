@@ -7,7 +7,7 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { renderWebsitePptx } from "@/lib/pptx/render";
-import { loadTemplateBuffer } from "@/lib/pptx/templates";
+import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
 import { saveReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -118,12 +118,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       csvBuffer,
     });
 
-    const templateBuffer = await loadTemplateBuffer(client.template);
+    const templateBuffer = await loadTemplateBufferForPlatform("GA4", client.template);
     const pptxBuffer = await renderWebsitePptx({
       templateBuffer,
       data: websiteData,
       accountName: client.accountName,
       agencyName: user?.agencyName,
+      isLightTemplate: isLightReportTemplate(client.template),
     });
 
     const storedPath = await saveReportFile(report.id, pptxBuffer);

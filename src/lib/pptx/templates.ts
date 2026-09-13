@@ -1,11 +1,9 @@
 /**
- * Maps a client's chosen ReportTemplate to its .pptx template asset.
+ * Maps a client's chosen ReportTemplate to its .pptx template asset per platform.
  *
- * DARK and LIGHT are the two fully tested base themes. OCEAN/INDIGO/MOSS/
- * BURGUNDY/STEEL/COPPER are color-background forks of dark.pptx — same slide
- * layout, tags, fonts, and fill-tags logic; only theme accent5/6 gradient and
- * card surface fills differ. Generate fresh assets with:
- *   node scripts/generate-meta-template-variants.mjs
+ * Meta: dark.pptx, meta-ads-light.pptx, and six color forks (see generate script).
+ * GA4: ga4-dark.pptx, ga4-light.pptx, and matching ga4-* color forks.
+ * Google Ads / TikTok: single dark platform-branded asset each (color choice TBD).
  */
 
 import fs from "node:fs/promises";
@@ -14,7 +12,7 @@ import type { ReportTemplate } from "@/generated/prisma/enums";
 
 const TEMPLATES_DIR = path.join(process.cwd(), "templates");
 
-export const TEMPLATE_FILES: Record<ReportTemplate, string> = {
+export const META_TEMPLATE_FILES: Record<ReportTemplate, string> = {
   DARK: "dark.pptx",
   LIGHT: "meta-ads-light.pptx",
   OCEAN: "meta-ads-ocean.pptx",
@@ -25,26 +23,47 @@ export const TEMPLATE_FILES: Record<ReportTemplate, string> = {
   COPPER: "meta-ads-copper.pptx",
 };
 
-/** True only for meta-ads-light.pptx — drives chart/table/comparison/creative light palettes. */
+export const GA4_TEMPLATE_FILES: Record<ReportTemplate, string> = {
+  DARK: "ga4-dark.pptx",
+  LIGHT: "ga4-light.pptx",
+  OCEAN: "ga4-ocean.pptx",
+  INDIGO: "ga4-indigo.pptx",
+  MOSS: "ga4-moss.pptx",
+  BURGUNDY: "ga4-burgundy.pptx",
+  STEEL: "ga4-steel.pptx",
+  COPPER: "ga4-copper.pptx",
+};
+
+/** @deprecated Use META_TEMPLATE_FILES — kept for existing tests/imports. */
+export const TEMPLATE_FILES = META_TEMPLATE_FILES;
+
+/** True only for light .pptx assets — drives chart/table/comparison/creative/website light palettes. */
 export function isLightReportTemplate(template: ReportTemplate): boolean {
   return template === "LIGHT";
 }
 
-export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buffer> {
-  const fileName = TEMPLATE_FILES[template];
+async function readTemplateFile(fileName: string): Promise<Buffer> {
   return fs.readFile(path.join(TEMPLATES_DIR, fileName));
 }
 
+export async function loadTemplateBuffer(template: ReportTemplate): Promise<Buffer> {
+  return readTemplateFile(META_TEMPLATE_FILES[template]);
+}
+
+export async function loadGa4TemplateBuffer(template: ReportTemplate): Promise<Buffer> {
+  return readTemplateFile(GA4_TEMPLATE_FILES[template]);
+}
+
 /**
- * Google Ads reports always use templates/google-ads-dark.pptx, regardless
- * of the client's own color-template choice — there's only one Google Ads
- * template asset today. TikTok uses tiktok-ads-dark.pptx (dark-style only).
+ * Platform-aware template loader — Meta and GA4 honor the client's full color
+ * library; Google Ads and TikTok use a single dark platform asset for now.
  */
 export async function loadTemplateBufferForPlatform(
   platform: "META" | "GOOGLE" | "GA4" | "TIKTOK",
   template: ReportTemplate,
 ): Promise<Buffer> {
-  if (platform === "GOOGLE") return fs.readFile(path.join(TEMPLATES_DIR, "google-ads-dark.pptx"));
-  if (platform === "TIKTOK") return fs.readFile(path.join(TEMPLATES_DIR, "tiktok-ads-dark.pptx"));
+  if (platform === "GOOGLE") return readTemplateFile("google-ads-dark.pptx");
+  if (platform === "TIKTOK") return readTemplateFile("tiktok-ads-dark.pptx");
+  if (platform === "GA4") return loadGa4TemplateBuffer(template);
   return loadTemplateBuffer(template);
 }
