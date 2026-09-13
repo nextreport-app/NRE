@@ -13,6 +13,11 @@ const GOOGLE_CSV_HEADERS = [
   "Avg. CPC",
   "Conversions",
   "Cost / conv.",
+  "Conv. value",
+  "Conv. value / cost",
+  "Viewable impr.",
+  "Engagements",
+  "Video views",
 ] as const;
 
 function formatMicrosCost(micros: string | number | undefined): string {
@@ -42,12 +47,27 @@ function formatCostPerConversion(value: number | undefined): string {
   return value.toFixed(2);
 }
 
+function formatOptionalNumber(value: number | undefined): string {
+  if (value === undefined || value === null || !Number.isFinite(value) || value === 0) return "";
+  return String(value);
+}
+
+function formatConvValueOverCost(conversionsValue: number | undefined, costMicros: string | number | undefined): string {
+  const cost = typeof costMicros === "number" ? costMicros / 1_000_000 : Number(costMicros) / 1_000_000;
+  if (!conversionsValue || !Number.isFinite(conversionsValue) || !Number.isFinite(cost) || cost <= 0) return "";
+  return (conversionsValue / cost).toFixed(2);
+}
+
 function searchRowToCsvRow(row: GoogleAdsSearchRow): string[] {
   const metrics = row.metrics ?? {};
   const costMicros = metrics.costMicros ?? metrics.cost_micros;
   const avgCpc = metrics.averageCpc ?? metrics.average_cpc;
   const conversions = metrics.conversions;
   const costPerConv = metrics.costPerConversion ?? metrics.cost_per_conversion;
+  const conversionsValue = metrics.conversionsValue ?? metrics.conversions_value;
+  const viewableImpressions = metrics.viewableImpressions ?? metrics.viewable_impressions;
+  const engagements = metrics.engagements;
+  const videoViews = metrics.videoViews ?? metrics.video_views;
 
   return [
     row.campaign?.name ?? "",
@@ -60,6 +80,11 @@ function searchRowToCsvRow(row: GoogleAdsSearchRow): string[] {
     formatAvgCpc(avgCpc),
     formatConversions(conversions),
     formatCostPerConversion(costPerConv),
+    formatOptionalNumber(conversionsValue),
+    formatConvValueOverCost(conversionsValue, costMicros),
+    formatOptionalNumber(viewableImpressions),
+    formatOptionalNumber(engagements),
+    formatOptionalNumber(videoViews),
   ];
 }
 
@@ -97,7 +122,11 @@ export async function fetchGoogleReportCsv(input: FetchGoogleReportCsvInput): Pr
       metrics.ctr,
       metrics.average_cpc,
       metrics.conversions,
-      metrics.cost_per_conversion
+      metrics.cost_per_conversion,
+      metrics.conversions_value,
+      metrics.viewable_impressions,
+      metrics.engagements,
+      metrics.video_views
     FROM ad_group
     WHERE segments.date BETWEEN '${sinceIso}' AND '${untilIso}'
       AND metrics.impressions > 0

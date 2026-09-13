@@ -363,7 +363,12 @@ export function resultCountMismatch(aiText: string, expectedCount: number): bool
  * Deliberately the same decimal-point-aware logic as the cut point above,
  * so a $-amount or percentage never gets miscounted as an extra sentence.
  */
-export function aiCopyViolatesObjectiveRules(text: string, ctx: AiContext): boolean {
+export function aiCopyViolatesObjectiveRules(
+  text: string,
+  ctx: AiContext,
+  platform: "META" | "GOOGLE" | "TIKTOK" = "META",
+): boolean {
+  if (platform !== "META") return false;
   if (!isMetaFormLeadsCampaign(ctx)) return false;
   const lower = text.toLowerCase();
   return (

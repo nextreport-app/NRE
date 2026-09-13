@@ -168,6 +168,11 @@ export interface GoogleAdsSearchRow {
     conversions_value?: number;
     costPerConversion?: number;
     cost_per_conversion?: number;
+    viewableImpressions?: number;
+    viewable_impressions?: number;
+    engagements?: number;
+    videoViews?: number;
+    video_views?: number;
   };
 }
 

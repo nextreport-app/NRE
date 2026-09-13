@@ -343,9 +343,13 @@ const INACTIVE_TAG_COLOR = "fbbf24";
  * "CONVERSIONS"/"COST PER CONVERSION" for Google), so the Conversions/
  * Cost-per-Conversion cards need no template changes at all.
  */
-/** Google + TikTok exports use Cost/Clicks wording instead of Meta Ad Spend/Reach. */
+/**
+ * Google Ads only — retext Meta template card labels to Cost/Clicks/Avg. CPC.
+ * TikTok keeps REACH (API + CSV include real reach); applying Google's
+ * REACH→CLICKS swap to TikTok was a Meta-pattern copy that mislabeled decks.
+ */
 function applyGoogleAdsCardLabels(xml: string, platform: Platform): string {
-  if (platform !== "GOOGLE" && platform !== "TIKTOK") return xml;
+  if (platform !== "GOOGLE") return xml;
   let out = replaceLiteralText(xml, "AD SPEND", "COST");
   out = replaceLiteralText(out, "REACH", "CLICKS");
   out = replaceLiteralText(out, "CPC (All)", "AVG. CPC (All)");
