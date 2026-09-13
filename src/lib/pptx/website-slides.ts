@@ -102,8 +102,7 @@ export function buildWebsiteOverviewSlideXml(
   isLightTemplate = false,
 ): string {
   const slide = metricSlideData("Traffic Overview", data.dateRangeLabel, data.overviewMetrics);
-  void isLightTemplate;
-  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true);
+  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightTemplate);
 }
 
 export function buildWebsiteConversionSlideXml(
@@ -120,8 +119,7 @@ export function buildWebsiteConversionSlideXml(
           ? "Product Sign-ups"
           : "Content Engagement";
   const slide = metricSlideData(title, data.dateRangeLabel, data.conversionMetrics);
-  void isLightTemplate;
-  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true);
+  return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightTemplate);
 }
 
 function truncateCell(text: string, max = 42): string {

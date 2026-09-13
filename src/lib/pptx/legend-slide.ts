@@ -3,7 +3,8 @@
  */
 
 import { enforceMinFontSize, forceRunStyle, replaceLiteralText, setShapeNormAutofit } from "./ooxml";
-import { REPORT_HEADER_COLOR, REPORT_HEADER_SIZE_PT } from "./fill-tags";
+import { REPORT_HEADER_SIZE_PT } from "./fill-tags";
+import { reportHeaderColor } from "./light-theme-colors";
 
 export interface LegendEntry {
   term: string;
@@ -111,7 +112,7 @@ function parseTemplateLegendSlots(templateXml: string): TemplateLegendSlot[] {
   return slots;
 }
 
-export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[]): string {
+export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[], isLightTemplate = false): string {
   const slots = parseTemplateLegendSlots(templateXml);
   const usedSlotIndex = new Set<number>();
   const unmatchedEntries: LegendEntry[] = [];
@@ -161,7 +162,7 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[])
   xml = forceRunStyle(xml, "METRIC ABBREVIATION GUIDE", {
     bold: true,
     sizePt: REPORT_HEADER_SIZE_PT,
-    color: REPORT_HEADER_COLOR,
+    color: reportHeaderColor(isLightTemplate),
   });
 
   return xml;

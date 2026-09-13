@@ -31,6 +31,7 @@ import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, estimateTextWidthPt, fitCardLabel, fitFontSizePt } from "./text-fit";
 import { resolveMetricIconId, type MetricIconId } from "./metric-icons";
+import { campaignTypeLabelColor, reportHeaderColor } from "./light-theme-colors";
 
 // Metric card label/value spacing fix — see ensureCardLabelValueGap's own
 // doc comment in ooxml.ts. Applied to every one of the 8 card slots,
@@ -240,6 +241,7 @@ export interface CoverSlideOptions {
    * engine this function otherwise serves unchanged.
    */
   reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "WEBSITE";
+  isLightTemplate?: boolean;
 }
 
 export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, options: CoverSlideOptions = {}): string {
@@ -286,7 +288,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       // replacing the template's own theme accent-4 (blue). Size stays the
       // template's native 20pt — Round L only asked to unify colors here,
       // not sizes, on the non-campaign slide types.
-      REPORT_TITLE: { color: REPORT_HEADER_COLOR },
+      REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate) },
     },
   );
 }
@@ -445,6 +447,7 @@ export function buildCampaignOrAdSetSlideXml(
   useAdditionalMetricsSlide = false,
   /** Website Traffic reports — hide the "(Campaign)" badge and use website header chrome. */
   websiteMode = false,
+  isLightTemplate = false,
 ): string {
   const adGroupOrSetLabel =
     platform === "GOOGLE" || platform === "TIKTOK" ? " (Ad Group)" : " (Ad Set)";
@@ -471,12 +474,13 @@ export function buildCampaignOrAdSetSlideXml(
         : slide.kind === "campaign" && slide.isMonthTotal
           ? " (Month Total)"
           : " (Campaign)";
-  const typeLabelColor =
-    slide.kind === "campaign" && slide.isMonthTotal
-      ? MONTH_TOTAL_LABEL_COLOR
+  const typeLabelColor = websiteMode
+    ? campaignTypeLabelColor(isLightTemplate, "campaign")
+    : slide.kind === "campaign" && slide.isMonthTotal
+      ? campaignTypeLabelColor(isLightTemplate, "monthTotal")
       : isAdSetKind
-        ? AD_SET_LABEL_COLOR
-        : CAMPAIGN_LABEL_COLOR;
+        ? campaignTypeLabelColor(isLightTemplate, "adset")
+        : campaignTypeLabelColor(isLightTemplate, "campaign");
 
   // Small "Paused"/"Inactive" badge right after the name (and after the
   // type label, if present) — null (no badge at all) for active
@@ -657,7 +661,11 @@ export function buildCampaignOrAdSetSlideXml(
   // shrunken 14pt — see REPORT_HEADER_SIZE_PT's own doc comment.
   const header = resolveSlideReportHeader(slide, reportType);
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
-  xml = forceRunStyle(xml, header, { bold: true, sizePt: REPORT_HEADER_SIZE_PT, color: REPORT_HEADER_COLOR });
+  xml = forceRunStyle(xml, header, {
+    bold: true,
+    sizePt: REPORT_HEADER_SIZE_PT,
+    color: reportHeaderColor(isLightTemplate),
+  });
   return xml;
 }
 
@@ -669,6 +677,7 @@ export function buildPausedSlideXml(
   dateRangeFallback: string,
   reportType: ReportType = "WEEKLY",
   platform: Platform = "META",
+  isLightTemplate = false,
 ): string {
   const summaryText = truncateToSentence(pausedMessage, CAMPAIGN_SUMMARY_MAX_CHARS);
   const insightsText = truncateToSentence(
@@ -709,7 +718,11 @@ export function buildPausedSlideXml(
   xml = applyGoogleAdsCardLabels(xml, platform);
   const header = slideReportHeader(reportType);
   xml = replaceLiteralText(xml, "YOUR WEEKLY PERFORMANCE REPORT", header);
-  xml = forceRunStyle(xml, header, { bold: true });
+  xml = forceRunStyle(xml, header, {
+    bold: true,
+    sizePt: REPORT_HEADER_SIZE_PT,
+    color: reportHeaderColor(isLightTemplate),
+  });
   return xml;
 }
 
@@ -751,7 +764,7 @@ export function buildHistoricalTableSlideXml(
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
     bold: true,
     sizePt: REPORT_HEADER_SIZE_PT,
-    color: REPORT_HEADER_COLOR,
+    color: reportHeaderColor(isLightTemplate),
   });
   out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", "MULTI-MONTH PERFORMANCE OVERVIEW");
   return out;
@@ -791,10 +804,11 @@ export function buildTableSlideXml(
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
   });
+  const headerColor = reportHeaderColor(isLightTemplate);
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
     bold: true,
     sizePt: REPORT_HEADER_SIZE_PT,
-    color: REPORT_HEADER_COLOR,
+    color: headerColor,
   });
   if (combinedTotalStory.trim()) {
     out = insertShapeBeforeSpTreeClose(
@@ -806,7 +820,7 @@ export function buildTableSlideXml(
         h: 28,
         text: combinedTotalStory.trim(),
         sizePt: 16,
-        colorHex: REPORT_HEADER_COLOR,
+        colorHex: headerColor,
         align: "ctr",
       }),
     );

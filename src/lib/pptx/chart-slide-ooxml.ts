@@ -6,7 +6,8 @@ import type { ShareChartData } from "../nre/share-report";
 import { formatGroupedDonutLegendEntry, type VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID, DONUT_HOLE_RATIO } from "./chart-slide-constants";
-import { REPORT_HEADER_COLOR, VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
+import { VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
+import { reportHeaderColor } from "./light-theme-colors";
 import {
   resultBarColumns,
   resultBarFillWidth,
@@ -262,7 +263,7 @@ export function buildMtdOverviewOoxmlShapes(
       text: model.title,
       sizePt: VISUAL_CHART_TITLE_SIZE_PT,
       bold: true,
-      colorHex: REPORT_HEADER_COLOR,
+      colorHex: reportHeaderColor(isLightTemplate),
       align: "ctr",
       anchor: "t",
       clipOverflow: true,

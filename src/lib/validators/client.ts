@@ -31,29 +31,13 @@ export const SELECTABLE_CURRENCIES = CURRENCIES.filter(
 // Kept as the full Prisma enum (still required for clientSchema to accept
 // existing rows that have one of the 4 disabled values — see
 // SELECTABLE_TEMPLATES below for what the form's dropdown actually offers).
-export const TEMPLATES = [
-  "DARK",
-  "LIGHT",
-  "OCEAN",
-  "INDIGO",
-  "MOSS",
-  "BURGUNDY",
-  "STEEL",
-  "COPPER",
-] as const;
+export const TEMPLATES = ["DARK", "LIGHT"] as const;
 
-/** All eight Meta color templates exposed for preview — trim to five (Dark + Light + your top 3) after you pick. */
 export const SELECTABLE_TEMPLATES = TEMPLATES;
 
 export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
   DARK: "Deep Navy (Dark) — primary, most tested",
-  LIGHT: "Warm Amber (Light) — premium, warm-tinted",
-  OCEAN: "Deep Ocean Teal",
-  INDIGO: "Royal Indigo",
-  MOSS: "Forest Moss",
-  BURGUNDY: "Deep Burgundy",
-  STEEL: "Cool Steel Blue",
-  COPPER: "Warm Copper Bronze",
+  LIGHT: "Light — cream background, dark text",
 };
 
 export interface TimezoneOption {
