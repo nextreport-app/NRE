@@ -12,8 +12,8 @@ import { filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type
 import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
 import {
   defaultMetricSelectionForCampaign,
-  googleCampaignObjectiveLabels,
   googleObjectiveKeyFromHeaders,
+  googleSlideObjectiveLabels,
   metricsDictionaryPlatform,
   usesMetaObjectiveEngine,
 } from "@/lib/nre/platform-reporting";
@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
     const metricsPlatform = metricsDictionaryPlatform(platform);
     const googleObjectiveKey = platform === "GOOGLE" ? googleObjectiveKeyFromHeaders(mtdParsed.headers) : undefined;
-    const googleLabels = googleCampaignObjectiveLabels();
+    const googleLabels = googleSlideObjectiveLabels(googleObjectiveKey ?? "search");
 
     const objectiveCache = parseObjectiveCache(client.campaignObjectiveCache);
     const campaignObjectiveEntries: [

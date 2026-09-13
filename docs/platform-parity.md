@@ -17,7 +17,7 @@ GA4 stays on its own pipeline — out of scope here.
 - [x] Previous Month Summary — respects wizard platform (template + DB row)
 - [x] Creative preview error — platform-aware export instructions
 
-## Phase 2 — API sync & objective intelligence (in progress)
+## Phase 2 — API sync & objective intelligence (complete)
 
 - [x] Google unified-pipeline header aliases in dynamic-metrics (Meta-normalized CSV → Google slot lookup)
 - [x] Google Ads API sync — extra columns for campaign-type detection (conv. value, viewable impr., engagements, video views)
@@ -25,8 +25,9 @@ GA4 stays on its own pipeline — out of scope here.
 - [x] TikTok spend header currency-neutral; dedicated TikTok AI prompts
 - [x] TikTok deck labels — REACH no longer swapped to CLICKS (Google-only retext)
 - [x] Meta-only AI guard rules gated to `platform === "META"`
-- [ ] Google per-campaign-type objective on slides (still account-wide CONVERSIONS labels on slides; slots use detected type)
-- [ ] Deprecate unused `buildGoogleReportData` production path once parity tests pass
+- [x] Google per-campaign-type objective labels on slides (match buildGoogleSlots slot 4/5)
+- [x] Deprecate orphan `buildGoogleReportData` — removed; `google-combined-total.ts` retains table grid helper
+- [x] Previous Month Summary `ReportData.platform` respects wizard platform
 
 ## Phase 3 — Render / share / historical polish
 
@@ -39,4 +40,4 @@ GA4 stays on its own pipeline — out of scope here.
 
 - `src/lib/nre/__tests__/platform-reporting.test.ts` — adapter dispatch
 - Meta E2E: `fetch-meta-report-rows.test.ts`
-- Google: `google-report-data.test.ts` (standalone builder); add `buildReportData` + Google CSV integration test in Phase 2
+- Google: `google-build-report-data.test.ts`, `google-combined-total.test.ts`, `dynamic-metrics-google-unified.test.ts`

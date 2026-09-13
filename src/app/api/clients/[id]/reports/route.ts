@@ -530,6 +530,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       currencySymbol,
       timezone: client.timezone,
       periodRows,
+      platform,
     });
 
     const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");

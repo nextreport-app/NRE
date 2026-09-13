@@ -1,5 +1,5 @@
 import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid } from "@/lib/nre/report-data";
-import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-report-data";
+import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-total";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
