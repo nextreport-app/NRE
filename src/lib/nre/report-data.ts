@@ -930,9 +930,7 @@ function buildLast30DaysChartSlide(params: {
   slideCampaignNames?: string[];
 }): ChartSlideData | null {
   const chartRange = computeCreativeRangeIso(params.filteredMtdDailyRows, params.now, 30, params.timezone);
-  const chartRawRows = chartRange
-    ? filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso)
-    : [];
+  const chartRawRows = filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso);
   const chartRows: AggRow[] = aggregateRows(chartRawRows);
   const chartGroups: Record<string, AggRow[]> = {};
   chartRows.forEach((row) => {
@@ -971,10 +969,14 @@ function buildLast30DaysChartSlide(params: {
 
   if (chartCampaigns.length === 0 || totalAllSpend <= 0) return null;
 
-  const chartRangeLabel = chartRange ? getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso) : "";
-  const chartRangeYear = chartRange ? parseDate(chartRange.endIso)?.year : undefined;
+  const chartRangeLabel = getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso);
+  const chartRangeYear = parseDate(chartRange.endIso)?.year;
   const periodSubLabel =
     chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;
+  const campaignSpendByObjective = new Map<string, number>();
+  chartCampaigns.forEach((c) => {
+    campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
+  });
   const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, params.campaignObjectiveMap);
   const chartSnapshotRow = computeTableRow(
     chartRows as MetricRow[],
@@ -998,9 +1000,10 @@ function buildLast30DaysChartSlide(params: {
       totalAllSpendFormatted: fmtCurrency(totalAllSpend, params.currencySymbol),
       activeCampaignCount,
       currencySymbol: params.currencySymbol,
+      campaignSpendByObjective,
     }),
     reportType: params.reportType,
-    mtdMonthName: chartRange ? getMonthName(chartRange.endIso) : params.mtdRow.monthName,
+    mtdMonthName: getMonthName(chartRange.endIso) ?? params.mtdRow.monthName,
     periodSubLabel,
   };
 }

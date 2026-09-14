@@ -44,6 +44,15 @@ export function fmtCurrency2dp(v: unknown, symbol: string): string {
   return symbol + parseCellNum(v).toFixed(2);
 }
 
+/** Whole dollars when .00; otherwise 2dp with comma grouping — chart donut legend spend. */
+export function fmtCurrencyAdaptive(v: unknown, symbol: string): string {
+  const n = Math.round(parseCellNum(v) * 100) / 100;
+  if (Math.abs(n - Math.round(n)) < 0.005) {
+    return fmtCurrency(n, symbol);
+  }
+  return symbol + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 /** Port of fmtNumber_ */
 export function fmtNumber(v: unknown): string {
   return Math.round(parseCellNum(v)).toLocaleString("en-US");

@@ -149,15 +149,14 @@ export function computeDailyRangeIso(rows: NreRow[], now: Date = new Date(), tim
   return { startIso: iso, endIso: iso };
 }
 
-/** Default creative analysis window — trailing 30 days ending yesterday. */
+/** Default creative / Last-30-Days chart window — trailing N days ending calendar yesterday (same anchor as weekly ranges, not CSV-max capped). */
 export function computeCreativeRangeIso(
-  rows: NreRow[],
+  _rows: NreRow[],
   now: Date = new Date(),
   days = 30,
   timezone = "UTC",
-): DateRangeIso | null {
-  const yesterday = computeEffectiveYesterday(rows, now, timezone);
-  if (!yesterday) return null;
+): DateRangeIso {
+  const yesterday = getCalendarYesterday(now, timezone);
   const start = addDays(yesterday, -(days - 1));
   return { startIso: toIsoDate(start), endIso: toIsoDate(yesterday) };
 }

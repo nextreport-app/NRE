@@ -72,10 +72,15 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.summaryLine).toContain("Total Spend");
   });
 
-  it("adds Other spend segment when objective spends do not sum to total account spend", () => {
+  it("uses full campaign spend per objective for the donut (not row-filtered partial spend)", () => {
     const model = buildVisualChartSlideModel(
       chart({
         totalAllSpend: 3520,
+        campaigns: [
+          campaign("Instant Forms", { spend: 2818, resLabel: "META FORM LEADS", cprLabel: "COST PER LEAD" }),
+          campaign("Website TOF", { spend: 567.12, resLabel: "WEBSITE LEADS", cprLabel: "COST PER WEBSITE LEAD", results: 0 }),
+          campaign("Messaging", { spend: 135, resLabel: "MESSAGING / CONVERSATIONS", cprLabel: "COST PER CONVERSATION", results: 3, cpr: 44.92 }),
+        ],
         snapshot: {
           mode: "multi",
           mtdSpendFormatted: "$3,520",
@@ -114,11 +119,55 @@ describe("buildVisualChartSlideModel", () => {
       "$",
     );
 
-    const other = model.groupedDonut!.find((s) => s.name === "Other spend");
-    expect(other).toBeDefined();
-    expect(other!.percentage).toBeGreaterThan(0);
+    expect(model.groupedDonut).toHaveLength(3);
+    expect(model.groupedDonut!.find((s) => s.name === "Other spend")).toBeUndefined();
+    const website = model.groupedDonut!.find((s) => s.name === "Website Leads");
+    expect(website?.spendLabel).toBe("$567.12");
     const totalPct = model.groupedDonut!.reduce((sum, s) => sum + s.percentage, 0);
     expect(totalPct).toBeCloseTo(100, 0);
+  });
+
+  it("uses cost per result wording for messaging conversations", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 135,
+        campaigns: [campaign("Messaging", { spend: 135, resLabel: "MESSAGING / CONVERSATIONS", cprLabel: "COST PER CONVERSATION", results: 3, cpr: 44.92 })],
+        snapshot: {
+          mode: "multi",
+          mtdSpendFormatted: "$135",
+          activeCampaignCount: 1,
+          objectives: [
+            {
+              label: "MESSAGING / CONVERSATIONS",
+              resultsValue: "3",
+              cprValue: "$44.92",
+              cprLabel: "COST PER CONVERSATION",
+              spendFormatted: "$135",
+            },
+            {
+              label: "META FORM LEADS",
+              resultsValue: "0",
+              cprValue: "N/A",
+              cprLabel: "COST PER LEAD",
+              spendFormatted: "$0",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "3",
+          primaryResultsLabel: "MESSAGING / CONVERSATIONS",
+          primaryCprValue: "$44.92",
+          primaryCprLabel: "COST PER CONVERSATION",
+          primarySpendFormatted: "$135",
+        },
+      }),
+      "$",
+    );
+
+    const msgBar = model.resultBars.find((b) => b.name === "Messaging / Conversations");
+    expect(msgBar?.statLine).toContain("cost per result");
+    expect(msgBar?.statLine).not.toContain("CP CONVE");
+    expect(model.summaryLine).toContain("cost per result");
+    expect(model.summaryLine).not.toContain("CP CONVE");
   });
 
   it("groups by objective for multi-objective accounts", () => {
