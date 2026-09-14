@@ -22,7 +22,11 @@ import {
   MAX_TOTAL_METRICS,
   type SelectedMetric,
 } from "@/lib/nre/available-metrics";
-import { OBJECTIVE_DROPDOWN_OPTIONS, type ObjectiveInfo } from "@/lib/nre/result-type-map";
+import {
+  OBJECTIVE_DROPDOWN_OPTIONS,
+  objectiveInfoForDetectedLabel,
+  type ObjectiveInfo,
+} from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey, type AdSetGroup } from "@/lib/nre/ad-sets";
@@ -1249,9 +1253,7 @@ export function ReportUploadWizard({
    * truth as its pre-selected value, even outside the common list.
    */
   function objectiveInfoForResultLabel(resultLabel: string, costLabel: string): ObjectiveInfo {
-    const match = OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.resultLabel === resultLabel);
-    if (match) return match;
-    return { key: resultLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_"), resultLabel, costLabel, isReach: false };
+    return objectiveInfoForDetectedLabel(resultLabel, costLabel);
   }
 
   /** Converts the /metrics route's `campaignObjectives` JSON (plain object, `{resultLabel, costLabel, source}` per normalized campaign name — source is "cached" | "resultType" | "columnData", see objective.ts's ObjectiveConfidence) into the wizard's own Map<string, ObjectiveInfo> + confidence state shapes. */

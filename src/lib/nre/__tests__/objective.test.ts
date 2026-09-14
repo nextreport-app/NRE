@@ -61,9 +61,10 @@ describe("getResultLabels", () => {
     ["Form lead", "META FORM LEADS", "COST PER LEAD"],
     ["Leads (form)", "META FORM LEADS", "COST PER LEAD"], // the real, common Meta result_type string
     ["Lead (form)", "META FORM LEADS", "COST PER LEAD"],
-    ["Messaging conversation", "MESSAGING LEADS", "COST PER CONVERSATION"],
-    ["Messenger lead", "MESSAGING LEADS", "COST PER CONVERSATION"],
-    ["Message start", "MESSAGING LEADS", "COST PER CONVERSATION"],
+    ["Messaging conversation", "MESSAGING / CONVERSATIONS", "COST PER CONVERSATION"],
+    ["Messenger lead", "MESSAGING / CONVERSATIONS", "COST PER CONVERSATION"],
+    ["Message start", "MESSAGING / CONVERSATIONS", "COST PER CONVERSATION"],
+    ["Messaging conversations started", "MESSAGING / CONVERSATIONS", "COST PER CONVERSATION"],
     ["Instagram conversation", "INSTAGRAM DM LEADS", "COST PER CONVERSATION"],
     ["Instagram DM", "INSTAGRAM DM LEADS", "COST PER CONVERSATION"],
     ["Whatsapp conversation", "WHATSAPP LEADS", "COST PER CONVERSATION"],
@@ -158,7 +159,7 @@ describe("getResultLabels", () => {
 });
 
 describe("detectObjectiveFromCampaignRows — mixed-objective account exports", () => {
-  it("picks MESSAGING LEADS for a messaging campaign even when Website leads exists for other campaigns in the same file", () => {
+  it("picks MESSAGING / CONVERSATIONS for a messaging campaign even when Website leads exists for other campaigns in the same file", () => {
     const rows: MetricRow[] = [
       metricRow({
         campaign_name: "Lead Campaign_Messaging",
@@ -176,10 +177,10 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
       }),
     ];
     expect(detectObjectiveFromCampaignRows(rows)).toEqual({
-      resultLabel: "MESSAGING LEADS",
+      resultLabel: "MESSAGING / CONVERSATIONS",
       costLabel: "COST PER CONVERSATION",
     });
-    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING LEADS");
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
   });
 
   it("uses campaign-name hint when messaging column exists but has zero data yet", () => {
@@ -193,10 +194,10 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
       }),
     ];
     expect(detectObjectiveFromCampaignRows(rows)).toEqual({
-      resultLabel: "MESSAGING LEADS",
+      resultLabel: "MESSAGING / CONVERSATIONS",
       costLabel: "COST PER CONVERSATION",
     });
-    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING LEADS");
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
   });
 
   it("does not let file-level WEBSITE LEADS column presence override a messaging campaign", () => {
@@ -206,11 +207,55 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
     );
     const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
     const messagingRows = rows.filter((r) => r.campaign_name === "Lead Campaign_Messaging");
-    expect(resolveCampaignObjective(messagingRows).resultLabel).toBe("MESSAGING LEADS");
+    expect(resolveCampaignObjective(messagingRows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
     const objectiveMap = buildCampaignObjectiveMap(rows);
     expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
-      "MESSAGING LEADS",
+      "MESSAGING / CONVERSATIONS",
     );
+  });
+
+  it("ignores dominant Link clicks result_type when messaging column data exists (API-sync-shaped rows)", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "3", "Link clicks": "248" },
+        result_type: "Link clicks",
+        link_clicks: 248,
+        results: 0,
+        spend: 100,
+      }),
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "", "Link clicks": "16" },
+        result_type: "Link clicks",
+        link_clicks: 16,
+        results: 0,
+        spend: 13,
+      }),
+    ];
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
+  });
+
+  it("ignores dominant Meta leads result_type on a messenger campaign when messaging data exists", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "3", Leads: "0" },
+        result_type: "Leads (form)",
+        leads: 0,
+        results: 0,
+        spend: 50,
+      }),
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "", Leads: "0" },
+        result_type: "Leads (form)",
+        leads: 0,
+        results: 0,
+        spend: 40,
+      }),
+    ];
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
   });
 });
 
@@ -229,9 +274,9 @@ describe("detectObjectiveFromColumns", () => {
     });
   });
 
-  it("detects MESSAGING LEADS when a 'Messaging conversations started' header exists", () => {
+  it("detects MESSAGING / CONVERSATIONS when a 'Messaging conversations started' header exists", () => {
     expect(detectObjectiveFromColumns(["Campaign name", "Messaging conversations started"])).toEqual({
-      resultLabel: "MESSAGING LEADS",
+      resultLabel: "MESSAGING / CONVERSATIONS",
       costLabel: "COST PER CONVERSATION",
     });
   });

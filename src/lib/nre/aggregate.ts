@@ -260,6 +260,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
           actualResults = resolution.source === "priority1" ? g.mobile_app_installs : g.results;
           break;
         case "MESSAGING LEADS":
+        case "MESSAGING / CONVERSATIONS":
           actualResults = resolution.source === "priority1" ? g.messaging_conversations_started : g.results;
           break;
         case "VIDEO VIEWS":

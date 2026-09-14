@@ -381,7 +381,11 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
   if (isVideo && metric.key === "thruplays" && csvKeys.has("thruplays")) return true;
   if (isVideo && metric.key === "video_p100" && csvKeys.has("video_p100")) return true;
   if (isVideo && (metric.key === "cost_per_thruplay" || metric.key === "cost_per_result") && (hasCpr || (hasSpend && csvKeys.has("results")))) return true;
-  const isMessaging = upper === "MESSAGING LEADS" || upper === "MESSAGING CONVERSATIONS STARTED" || upper === "CONVERSATIONS";
+  const isMessaging =
+    upper === "MESSAGING LEADS" ||
+    upper === "MESSAGING / CONVERSATIONS" ||
+    upper === "MESSAGING CONVERSATIONS STARTED" ||
+    upper === "CONVERSATIONS";
   if (isMessaging && (metric.key === "messaging_conversations_started" || metric.key === "results") && (csvKeys.has("messaging_conversations_started") || csvKeys.has("results"))) return true;
   if (isMessaging && (metric.key === "cost_per_conversation" || metric.key === "cost_per_result") && (hasCpr || (hasSpend && csvKeys.has("results")))) return true;
   return false;
@@ -523,6 +527,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot8 = byKey("META", "video_p100")!;
       break;
     case "MESSAGING LEADS":
+    case "MESSAGING / CONVERSATIONS":
     case "MESSAGING CONVERSATIONS STARTED":
     case "CONVERSATIONS":
       slot4 = byKey("META", "messaging_conversations_started")!;
