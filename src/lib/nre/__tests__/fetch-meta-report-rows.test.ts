@@ -20,6 +20,15 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("returns null instead of link_click for lead-family goals when only traffic actions exist", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "Lead Campaign_Messaging",
+      actions: [{ action_type: "link_click", value: "248" }],
+      optimization_goal: "LEAD_GENERATION",
+    };
+    expect(pickResultAction(row)).toBeNull();
+  });
+
   it("prefers messaging actions over higher link_click counts for messenger lead campaigns", () => {
     const row: MetaInsightRow = {
       actions: [

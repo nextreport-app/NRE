@@ -155,10 +155,30 @@ function firstActionWithValue(
   return null;
 }
 
+const LEAD_FAMILY_GOALS = new Set([
+  "LEAD_GENERATION",
+  "OUTCOME_LEADS",
+  "QUALITY_LEAD",
+  "MESSAGES",
+  "CONVERSATIONS",
+]);
+
+function isMessagingCampaignRow(row: MetaInsightRow): boolean {
+  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
+  return /messag|messenger/.test(haystack);
+}
+
 /** Picks the objective-aligned result — NOT the highest action count (link clicks must not steal leads). */
 export function pickResultAction(row: MetaInsightRow): { action_type: string; value: string } | null {
   const map = actionValueMap(row.actions);
   if (map.size === 0) return null;
+
+  const messagingCampaign = isMessagingCampaignRow(row);
+
+  if (messagingCampaign) {
+    const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
+    if (messagingMatch) return messagingMatch;
+  }
 
   if (row.optimization_goal) {
     const goalKey = row.optimization_goal.toUpperCase();
@@ -169,7 +189,18 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     }
   }
 
-  return firstActionWithValue(map, RESULT_ACTION_PRIORITY);
+  const fallback = firstActionWithValue(map, RESULT_ACTION_PRIORITY);
+  if (!fallback) return null;
+
+  const goalKey = row.optimization_goal?.toUpperCase();
+  const isLeadFamily = Boolean(goalKey && LEAD_FAMILY_GOALS.has(goalKey));
+  if (isLeadFamily || messagingCampaign) {
+    if (fallback.action_type === "link_click" || fallback.action_type === "landing_page_view") {
+      return null;
+    }
+  }
+
+  return fallback;
 }
 
 function sumActionValues(map: Map<string, number>, actionTypes: readonly string[]): number {

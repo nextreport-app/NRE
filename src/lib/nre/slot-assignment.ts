@@ -353,6 +353,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     // pattern (messaging conversations started) — kept alongside the
     // product's own given case labels for spec fidelity.
     case "MESSAGING LEADS":
+    case "MESSAGING / CONVERSATIONS":
     case "MESSAGING CONVERSATIONS STARTED":
     case "CONVERSATIONS":
       slot4 = slot("messaging_conversations_started", "CONVERSATIONS", "number", v("messaging_conversations_started"));
@@ -714,6 +715,7 @@ export function redistributeCardSlots(
   // protecting them globally would make them permanently sticky on every
   // campaign, not just Reach/Landing-Page-Views ones.
   const extraResultKeys: Record<string, string[]> = {
+    messaging: ["messaging_conversations_started"],
     messaging_leads: ["messaging_conversations_started"],
     messaging_conversations_started: ["messaging_conversations_started"],
     conversations: ["messaging_conversations_started"],
@@ -723,6 +725,7 @@ export function redistributeCardSlots(
     reach: ["frequency"],
     unique_reach: ["frequency"],
     landing_page_views: ["cost_per_lpv"],
+    messaging: ["cost_per_conversation"],
     messaging_leads: ["cost_per_conversation"],
     messaging_conversations_started: ["cost_per_conversation"],
     conversations: ["cost_per_conversation"],

@@ -66,7 +66,18 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   website_lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   contact: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "onsite_conversion.lead_grouped": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
-  "onsite_conversion.messaging_conversation_started_7d": { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },
+  "onsite_conversion.messaging_conversation_started_7d": {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
+  "messaging conversations started": {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
   leadgen_grouped: { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
   onsite_web_lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "offsite_conversion.fb_pixel_lead": { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
@@ -79,10 +90,30 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   "leads (form)": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
 
   // MESSAGING
-  messaging_conversation_started_7d: { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },
-  new_messaging_connection: { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },
-  whatsapp_message_send: { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },
-  "onsite_conversion.messaging_first_reply_7d": { key: "messaging", resultLabel: "CONVERSATIONS", costLabel: "COST PER CONVERSATION", isReach: false },
+  messaging_conversation_started_7d: {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
+  new_messaging_connection: {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
+  whatsapp_message_send: {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
+  "onsite_conversion.messaging_first_reply_7d": {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+  },
 
   // CALLS
   phone_call: { key: "phone_calls", resultLabel: "PHONE CALLS", costLabel: "COST PER CALL", isReach: false },
@@ -126,11 +157,50 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   onsite_conversion: { key: "conversions", resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION", isReach: false },
 };
 
+/** Canonical messaging objective — one label everywhere (engine + dropdown). */
+export const MESSAGING_OBJECTIVE: ObjectiveInfo = {
+  key: "messaging",
+  resultLabel: "MESSAGING / CONVERSATIONS",
+  costLabel: "COST PER CONVERSATION",
+  isReach: false,
+};
+
+const MESSAGING_LABEL_ALIASES = new Set([
+  "MESSAGING LEADS",
+  "CONVERSATIONS",
+  "MESSAGING CONVERSATIONS STARTED",
+  "MESSAGING / CONVERSATIONS",
+]);
+
+/** Collapses legacy/alternate messaging labels to the single dropdown label. */
+export function normalizeObjectiveLabel(resultLabel: string): string {
+  const upper = resultLabel.toUpperCase().trim();
+  return MESSAGING_LABEL_ALIASES.has(upper) ? MESSAGING_OBJECTIVE.resultLabel : resultLabel;
+}
+
+/** Maps a detected resultLabel/costLabel pair to a dropdown ObjectiveInfo (never synthesizes a duplicate messaging option). */
+export function objectiveInfoForDetectedLabel(resultLabel: string, costLabel: string): ObjectiveInfo {
+  const normalized = normalizeObjectiveLabel(resultLabel);
+  const match = OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.resultLabel === normalized);
+  if (match) return match;
+  return {
+    key: normalized.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+    resultLabel: normalized,
+    costLabel,
+    isReach: false,
+  };
+}
+
 /** Case-insensitive exact-string lookup — `null` for anything not in RESULT_TYPE_MAP (the caller falls back to objective.ts's fuzzy/column/data-value priority chain in that case). */
 export function resolveObjectiveFromResultType(resultType: string | null | undefined): ObjectiveInfo | null {
   if (!resultType) return null;
   const normalized = resultType.toLowerCase().trim();
-  return RESULT_TYPE_MAP[normalized] ?? null;
+  const info = RESULT_TYPE_MAP[normalized];
+  if (!info) return null;
+  return {
+    ...info,
+    resultLabel: normalizeObjectiveLabel(info.resultLabel),
+  };
 }
 
 /**

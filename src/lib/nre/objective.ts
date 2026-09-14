@@ -9,7 +9,9 @@
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
-import { resolveObjectiveFromResultType } from "./result-type-map";
+import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType } from "./result-type-map";
+
+const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
 export interface ResultLabels {
   resultLabel: string;
@@ -54,10 +56,10 @@ const OBJECTIVE_CATALOG: { resultLabel: string; costLabel: string; pattern: RegE
     canonicalText: "Meta lead",
   },
   {
-    resultLabel: "MESSAGING LEADS",
-    costLabel: "COST PER CONVERSATION",
+    resultLabel: MESSAGING_LABEL,
+    costLabel: MESSAGING_COST_LABEL,
     pattern: /messaging\s*conversations?|messenger\s*leads?|message\s*starts?/,
-    canonicalText: "Messenger lead",
+    canonicalText: "Messaging conversations started",
   },
   {
     resultLabel: "INSTAGRAM DM LEADS",
@@ -273,8 +275,7 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
 
   if (has("website leads")) return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   if (has("meta leads")) return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
-  if (has("messaging conversations started"))
-    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION" };
+  if (has("messaging conversations started")) return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
   if (has("whatsapp conversations started"))
     return { resultLabel: "WHATSAPP LEADS", costLabel: "COST PER CONVERSATION" };
   if (has("phone calls") || has("calls")) return { resultLabel: "CALL LEADS", costLabel: "COST PER CALL" };
@@ -316,7 +317,7 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   }
 
   const signals = [
-    { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION", value: messagingTotal },
+    { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL, value: messagingTotal },
     { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: websiteLeadsTotal },
     { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", value: metaLeadsTotal },
   ].filter((s) => s.value > 0);
@@ -331,7 +332,7 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
 
   if (hasHeader("messaging conversations started") && /messag|messenger/.test(campaignName)) {
-    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION" };
+    return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
   }
   if (hasHeader("website leads") && /website/.test(campaignName)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
@@ -488,7 +489,7 @@ export function resolveObjective(
     return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL", source: "priority1" };
   }
   if (messaging > 0) {
-    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION", source: "priority1" };
+    return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL, source: "priority1" };
   }
   if (thruplays > 0) {
     return { resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW", source: "priority1" };
@@ -878,6 +879,53 @@ function classifyLowConfidenceTier(rows: MetricRow[]): "medium" | "low" | "verif
   return "verify";
 }
 
+function sumCampaignMessagingTotal(rows: MetricRow[]): number {
+  let total = 0;
+  for (const row of rows) {
+    total += sumRawColumnByKeywords(row._raw, [
+      "messaging conversations started",
+      "whatsapp conversations started",
+    ]);
+  }
+  return total;
+}
+
+function isMessagingCampaignName(rows: MetricRow[]): boolean {
+  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
+  return /messag|messenger/.test(name);
+}
+
+/** Meta always populates link clicks / LPV / generic lead result_types on lead campaigns — never trust them over real messaging column data or a messaging campaign name. */
+function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: string): boolean {
+  const rt = dominantResultType.toLowerCase().trim();
+  const messagingTotal = sumCampaignMessagingTotal(rows);
+  const isMessagingCampaign = isMessagingCampaignName(rows);
+
+  if (
+    rt === "link_click" ||
+    rt === "link clicks" ||
+    rt === "link click" ||
+    rt === "landing_page_view"
+  ) {
+    return messagingTotal > 0 || isMessagingCampaign;
+  }
+
+  const metaLeadResultTypes = new Set([
+    "onsite_conversion.lead_grouped",
+    "onsite_conversion.lead",
+    "leadgen_grouped",
+    "leads (form)",
+    "meta lead",
+    "meta leads",
+    "lead",
+  ]);
+  if (metaLeadResultTypes.has(rt) && (messagingTotal > 0 || isMessagingCampaign)) {
+    return true;
+  }
+
+  return false;
+}
+
 /** Internal implementation shared by resolveCampaignObjective (public, unchanged signature — every existing caller/test keeps working exactly as before) and resolveCampaignObjectiveWithConfidence (new — the Objective Confirmation wizard step's own confidence badge, Part 6). See resolveCampaignObjective's own doc comment above for the full priority-chain writeup. */
 function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
   if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
@@ -920,7 +968,9 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       rows.some(
         (r) => parseCellNum(r.website_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.meta_leads) > 0,
       );
-    if (!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) {
+    const ignoreIncidentalTraffic =
+      shouldIgnoreDominantResultType(rows, dominantResultType);
+    if ((!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) && !ignoreIncidentalTraffic) {
       const info = resolveObjectiveFromResultType(dominantResultType);
       if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high", requiresConfirmation: false };
     }

@@ -93,6 +93,7 @@ const RESULT_LABEL_TO_PACK: Record<string, PackId> = {
   "INITIATE CHECKOUT": "sales_initiate_checkout",
   "MESSAGING LEADS": "leads_messaging",
   CONVERSATIONS: "leads_messaging",
+  "MESSAGING / CONVERSATIONS": "leads_messaging",
 };
 
 export function packForResultLabel(resultLabel: string): MetricPack | undefined {
