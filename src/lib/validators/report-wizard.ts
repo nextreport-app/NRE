@@ -160,9 +160,9 @@ export function resolveShowBudgetPacingOnCover(formData: FormData | null, client
   return parseBooleanFormField(formData, "showBudgetPacingOnCover") ?? clientDefault;
 }
 
-/** When false, skip loading previous-month data for the Combined Total period row. Defaults to true. */
+/** When false, skip loading previous-month data for the Combined Total period row. Defaults to false. */
 export function resolveIncludePreviousMonthComparison(formData: FormData | null): boolean {
-  return parseBooleanFormField(formData, "includePreviousMonthComparison") ?? true;
+  return parseBooleanFormField(formData, "includePreviousMonthComparison") ?? false;
 }
 
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
