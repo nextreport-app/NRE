@@ -52,7 +52,7 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
     2:
       platform === "TIKTOK" || platform === "GOOGLE"
         ? "Select campaigns, ad groups & objectives"
-        : "Select campaigns & confirm objectives",
+        : "Select campaigns & campaign objectives",
     3: "Review metric cards",
     4: "Choose report type and generate",
   };
@@ -62,6 +62,6 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
 export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform): string {
   if (step === 4) return "Pick a report type, then generate.";
-  if (step === 2) return "Pick campaigns first, then confirm objectives below.";
+  if (step === 2) return "Pick campaigns first, then set campaign objectives below.";
   return "";
 }

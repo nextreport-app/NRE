@@ -212,16 +212,9 @@ export function WizardDataSourcePanel({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <DataSourceBadge label="API" />
-          <p className="text-[14px] font-semibold text-white">Connect your data via API</p>
-        </div>
-        <p className="mt-2 text-[13px] text-dash-ink-secondary">Reduce manual work</p>
-        <p className="mt-0.5 text-[13px] text-dash-ink-secondary">
-          Your data connects automatically — no more spreadsheets.
-        </p>
-        <p className="mt-2 text-[12px] text-dash-ink-secondary/80">
-          Last 30 days through yesterday — same data as our CSV guide. Previous month loads automatically.
+        <p className="text-[13px] text-dash-ink-secondary">Reduce manual work — no more spreadsheets.</p>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Last 30 days through yesterday — Previous month loads automatically.
         </p>
       </div>
 
@@ -438,9 +431,6 @@ export function WizardDataSourcePanel({
           >
             {syncStatus === "loading" ? "Importing campaign data…" : "Import campaign data"}
           </button>
-          <p className="text-[11px] text-dash-ink-secondary/75">
-            Creative reports still need an ad-level CSV.
-          </p>
         </>
       ) : null}
     </div>
@@ -490,7 +480,7 @@ export function WizardDataSourceToggle({
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">Connect your data via API</span>
               <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-                Reduce manual work — your data connects automatically
+                Your data connects automatically
               </span>
             </span>
           </button>

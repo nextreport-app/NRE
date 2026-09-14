@@ -139,7 +139,7 @@ const STEP_HEADINGS: Record<Step, string> = {
 
 const STEP_SUBTITLES: Record<Step, string> = {
   1: "Connect via official API or upload a CSV — the tip below shows the correct date range for today.",
-  2: "Pick campaigns and ad sets, then confirm objectives below.",
+  2: "Pick campaigns and ad sets, then set campaign objectives below.",
   3: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
   4: "Pick a report type, set dates if needed, review the summary, then generate.",
 };
