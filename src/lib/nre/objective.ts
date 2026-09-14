@@ -295,6 +295,55 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
 }
 
 /**
+ * Per-campaign column detection for mixed-objective account exports.
+ * File-level detectObjectiveFromColumns wrongly picks WEBSITE LEADS when
+ * that column exists for another campaign — this sums each lead-family
+ * column for one campaign's rows only.
+ */
+export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels | null {
+  if (rows.length === 0) return null;
+
+  let websiteLeadsTotal = 0;
+  let metaLeadsTotal = 0;
+  let messagingTotal = 0;
+  for (const row of rows) {
+    websiteLeadsTotal += parseCellNum(row.website_leads);
+    metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
+    messagingTotal += sumRawColumnByKeywords(row._raw, [
+      "messaging conversations started",
+      "whatsapp conversations started",
+    ]);
+  }
+
+  const signals = [
+    { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION", value: messagingTotal },
+    { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: websiteLeadsTotal },
+    { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", value: metaLeadsTotal },
+  ].filter((s) => s.value > 0);
+
+  if (signals.length >= 1) {
+    signals.sort((a, b) => b.value - a.value);
+    return { resultLabel: signals[0].resultLabel, costLabel: signals[0].costLabel };
+  }
+
+  const campaignName = (rows[0].campaign_name || "").toLowerCase();
+  const headers = Object.keys(rows[0]._raw || {});
+  const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
+
+  if (hasHeader("messaging conversations started") && /messag|messenger/.test(campaignName)) {
+    return { resultLabel: "MESSAGING LEADS", costLabel: "COST PER CONVERSATION" };
+  }
+  if (hasHeader("website leads") && /website/.test(campaignName)) {
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && /instant|form/.test(campaignName)) {
+    return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  }
+
+  return null;
+}
+
+/**
  * Numeric/text signals resolveObjective needs — a normalized subset of
  * either a raw NreRow (already-parsed numbers) or an aggregate.ts GroupAcc
  * accumulator. All fields optional/defaultable to 0 so a caller can pass
@@ -565,6 +614,10 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   // aggregateRows' own resolveObjective pass, so they resolve via Priority 2
   // here regardless.
   const rawHeaders = rows.length > 0 ? Object.keys(rows[0]._raw || {}) : [];
+  // File-level column presence only — per-campaign lead-family disambiguation
+  // belongs in resolveCampaignObjective/buildCampaignObjectiveMap, not here.
+  // Using detectObjectiveFromCampaignRows at this call site misclassifies rows
+  // when multiple campaigns share one upload (mixed-account exports).
   const columnObjective = detectObjectiveFromColumns(rawHeaders);
 
   rows.forEach((row) => {
@@ -584,6 +637,10 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
         // correctly no-oping both checks) on an already-aggregated AggRow,
         // which has no _raw and whose result_type aggregateRows already
         // resolved correctly upstream via these same two signals.
+        messaging_conversations_started: sumRawColumnByKeywords(row._raw, [
+          "messaging conversations started",
+          "whatsapp conversations started",
+        ]),
         initiate_checkout: sumRawColumnByKeywords(row._raw, ["initiate checkout"]),
         add_to_cart: sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]),
         ad_set_name: row.ad_set_name,
@@ -919,6 +976,29 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       const tier = funnelCandidates.length === 1 ? "medium" : "low";
       return { resultLabel: best.resultLabel, costLabel: best.costLabel, confidence: tier, requiresConfirmation: false };
     }
+  }
+
+  const campaignLead = detectObjectiveFromCampaignRows(rows);
+  if (campaignLead) {
+    let websiteLeadsTotal = 0;
+    let metaLeadsTotal = 0;
+    let messagingTotal = 0;
+    for (const row of rows) {
+      websiteLeadsTotal += parseCellNum(row.website_leads);
+      metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
+      messagingTotal += sumRawColumnByKeywords(row._raw, [
+        "messaging conversations started",
+        "whatsapp conversations started",
+      ]);
+    }
+    const activeLeadSignals = [messagingTotal, websiteLeadsTotal, metaLeadsTotal].filter((v) => v > 0).length;
+    const tier: ObjectiveConfidence["confidence"] =
+      activeLeadSignals > 1 ? "verify" : activeLeadSignals === 1 ? "low" : "medium";
+    return {
+      ...campaignLead,
+      confidence: tier,
+      requiresConfirmation: tier === "verify",
+    };
   }
 
   const primary = pickPrimaryResultGroup(getResultGroups(rows));

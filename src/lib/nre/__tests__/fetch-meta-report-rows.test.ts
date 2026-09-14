@@ -20,6 +20,20 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("prefers messaging actions over higher link_click counts for messenger lead campaigns", () => {
+    const row: MetaInsightRow = {
+      actions: [
+        { action_type: "link_click", value: "248" },
+        { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "3" },
+      ],
+      optimization_goal: "LEAD_GENERATION",
+    };
+    expect(pickResultAction(row)).toEqual({
+      action_type: "onsite_conversion.messaging_conversation_started_7d",
+      value: "3",
+    });
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal", () => {
     const row: MetaInsightRow = {
       actions: [

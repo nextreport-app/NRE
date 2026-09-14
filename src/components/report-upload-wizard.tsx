@@ -1120,6 +1120,23 @@ export function ReportUploadWizard({
     previousMonthUpdatedAt?: string | null;
   };
 
+  /** API-sync artifacts use a synthetic filename — discard when switching to manual CSV upload. */
+  function isApiSyncArtifact(file: File | null): boolean {
+    return Boolean(file?.name.includes("-api-sync-"));
+  }
+
+  function handleDataSourceModeChange(mode: WizardDataSource) {
+    if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
+      setMtdFile(null);
+      setAnalyzeStatus("idle");
+      setAnalyzeErrors([]);
+      setAnalyzeMessage(null);
+      setApiSyncStatus("idle");
+      setApiSyncError(null);
+    }
+    setDataSourceMode(mode);
+  }
+
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
   async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
@@ -2206,7 +2223,7 @@ export function ReportUploadWizard({
 
           {selectedPlatformCard && (!platformPickerExpanded || !hasSavedPlatformPreference) && (
             <div className="space-y-3">
-              <WizardDataSourceToggle value={dataSourceMode} onChange={setDataSourceMode} />
+              <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
 
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
