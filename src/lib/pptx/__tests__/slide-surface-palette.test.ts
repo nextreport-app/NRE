@@ -9,6 +9,6 @@ describe("slideSurfacePalette", () => {
   it("returns light palette for light template", () => {
     expect(slideSurfacePalette(true)).toEqual(SLIDE_SURFACE_LIGHT);
     expect(slideSurfacePalette(true).text).toBe("0d1b2e");
-    expect(slideSurfacePalette(true).cardFill).toBe("f0ede8");
+    expect(slideSurfacePalette(true).cardFill).toBe("ffffff");
   });
 });

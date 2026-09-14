@@ -40,12 +40,15 @@ describe("Report template assets", () => {
     expect(isLightReportTemplate("DARK")).toBe(false);
   });
 
-  it("removes layout corner ellipse but keeps the cover Meta badge gradient", async () => {
+  it("polishes light layout backgrounds without corner ellipse or losing Meta badge", async () => {
     const buffer = fs.readFileSync(path.join(TEMPLATES_DIR, "meta-ads-light.pptx"));
     const zip = await JSZip.loadAsync(buffer);
     const layout = await zip.file("ppt/slideLayouts/slideLayout1.xml")!.async("string");
     const cover = await zip.file("ppt/slides/slide1.xml")!.async("string");
     expect(layout.includes("Google Shape;14;p2")).toBe(false);
+    expect(layout.includes("Light Theme Top Accent")).toBe(true);
+    expect(layout.includes('srgbClr val="FFFFFF"')).toBe(true);
+    expect(layout.includes("<a:gradFill>")).toBe(true);
     expect(cover.includes("Google Shape;24;p4")).toBe(true);
   });
 

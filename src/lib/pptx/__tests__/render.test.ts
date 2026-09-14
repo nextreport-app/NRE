@@ -1198,7 +1198,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     fs.writeFileSync(outPath, buffer);
 
     const { rowFillColors } = inspectTableSlide(outPath, 6);
-    expect(rowFillColors[1]).toBe("F0D9B5");
+    expect(rowFillColors[1]).toBe("EDE6DA");
     expect(rowFillColors[1]).not.toBe("111F35");
 
     fs.unlinkSync(outPath);
