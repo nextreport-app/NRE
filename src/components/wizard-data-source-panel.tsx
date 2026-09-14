@@ -199,11 +199,10 @@ export function WizardDataSourcePanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3.5">
-        <p className="text-[14px] font-semibold text-white">Official API access — skip the CSV export</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Connect once in Account Settings, pick your ad account here, and we&apos;ll pull the last 30 complete
-          days of daily campaign data (ending yesterday) — same range as our CSV download guide.
+      <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
+        <p className="text-[14px] font-semibold text-white">Sync from API</p>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Last 30 days through yesterday — same data as our CSV guide. Previous month loads automatically.
         </p>
       </div>
 
@@ -407,12 +406,6 @@ export function WizardDataSourcePanel({
 
       {connected && configured ? (
         <>
-          <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
-            Syncs the last 30 complete days (ending yesterday) with daily breakdown — same date range and columns as our CSV
-            guide. Previous month is auto-fetched when missing or stale; use the campaign checkboxes below to exclude
-            campaigns you don&apos;t manage. Weekly, Monthly, Comparison, Multi-month, and Demo reports all work from API
-            sync. Creative reports still need an Ad-level CSV upload.
-          </p>
           {syncError ? (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
               {syncError}
@@ -426,12 +419,11 @@ export function WizardDataSourcePanel({
           >
             {syncStatus === "loading" ? "Syncing from API…" : "Sync data & analyze"}
           </button>
+          <p className="text-[11px] text-dash-ink-secondary/75">
+            Creative reports still need an ad-level CSV.
+          </p>
         </>
       ) : null}
-
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">
-        Prefer a manual export? Switch to <span className="text-dash-ink">Upload CSV</span> above.
-      </p>
     </div>
   );
 }
@@ -466,7 +458,7 @@ export function WizardDataSourceToggle({
       >
         <span className="block text-[13px] font-semibold">Sync from API</span>
         <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-          Last 30 days + previous month auto-fetch
+          No manual export
         </span>
       </button>
     </div>
