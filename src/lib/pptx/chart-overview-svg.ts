@@ -74,8 +74,11 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
       );
       angle += sweep;
     }
+    const cx = x + d / 2;
+    const cy = y + d / 2;
     parts.push(
-      `<text x="${x + d / 2}" y="${y + d / 2}" text-anchor="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(model.groupedDonutCenterLabel)}</text>`,
+      `<text x="${cx}" y="${cy - 4}" text-anchor="middle" dominant-baseline="middle" fill="${INK}" font-family="Poppins" font-size="20" font-weight="700">${escapeXml(model.groupedDonutCenterLabel)}</text>`,
+      `<text x="${cx}" y="${cy + 14}" text-anchor="middle" dominant-baseline="middle" fill="${MUTED}" font-family="Poppins" font-size="12" font-weight="700">TOTAL SPEND</text>`,
     );
     let legendY = y + d + 24;
     for (const seg of model.groupedDonut) {

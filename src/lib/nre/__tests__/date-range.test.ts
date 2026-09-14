@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeCreativeRangeIso,
   computeCsvDateBounds,
   computeEffectiveYesterday,
   computeMonthComparisonRangeOptions,
@@ -43,6 +44,14 @@ describe("computeEffectiveYesterday", () => {
 
   it("returns null when no row has a parseable date", () => {
     expect(computeEffectiveYesterday([{ _raw: {} }], new Date("2026-07-25T12:00:00Z"))).toBeNull();
+  });
+});
+
+describe("computeCreativeRangeIso", () => {
+  it("anchors Last 30 Days to calendar yesterday, not the CSV's latest row", () => {
+    const rows = daysInclusive("2026-08-01", "2026-09-12");
+    const now = new Date("2026-09-14T12:00:00Z"); // calendar yesterday = Sep 13
+    expect(computeCreativeRangeIso(rows, now, 30)).toEqual({ startIso: "2026-08-15", endIso: "2026-09-13" });
   });
 });
 

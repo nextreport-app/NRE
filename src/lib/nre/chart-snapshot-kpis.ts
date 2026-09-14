@@ -1,4 +1,4 @@
-import { fmtCurrency } from "./format";
+import { fmtCurrency, fmtCurrencyAdaptive } from "./format";
 import type { ResultGroup } from "./objective";
 import { CHART_SNAPSHOT_OBJECTIVE_MAX } from "./chart-metrics-table";
 
@@ -35,15 +35,23 @@ export function buildChartSnapshotKpis(params: {
   totalAllSpendFormatted: string;
   activeCampaignCount: number;
   currencySymbol: string;
+  /** Full campaign spend per objective — chart donut uses this instead of row-filtered mtdGroups spend. */
+  campaignSpendByObjective?: Map<string, number>;
 }): ChartSnapshotKpis {
   const objectives: ChartSnapshotObjective[] = params.mtdResultColumns.map((col) => {
     const group = params.mtdGroups.find((g) => g.label === col.label);
+    const campaignSpend = params.campaignSpendByObjective?.get(col.label);
+    const spend =
+      campaignSpend !== undefined ? campaignSpend : (group?.totalSpend ?? 0);
     return {
       label: col.label,
       resultsValue: col.value,
       cprValue: col.cprValue,
       cprLabel: col.costLabel,
-      spendFormatted: fmtCurrency(group?.totalSpend ?? 0, params.currencySymbol),
+      spendFormatted:
+        campaignSpend !== undefined
+          ? fmtCurrencyAdaptive(spend, params.currencySymbol)
+          : fmtCurrency(spend, params.currencySymbol),
     };
   });
 

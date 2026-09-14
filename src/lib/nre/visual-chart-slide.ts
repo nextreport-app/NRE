@@ -4,7 +4,7 @@
  * Right: result bars sorted by spend — name, results + cost, then bar underneath.
  */
 
-import { fmtCurrency, fmtCurrency2dp } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { buildDonutSegments } from "../pptx/chart-slide";
@@ -12,8 +12,6 @@ import { buildCampaignShortLabels, formatRankedCampaignLabel } from "./chart-cam
 
 export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
 const INACTIVE_COLOR = "4a5568";
-/** Unattributed spend (reach/awareness, paused campaigns, etc.) — matches chart-slide.ts OTHER_COLOR. */
-const OTHER_SPEND_COLOR = "64748b";
 const MAX_LEFT_ITEMS = 5;
 
 export interface VisualChartSegment {
@@ -60,8 +58,10 @@ function truncateName(name: string, max = 18): string {
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
+/** Short cost suffix for stat lines — readable on the chart slide, not cryptic abbreviations. */
 function shortCostAbbrev(cprLabel: string): string {
   const u = cprLabel.toUpperCase();
+  if (u.includes("CONVERSATION")) return "cost per result";
   if (u.includes("1K") || u.includes("1000")) return "CPM";
   if (u.includes("LEAD")) return "CPL";
   if (u.includes("PURCHASE")) return "CPP";
@@ -69,7 +69,7 @@ function shortCostAbbrev(cprLabel: string): string {
   if (u.includes("THRUPLAY")) return "CPT";
   if (u.includes("LANDING PAGE")) return "CPLPV";
   if (u.includes("REACH")) return "CPR";
-  return u.replace(/^COST PER /, "CP ").slice(0, 8);
+  return u.replace(/^COST PER /i, "cost per ").toLowerCase();
 }
 
 function resultUnitLabel(resLabel: string, count: number): string {
@@ -114,6 +114,14 @@ function assignCampaignColors(campaigns: ChartCampaignData[]): Map<string, strin
     const color = c.spend > 0 ? VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]! : INACTIVE_COLOR;
     map.set(c.name, color);
   });
+  return map;
+}
+
+function sumCampaignSpendByObjective(campaigns: ChartCampaignData[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const c of campaigns) {
+    map.set(c.resLabel, (map.get(c.resLabel) ?? 0) + c.spend);
+  }
   return map;
 }
 
@@ -164,6 +172,13 @@ function buildSummarySingle(
   return parts.join(" · ");
 }
 
+function formatSummaryCost(count: number, cprValue: string, cprLabel: string): string {
+  if (count <= 0) return "N/A";
+  if (cprValue === "N/A" || cprValue === "—") return "N/A";
+  const suffix = shortCostAbbrev(cprLabel);
+  return `${cprValue} ${suffix}`;
+}
+
 function buildSummaryMulti(
   chart: ChartSlideData,
   currencySymbol: string,
@@ -172,9 +187,8 @@ function buildSummaryMulti(
   const chunks = objectives.map((obj) => {
     const count = parseInt(obj.resultsValue.replace(/,/g, ""), 10) || 0;
     const label = toTitleCaseChartLabel(obj.label);
-    const cost = obj.cprValue === "N/A" || obj.cprValue === "—" ? "N/A" : obj.cprValue;
-    const abbrev = shortCostAbbrev(obj.cprLabel);
-    return `${label}: ${count.toLocaleString("en-US")} · ${cost} ${abbrev}`;
+    const cost = formatSummaryCost(count, obj.cprValue, obj.cprLabel);
+    return `${label}: ${count.toLocaleString("en-US")} · ${cost}`;
   });
   const prefix = [`Total Spend: ${fmtCurrency(chart.totalAllSpend, currencySymbol)}`];
   return [...prefix, ...chunks].join("  |  ");
@@ -218,44 +232,33 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const isMultiObjective = chart.snapshot.mode === "multi" && chart.snapshot.objectives.length >= 2;
   const title = buildVisualChartTitle(chart);
   const colorByCampaign = assignCampaignColors(chart.campaigns);
+  const campaignSpendByObjective = sumCampaignSpendByObjective(chart.campaigns);
 
   if (isMultiObjective) {
     const objectives = chart.snapshot.objectives.slice(0, MAX_LEFT_ITEMS);
-    const totalObjSpend = objectives.reduce((sum, obj) => {
-      const n = parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0;
-      return sum + n;
-    }, 0);
-    const spendTotal = chart.totalAllSpend > 0 ? chart.totalAllSpend : totalObjSpend;
+    const spendTotal = chart.totalAllSpend > 0 ? chart.totalAllSpend : 0;
 
     const groupedDonut: VisualChartSegment[] = objectives.map((obj, i) => {
-      const spend = parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0;
+      const spend =
+        campaignSpendByObjective.get(obj.label) ??
+        parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) ??
+        0;
       return {
         name: toTitleCaseChartLabel(obj.label),
         color: VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]!,
         percentage: spendTotal > 0 ? Math.round((spend / spendTotal) * 1000) / 10 : 0,
-        spendLabel: obj.spendFormatted,
+        spendLabel: fmtCurrencyAdaptive(spend, currencySymbol),
       };
     });
-
-    const attributedSpend = objectives.reduce(
-      (sum, obj) => sum + (parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0),
-      0,
-    );
-    const otherSpend = Math.max(0, chart.totalAllSpend - attributedSpend);
-    if (otherSpend >= 0.01) {
-      groupedDonut.push({
-        name: "Other spend",
-        color: OTHER_SPEND_COLOR,
-        percentage: spendTotal > 0 ? Math.round((otherSpend / spendTotal) * 1000) / 10 : 0,
-        spendLabel: fmtCurrency(otherSpend, currencySymbol),
-      });
-    }
 
     const resultBars = buildResultBars(
       objectives.map((obj, i) => ({
         name: toTitleCaseChartLabel(obj.label),
         color: VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]!,
-        spend: parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0,
+        spend:
+          campaignSpendByObjective.get(obj.label) ??
+          parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) ??
+          0,
         results: parseInt(obj.resultsValue.replace(/,/g, ""), 10) || 0,
         resLabel: obj.label,
         cpr: resolveObjectiveCpr(obj),
