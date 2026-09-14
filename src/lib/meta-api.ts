@@ -144,10 +144,81 @@ export interface MetaInsightRow {
   cost_per_action_type?: MetaInsightAction[];
 }
 
+export interface MetaGraphErrorDetails {
+  message: string;
+  code?: number;
+  error_subcode?: number;
+  fbtrace_id?: string;
+}
+
 interface MetaInsightsResponse {
   data?: MetaInsightRow[];
   paging?: { next?: string };
-  error?: { message: string };
+  error?: MetaGraphErrorDetails;
+}
+
+/** Meta insights error code 1 — "An unknown error occurred" — is usually transient or the request is too large. */
+export function isRetryableMetaInsightsError(error: MetaGraphErrorDetails): boolean {
+  return error.code === 1 || error.code === 2;
+}
+
+export function formatMetaInsightsErrorMessage(error: MetaGraphErrorDetails): string {
+  const raw = error.message?.trim() || "Unexpected Meta API error";
+  if (error.code === 1 || raw === "An unknown error occurred") {
+    return "Meta temporarily couldn't fetch your campaign data (this usually clears after a retry). Wait a few seconds and tap Import again. If it keeps failing, reconnect Meta under Account Settings.";
+  }
+  if (error.code === 4 || error.code === 17) {
+    return "Meta API rate limit reached. Please wait a minute and try again.";
+  }
+  if (error.code === 10 || error.code === 190) {
+    return "Your Meta connection doesn't have permission for this ad account. Reconnect Meta under Account Settings and ensure this account is assigned to the connected user.";
+  }
+  return raw;
+}
+
+export class MetaInsightsFetchError extends Error {
+  readonly meta: MetaGraphErrorDetails;
+
+  constructor(meta: MetaGraphErrorDetails) {
+    super(formatMetaInsightsErrorMessage(meta));
+    this.name = "MetaInsightsFetchError";
+    this.meta = meta;
+  }
+}
+
+function formatIsoUtc(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+function parseIsoDate(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** Splits a date range into smaller chunks — used when Meta rejects a full-range insights request. */
+export function splitIsoDateRangeIntoChunks(
+  sinceIso: string,
+  untilIso: string,
+  chunkDays = 7,
+): { sinceIso: string; untilIso: string }[] {
+  const chunks: { sinceIso: string; untilIso: string }[] = [];
+  let cursor = parseIsoDate(sinceIso);
+  const end = parseIsoDate(untilIso);
+
+  while (cursor <= end) {
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setUTCDate(chunkEnd.getUTCDate() + chunkDays - 1);
+    if (chunkEnd > end) chunkEnd.setTime(end.getTime());
+    chunks.push({ sinceIso: formatIsoUtc(cursor), untilIso: formatIsoUtc(chunkEnd) });
+    cursor = new Date(chunkEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return chunks;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const META_INSIGHT_FIELDS = [
@@ -167,8 +238,30 @@ const META_INSIGHT_FIELDS = [
   "date_stop",
 ].join(",");
 
-/** Fetches daily ad-set-level insights for an ad account (paginated). */
-export async function fetchMetaAdAccountInsights(params: {
+async function fetchMetaInsightsPageWithRetry(url: string, maxRetries = 3): Promise<MetaInsightsResponse> {
+  let lastError: MetaGraphErrorDetails | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await sleep(1500 * attempt);
+    }
+
+    const res = await fetch(url);
+    const data = (await res.json()) as MetaInsightsResponse;
+    if (res.ok && !data.error) {
+      return data;
+    }
+
+    lastError = data.error ?? { message: `Failed to fetch Meta insights (${res.status})` };
+    if (!isRetryableMetaInsightsError(lastError) || attempt === maxRetries) {
+      throw new MetaInsightsFetchError(lastError);
+    }
+  }
+
+  throw new MetaInsightsFetchError(lastError ?? { message: "Failed to fetch Meta insights" });
+}
+
+async function fetchMetaAdAccountInsightsForRange(params: {
   accessToken: string;
   adAccountId: string;
   sinceIso: string;
@@ -190,7 +283,11 @@ export async function fetchMetaAdAccountInsights(params: {
       "time_range",
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
     );
-    url.searchParams.set("limit", "500");
+    url.searchParams.set(
+      "filtering",
+      JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: "0" }]),
+    );
+    url.searchParams.set("limit", "250");
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("access_token", params.accessToken);
     return url.toString();
@@ -199,16 +296,40 @@ export async function fetchMetaAdAccountInsights(params: {
   nextUrl = buildUrl();
 
   while (nextUrl) {
-    const res = await fetch(nextUrl);
-    const data = (await res.json()) as MetaInsightsResponse;
-    if (!res.ok || data.error) {
-      throw new Error(data.error?.message ?? `Failed to fetch Meta insights (${res.status})`);
-    }
+    const data = await fetchMetaInsightsPageWithRetry(nextUrl);
     allRows.push(...(data.data ?? []));
     nextUrl = data.paging?.next ?? null;
   }
 
   return allRows;
+}
+
+/** Fetches daily ad-set-level insights for an ad account (paginated, retried, chunked on Meta code 1). */
+export async function fetchMetaAdAccountInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+}): Promise<MetaInsightRow[]> {
+  try {
+    return await fetchMetaAdAccountInsightsForRange(params);
+  } catch (err) {
+    if (!(err instanceof MetaInsightsFetchError) || err.meta.code !== 1) {
+      throw err;
+    }
+
+    const chunks = splitIsoDateRangeIntoChunks(params.sinceIso, params.untilIso, 7);
+    if (chunks.length <= 1) {
+      throw err;
+    }
+
+    const merged: MetaInsightRow[] = [];
+    for (const chunk of chunks) {
+      const rows = await fetchMetaAdAccountInsightsForRange({ ...params, ...chunk });
+      merged.push(...rows);
+    }
+    return merged;
+  }
 }
 
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */

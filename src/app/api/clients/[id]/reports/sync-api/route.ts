@@ -21,6 +21,9 @@ import {
 } from "@/lib/nre/previous-month-data";
 import { platformSchema } from "@/lib/validators/report-wizard";
 
+/** Meta insights pagination can run long on large accounts — allow up to 60s on Vercel Pro. */
+export const maxDuration = 60;
+
 const syncApiBodySchema = z.object({
   platform: platformSchema,
   metaAdAccountId: z.string().trim().min(1).optional(),

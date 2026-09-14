@@ -5,11 +5,14 @@ import {
   createMetaDeletionConfirmationCode,
   exchangeForLongLivedToken,
   exchangeMetaAuthCode,
+  fetchMetaAdAccountInsights,
   fetchMetaAdAccounts,
   fetchMetaUserProfile,
+  formatMetaInsightsErrorMessage,
   metaApiVersion,
   metaGraphBase,
   parseMetaSignedRequest,
+  splitIsoDateRangeIntoChunks,
 } from "../meta-api";
 import { createHmac } from "node:crypto";
 
@@ -144,5 +147,102 @@ describe("createMetaDeletionConfirmationCode", () => {
   it("includes the Meta user id", () => {
     const code = createMetaDeletionConfirmationCode("meta-42");
     expect(code).toMatch(/^nre-del-meta-42-/);
+  });
+});
+
+describe("formatMetaInsightsErrorMessage", () => {
+  it("replaces Meta's generic unknown error with actionable guidance", () => {
+    const message = formatMetaInsightsErrorMessage({ message: "An unknown error occurred", code: 1 });
+    expect(message).toContain("Wait a few seconds");
+    expect(message).not.toBe("An unknown error occurred");
+  });
+});
+
+describe("splitIsoDateRangeIntoChunks", () => {
+  it("splits a 30-day range into weekly chunks", () => {
+    const chunks = splitIsoDateRangeIntoChunks("2026-08-15", "2026-09-13", 7);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks[0]).toEqual({ sinceIso: "2026-08-15", untilIso: "2026-08-21" });
+    expect(chunks.at(-1)?.untilIso).toBe("2026-09-13");
+  });
+});
+
+describe("fetchMetaAdAccountInsights", () => {
+  it("retries transient Meta code 1 errors before succeeding", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: { message: "An unknown error occurred", code: 1 } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ campaign_name: "Test", adset_name: "Broad", date_start: "2026-09-01", spend: "10" }],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchMetaAdAccountInsights({
+      accessToken: "token",
+      adAccountId: "act_123",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-01",
+    });
+    await vi.runAllTimersAsync();
+    const rows = await promise;
+
+    expect(rows).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("falls back to weekly chunks when the full range keeps failing with code 1", async () => {
+    vi.useFakeTimers();
+    let fullRangeAttempts = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      const parsed = new URL(url);
+      const range = JSON.parse(parsed.searchParams.get("time_range") ?? "{}") as {
+        since?: string;
+        until?: string;
+      };
+
+      if (range.since === "2026-09-01" && range.until === "2026-09-14") {
+        fullRangeAttempts += 1;
+        return {
+          ok: false,
+          json: async () => ({ error: { message: "An unknown error occurred", code: 1 } }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: "Chunked",
+              adset_name: "Broad",
+              date_start: range.since,
+              spend: "5",
+            },
+          ],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchMetaAdAccountInsights({
+      accessToken: "token",
+      adAccountId: "act_123",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-14",
+    });
+    await vi.runAllTimersAsync();
+    const rows = await promise;
+
+    expect(fullRangeAttempts).toBeGreaterThan(0);
+    expect(rows.length).toBeGreaterThan(1);
+    vi.useRealTimers();
   });
 });
