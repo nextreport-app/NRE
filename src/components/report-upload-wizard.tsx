@@ -123,8 +123,8 @@ import {
 type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
   1: "Upload",
-  2: "Setup",
-  3: "Metrics",
+  2: "Campaign Data",
+  3: "Campaign Metrics",
   4: "Generate",
 };
 
@@ -2211,7 +2211,7 @@ export function ReportUploadWizard({
                     disabled={!mtdFile || analyzeStatus === "loading"}
                     className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
                   >
-                    {analyzeStatus === "loading" ? "Analyzing…" : "Analyze CSV"}
+                    {analyzeStatus === "loading" ? "Importing…" : "Campaign Data Import"}
                   </button>
                 </>
               )}
@@ -2512,7 +2512,7 @@ export function ReportUploadWizard({
 
           {metricsFetchedForSelection === selectedCampaignsKey() && (
             <div className="space-y-4 border-t border-dash-border pt-4">
-              <h3 className="text-[15px] font-semibold text-white">Confirm objectives</h3>
+              <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
 
               {(() => {
                 const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
