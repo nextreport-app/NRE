@@ -175,9 +175,15 @@ export function WizardDataSourcePanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error ?? "Sync failed");
+        const message =
+          typeof data?.error === "string"
+            ? data.error
+            : res.status === 504
+              ? "Import timed out — Meta may be slow for large accounts. Please try again in a moment."
+              : "Sync failed";
+        throw new Error(message);
       }
 
       if (!data.csvText || data.rowCount === 0) {
