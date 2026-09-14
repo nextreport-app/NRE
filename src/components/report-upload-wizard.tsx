@@ -210,74 +210,6 @@ const ADSET_CHIP_CLASS =
 
 const MIN_SELECTED_METRICS = 4;
 
-const PRIMARY_REPORT_TYPES = ["WEEKLY", "DAILY", "MONTHLY"] as const satisfies readonly WizardReportType[];
-const OTHER_REPORT_TYPES = ["QUARTER", "YTD", "CREATIVE", "COMPARISON", "HISTORICAL"] as const satisfies readonly WizardReportType[];
-
-function isPrimaryReportType(type: WizardReportType): type is (typeof PRIMARY_REPORT_TYPES)[number] {
-  return (PRIMARY_REPORT_TYPES as readonly string[]).includes(type);
-}
-
-function reportTypeShortLabel(type: WizardReportType): string {
-  switch (type) {
-    case "WEEKLY":
-      return "Weekly";
-    case "DAILY":
-      return "Daily";
-    case "MONTHLY":
-      return "Monthly";
-    case "QUARTER":
-      return "Quarterly";
-    case "YTD":
-      return "Year-to-Date";
-    case "CREATIVE":
-      return "Creative";
-    case "COMPARISON":
-      return "Comparison";
-    case "HISTORICAL":
-      return "Multi-Month";
-  }
-}
-
-function otherReportTypeSelectLabel(type: WizardReportType): string {
-  switch (type) {
-    case "QUARTER":
-      return "Quarterly Performance Report";
-    case "YTD":
-      return "Year-to-Date Report";
-    case "CREATIVE":
-      return "Creative Performance Report";
-    case "COMPARISON":
-      return "Comparison Report";
-    case "HISTORICAL":
-      return "Multi-Month Historical Report";
-    default:
-      return reportTypeShortLabel(type);
-  }
-}
-
-function reportTypeDescription(type: WizardReportType, hasAdLevelCsv: boolean): string {
-  switch (type) {
-    case "WEEKLY":
-      return "One week with a daily chart. Pick Last 14 days below for bi-weekly.";
-    case "DAILY":
-      return "Yesterday only.";
-    case "MONTHLY":
-      return "Full month with an MTD chart.";
-    case "QUARTER":
-      return "Current quarter to date with campaign breakdown.";
-    case "YTD":
-      return "Jan 1 through yesterday — full YTD view.";
-    case "CREATIVE":
-      return hasAdLevelCsv
-        ? "Ad-level winners and video metrics."
-        : "Requires ad-level CSV with Ad Name column.";
-    case "COMPARISON":
-      return "Two custom periods side by side.";
-    case "HISTORICAL":
-      return "Several past months in one deck.";
-  }
-}
-
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
@@ -2896,46 +2828,75 @@ export function ReportUploadWizard({
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {PRIMARY_REPORT_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => handleReportTypeChange(type)}
-                  aria-pressed={reportType === type}
-                  className={`rounded-lg border px-4 py-2 text-[14px] font-medium transition-colors ${
-                    reportType === type
-                      ? "border-dash-accent bg-dash-accent/10 text-white"
-                      : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
-                  }`}
-                >
-                  {reportTypeShortLabel(type)}
-                </button>
-              ))}
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <ReportTypeCard
+                icon="📊"
+                heading="Weekly Performance Report"
+                description="One week with a daily chart."
+                selected={reportType === "WEEKLY"}
+                onSelect={() => handleReportTypeChange("WEEKLY")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="☀️"
+                heading="Daily Performance Report"
+                description="Yesterday only."
+                selected={reportType === "DAILY"}
+                onSelect={() => handleReportTypeChange("DAILY")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="📅"
+                heading="Monthly Performance Report"
+                description="Full month with MTD chart."
+                selected={reportType === "MONTHLY"}
+                onSelect={() => handleReportTypeChange("MONTHLY")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="📈"
+                heading="Quarterly Performance Report"
+                description="Current quarter to date."
+                selected={reportType === "QUARTER"}
+                onSelect={() => handleReportTypeChange("QUARTER")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="🗓️"
+                heading="Year-to-Date Report"
+                description="Jan 1 through yesterday."
+                selected={reportType === "YTD"}
+                onSelect={() => handleReportTypeChange("YTD")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="🎨"
+                heading="Creative Performance Report"
+                description={
+                  hasAdLevelCsv ? "Ad-level winners and video metrics." : "Requires ad-level CSV."
+                }
+                selected={reportType === "CREATIVE"}
+                onSelect={() => handleReportTypeChange("CREATIVE")}
+                disabled={!hasAdLevelCsv}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="🔀"
+                heading="Comparison Report"
+                description="Two periods side by side."
+                selected={reportType === "COMPARISON"}
+                onSelect={() => handleReportTypeChange("COMPARISON")}
+                layout="horizontal"
+              />
+              <ReportTypeCard
+                icon="📆"
+                heading="Multi-Month Historical Report"
+                description="Several past months in one deck."
+                selected={reportType === "HISTORICAL"}
+                onSelect={() => handleReportTypeChange("HISTORICAL")}
+                layout="horizontal"
+              />
             </div>
-            <div className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-              <label htmlFor="other-report-type" className="shrink-0 text-[14px] text-dash-ink-secondary">
-                Other report types
-              </label>
-              <select
-                id="other-report-type"
-                value={isPrimaryReportType(reportType) ? "" : reportType}
-                onChange={(e) => {
-                  const next = e.target.value as WizardReportType;
-                  if (next) handleReportTypeChange(next);
-                }}
-                className="w-full max-w-md rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white sm:w-auto sm:min-w-[280px]"
-              >
-                <option value="">Choose…</option>
-                {OTHER_REPORT_TYPES.map((type) => (
-                  <option key={type} value={type} disabled={type === "CREATIVE" && !hasAdLevelCsv}>
-                    {otherReportTypeSelectLabel(type)}
-                    {type === "CREATIVE" && !hasAdLevelCsv ? " (ad-level CSV required)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="mt-2 text-[14px] text-dash-ink-secondary">{reportTypeDescription(reportType, hasAdLevelCsv)}</p>
             {hasAdLevelCsv && reportType !== "CREATIVE" && (
               <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[14px] text-emerald-200">
                 Ad-level data detected — creative slides will be included automatically.
@@ -4100,6 +4061,7 @@ function ReportTypeCard({
   onSelect,
   disabled = false,
   singleLineHeading = false,
+  layout = "vertical",
 }: {
   icon: ReactNode;
   heading: string;
@@ -4108,20 +4070,42 @@ function ReportTypeCard({
   onSelect: () => void;
   disabled?: boolean;
   singleLineHeading?: boolean;
+  /** Horizontal cards are shorter — used on the Report Type grid. */
+  layout?: "vertical" | "horizontal";
 }) {
+  const stateClass = disabled
+    ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
+    : selected
+      ? "border-dash-accent bg-dash-accent/10"
+      : "border-dash-border bg-dash-bg hover:bg-dash-border/30";
+
+  if (layout === "horizontal") {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={disabled}
+        aria-pressed={selected}
+        className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${stateClass}`}
+      >
+        <span className="inline-flex shrink-0 text-[22px] leading-none" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14px] font-semibold leading-snug text-white">{heading}</span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">{description}</span>
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
       aria-pressed={selected}
-      className={`rounded-lg border p-4 text-left transition-colors ${
-        disabled
-          ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
-          : selected
-            ? "border-dash-accent bg-dash-accent/10"
-            : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
-      }`}
+      className={`rounded-lg border p-4 text-left transition-colors ${stateClass}`}
     >
       <span className="inline-flex shrink-0" aria-hidden="true">
         {icon}
