@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   buildCampaignObjectiveMap,
   buildCampaignObjectiveMapWithConfidence,
+  detectObjectiveFromCampaignRows,
   detectObjectiveFromColumns,
   getGroupedResultDisplay,
   getGroupedResultDisplayForObjective,
@@ -16,6 +19,7 @@ import {
   resolveObjective,
   type ResultLabels,
 } from "../objective";
+import { parseCsvText } from "../parse-csv";
 import type { AggRow } from "../aggregate";
 import type { MetricRow } from "../types";
 
@@ -150,6 +154,63 @@ describe("getResultLabels", () => {
     expect(getResultLabels("")).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
     expect(getResultLabels(null)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
     expect(getResultLabels(undefined)).toEqual({ resultLabel: "RESULTS", costLabel: "COST PER RESULT" });
+  });
+});
+
+describe("detectObjectiveFromCampaignRows — mixed-objective account exports", () => {
+  it("picks MESSAGING LEADS for a messaging campaign even when Website leads exists for other campaigns in the same file", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Website leads": "0", "Messaging conversations started": "3" },
+        link_clicks: 248,
+        results: 0,
+        spend: 134,
+      }),
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Website leads": "0", "Messaging conversations started": "" },
+        link_clicks: 16,
+        results: 0,
+        spend: 13,
+      }),
+    ];
+    expect(detectObjectiveFromCampaignRows(rows)).toEqual({
+      resultLabel: "MESSAGING LEADS",
+      costLabel: "COST PER CONVERSATION",
+    });
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING LEADS");
+  });
+
+  it("uses campaign-name hint when messaging column exists but has zero data yet", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Website leads": "0", "Messaging conversations started": "" },
+        link_clicks: 63,
+        results: 0,
+        spend: 25,
+      }),
+    ];
+    expect(detectObjectiveFromCampaignRows(rows)).toEqual({
+      resultLabel: "MESSAGING LEADS",
+      costLabel: "COST PER CONVERSATION",
+    });
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING LEADS");
+  });
+
+  it("does not let file-level WEBSITE LEADS column presence override a messaging campaign", () => {
+    const csvPath = resolve(
+      process.cwd(),
+      "src/lib/nre/__tests__/fixtures/mixed-objectives-messaging.csv",
+    );
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const messagingRows = rows.filter((r) => r.campaign_name === "Lead Campaign_Messaging");
+    expect(resolveCampaignObjective(messagingRows).resultLabel).toBe("MESSAGING LEADS");
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
+      "MESSAGING LEADS",
+    );
   });
 });
 

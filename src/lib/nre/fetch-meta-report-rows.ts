@@ -26,6 +26,8 @@ const META_CSV_HEADERS = [
   "Meta leads",
   "Website leads",
   "Cost per lead",
+  "Messaging conversations started",
+  "Cost per messaging conversation started",
 ] as const;
 
 /** Objective-aligned result actions — never pick link_click/LPV when a conversion action exists. */
@@ -37,6 +39,11 @@ const RESULT_ACTION_PRIORITY = [
   "website_lead",
   "onsite_web_lead",
   "lead",
+  "onsite_conversion.messaging_conversation_started_7d",
+  "messaging_conversation_started_7d",
+  "onsite_conversion.messaging_first_reply_7d",
+  "new_messaging_connection",
+  "whatsapp_message_send",
   "omni_purchase",
   "offsite_conversion.fb_pixel_purchase",
   "purchase",
@@ -52,9 +59,30 @@ const RESULT_ACTION_PRIORITY = [
   "thruplay",
 ] as const;
 
+const MESSAGING_ACTION_TYPES = [
+  "onsite_conversion.messaging_conversation_started_7d",
+  "messaging_conversation_started_7d",
+  "onsite_conversion.messaging_first_reply_7d",
+  "new_messaging_connection",
+  "whatsapp_message_send",
+] as const;
+
 const OPTIMIZATION_GOAL_ACTION_TYPES: Record<string, readonly string[]> = {
-  LEAD_GENERATION: ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped", "lead"],
-  OUTCOME_LEADS: ["onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead", "lead"],
+  LEAD_GENERATION: [
+    ...MESSAGING_ACTION_TYPES,
+    "onsite_conversion.lead_grouped",
+    "onsite_conversion.lead",
+    "leadgen_grouped",
+    "lead",
+  ],
+  OUTCOME_LEADS: [
+    ...MESSAGING_ACTION_TYPES,
+    "onsite_conversion.lead_grouped",
+    "offsite_conversion.fb_pixel_lead",
+    "lead",
+  ],
+  MESSAGES: [...MESSAGING_ACTION_TYPES],
+  CONVERSATIONS: [...MESSAGING_ACTION_TYPES],
   QUALITY_LEAD: ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "lead"],
   LINK_CLICKS: ["link_click"],
   LANDING_PAGE_VIEWS: ["landing_page_view"],
@@ -88,6 +116,11 @@ function actionTypeToCsvResultType(actionType: string): string {
     "onsite_conversion.lead_grouped": "Leads (form)",
     "onsite_conversion.lead": "Leads (form)",
     leadgen_grouped: "Leads (form)",
+    "onsite_conversion.messaging_conversation_started_7d": "Messaging conversations started",
+    messaging_conversation_started_7d: "Messaging conversations started",
+    "onsite_conversion.messaging_first_reply_7d": "Messaging conversations started",
+    new_messaging_connection: "Messaging conversations started",
+    whatsapp_message_send: "Messaging conversations started",
     landing_page_view: "Landing page view",
     mobile_app_install: "App installs",
     omni_app_install: "App installs",
@@ -202,6 +235,8 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
 
   const costPerLead = costPerActionType(row.cost_per_action_type, LEAD_COST_ACTION_TYPES);
   const costPerLpv = costPerActionType(row.cost_per_action_type, ["landing_page_view"]);
+  const messagingConversations = sumActionValues(actionMap, MESSAGING_ACTION_TYPES);
+  const costPerMessaging = costPerActionType(row.cost_per_action_type, MESSAGING_ACTION_TYPES);
 
   return [
     row.campaign_name ?? "",
@@ -222,6 +257,8 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
     formatCount(metaLeadsOut),
     formatCount(websiteLeadsOut),
     costPerLead,
+    formatCount(messagingConversations),
+    costPerMessaging,
   ];
 }
 
