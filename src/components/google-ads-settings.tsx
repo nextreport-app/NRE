@@ -88,8 +88,8 @@ export function GoogleAdsSettings({
     <div id="google-ads" className="scroll-mt-6 space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
       {!googleAdsConfigured && (
         <p className="text-[13px] text-amber-300">
-          Google Ads API credentials are not configured on this server yet. Add GOOGLE_ADS_CLIENT_ID,
-          GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN in Vercel.
+          Google Ads API credentials are not configured on this server yet. Add GOOGLE_ADS_CLIENT_ID and
+          GOOGLE_ADS_CLIENT_SECRET in Vercel (OAuth app on a Cloud project with Google Ads API enabled).
         </p>
       )}
 
