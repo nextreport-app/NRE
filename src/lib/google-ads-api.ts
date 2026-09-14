@@ -3,7 +3,8 @@
  *
  * Separate from NextAuth (AUTH_GOOGLE_*) and Google Drive connect
  * (googleDrive* columns). Uses GOOGLE_ADS_CLIENT_ID / GOOGLE_ADS_CLIENT_SECRET
- * and GOOGLE_ADS_DEVELOPER_TOKEN for API calls after OAuth.
+ * for OAuth; GOOGLE_ADS_DEVELOPER_TOKEN is optional (Google Cloud project
+ * access, 2026+) and omitted from request headers when unset.
  */
 
 export const GOOGLE_ADS_SCOPE = "https://www.googleapis.com/auth/adwords";
@@ -34,18 +35,28 @@ function requireGoogleAdsClientSecret(): string {
   return secret;
 }
 
-export function requireGoogleAdsDeveloperToken(): string {
+/** Legacy developer token — optional; sent on API calls only when set (Google retires the header ~H1 2027). */
+export function googleAdsDeveloperToken(): string | undefined {
   const token = process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim();
-  if (!token) throw new Error("GOOGLE_ADS_DEVELOPER_TOKEN is not configured");
-  return token;
+  return token || undefined;
 }
 
 export function isGoogleAdsOAuthConfigured(): boolean {
   return !!(
     process.env.GOOGLE_ADS_CLIENT_ID?.trim() &&
-    process.env.GOOGLE_ADS_CLIENT_SECRET?.trim() &&
-    process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim()
+    process.env.GOOGLE_ADS_CLIENT_SECRET?.trim()
   );
+}
+
+function googleAdsRequestHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+  const developerToken = googleAdsDeveloperToken();
+  if (developerToken) headers["developer-token"] = developerToken;
+  if (loginCustomerId) headers["login-customer-id"] = loginCustomerId.replace(/\D/g, "");
+  return headers;
 }
 
 /** Starts account-settings "Connect Google Ads" OAuth — offline refresh token. */
@@ -114,13 +125,9 @@ export async function fetchGoogleAdsAccountEmail(accessToken: string): Promise<s
   return data.email ?? null;
 }
 
-/** CustomerService.ListAccessibleCustomers — verifies OAuth + developer token. */
+/** CustomerService.ListAccessibleCustomers — verifies OAuth and Cloud project API access. */
 export async function listAccessibleGoogleAdsCustomers(accessToken: string): Promise<string[]> {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    "developer-token": requireGoogleAdsDeveloperToken(),
-    "Content-Type": "application/json",
-  };
+  const headers = googleAdsRequestHeaders(accessToken);
 
   // v21 and below return HTML 404 today; retry newer versions if env pins an old one.
   const versions = [...new Set([googleAdsApiVersion(), "v22", "v24"])];
@@ -138,7 +145,7 @@ export async function listAccessibleGoogleAdsCustomers(accessToken: string): Pro
     if (!res.ok) {
       const body = await res.text();
       const snippet = body.startsWith("<!DOCTYPE")
-        ? "Google returned HTML (check developer token and OAuth scope)"
+        ? "Google returned HTML (check OAuth scope and Google Ads API access on your Cloud project)"
         : body.slice(0, 500);
       throw new Error(`Google Ads ListAccessibleCustomers failed (${res.status}): ${snippet}`);
     }
@@ -182,18 +189,6 @@ interface GoogleAdsSearchResponse {
   next_page_token?: string;
 }
 
-function googleAdsSearchHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    "developer-token": requireGoogleAdsDeveloperToken(),
-    "Content-Type": "application/json",
-  };
-  if (loginCustomerId) {
-    headers["login-customer-id"] = loginCustomerId.replace(/\D/g, "");
-  }
-  return headers;
-}
-
 /** Runs a GAQL query via GoogleAdsService.Search (paginated). */
 export async function searchGoogleAds(params: {
   accessToken: string;
@@ -212,14 +207,14 @@ export async function searchGoogleAds(params: {
 
     const res = await fetch(url, {
       method: "POST",
-      headers: googleAdsSearchHeaders(params.accessToken, params.loginCustomerId),
+      headers: googleAdsRequestHeaders(params.accessToken, params.loginCustomerId),
       body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const text = await res.text();
       const snippet = text.startsWith("<!DOCTYPE")
-        ? "Google returned HTML (check developer token and OAuth scope)"
+        ? "Google returned HTML (check OAuth scope and Google Ads API access on your Cloud project)"
         : text.slice(0, 500);
       throw new Error(`Google Ads Search failed (${res.status}): ${snippet}`);
     }
