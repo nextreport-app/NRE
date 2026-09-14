@@ -2835,7 +2835,7 @@ export function ReportUploadWizard({
                 description="One week with a daily chart."
                 selected={reportType === "WEEKLY"}
                 onSelect={() => handleReportTypeChange("WEEKLY")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="☀️"
@@ -2843,7 +2843,7 @@ export function ReportUploadWizard({
                 description="Yesterday only."
                 selected={reportType === "DAILY"}
                 onSelect={() => handleReportTypeChange("DAILY")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="📅"
@@ -2851,7 +2851,7 @@ export function ReportUploadWizard({
                 description="Full month with MTD chart."
                 selected={reportType === "MONTHLY"}
                 onSelect={() => handleReportTypeChange("MONTHLY")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="📈"
@@ -2859,7 +2859,7 @@ export function ReportUploadWizard({
                 description="Current quarter to date."
                 selected={reportType === "QUARTER"}
                 onSelect={() => handleReportTypeChange("QUARTER")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="🗓️"
@@ -2867,7 +2867,7 @@ export function ReportUploadWizard({
                 description="Jan 1 through yesterday."
                 selected={reportType === "YTD"}
                 onSelect={() => handleReportTypeChange("YTD")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="🎨"
@@ -2878,7 +2878,7 @@ export function ReportUploadWizard({
                 selected={reportType === "CREATIVE"}
                 onSelect={() => handleReportTypeChange("CREATIVE")}
                 disabled={!hasAdLevelCsv}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="🔀"
@@ -2886,7 +2886,7 @@ export function ReportUploadWizard({
                 description="Two periods side by side."
                 selected={reportType === "COMPARISON"}
                 onSelect={() => handleReportTypeChange("COMPARISON")}
-                layout="horizontal"
+                layout="compact"
               />
               <ReportTypeCard
                 icon="📆"
@@ -2894,7 +2894,7 @@ export function ReportUploadWizard({
                 description="Several past months in one deck."
                 selected={reportType === "HISTORICAL"}
                 onSelect={() => handleReportTypeChange("HISTORICAL")}
-                layout="horizontal"
+                layout="compact"
               />
             </div>
             {hasAdLevelCsv && reportType !== "CREATIVE" && (
@@ -4070,8 +4070,8 @@ function ReportTypeCard({
   onSelect: () => void;
   disabled?: boolean;
   singleLineHeading?: boolean;
-  /** Horizontal cards are shorter — used on the Report Type grid. */
-  layout?: "vertical" | "horizontal";
+  /** Compact centered cards — icon on top, text below (Report Type grid). */
+  layout?: "vertical" | "compact";
 }) {
   const stateClass = disabled
     ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
@@ -4079,22 +4079,20 @@ function ReportTypeCard({
       ? "border-dash-accent bg-dash-accent/10"
       : "border-dash-border bg-dash-bg hover:bg-dash-border/30";
 
-  if (layout === "horizontal") {
+  if (layout === "compact") {
     return (
       <button
         type="button"
         onClick={onSelect}
         disabled={disabled}
         aria-pressed={selected}
-        className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${stateClass}`}
+        className={`flex flex-col items-center rounded-lg border px-3 py-3 text-center transition-colors ${stateClass}`}
       >
-        <span className="inline-flex shrink-0 text-[22px] leading-none" aria-hidden="true">
+        <span className="inline-flex shrink-0 text-[26px] leading-none" aria-hidden="true">
           {icon}
         </span>
-        <span className="min-w-0">
-          <span className="block text-[14px] font-semibold leading-snug text-white">{heading}</span>
-          <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">{description}</span>
-        </span>
+        <span className="mt-2 block text-[13px] font-semibold leading-snug text-white">{heading}</span>
+        <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
       </button>
     );
   }
