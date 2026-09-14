@@ -879,6 +879,34 @@ function classifyLowConfidenceTier(rows: MetricRow[]): "medium" | "low" | "verif
   return "verify";
 }
 
+/**
+ * Confidence for per-campaign lead-family detection. Website vs Meta form
+ * leads stay "low" when only one is present (agencies often confuse them in
+ * mixed exports). Messaging is treated separately — its dedicated column is
+ * objective-specific (unlike link clicks), and messenger campaigns in a
+ * mixed account are usually named explicitly.
+ */
+function classifyCampaignLeadConfidence(
+  rows: MetricRow[],
+  campaignLead: ResultLabels,
+  messagingTotal: number,
+  websiteLeadsTotal: number,
+  metaLeadsTotal: number,
+): ObjectiveConfidence["confidence"] {
+  const activeLeadFamilies = [messagingTotal > 0, websiteLeadsTotal > 0, metaLeadsTotal > 0].filter(Boolean).length;
+  if (activeLeadFamilies > 1) return "verify";
+
+  if (campaignLead.resultLabel === MESSAGING_LABEL) {
+    if (messagingTotal > 0) return "high";
+    if (isMessagingCampaignName(rows)) return "high";
+    return "medium";
+  }
+
+  if (websiteLeadsTotal > 0 || metaLeadsTotal > 0) return "low";
+
+  return "medium";
+}
+
 function sumCampaignMessagingTotal(rows: MetricRow[]): number {
   let total = 0;
   for (const row of rows) {
@@ -1041,9 +1069,13 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
         "whatsapp conversations started",
       ]);
     }
-    const activeLeadSignals = [messagingTotal, websiteLeadsTotal, metaLeadsTotal].filter((v) => v > 0).length;
-    const tier: ObjectiveConfidence["confidence"] =
-      activeLeadSignals > 1 ? "verify" : activeLeadSignals === 1 ? "low" : "medium";
+    const tier = classifyCampaignLeadConfidence(
+      rows,
+      campaignLead,
+      messagingTotal,
+      websiteLeadsTotal,
+      metaLeadsTotal,
+    );
     return {
       ...campaignLead,
       confidence: tier,
