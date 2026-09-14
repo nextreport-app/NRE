@@ -48,6 +48,18 @@ interface TikTokAdvertiserOption {
   name: string;
 }
 
+/** Black square badge matching the import-source picker design (CSV / API). */
+export function DataSourceBadge({ label }: { label: "CSV" | "API" }) {
+  return (
+    <span
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-black text-[9px] font-bold leading-none tracking-tight text-white"
+      aria-hidden="true"
+    >
+      {label}
+    </span>
+  );
+}
+
 function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
@@ -200,8 +212,15 @@ export function WizardDataSourcePanel({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
-        <p className="text-[14px] font-semibold text-white">Sync from API</p>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+        <div className="flex items-center gap-2.5">
+          <DataSourceBadge label="API" />
+          <p className="text-[14px] font-semibold text-white">Connect your data via API</p>
+        </div>
+        <p className="mt-2 text-[13px] text-dash-ink-secondary">Reduce manual work</p>
+        <p className="mt-0.5 text-[13px] text-dash-ink-secondary">
+          Your data connects automatically — no more spreadsheets.
+        </p>
+        <p className="mt-2 text-[12px] text-dash-ink-secondary/80">
           Last 30 days through yesterday — same data as our CSV guide. Previous month loads automatically.
         </p>
       </div>
@@ -417,7 +436,7 @@ export function WizardDataSourcePanel({
             disabled={!canSync}
             className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
-            {syncStatus === "loading" ? "Syncing last 30 days…" : "Sync last 30 days & analyze"}
+            {syncStatus === "loading" ? "Importing campaign data…" : "Import campaign data"}
           </button>
           <p className="text-[11px] text-dash-ink-secondary/75">
             Creative reports still need an ad-level CSV.
@@ -436,31 +455,47 @@ export function WizardDataSourceToggle({
   onChange: (value: WizardDataSource) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg border border-dash-border bg-dash-bg p-1">
-      <button
-        type="button"
-        onClick={() => onChange("csv")}
-        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
-          value === "csv" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        <span className="block text-[13px] font-semibold">Upload CSV</span>
-        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-dash-ink/80" : ""}`}>
-          Manual export from Ads Manager
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("api")}
-        className={`rounded-md px-3 py-2.5 text-left transition-colors ${
-          value === "api" ? "bg-dash-accent text-dash-ink" : "text-dash-ink-secondary hover:text-dash-ink"
-        }`}
-      >
-        <span className="block text-[13px] font-semibold">Sync from API</span>
-        <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-          No manual export
-        </span>
-      </button>
+    <div className="space-y-2">
+      <p className="text-[15px] font-semibold text-white">Upload data for import</p>
+      <div>
+        <p className="mb-1.5 text-[12px] font-medium text-dash-ink-secondary">Import source</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => onChange("csv")}
+            className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
+              value === "csv"
+                ? "border-dash-accent bg-dash-accent text-dash-ink"
+                : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
+            }`}
+          >
+            <DataSourceBadge label="CSV" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold">Manual CSV upload</span>
+              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-dash-ink/80" : ""}`}>
+                Manual export from Ads Manager
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("api")}
+            className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
+              value === "api"
+                ? "border-dash-accent bg-dash-accent text-dash-ink"
+                : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
+            }`}
+          >
+            <DataSourceBadge label="API" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold">Connect your data via API</span>
+              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
+                Reduce manual work — your data connects automatically
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

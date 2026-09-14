@@ -39,8 +39,8 @@ export function getWizardStepLabel(step: 1 | 2 | 3 | 4, flow: AdWizardFlow): str
   }
   const labels: Record<1 | 2 | 3 | 4, string> = {
     1: "Upload",
-    2: "Setup",
-    3: "Metrics",
+    2: "Campaign Data",
+    3: "Campaign Metrics",
     4: "Generate",
   };
   return labels[step];
