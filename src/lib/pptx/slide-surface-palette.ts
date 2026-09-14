@@ -4,14 +4,6 @@
  * dark/light split already used by chart-slide-ooxml.ts and table-slide.ts.
  */
 
-import type { ReportTemplate } from "@/generated/prisma/enums";
-import {
-  SLIDE_SURFACE_LIGHT_CREAM,
-  SLIDE_SURFACE_LIGHT_PEARL,
-  SLIDE_SURFACE_LIGHT_SAND,
-  slideSurfacePaletteForTemplate,
-} from "./light-theme-variants";
-
 export interface SlideSurfacePalette {
   text: string;
   label: string;
@@ -45,14 +37,22 @@ export const SLIDE_SURFACE_DARK: SlideSurfacePalette = {
   changeDarkText: "0d1b2e",
 };
 
-/** @deprecated Use SLIDE_SURFACE_LIGHT_CREAM — kept for tests. */
-export const SLIDE_SURFACE_LIGHT = SLIDE_SURFACE_LIGHT_CREAM;
+export const SLIDE_SURFACE_LIGHT: SlideSurfacePalette = {
+  text: "0d1b2e",
+  label: "475569",
+  heading: "0d1b2e",
+  cardFill: "f0ede8",
+  cardStroke: "cbd5e1",
+  tableHeaderFill: "0d1b2e",
+  tablePeriodAFill: "f0d9b5",
+  tablePeriodBFill: "f0ede8",
+  tableNameFill: "f0ede8",
+  tableTotalFill: "e5e0d8",
+  tableHeaderLabel: "FFFFFF",
+  changeFlatText: "64748b",
+  changeDarkText: "0d1b2e",
+};
 
-export { SLIDE_SURFACE_LIGHT_CREAM, SLIDE_SURFACE_LIGHT_PEARL, SLIDE_SURFACE_LIGHT_SAND };
-
-export function slideSurfacePalette(templateOrIsLight: ReportTemplate | boolean): SlideSurfacePalette {
-  if (typeof templateOrIsLight === "boolean") {
-    return templateOrIsLight ? SLIDE_SURFACE_LIGHT_CREAM : SLIDE_SURFACE_DARK;
-  }
-  return slideSurfacePaletteForTemplate(templateOrIsLight);
+export function slideSurfacePalette(isLightTemplate: boolean): SlideSurfacePalette {
+  return isLightTemplate ? SLIDE_SURFACE_LIGHT : SLIDE_SURFACE_DARK;
 }

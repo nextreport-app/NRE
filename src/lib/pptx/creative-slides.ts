@@ -12,7 +12,6 @@ import type {
   CreativeTopSlideData,
   CreativeVideoSlideData,
 } from "../nre/creative-report-data";
-import type { ReportTemplate } from "@/generated/prisma/enums";
 import { slideSurfacePalette } from "./slide-surface-palette";
 
 export const CREATIVE_BG_REL_ID = "rId2";
@@ -43,9 +42,9 @@ function finishSlide(shapes: string[]): string {
 export function buildCreativeOverviewSlideXml(
   slide: CreativeOverviewSlideData,
   bg?: TemplateBackgroundImage,
-  reportTemplate: ReportTemplate = "DARK",
+  isLightTemplate = false,
 ): string {
-  const p = slideSurfacePalette(reportTemplate);
+  const p = slideSurfacePalette(isLightTemplate);
   const shapes = beginSlide(bg);
   shapes.push(
     textBox({ x: 40, y: 36, w: 880, h: 36, text: "CREATIVE OVERVIEW", sizePt: 22, bold: true, colorHex: p.heading, align: "l" }),
@@ -88,9 +87,9 @@ export function buildCreativeOverviewSlideXml(
 export function buildCreativeTopSlideXml(
   slide: CreativeTopSlideData,
   bg?: TemplateBackgroundImage,
-  reportTemplate: ReportTemplate = "DARK",
+  isLightTemplate = false,
 ): string {
-  const p = slideSurfacePalette(reportTemplate);
+  const p = slideSurfacePalette(isLightTemplate);
   const shapes = beginSlide(bg);
   shapes.push(
     textBox({ x: 40, y: 36, w: 880, h: 36, text: "TOP PERFORMING CREATIVE", sizePt: 22, bold: true, colorHex: p.heading, align: "l" }),
@@ -124,9 +123,9 @@ export function buildCreativeTopSlideXml(
 export function buildCreativeVideoSlideXml(
   slide: CreativeVideoSlideData,
   bg?: TemplateBackgroundImage,
-  reportTemplate: ReportTemplate = "DARK",
+  isLightTemplate = false,
 ): string {
-  const p = slideSurfacePalette(reportTemplate);
+  const p = slideSurfacePalette(isLightTemplate);
   const shapes = beginSlide(bg);
   shapes.push(
     textBox({ x: 40, y: 36, w: 880, h: 36, text: "VIDEO CREATIVE PERFORMANCE", sizePt: 22, bold: true, colorHex: p.heading, align: "l" }),
@@ -161,9 +160,9 @@ export function buildCreativeVideoSlideXml(
 export function buildCreativeFatigueSlideXml(
   slide: CreativeFatigueSlideData,
   bg?: TemplateBackgroundImage,
-  reportTemplate: ReportTemplate = "DARK",
+  isLightTemplate = false,
 ): string {
-  const p = slideSurfacePalette(reportTemplate);
+  const p = slideSurfacePalette(isLightTemplate);
   const shapes = beginSlide(bg);
   shapes.push(
     textBox({ x: 40, y: 36, w: 880, h: 36, text: "CREATIVE FATIGUE ALERT", sizePt: 22, bold: true, colorHex: FAT, align: "l" }),

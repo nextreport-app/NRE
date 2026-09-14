@@ -55,14 +55,7 @@ async function refineTemplate(fileName) {
 }
 
 async function main() {
-  for (const file of [
-    "meta-ads-light-cream.pptx",
-    "meta-ads-light-pearl.pptx",
-    "meta-ads-light-sand.pptx",
-    "ga4-light-cream.pptx",
-    "ga4-light-pearl.pptx",
-    "ga4-light-sand.pptx",
-  ]) {
+  for (const file of ["meta-ads-light.pptx", "ga4-light.pptx"]) {
     await refineTemplate(file);
   }
 }
