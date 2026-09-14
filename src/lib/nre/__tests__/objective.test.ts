@@ -236,6 +236,37 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
     expect(resolveCampaignObjective(rows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
   });
 
+  it("assigns high confidence when messaging conversations column has real data", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "3" },
+        result_type: "",
+        results: 0,
+        spend: 50,
+      }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("MESSAGING / CONVERSATIONS");
+    expect(resolution.confidence).toBe("high");
+    expect(resolution.requiresConfirmation).toBe(false);
+  });
+
+  it("assigns high confidence for a clearly named messaging campaign even before conversions appear", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: { "Messaging conversations started": "" },
+        link_clicks: 63,
+        result_type: "",
+        spend: 25,
+      }),
+    ];
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("MESSAGING / CONVERSATIONS");
+    expect(resolution.confidence).toBe("high");
+  });
+
   it("ignores dominant Meta leads result_type on a messenger campaign when messaging data exists", () => {
     const rows: MetricRow[] = [
       metricRow({
