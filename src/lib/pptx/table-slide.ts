@@ -173,7 +173,9 @@ function fillRow(rowXml: string, values: string[], rowIndex: number, fontSizeFor
 const HEADER_ABBREVIATIONS: Record<string, string> = {
   "WEBSITE LEADS": "WEB LEADS",
   "META FORM LEADS": "FORM LEADS",
+  "MESSAGING / CONVERSATIONS": "MSG CONV",
   "COST PER WEBSITE LEAD": "COST PER WEB LEAD",
+  "COST PER CONVERSATION": "COST PER\nCONVERSATION",
   "LANDING PAGE VIEWS": "LP VIEWS",
 };
 
@@ -271,6 +273,8 @@ export interface TableVisibilityOptions {
   hideColIndexes?: number[];
   /** Selects the Previous Month row's highlight fill (see PERIOD_ROW_FILL_HEX below) — the dark-theme shade reads as a near-invisible near-black smudge against the light template's own light card background, so the light template needs its own, lighter shade. Defaults to false (the original dark-template shade), matching every existing caller. */
   isLightTemplate?: boolean;
+  /** 0-indexed row to highlight as the Previous Month / period row (stacked layout uses a different row index than horizontal). */
+  periodHighlightRowIndex?: number;
 }
 
 /**
@@ -298,16 +302,17 @@ export function fillCombinedTotalTable(
   const HEADER_FONT_SIZE_OVERFLOW = 1200; // 12pt — floor, 3+ objective pairs only
   const ROW_LABEL_FONT_SIZE = 1200; // 12pt — data rows' own column-0 date-range text
   const DATA_VALUE_FONT_SIZE = 1300; // 13pt — data rows' numeric/currency cells
-  const objectivePairCount = (targetCols - STATIC_COLS) / 2;
+  const isStackedLayout = targetCols === STATIC_COLS;
+  const objectivePairCount = isStackedLayout ? 0 : (targetCols - STATIC_COLS) / 2;
   const headerFontSizeHundredths = objectivePairCount >= 3 ? HEADER_FONT_SIZE_OVERFLOW : HEADER_FONT_SIZE;
   console.log(
-    `[table-slide] fillCombinedTotalTable: ${objectivePairCount} objective pair(s) -> header ${headerFontSizeHundredths / 100}pt, row label ${ROW_LABEL_FONT_SIZE / 100}pt, data values ${DATA_VALUE_FONT_SIZE / 100}pt`,
+    `[table-slide] fillCombinedTotalTable: ${isStackedLayout ? "stacked" : `${objectivePairCount} objective pair(s)`} -> header ${headerFontSizeHundredths / 100}pt, row label ${ROW_LABEL_FONT_SIZE / 100}pt, data values ${DATA_VALUE_FONT_SIZE / 100}pt`,
   );
   const validShape =
     grid.length >= 2 &&
     grid.every((row) => row.length === targetCols) &&
-    targetCols >= STATIC_COLS + 2 &&
-    (targetCols - STATIC_COLS) % 2 === 0;
+    (isStackedLayout ||
+      (targetCols >= STATIC_COLS + 2 && (targetCols - STATIC_COLS) % 2 === 0));
   if (!validShape) {
     throw new Error(
       `Combined Total table grid must be a header row plus one or more data rows, each with ${STATIC_COLS} + an even number ` +
@@ -408,10 +413,15 @@ export function fillCombinedTotalTable(
   // growing/hiding columns above so it covers whatever cells the row
   // actually ends up with, not just its native 10.
   const rowsForFill = findSpans(newTbl, /<a:tr[^>]*>[\s\S]*?<\/a:tr>/g);
-  if (rowsForFill[1] && grid.length === EXPECTED_ROWS) {
+  const periodHighlightRowIndex =
+    options.periodHighlightRowIndex ?? (grid.length === EXPECTED_ROWS && !isStackedLayout ? 1 : undefined);
+  if (periodHighlightRowIndex != null && rowsForFill[periodHighlightRowIndex]) {
     const fillHex = options.isLightTemplate ? PERIOD_ROW_FILL_HEX_LIGHT : PERIOD_ROW_FILL_HEX;
-    const filledRow = setRowCellFill(rowsForFill[1].xml, fillHex);
-    newTbl = newTbl.slice(0, rowsForFill[1].start) + filledRow + newTbl.slice(rowsForFill[1].end);
+    const filledRow = setRowCellFill(rowsForFill[periodHighlightRowIndex].xml, fillHex);
+    newTbl =
+      newTbl.slice(0, rowsForFill[periodHighlightRowIndex].start) +
+      filledRow +
+      newTbl.slice(rowsForFill[periodHighlightRowIndex].end);
   }
 
   const hideRows = options.hideRowIndexes ?? [];

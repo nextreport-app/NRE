@@ -12,6 +12,8 @@ import { buildCampaignShortLabels, formatRankedCampaignLabel } from "./chart-cam
 
 export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
 const INACTIVE_COLOR = "4a5568";
+/** Unattributed spend (reach/awareness, paused campaigns, etc.) — matches chart-slide.ts OTHER_COLOR. */
+const OTHER_SPEND_COLOR = "64748b";
 const MAX_LEFT_ITEMS = 5;
 
 export interface VisualChartSegment {
@@ -234,6 +236,20 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         spendLabel: obj.spendFormatted,
       };
     });
+
+    const attributedSpend = objectives.reduce(
+      (sum, obj) => sum + (parseFloat(obj.spendFormatted.replace(/[^0-9.-]/g, "")) || 0),
+      0,
+    );
+    const otherSpend = Math.max(0, chart.totalAllSpend - attributedSpend);
+    if (otherSpend >= 0.01) {
+      groupedDonut.push({
+        name: "Other spend",
+        color: OTHER_SPEND_COLOR,
+        percentage: spendTotal > 0 ? Math.round((otherSpend / spendTotal) * 1000) / 10 : 0,
+        spendLabel: fmtCurrency(otherSpend, currencySymbol),
+      });
+    }
 
     const resultBars = buildResultBars(
       objectives.map((obj, i) => ({

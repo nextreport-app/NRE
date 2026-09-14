@@ -1,4 +1,8 @@
-import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid } from "@/lib/nre/report-data";
+import {
+  buildCombinedTotalTableGrid,
+  buildHistoricalComparisonTableGrid,
+  shouldUseStackedCombinedTotalLayout,
+} from "@/lib/nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-total";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
@@ -426,15 +430,130 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; compact?: boolean }) {
   const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
 
-  const grid = isHistoricalMultiMonth
-    ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
-    : data.platform === "GOOGLE"
-      ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels)
-      : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
-
   const hidePeriodRow =
     isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
+  const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
+
+  const grid = isHistoricalMultiMonth
+    ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
+    : data.platform === "GOOGLE"
+      ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions)
+      : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
+
+  const stacked = !isHistoricalMultiMonth && shouldUseStackedCombinedTotalLayout(data.tableHeaderLabels.resultColumns.length);
+
+  if (stacked) {
+    const staticRowCount = 1 + (hideMtdRow ? 0 : 1) + (hidePeriodRow ? 0 : 1);
+    const staticHeader = grid[0]!;
+    const staticBody = grid.slice(1, staticRowCount);
+    const objectiveHeader = grid[staticRowCount];
+    const objectiveRows = grid.slice(staticRowCount + 1);
+
+    return (
+      <div className={compact ? "print-combined-table space-y-4" : "space-y-4"}>
+        <div className={compact ? "overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border"}>
+          <table
+            className={
+              compact
+                ? "w-full border-collapse text-left text-[12px]"
+                : "w-full min-w-[640px] border-collapse text-left text-[16px]"
+            }
+          >
+            <thead>
+              <tr className="bg-navy-border">
+                {staticHeader.map((h, i) => (
+                  <th
+                    key={i}
+                    className={
+                      compact
+                        ? "px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink"
+                        : "whitespace-nowrap px-4 py-3 text-[14px] font-semibold uppercase tracking-wide text-ink"
+                    }
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {staticBody.map((cells, ri) => (
+                <tr
+                  key={ri}
+                  className={
+                    ri === staticBody.length - 1 && !hidePeriodRow && !hideMtdRow ? "bg-navy-panel" : "bg-navy"
+                  }
+                >
+                  {cells.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className={
+                        (compact
+                          ? "px-1.5 py-2 text-[12px] text-ink "
+                          : "whitespace-nowrap px-4 py-3 text-[16px] text-ink ") +
+                        (ci === 0 ? "text-left font-semibold" : "text-center")
+                      }
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {objectiveHeader && objectiveRows.length > 0 ? (
+          <div className={compact ? "overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border"}>
+            <table
+              className={
+                compact
+                  ? "w-full border-collapse text-left text-[12px]"
+                  : "w-full min-w-[480px] border-collapse text-left text-[16px]"
+              }
+            >
+              <thead>
+                <tr className="bg-navy-border">
+                  {objectiveHeader.filter(Boolean).map((h, i) => (
+                    <th
+                      key={i}
+                      className={
+                        compact
+                          ? "px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink"
+                          : "whitespace-nowrap px-4 py-3 text-[14px] font-semibold uppercase tracking-wide text-ink"
+                      }
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {objectiveRows.map((cells, ri) => (
+                  <tr key={ri} className="bg-navy">
+                    {cells
+                      .slice(0, objectiveHeader.filter(Boolean).length)
+                      .map((cell, ci) => (
+                        <td
+                          key={ci}
+                          className={
+                            (compact
+                              ? "px-1.5 py-2 text-[12px] text-ink "
+                              : "whitespace-nowrap px-4 py-3 text-[16px] text-ink ") +
+                            (ci === 0 ? "text-left font-semibold" : "text-center")
+                          }
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   const bodyRows: { cells: string[]; isPeriod: boolean }[] = isHistoricalMultiMonth
     ? grid.slice(1).map((cells) => ({ cells, isPeriod: false }))

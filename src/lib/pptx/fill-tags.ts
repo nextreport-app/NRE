@@ -6,7 +6,17 @@
  */
 
 import { additionalMetricsHeading } from "../nre/available-metrics";
-import { buildCombinedTotalTableGrid, buildHistoricalComparisonTableGrid, type CoverData, type Platform, type ReportType, type SlideData, type TableHeaderLabels, type TableRowData } from "../nre/report-data";
+import {
+  buildCombinedTotalTableGrid,
+  buildHistoricalComparisonTableGrid,
+  shouldUseStackedCombinedTotalLayout,
+  type CoverData,
+  type Platform,
+  type ReportType,
+  type SlideData,
+  type TableHeaderLabels,
+  type TableRowData,
+} from "../nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-combined-total";
 import {
   cloneShapeAsTag,
@@ -786,23 +796,22 @@ export function buildTableSlideXml(
   // the SAME positional 3-row/N-column grid shape table-slide.ts expects,
   // just with different header text, so no other table-filling logic here
   // needs to change.
-  const grid =
-    platform === "GOOGLE"
-      ? buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers)
-      : buildCombinedTotalTableGrid(periodRow, mtdRow, headers);
-  // Row 1 (Period) is hidden whenever there's nothing to show it (no
-  // Previous Month Data uploaded) — and ALWAYS for a Monthly report,
-  // regardless of whether Previous Month Data exists: "the Combined Total
-  // slide shows only one data row (MTD) with no weekly column distinction"
-  // (Fix 8) — a Monthly report has no separate weekly/period comparison at
-  // all, only the month itself.
   const hidePeriodRow =
     reportType === "MONTHLY" || reportType === "QUARTER" || reportType === "YTD" || !periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
+  const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
+  const stacked = shouldUseStackedCombinedTotalLayout(headers.resultColumns.length);
+  const grid =
+    platform === "GOOGLE"
+      ? buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions)
+      : buildCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions);
+  const periodHighlightRowIndex =
+    stacked && !hidePeriodRow && !hideMtdRow ? 2 : stacked || hidePeriodRow || hideMtdRow ? undefined : 1;
   const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideRowIndexes: [...(hidePeriodRow ? [2] : []), ...(hideMtdRow ? [1] : [])],
-    hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
+    hideRowIndexes: stacked ? [] : [...(hidePeriodRow ? [2] : []), ...(hideMtdRow ? [1] : [])],
+    hideColIndexes: stacked ? [6, 7, 8, 9] : headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
+    periodHighlightRowIndex,
   });
   const headerColor = reportHeaderColor(isLightTemplate);
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {

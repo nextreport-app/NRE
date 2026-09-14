@@ -1,4 +1,5 @@
-import type { TableHeaderLabels, TableRowData } from "./report-data";
+import type { CombinedTotalTableOptions, TableHeaderLabels, TableRowData } from "./report-data";
+import { buildCombinedTotalStackedTableGrid, shouldUseStackedCombinedTotalLayout } from "./report-data";
 
 export const GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"] as const;
 
@@ -7,7 +8,12 @@ export function buildGoogleCombinedTotalTableGrid(
   periodRow: TableRowData,
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
+  options: CombinedTotalTableOptions = {},
 ): string[][] {
+  if (shouldUseStackedCombinedTotalLayout(headers.resultColumns.length)) {
+    const stacked = buildCombinedTotalStackedTableGrid(periodRow, mtdRow, headers, options);
+    return stacked.map((row, i) => (i === 0 ? [...GOOGLE_TABLE_STATIC_HEADERS] : row));
+  }
   const headerRow = [...GOOGLE_TABLE_STATIC_HEADERS, ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])];
   const periodDataRow = periodRow.hasData
     ? [
