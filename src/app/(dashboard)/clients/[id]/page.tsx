@@ -190,7 +190,6 @@ export default async function ClientDetailPage({
               currency: client.currency,
               timezone: client.timezone,
               monthlyBudget: client.monthlyBudget != null ? String(client.monthlyBudget) : "",
-              showBudgetPacingOnCover: client.showBudgetPacingOnCover,
               template: client.template,
               notes: client.notes ?? "",
             }}

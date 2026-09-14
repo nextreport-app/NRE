@@ -3247,9 +3247,6 @@ export function ReportUploadWizard({
                   <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
                     {coverBudgetPreviewLine}
                   </p>
-                  <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-                    Month-to-date for selected campaigns, through yesterday in the client timezone.
-                  </p>
                   <label className={`flex items-start gap-3 ${budgetToggleSaving ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
@@ -3259,8 +3256,11 @@ export function ReportUploadWizard({
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
                     <span className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                      Show this line on the cover slide{" "}
-                      <span className="text-dash-ink-secondary">(saved as default for this client)</span>
+                      Show budget pacing on cover slide
+                      <span className="mt-0.5 block text-[13px] text-dash-ink-muted">
+                        Month-to-date for selected campaigns, through yesterday in the client timezone. Saved as this
+                        client&apos;s default.
+                      </span>
                     </span>
                   </label>
                   {coverBudgetPacingWarning && (
