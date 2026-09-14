@@ -664,7 +664,26 @@ describe("objectiveKeyFor + stripNeverKeys — Thing 1: cross-objective never-li
   it("slugifies a resultLabel into the never-list's lowercase key form", () => {
     expect(objectiveKeyFor("META FORM LEADS")).toBe("meta_form_leads");
     expect(objectiveKeyFor("WEBSITE LEADS")).toBe("website_leads");
+    expect(objectiveKeyFor("MESSAGING / CONVERSATIONS")).toBe("messaging_conversations");
     expect(objectiveKeyFor("REACH")).toBe("reach");
+  });
+
+  it("stripNeverKeys hides messaging metrics from non-messaging campaigns (Add from CSV pool)", () => {
+    const items = [
+      { key: "link_clicks" },
+      { key: "messaging_conversations_started" },
+      { key: "cost_per_conversation" },
+    ];
+    expect(stripNeverKeys(items, "meta_form_leads")).toEqual([
+      { key: "link_clicks" },
+      null,
+      null,
+    ]);
+    expect(stripNeverKeys(items, "website_leads")).toEqual([
+      { key: "link_clicks" },
+      null,
+      null,
+    ]);
   });
 
   it("nulls out any entry whose key is forbidden for the given objective", () => {
