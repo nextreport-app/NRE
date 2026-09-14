@@ -34,16 +34,22 @@ function StatusBadge({ status }: { status: PreviousMonthComparisonInfo["status"]
       </span>
     );
   }
-  return (
-    <span className="rounded-full bg-dash-border px-2.5 py-0.5 text-[11px] font-semibold text-dash-ink-secondary">
-      Optional
-    </span>
-  );
+  return null;
+}
+
+function collapsedHint(info: PreviousMonthComparisonInfo): string {
+  if (info.status === "current") {
+    return `${info.expectedMonthName} data is saved — turn on to include a previous-month row on Combined Total.`;
+  }
+  if (info.status === "stale") {
+    return `Update ${info.expectedMonthName} CSV once this month, then turn on to add the comparison row.`;
+  }
+  return `Upload ${info.expectedMonthName} CSV once (or sync from API) to add a previous-month row on Combined Total.`;
 }
 
 /**
- * Compact Previous Month Data block on wizard Step 1 — upload inline when missing
- * or stale; campaign checkboxes when data is ready (CSV upload or API auto-sync).
+ * Compact Previous Month Data block on wizard Step 1 — collapsed by default;
+ * expands when the user turns on "Include in report".
  */
 export function PreviousMonthDataWizardPanel({
   clientId,
@@ -131,22 +137,26 @@ export function PreviousMonthDataWizardPanel({
           <CalendarIcon />
           <div className="min-w-0">
             <p className="text-[14px] font-semibold text-white">Previous month comparison</p>
-            <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+            <p className="mt-0.5 text-[12px] leading-relaxed text-dash-ink-secondary">
               {includeInReport
                 ? info.status === "current"
                   ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
-                  : `Optional row for ${info.expectedMonthName} on Monthly Overview`
-                : "Won't appear in this report"}
+                  : `Set up ${info.expectedMonthName} for the Combined Total previous-month row`
+                : collapsedHint(info)}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
+          {!includeInReport && (info.status === "current" || info.status === "stale") ? (
+            <StatusBadge status={info.status} />
+          ) : null}
           <label className="flex cursor-pointer items-center gap-2">
             <span className="text-[12px] font-medium text-dash-ink-secondary">Include in report</span>
             <button
               type="button"
               role="switch"
               aria-checked={includeInReport}
+              aria-expanded={includeInReport}
               onClick={() => onIncludeInReportChange(!includeInReport)}
               className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
                 includeInReport ? "bg-dash-accent" : "bg-dash-border"
@@ -177,12 +187,7 @@ export function PreviousMonthDataWizardPanel({
             onSelectionChange={handleSelectionChange}
           />
         </div>
-      ) : (
-        <p className="mt-3 border-t border-dash-border pt-3 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Turn this on to add a previous-month row to Combined Total. Your saved previous-month file stays on the client
-          for next time.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

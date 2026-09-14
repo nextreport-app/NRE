@@ -58,9 +58,9 @@ describe("parseJsonFormField — Comparison Report period fields", () => {
 });
 
 describe("resolveIncludePreviousMonthComparison", () => {
-  it("defaults to true when the field is absent", () => {
-    expect(resolveIncludePreviousMonthComparison(new FormData())).toBe(true);
-    expect(resolveIncludePreviousMonthComparison(null)).toBe(true);
+  it("defaults to false when the field is absent", () => {
+    expect(resolveIncludePreviousMonthComparison(new FormData())).toBe(false);
+    expect(resolveIncludePreviousMonthComparison(null)).toBe(false);
   });
 
   it("reads false from a JSON-encoded form field", () => {

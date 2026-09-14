@@ -610,7 +610,7 @@ export function ReportUploadWizard({
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
     initialPreviousMonthSelectedCampaigns,
   );
-  const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(true);
+  const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
 
   const previousMonthComparisonReady = useMemo(
     () =>
