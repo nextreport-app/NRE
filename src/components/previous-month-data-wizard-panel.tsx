@@ -219,13 +219,15 @@ function PreviousMonthDataWizardContent({
   if (info.status === "current") {
     return (
       <div className="space-y-3">
-        <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-          {info.expectedMonthName} data powers the previous-month row on Monthly Overview and month-vs-month
-          comparisons.{" "}
-          <Link href={manageHref} className="font-medium text-dash-accent hover:underline">
+        <div className="space-y-1">
+          <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+            {info.expectedMonthName} data powers the previous-month row on Monthly Overview and month-vs-month
+            comparisons.
+          </p>
+          <Link href={manageHref} className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
             Manage on client page
           </Link>
-        </p>
+        </div>
 
         {campaigns.length > 0 ? (
           <div className="rounded-md border border-dash-border bg-dash-bg/80 px-3 pb-3 pt-2">
