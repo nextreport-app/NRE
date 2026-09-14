@@ -417,7 +417,7 @@ export function WizardDataSourcePanel({
             disabled={!canSync}
             className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
-            {syncStatus === "loading" ? "Syncing from API…" : "Sync data & analyze"}
+            {syncStatus === "loading" ? "Syncing last 30 days…" : "Sync last 30 days & analyze"}
           </button>
           <p className="text-[11px] text-dash-ink-secondary/75">
             Creative reports still need an ad-level CSV.
