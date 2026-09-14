@@ -18,7 +18,6 @@ import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import {
   evaluateAddMetric,
   filterAddableMetrics,
-  findPrimaryResultCostPair,
   MAX_METRICS_PER_SLIDE,
   MAX_TOTAL_METRICS,
   type SelectedMetric,
@@ -206,13 +205,6 @@ const ADSET_CHIP_CLASS =
   "flex-shrink-0 rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] font-medium text-dash-ink-secondary hover:text-dash-ink disabled:opacity-30";
 
 const MIN_SELECTED_METRICS = 4;
-
-function joinMetricLabels(metrics: SelectedMetric[]): string {
-  const labels = metrics.map((item) => item.label);
-  if (labels.length <= 1) return labels[0] ?? "";
-  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
-}
 
 type AnalyzeStatus = "idle" | "loading" | "invalid" | "error";
 type PreviewStatus = "idle" | "loading" | "invalid" | "error";
@@ -1473,19 +1465,6 @@ export function ReportUploadWizard({
     if (!overflowDialog) return;
     const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
     setPerCampaignMetrics((prev) => new Map(prev).set(overflowDialog.normalized, [...current, overflowDialog.metric]));
-    setPerCampaignMinWarning(null);
-    setOverflowDialog(null);
-  }
-
-  function replaceCampaignMetric(removeKey: string) {
-    if (!overflowDialog) return;
-    const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
-    setPerCampaignMetrics((prev) =>
-      new Map(prev).set(
-        overflowDialog.normalized,
-        current.filter((m) => m.key !== removeKey).concat(overflowDialog.metric),
-      ),
-    );
     setPerCampaignMinWarning(null);
     setOverflowDialog(null);
   }
@@ -2780,57 +2759,15 @@ export function ReportUploadWizard({
                 )}
                 {overflowDialog.mode === "confirm_second_slide" && (
                   <>
-                    <p className="text-[15px] font-semibold text-dash-ink">Add a 9th metric?</p>
-                    <div className="mt-2 space-y-2 text-[14px] leading-relaxed text-dash-ink-secondary">
-                      {(() => {
-                        const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
-                        const objective = campaignObjectives.get(overflowDialog.normalized);
-                        const fillers = findPrimaryResultCostPair(
-                          current.slice(0, MAX_METRICS_PER_SLIDE),
-                          objective?.resultLabel,
-                          objective?.costLabel,
-                        );
-                        const remainingAfter = Math.max(0, campaignAvailableMetrics(overflowDialog.normalized).length - 1);
-                        const fillText =
-                          fillers.length > 0 ? joinMetricLabels(fillers) : "this campaign's result and cost";
-                        return (
-                          <>
-                            <p>Slide 1 keeps your first {MAX_METRICS_PER_SLIDE} chips.</p>
-                            <p>
-                              <span className="font-medium text-dash-ink">{overflowDialog.metric.label}</span> goes on a
-                              second slide — with{" "}
-                              <span className="font-medium text-dash-ink">{fillText}</span> so that slide isn&apos;t
-                              empty.
-                            </p>
-                            {remainingAfter > 0 ? (
-                              <p>You can add more CSV metrics to slide 2 after this.</p>
-                            ) : null}
-                            <p>Or swap a chip below to stay on one slide.</p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </>
-                )}
-
-                {overflowDialog.mode === "confirm_second_slide" && (
-                  <div className="mt-3">
-                    <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">
-                      Swap a chip on slide 1 instead
+                    <p className="text-[15px] font-semibold text-dash-ink">Add a second slide?</p>
+                    <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
+                      <span className="font-medium text-dash-ink">{overflowDialog.metric.label}</span> will go on slide
+                      2. Each campaign slide fits {MAX_METRICS_PER_SLIDE} metrics.
                     </p>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      {(perCampaignMetrics.get(overflowDialog.normalized) ?? []).slice(0, MAX_METRICS_PER_SLIDE).map((m) => (
-                        <button
-                          key={m.key}
-                          type="button"
-                          onClick={() => replaceCampaignMetric(m.key)}
-                          className="rounded-md border border-dash-border px-3 py-1.5 text-[14px] text-dash-ink hover:border-dash-accent"
-                        >
-                          Replace {m.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    <p className="mt-2 text-[13px] text-dash-ink-muted">
+                      Remove a chip above to stay on one slide instead.
+                    </p>
+                  </>
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -2840,7 +2777,7 @@ export function ReportUploadWizard({
                       onClick={confirmOpenSecondSlide}
                       className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                     >
-                      Add second slide
+                      Add to slide 2
                     </button>
                   )}
                   <button
