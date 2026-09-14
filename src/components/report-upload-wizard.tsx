@@ -3255,12 +3255,8 @@ export function ReportUploadWizard({
                       onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
-                    <span className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                      Show budget pacing on cover slide
-                      <span className="mt-0.5 block text-[13px] text-dash-ink-muted">
-                        Month-to-date for selected campaigns, through yesterday in the client timezone. Saved as this
-                        client&apos;s default.
-                      </span>
+                    <span className="text-[14px] text-dash-ink-secondary">
+                      Show monthly budget used on cover slide
                     </span>
                   </label>
                   {coverBudgetPacingWarning && (
