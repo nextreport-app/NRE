@@ -782,11 +782,77 @@ export const COMBINED_TOTAL_STATIC_HEADERS = [
   "CPC (All)",
 ] as const;
 
+/** At 4+ distinct objectives the horizontal table shrinks past readability — use stacked rows instead. */
+export const COMBINED_TOTAL_STACKED_OBJECTIVE_THRESHOLD = 4;
+
+export interface CombinedTotalTableOptions {
+  showMtdRow?: boolean;
+  showPeriodRow?: boolean;
+}
+
+export function shouldUseStackedCombinedTotalLayout(objectiveCount: number): boolean {
+  return objectiveCount >= COMBINED_TOTAL_STACKED_OBJECTIVE_THRESHOLD;
+}
+
+function staticCombinedTotalRow(row: TableRowData): string[] {
+  return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc];
+}
+
+/** Vertical objective rows under the static metrics — used when 4+ objectives would crowd one header row. */
+export function buildCombinedTotalStackedTableGrid(
+  periodRow: TableRowData,
+  mtdRow: TableRowData,
+  headers: TableHeaderLabels,
+  options: CombinedTotalTableOptions = {},
+): string[][] {
+  const showMtdRow = options.showMtdRow !== false;
+  const showPeriodRow = options.showPeriodRow !== false;
+  const dualPeriod = showMtdRow && showPeriodRow;
+
+  const grid: string[][] = [[...COMBINED_TOTAL_STATIC_HEADERS]];
+  if (showMtdRow) grid.push(staticCombinedTotalRow(mtdRow));
+  if (showPeriodRow) grid.push(staticCombinedTotalRow(periodRow));
+
+  if (dualPeriod) {
+    grid.push(["Objective", "MTD Results", "MTD Cost", "Period Results", "Period Cost", ""]);
+  } else {
+    grid.push(["Objective", "Results", "Cost per result", "", "", ""]);
+  }
+
+  const mtdByLabel = new Map(mtdRow.resultColumns.map((c) => [c.label, c]));
+  const periodByLabel = new Map(periodRow.resultColumns.map((c) => [c.label, c]));
+
+  for (const { label } of headers.resultColumns) {
+    const mtdCol = mtdByLabel.get(label);
+    const periodCol = periodByLabel.get(label);
+    if (dualPeriod) {
+      grid.push([
+        label,
+        mtdCol?.value ?? "—",
+        mtdCol?.cprValue ?? "—",
+        periodCol?.value ?? "—",
+        periodCol?.cprValue ?? "—",
+        "",
+      ]);
+    } else {
+      const col = showMtdRow ? mtdCol : periodCol;
+      grid.push([label, col?.value ?? "—", col?.cprValue ?? "—", "", "", ""]);
+    }
+  }
+
+  return grid;
+}
+
 export function buildCombinedTotalTableGrid(
   periodRow: TableRowData,
   mtdRow: TableRowData,
   headers: TableHeaderLabels,
+  options: CombinedTotalTableOptions = {},
 ): string[][] {
+  if (shouldUseStackedCombinedTotalLayout(headers.resultColumns.length)) {
+    return buildCombinedTotalStackedTableGrid(periodRow, mtdRow, headers, options);
+  }
+
   const headerRow = [
     ...COMBINED_TOTAL_STATIC_HEADERS,
     ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel]),

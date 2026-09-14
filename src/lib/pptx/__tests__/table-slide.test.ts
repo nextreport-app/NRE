@@ -219,14 +219,19 @@ describe("fillCombinedTotalTable", () => {
       }
     });
 
-    it("grows to 14 columns for a 4-objective grid", () => {
+    it("fills a stacked 6-column grid and hides the native objective column pairs", () => {
       const xml = buildFixtureTable();
-      const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
-      const out = fillCombinedTotalTable(xml, grid);
+      const grid = [
+        [...COMBINED_TOTAL_STATIC_HEADERS],
+        ["Jul MTD", "$1", "1k", "2k", "1%", "$1"],
+        ["Objective", "Results", "Cost per result", "", "", ""],
+        ["FORM LEADS", "8", "$145", "", "", ""],
+      ];
+      const out = fillCombinedTotalTable(xml, grid, { hideColIndexes: [6, 7, 8, 9] });
 
-      expect((out.match(/<a:gridCol /g) || []).length).toBe(14);
-      expect(out).toContain("<a:t>V0-12</a:t>");
-      expect(out).toContain("<a:t>V0-13</a:t>");
+      expect((out.match(/<a:gridCol /g) || []).length).toBe(6);
+      expect(out).toContain("<a:t>FORM LEADS</a:t>");
+      expect(out).toContain("<a:t>$145</a:t>");
     });
 
     it("rescales every column's width so the table's total width is unchanged after growing", () => {
@@ -271,15 +276,22 @@ describe("fillCombinedTotalTable", () => {
         expect((rows[2].match(/sz="1300"/g) || []).length).toBe(11);
       });
 
-      it("never drops the header below its 11pt absolute floor even at 4+ objective pairs (14 columns)", () => {
+      it("abbreviates MESSAGING / CONVERSATIONS headers at 3+ objective pairs", () => {
         const xml = buildFixtureTable(EXPECTED_ROWS, NATIVE_COLS, 100000);
-        const grid = grid3xN(14, (r, c) => `V${r}-${c}`);
-        const out = fillCombinedTotalTable(xml, grid);
-        const rows = out.split(/(?=<a:tr)/).filter((s) => s.startsWith("<a:tr"));
-        expect((rows[0].match(/sz="1200"/g) || []).length).toBe(14);
-        expect(rows[0]).not.toContain('sz="1000"');
-        expect(rows[0]).not.toContain('sz="900"');
-        expect(rows[0]).not.toContain('sz="800"');
+        const header = [
+          ...COMBINED_TOTAL_STATIC_HEADERS,
+          "META FORM LEADS",
+          "COST PER LEAD",
+          "WEBSITE LEADS",
+          "COST PER WEB LEAD",
+          "MESSAGING / CONVERSATIONS",
+          "COST PER CONVERSATION",
+        ];
+        const dataRow = header.map(() => "x");
+        const out = fillCombinedTotalTable(xml, [header, dataRow, dataRow]);
+        expect(out).toContain("<a:t>MSG CONV</a:t>");
+        expect(out).toContain("<a:t>COST PER</a:t>");
+        expect(out).not.toContain("<a:t>MESSAGING / CONVERSATIONS</a:t>");
       });
 
       it("sets the header row to its 12pt normal size for 1-2 objective pairs (no overflow risk)", () => {

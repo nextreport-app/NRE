@@ -2985,7 +2985,7 @@ describe("buildCombinedTotalTableGrid", () => {
   });
 
   // Fix 1: no objective should ever be dropped, however many are running.
-  it("grows to 12 columns for 3 objectives and 14 for 4, never dropping one", () => {
+  it("grows to 12 columns for 3 objectives; switches to stacked rows at 4 objectives", () => {
     const threeHeaders: TableHeaderLabels = {
       resultColumns: [
         { label: "LINK CLICKS", costLabel: "COST PER CLICK" },
@@ -3011,8 +3011,10 @@ describe("buildCombinedTotalTableGrid", () => {
       resultColumns: [...threeRow.resultColumns, resultCol("APP INSTALLS", "COST PER INSTALL")],
     });
     const fourGrid = buildCombinedTotalTableGrid(fourRow, fourRow, fourHeaders);
-    expect(fourGrid[0]).toHaveLength(14);
-    expect(fourGrid[0][12]).toBe("APP INSTALLS");
+    expect(fourGrid[0]).toHaveLength(6);
+    expect(fourGrid[3]).toEqual(["Objective", "MTD Results", "MTD Cost", "Period Results", "Period Cost", ""]);
+    expect(fourGrid[4]![0]).toBe("LINK CLICKS");
+    expect(fourGrid[7]![0]).toBe("APP INSTALLS");
   });
 
   it("aligns each row's data under the right header column by label, not position, when the two rows' objective mixes differ", () => {

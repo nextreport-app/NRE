@@ -72,10 +72,59 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.summaryLine).toContain("Total Spend");
   });
 
+  it("adds Other spend segment when objective spends do not sum to total account spend", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        totalAllSpend: 3520,
+        snapshot: {
+          mode: "multi",
+          mtdSpendFormatted: "$3,520",
+          activeCampaignCount: 3,
+          objectives: [
+            {
+              label: "META FORM LEADS",
+              resultsValue: "17",
+              cprValue: "$165.79",
+              cprLabel: "COST PER LEAD",
+              spendFormatted: "$2,818",
+            },
+            {
+              label: "WEBSITE LEADS",
+              resultsValue: "0",
+              cprValue: "N/A",
+              cprLabel: "COST PER WEBSITE LEAD",
+              spendFormatted: "$169",
+            },
+            {
+              label: "MESSAGING / CONVERSATIONS",
+              resultsValue: "3",
+              cprValue: "$44.92",
+              cprLabel: "COST PER CONVERSATION",
+              spendFormatted: "$135",
+            },
+          ],
+          objectivesOmittedCount: 0,
+          primaryResultsValue: "17",
+          primaryResultsLabel: "META FORM LEADS",
+          primaryCprValue: "$165.79",
+          primaryCprLabel: "COST PER LEAD",
+          primarySpendFormatted: "$2,818",
+        },
+      }),
+      "$",
+    );
+
+    const other = model.groupedDonut!.find((s) => s.name === "Other spend");
+    expect(other).toBeDefined();
+    expect(other!.percentage).toBeGreaterThan(0);
+    const totalPct = model.groupedDonut!.reduce((sum, s) => sum + s.percentage, 0);
+    expect(totalPct).toBeCloseTo(100, 0);
+  });
+
   it("groups by objective for multi-objective accounts", () => {
     const model = buildVisualChartSlideModel(
       chart({
-        totalAllSpend: 3401,
+        totalAllSpend: 3400,
         snapshot: {
           mode: "multi",
           mtdSpendFormatted: "$3,401",
