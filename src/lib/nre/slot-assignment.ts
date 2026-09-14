@@ -39,6 +39,24 @@ import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from ".
 import type { GoogleObjectiveKey } from "./detect-objective";
 import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
+/** Messaging-only CSV columns — must never appear on non-messaging campaign slides or Add-from-CSV pools. */
+const MESSAGING_ONLY_METRIC_KEYS = [
+  "messaging_conversations_started",
+  "cost_per_conversation",
+  "new_messaging_contacts",
+  "cost_per_new_contact",
+  "messaging_contacts",
+  "cost_per_messaging_contact",
+  "messages_delivered",
+  "messaging_subscriptions",
+  "cost_per_messaging_subscription",
+  "returning_messaging_contacts",
+] as const;
+
+function withMessagingBlocked(keys: string[]): string[] {
+  return [...keys, ...MESSAGING_ONLY_METRIC_KEYS];
+}
+
 /**
  * Thing 1 (three-layer objective architecture rebuild) — a hard,
  * cross-objective backstop: no campaign's slide may EVER show a card whose
@@ -51,19 +69,74 @@ import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type Ava
  * LEADS" -> "meta_form_leads".
  */
 const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
-  meta_form_leads: ["website_leads", "cost_per_website_lead", "purchases", "cost_per_purchase", "video_views", "thruplays", "app_installs"],
-  website_leads: ["meta_form_leads", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "video_views", "app_installs"],
-  leads: ["purchases", "cost_per_purchase", "video_views", "app_installs"],
-  purchases: ["website_leads", "meta_form_leads", "cost_per_website_lead", "video_views", "app_installs"],
-  initiate_checkout: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  add_to_cart: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  link_clicks: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  landing_page_views: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  video_views: ["website_leads", "meta_form_leads", "purchases", "link_clicks", "app_installs"],
-  reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  awareness: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  messaging: ["website_leads", "purchases", "video_views", "app_installs"],
-  app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
+  meta_form_leads: withMessagingBlocked([
+    "website_leads",
+    "cost_per_website_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "thruplays",
+    "app_installs",
+  ]),
+  website_leads: withMessagingBlocked([
+    "meta_form_leads",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs",
+  ]),
+  leads: withMessagingBlocked(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  purchases: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "video_views",
+    "app_installs",
+  ]),
+  initiate_checkout: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  add_to_cart: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  landing_page_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ]),
+  video_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "link_clicks",
+    "app_installs",
+  ]),
+  reach: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results",
+  ]),
+  awareness: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results",
+  ]),
+  messaging: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  app_installs: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views"]),
 };
 // A few of buildMetaSlots' own resultLabel cases share one objective under
 // two spellings (its own switch statement literally has two case labels
@@ -72,6 +145,7 @@ const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
 NEVER_KEYS_FOR_OBJECTIVE.unique_reach = NEVER_KEYS_FOR_OBJECTIVE.reach;
 NEVER_KEYS_FOR_OBJECTIVE.mobile_app_installs = NEVER_KEYS_FOR_OBJECTIVE.app_installs;
 NEVER_KEYS_FOR_OBJECTIVE.messaging_leads = NEVER_KEYS_FOR_OBJECTIVE.messaging;
+NEVER_KEYS_FOR_OBJECTIVE.messaging_conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 NEVER_KEYS_FOR_OBJECTIVE.messaging_conversations_started = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 NEVER_KEYS_FOR_OBJECTIVE.conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 

@@ -16,7 +16,8 @@ import {
   type ObjectivePair,
   type SelectedMetric,
 } from "../available-metrics";
-import { buildGoogleSlots, buildMetaSlots } from "../slot-assignment";
+import { buildGoogleSlots, buildMetaSlots, stripNeverKeys } from "../slot-assignment";
+import { defaultMetricSelectionForCampaign } from "../platform-reporting";
 import type { RawMetricRow } from "../dynamic-metrics";
 
 /**
@@ -301,6 +302,45 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     expect(availableWebsiteLeads?.key).toBe("website_leads");
     // Same label, different key — a key-only filter would let this through.
     expect(availableWebsiteLeads?.key).not.toBe(slot4.key);
+  });
+});
+
+describe("stripNeverKeys on mixed-objective CSV pools — messaging columns only for messaging campaigns", () => {
+  it("META FORM LEADS and WEBSITE LEADS add pools exclude conversations metrics present in the shared file", () => {
+    const headers = [
+      "Campaign name",
+      "Day",
+      "Amount spent (USD)",
+      "Reach",
+      "Impressions",
+      "CTR (all)",
+      "Results",
+      "Cost per result",
+      "Website leads",
+      "Cost per lead",
+      "Meta leads",
+      "Messaging conversations started",
+      "Cost per messaging conversation started",
+      "Link clicks",
+      "Landing page views",
+    ];
+
+    const fullPool = listSelectableMetrics(headers, "META");
+
+    for (const resultLabel of ["META FORM LEADS", "WEBSITE LEADS"] as const) {
+      const selection = defaultMetricSelectionForCampaign("META", {
+        resultLabel,
+        costLabel: resultLabel === "META FORM LEADS" ? "COST PER LEAD" : "COST PER WEBSITE LEAD",
+        headers,
+      }).filter(Boolean);
+      const objectiveKey = resultLabel === "META FORM LEADS" ? "meta_form_leads" : "website_leads";
+      const addable = filterAddableMetrics(
+        stripNeverKeys(fullPool, objectiveKey).filter(Boolean),
+        selection,
+      );
+      expect(addable.map((m) => m.key)).not.toContain("messaging_conversations_started");
+      expect(addable.map((m) => m.key)).not.toContain("cost_per_conversation");
+    }
   });
 });
 

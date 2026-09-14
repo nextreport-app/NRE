@@ -293,6 +293,24 @@ function csvDictionaryKeys(headers: string[]): Set<string> {
   return new Set(listAvailableMetrics(headers, "META").filter((m) => !m.isAutoCatch).map((m) => m.key));
 }
 
+/** Keep in sync with slot-assignment.ts's MESSAGING_ONLY_METRIC_KEYS + NEVER_KEYS_FOR_OBJECTIVE. */
+const MESSAGING_ONLY_METRIC_KEYS = [
+  "messaging_conversations_started",
+  "cost_per_conversation",
+  "new_messaging_contacts",
+  "cost_per_new_contact",
+  "messaging_contacts",
+  "cost_per_messaging_contact",
+  "messages_delivered",
+  "messaging_subscriptions",
+  "cost_per_messaging_subscription",
+  "returning_messaging_contacts",
+] as const;
+
+function withMessagingBlocked(keys: string[]): string[] {
+  return [...keys, ...MESSAGING_ONLY_METRIC_KEYS];
+}
+
 /**
  * Keep in sync with slot-assignment.ts's NEVER_KEYS_FOR_OBJECTIVE.
  * Duplicated here so this module does not import slot-assignment (that file
@@ -300,24 +318,119 @@ function csvDictionaryKeys(headers: string[]): Set<string> {
  * forbidden cross-objective metric on the default chip list.
  */
 const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
-  meta_form_leads: ["website_leads", "cost_per_website_lead", "purchases", "cost_per_purchase", "video_views", "thruplays", "app_installs"],
-  website_leads: ["meta_form_leads", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "video_views", "app_installs"],
-  leads: ["purchases", "cost_per_purchase", "video_views", "app_installs"],
-  purchases: ["website_leads", "meta_form_leads", "cost_per_website_lead", "video_views", "app_installs"],
-  initiate_checkout: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  add_to_cart: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  link_clicks: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  landing_page_views: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  video_views: ["website_leads", "meta_form_leads", "purchases", "link_clicks", "app_installs"],
-  reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  unique_reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  awareness: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  messaging: ["website_leads", "purchases", "video_views", "app_installs"],
-  messaging_leads: ["website_leads", "purchases", "video_views", "app_installs"],
-  messaging_conversations_started: ["website_leads", "purchases", "video_views", "app_installs"],
-  conversations: ["website_leads", "purchases", "video_views", "app_installs"],
-  app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
-  mobile_app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"],
+  meta_form_leads: withMessagingBlocked([
+    "website_leads",
+    "cost_per_website_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "thruplays",
+    "app_installs",
+  ]),
+  website_leads: withMessagingBlocked([
+    "meta_form_leads",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs",
+  ]),
+  leads: withMessagingBlocked(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  purchases: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "video_views",
+    "app_installs",
+  ]),
+  initiate_checkout: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  add_to_cart: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  landing_page_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ]),
+  video_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "link_clicks",
+    "app_installs",
+  ]),
+  reach: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results",
+  ]),
+  unique_reach: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results",
+  ]),
+  awareness: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results",
+  ]),
+  messaging: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  messaging_leads: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  messaging_conversations: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  messaging_conversations_started: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  conversations: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs",
+  ],
+  app_installs: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views"]),
+  mobile_app_installs: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views"]),
 };
 
 /** Frequency stays on the date-range footer unless the pack itself asked for it (Reach). Never auto-backfill it onto leftover card slots. */
