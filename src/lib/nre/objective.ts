@@ -316,28 +316,36 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     ]);
   }
 
+  const messagingCampaign = isMessagingCampaignName(rows);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
+
   const signals = [
-    { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL, value: messagingTotal },
     { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: websiteLeadsTotal },
     { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", value: metaLeadsTotal },
+    { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL, value: messagingTotal },
   ].filter((s) => s.value > 0);
 
   if (signals.length >= 1) {
+    if (messagingCampaign && messagingTotal > 0) {
+      return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
+    }
+    if (websiteLeadsCampaign && websiteLeadsTotal > 0) {
+      return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+    }
     signals.sort((a, b) => b.value - a.value);
     return { resultLabel: signals[0].resultLabel, costLabel: signals[0].costLabel };
   }
 
-  const campaignName = (rows[0].campaign_name || "").toLowerCase();
   const headers = Object.keys(rows[0]._raw || {});
   const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
 
-  if (hasHeader("messaging conversations started") && /messag|messenger/.test(campaignName)) {
+  if (hasHeader("messaging conversations started") && messagingCampaign) {
     return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
   }
-  if (hasHeader("website leads") && /website/.test(campaignName)) {
+  if (hasHeader("website leads") && websiteLeadsCampaign) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
-  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && /instant|form/.test(campaignName)) {
+  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && /instant|form/.test((rows[0].campaign_name || "").toLowerCase())) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
   }
 
@@ -893,14 +901,30 @@ function classifyCampaignLeadConfidence(
   websiteLeadsTotal: number,
   metaLeadsTotal: number,
 ): ObjectiveConfidence["confidence"] {
-  const activeLeadFamilies = [messagingTotal > 0, websiteLeadsTotal > 0, metaLeadsTotal > 0].filter(Boolean).length;
-  if (activeLeadFamilies > 1) return "verify";
+  const messagingCampaign = isMessagingCampaignName(rows);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
 
   if (campaignLead.resultLabel === MESSAGING_LABEL) {
     if (messagingTotal > 0) return "high";
-    if (isMessagingCampaignName(rows)) return "high";
+    if (messagingCampaign) return "high";
     return "medium";
   }
+
+  if (campaignLead.resultLabel === "WEBSITE LEADS") {
+    if (websiteLeadsTotal > 0 && metaLeadsTotal > 0) return "verify";
+    if (websiteLeadsTotal > 0 && websiteLeadsCampaign) return "high";
+    if (websiteLeadsTotal > 0) return "low";
+    if (websiteLeadsCampaign) return "high";
+    return "medium";
+  }
+
+  if (campaignLead.resultLabel === "META FORM LEADS") {
+    if (metaLeadsTotal > 0) return "low";
+    return "medium";
+  }
+
+  const activeLeadFamilies = [messagingTotal > 0, websiteLeadsTotal > 0, metaLeadsTotal > 0].filter(Boolean).length;
+  if (activeLeadFamilies > 1) return "verify";
 
   if (websiteLeadsTotal > 0 || metaLeadsTotal > 0) return "low";
 
@@ -921,6 +945,14 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
 function isMessagingCampaignName(rows: MetricRow[]): boolean {
   const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
   return /messag|messenger/.test(name);
+}
+
+/** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
+function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
+  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
+  if (isMessagingCampaignName(rows)) return false;
+  if (/whatsapp|instant.?form|meta.?form|lead.?form/.test(name)) return false;
+  return /website.?lead|web.?lead|_leads\b|\bleads\b/.test(name);
 }
 
 /** Meta always populates link clicks / LPV / generic lead result_types on lead campaigns — never trust them over real messaging column data or a messaging campaign name. */
@@ -949,6 +981,18 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
   ]);
   if (metaLeadResultTypes.has(rt) && (messagingTotal > 0 || isMessagingCampaign)) {
     return true;
+  }
+
+  const messagingResultTypes = new Set([
+    "onsite_conversion.messaging_conversation_started_7d",
+    "messaging_conversation_started_7d",
+    "onsite_conversion.messaging_first_reply_7d",
+    "new_messaging_connection",
+    "messaging conversations started",
+  ]);
+  if (messagingResultTypes.has(rt) && !isMessagingCampaign) {
+    const websiteLeadsTotal = rows.reduce((sum, r) => sum + parseCellNum(r.website_leads), 0);
+    if (websiteLeadsTotal > 0 || isWebsiteLeadsCampaignName(rows)) return true;
   }
 
   return false;

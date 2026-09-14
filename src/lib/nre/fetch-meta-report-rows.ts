@@ -67,19 +67,29 @@ const MESSAGING_ACTION_TYPES = [
   "whatsapp_message_send",
 ] as const;
 
+const META_LEAD_ACTION_TYPES = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"] as const;
+const WEBSITE_LEAD_ACTION_TYPES = ["offsite_conversion.fb_pixel_lead", "website_lead", "onsite_web_lead"] as const;
+
 const OPTIMIZATION_GOAL_ACTION_TYPES: Record<string, readonly string[]> = {
+  // Lead-form and website-lead actions must rank above messaging here — Meta
+  // can attach incidental messaging counts to any lead-family campaign, and
+  // treating messaging first (old order) mislabeled website-leads campaigns
+  // like "FullGorillaApparel_Leads" as MESSAGING / CONVERSATIONS in API sync.
   LEAD_GENERATION: [
+    "onsite_conversion.lead_grouped",
+    "onsite_conversion.lead",
+    "leadgen_grouped",
+    ...WEBSITE_LEAD_ACTION_TYPES,
+    "lead",
     ...MESSAGING_ACTION_TYPES,
+  ],
+  OUTCOME_LEADS: [
+    ...WEBSITE_LEAD_ACTION_TYPES,
     "onsite_conversion.lead_grouped",
     "onsite_conversion.lead",
     "leadgen_grouped",
     "lead",
-  ],
-  OUTCOME_LEADS: [
     ...MESSAGING_ACTION_TYPES,
-    "onsite_conversion.lead_grouped",
-    "offsite_conversion.fb_pixel_lead",
-    "lead",
   ],
   MESSAGES: [...MESSAGING_ACTION_TYPES],
   CONVERSATIONS: [...MESSAGING_ACTION_TYPES],
@@ -94,8 +104,6 @@ const OPTIMIZATION_GOAL_ACTION_TYPES: Record<string, readonly string[]> = {
   THRUPLAY: ["video_view", "thruplay"],
 };
 
-const META_LEAD_ACTION_TYPES = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"] as const;
-const WEBSITE_LEAD_ACTION_TYPES = ["offsite_conversion.fb_pixel_lead", "website_lead", "onsite_web_lead"] as const;
 const LEAD_COST_ACTION_TYPES = [
   ...META_LEAD_ACTION_TYPES,
   ...WEBSITE_LEAD_ACTION_TYPES,
@@ -168,16 +176,33 @@ function isMessagingCampaignRow(row: MetaInsightRow): boolean {
   return /messag|messenger/.test(haystack);
 }
 
+function isWebsiteLeadsCampaignRow(row: MetaInsightRow): boolean {
+  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
+  if (isMessagingCampaignRow(row)) return false;
+  if (/whatsapp|instant.?form|meta.?form|lead.?form/.test(haystack)) return false;
+  return /website.?lead|web.?lead|_leads\b|\bleads\b/.test(haystack);
+}
+
 /** Picks the objective-aligned result — NOT the highest action count (link clicks must not steal leads). */
 export function pickResultAction(row: MetaInsightRow): { action_type: string; value: string } | null {
   const map = actionValueMap(row.actions);
   if (map.size === 0) return null;
 
   const messagingCampaign = isMessagingCampaignRow(row);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
 
   if (messagingCampaign) {
     const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
     if (messagingMatch) return messagingMatch;
+  }
+
+  if (websiteLeadsCampaign) {
+    const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
+    if (websiteMatch) return websiteMatch;
+    const genericLead = map.get("lead");
+    if (genericLead != null && genericLead > 0) {
+      return { action_type: "lead", value: String(genericLead) };
+    }
   }
 
   if (row.optimization_goal) {
