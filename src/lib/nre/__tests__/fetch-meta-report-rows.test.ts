@@ -31,6 +31,7 @@ describe("pickResultAction", () => {
 
   it("prefers messaging actions over higher link_click counts for messenger lead campaigns", () => {
     const row: MetaInsightRow = {
+      campaign_name: "Lead Campaign_Messaging",
       actions: [
         { action_type: "link_click", value: "248" },
         { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "3" },
@@ -40,6 +41,22 @@ describe("pickResultAction", () => {
     expect(pickResultAction(row)).toEqual({
       action_type: "onsite_conversion.messaging_conversation_started_7d",
       value: "3",
+    });
+  });
+
+  it("prefers website lead actions over incidental messaging for OUTCOME_LEADS website-leads campaigns", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "FullGorillaApparel_Leads",
+      actions: [
+        { action_type: "link_click", value: "248" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "12" },
+        { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+      ],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toEqual({
+      action_type: "offsite_conversion.fb_pixel_lead",
+      value: "12",
     });
   });
 

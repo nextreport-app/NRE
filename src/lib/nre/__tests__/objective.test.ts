@@ -267,6 +267,54 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
     expect(resolution.confidence).toBe("high");
   });
 
+  it("detects WEBSITE LEADS for FullGorillaApparel_Leads API-sync rows despite incidental messaging data", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "FullGorillaApparel_Leads",
+        website_leads: 12,
+        _raw: { "Website leads": "12", "Messaging conversations started": "1" },
+        result_type: "Website leads",
+        results: 12,
+        spend: 567,
+      }),
+      metricRow({
+        campaign_name: "FullGorillaApparel_Leads",
+        website_leads: 8,
+        _raw: { "Website leads": "8", "Messaging conversations started": "" },
+        result_type: "Website leads",
+        results: 8,
+        spend: 400,
+      }),
+    ];
+    expect(detectObjectiveFromCampaignRows(rows)?.resultLabel).toBe("WEBSITE LEADS");
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.confidence).toBe("high");
+    expect(resolution.requiresConfirmation).toBe(false);
+  });
+
+  it("ignores dominant messaging result_type when website leads column data exists on a _Leads campaign", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "FullGorillaApparel_Leads",
+        website_leads: 12,
+        _raw: { "Website leads": "12", "Messaging conversations started": "1" },
+        result_type: "Messaging conversations started",
+        results: 1,
+        spend: 100,
+      }),
+      metricRow({
+        campaign_name: "FullGorillaApparel_Leads",
+        website_leads: 8,
+        _raw: { "Website leads": "8" },
+        result_type: "Website leads",
+        results: 8,
+        spend: 80,
+      }),
+    ];
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("WEBSITE LEADS");
+  });
+
   it("ignores dominant Meta leads result_type on a messenger campaign when messaging data exists", () => {
     const rows: MetricRow[] = [
       metricRow({
@@ -1377,7 +1425,7 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
     expect(map.get("leads campaign")).toEqual({
       resultLabel: "WEBSITE LEADS",
       costLabel: "COST PER WEBSITE LEAD",
-      confidence: "low",
+      confidence: "high",
       requiresConfirmation: false,
     });
   });
