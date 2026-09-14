@@ -35,10 +35,10 @@ export function getVisibleWizardSteps(_flow: AdWizardFlow): Array<1 | 2 | 3 | 4>
 
 export function getWizardStepLabel(step: 1 | 2 | 3 | 4, flow: AdWizardFlow): string {
   if (flow === "simple") {
-    return step === 1 ? "Upload" : "Generate";
+    return step === 1 ? "Import" : "Generate";
   }
   const labels: Record<1 | 2 | 3 | 4, string> = {
-    1: "Upload",
+    1: "Import",
     2: "Campaign Data",
     3: "Campaign Metrics",
     4: "Generate",

@@ -446,7 +446,7 @@ export function WizardDataSourceToggle({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[15px] font-semibold text-white">Upload data for import</p>
+      <p className="text-[15px] font-semibold text-white">Import data</p>
       <div>
         <p className="mb-1.5 text-[12px] font-medium text-dash-ink-secondary">Import source</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

@@ -122,7 +122,7 @@ import {
 // /preview response dispatchAfterAnalyze already fetched directly.
 type Step = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<Step, string> = {
-  1: "Upload",
+  1: "Import",
   2: "Campaign Data",
   3: "Campaign Metrics",
   4: "Generate",
