@@ -11,9 +11,7 @@
  * has spend (see render.ts).
  */
 
-import type { ReportTemplate } from "@/generated/prisma/enums";
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
-import { isLightReportTemplate } from "./templates";
 import type { HistoricalReportData } from "../nre/historical-report-data";
 import { historicalSlideShareKey } from "../nre/share-report";
 import type { WebsiteReportData } from "../nre/website-report-data";
@@ -130,8 +128,6 @@ export interface RenderPptxInput {
    * light template's own light surfaces.
    */
   isLightTemplate?: boolean;
-  /** Drives light-variant card/table tints on from-scratch slides. Defaults from isLightTemplate. */
-  reportTemplate?: ReportTemplate;
   /** Pre-share editor visibility — omitted means include every slide (initial generation). */
   shareVisibility?: ShareVisibility;
   /** Published chart edits from share JSON — overrides projected chart slide content. */
@@ -148,13 +144,9 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     agencyName,
     clientLogo,
     isLightTemplate = false,
-    reportTemplate: reportTemplateInput,
     shareVisibility,
     shareChart,
   } = input;
-  const reportTemplate =
-    reportTemplateInput ?? (isLightTemplate ? "LIGHT_CREAM" : "DARK");
-  const lightTemplate = isLightReportTemplate(reportTemplate);
   const vis = shareVisibility;
   const showOverview = vis?.overview !== false;
   const showCombinedTotal = vis?.combinedTotal !== false;
@@ -191,7 +183,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       reportTitle,
       agencyName,
       reportType: data.reportType,
-      isLightTemplate: lightTemplate,
+      isLightTemplate,
     }),
     rels: template.cover.rels,
   });
@@ -207,7 +199,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         data.cover.dateRange,
         data.reportType,
         data.platform,
-        lightTemplate,
+        isLightTemplate,
       ),
       rels: template.campaign.rels,
     });
@@ -224,7 +216,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
           data.platform,
           false,
           false,
-          lightTemplate,
+          isLightTemplate,
         ),
         rels: template.campaign.rels,
       });
@@ -240,7 +232,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
             data.platform,
             true,
             false,
-            lightTemplate,
+            isLightTemplate,
           ),
           rels: template.campaign.rels,
         });
@@ -258,7 +250,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
           data.platform,
           false,
           false,
-          lightTemplate,
+          isLightTemplate,
         ),
         rels: template.campaign.rels,
       });
@@ -272,7 +264,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
             data.platform,
             true,
             false,
-            lightTemplate,
+            isLightTemplate,
           ),
           rels: template.campaign.rels,
         });
@@ -286,7 +278,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       data.chart,
       currencySymbol,
       template.background,
-      lightTemplate,
+      isLightTemplate,
       data.platform,
       {},
       shareChart,
@@ -301,25 +293,25 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     const creativeRels = buildCreativeSlideRels(template.background.mediaTarget);
     for (const slide of data.creative.overviewSlides) {
       slides.push({
-        xml: buildCreativeOverviewSlideXml(slide, template.background, reportTemplate),
+        xml: buildCreativeOverviewSlideXml(slide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     for (const slide of data.creative.topSlides) {
       slides.push({
-        xml: buildCreativeTopSlideXml(slide, template.background, reportTemplate),
+        xml: buildCreativeTopSlideXml(slide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     if (data.creative.videoSlide) {
       slides.push({
-        xml: buildCreativeVideoSlideXml(data.creative.videoSlide, template.background, reportTemplate),
+        xml: buildCreativeVideoSlideXml(data.creative.videoSlide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
     if (data.creative.fatigueSlide) {
       slides.push({
-        xml: buildCreativeFatigueSlideXml(data.creative.fatigueSlide, template.background, reportTemplate),
+        xml: buildCreativeFatigueSlideXml(data.creative.fatigueSlide, template.background, isLightTemplate),
         rels: creativeRels,
       });
     }
@@ -333,17 +325,16 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       data.mtdRow,
       data.tableHeaderLabels,
       data.reportType,
-      lightTemplate,
+      isLightTemplate,
       data.platform,
       data.combinedTotalStory ?? "",
-      reportTemplate,
     ),
     rels: template.table.rels,
   });
   }
   if (showMetricGuide) {
   slides.push({
-    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data), lightTemplate),
+    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data), isLightTemplate),
     rels: template.legend.rels,
   });
   }
@@ -379,13 +370,12 @@ export interface RenderComparisonPptxInput {
   reportTitle?: string | null;
   /** Agency name from account settings — drives the cover slide's "Prepared by ..." line, same as renderPptx. */
   agencyName?: string | null;
+  /** Light-template palette for from-scratch comparison slides — see renderPptx.isLightTemplate. */
   isLightTemplate?: boolean;
-  reportTemplate?: ReportTemplate;
 }
 
 export async function renderComparisonPptx(input: RenderComparisonPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, reportTitle, agencyName, isLightTemplate = false, reportTemplate: reportTemplateInput } = input;
-  const reportTemplate = reportTemplateInput ?? (isLightTemplate ? "LIGHT_CREAM" : "DARK");
+  const { templateBuffer, data, reportTitle, agencyName, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
 
   const slides: SlideToInsert[] = [];
@@ -397,13 +387,13 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
 
   for (const campaign of data.campaigns) {
     slides.push({
-      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, reportTemplate),
+      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
     });
   }
 
   slides.push({
-    xml: buildComparisonSummarySlideXml(data, template.background, reportTemplate),
+    xml: buildComparisonSummarySlideXml(data, template.background, isLightTemplate),
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   });
 
@@ -417,15 +407,12 @@ export interface RenderHistoricalPptxInput {
   agencyName?: string | null;
   clientLogo?: ImageAsset | null;
   isLightTemplate?: boolean;
-  reportTemplate?: ReportTemplate;
   aiCopyBySlideKey?: Map<string, AiCopy>;
 }
 
 /** Multi-Month Historical — cover, campaign + month-total slides, and a final comparison table. */
 export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Promise<Buffer> {
-  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false, reportTemplate: reportTemplateInput, aiCopyBySlideKey } = input;
-  const reportTemplate = reportTemplateInput ?? (isLightTemplate ? "LIGHT_CREAM" : "DARK");
-  const lightTemplate = isLightReportTemplate(reportTemplate);
+  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false, aiCopyBySlideKey } = input;
   const template = await loadTemplate(templateBuffer);
   const hasAgencyName = !!agencyName?.trim();
 
@@ -455,7 +442,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         reportTitle,
         agencyName,
         reportType: "HISTORICAL",
-        isLightTemplate: lightTemplate,
+        isLightTemplate,
       }),
       rels: template.cover.rels,
     },
@@ -470,7 +457,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         data.monthsLabel,
         "MONTHLY",
         data.platform,
-        lightTemplate,
+        isLightTemplate,
       ),
       rels: template.campaign.rels,
     });
@@ -486,7 +473,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
           data.platform,
           false,
           false,
-          lightTemplate,
+          isLightTemplate,
         ),
         rels: template.campaign.rels,
       });
@@ -500,7 +487,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
             data.platform,
             true,
             false,
-            lightTemplate,
+            isLightTemplate,
           ),
           rels: template.campaign.rels,
         });
@@ -513,7 +500,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
           template.table,
           data.comparisonRows,
           data.tableHeaderLabels,
-          lightTemplate,
+          isLightTemplate,
           data.platform,
         ),
         rels: template.table.rels,
@@ -521,6 +508,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     }
   }
 
+  void isLightTemplate;
   return assemblePptx(template, slides);
 }
 
@@ -530,12 +518,10 @@ export interface RenderWebsitePptxInput {
   accountName: string;
   agencyName?: string | null;
   isLightTemplate?: boolean;
-  reportTemplate?: ReportTemplate;
 }
 
 export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<Buffer> {
-  const { templateBuffer, data, accountName, agencyName, isLightTemplate = false, reportTemplate: reportTemplateInput } = input;
-  const reportTemplate = reportTemplateInput ?? (isLightTemplate ? "LIGHT_CREAM" : "DARK");
+  const { templateBuffer, data, accountName, agencyName, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
   const tableRels = buildWebsiteSlideRels(template.background.mediaTarget);
   const breakdowns = normalizeBreakdowns(data.breakdowns ?? DEFAULT_WEBSITE_BREAKDOWNS);
@@ -546,105 +532,105 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
       rels: template.cover.rels,
     },
     {
-      xml: buildWebsiteOverviewSlideXml(template.campaign, data, reportTemplate),
+      xml: buildWebsiteOverviewSlideXml(template.campaign, data, isLightTemplate),
       rels: template.campaign.rels,
     },
   ];
 
   if (data.conversionMetrics.length > 0) {
     slides.push({
-      xml: buildWebsiteConversionSlideXml(template.campaign, data, reportTemplate),
+      xml: buildWebsiteConversionSlideXml(template.campaign, data, isLightTemplate),
       rels: template.campaign.rels,
     });
   }
 
   if (breakdowns.device) {
     slides.push({
-      xml: buildWebsiteDeviceTableSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteDeviceTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.channels) {
     slides.push({
-      xml: buildWebsiteChannelTableSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteChannelTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.geo) {
     slides.push({
-      xml: buildWebsiteGeoTableSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteGeoTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.campaigns) {
     slides.push({
-      xml: buildWebsiteCampaignTableSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteCampaignTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.sources) {
     slides.push({
-      xml: buildWebsiteSourceTableSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteSourceTableSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.demographics) {
     slides.push({
-      xml: buildWebsiteDemographicsSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteDemographicsSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.operatingSystem) {
     slides.push({
-      xml: buildWebsiteTechTableSlideXml(data, template.background, "Operating System", "OS", data.operatingSystems, reportTemplate),
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Operating System", "OS", data.operatingSystems, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.browser) {
     slides.push({
-      xml: buildWebsiteTechTableSlideXml(data, template.background, "Browser", "BROWSER", data.browsers, reportTemplate),
+      xml: buildWebsiteTechTableSlideXml(data, template.background, "Browser", "BROWSER", data.browsers, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.newVsReturning) {
     slides.push({
-      xml: buildWebsiteAudienceSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteAudienceSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.dayOfWeek) {
     slides.push({
-      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Day of Week", "DAY", data.dayOfWeek, reportTemplate),
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Day of Week", "DAY", data.dayOfWeek, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.hourOfDay) {
     slides.push({
-      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Hour", "HOUR", data.hourOfDay, reportTemplate),
+      xml: buildWebsiteTimeTableSlideXml(data, template.background, "Sessions by Hour", "HOUR", data.hourOfDay, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.conversionEvents) {
     slides.push({
-      xml: buildWebsiteConversionEventsSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteConversionEventsSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }
 
   if (breakdowns.topPages && data.topPages.length > 0) {
     slides.push({
-      xml: buildWebsiteTopPagesSlideXml(data, template.background, reportTemplate),
+      xml: buildWebsiteTopPagesSlideXml(data, template.background, isLightTemplate),
       rels: tableRels,
     });
   }

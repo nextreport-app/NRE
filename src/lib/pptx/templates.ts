@@ -1,7 +1,7 @@
 /**
  * Maps a client's chosen ReportTemplate to its .pptx template asset per platform.
  *
- * Meta / GA4: dark.pptx or meta-ads-light-*.pptx / ga4-dark.pptx or ga4-light-*.pptx.
+ * Meta / GA4: dark.pptx or meta-ads-light.pptx / ga4-dark.pptx or ga4-light.pptx.
  * Google Ads / TikTok: single dark platform-branded asset each.
  */
 
@@ -13,26 +13,20 @@ const TEMPLATES_DIR = path.join(process.cwd(), "templates");
 
 export const META_TEMPLATE_FILES: Record<ReportTemplate, string> = {
   DARK: "dark.pptx",
-  LIGHT_CREAM: "meta-ads-light-cream.pptx",
-  LIGHT_PEARL: "meta-ads-light-pearl.pptx",
-  LIGHT_SAND: "meta-ads-light-sand.pptx",
+  LIGHT: "meta-ads-light.pptx",
 };
 
 export const GA4_TEMPLATE_FILES: Record<ReportTemplate, string> = {
   DARK: "ga4-dark.pptx",
-  LIGHT_CREAM: "ga4-light-cream.pptx",
-  LIGHT_PEARL: "ga4-light-pearl.pptx",
-  LIGHT_SAND: "ga4-light-sand.pptx",
+  LIGHT: "ga4-light.pptx",
 };
 
 /** @deprecated Use META_TEMPLATE_FILES — kept for existing tests/imports. */
 export const TEMPLATE_FILES = META_TEMPLATE_FILES;
 
-const LIGHT_TEMPLATES = new Set<ReportTemplate>(["LIGHT_CREAM", "LIGHT_PEARL", "LIGHT_SAND"]);
-
-/** True for any light .pptx asset — drives chart/table/comparison/creative/website light palettes. */
+/** True only for light .pptx assets — drives chart/table/comparison/creative/website light palettes. */
 export function isLightReportTemplate(template: ReportTemplate): boolean {
-  return LIGHT_TEMPLATES.has(template);
+  return template === "LIGHT";
 }
 
 async function readTemplateFile(fileName: string): Promise<Buffer> {
@@ -48,7 +42,7 @@ export async function loadGa4TemplateBuffer(template: ReportTemplate): Promise<B
 }
 
 /**
- * Platform-aware template loader — Meta and GA4 honor Dark/Light variants;
+ * Platform-aware template loader — Meta and GA4 honor Dark/Light;
  * Google Ads and TikTok use a single dark platform asset.
  */
 export async function loadTemplateBufferForPlatform(
