@@ -399,6 +399,9 @@ function activeHeadersForCampaign(rows: MetricRow[]): string[] {
  * the whole file's column list (which mislabels mixed-objective exports).
  */
 export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
+  const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
+  if (purchaseNamed) return purchaseNamed;
+
   const fromRows = detectObjectiveFromCampaignRows(rows);
   if (fromRows) return fromRows;
 
@@ -562,6 +565,17 @@ export function resolveObjective(
   // outright with no comparison needed, preserving the original
   // single-signal behavior (Purchases alone -> PURCHASES, IC alone ->
   // INITIATE CHECKOUT, ATC alone -> ADD TO CART).
+  // Purchase-optimized campaigns: real purchases beat mid-funnel columns; when
+  // purchases are zero, ATC/IC are funnel tracking noise — not the objective.
+  if (columnObjective?.resultLabel === "PURCHASES") {
+    if (purchases > 0) {
+      return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", source: "priority1" };
+    }
+    if (addToCart > 0 || initiateCheckout > 0) {
+      return { ...columnObjective, source: "priority3" };
+    }
+  }
+
   const funnelCandidates = [
     { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", value: purchases },
     { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", value: initiateCheckout },
@@ -1058,6 +1072,32 @@ function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
   return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
+/** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
+function isPurchaseCampaignName(rows: MetricRow[]): boolean {
+  const haystack = campaignNameHaystack(rows);
+  if (/\batc\b|add.?to.?cart/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
+    return false;
+  }
+  if (/\bic\b|initiate.?checkout/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
+    return false;
+  }
+  return /purchase|purchases|conversion/.test(haystack);
+}
+
+function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {
+  if (rows.length === 0) return false;
+  return Object.keys(rows[0]._raw || {}).some((h) => {
+    const hl = h.toLowerCase();
+    return (hl.includes("purchase") || hl.includes("purchases")) && !hl.includes("roas");
+  });
+}
+
+/** Named purchase campaign + Purchases column in export → PURCHASES even when only mid-funnel data exists. */
+function purchaseObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
+  if (!isPurchaseCampaignName(rows) || !hasPurchasesColumnHeader(rows)) return null;
+  return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+}
+
 /** Stray messaging counts on website campaigns (shared export columns) vs real traffic. */
 function isIncidentalMessagingForWebsiteCampaign(rows: MetricRow[], messagingTotal: number): boolean {
   let linkClicks = 0;
@@ -1191,6 +1231,16 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       icTotal += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
       atcTotal += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
     }
+
+    const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
+    if (purchaseNamed) {
+      return {
+        ...purchaseNamed,
+        confidence: purchasesTotal > 0 ? "high" : "medium",
+        requiresConfirmation: false,
+      };
+    }
+
     const funnelCandidates = [
       { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", value: purchasesTotal },
       { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", value: icTotal },
