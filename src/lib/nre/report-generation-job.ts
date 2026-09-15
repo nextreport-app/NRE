@@ -1,6 +1,9 @@
 /**
  * Async report generation worker — AI, render, persist run outside the
  * wizard POST so the client can poll status instead of blocking.
+ *
+ * GA4 website reports are intentionally excluded — they use a forked pipeline
+ * (WebsiteReportData + renderWebsitePptx). See docs/ga4-reporting-architecture.md.
  */
 
 import { prisma } from "@/lib/prisma";

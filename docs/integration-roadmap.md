@@ -19,7 +19,7 @@ We use **advertising spend share** as the best proxy for what agencies need to r
 | **P0 — Core** | Meta (Facebook + Instagram) | ~23–27% | ✅ API + CSV + full wizard |
 | **P0 — Core** | Google Ads (Search + YouTube + Display*) | ~24–28% | ✅ API + CSV (see Google notes below) |
 | **P0 — Core** | CSV upload (any platform) | — | ✅ Universal fallback |
-| **P1 — Website** | GA4 | — (website analytics) | ✅ Separate wizard path |
+| **P1 — Website** | GA4 | — (website analytics) | ✅ Separate wizard path ([architecture](./ga4-reporting-architecture.md)) |
 | **P2 — US/EU** | TikTok Ads | ~4–7% all digital / ~10–15% social | ✅ Built; **hidden for India visitors** |
 | **P3 — B2B niche** | LinkedIn | ~2–6% social | ❌ CSV only if requested |
 | **Skip** | Snapchat, X, Pinterest, Reddit | ~1–3% each | ❌ Not planned |

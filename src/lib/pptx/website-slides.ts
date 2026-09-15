@@ -1,5 +1,6 @@
 /**
  * Website Traffic (GA4) slide builders — separate from Meta/Google Ads render path.
+ * Architecture: docs/ga4-reporting-architecture.md
  */
 
 import { backgroundImage, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
