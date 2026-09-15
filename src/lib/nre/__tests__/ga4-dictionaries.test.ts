@@ -4,8 +4,9 @@ import { GA4_API_METRIC_NAMES, GA4_COLUMN_KEYWORDS, GA4_MATCH_PRIORITY } from ".
 import { buildGa4ColumnMap } from "../ga4-columns";
 
 describe("ga4-client-kind-dictionary", () => {
-  it("detects ecommerce, lead gen, and content kinds", () => {
-    expect(detectGa4ClientKind({ purchaseRevenue: 100, transactions: 2, conversions: 5 })).toBe("ecommerce");
+  it("detects hybrid, ecommerce, lead gen, and content kinds", () => {
+    expect(detectGa4ClientKind({ purchaseRevenue: 500, transactions: 3, conversions: 20 })).toBe("hybrid");
+    expect(detectGa4ClientKind({ purchaseRevenue: 100, transactions: 2, conversions: 0 })).toBe("ecommerce");
     expect(detectGa4ClientKind({ purchaseRevenue: 0, transactions: 0, conversions: 12 })).toBe("lead_gen");
     expect(detectGa4ClientKind({ purchaseRevenue: 0, transactions: 0, conversions: 0 })).toBe("content");
   });

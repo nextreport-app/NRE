@@ -5,6 +5,8 @@
 
 export type { GoogleObjectiveKey } from "./google-objective-dictionary";
 export {
+  buildGoogleCampaignTypeMap,
+  detectGoogleObjectiveFromCampaignRawRows,
   detectGoogleObjectiveFromHeaders,
   detectGoogleObjectiveKey,
   googleObjectiveSpecForKey,

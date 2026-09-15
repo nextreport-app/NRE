@@ -97,7 +97,14 @@ function parseDatePreset(value: unknown): WebsiteDatePreset {
 }
 
 function parseClientKind(value: unknown): WebsiteClientKindSetting {
-  if (value === "auto" || value === "lead_gen" || value === "ecommerce" || value === "content" || value === "saas") {
+  if (
+    value === "auto" ||
+    value === "lead_gen" ||
+    value === "ecommerce" ||
+    value === "hybrid" ||
+    value === "content" ||
+    value === "saas"
+  ) {
     return value;
   }
   return "auto";

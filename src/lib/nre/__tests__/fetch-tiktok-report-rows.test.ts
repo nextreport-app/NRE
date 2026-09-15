@@ -41,6 +41,53 @@ describe("fetchTikTokReportCsv", () => {
     vi.unstubAllGlobals();
   });
 
+  it("produces Meta-shaped CSV with Complete payment when purchase metrics are present", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          code: 0,
+          message: "OK",
+          data: {
+            list: [
+              {
+                dimensions: { stat_time_day: "2026-07-13" },
+                metrics: {
+                  campaign_name: "Sales",
+                  adgroup_name: "Broad",
+                  spend: "250.00",
+                  reach: "20000",
+                  impressions: "35000",
+                  ctr: "0.02",
+                  cpc: "0.55",
+                  clicks: "450",
+                  frequency: "1.75",
+                  conversion: "0",
+                  complete_payment: "8",
+                  cost_per_complete_payment: "31.25",
+                },
+              },
+            ],
+            page_info: { total_page: 1 },
+          },
+        }),
+      })),
+    );
+
+    const result = await fetchTikTokReportCsv({
+      accessToken: "token",
+      advertiserId: "123",
+      timezone: "UTC",
+      now: new Date("2026-07-20T12:00:00Z"),
+      days: 30,
+    });
+
+    const parsed = parseMtdCsvForAdPlatform(Buffer.from(result.csvText, "utf8"), "TIKTOK");
+    expect(parsed.rows[0].result_type).toBe("Complete payment");
+    expect(parsed.rows[0].results).toBe("8");
+  });
+
   it("produces Meta-shaped CSV that passes validation with Reach result type", async () => {
     const result = await fetchTikTokReportCsv({
       accessToken: "token",

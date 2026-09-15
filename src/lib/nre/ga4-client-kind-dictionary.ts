@@ -4,7 +4,7 @@
  * drives which conversion metrics appear in website reports.
  */
 
-export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content" | "saas";
+export type WebsiteClientKind = "lead_gen" | "ecommerce" | "hybrid" | "content" | "saas";
 
 /** Minimal totals shape for client-kind auto-detection. */
 export interface Ga4ClientKindTotals {
@@ -24,24 +24,31 @@ export interface Ga4ClientKindSpec {
 
 export const GA4_CLIENT_KIND_SPECS: readonly Ga4ClientKindSpec[] = [
   {
+    key: "hybrid",
+    label: "Ecommerce & leads",
+    description: "Both purchase revenue/transactions and key-event conversions.",
+    detectionPriority: 10,
+    detect: (t) => (t.purchaseRevenue > 0 || t.transactions > 0) && t.conversions > 0,
+  },
+  {
     key: "ecommerce",
     label: "Ecommerce",
-    description: "Revenue and transaction metrics present in GA4 overview.",
-    detectionPriority: 10,
+    description: "Revenue and transaction metrics without separate conversion signals.",
+    detectionPriority: 20,
     detect: (t) => t.purchaseRevenue > 0 || t.transactions > 0,
   },
   {
     key: "lead_gen",
     label: "Lead generation",
     description: "Key events / conversions without ecommerce revenue.",
-    detectionPriority: 20,
+    detectionPriority: 30,
     detect: (t) => t.conversions > 0,
   },
   {
     key: "saas",
     label: "SaaS / product",
     description: "Manual override only — not auto-detected from totals.",
-    detectionPriority: 30,
+    detectionPriority: 40,
     detect: () => false,
   },
   {

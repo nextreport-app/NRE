@@ -52,7 +52,7 @@ import {
 } from "./objective";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
-import { detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
+import { buildGoogleCampaignTypeMap, detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
 import {
   metricsDictionaryPlatform,
   slotAssignmentPlatform,
@@ -1438,8 +1438,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // separate headers input threaded all the way in.
   const metricsPlatform = metricsDictionaryPlatform(platform);
   const slotPlatform = slotAssignmentPlatform(platform);
-  const googleObjectiveKey: GoogleObjectiveKey | null =
-    platform === "GOOGLE" ? detectGoogleObjectiveKey(Object.keys(primaryRawRows[0]?._raw ?? {})) : null;
+  const googleFileHeaders = Object.keys(primaryRawRows[0]?._raw ?? {});
+  const googleFileObjectiveKey: GoogleObjectiveKey | null =
+    platform === "GOOGLE" ? detectGoogleObjectiveKey(googleFileHeaders) : null;
+  const googleCampaignTypeMap: Map<string, GoogleObjectiveKey> | null =
+    platform === "GOOGLE" ? buildGoogleCampaignTypeMap(campaignRawGroups, googleFileHeaders) : null;
 
   const availableMetricsPool: AvailableMetric[] | null =
     selectedMetrics && selectedMetrics.length > 0
@@ -1463,12 +1466,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     rawRows: NreRow[],
     campaignObjective: CampaignObjectiveRef | null,
     campaignName: string,
+    googleCampaignKey?: GoogleObjectiveKey,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
       if (usesGoogleSlotEngine(platform)) {
         return {
           dynamicMetrics: buildGoogleSlots(
-            googleObjectiveKey ?? "search",
+            googleCampaignKey ?? googleFileObjectiveKey ?? "search",
             {
               spend: baseline.spend,
               reach: baseline.reach,
@@ -1632,7 +1636,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
-    const googleKey = googleObjectiveKey ?? "search";
+    const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
     const campaignObjective =
       platform === "GOOGLE"
         ? googleSlideObjectiveLabels(googleKey)
@@ -1695,6 +1699,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignRawGroups[campaignName] ?? [],
       campaignObjective,
       campaignName,
+      googleKey,
     );
 
     return {
@@ -1786,7 +1791,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // campaign's own summary slide and with the Combined Total table.
     // normalizeCampaignName matches the map's own normalized keys (see
     // buildCampaignObjectiveMap) — same case-sensitivity fix as above.
-    const googleKey = googleObjectiveKey ?? "search";
+    const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
     const campaignObjective =
       platform === "GOOGLE"
         ? googleSlideObjectiveLabels(googleKey)
@@ -1836,6 +1841,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [],
       campaignObjective,
       campaignName,
+      googleKey,
     );
 
     adSetSlides.push({
@@ -2205,12 +2211,11 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   } = input;
 
   const isGoogle = platform === "GOOGLE";
-  const googleObjectiveKey: GoogleObjectiveKey | null = isGoogle
+  const googleFileObjectiveKey: GoogleObjectiveKey | null = isGoogle
     ? csvHeaders?.length
       ? detectGoogleObjectiveKey(csvHeaders)
       : "search"
     : null;
-  const googleLabels = googleObjectiveKey ? googleSlideObjectiveLabels(googleObjectiveKey) : null;
 
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
   const supplementalFiltered = periodBSupplementalRows?.length
@@ -2223,6 +2228,20 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   const byCampaignB = groupAggRowsByCampaign(rowsB);
   const byCampaignRawA = isGoogle ? groupRawRowsByCampaign(rowsA) : null;
   const byCampaignRawB = isGoogle ? groupRawRowsByCampaign(rowsB) : null;
+  const googleCampaignTypeMap: Map<string, GoogleObjectiveKey> | null =
+    isGoogle && csvHeaders?.length
+      ? buildGoogleCampaignTypeMap(
+          Object.fromEntries(
+            Array.from(new Set([...Object.keys(byCampaignRawA ?? {}), ...Object.keys(byCampaignRawB ?? {})])).map(
+              (name) => [
+                name,
+                [...(byCampaignRawA?.[name] ?? []), ...(byCampaignRawB?.[name] ?? [])],
+              ],
+            ),
+          ),
+          csvHeaders,
+        )
+      : null;
 
   const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort();
 
@@ -2249,8 +2268,9 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     const reachA = sumField(campRowsA, "reach");
     const reachB = sumField(campRowsB, "reach");
 
+    const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
     const campaignObjective = isGoogle
-      ? googleLabels ?? { resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION" }
+      ? googleSlideObjectiveLabels(googleKey)
       : campaignObjectiveMap!.get(normalizeCampaignName(campaignName)) ?? {
           resultLabel: "RESULTS",
           costLabel: "COST PER RESULT",
@@ -2258,10 +2278,10 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     const objective = campaignObjective.resultLabel;
     const costLabel = campaignObjective.costLabel;
     const totalsA = isGoogle
-      ? googleComparisonObjectiveTotals(byCampaignRawA![campaignName] ?? [], googleObjectiveKey!, spendA)
+      ? googleComparisonObjectiveTotals(byCampaignRawA![campaignName] ?? [], googleKey, spendA)
       : comparisonObjectiveTotals(campRowsA, campaignObjective);
     const totalsB = isGoogle
-      ? googleComparisonObjectiveTotals(byCampaignRawB![campaignName] ?? [], googleObjectiveKey!, spendB)
+      ? googleComparisonObjectiveTotals(byCampaignRawB![campaignName] ?? [], googleKey, spendB)
       : comparisonObjectiveTotals(campRowsB, campaignObjective);
     const resultsA = totalsA.count;
     const resultsB = totalsB.count;

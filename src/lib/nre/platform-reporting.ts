@@ -28,7 +28,7 @@ export function slotAssignmentPlatform(platform: Platform): SlotAssignmentPlatfo
   return platform === "GOOGLE" ? "google" : "meta";
 }
 
-/** Google uses account-wide campaign-type slots; Meta/TikTok use per-campaign objectives. */
+/** Google uses per-campaign campaign-type slots; Meta/TikTok use per-campaign objectives. */
 export function usesGoogleSlotEngine(platform: Platform): boolean {
   return platform === "GOOGLE";
 }

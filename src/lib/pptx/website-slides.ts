@@ -111,13 +111,15 @@ export function buildWebsiteConversionSlideXml(
   isLightTemplate = false,
 ): string {
   const title =
-    data.clientKind === "ecommerce"
-      ? "Ecommerce Performance"
-      : data.clientKind === "lead_gen"
-        ? "Conversions"
-        : data.clientKind === "saas"
-          ? "Product Sign-ups"
-          : "Content Engagement";
+    data.clientKind === "hybrid"
+      ? "Ecommerce & Conversions"
+      : data.clientKind === "ecommerce"
+        ? "Ecommerce Performance"
+        : data.clientKind === "lead_gen"
+          ? "Conversions"
+          : data.clientKind === "saas"
+            ? "Product Sign-ups"
+            : "Content Engagement";
   const slide = metricSlideData(title, data.dateRangeLabel, data.conversionMetrics);
   return buildCampaignOrAdSetSlideXml(template, slide, WEBSITE_AI, "WEBSITE", "META", false, true, isLightTemplate);
 }
