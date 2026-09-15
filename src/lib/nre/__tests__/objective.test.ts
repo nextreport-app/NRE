@@ -1179,6 +1179,26 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(tableGroups[0]).toMatchObject({ label: "PURCHASES", count: 3 });
   });
 
+  it("detects PURCHASES for a purchase-named campaign with add-to-cart data but zero purchases (DC CBO regression)", () => {
+    const csvPath = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/dc-purchase-campaign-cbo.csv");
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const cboRows = rows.filter((r) => r.campaign_name === "Purchase Campaign | CBO");
+    expect(resolveCampaignObjective(cboRows).resultLabel).toBe("PURCHASES");
+    const resolution = resolveCampaignObjectiveWithConfidence(cboRows);
+    expect(resolution.resultLabel).toBe("PURCHASES");
+    expect(resolution.confidence).toBe("medium");
+
+    const objectiveMap = buildCampaignObjectiveMap(
+      rows.filter((r) =>
+        ["Purchase Campaign | CBO", "Purchase Campaign | Remarketing"].includes(r.campaign_name || ""),
+      ),
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Purchase Campaign | CBO"))?.resultLabel).toBe("PURCHASES");
+    expect(objectiveMap.get(normalizeCampaignName("Purchase Campaign | Remarketing"))?.resultLabel).toBe(
+      "PURCHASES",
+    );
+  });
+
   it("MTD-row bug fix — the reverse case: a campaign assigned INITIATE CHECKOUT correctly excludes a mismatched Purchases-classified row's own results", () => {
     const rows: MetricRow[] = [
       metricRow({
