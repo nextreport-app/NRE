@@ -7,7 +7,7 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { detectPlatform } from "@/lib/nre/google-columns";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
-import { parseObjectiveCache, lookupCachedObjective } from "@/lib/nre/objective-cache";
+import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
 import { filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
 import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
 import {
@@ -77,7 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return [name, { ...googleLabels, confidence: "high" as const, requiresConfirmation: false }];
       }
       const cached = lookupCachedObjective(objectiveCache, name);
-      if (cached) {
+      if (cachedObjectiveAgreesWithDetection(cached, detected)) {
         return [name, { resultLabel: cached.resultLabel, costLabel: cached.costLabel, confidence: "cached", requiresConfirmation: false }];
       }
       return [

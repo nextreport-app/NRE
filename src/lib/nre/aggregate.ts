@@ -18,7 +18,13 @@
 
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
-import { canonicalResultTypeText, detectObjectiveFromColumns, resolveObjective, sumRawColumnByKeywords } from "./objective";
+import {
+  canonicalResultTypeText,
+  columnObjectiveForCampaign,
+  normalizeCampaignName,
+  resolveObjective,
+  sumRawColumnByKeywords,
+} from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, getCalendarYesterday, type DateRangeIso } from "./date-range";
 
@@ -106,14 +112,15 @@ function average(values: number[]): number {
 export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
   const groups: Record<string, GroupAcc> = {};
 
-  // Column-presence objective signal (priority 2 — see objective.ts's
-  // detectObjectiveFromColumns) computed once from the file's own headers,
-  // not per-row: which columns exist is a property of the upload itself,
-  // identical for every row/group in it. Every row's _raw carries every
-  // header key regardless of value (see columns.ts's readRowsWithAutoMap),
-  // so the first row's keys are the full header list.
-  const rawHeaders = rowsToAgg.length > 0 ? Object.keys(rowsToAgg[0]._raw || {}) : [];
-  const columnObjective = detectObjectiveFromColumns(rawHeaders);
+  // Per-campaign column signal — mixed-objective exports must not share one
+  // file-level columnObjective (see objective.ts columnObjectiveForCampaign).
+  const campaignColumnObjectives = new Map<string, ReturnType<typeof columnObjectiveForCampaign>>();
+  for (const row of rowsToAgg) {
+    const key = normalizeCampaignName(row.campaign_name || "");
+    if (campaignColumnObjectives.has(key)) continue;
+    const campRows = rowsToAgg.filter((r) => normalizeCampaignName(r.campaign_name || "") === key);
+    campaignColumnObjectives.set(key, columnObjectiveForCampaign(campRows));
+  }
 
   rowsToAgg.forEach((row) => {
     const key = [row.campaign_name, row.ad_set_name].join("|||");
@@ -214,7 +221,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         add_to_cart: g.add_to_cart,
         ad_set_name: g.ad_set_name,
       },
-      columnObjective,
+      campaignColumnObjectives.get(normalizeCampaignName(g.campaign_name)) ?? null,
     );
 
     let actualResultType = g.result_type;

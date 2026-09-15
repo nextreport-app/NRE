@@ -57,6 +57,15 @@ export function lookupCachedObjective(cache: ObjectiveCacheMap, campaignName: st
   return cache[normalizeCampaignName(campaignName)] ?? null;
 }
 
+/** Fresh CSV/API detection always wins when it disagrees with a stale cache entry (e.g. a different ad account's CSV uploaded under the same client). */
+export function cachedObjectiveAgreesWithDetection(
+  cached: CachedObjective | null,
+  detected: ResultLabels,
+): cached is CachedObjective {
+  if (!cached) return false;
+  return cached.resultLabel === detected.resultLabel && cached.costLabel === detected.costLabel;
+}
+
 /**
  * Merges newly confirmed per-campaign objectives into an existing serialized
  * cache, returning the new JSON string to persist. A campaign already in

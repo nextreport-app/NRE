@@ -310,6 +310,13 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   for (const row of rows) {
     websiteLeadsTotal += parseCellNum(row.website_leads);
     metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
+    const rt = (row.result_type || "").toLowerCase();
+    if (/leads?\s*\(\s*form|lead_grouped|onsite_conversion\.lead|meta leads?/.test(rt)) {
+      metaLeadsTotal += parseCellNum(row.results);
+    }
+    if (/website leads?|web leads?|offsite_conversion.*lead|fb_pixel_lead/.test(rt)) {
+      websiteLeadsTotal += parseCellNum(row.results);
+    }
     messagingTotal += sumRawColumnByKeywords(row._raw, [
       "messaging conversations started",
       "whatsapp conversations started",
@@ -353,14 +360,79 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     return { resultLabel: signals[0].resultLabel, costLabel: signals[0].costLabel };
   }
 
+  return detectObjectiveFromCampaignNameAndHeaders(rows);
+}
+
+/** Name + header hints when numeric columns are empty — per-campaign only, never file-wide. */
+function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLabels | null {
+  if (rows.length === 0) return null;
+
+  const headers = Object.keys(rows[0]._raw || {});
+  const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
+  const messagingCampaign = isMessagingCampaignName(rows);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
+  const metaFormLeadsCampaign = isMetaFormLeadsCampaignName(rows);
+
   if (hasHeader("messaging conversations started") && messagingCampaign) {
     return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
   }
   if (hasHeader("website leads") && websiteLeadsCampaign) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
-  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && /instant|form/.test((rows[0].campaign_name || "").toLowerCase())) {
+  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && metaFormLeadsCampaign) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  }
+
+  return null;
+}
+
+/** Headers with at least one non-zero value in this campaign's rows — avoids file-level column bleed. */
+function activeHeadersForCampaign(rows: MetricRow[]): string[] {
+  if (rows.length === 0) return [];
+  const allHeaders = Object.keys(rows[0]._raw || {});
+  return allHeaders.filter((header) => rows.some((row) => parseCellNum(row._raw?.[header]) > 0));
+}
+
+/**
+ * Per-campaign Priority-3 column signal for resolveObjective / aggregateRows.
+ * Uses this campaign's own numeric activity first, then name+header hints — never
+ * the whole file's column list (which mislabels mixed-objective exports).
+ */
+export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
+  const fromRows = detectObjectiveFromCampaignRows(rows);
+  if (fromRows) return fromRows;
+
+  const activeHeaders = activeHeadersForCampaign(rows);
+  if (activeHeaders.length > 0) {
+    const fromActive = detectObjectiveFromColumns(activeHeaders);
+    if (fromActive) return fromActive;
+  }
+
+  const fromName = detectObjectiveFromCampaignNameAndHeaders(rows);
+  if (fromName) return fromName;
+
+  // Zero-activity campaigns (e.g. new Purchases campaign) — column exists in
+  // the export but has no data yet. Lead-family headers are only trusted when
+  // the campaign name agrees, so mixed-objective files cannot bleed across.
+  const allHeaders = Object.keys(rows[0]._raw || {});
+  const fromHeaders = detectObjectiveFromColumns(allHeaders);
+  if (!fromHeaders) return null;
+
+  const leadFamilyLabels = new Set([
+    "WEBSITE LEADS",
+    "META FORM LEADS",
+    MESSAGING_LABEL,
+    "WHATSAPP LEADS",
+    "LEADS",
+  ]);
+  if (!leadFamilyLabels.has(fromHeaders.resultLabel)) return fromHeaders;
+  if (fromHeaders.resultLabel === "WEBSITE LEADS" && isWebsiteLeadsCampaignName(rows)) return fromHeaders;
+  if (fromHeaders.resultLabel === "META FORM LEADS" && isMetaFormLeadsCampaignName(rows)) return fromHeaders;
+  if (
+    (fromHeaders.resultLabel === MESSAGING_LABEL || fromHeaders.resultLabel === "WHATSAPP LEADS") &&
+    isMessagingCampaignName(rows)
+  ) {
+    return fromHeaders;
   }
 
   return null;
@@ -636,14 +708,17 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   // fine — those rows already carry a corrected result_type from
   // aggregateRows' own resolveObjective pass, so they resolve via Priority 2
   // here regardless.
-  const rawHeaders = rows.length > 0 ? Object.keys(rows[0]._raw || {}) : [];
-  // File-level column presence only — per-campaign lead-family disambiguation
-  // belongs in resolveCampaignObjective/buildCampaignObjectiveMap, not here.
-  // Using detectObjectiveFromCampaignRows at this call site misclassifies rows
-  // when multiple campaigns share one upload (mixed-account exports).
-  const columnObjective = detectObjectiveFromColumns(rawHeaders);
+  const campaignColumnObjectives = new Map<string, ResultLabels | null>();
+  for (const row of rows) {
+    const campaignKey = normalizeCampaignName(row.campaign_name || "");
+    if (campaignColumnObjectives.has(campaignKey)) continue;
+    const campRows = rows.filter((r) => normalizeCampaignName(r.campaign_name || "") === campaignKey);
+    campaignColumnObjectives.set(campaignKey, columnObjectiveForCampaign(campRows));
+  }
 
   rows.forEach((row) => {
+    const columnObjective =
+      campaignColumnObjectives.get(normalizeCampaignName(row.campaign_name || "")) ?? null;
     const { resultLabel: label, costLabel: cost } = resolveObjective(
       {
         result_type: row.result_type,
@@ -1165,6 +1240,15 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       ...campaignLead,
       confidence: tier,
       requiresConfirmation: tier === "verify",
+    };
+  }
+
+  const columnFallback = columnObjectiveForCampaign(rows);
+  if (columnFallback) {
+    return {
+      ...columnFallback,
+      confidence: "medium",
+      requiresConfirmation: false,
     };
   }
 

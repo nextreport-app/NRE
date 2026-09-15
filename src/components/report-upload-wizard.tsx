@@ -1366,23 +1366,14 @@ export function ReportUploadWizard({
   }
 
   /**
-   * Sent to the preview/generate APIs as the objective override actually
-   * used to BUILD this report — campaigns the user manually touched, PLUS
-   * campaigns pre-filled from the Objective Confirmation memory cache
-   * (confidence "cached"). The cache badge tells the user "Previously
-   * confirmed", so the report itself must actually use that value rather
-   * than silently letting the engine re-detect fresh (which could disagree
-   * with what's displayed if this month's data pattern is more ambiguous
-   * than the report that originally confirmed it). A campaign that's merely
-   * engine-detected (confidence "resultType"/"columnData") and never
-   * touched keeps the engine's own true per-campaign detection, exactly as
-   * before this cache existed.
+   * Sent to preview/generate as explicit objective overrides — ONLY campaigns
+   * the user manually changed in the dropdown. Engine-detected values (including
+   * cache-backed pre-fills that agree with fresh detection) are never sent here;
+   * buildReportData re-detects from the CSV rows so swapped uploads cannot inherit
+   * another account's stale cache.
    */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
     const relevant = new Set(touchedObjectiveCampaigns);
-    for (const [name, tier] of campaignObjectiveConfidence) {
-      if (tier === "cached") relevant.add(name);
-    }
     if (relevant.size === 0) return undefined;
     const out: Record<string, { resultLabel: string; costLabel: string }> = {};
     for (const name of relevant) {

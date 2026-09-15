@@ -46,7 +46,9 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   campaign_name: ["campaign name", "campaign"],
   ad_set_name: ["ad set name", "adset name", "ad group name", "ad group"],
   result_type: ["result type", "objective", "conversion type"],
-  results: ["results", "conversions", "leads", "clicks total"],
+  // "leads" deliberately omitted — it is a substring of "Website leads" /
+  // "Meta leads" and would steal those headers into the generic results field.
+  results: ["results", "conversions", "clicks total"],
   // "cost" was removed deliberately (product owner, real-account bug
   // report): it's a substring of "Cost per Result"/"Cost per Click"/"Cost
   // per Lead"/etc, so a per-result cost column appearing earlier in the
@@ -72,6 +74,15 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
 
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;
 
+function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords: string[]): boolean {
+  if (!keywords.some((kw) => headerLower.includes(kw))) return false;
+  // Generic "leads" must not steal "Website leads" / "Meta leads" headers.
+  if (metric === "leads" && (headerLower.includes("website") || headerLower.includes("meta"))) {
+    return false;
+  }
+  return true;
+}
+
 /** Port of buildColumnMap_ — first header (in order) to match a metric's keywords wins. */
 export function buildColumnMap(headers: string[]): ColumnMap {
   const map: ColumnMap = {};
@@ -80,7 +91,7 @@ export function buildColumnMap(headers: string[]): ColumnMap {
     const h = String(header).toLowerCase().trim();
     (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(
       ([metric, keywords]) => {
-        if (!map[metric] && keywords.some((kw) => h.includes(kw))) map[metric] = header;
+        if (!map[metric] && headerMatchesMetric(metric, h, keywords)) map[metric] = header;
       },
     );
   });
