@@ -176,11 +176,17 @@ function isMessagingCampaignRow(row: MetaInsightRow): boolean {
   return /messag|messenger/.test(haystack);
 }
 
+function isMetaFormLeadsCampaignRow(row: MetaInsightRow): boolean {
+  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
+  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(haystack);
+}
+
 function isWebsiteLeadsCampaignRow(row: MetaInsightRow): boolean {
   const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
   if (isMessagingCampaignRow(row)) return false;
-  if (/whatsapp|instant.?form|meta.?form|lead.?form/.test(haystack)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b/.test(haystack);
+  if (isMetaFormLeadsCampaignRow(row)) return false;
+  if (/whatsapp/.test(haystack)) return false;
+  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
 /** Picks the objective-aligned result — NOT the highest action count (link clicks must not steal leads). */

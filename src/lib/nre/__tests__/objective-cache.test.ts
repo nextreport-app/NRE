@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { lookupCachedObjective, mergeObjectiveCache, parseObjectiveCache } from "../objective-cache";
+import {
+  cachedObjectiveAgreesWithDetection,
+  lookupCachedObjective,
+  mergeObjectiveCache,
+  parseObjectiveCache,
+} from "../objective-cache";
 
 describe("parseObjectiveCache", () => {
   it("returns an empty map for null/undefined/blank input", () => {
@@ -39,6 +44,25 @@ describe("parseObjectiveCache", () => {
     });
     const cache = parseObjectiveCache(raw);
     expect(Object.keys(cache)).toEqual(["valid campaign"]);
+  });
+});
+
+describe("cachedObjectiveAgreesWithDetection", () => {
+  it("returns true only when cached labels match fresh detection exactly", () => {
+    const cached = { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+    expect(
+      cachedObjectiveAgreesWithDetection(cached, {
+        resultLabel: "WEBSITE LEADS",
+        costLabel: "COST PER WEBSITE LEAD",
+      }),
+    ).toBe(true);
+    expect(
+      cachedObjectiveAgreesWithDetection(cached, {
+        resultLabel: "MESSAGING / CONVERSATIONS",
+        costLabel: "COST PER CONVERSATION",
+      }),
+    ).toBe(false);
+    expect(cachedObjectiveAgreesWithDetection(null, cached)).toBe(false);
   });
 });
 

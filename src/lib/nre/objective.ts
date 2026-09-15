@@ -310,6 +310,13 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   for (const row of rows) {
     websiteLeadsTotal += parseCellNum(row.website_leads);
     metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
+    const rt = (row.result_type || "").toLowerCase();
+    if (/leads?\s*\(\s*form|lead_grouped|onsite_conversion\.lead|meta leads?/.test(rt)) {
+      metaLeadsTotal += parseCellNum(row.results);
+    }
+    if (/website leads?|web leads?|offsite_conversion.*lead|fb_pixel_lead/.test(rt)) {
+      websiteLeadsTotal += parseCellNum(row.results);
+    }
     messagingTotal += sumRawColumnByKeywords(row._raw, [
       "messaging conversations started",
       "whatsapp conversations started",
@@ -318,6 +325,10 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
 
   const messagingCampaign = isMessagingCampaignName(rows);
   const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
+  const metaFormLeadsCampaign = isMetaFormLeadsCampaignName(rows);
+
+  const headers = Object.keys(rows[0]._raw || {});
+  const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
 
   const signals = [
     { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: websiteLeadsTotal },
@@ -332,12 +343,35 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     if (websiteLeadsCampaign && websiteLeadsTotal > 0) {
       return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
     }
+    if (metaFormLeadsCampaign && metaLeadsTotal > 0) {
+      return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+    }
+    // Mixed exports often carry one stray messaging count on website campaigns
+    // (e.g. Lead Campaign_ Website_TOF) — name + traffic columns beat that noise.
+    if (
+      websiteLeadsCampaign &&
+      messagingTotal > 0 &&
+      websiteLeadsTotal === 0 &&
+      (hasHeader("website leads") || isIncidentalMessagingForWebsiteCampaign(rows, messagingTotal))
+    ) {
+      return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+    }
     signals.sort((a, b) => b.value - a.value);
     return { resultLabel: signals[0].resultLabel, costLabel: signals[0].costLabel };
   }
 
+  return detectObjectiveFromCampaignNameAndHeaders(rows);
+}
+
+/** Name + header hints when numeric columns are empty — per-campaign only, never file-wide. */
+function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLabels | null {
+  if (rows.length === 0) return null;
+
   const headers = Object.keys(rows[0]._raw || {});
   const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
+  const messagingCampaign = isMessagingCampaignName(rows);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
+  const metaFormLeadsCampaign = isMetaFormLeadsCampaignName(rows);
 
   if (hasHeader("messaging conversations started") && messagingCampaign) {
     return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
@@ -345,8 +379,60 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   if (hasHeader("website leads") && websiteLeadsCampaign) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
-  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && /instant|form/.test((rows[0].campaign_name || "").toLowerCase())) {
+  if ((hasHeader("meta leads") || hasHeader("leads (form)")) && metaFormLeadsCampaign) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  }
+
+  return null;
+}
+
+/** Headers with at least one non-zero value in this campaign's rows — avoids file-level column bleed. */
+function activeHeadersForCampaign(rows: MetricRow[]): string[] {
+  if (rows.length === 0) return [];
+  const allHeaders = Object.keys(rows[0]._raw || {});
+  return allHeaders.filter((header) => rows.some((row) => parseCellNum(row._raw?.[header]) > 0));
+}
+
+/**
+ * Per-campaign Priority-3 column signal for resolveObjective / aggregateRows.
+ * Uses this campaign's own numeric activity first, then name+header hints — never
+ * the whole file's column list (which mislabels mixed-objective exports).
+ */
+export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
+  const fromRows = detectObjectiveFromCampaignRows(rows);
+  if (fromRows) return fromRows;
+
+  const activeHeaders = activeHeadersForCampaign(rows);
+  if (activeHeaders.length > 0) {
+    const fromActive = detectObjectiveFromColumns(activeHeaders);
+    if (fromActive) return fromActive;
+  }
+
+  const fromName = detectObjectiveFromCampaignNameAndHeaders(rows);
+  if (fromName) return fromName;
+
+  // Zero-activity campaigns (e.g. new Purchases campaign) — column exists in
+  // the export but has no data yet. Lead-family headers are only trusted when
+  // the campaign name agrees, so mixed-objective files cannot bleed across.
+  const allHeaders = Object.keys(rows[0]._raw || {});
+  const fromHeaders = detectObjectiveFromColumns(allHeaders);
+  if (!fromHeaders) return null;
+
+  const leadFamilyLabels = new Set([
+    "WEBSITE LEADS",
+    "META FORM LEADS",
+    MESSAGING_LABEL,
+    "WHATSAPP LEADS",
+    "LEADS",
+  ]);
+  if (!leadFamilyLabels.has(fromHeaders.resultLabel)) return fromHeaders;
+  if (fromHeaders.resultLabel === "WEBSITE LEADS" && isWebsiteLeadsCampaignName(rows)) return fromHeaders;
+  if (fromHeaders.resultLabel === "META FORM LEADS" && isMetaFormLeadsCampaignName(rows)) return fromHeaders;
+  if (
+    (fromHeaders.resultLabel === MESSAGING_LABEL || fromHeaders.resultLabel === "WHATSAPP LEADS") &&
+    isMessagingCampaignName(rows)
+  ) {
+    return fromHeaders;
   }
 
   return null;
@@ -622,14 +708,17 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
   // fine — those rows already carry a corrected result_type from
   // aggregateRows' own resolveObjective pass, so they resolve via Priority 2
   // here regardless.
-  const rawHeaders = rows.length > 0 ? Object.keys(rows[0]._raw || {}) : [];
-  // File-level column presence only — per-campaign lead-family disambiguation
-  // belongs in resolveCampaignObjective/buildCampaignObjectiveMap, not here.
-  // Using detectObjectiveFromCampaignRows at this call site misclassifies rows
-  // when multiple campaigns share one upload (mixed-account exports).
-  const columnObjective = detectObjectiveFromColumns(rawHeaders);
+  const campaignColumnObjectives = new Map<string, ResultLabels | null>();
+  for (const row of rows) {
+    const campaignKey = normalizeCampaignName(row.campaign_name || "");
+    if (campaignColumnObjectives.has(campaignKey)) continue;
+    const campRows = rows.filter((r) => normalizeCampaignName(r.campaign_name || "") === campaignKey);
+    campaignColumnObjectives.set(campaignKey, columnObjectiveForCampaign(campRows));
+  }
 
   rows.forEach((row) => {
+    const columnObjective =
+      campaignColumnObjectives.get(normalizeCampaignName(row.campaign_name || "")) ?? null;
     const { resultLabel: label, costLabel: cost } = resolveObjective(
       {
         result_type: row.result_type,
@@ -942,17 +1031,44 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
   return total;
 }
 
+function campaignNameHaystack(rows: MetricRow[]): string {
+  return rows
+    .map((r) => `${r.campaign_name ?? ""} ${r.ad_set_name ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+}
+
 function isMessagingCampaignName(rows: MetricRow[]): boolean {
-  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
-  return /messag|messenger/.test(name);
+  return /messag|messenger/.test(campaignNameHaystack(rows));
+}
+
+/** Meta instant-form lead campaigns — InstantForms, Leads (form), etc. */
+function isMetaFormLeadsCampaignName(rows: MetricRow[]): boolean {
+  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(
+    campaignNameHaystack(rows),
+  );
 }
 
 /** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
 function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
-  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
+  const haystack = campaignNameHaystack(rows);
   if (isMessagingCampaignName(rows)) return false;
-  if (/whatsapp|instant.?form|meta.?form|lead.?form/.test(name)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b/.test(name);
+  if (isMetaFormLeadsCampaignName(rows)) return false;
+  if (/whatsapp/.test(haystack)) return false;
+  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
+}
+
+/** Stray messaging counts on website campaigns (shared export columns) vs real traffic. */
+function isIncidentalMessagingForWebsiteCampaign(rows: MetricRow[], messagingTotal: number): boolean {
+  let linkClicks = 0;
+  let landingPageViews = 0;
+  for (const row of rows) {
+    linkClicks += parseCellNum(row.link_clicks);
+    landingPageViews += parseCellNum(row.landing_page_views);
+  }
+  const traffic = Math.max(linkClicks, landingPageViews);
+  if (traffic <= 0) return false;
+  return messagingTotal <= Math.max(1, Math.floor(traffic * 0.05));
 }
 
 /** Meta always populates link clicks / LPV / generic lead result_types on lead campaigns — never trust them over real messaging column data or a messaging campaign name. */
@@ -1124,6 +1240,15 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       ...campaignLead,
       confidence: tier,
       requiresConfirmation: tier === "verify",
+    };
+  }
+
+  const columnFallback = columnObjectiveForCampaign(rows);
+  if (columnFallback) {
+    return {
+      ...columnFallback,
+      confidence: "medium",
+      requiresConfirmation: false,
     };
   }
 

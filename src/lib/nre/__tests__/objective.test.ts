@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   buildCampaignObjectiveMap,
   buildCampaignObjectiveMapWithConfidence,
+  columnObjectiveForCampaign,
   detectObjectiveFromCampaignRows,
   detectObjectiveFromColumns,
   getGroupedResultDisplay,
@@ -212,6 +213,68 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
     expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
       "MESSAGING / CONVERSATIONS",
     );
+  });
+
+  it("does not let another campaign's Website leads column poison messaging rows via file-level column presence", () => {
+    const messagingRows: MetricRow[] = [
+      metricRow({
+        campaign_name: "Lead Campaign_Messaging",
+        _raw: {
+          "Website leads": "0",
+          "Messaging conversations started": "",
+          "Link clicks": "63",
+        },
+        result_type: "",
+        link_clicks: 63,
+        spend: 25,
+      }),
+    ];
+    expect(columnObjectiveForCampaign(messagingRows)?.resultLabel).toBe("MESSAGING / CONVERSATIONS");
+    expect(getResultGroups(messagingRows).map((g) => g.label)).toEqual(["MESSAGING / CONVERSATIONS"]);
+    expect(resolveCampaignObjective(messagingRows).resultLabel).toBe("MESSAGING / CONVERSATIONS");
+  });
+
+  it("ignores stale cache-shaped mismatch — fresh detection wins for swapped CSV uploads", () => {
+    const csvPath = resolve(
+      process.cwd(),
+      "src/lib/nre/__tests__/fixtures/mixed-objectives-messaging.csv",
+    );
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    // Simulates Sherwood cache saying WEBSITE LEADS while Coast CSV row is messaging.
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
+      "MESSAGING / CONVERSATIONS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_ Website_TOF"))?.resultLabel).toBe(
+      "WEBSITE LEADS",
+    );
+  });
+
+  it("detects all three objectives from mixed-objectives-messaging.csv (Website_TOF, InstantForms, Messaging)", () => {
+    const csvPath = resolve(
+      process.cwd(),
+      "src/lib/nre/__tests__/fixtures/mixed-objectives-messaging.csv",
+    );
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const websiteRows = rows.filter((r) => r.campaign_name === "Lead Campaign_ Website_TOF");
+    expect(detectObjectiveFromCampaignRows(websiteRows)?.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolveCampaignObjective(websiteRows).resultLabel).toBe("WEBSITE LEADS");
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_ Website_TOF"))?.resultLabel).toBe(
+      "WEBSITE LEADS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
+      "MESSAGING / CONVERSATIONS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_ InstantForms"))?.resultLabel).toBe(
+      "META FORM LEADS",
+    );
+
+    const websiteResolution = resolveCampaignObjectiveWithConfidence(websiteRows);
+    expect(websiteResolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(websiteResolution.confidence).toBe("high");
+    expect(websiteResolution.requiresConfirmation).toBe(false);
   });
 
   it("ignores dominant Link clicks result_type when messaging column data exists (API-sync-shaped rows)", () => {
@@ -861,13 +924,13 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 200 });
   });
 
-  it("row-level getResultGroups WOULD have produced a phantom 4th column for the same input — proving this is a real fix, not a no-op", () => {
+  it("row-level getResultGroups also uses per-campaign column signals — no phantom LPV column inside a website-leads campaign", () => {
     const rows: MetricRow[] = [
       metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 20, results: 20, spend: 200 }),
       metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", landing_page_views: 8, results: 0, spend: 10 }),
     ];
     const rowLevelLabels = getResultGroups(rows).map((g) => g.label).sort();
-    expect(rowLevelLabels).toEqual(["LANDING PAGE VIEWS", "WEBSITE LEADS"]);
+    expect(rowLevelLabels).toEqual(["WEBSITE LEADS"]);
 
     const objectiveMap = buildCampaignObjectiveMap(rows);
     const campaignLevelLabels = groupResultsByCampaignObjective(rows, objectiveMap).map((g) => g.label);

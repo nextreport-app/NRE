@@ -66,3 +66,18 @@ describe("buildColumnMap — spend detection (regression)", () => {
     expect(buildColumnMap(["Cost per Click"]).cpc).toBe("Cost per Click");
   });
 });
+
+describe("buildColumnMap — lead column disambiguation (regression)", () => {
+  it("maps Website leads to website_leads only, not the generic leads field", () => {
+    const map = buildColumnMap(["Website leads", "Results", "Result type"]);
+    expect(map.website_leads).toBe("Website leads");
+    expect(map.leads).toBeUndefined();
+    expect(map.results).toBe("Results");
+  });
+
+  it("maps Meta leads to meta_leads, not generic leads", () => {
+    const map = buildColumnMap(["Meta leads", "Results"]);
+    expect(map.meta_leads).toBe("Meta leads");
+    expect(map.leads).toBeUndefined();
+  });
+});
