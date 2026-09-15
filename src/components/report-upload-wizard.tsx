@@ -2074,72 +2074,54 @@ export function ReportUploadWizard({
 
       {step === 1 && (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-          {platformPickerExpanded ? (
+          {hasSavedPlatformPreference && selectedPlatformCard ? (
+            <>
+              <WizardPlatformCompactBar
+                icon={
+                  selectedPlatformCard === "META" ? (
+                    <MetaAdsBrandIcon />
+                  ) : selectedPlatformCard === "GOOGLE" ? (
+                    <GoogleAdsBrandIcon />
+                  ) : (
+                    <TikTokAdsBrandIcon />
+                  )
+                }
+                heading={
+                  selectedPlatformCard === "META"
+                    ? "Meta Ads"
+                    : selectedPlatformCard === "GOOGLE"
+                      ? "Google Ads"
+                      : "TikTok Ads"
+                }
+                description={wizardPlatformImportDescription(selectedPlatformCard)}
+                expanded={platformPickerExpanded}
+                onToggle={() => setPlatformPickerExpanded((open) => !open)}
+              />
+              {platformPickerExpanded ? (
+                <div className="space-y-3 border-t border-dash-border pt-4">
+                  <p className="text-[13px] text-dash-ink-secondary">Switch to a different platform</p>
+                  <WizardPlatformPickerGrid
+                    showTikTokOption={showTikTokOption}
+                    selectedPlatformCard={selectedPlatformCard}
+                    onChoosePlatform={choosePlatform}
+                    onChooseWebsitePlatform={chooseWebsitePlatform}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : (
             <>
               <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
-              <div
-                className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showTikTokOption ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
-              >
-                <ReportTypeCard
-                  icon={<MetaAdsBrandIcon />}
-                  heading="Meta Ads"
-                  description={wizardPlatformImportDescription("META")}
-                  selected={selectedPlatformCard === "META"}
-                  onSelect={() => choosePlatform("META")}
-                  singleLineHeading
-                />
-                <ReportTypeCard
-                  icon={<GoogleAdsBrandIcon />}
-                  heading="Google Ads"
-                  description={wizardPlatformImportDescription("GOOGLE")}
-                  selected={selectedPlatformCard === "GOOGLE"}
-                  onSelect={() => choosePlatform("GOOGLE")}
-                  singleLineHeading
-                />
-                {showTikTokOption ? (
-                  <ReportTypeCard
-                    icon={<TikTokAdsBrandIcon />}
-                    heading="TikTok Ads"
-                    description={wizardPlatformImportDescription("TIKTOK")}
-                    selected={selectedPlatformCard === "TIKTOK"}
-                    onSelect={() => choosePlatform("TIKTOK")}
-                    singleLineHeading
-                  />
-                ) : null}
-                <ReportTypeCard
-                  icon={<Ga4BrandIcon />}
-                  heading="Google Analytics"
-                  description="Sessions, channels, and landing pages"
-                  selected={false}
-                  onSelect={chooseWebsitePlatform}
-                  singleLineHeading
-                />
-              </div>
+              <WizardPlatformPickerGrid
+                showTikTokOption={showTikTokOption}
+                selectedPlatformCard={selectedPlatformCard}
+                onChoosePlatform={choosePlatform}
+                onChooseWebsitePlatform={chooseWebsitePlatform}
+              />
             </>
-          ) : selectedPlatformCard ? (
-            <WizardPlatformCompactBar
-              icon={
-                selectedPlatformCard === "META" ? (
-                  <MetaAdsBrandIcon />
-                ) : selectedPlatformCard === "GOOGLE" ? (
-                  <GoogleAdsBrandIcon />
-                ) : (
-                  <TikTokAdsBrandIcon />
-                )
-              }
-              heading={
-                selectedPlatformCard === "META"
-                  ? "Meta Ads"
-                  : selectedPlatformCard === "GOOGLE"
-                    ? "Google Ads"
-                    : "TikTok Ads"
-              }
-              description={wizardPlatformImportDescription(selectedPlatformCard)}
-              onChangePlatform={() => setPlatformPickerExpanded(true)}
-            />
-          ) : null}
+          )}
 
-          {selectedPlatformCard && (!platformPickerExpanded || !hasSavedPlatformPreference) && (
+          {selectedPlatformCard && (
             <div className="space-y-3">
               <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
 
@@ -4037,17 +4019,72 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
+function WizardPlatformPickerGrid({
+  showTikTokOption,
+  selectedPlatformCard,
+  onChoosePlatform,
+  onChooseWebsitePlatform,
+}: {
+  showTikTokOption: boolean;
+  selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
+  onChoosePlatform: (next: "META" | "GOOGLE" | "TIKTOK") => void;
+  onChooseWebsitePlatform: () => void;
+}) {
+  return (
+    <div
+      className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showTikTokOption ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+    >
+      <ReportTypeCard
+        icon={<MetaAdsBrandIcon />}
+        heading="Meta Ads"
+        description={wizardPlatformImportDescription("META")}
+        selected={selectedPlatformCard === "META"}
+        onSelect={() => onChoosePlatform("META")}
+        singleLineHeading
+      />
+      <ReportTypeCard
+        icon={<GoogleAdsBrandIcon />}
+        heading="Google Ads"
+        description={wizardPlatformImportDescription("GOOGLE")}
+        selected={selectedPlatformCard === "GOOGLE"}
+        onSelect={() => onChoosePlatform("GOOGLE")}
+        singleLineHeading
+      />
+      {showTikTokOption ? (
+        <ReportTypeCard
+          icon={<TikTokAdsBrandIcon />}
+          heading="TikTok Ads"
+          description={wizardPlatformImportDescription("TIKTOK")}
+          selected={selectedPlatformCard === "TIKTOK"}
+          onSelect={() => onChoosePlatform("TIKTOK")}
+          singleLineHeading
+        />
+      ) : null}
+      <ReportTypeCard
+        icon={<Ga4BrandIcon />}
+        heading="Google Analytics"
+        description="Sessions, channels, and landing pages"
+        selected={false}
+        onSelect={onChooseWebsitePlatform}
+        singleLineHeading
+      />
+    </div>
+  );
+}
+
 /** Step 1 — collapsed view for returning users who already picked a platform. */
 function WizardPlatformCompactBar({
   icon,
   heading,
   description,
-  onChangePlatform,
+  expanded,
+  onToggle,
 }: {
   icon: ReactNode;
   heading: string;
   description: string;
-  onChangePlatform: () => void;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/70 px-4 py-3.5">
@@ -4065,12 +4102,14 @@ function WizardPlatformCompactBar({
       </div>
       <button
         type="button"
-        onClick={onChangePlatform}
+        onClick={onToggle}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
-        aria-expanded={false}
+        aria-expanded={expanded}
       >
         Change platform
-        <ChevronDownIcon className="h-3.5 w-3.5 opacity-80" />
+        <ChevronDownIcon
+          className={`h-3.5 w-3.5 opacity-80 transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
       </button>
     </div>
   );
