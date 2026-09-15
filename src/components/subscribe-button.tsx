@@ -15,17 +15,19 @@ const PLAN_NAMES: Record<BillablePlanId, string> = {
 
 interface RazorpaySuccessResponse {
   razorpay_payment_id: string;
-  razorpay_order_id: string;
   razorpay_signature: string;
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
 }
 
 interface RazorpayCheckoutOptions {
   key: string;
-  amount: number;
-  currency: string;
   name: string;
   description: string;
-  order_id: string;
+  amount?: number;
+  currency?: string;
+  order_id?: string;
+  subscription_id?: string;
   prefill?: { name?: string; email?: string };
   theme?: { color?: string };
   handler: (response: RazorpaySuccessResponse) => void;
@@ -109,35 +111,61 @@ export function SubscribeButton({
       return;
     }
 
-    let orderData: { order_id: string; amount: number; currency: string; planId: BillablePlanId };
+    type CheckoutData =
+      | { mode: "subscription"; subscription_id: string; planId: BillablePlanId }
+      | { mode: "order"; order_id: string; amount: number; currency: string; planId: BillablePlanId };
+
+    let checkoutData: CheckoutData;
     try {
-      const orderRes = await fetch("/api/payments/create-order", {
+      const subscriptionRes = await fetch("/api/payments/create-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId, currency, interval }),
       });
-      const data = await orderRes.json();
-      if (!orderRes.ok) {
-        setError(data.error || "Could not start checkout. Please try again.");
+      const subscriptionJson = await subscriptionRes.json().catch(() => ({}));
+
+      if (subscriptionRes.ok && subscriptionJson.subscription_id) {
+        checkoutData = {
+          mode: "subscription",
+          subscription_id: subscriptionJson.subscription_id,
+          planId: subscriptionJson.planId ?? planId,
+        };
+      } else if (subscriptionRes.status === 503 && subscriptionJson.useOrders) {
+        const orderRes = await fetch("/api/payments/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId, currency, interval }),
+        });
+        const orderJson = await orderRes.json();
+        if (!orderRes.ok) {
+          setError(orderJson.error || "Could not start checkout. Please try again.");
+          setLoading(false);
+          return;
+        }
+        checkoutData = {
+          mode: "order",
+          order_id: orderJson.order_id,
+          amount: orderJson.amount,
+          currency: orderJson.currency,
+          planId: orderJson.planId ?? planId,
+        };
+      } else {
+        setError(subscriptionJson.error || "Could not start checkout. Please try again.");
         setLoading(false);
         return;
       }
-      orderData = data;
     } catch {
       setError("Could not reach the server to start checkout. Please try again.");
       setLoading(false);
       return;
     }
 
-    const razorpay = new window.Razorpay({
+    const checkoutOptions: RazorpayCheckoutOptions = {
       // .trim() guards against a trailing newline/space from copy-pasting
       // the value into Vercel's env var UI — see lib/razorpay.ts.
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "",
-      amount: orderData.amount,
-      currency: orderData.currency,
       name: "NextReport",
-      description: `${PLAN_NAMES[planId]} plan — ${interval === "annual" ? "annual" : "monthly"} subscription`,
-      order_id: orderData.order_id,
+      description: `${PLAN_NAMES[planId]} plan — ${interval === "annual" ? "annual" : "monthly"} billing`,
       prefill: { name: userName ?? undefined, email: userEmail ?? undefined },
       theme: { color: "#4a90d9" },
       handler: async (response) => {
@@ -145,7 +173,7 @@ export function SubscribeButton({
           const verifyRes = await fetch("/api/payments/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...response, planId }),
+            body: JSON.stringify({ ...response, planId: checkoutData.planId }),
           });
           const verifyData = await verifyRes.json();
           if (!verifyRes.ok || !verifyData.success) {
@@ -164,7 +192,17 @@ export function SubscribeButton({
         // error, just back to normal.
         ondismiss: () => setLoading(false),
       },
-    });
+    };
+
+    if (checkoutData.mode === "subscription") {
+      checkoutOptions.subscription_id = checkoutData.subscription_id;
+    } else {
+      checkoutOptions.order_id = checkoutData.order_id;
+      checkoutOptions.amount = checkoutData.amount;
+      checkoutOptions.currency = checkoutData.currency;
+    }
+
+    const razorpay = new window.Razorpay(checkoutOptions);
 
     razorpay.on("payment.failed", (response) => {
       setError(response.error?.description || "Payment failed. Please try again or use a different payment method.");

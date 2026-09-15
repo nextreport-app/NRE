@@ -2,12 +2,17 @@ import crypto from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   amountForCurrency,
+  getRazorpayPlanId,
   isPlanId,
   isPricingCurrency,
+  isRazorpaySubscriptionsConfigured,
   PLANS,
   planIdForAmount,
+  planIdFromRazorpayPlan,
   razorpayClient,
+  subscriptionTotalCount,
   verifyPaymentSignature,
+  verifySubscriptionPaymentSignature,
   verifyWebhookSignature,
 } from "../razorpay";
 
@@ -171,6 +176,52 @@ describe("planIdForAmount", () => {
 
   it("returns null for an unrecognized currency entirely", () => {
     expect(planIdForAmount(69_900, "GBP")).toBeNull();
+  });
+});
+
+describe("verifySubscriptionPaymentSignature", () => {
+  const secret = "test-key-secret";
+  const paymentId = "pay_SUB123";
+  const subscriptionId = "sub_ABC789";
+
+  function sign(paymentId: string, subscriptionId: string, secret: string): string {
+    return crypto.createHmac("sha256", secret).update(`${paymentId}|${subscriptionId}`).digest("hex");
+  }
+
+  it("accepts Razorpay subscription checkout signatures", () => {
+    const signature = sign(paymentId, subscriptionId, secret);
+    expect(verifySubscriptionPaymentSignature(paymentId, subscriptionId, signature, secret)).toBe(true);
+  });
+
+  it("rejects a tampered subscription signature", () => {
+    const signature = sign(paymentId, subscriptionId, secret);
+    expect(verifySubscriptionPaymentSignature(paymentId, "sub_OTHER", signature, secret)).toBe(false);
+  });
+});
+
+describe("getRazorpayPlanId / planIdFromRazorpayPlan", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns null when plan env vars are unset", () => {
+    vi.stubEnv("RAZORPAY_PLAN_STARTER_INR_MONTHLY", "");
+    expect(getRazorpayPlanId("starter", "INR", "monthly")).toBeNull();
+    expect(isRazorpaySubscriptionsConfigured()).toBe(false);
+  });
+
+  it("round-trips configured plan ids", () => {
+    vi.stubEnv("RAZORPAY_PLAN_STARTER_INR_MONTHLY", "plan_starter_inr_m");
+    expect(getRazorpayPlanId("starter", "INR", "monthly")).toBe("plan_starter_inr_m");
+    expect(isRazorpaySubscriptionsConfigured()).toBe(true);
+    expect(planIdFromRazorpayPlan("plan_starter_inr_m")).toBe("starter");
+  });
+});
+
+describe("subscriptionTotalCount", () => {
+  it("uses longer cycles for monthly than annual plans", () => {
+    expect(subscriptionTotalCount("monthly")).toBe(120);
+    expect(subscriptionTotalCount("annual")).toBe(10);
   });
 });
 
