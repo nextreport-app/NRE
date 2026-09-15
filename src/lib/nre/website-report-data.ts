@@ -1,5 +1,6 @@
 /**
  * Website Traffic report data — separate from Meta/Google Ads ReportData.
+ * Architecture: docs/ga4-reporting-architecture.md (fork data/build; bridge delivery only).
  */
 
 import type { WebsiteBreakdownOptions, WebsiteGeoDimension } from "./website-report-config";

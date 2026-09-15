@@ -652,7 +652,7 @@ export function WebsiteReportWizard({
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Generate</h2>
         <p className="mt-2 text-[14px] text-dash-ink-secondary">
-          Creates a branded PPT, browser share link, and PDF — same delivery as Meta and Google Ads reports.
+          Creates a branded PowerPoint (.pptx) and a browser share link. PDF export and publish review are coming soon — ad reports already support those steps.
         </p>
         {generateError ? <p className="mt-3 text-[14px] text-red-300">{generateError}</p> : null}
         {generateStatus === "done" && downloadUrl ? (

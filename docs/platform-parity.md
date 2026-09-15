@@ -2,7 +2,7 @@
 
 Unified reporting pipeline: one `buildReportData` path, platform adapters for dictionary/slots/labels/validation.
 
-GA4 stays on its own pipeline — out of scope here.
+GA4 stays on its own pipeline — out of scope here. See [GA4 reporting architecture](./ga4-reporting-architecture.md) for the fork vs bridge decision (#9).
 
 ## Phase 1 — Shared pipeline wiring (this PR)
 
