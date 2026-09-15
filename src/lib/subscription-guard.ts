@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getPlanDisplayName } from "@/lib/plan-labels";
+import { CLIENT_LIMIT_EXPLAINER, getPlanDisplayName } from "@/lib/plan-labels";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 const TRIAL_ENDED_MESSAGE = "Your free trial has ended. Subscribe to continue using NextReport.";
@@ -48,7 +48,7 @@ export async function requireClientCapacity(userId: string): Promise<NextRespons
     if (activeClientCount >= status.clientLimit) {
       return NextResponse.json(
         {
-          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} active client accounts. Delete an unused client or upgrade to Professional for unlimited clients.`,
+          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client workspaces (one brand each — Meta, Google, TikTok, and GA4 included). ${CLIENT_LIMIT_EXPLAINER} Delete an unused client or upgrade to Professional for unlimited clients.`,
         },
         { status: 403 },
       );

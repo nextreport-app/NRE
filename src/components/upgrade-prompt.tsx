@@ -1,6 +1,6 @@
 import { SubscribeButton } from "./subscribe-button";
 
-import { getPlanDisplayName } from "@/lib/plan-labels";
+import { CLIENT_LIMIT_EXPLAINER, getPlanDisplayName } from "@/lib/plan-labels";
 
 /** Shown instead of the "New client" form once an Agency-plan user has hit their client cap (see lib/subscription.ts's clientLimit). */
 export function UpgradePrompt({
@@ -16,7 +16,9 @@ export function UpgradePrompt({
     <div className="mx-auto max-w-md rounded-lg border border-dash-border bg-dash-card p-8 text-center">
       <h1 className="text-xl font-semibold text-dash-ink">Client limit reached</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        You already have {clientLimit} active clients on the {getPlanDisplayName("starter")} plan. Delete an unused client to add a different one, or upgrade to Professional for unlimited clients.
+        You already have {clientLimit} active client workspaces on the {getPlanDisplayName("starter")} plan.{" "}
+        {CLIENT_LIMIT_EXPLAINER} Delete an unused client to add a different brand, or upgrade to Professional for
+        unlimited clients.
       </p>
       <SubscribeButton
         planId="professional"

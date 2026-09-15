@@ -54,11 +54,11 @@ const FAQS = [
   },
   {
     q: "Is there a limit on ad accounts I can sync?",
-    a: "Platform connections are set up once at the account level and shared across all your clients. Plans differ by how many client accounts you can manage — Agency allows up to 10, Professional is unlimited. There is no separate cap on Meta, Google, TikTok, or GA4 ad accounts you connect.",
+    a: "Each client workspace is one brand — Meta, Google, TikTok, and GA4 reports for that brand all count as one client, not one slot per platform. Platform connections are set up once in Account settings and shared across clients. Agency allows up to 10 client workspaces; Professional is unlimited. There is no separate cap on ad accounts you connect.",
   },
   {
     q: "Do you offer an Enterprise plan?",
-    a: "We keep pricing simple with two paid tiers — Agency and Professional — plus a 7-day free trial. Professional includes unlimited client accounts. If you need custom billing, onboarding, or agency-wide rollout, email hello@nextreport.in and we will help.",
+    a: "We keep pricing simple with two paid tiers — Agency and Professional — plus a 7-day free trial. Professional includes unlimited client workspaces (all platforms included). If you need custom billing, onboarding, or agency-wide rollout, email hello@nextreport.in and we will help.",
   },
   {
     q: "Do you offer annual billing?",
