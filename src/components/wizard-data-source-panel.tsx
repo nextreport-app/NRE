@@ -435,7 +435,7 @@ export function WizardDataSourcePanel({
             disabled={!canSync}
             className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
           >
-            {syncStatus === "loading" ? "Importing campaign data…" : "Import campaign data"}
+            {syncStatus === "loading" ? "Syncing & analyzing…" : "Analyze campaign data"}
           </button>
         </>
       ) : null}

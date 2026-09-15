@@ -2208,7 +2208,7 @@ export function ReportUploadWizard({
                     disabled={!mtdFile || analyzeStatus === "loading"}
                     className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
                   >
-                    {analyzeStatus === "loading" ? "Importing…" : "Campaign Data Import"}
+                    {analyzeStatus === "loading" ? "Analyzing…" : "Analyze campaign data"}
                   </button>
                 </>
               )}
