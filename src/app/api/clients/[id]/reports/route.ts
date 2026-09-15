@@ -6,20 +6,20 @@ import { deleteReportFile } from "@/lib/storage";
 import type { Platform } from "@/lib/nre/google-columns";
 import type { ColumnMap, NreRow } from "@/lib/nre/columns";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
-import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
+import { dispatchReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
+import {
+  serializeReportGenerationJob,
+  type ComparisonReportJobPayload,
+  type HistoricalReportJobPayload,
+  type PreviousMonthSummaryJobPayload,
+  type StandardReportJobPayload,
+} from "@/lib/nre/report-generation-job";
 import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
-import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
-import { aiKeysFromEnv } from "@/lib/ai/client";
-import { generateInsights } from "@/lib/ai/generate-insights";
-import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
-import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
-import type { ImageAsset } from "@/lib/pptx/embed-image";
-import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
-import { saveReportFile, readLogoFile } from "@/lib/storage";
+import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
@@ -28,7 +28,6 @@ import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage"
 import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
 import { computeCsvDateBounds, computeDailyRangeIso } from "@/lib/nre/date-range";
 import type { ReportType } from "@/lib/nre/report-data";
-import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignMetricOverridesSchema,
@@ -49,54 +48,6 @@ import {
   resolveShowBudgetPacingOnCover,
 } from "@/lib/validators/report-wizard";
 import type { Client } from "@/generated/prisma/client";
-import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
-
-/** Downloads a stored logo and reads its pixel dimensions + format back from its own bytes — see logo-processing.ts for why this is a header-only read, never a decode. */
-async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
-  if (!url) return null;
-  const bytes = await readLogoFile(url);
-  const format = detectLogoFormat(bytes);
-  if (!format) return null;
-  const dimensions = readLogoDimensions(bytes, format);
-  if (!dimensions) return null;
-  return {
-    bytes,
-    widthPx: dimensions.width,
-    heightPx: dimensions.height,
-    extension: extensionForLogoFormat(format),
-    contentType: contentTypeForLogoFormat(format),
-  };
-}
-
-function dispatchReportNotifications(params: {
-  userId: string;
-  integrations: { slackWebhookUrl: string | null; automationWebhookUrl: string | null } | null;
-  client: Client;
-  report: {
-    id: string;
-    shareToken: string | null;
-    reportType: string;
-    platform: "META" | "GOOGLE" | "TIKTOK";
-    displayName: string | null;
-  };
-  healthScore?: number | null;
-  healthBadge?: string | null;
-}) {
-  void notifyReportGeneratedForUser({
-    userId: params.userId,
-    integrationSelect: params.integrations,
-    reportId: params.report.id,
-    shareToken: params.report.shareToken,
-    clientName: params.client.accountName,
-    platform: params.report.platform,
-    reportType: params.report.reportType,
-    displayName: params.report.displayName,
-    healthScore: params.healthScore,
-    healthBadge: params.healthBadge,
-  }).catch((err) => {
-    console.error("[api:reports:generate] report notification failed:", err);
-  });
-}
 
 /** Meta/Google/TikTok path: full campaign/ad-set selection + date-range resolution + Previous Month Data. */
 async function buildMetaData(
@@ -112,11 +63,6 @@ async function buildMetaData(
   const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
 
-  // buildMetaData is only ever called for the WEEKLY/MONTHLY path — the
-  // caller (POST below) returns early for reportType "COMPARISON" before
-  // ever reaching here — but reportTypeSchema itself now allows all three
-  // values, so this narrows defensively rather than widening report-data.ts's
-  // own ReportType to match.
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
   const adNameColumn = detectAdNameColumn(mtdParsed.headers);
 
@@ -173,6 +119,15 @@ async function buildMetaData(
   return { data };
 }
 
+function enqueueResponse(reportId: string, shareToken?: string | null) {
+  return NextResponse.json({
+    ok: true,
+    reportId,
+    shareToken: shareToken ?? undefined,
+    status: "GENERATING" as const,
+  });
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -191,31 +146,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const guardResponse = await requireActiveSubscription(session.user.id);
   if (guardResponse) return guardResponse;
 
-  const userIntegrations = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { slackWebhookUrl: true, automationWebhookUrl: true },
-  });
-
   const formData = await req.formData().catch(() => null);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
   const reportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
   const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
 
-  const cleanupUploadSession = async (sessionId: string | undefined) => {
-    if (sessionId) {
-      await deleteWizardUploadSession(session.user.id, id, sessionId).catch(() => {});
-    }
-  };
+  const uploadSessionIdFromForm = formData
+    ? parseJsonFormField(formData, "uploadSessionId", uploadSessionIdSchema)
+    : undefined;
 
-  // Part 3 — Objective Confirmation memory cache. Every campaign the wizard's
-  // Objective Confirmation step showed (cached pre-fills, untouched engine
-  // detections, and user edits alike — see confirmedCampaignObjectivesPayload
-  // in report-upload-wizard.tsx) gets merged into this client's persisted
-  // cache. Fired here, before report generation even starts, and
-  // deliberately NOT awaited — "This update happens in the background — do
-  // not block report generation waiting for it." A failure here is logged
-  // but never surfaces as a report-generation error: the cache is a UX
-  // nicety for next month's wizard, not something this report depends on.
   const confirmedCampaignObjectives = formData
     ? parseJsonFormField(formData, "confirmedCampaignObjectives", confirmedCampaignObjectivesSchema)
     : undefined;
@@ -250,9 +189,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");
+    const shareToken = generateShareToken();
 
     let summaryReport;
     try {
+      const jobPayload: PreviousMonthSummaryJobPayload = {
+        version: 1,
+        kind: "PREVIOUS_MONTH_SUMMARY",
+        userId: session.user.id,
+        clientId: id,
+        uploadSessionId: uploadSessionIdFromForm,
+        platform,
+        summaryData,
+        shareToken,
+      };
+
       summaryReport = await prisma.report.create({
         data: {
           clientId: client.id,
@@ -261,7 +212,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           platform,
           fileName,
           displayName: `Previous Month Summary — ${summaryData.periodRow.fullMonthLabel}`,
-          shareToken: generateShareToken(),
+          shareToken,
           summaryJson: JSON.stringify({
             isPaused: false,
             previousMonthSummaryOnly: true,
@@ -270,68 +221,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             campaignCount: 0,
             adSetCount: 0,
           }),
+          jobPayload: serializeReportGenerationJob(jobPayload),
         },
       });
     } catch (err) {
       return apiErrorResponse(err, "reports:generate:create-previous-month-summary");
     }
 
-    try {
-      const [user, clientLogo] = await Promise.all([
-        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
-        loadLogoAsset(client.logoUrl),
-      ]);
-
-      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
-      const pptxBuffer = await renderPptx({
-        templateBuffer,
-        data: summaryData,
-        currencySymbol,
-        reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
-        agencyName: user?.agencyName,
-        clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
-      });
-
-      const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
-
-      const shareData = buildShareReportData(summaryData, new Map(), new Date(), { currencySymbol, agencyName: user?.agencyName });
-
-      await prisma.report.update({
-        where: { id: summaryReport.id },
-        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
-      });
-
-      dispatchReportNotifications({
-        userId: session.user.id,
-        integrations: userIntegrations,
-        client,
-        report: {
-          id: summaryReport.id,
-          shareToken: summaryReport.shareToken,
-          reportType: "MONTHLY",
-          platform,
-          displayName: summaryReport.displayName,
-        },
-        healthScore: shareData.cover?.healthScore,
-        healthBadge: shareData.cover?.healthBadge,
-      });
-
-      const uploadSessionId = formData
-        ? parseJsonFormField(formData, "uploadSessionId", uploadSessionIdSchema)
-        : undefined;
-      await cleanupUploadSession(uploadSessionId);
-      return NextResponse.json({ ok: true, reportId: summaryReport.id, shareToken: summaryReport.shareToken });
-    } catch (err) {
-      console.error("[api:reports:generate] previous month summary failed:", err);
-      const message = err instanceof Error ? err.message : "Report generation failed.";
-      try {
-        await prisma.report.update({ where: { id: summaryReport.id }, data: { status: "FAILED", errorMessage: message } });
-      } catch (updateErr) {
-        console.error("[api:reports:generate] failed to record previous-month-summary failure status:", updateErr);
-      }
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
+    await dispatchReportGenerationJob(summaryReport.id);
+    return enqueueResponse(summaryReport.id, shareToken);
   }
 
   const resolved = await resolveWizardMtdFromFormData(formData, { userId: session.user.id, clientId: id });
@@ -341,10 +239,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { parsed: mtdParsed, uploadSessionId } = resolved.data;
   const platform = mtdParsed.platform;
 
-  // Comparison reports are an entirely separate pipeline (buildComparisonReportData
-  // + renderComparisonPptx — see report-data.ts's own "Comparison reports"
-  // section header) — handled fully here, never reaching buildMetaData/
-  // buildGoogleData/renderPptx below, which stay exactly as they were.
   if (reportType === "COMPARISON") {
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
@@ -386,6 +280,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let comparisonReport;
     try {
+      const jobPayload: ComparisonReportJobPayload = {
+        version: 1,
+        kind: "COMPARISON",
+        userId: session.user.id,
+        clientId: id,
+        uploadSessionId,
+        platform,
+        reportTitle,
+        comparisonData,
+      };
+
       comparisonReport = await prisma.report.create({
         data: {
           clientId: client.id,
@@ -405,67 +310,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             periodBLabel: comparisonData.periodBLabel,
             campaignCount: comparisonData.campaigns.length,
           }),
+          jobPayload: serializeReportGenerationJob(jobPayload),
         },
       });
     } catch (err) {
       return apiErrorResponse(err, "reports:generate:create-comparison");
     }
 
-    try {
-      // Comparison covers reuse buildCoverSlideXml (see comparison-slides.ts's
-      // buildComparisonCoverSlideXml) but don't currently place the client
-      // logo — out of scope for this feature, so no loadLogoAsset call here.
-      const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } });
-
-      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
-      const pptxBuffer = await renderComparisonPptx({
-        templateBuffer,
-        data: comparisonData,
-        reportTitle,
-        agencyName: user?.agencyName,
-        isLightTemplate: isLightReportTemplate(client.template),
-      });
-
-      const filePath = await saveReportFile(comparisonReport.id, pptxBuffer);
-
-      await prisma.report.update({
-        where: { id: comparisonReport.id },
-        data: { status: "COMPLETE", filePath, shareToken: generateShareToken() },
-      });
-
-      const updatedComparison = await prisma.report.findUnique({
-        where: { id: comparisonReport.id },
-        select: { shareToken: true, displayName: true },
-      });
-
-      dispatchReportNotifications({
-        userId: session.user.id,
-        integrations: userIntegrations,
-        client,
-        report: {
-          id: comparisonReport.id,
-          shareToken: updatedComparison?.shareToken ?? null,
-          reportType: "COMPARISON",
-          platform,
-          displayName: updatedComparison?.displayName ?? comparisonReport.displayName,
-        },
-      });
-
-      await cleanupUploadSession(uploadSessionId);
-      return NextResponse.json({ ok: true, reportId: comparisonReport.id });
-    } catch (err) {
-      console.error("[api:reports:generate] comparison report failed:", err);
-      const message = err instanceof Error ? err.message : "Report generation failed.";
-      try {
-        await prisma.report.update({
-          where: { id: comparisonReport.id },
-          data: { status: "FAILED", errorMessage: message },
-        });
-      } catch (updateErr) {
-        console.error("[api:reports:generate] failed to record comparison failure status:", updateErr);
-      }
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
+    await dispatchReportGenerationJob(comparisonReport.id);
+    return enqueueResponse(comparisonReport.id);
   }
 
   if (reportType === "HISTORICAL") {
@@ -499,10 +352,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     const fileName = `Multi-Month Report - ${historicalData.monthsLabel}.pptx`.replace(/[\s/]/g, "_");
+    const shareToken = generateShareToken();
 
     let historicalReport;
-    const shareToken = generateShareToken();
     try {
+      const jobPayload: HistoricalReportJobPayload = {
+        version: 1,
+        kind: "HISTORICAL",
+        userId: session.user.id,
+        clientId: id,
+        uploadSessionId,
+        platform,
+        reportTitle,
+        historicalData,
+        shareToken,
+      };
+
       historicalReport = await prisma.report.create({
         data: {
           clientId: client.id,
@@ -518,91 +383,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             monthCount: historicalData.monthCount,
             slideCount: historicalData.slides.length,
           }),
+          jobPayload: serializeReportGenerationJob(jobPayload),
         },
       });
     } catch (err) {
       return apiErrorResponse(err, "reports:generate:create-historical");
     }
 
-    try {
-      const [user, clientLogo] = await Promise.all([
-        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
-        loadLogoAsset(client.logoUrl),
-      ]);
-
-      const templateBuffer = await loadTemplateBufferForPlatform(
-        platform === "TIKTOK" ? "TIKTOK" : "META",
-        client.template,
-      );
-      const pptxBuffer = await renderHistoricalPptx({
-        templateBuffer,
-        data: historicalData,
-        reportTitle,
-        agencyName: user?.agencyName,
-        clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
-        aiCopyBySlideKey: buildHistoricalAiCopyMap(historicalData.slides),
-      });
-
-      const filePath = await saveReportFile(historicalReport.id, pptxBuffer);
-
-      const aiCopyMap = buildHistoricalAiCopyMap(historicalData.slides);
-      const shareData = buildHistoricalShareReportData(historicalData, aiCopyMap, new Date(), {
-        agencyName: user?.agencyName,
-      });
-      const shareWithArchive = {
-        ...shareData,
-        _renderArchive: {
-          historicalData,
-          aiCopy: Object.fromEntries(aiCopyMap),
-          reportTitle,
-          agencyName: user?.agencyName ?? null,
-          isLightTemplate: isLightReportTemplate(client.template),
-        },
-      };
-
-      await prisma.report.update({
-        where: { id: historicalReport.id },
-        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive) },
-      });
-
-      const updatedHistorical = await prisma.report.findUnique({
-        where: { id: historicalReport.id },
-        select: { shareToken: true, displayName: true },
-      });
-
-      dispatchReportNotifications({
-        userId: session.user.id,
-        integrations: userIntegrations,
-        client,
-        report: {
-          id: historicalReport.id,
-          shareToken: updatedHistorical?.shareToken ?? shareToken,
-          reportType: "HISTORICAL",
-          platform: platform === "TIKTOK" ? "TIKTOK" : "META",
-          displayName: updatedHistorical?.displayName ?? historicalReport.displayName,
-        },
-      });
-
-      await cleanupUploadSession(uploadSessionId);
-      return NextResponse.json({
-        ok: true,
-        reportId: historicalReport.id,
-        shareToken: updatedHistorical?.shareToken ?? shareToken,
-      });
-    } catch (err) {
-      console.error("[api:reports:generate] historical report failed:", err);
-      const message = err instanceof Error ? err.message : "Report generation failed.";
-      try {
-        await prisma.report.update({
-          where: { id: historicalReport.id },
-          data: { status: "FAILED", errorMessage: message },
-        });
-      } catch (updateErr) {
-        console.error("[api:reports:generate] failed to record historical failure status:", updateErr);
-      }
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
+    await dispatchReportGenerationJob(historicalReport.id);
+    return enqueueResponse(historicalReport.id, shareToken);
   }
 
   const result = await buildMetaData(client, mtdParsed, formData, platform);
@@ -610,7 +399,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
   const { data } = result;
-  const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
@@ -622,9 +410,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ? "TikTok Ads Report - "
         : "Meta Ads Report - ";
   const fileName = filePrefix + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
+  const shareToken = generateShareToken();
 
   let report;
   try {
+    const jobPayload: StandardReportJobPayload = {
+      version: 1,
+      kind: "STANDARD",
+      userId: session.user.id,
+      clientId: id,
+      uploadSessionId,
+      platform,
+      reportTitle,
+      reportData: data,
+    };
+
     report = await prisma.report.create({
       data: {
         clientId: client.id,
@@ -635,11 +435,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         weekEnd,
         fileName,
         displayName: defaultReportDisplayName(data.reportType, weekStart, weekEnd),
-        // Generated unconditionally, before the report even finishes
-        // rendering — the public share page checks status === "COMPLETE"
-        // before trusting summaryJson, so a token existing on a still-
-        // generating (or later FAILED) report is harmless.
-        shareToken: generateShareToken(),
+        shareToken,
         summaryJson: JSON.stringify({
           isPaused: data.isPaused,
           healthScore: data.cover.healthScore,
@@ -647,91 +443,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           campaignCount: data.campaignSlides.length,
           adSetCount: data.adSetSlides.length,
         }),
+        jobPayload: serializeReportGenerationJob(jobPayload),
       },
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:generate:create");
   }
 
-  try {
-    const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      generateInsights(data, aiKeysFromEnv()),
-      prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
-      loadLogoAsset(client.logoUrl),
-    ]);
-
-    const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
-    const pptxBuffer = await renderPptx({
-      templateBuffer,
-      data,
-      currencySymbol,
-      aiCopyBySlideKey,
-      reportTitle,
-      agencyName: user?.agencyName,
-      clientLogo,
-      isLightTemplate: isLightReportTemplate(client.template),
-    });
-
-    const filePath = await saveReportFile(report.id, pptxBuffer);
-
-    // Replaces the small create-time summaryJson above with the full
-    // payload the public share page reads (lib/nre/share-report.ts) — done
-    // here, not at create time, so a report that ends up FAILED never gets
-    // a share page's worth of (possibly stale-looking) data attached to it.
-    const shareData = buildShareReportData(data, aiCopyBySlideKey, new Date(), {
-      currencySymbol,
-      agencyName: user?.agencyName,
-    });
-    const shareWithArchive = {
-      ...shareData,
-      _renderArchive: {
-        reportData: data,
-        aiCopy: Object.fromEntries(aiCopyBySlideKey),
-        currencySymbol,
-        isLightTemplate: isLightReportTemplate(client.template),
-        reportTitle,
-        agencyName: user?.agencyName ?? null,
-      },
-    };
-
-    await prisma.report.update({
-      where: { id: report.id },
-      data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive) },
-    });
-
-    dispatchReportNotifications({
-      userId: session.user.id,
-      integrations: userIntegrations,
-      client,
-      report: {
-        id: report.id,
-        shareToken: report.shareToken,
-        reportType: data.reportType,
-        platform,
-        displayName: report.displayName,
-      },
-      healthScore: data.cover.healthScore,
-      healthBadge: data.cover.healthBadge,
-    });
-
-    // Saving to Google Drive is a separate, explicit action the user takes
-    // from the download screen (see /api/reports/[id]/save-to-drive) — the
-    // report is already fully generated and downloadable at this point.
-    await cleanupUploadSession(uploadSessionId);
-    return NextResponse.json({ ok: true, reportId: report.id, shareToken: report.shareToken });
-  } catch (err) {
-    console.error("[api:reports:generate] failed:", err);
-    const message = err instanceof Error ? err.message : "Report generation failed.";
-    try {
-      await prisma.report.update({
-        where: { id: report.id },
-        data: { status: "FAILED", errorMessage: message },
-      });
-    } catch (updateErr) {
-      console.error("[api:reports:generate] failed to record failure status:", updateErr);
-    }
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  await dispatchReportGenerationJob(report.id);
+  return enqueueResponse(report.id, shareToken);
 }
 
 const bulkDeleteSchema = z.object({ reportIds: z.array(z.string()).min(1) });
@@ -764,7 +484,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       select: { id: true, filePath: true },
     });
 
-    // Best-effort blob cleanup — same tolerance as the single-report DELETE route.
     await Promise.all(reports.filter((r) => r.filePath).map((r) => deleteReportFile(r.filePath!)));
     await prisma.report.deleteMany({ where: { id: { in: reports.map((r) => r.id) } } });
 

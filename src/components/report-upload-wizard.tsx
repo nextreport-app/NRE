@@ -45,6 +45,7 @@ import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
+import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import {
   Ga4BrandIcon,
   GoogleAdsBrandIcon,
@@ -1755,27 +1756,44 @@ export function ReportUploadWizard({
       return;
     }
 
-    if (!res.ok || !json?.ok) {
+    if (!res.ok || !json?.ok || !json.reportId) {
       setGenerateStatus("error");
       setGenerateMessage(json?.error || "Report generation failed. Please try again.");
       return;
     }
 
-    setUploadSessionId(null);
     setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
-    // Comparison reports don't get a share page (see share-report.ts's
-    // header) — json.shareToken is simply absent for that reportType, so
-    // this naturally stays null and the Share Report button never renders.
-    setShareToken(json.shareToken ?? null);
+
+    let finalShareToken: string | null = json.shareToken ?? null;
+    if (json.status === "GENERATING") {
+      try {
+        const polled = await pollReportStatus(json.reportId);
+        finalShareToken = polled.shareToken ?? finalShareToken;
+      } catch (err) {
+        setGenerateStatus("error");
+        setGenerateMessage(
+          err instanceof ReportGenerationPollError
+            ? err.message
+            : "Report generation failed. Please try again.",
+        );
+        return;
+      }
+    }
+
+    setUploadSessionId(null);
+    setShareToken(finalShareToken);
     setPublishedAt(null);
     setPdfAvailable(false);
     setGenerateStatus("done");
-    persistGenerateSnapshot({
-      reportId: json.reportId,
-      downloadUrl: `/api/reports/${json.reportId}/download`,
-      shareToken: json.shareToken ?? null,
-    }, { publishedAt: null, pdfAvailable: false });
+    persistGenerateSnapshot(
+      {
+        reportId: json.reportId,
+        downloadUrl: `/api/reports/${json.reportId}/download`,
+        shareToken: finalShareToken,
+      },
+      { publishedAt: null, pdfAvailable: false },
+    );
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -1796,16 +1814,33 @@ export function ReportUploadWizard({
       return;
     }
 
-    if (!res.ok || !json?.ok) {
+    if (!res.ok || !json?.ok || !json.reportId) {
       setPmsStatus("error");
       setPmsError(json?.error || "Report generation failed. Please try again.");
       return;
     }
 
+    let finalShareToken: string | null = json.shareToken ?? null;
+    if (json.status === "GENERATING") {
+      try {
+        const polled = await pollReportStatus(json.reportId);
+        finalShareToken = polled.shareToken ?? finalShareToken;
+      } catch (err) {
+        setPmsStatus("error");
+        setPmsError(
+          err instanceof ReportGenerationPollError
+            ? err.message
+            : "Report generation failed. Please try again.",
+        );
+        return;
+      }
+    }
+
+    setUploadSessionId(null);
     setPmsResult({
       reportId: json.reportId,
       downloadUrl: `/api/reports/${json.reportId}/download`,
-      shareToken: json.shareToken ?? null,
+      shareToken: finalShareToken,
     });
     setPmsStatus("done");
   }
