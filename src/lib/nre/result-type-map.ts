@@ -8,10 +8,16 @@ import {
   buildResultTypeMap,
   type ObjectiveInfo,
 } from "./meta-objective-dictionary";
+import { buildTikTokResultTypeAliases } from "./tiktok-objective-dictionary";
 
 export type { ObjectiveInfo };
 
-export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = buildResultTypeMap();
+const META_RESULT_TYPE_MAP = buildResultTypeMap();
+
+export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
+  ...META_RESULT_TYPE_MAP,
+  ...buildTikTokResultTypeAliases(META_RESULT_TYPE_MAP),
+};
 
 /** Canonical messaging objective — one label everywhere (engine + dropdown). */
 export const MESSAGING_OBJECTIVE: ObjectiveInfo = {

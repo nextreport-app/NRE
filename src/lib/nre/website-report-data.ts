@@ -26,7 +26,8 @@ export {
   websiteConfigToQueryString,
 } from "./website-report-config";
 
-export type WebsiteClientKind = "lead_gen" | "ecommerce" | "content" | "saas";
+export type { WebsiteClientKind } from "./ga4-client-kind-dictionary";
+import { detectGa4ClientKind, type WebsiteClientKind } from "./ga4-client-kind-dictionary";
 
 export interface WebsiteMetricCard {
   key: string;
@@ -274,9 +275,7 @@ function metricCard(
 }
 
 export function detectWebsiteClientKind(totals: Ga4OverviewTotals): WebsiteClientKind {
-  if (totals.purchaseRevenue > 0 || totals.transactions > 0) return "ecommerce";
-  if (totals.conversions > 0) return "lead_gen";
-  return "content";
+  return detectGa4ClientKind(totals);
 }
 
 function mapGeoRows(
