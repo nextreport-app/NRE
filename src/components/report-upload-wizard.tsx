@@ -551,10 +551,11 @@ export function ReportUploadWizard({
   // response, keyed the same way campaignObjectives is (normalizeCampaignName).
   // Drives the badge under each dropdown: "cached" -> green "Previously
   // confirmed" (this exact client has confirmed this campaign before),
-  // "high" -> green "Detected" (real result_type text matched), "medium" ->
-  // grey "Please verify" (one clean non-leads column signal), "low" -> amber
-  // "Low confidence" (one lead-family column signal — the pair agencies most
-  // often confuse), "verify" -> red "Confirmation required" (genuinely
+  // "high" -> green "Detected — change if wrong" (real result_type text
+  // matched), "medium" -> same green copy (one clean non-leads column signal),
+  // "low" -> amber "Detected — confirm lead type" (website vs meta form —
+  // the pair agencies most often confuse), "verify" -> red "Confirmation
+  // required" (genuinely
   // ambiguous or no real signal at all — see campaignRequiresConfirmation
   // below). Cleared the moment a campaign is touched (see
   // setCampaignObjective) — once the user has picked a value themselves, a
@@ -1415,11 +1416,10 @@ export function ReportUploadWizard({
    * Thing 2 (three-layer objective architecture rebuild) — the 5 badges the
    * Objective Confirmation step shows below each campaign's dropdown.
    * "cached" (green check) is the highest confidence: this exact client has
-   * confirmed this exact campaign before. "high" (small green check) is the
-   * engine finding real result_type text (objective.ts's
-   * resolveCampaignObjectiveWithConfidence "high" tier). "medium" (grey dot)
-   * is one clean non-leads dedicated-column signal. "low" (amber warning) is
-   * one lead-family column signal — the pair agencies most often confuse.
+   * confirmed this exact campaign before. "high"/"medium" (green check) —
+   * detected from result_type or column data; copy nudges a dropdown change
+   * only if wrong. "low" (amber check) — detected from a lead-family column;
+   * website vs meta form is the pair agencies most often confuse.
    * "verify" (loud red pill) is genuinely ambiguous or has no real signal at
    * all — pairs with campaignRequiresConfirmation, which blocks Continue for
    * that campaign until the user picks a value. Returns null for a campaign
@@ -1430,14 +1430,11 @@ export function ReportUploadWizard({
     if (tier === "cached") {
       return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]", pill: false };
     }
-    if (tier === "high") {
-      return { icon: "✓", text: "Detected", className: "text-[#68d391]", pill: false };
-    }
-    if (tier === "medium") {
-      return { icon: "●", text: "Please verify", className: "text-dash-ink-secondary", pill: false };
+    if (tier === "high" || tier === "medium") {
+      return { icon: "✓", text: "Detected — change if wrong", className: "text-[#68d391]", pill: false };
     }
     if (tier === "low") {
-      return { icon: "⚠", text: "Low confidence", className: "text-[#f6ad55]", pill: false };
+      return { icon: "✓", text: "Detected — confirm lead type if wrong", className: "text-[#f6ad55]", pill: false };
     }
     if (tier === "verify") {
       return { icon: "⚠", text: "Confirmation required", className: "bg-[#fc8181] text-[#2d0b0b]", pill: true };
@@ -2512,7 +2509,12 @@ export function ReportUploadWizard({
 
           {metricsFetchedForSelection === selectedCampaignsKey() && (
             <div className="space-y-4 border-t border-dash-border pt-4">
-              <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
+              <div>
+                <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
+                <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                  Objectives are auto-detected from your data. Change a dropdown only if the selection looks wrong.
+                </p>
+              </div>
 
               {(() => {
                 const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));

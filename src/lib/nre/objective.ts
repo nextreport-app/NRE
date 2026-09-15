@@ -1142,7 +1142,7 @@ export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
   return { resultLabel, costLabel };
 }
 
-/** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a "high"/"low" confidence tag the wizard's Objective Confirmation step uses to show a blue "Detected from result type" vs. grey "Please verify" indicator. Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
+/** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a confidence tag the wizard uses for per-campaign badges ("Detected — change if wrong" vs red "Confirmation required"). Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
 export function resolveCampaignObjectiveWithConfidence(rows: MetricRow[]): ObjectiveConfidence {
   return resolveCampaignObjectiveDetailed(rows);
 }
