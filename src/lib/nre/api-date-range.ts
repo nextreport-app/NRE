@@ -42,3 +42,30 @@ export function computeLastNDaysIsoRange(
 
   return { sinceIso: fmt(since), untilIso: fmt(until) };
 }
+
+function parseIsoDate(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** Splits a date range into smaller chunks — used when an ad platform rejects a full-range request. */
+export function splitIsoDateRangeIntoChunks(
+  sinceIso: string,
+  untilIso: string,
+  chunkDays = 7,
+): { sinceIso: string; untilIso: string }[] {
+  const chunks: { sinceIso: string; untilIso: string }[] = [];
+  let cursor = parseIsoDate(sinceIso);
+  const end = parseIsoDate(untilIso);
+
+  while (cursor <= end) {
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setUTCDate(chunkEnd.getUTCDate() + chunkDays - 1);
+    if (chunkEnd > end) chunkEnd.setTime(end.getTime());
+    chunks.push({ sinceIso: formatIsoUtc(cursor), untilIso: formatIsoUtc(chunkEnd) });
+    cursor = new Date(chunkEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return chunks;
+}

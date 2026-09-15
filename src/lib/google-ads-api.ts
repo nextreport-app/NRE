@@ -189,7 +189,105 @@ interface GoogleAdsSearchResponse {
   next_page_token?: string;
 }
 
-/** Runs a GAQL query via GoogleAdsService.Search (paginated). */
+interface GoogleAdsErrorBody {
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+  };
+}
+
+export interface GoogleAdsApiErrorDetails {
+  message: string;
+  httpStatus?: number;
+  status?: string;
+}
+
+const RETRYABLE_GOOGLE_STATUSES = new Set([
+  "INTERNAL",
+  "UNAVAILABLE",
+  "RESOURCE_EXHAUSTED",
+  "DEADLINE_EXCEEDED",
+]);
+
+export function isRetryableGoogleAdsError(details: GoogleAdsApiErrorDetails): boolean {
+  if (details.httpStatus === 429) return true;
+  if (details.httpStatus != null && details.httpStatus >= 500) return true;
+  if (details.status && RETRYABLE_GOOGLE_STATUSES.has(details.status)) return true;
+  return false;
+}
+
+export function formatGoogleAdsErrorMessage(details: GoogleAdsApiErrorDetails): string {
+  if (details.httpStatus === 429 || details.status === "RESOURCE_EXHAUSTED") {
+    return "Google Ads rate limit reached. Please wait a minute and tap Import again.";
+  }
+  if (details.httpStatus != null && details.httpStatus >= 500) {
+    return "Google Ads temporarily couldn't fetch your campaign data (this usually clears after a retry). Wait a few seconds and tap Import again.";
+  }
+  return details.message?.trim() || "Unexpected Google Ads API error";
+}
+
+export class GoogleAdsFetchError extends Error {
+  readonly details: GoogleAdsApiErrorDetails;
+
+  constructor(details: GoogleAdsApiErrorDetails) {
+    super(formatGoogleAdsErrorMessage(details));
+    this.name = "GoogleAdsFetchError";
+    this.details = details;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseGoogleAdsError(httpStatus: number, raw: string): GoogleAdsApiErrorDetails {
+  if (raw.startsWith("<!DOCTYPE")) {
+    return {
+      httpStatus,
+      message: "Google returned HTML (check OAuth scope and Google Ads API access on your Cloud project)",
+    };
+  }
+  try {
+    const parsed = JSON.parse(raw) as GoogleAdsErrorBody;
+    return {
+      httpStatus,
+      message: parsed.error?.message ?? raw.slice(0, 500),
+      status: parsed.error?.status,
+    };
+  } catch {
+    return { httpStatus, message: raw.slice(0, 500) };
+  }
+}
+
+async function fetchGoogleAdsSearchPageWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 3,
+): Promise<GoogleAdsSearchResponse> {
+  let lastError: GoogleAdsApiErrorDetails | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await sleep(1500 * attempt);
+    }
+
+    const res = await fetch(url, init);
+    if (res.ok) {
+      return (await res.json()) as GoogleAdsSearchResponse;
+    }
+
+    const text = await res.text();
+    lastError = parseGoogleAdsError(res.status, text);
+    if (!isRetryableGoogleAdsError(lastError) || attempt === maxRetries) {
+      throw new GoogleAdsFetchError(lastError);
+    }
+  }
+
+  throw new GoogleAdsFetchError(lastError ?? { message: "Google Ads Search failed" });
+}
+
+/** Runs a GAQL query via GoogleAdsService.Search (paginated, retried per page). */
 export async function searchGoogleAds(params: {
   accessToken: string;
   customerId: string;
@@ -205,21 +303,12 @@ export async function searchGoogleAds(params: {
     const body: { query: string; pageToken?: string } = { query: params.query };
     if (pageToken) body.pageToken = pageToken;
 
-    const res = await fetch(url, {
+    const data = await fetchGoogleAdsSearchPageWithRetry(url, {
       method: "POST",
       headers: googleAdsRequestHeaders(params.accessToken, params.loginCustomerId),
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      const snippet = text.startsWith("<!DOCTYPE")
-        ? "Google returned HTML (check OAuth scope and Google Ads API access on your Cloud project)"
-        : text.slice(0, 500);
-      throw new Error(`Google Ads Search failed (${res.status}): ${snippet}`);
-    }
-
-    const data = (await res.json()) as GoogleAdsSearchResponse;
     allRows.push(...(data.results ?? []));
     pageToken = data.nextPageToken ?? data.next_page_token;
   } while (pageToken);

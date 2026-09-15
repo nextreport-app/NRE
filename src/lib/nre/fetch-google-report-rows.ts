@@ -1,5 +1,10 @@
-import { searchGoogleAds, type GoogleAdsSearchRow } from "@/lib/google-ads-api";
-import { computeLastNDaysIsoRange } from "./api-date-range";
+import {
+  GoogleAdsFetchError,
+  isRetryableGoogleAdsError,
+  searchGoogleAds,
+  type GoogleAdsSearchRow,
+} from "@/lib/google-ads-api";
+import { computeLastNDaysIsoRange, splitIsoDateRangeIntoChunks } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
 
 const GOOGLE_CSV_HEADERS = [
@@ -99,19 +104,8 @@ export interface FetchGoogleReportCsvInput {
   loginCustomerId?: string;
 }
 
-/** Fetches Google Ads ad-group daily metrics via GAQL and serializes to CSV bytes. */
-export async function fetchGoogleReportCsv(input: FetchGoogleReportCsvInput): Promise<{
-  csvText: string;
-  rowCount: number;
-  sinceIso: string;
-  untilIso: string;
-}> {
-  const { sinceIso, untilIso } =
-    input.sinceIso && input.untilIso
-      ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
-      : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
-
-  const query = `
+function buildGoogleAdsQuery(sinceIso: string, untilIso: string): string {
+  return `
     SELECT
       campaign.name,
       ad_group.name,
@@ -132,13 +126,49 @@ export async function fetchGoogleReportCsv(input: FetchGoogleReportCsvInput): Pr
       AND metrics.impressions > 0
     ORDER BY segments.date
   `.trim();
+}
 
-  const results = await searchGoogleAds({
+async function searchGoogleAdsForRange(
+  input: FetchGoogleReportCsvInput,
+  sinceIso: string,
+  untilIso: string,
+): Promise<GoogleAdsSearchRow[]> {
+  return searchGoogleAds({
     accessToken: input.accessToken,
     customerId: input.customerId,
-    query,
+    query: buildGoogleAdsQuery(sinceIso, untilIso),
     loginCustomerId: input.loginCustomerId,
   });
+}
+
+/** Fetches Google Ads ad-group daily metrics via GAQL and serializes to CSV bytes. */
+export async function fetchGoogleReportCsv(input: FetchGoogleReportCsvInput): Promise<{
+  csvText: string;
+  rowCount: number;
+  sinceIso: string;
+  untilIso: string;
+}> {
+  const { sinceIso, untilIso } =
+    input.sinceIso && input.untilIso
+      ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
+      : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
+
+  let results: GoogleAdsSearchRow[];
+  try {
+    results = await searchGoogleAdsForRange(input, sinceIso, untilIso);
+  } catch (err) {
+    const retryable = err instanceof GoogleAdsFetchError && isRetryableGoogleAdsError(err.details);
+    if (!retryable) throw err;
+
+    const chunks = splitIsoDateRangeIntoChunks(sinceIso, untilIso, 7);
+    if (chunks.length <= 1) throw err;
+
+    results = [];
+    for (const chunk of chunks) {
+      const chunkRows = await searchGoogleAdsForRange(input, chunk.sinceIso, chunk.untilIso);
+      results.push(...chunkRows);
+    }
+  }
 
   const dataRows = results
     .filter((r) => r.campaign?.name && r.segments?.date)

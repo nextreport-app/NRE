@@ -19,6 +19,43 @@ interface TikTokEnvelope<T> {
   data?: T;
 }
 
+/** TikTok transient / rate-limit codes — retry before surfacing to the wizard. */
+const RETRYABLE_TIKTOK_CODES = new Set([40100, 40101, 50000, 51001, 51002]);
+
+export interface TikTokApiErrorDetails {
+  code: number;
+  message: string;
+  httpStatus?: number;
+}
+
+export function isRetryableTikTokError(details: TikTokApiErrorDetails): boolean {
+  return RETRYABLE_TIKTOK_CODES.has(details.code) || (details.httpStatus != null && details.httpStatus >= 500);
+}
+
+export function formatTikTokErrorMessage(details: TikTokApiErrorDetails): string {
+  if (details.code === 40100 || details.code === 40101) {
+    return "TikTok API rate limit reached. Please wait a minute and tap Import again.";
+  }
+  if (RETRYABLE_TIKTOK_CODES.has(details.code) || (details.httpStatus != null && details.httpStatus >= 500)) {
+    return "TikTok temporarily couldn't fetch your campaign data (this usually clears after a retry). Wait a few seconds and tap Import again.";
+  }
+  return details.message?.trim() || "Unexpected TikTok API error";
+}
+
+export class TikTokFetchError extends Error {
+  readonly details: TikTokApiErrorDetails;
+
+  constructor(details: TikTokApiErrorDetails) {
+    super(formatTikTokErrorMessage(details));
+    this.name = "TikTokFetchError";
+    this.details = details;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function requireTikTokAppId(): string {
   const id = process.env.TIKTOK_APP_ID?.trim();
   if (!id) throw new Error("TIKTOK_APP_ID is not configured");
@@ -54,10 +91,54 @@ export interface TikTokTokenData {
 async function parseTikTokJson<T>(res: Response, label: string): Promise<T> {
   const body = (await res.json()) as TikTokEnvelope<T>;
   if (!res.ok || body.code !== 0) {
-    throw new Error(`${label} failed (${body.code ?? res.status}): ${body.message ?? await res.text()}`);
+    throw new TikTokFetchError({
+      code: body.code ?? res.status,
+      message: body.message ?? `${label} failed`,
+      httpStatus: res.status,
+    });
   }
   if (!body.data) throw new Error(`${label} returned no data`);
   return body.data;
+}
+
+async function fetchTikTokJsonWithRetry<T>(
+  url: string,
+  init: RequestInit,
+  label: string,
+  maxRetries = 3,
+): Promise<T> {
+  let lastError: TikTokApiErrorDetails | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await sleep(1500 * attempt);
+    }
+
+    const res = await fetch(url, init);
+    let body: TikTokEnvelope<T>;
+    try {
+      body = (await res.json()) as TikTokEnvelope<T>;
+    } catch {
+      lastError = { code: res.status, message: `${label} returned invalid JSON`, httpStatus: res.status };
+      if (attempt === maxRetries) throw new TikTokFetchError(lastError);
+      continue;
+    }
+
+    if (res.ok && body.code === 0 && body.data) {
+      return body.data;
+    }
+
+    lastError = {
+      code: body.code ?? res.status,
+      message: body.message ?? `${label} failed`,
+      httpStatus: res.status,
+    };
+    if (!isRetryableTikTokError(lastError) || attempt === maxRetries) {
+      throw new TikTokFetchError(lastError);
+    }
+  }
+
+  throw new TikTokFetchError(lastError ?? { code: -1, message: `${label} failed` });
 }
 
 /** Exchanges the OAuth authorization code for access + refresh tokens. */
@@ -125,60 +206,68 @@ export interface FetchTikTokIntegratedReportInput {
  * Pulls ad-group-level daily performance via report/integrated/get/.
  * Returns raw API rows — fetch-tiktok-report-rows.ts converts to Meta-shaped CSV.
  */
-export async function fetchTikTokIntegratedReport(input: FetchTikTokIntegratedReportInput): Promise<TikTokReportRow[]> {
-  const res = await fetch(`${API_BASE}/report/integrated/get/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Token": input.accessToken,
+async function fetchTikTokIntegratedReportPage(input: FetchTikTokIntegratedReportInput): Promise<{
+  list: TikTokReportRow[];
+  totalPages: number;
+  page: number;
+}> {
+  const page = input.page ?? 1;
+  const data = await fetchTikTokJsonWithRetry<{ list?: TikTokReportRow[]; page_info?: { total_page?: number } }>(
+    `${API_BASE}/report/integrated/get/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Token": input.accessToken,
+      },
+      body: JSON.stringify({
+        advertiser_id: input.advertiserId,
+        report_type: "BASIC",
+        data_level: "AUCTION_ADGROUP",
+        dimensions: ["campaign_id", "adgroup_id", "stat_time_day"],
+        metrics: [
+          "campaign_name",
+          "adgroup_name",
+          "spend",
+          "impressions",
+          "reach",
+          "frequency",
+          "clicks",
+          "ctr",
+          "cpc",
+          "conversion",
+          "cost_per_conversion",
+          "conversion_rate",
+          "complete_payment",
+          "cost_per_complete_payment",
+          "form_submission",
+          "cost_per_form_submission",
+          "video_play_actions",
+          "cost_per_video_play",
+        ],
+        start_date: input.startDate,
+        end_date: input.endDate,
+        page,
+        page_size: input.pageSize ?? 1000,
+      }),
     },
-    body: JSON.stringify({
-      advertiser_id: input.advertiserId,
-      report_type: "BASIC",
-      data_level: "AUCTION_ADGROUP",
-      dimensions: ["campaign_id", "adgroup_id", "stat_time_day"],
-      metrics: [
-        "campaign_name",
-        "adgroup_name",
-        "spend",
-        "impressions",
-        "reach",
-        "frequency",
-        "clicks",
-        "ctr",
-        "cpc",
-        "conversion",
-        "cost_per_conversion",
-        "conversion_rate",
-        "complete_payment",
-        "cost_per_complete_payment",
-        "form_submission",
-        "cost_per_form_submission",
-        "video_play_actions",
-        "cost_per_video_play",
-      ],
-      start_date: input.startDate,
-      end_date: input.endDate,
-      page: input.page ?? 1,
-      page_size: input.pageSize ?? 1000,
-    }),
-  });
-
-  const data = await parseTikTokJson<{ list?: TikTokReportRow[]; page_info?: { total_page?: number } }>(
-    res,
     "TikTok integrated report",
   );
 
-  const rows = data.list ?? [];
-  const totalPages = data.page_info?.total_page ?? 1;
-  const page = input.page ?? 1;
+  return {
+    list: data.list ?? [],
+    totalPages: data.page_info?.total_page ?? 1,
+    page,
+  };
+}
 
+export async function fetchTikTokIntegratedReport(input: FetchTikTokIntegratedReportInput): Promise<TikTokReportRow[]> {
+  const { list, totalPages, page } = await fetchTikTokIntegratedReportPage(input);
   if (page < totalPages) {
     const next = await fetchTikTokIntegratedReport({ ...input, page: page + 1 });
-    return rows.concat(next);
+    return list.concat(next);
   }
-
-  return rows;
+  return list;
 }
 
 export async function ensureFreshTikTokAccessToken(input: {
