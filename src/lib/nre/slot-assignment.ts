@@ -36,7 +36,7 @@
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
-import type { GoogleObjectiveKey } from "./detect-objective";
+import { googleObjectiveSpecForKey, type GoogleObjectiveKey } from "./detect-objective";
 import { SECONDARY_FILL_KEYS, objectiveMetricKeys, slugifyObjectiveKey, type AvailableMetric, type SelectedMetric } from "./available-metrics";
 
 /** Messaging-only CSV columns — must never appear on non-messaging campaign slides or Add-from-CSV pools. */
@@ -563,43 +563,30 @@ export function buildGoogleSlots(
 ): DynamicMetricValue[] {
   const v = (key: string) => googleSlotValue(rawRows, key, currencySymbol);
 
-  let slot4: DynamicMetricValue;
-  let slot5: DynamicMetricValue;
-  let slot8: DynamicMetricValue;
+  const spec = googleObjectiveSpecForKey(objectiveKey);
+  const slot4Key = spec.slot4MetricKey;
+  const slot5Key = spec.slot5MetricKey;
+  const slot8Key = spec.slot8MetricKey;
 
-  switch (objectiveKey) {
-    case "shopping":
-    case "performance_max":
-      slot4 = slot("conv_value", "CONV. VALUE", "currency", v("conv_value"));
-      slot5 = slot("roas", "ROAS", "ratio", v("roas"));
-      // Product spec's "Shopping/PMax: ROAS" would duplicate this case's
-      // own slot 5 — CONV. RATE is the next most relevant pick (conv_rate's
-      // own dictionary entry already lists performance_max as an eligible
-      // objective).
-      slot8 = slot("conv_rate", "CONV. RATE", "percentage", v("conv_rate"));
-      break;
-
-    case "display":
-      slot4 = slot("viewable_impr", "VIEWABLE IMPR.", "number", v("viewable_impr"));
-      slot5 = slot("viewable_rate", "VIEWABLE RATE", "percentage", v("viewable_rate"));
-      // Product spec's "Display: VIEWABLE RATE" would duplicate this case's
-      // own slot 5 — VIEWABLE CPM is the next most relevant display metric.
-      slot8 = slot("avg_viewable_cpm", "VIEWABLE CPM", "currency", v("avg_viewable_cpm"));
-      break;
-
-    case "video":
-    case "youtube":
-      slot4 = slot("video_views", "VIDEO VIEWS", "number", v("video_views"));
-      slot5 = slot("avg_cpv", "AVG. CPV", "currency", v("avg_cpv"));
-      slot8 = slot("video_p100", "VIDEO AT 100%", "number", v("video_p100"));
-      break;
-
-    case "search":
-    default:
-      slot4 = slot("conversions", "CONVERSIONS", "number", baseline.results);
-      slot5 = slot("cost_per_conv", "COST PER CONV.", "currency", baseline.cpr);
-      slot8 = slot("conv_rate", "CONV. RATE", "percentage", v("conv_rate"));
-  }
+  const slot4 =
+    slot4Key === "conversions"
+      ? slot("conversions", spec.resultLabel, "number", baseline.results)
+      : slot(slot4Key, spec.resultLabel, slot4Key === "conv_value" ? "currency" : "number", v(slot4Key));
+  const slot5 =
+    slot5Key === "cost_per_conv"
+      ? slot("cost_per_conv", spec.costLabel, "currency", baseline.cpr)
+      : slot(
+          slot5Key,
+          spec.costLabel,
+          slot5Key === "roas" ? "ratio" : slot5Key.includes("rate") ? "percentage" : "currency",
+          v(slot5Key),
+        );
+  const slot8 = slot(
+    slot8Key,
+    spec.slot8Label,
+    slot8Key === "conv_rate" || slot8Key === "viewable_rate" ? "percentage" : slot8Key === "avg_viewable_cpm" ? "currency" : "number",
+    v(slot8Key),
+  );
 
   return [
     slot("spend", "AD SPEND", "currency", baseline.spend),

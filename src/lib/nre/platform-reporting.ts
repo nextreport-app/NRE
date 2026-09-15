@@ -6,7 +6,7 @@
 
 import type { Platform } from "./google-columns";
 import type { MetricPlatform } from "./available-metrics";
-import { detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
+import { detectGoogleObjectiveKey, googleObjectiveSpecForKey, type GoogleObjectiveKey } from "./detect-objective";
 import {
   defaultGoogleSelection,
   defaultMetaSelection,
@@ -55,18 +55,8 @@ export function defaultMetricSelectionForCampaign(
 
 /** Slide {{RESULT_LABEL}}/{{COST_LABEL}} tags — mirrors buildGoogleSlots slot 4/5 per campaign type. */
 export function googleSlideObjectiveLabels(objectiveKey: GoogleObjectiveKey): { resultLabel: string; costLabel: string } {
-  switch (objectiveKey) {
-    case "shopping":
-    case "performance_max":
-      return { resultLabel: "CONV. VALUE", costLabel: "ROAS" };
-    case "display":
-      return { resultLabel: "VIEWABLE IMPR.", costLabel: "VIEWABLE RATE" };
-    case "video":
-    case "youtube":
-      return { resultLabel: "VIDEO VIEWS", costLabel: "AVG. CPV" };
-    default:
-      return { resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION" };
-  }
+  const spec = googleObjectiveSpecForKey(objectiveKey);
+  return { resultLabel: spec.resultLabel, costLabel: spec.costLabel };
 }
 
 /** @deprecated Use googleSlideObjectiveLabels(detectGoogleObjectiveKey(headers)) */
@@ -80,22 +70,6 @@ export interface GoogleResultDisplay {
   resultValue: string;
   cprValue: string;
 }
-
-const GOOGLE_PRIMARY_METRIC_KEY: Partial<Record<GoogleObjectiveKey, string>> = {
-  shopping: "conv_value",
-  performance_max: "conv_value",
-  display: "viewable_impr",
-  video: "video_views",
-  youtube: "video_views",
-};
-
-const GOOGLE_SECONDARY_METRIC_KEY: Partial<Record<GoogleObjectiveKey, string>> = {
-  shopping: "roas",
-  performance_max: "roas",
-  display: "viewable_rate",
-  video: "avg_cpv",
-  youtube: "avg_cpv",
-};
 
 function googleMetricLookup(rawRows: RawMetricRow[], key: string, currencySymbol: string): string {
   const def = findGoogleMetricByKey(key);
@@ -115,8 +89,9 @@ export function googleCampaignResultDisplay(
   currencySymbol: string,
   totals: { spend: number; conversions: number },
 ): GoogleResultDisplay {
-  const labels = googleSlideObjectiveLabels(objectiveKey);
-  const primaryKey = GOOGLE_PRIMARY_METRIC_KEY[objectiveKey];
+  const spec = googleObjectiveSpecForKey(objectiveKey);
+  const labels = { resultLabel: spec.resultLabel, costLabel: spec.costLabel };
+  const primaryKey = spec.primaryMetricKey;
   if (!primaryKey) {
     return {
       ...labels,
@@ -124,7 +99,7 @@ export function googleCampaignResultDisplay(
       cprValue: totals.conversions > 0 ? fmtCurrency2dp(totals.spend / totals.conversions, currencySymbol) : "—",
     };
   }
-  const secondaryKey = GOOGLE_SECONDARY_METRIC_KEY[objectiveKey] ?? "cost_per_conv";
+  const secondaryKey = spec.secondaryMetricKey ?? "cost_per_conv";
   return {
     ...labels,
     resultValue: googleMetricLookup(rawRows, primaryKey, currencySymbol),
@@ -150,7 +125,8 @@ export function googleComparisonObjectiveTotals(
   objectiveKey: GoogleObjectiveKey,
   spend: number,
 ): { count: number; cpr: number } {
-  const primaryKey = GOOGLE_PRIMARY_METRIC_KEY[objectiveKey];
+  const spec = googleObjectiveSpecForKey(objectiveKey);
+  const primaryKey = spec.primaryMetricKey;
   if (!primaryKey) {
     const convRef = googleMetricRef("conversions");
     const count = convRef ? (aggregateDynamicMetrics(rawRows, [convRef], "google").conversions ?? 0) : 0;
@@ -158,7 +134,7 @@ export function googleComparisonObjectiveTotals(
   }
   const primaryRef = googleMetricRef(primaryKey);
   const count = primaryRef ? (aggregateDynamicMetrics(rawRows, [primaryRef], "google")[primaryKey] ?? 0) : 0;
-  const secondaryKey = GOOGLE_SECONDARY_METRIC_KEY[objectiveKey];
+  const secondaryKey = spec.secondaryMetricKey;
   if (secondaryKey) {
     const secRef = googleMetricRef(secondaryKey);
     const cpr = secRef ? (aggregateDynamicMetrics(rawRows, [secRef], "google")[secondaryKey] ?? 0) : 0;

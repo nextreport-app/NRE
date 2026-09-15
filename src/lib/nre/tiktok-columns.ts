@@ -1,24 +1,30 @@
 /**
  * TikTok Ads CSV header normalization — maps TikTok Ads Manager export
  * column names to the Meta-shaped headers the NRE pipeline expects.
+ * Aliases live in tiktok-objective-dictionary.ts.
  */
 
 import { readRowsWithAutoMap, type NreRow } from "@/lib/nre/columns";
 import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { normalizeGoogleCsvHeaders, type Platform } from "@/lib/nre/google-columns";
+import { normalizeTikTokResultTypeCell, TIKTOK_CSV_HEADER_ALIASES } from "@/lib/nre/tiktok-objective-dictionary";
 
 export function normalizeTikTokCsvHeaders(headers: string[]): string[] {
   return headers.map((h) => {
     const lower = String(h).toLowerCase().trim();
-    if (lower === "cost" || lower === "total cost") return "Amount spent (USD)";
-    if (lower === "ad group name" || lower === "adgroup name") return "Ad set name";
-    if (lower === "clicks (destination)" || lower === "clicks") return "Link clicks";
-    if (lower === "cpc (destination)" || lower === "cpc") return "CPC (cost per link click)";
-    if (lower === "ctr (destination)" || lower === "ctr") return "CTR (All)";
-    if (lower === "conversions" || lower === "conversion") return "Results";
-    if (lower === "cost per conversion") return "Cost per result";
-    if (lower === "day" || lower === "date") return "Day";
-    return h;
+    return TIKTOK_CSV_HEADER_ALIASES[lower] ?? h;
+  });
+}
+
+/** Normalize Result type cell values so they match dictionary aliases / Meta map. */
+export function normalizeTikTokCsvRowValues(headers: string[], dataRows: string[][]): string[][] {
+  const resultTypeIdx = headers.findIndex((h) => h.toLowerCase().trim() === "result type");
+  if (resultTypeIdx < 0) return dataRows;
+  return dataRows.map((row) => {
+    const copy = [...row];
+    const cell = copy[resultTypeIdx];
+    if (cell?.trim()) copy[resultTypeIdx] = normalizeTikTokResultTypeCell(cell);
+    return copy;
   });
 }
 
@@ -36,7 +42,8 @@ export function parseMtdCsvForAdPlatform(buffer: Buffer, platform: Platform) {
   if (platform === "TIKTOK") {
     const { headers, dataRows } = parseUploadedFileHeadersAndRows(buffer, "MTD Daily CSV");
     const normalizedHeaders = normalizeTikTokCsvHeaders(headers);
-    const { colMap, rows } = readRowsWithAutoMap(normalizedHeaders, dataRows);
+    const normalizedRows = normalizeTikTokCsvRowValues(normalizedHeaders, dataRows);
+    const { colMap, rows } = readRowsWithAutoMap(normalizedHeaders, normalizedRows);
     return { colMap, rows, headers: normalizedHeaders };
   }
   if (platform === "GOOGLE") {

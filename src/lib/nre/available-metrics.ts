@@ -20,7 +20,7 @@
 
 import { autoClassifyUnknownColumn as autoClassifyMeta, findMetaMetric, findMetaMetricByKey, type MetaMetricDefinition, type MetricFormat } from "./meta-dictionary";
 import { autoClassifyUnknownColumn as autoClassifyGoogle, findGoogleMetric, findGoogleMetricByKey, type GoogleMetricDefinition } from "./google-dictionary";
-import type { GoogleObjectiveKey } from "./detect-objective";
+import { googleObjectiveSpecForKey, type GoogleObjectiveKey } from "./detect-objective";
 import { packForResultLabel } from "./packs";
 
 export type MetricPlatform = "META" | "GOOGLE" | "TIKTOK";
@@ -920,34 +920,13 @@ export function defaultGoogleSelection(objectiveKey: GoogleObjectiveKey): Select
   const avgCpc = byKey("GOOGLE", "avg_cpc", "CPC (ALL)")!;
   const convRate = byKey("GOOGLE", "conv_rate")!;
 
-  let slot4: SelectedMetric;
-  let slot5: SelectedMetric;
-  let slot8: SelectedMetric;
-
-  switch (objectiveKey) {
-    case "shopping":
-    case "performance_max":
-      slot4 = byKey("GOOGLE", "conv_value")!;
-      slot5 = byKey("GOOGLE", "roas")!;
-      slot8 = convRate;
-      break;
-    case "display":
-      slot4 = byKey("GOOGLE", "viewable_impr")!;
-      slot5 = byKey("GOOGLE", "viewable_rate")!;
-      slot8 = byKey("GOOGLE", "avg_viewable_cpm")!;
-      break;
-    case "video":
-    case "youtube":
-      slot4 = byKey("GOOGLE", "video_views")!;
-      slot5 = byKey("GOOGLE", "avg_cpv")!;
-      slot8 = byKey("GOOGLE", "video_p100", "VIDEO AT 100%")!;
-      break;
-    case "search":
-    default:
-      slot4 = byKey("GOOGLE", "conversions")!;
-      slot5 = byKey("GOOGLE", "cost_per_conv")!;
-      slot8 = convRate;
-  }
+  const spec = googleObjectiveSpecForKey(objectiveKey);
+  const slot4 = byKey("GOOGLE", spec.slot4MetricKey)!;
+  const slot5 = byKey("GOOGLE", spec.slot5MetricKey)!;
+  const slot8 =
+    spec.slot8MetricKey === "conv_rate"
+      ? convRate
+      : byKey("GOOGLE", spec.slot8MetricKey, spec.slot8MetricKey === "video_p100" ? "VIDEO AT 100%" : undefined)!;
 
   return [...core, slot4, slot5, ctr, avgCpc, slot8];
 }
