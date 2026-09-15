@@ -389,7 +389,42 @@ export function buildWebsiteReportData(input: {
 
   const conversionMetrics: WebsiteMetricCard[] = [];
 
-  if (clientKind === "ecommerce") {
+  if (clientKind === "hybrid") {
+    conversionMetrics.push(
+      metricCard(
+        "purchaseRevenue",
+        "Purchase Revenue",
+        fmtCurrency(current.purchaseRevenue, currencySymbol),
+        previous?.purchaseRevenue,
+        current.purchaseRevenue,
+        (n) => fmtCurrency(n, currencySymbol),
+      ),
+      metricCard(
+        "transactions",
+        "Transactions",
+        fmtInt(current.transactions),
+        previous?.transactions,
+        current.transactions,
+        fmtInt,
+      ),
+      metricCard(
+        "conversions",
+        "Conversions",
+        fmtInt(current.conversions),
+        previous?.conversions,
+        current.conversions,
+        fmtInt,
+      ),
+      metricCard(
+        "conversionRate",
+        "Conversion Rate",
+        current.sessions > 0 ? fmtPct(current.conversions / current.sessions) : "0.0%",
+        previous && previous.sessions > 0 ? previous.conversions / previous.sessions : undefined,
+        current.sessions > 0 ? current.conversions / current.sessions : 0,
+        fmtPct,
+      ),
+    );
+  } else if (clientKind === "ecommerce") {
     conversionMetrics.push(
       metricCard(
         "purchaseRevenue",

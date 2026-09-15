@@ -24,6 +24,47 @@ describe("website-report-data", () => {
     expect(detectWebsiteClientKind(totals)).toBe("lead_gen");
   });
 
+  it("detects hybrid when both revenue and conversions exist", () => {
+    const totals = { ...emptyGa4OverviewTotals(), purchaseRevenue: 2500, transactions: 8, conversions: 45 };
+    expect(detectWebsiteClientKind(totals)).toBe("hybrid");
+  });
+
+  it("builds hybrid conversion cards with revenue and conversions", () => {
+    const current = ga4OverviewTotalsFromMetrics({
+      sessions: 2000,
+      totalUsers: 1500,
+      newUsers: 900,
+      engagedSessions: 1400,
+      engagementRate: 0.68,
+      bounceRate: 0.32,
+      averageSessionDuration: 110,
+      userEngagementDuration: 60000,
+      screenPageViews: 4000,
+      conversions: 55,
+      purchaseRevenue: 3200,
+      transactions: 12,
+    });
+
+    const report = buildWebsiteReportData({
+      propertyId: "123",
+      propertyName: "Hybrid Store",
+      dateRangeLabel: "Aug 1 – Aug 31",
+      currencySymbol: "$",
+      current,
+      channels: [],
+      topPages: [],
+      clientKindOverride: "hybrid",
+    });
+
+    expect(report.clientKind).toBe("hybrid");
+    expect(report.conversionMetrics.map((c) => c.label)).toEqual([
+      "Purchase Revenue",
+      "Transactions",
+      "Conversions",
+      "Conversion Rate",
+    ]);
+  });
+
   it("builds overview cards with month-over-month change labels", () => {
     const current = ga4OverviewTotalsFromMetrics({
       sessions: 1000,

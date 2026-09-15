@@ -30,6 +30,7 @@ const CLIENT_KIND_OPTIONS: Array<{ value: WebsiteClientKindSetting; label: strin
   { value: "auto", label: "Auto-detect", description: "Infer from revenue, conversions, or content signals in GA4" },
   { value: "lead_gen", label: "Lead generation", description: "Form submissions and conversions are primary" },
   { value: "ecommerce", label: "Ecommerce", description: "Revenue, transactions, and AOV are primary" },
+  { value: "hybrid", label: "Ecommerce & leads", description: "Both revenue/transactions and key-event conversions" },
   { value: "content", label: "Content / media", description: "Page views and engagement time are primary" },
   { value: "saas", label: "SaaS / app", description: "Sign-ups, trials, and product engagement are primary" },
 ];
