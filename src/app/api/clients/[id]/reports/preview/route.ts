@@ -3,30 +3,26 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
-import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { createReportEngine } from "@/lib/nre/report-engine";
+import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
-import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
-import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
-import { computeCsvDateBounds, computeDailyRangeIso } from "@/lib/nre/date-range";
-import type { ReportType } from "@/lib/nre/report-data";
+import { hasAdLevelData } from "@/lib/nre/ad-level";
+import { computeCsvDateBounds } from "@/lib/nre/date-range";
 import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
   historicalMonthCountSchema,
-  dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
   reportTypeSchema,
   resolveIncludePreviousMonthComparison,
-  resolveShowBudgetPacingOnCover,
-  selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
@@ -66,7 +62,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-  const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
   const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
   // PREVIOUS_MONTH_SUMMARY never reaches a preview — the wizard's
@@ -75,13 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // buildPreviousMonthSummaryReportData). Narrow defensively rather than
   // widening buildReportData's own ReportType to match.
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
-  let reportType: ReportType = "WEEKLY";
-  if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
-  else if (parsedReportType === "DAILY") reportType = "DAILY";
-  else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
-  else if (parsedReportType === "QUARTER") reportType = "QUARTER";
-  else if (parsedReportType === "YTD") reportType = "YTD";
-  else if (parsedReportType === "COMPARISON") {
+  if (parsedReportType === "COMPARISON") {
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
     const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
     if (!periodA || !periodB) {
@@ -119,7 +108,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       comparisonWarnings.push({ field: "comparisonPeriod", message: coverage.warning });
     }
 
-    const data = buildComparisonReportData({
+    const comparisonEngine = createReportEngine(platform);
+    const data = comparisonEngine.buildComparison({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -151,7 +141,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    const data = buildHistoricalReportData({
+    const historicalEngine = createReportEngine(platform);
+    const data = historicalEngine.buildHistorical({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -186,52 +177,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-
-  let weeklyRange: { startIso: string; endIso: string } | undefined;
-  if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
-    if (!daily) {
-      return NextResponse.json(
-        { valid: false, errors: [{ field: "dateSelection", message: "Could not determine yesterday from CSV." }], warnings: [] },
-        { status: 200 },
-      );
-    }
-    weeklyRange = daily;
-  } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
-    if (!dateResolution.ok) {
-      return NextResponse.json(
-        { valid: false, errors: [{ field: "dateSelection", message: dateResolution.error || "Invalid date selection." }], warnings: [] },
-        { status: 200 },
-      );
-    }
-    weeklyRange = dateResolution.weeklyRange;
+  const built = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
+  if ("error" in built) {
+    const field =
+      built.error.includes("date") || built.error.includes("yesterday")
+        ? "dateSelection"
+        : "mtdDailyCsv";
+    return NextResponse.json(
+      { valid: false, errors: [{ field, message: built.error }], warnings: [] },
+      { status: 200 },
+    );
   }
 
-  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
-  const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
-
-  const data = buildReportData({
-    accountName: client.accountName,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
-    timezone: client.timezone,
-    monthlyBudget: client.monthlyBudget,
-    showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
-    mtdDailyRows: mtdParsed.rows,
-    periodRows,
-    selectedCampaigns: selectedCampaigns ?? null,
-    selectedAdSets: selectedAdSets ?? null,
-    weeklyRange,
-    reportType,
-    selectedMetrics,
-    campaignObjectives,
-    campaignMetricOverrides,
-    objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
-    adNameColumn: detectAdNameColumn(mtdParsed.headers),
-    creativeOnly: reportType === "CREATIVE",
-    platform,
-  });
-
-  return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data });
+  return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data: built.data });
 }

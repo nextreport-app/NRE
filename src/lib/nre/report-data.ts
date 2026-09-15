@@ -42,8 +42,6 @@ import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from
 import { calculateAccountHealth } from "./health";
 import {
   buildCampaignObjectiveMap,
-  getGroupedResultDisplayForObjective,
-  getSingleRowResultDisplayForObjective,
   groupResultsByCampaignObjective,
   shouldAttributeSpendForObjective,
   normalizeCampaignName,
@@ -56,9 +54,7 @@ import { buildGoogleCampaignTypeMap, detectGoogleObjectiveKey, type GoogleObject
 import {
   metricsDictionaryPlatform,
   slotAssignmentPlatform,
-  usesGoogleSlotEngine,
   googleSlideObjectiveLabels,
-  googleCampaignResultDisplay,
   googleComparisonObjectiveTotals,
 } from "./platform-reporting";
 import {
@@ -86,6 +82,7 @@ import {
   toIsoDate,
 } from "./date-range";
 import { buildBudgetSummary } from "./budget-pacing";
+import { createPlatformReportAdapter } from "./report-engine/platform-adapter";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
 function metricsInOverrideOrder(override: string[], selected: SelectedMetric[]): SelectedMetric[] {
@@ -1436,13 +1433,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // headers — every row in one upload shares the same columns, so the first
   // row's `_raw` keys stand in for the full header set without needing a
   // separate headers input threaded all the way in.
+  const platformAdapter = createPlatformReportAdapter(platform);
   const metricsPlatform = metricsDictionaryPlatform(platform);
   const slotPlatform = slotAssignmentPlatform(platform);
-  const googleFileHeaders = Object.keys(primaryRawRows[0]?._raw ?? {});
-  const googleFileObjectiveKey: GoogleObjectiveKey | null =
-    platform === "GOOGLE" ? detectGoogleObjectiveKey(googleFileHeaders) : null;
-  const googleCampaignTypeMap: Map<string, GoogleObjectiveKey> | null =
-    platform === "GOOGLE" ? buildGoogleCampaignTypeMap(campaignRawGroups, googleFileHeaders) : null;
+  const googleContext = platformAdapter.resolveGoogleContext(primaryRawRows, campaignRawGroups);
 
   const availableMetricsPool: AvailableMetric[] | null =
     selectedMetrics && selectedMetrics.length > 0
@@ -1469,10 +1463,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     googleCampaignKey?: GoogleObjectiveKey,
   ): { dynamicMetrics: (DynamicMetricValue | null)[]; additionalMetricsSlide?: (DynamicMetricValue | null)[] } {
     if (!selectedMetrics || selectedMetrics.length === 0 || !availableMetricsPool) {
-      if (usesGoogleSlotEngine(platform)) {
+      if (platformAdapter.usesGoogleSlots) {
         return {
           dynamicMetrics: buildGoogleSlots(
-            googleCampaignKey ?? googleFileObjectiveKey ?? "search",
+            googleCampaignKey ?? googleContext?.fileObjectiveKey ?? "search",
             {
               spend: baseline.spend,
               reach: baseline.reach,
@@ -1489,7 +1483,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       }
       return { dynamicMetrics: buildMetaSlots(baseline, rawRows, currencySymbol) };
     }
-    const baselineValues: Partial<Record<string, string>> = usesGoogleSlotEngine(platform)
+    const baselineValues: Partial<Record<string, string>> = platformAdapter.usesGoogleSlots
       ? {
           spend: baseline.spend,
           reach: baseline.reach,
@@ -1636,23 +1630,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     });
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
-    const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
-    const campaignObjective =
-      platform === "GOOGLE"
-        ? googleSlideObjectiveLabels(googleKey)
-        : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
-            resultLabel: "RESULTS",
-            costLabel: "COST PER RESULT",
-          });
+    const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
+    const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const campaignRaw = campaignRawGroups[campaignName] ?? [];
-    const { resultLabel, costLabel, resultValue, cprValue } =
-      platform === "GOOGLE"
-        ? googleCampaignResultDisplay(campaignRaw, googleKey, currencySymbol, {
-            spend: totalSpend,
-            conversions: totalConversions,
-          })
-        : getGroupedResultDisplayForObjective(campRows, campaignObjective, currencySymbol);
-    if (platform !== "GOOGLE" && campRows.some((r) => !r.objectiveConfident)) {
+    const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.groupedResultDisplay(
+      campRows,
+      campaignRaw,
+      campaignName,
+      googleContext,
+      campaignObjectiveMap,
+      currencySymbol,
+      { spend: totalSpend, conversions: totalConversions },
+    );
+    if (platformAdapter.shouldEmitObjectiveWarnings(campRows)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
 
@@ -1791,22 +1781,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // campaign's own summary slide and with the Combined Total table.
     // normalizeCampaignName matches the map's own normalized keys (see
     // buildCampaignObjectiveMap) — same case-sensitivity fix as above.
-    const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
-    const campaignObjective =
-      platform === "GOOGLE"
-        ? googleSlideObjectiveLabels(googleKey)
-        : (campaignObjectiveMap.get(normalizeCampaignName(campaignName)) ?? {
-            resultLabel: "RESULTS",
-            costLabel: "COST PER RESULT",
-          });
+    const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
+    const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const adSetRaw = adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [];
-    const { resultLabel, costLabel, resultValue, cprValue } =
-      platform === "GOOGLE"
-        ? googleCampaignResultDisplay(adSetRaw, googleKey, currencySymbol, {
-            spend: parseCellNum(row.spend),
-            conversions: parseCellNum(row.results),
-          })
-        : getSingleRowResultDisplayForObjective(row, campaignObjective, currencySymbol);
+    const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.singleRowResultDisplay(
+      row,
+      adSetRaw,
+      campaignName,
+      googleContext,
+      campaignObjectiveMap,
+      currencySymbol,
+    );
     const rowFreq = rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
