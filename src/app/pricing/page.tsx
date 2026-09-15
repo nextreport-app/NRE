@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: "Do you charge my card automatically each month?",
-    a: "No. NextReport does not use recurring auto-billing yet. You pay once through Razorpay checkout when you subscribe (or when you choose annual, one upfront payment). We never store your card for automatic charges. Your access stays active until you cancel from Billing — there is no surprise renewal charge.",
+    a: "Yes — subscriptions renew automatically each billing period (monthly or annual, depending on what you choose) through Razorpay until you cancel from your Billing page. We never store your card on our servers; Razorpay handles payment securely. Cancel anytime — no long-term lock-in.",
   },
   {
     q: "What happens when my trial ends?",
@@ -110,7 +110,7 @@ export default async function PricingPage() {
         <PricingCurrencyBanner />
 
         <p className="mt-8 text-center text-xs text-ink-muted">
-          ✓ 7-day free trial · ✓ No credit card required · ✓ No automatic recurring charges · ✓ Cancel anytime
+          ✓ 7-day free trial · ✓ No credit card required · ✓ Cancel anytime · ✓ INR or USD billing
         </p>
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />

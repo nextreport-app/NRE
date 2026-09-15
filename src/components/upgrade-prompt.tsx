@@ -1,5 +1,4 @@
-import { SubscribeButton } from "./subscribe-button";
-
+import { SubscribeWithCheckoutOptions } from "@/components/subscribe-plan-cards";
 import { CLIENT_LIMIT_EXPLAINER, getPlanDisplayName } from "@/lib/plan-labels";
 
 /** Shown instead of the "New client" form once an Agency-plan user has hit their client cap (see lib/subscription.ts's clientLimit). */
@@ -20,14 +19,14 @@ export function UpgradePrompt({
         {CLIENT_LIMIT_EXPLAINER} Delete an unused client to add a different brand, or upgrade to Professional for
         unlimited clients.
       </p>
-      <SubscribeButton
-        planId="professional"
-        loggedIn
-        userEmail={userEmail}
-        userName={userName}
-        label="Upgrade to Professional"
-        className="mt-6 w-full rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover"
-      />
+      <div className="mt-6">
+        <SubscribeWithCheckoutOptions
+          planId="professional"
+          label="Upgrade to Professional"
+          userEmail={userEmail}
+          userName={userName}
+        />
+      </div>
     </div>
   );
 }
