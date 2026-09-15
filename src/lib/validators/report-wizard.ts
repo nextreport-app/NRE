@@ -71,6 +71,9 @@ export type WizardReportType = Exclude<z.infer<typeof reportTypeSchema>, "PREVIO
 // the wizard's user has manually overridden the detected platform.
 export const platformSchema = z.enum(["META", "GOOGLE", "TIKTOK"]);
 
+/** Server-side parsed CSV cache — returned by /analyze, sent on later wizard steps. */
+export const uploadSessionIdSchema = z.string().uuid();
+
 /** Wizard data source — CSV upload vs API sync. */
 export const dataSourceSchema = z.enum(["csv", "api"]);
 

@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
-import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
-import { validateMtdDailyCsv } from "@/lib/nre/validate";
+import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
-import { detectPlatform } from "@/lib/nre/google-columns";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
-import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
@@ -50,38 +46,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const formData = await req.formData().catch(() => null);
-  const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
-
-  if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
-    return NextResponse.json(
-      { valid: false, errors: [{ field: "mtdDailyCsv", message: "MTD Daily CSV is required." }], warnings: [] },
-      { status: 200 },
-    );
+  const resolved = await resolveWizardMtdFromFormData(formData, { userId: session.user.id, clientId: id });
+  if (!resolved.ok) {
+    if ("valid" in resolved.body && resolved.body.valid === false) {
+      return NextResponse.json(
+        {
+          ...resolved.body,
+          hasPreviousMonthData: !!client.previousMonthDataUrl,
+        },
+        { status: resolved.status },
+      );
+    }
+    return NextResponse.json(resolved.body, { status: resolved.status });
   }
-
-  const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
-  const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
-  const platform = platformOverride ?? detectPlatform(headers);
+  const { parsed: mtdParsed } = resolved.data;
+  const platform = mtdParsed.platform;
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
-
-  const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
-
-  if (!validation.valid) {
-    return NextResponse.json(
-      {
-        valid: false,
-        errors: validation.errors,
-        warnings: validation.warnings,
-        // See analyze/route.ts's own equivalent fields — the wizard's
-        // PreviousMonthSummaryOption reads these the same way at whichever
-        // step surfaces this error.
-        noCampaignData: validation.noCampaignData,
-        hasPreviousMonthData: !!client.previousMonthDataUrl,
-      },
-      { status: 200 },
-    );
-  }
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;

@@ -19,7 +19,7 @@
  * would ever need a presigned URL to fetch directly from Blob's CDN.
  */
 
-import { put, del, get } from "@vercel/blob";
+import { put, del, get, list } from "@vercel/blob";
 import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } from "./logo-processing";
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
@@ -171,4 +171,51 @@ export function previousMonthDataFileName(url: string): string {
   const pathname = new URL(url).pathname;
   const last = pathname.split("/").pop() ?? "file";
   return decodeURIComponent(last);
+}
+
+// ─────────────────────── Wizard upload sessions ──────────────────────────
+// Parsed MTD CSV snapshots — one per successful /analyze. Subsequent wizard
+// steps (metrics, preview, generate) load by uploadSessionId instead of
+// re-parsing the same file on every request.
+
+function wizardUploadSessionPathname(userId: string, clientId: string, sessionId: string): string {
+  return `wizard-upload-sessions/${userId}/${clientId}/${sessionId}.json`;
+}
+
+export async function saveWizardUploadSessionBlob(
+  userId: string,
+  clientId: string,
+  sessionId: string,
+  json: string,
+): Promise<void> {
+  await put(wizardUploadSessionPathname(userId, clientId, sessionId), json, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "application/json",
+  });
+}
+
+export async function readWizardUploadSessionBlob(
+  userId: string,
+  clientId: string,
+  sessionId: string,
+): Promise<string | null> {
+  const pathname = wizardUploadSessionPathname(userId, clientId, sessionId);
+  const { blobs } = await list({ prefix: pathname, limit: 1 });
+  const match = blobs.find((b) => b.pathname === pathname);
+  if (!match) return null;
+  const result = await get(match.url, { access: "private" });
+  if (!result || result.statusCode !== 200) return null;
+  return await new Response(result.stream).text();
+}
+
+export async function deleteWizardUploadSessionBlob(
+  userId: string,
+  clientId: string,
+  sessionId: string,
+): Promise<void> {
+  const pathname = wizardUploadSessionPathname(userId, clientId, sessionId);
+  const { blobs } = await list({ prefix: pathname, limit: 1 });
+  const match = blobs.find((b) => b.pathname === pathname);
+  if (match) await del(match.url).catch(() => {});
 }

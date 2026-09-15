@@ -3,15 +3,14 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
-import { parseUploadedFile, parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
-import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import type { Platform } from "@/lib/nre/google-columns";
-import { validateMtdDailyCsv } from "@/lib/nre/validate";
+import type { ColumnMap, NreRow } from "@/lib/nre/columns";
+import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
+import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
 import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
-import { detectPlatform } from "@/lib/nre/google-columns";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
@@ -23,7 +22,6 @@ import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
-import { fileFromFormData } from "@/lib/http-file";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
@@ -46,6 +44,7 @@ import {
   selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
+  uploadSessionIdSchema,
   resolveIncludePreviousMonthComparison,
   resolveShowBudgetPacingOnCover,
 } from "@/lib/validators/report-wizard";
@@ -102,16 +101,10 @@ function dispatchReportNotifications(params: {
 /** Meta/Google/TikTok path: full campaign/ad-set selection + date-range resolution + Previous Month Data. */
 async function buildMetaData(
   client: Client,
-  mtdDailyBuffer: Buffer,
+  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] },
   formData: FormData | null,
   platform: Platform = "META",
 ): Promise<{ error: string } | { data: ReportData }> {
-  const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
-  if (!validation.valid) {
-    return { error: validation.errors.map((e) => e.message).join(" ") };
-  }
-
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
@@ -204,17 +197,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   const formData = await req.formData().catch(() => null);
-  const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
-
-  if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
-    return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
-  }
-
-  const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
-  const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
-  const platform = platformOverride ?? detectPlatform(headers);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
   const reportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+  const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
+
+  const cleanupUploadSession = async (sessionId: string | undefined) => {
+    if (sessionId) {
+      await deleteWizardUploadSession(session.user.id, id, sessionId).catch(() => {});
+    }
+  };
 
   // Part 3 — Objective Confirmation memory cache. Every campaign the wizard's
   // Objective Confirmation step showed (cached pre-fills, untouched engine
@@ -239,17 +230,122 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
   }
 
+  if (reportType === "PREVIOUS_MONTH_SUMMARY") {
+    const platform = platformOverride ?? "META";
+    if (!client.previousMonthDataUrl) {
+      return NextResponse.json({ error: "This client has no Previous Month Data on file." }, { status: 400 });
+    }
+    const periodRows = await loadPreviousMonthDataRows(client);
+    if (!periodRows || periodRows.length === 0) {
+      return NextResponse.json({ error: "Previous Month Data has no usable rows." }, { status: 400 });
+    }
+
+    const currencySymbol = CURRENCY_SYMBOLS[client.currency];
+    const summaryData = buildPreviousMonthSummaryReportData({
+      accountName: client.accountName,
+      currencySymbol,
+      timezone: client.timezone,
+      periodRows,
+      platform,
+    });
+
+    const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");
+
+    let summaryReport;
+    try {
+      summaryReport = await prisma.report.create({
+        data: {
+          clientId: client.id,
+          status: "GENERATING",
+          reportType: "MONTHLY",
+          platform,
+          fileName,
+          displayName: `Previous Month Summary — ${summaryData.periodRow.fullMonthLabel}`,
+          shareToken: generateShareToken(),
+          summaryJson: JSON.stringify({
+            isPaused: false,
+            previousMonthSummaryOnly: true,
+            healthScore: summaryData.cover.healthScore,
+            healthBadge: summaryData.cover.healthBadge,
+            campaignCount: 0,
+            adSetCount: 0,
+          }),
+        },
+      });
+    } catch (err) {
+      return apiErrorResponse(err, "reports:generate:create-previous-month-summary");
+    }
+
+    try {
+      const [user, clientLogo] = await Promise.all([
+        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
+        loadLogoAsset(client.logoUrl),
+      ]);
+
+      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
+      const pptxBuffer = await renderPptx({
+        templateBuffer,
+        data: summaryData,
+        currencySymbol,
+        reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
+        agencyName: user?.agencyName,
+        clientLogo,
+        isLightTemplate: isLightReportTemplate(client.template),
+      });
+
+      const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
+
+      const shareData = buildShareReportData(summaryData, new Map(), new Date(), { currencySymbol, agencyName: user?.agencyName });
+
+      await prisma.report.update({
+        where: { id: summaryReport.id },
+        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
+      });
+
+      dispatchReportNotifications({
+        userId: session.user.id,
+        integrations: userIntegrations,
+        client,
+        report: {
+          id: summaryReport.id,
+          shareToken: summaryReport.shareToken,
+          reportType: "MONTHLY",
+          platform,
+          displayName: summaryReport.displayName,
+        },
+        healthScore: shareData.cover?.healthScore,
+        healthBadge: shareData.cover?.healthBadge,
+      });
+
+      const uploadSessionId = formData
+        ? parseJsonFormField(formData, "uploadSessionId", uploadSessionIdSchema)
+        : undefined;
+      await cleanupUploadSession(uploadSessionId);
+      return NextResponse.json({ ok: true, reportId: summaryReport.id, shareToken: summaryReport.shareToken });
+    } catch (err) {
+      console.error("[api:reports:generate] previous month summary failed:", err);
+      const message = err instanceof Error ? err.message : "Report generation failed.";
+      try {
+        await prisma.report.update({ where: { id: summaryReport.id }, data: { status: "FAILED", errorMessage: message } });
+      } catch (updateErr) {
+        console.error("[api:reports:generate] failed to record previous-month-summary failure status:", updateErr);
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  const resolved = await resolveWizardMtdFromFormData(formData, { userId: session.user.id, clientId: id });
+  if (!resolved.ok) {
+    return NextResponse.json(resolved.body, { status: resolved.status });
+  }
+  const { parsed: mtdParsed, uploadSessionId } = resolved.data;
+  const platform = mtdParsed.platform;
+
   // Comparison reports are an entirely separate pipeline (buildComparisonReportData
   // + renderComparisonPptx — see report-data.ts's own "Comparison reports"
   // section header) — handled fully here, never reaching buildMetaData/
   // buildGoogleData/renderPptx below, which stay exactly as they were.
   if (reportType === "COMPARISON") {
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
-    }
-
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
     const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;
@@ -355,6 +451,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         },
       });
 
+      await cleanupUploadSession(uploadSessionId);
       return NextResponse.json({ ok: true, reportId: comparisonReport.id });
     } catch (err) {
       console.error("[api:reports:generate] comparison report failed:", err);
@@ -372,12 +469,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   if (reportType === "HISTORICAL") {
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.errors.map((e) => e.message).join(" ") }, { status: 400 });
-    }
-
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
     const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
     const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
@@ -493,6 +584,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         },
       });
 
+      await cleanupUploadSession(uploadSessionId);
       return NextResponse.json({
         ok: true,
         reportId: historicalReport.id,
@@ -513,116 +605,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // Previous Month Summary — the uploaded CSV had no usable current-period
-  // data (validate.ts's noCampaignData) and the wizard's
-  // PreviousMonthSummaryOption offered this instead of the hard
-  // NO_DATA_ROWS_MESSAGE error; the user clicked through. Deliberately
-  // skips buildMetaData/buildReportData entirely — there's no current-month
-  // CSV data worth parsing or validating here, only Previous Month Data.
-  // The Report row is still stored with reportType "MONTHLY" (the closest
-  // real Prisma enum value) — see reportTypeSchema's own doc comment for
-  // why this request-only routing value is never written to the database
-  // as-is.
-  if (reportType === "PREVIOUS_MONTH_SUMMARY") {
-    if (!client.previousMonthDataUrl) {
-      return NextResponse.json({ error: "This client has no Previous Month Data on file." }, { status: 400 });
-    }
-    const periodRows = await loadPreviousMonthDataRows(client);
-    if (!periodRows || periodRows.length === 0) {
-      return NextResponse.json({ error: "Previous Month Data has no usable rows." }, { status: 400 });
-    }
-
-    const currencySymbol = CURRENCY_SYMBOLS[client.currency];
-    const summaryData = buildPreviousMonthSummaryReportData({
-      accountName: client.accountName,
-      currencySymbol,
-      timezone: client.timezone,
-      periodRows,
-      platform,
-    });
-
-    const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");
-
-    let summaryReport;
-    try {
-      summaryReport = await prisma.report.create({
-        data: {
-          clientId: client.id,
-          status: "GENERATING",
-          reportType: "MONTHLY",
-          platform,
-          fileName,
-          displayName: `Previous Month Summary — ${summaryData.periodRow.fullMonthLabel}`,
-          shareToken: generateShareToken(),
-          summaryJson: JSON.stringify({
-            isPaused: false,
-            previousMonthSummaryOnly: true,
-            healthScore: summaryData.cover.healthScore,
-            healthBadge: summaryData.cover.healthBadge,
-            campaignCount: 0,
-            adSetCount: 0,
-          }),
-        },
-      });
-    } catch (err) {
-      return apiErrorResponse(err, "reports:generate:create-previous-month-summary");
-    }
-
-    try {
-      const [user, clientLogo] = await Promise.all([
-        prisma.user.findUnique({ where: { id: session.user.id }, select: { agencyName: true } }),
-        loadLogoAsset(client.logoUrl),
-      ]);
-
-      const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
-      const pptxBuffer = await renderPptx({
-        templateBuffer,
-        data: summaryData,
-        currencySymbol,
-        reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
-        agencyName: user?.agencyName,
-        clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
-      });
-
-      const filePath = await saveReportFile(summaryReport.id, pptxBuffer);
-
-      const shareData = buildShareReportData(summaryData, new Map(), new Date(), { currencySymbol, agencyName: user?.agencyName });
-
-      await prisma.report.update({
-        where: { id: summaryReport.id },
-        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData) },
-      });
-
-      dispatchReportNotifications({
-        userId: session.user.id,
-        integrations: userIntegrations,
-        client,
-        report: {
-          id: summaryReport.id,
-          shareToken: summaryReport.shareToken,
-          reportType: "MONTHLY",
-          platform,
-          displayName: summaryReport.displayName,
-        },
-        healthScore: shareData.cover?.healthScore,
-        healthBadge: shareData.cover?.healthBadge,
-      });
-
-      return NextResponse.json({ ok: true, reportId: summaryReport.id, shareToken: summaryReport.shareToken });
-    } catch (err) {
-      console.error("[api:reports:generate] previous month summary failed:", err);
-      const message = err instanceof Error ? err.message : "Report generation failed.";
-      try {
-        await prisma.report.update({ where: { id: summaryReport.id }, data: { status: "FAILED", errorMessage: message } });
-      } catch (updateErr) {
-        console.error("[api:reports:generate] failed to record previous-month-summary failure status:", updateErr);
-      }
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
-  }
-
-  const result = await buildMetaData(client, mtdDailyBuffer, formData, platform);
+  const result = await buildMetaData(client, mtdParsed, formData, platform);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
@@ -734,6 +717,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Saving to Google Drive is a separate, explicit action the user takes
     // from the download screen (see /api/reports/[id]/save-to-drive) — the
     // report is already fully generated and downloadable at this point.
+    await cleanupUploadSession(uploadSessionId);
     return NextResponse.json({ ok: true, reportId: report.id, shareToken: report.shareToken });
   } catch (err) {
     console.error("[api:reports:generate] failed:", err);

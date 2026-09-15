@@ -16,6 +16,7 @@ import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField,
 import { detectPlatform } from "@/lib/nre/google-columns";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
+import { hashUploadBuffer, saveWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
@@ -135,12 +136,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           )
         : null;
 
+    const uploadSessionId = await saveWizardUploadSession({
+      userId: session.user.id,
+      clientId: id,
+      platform,
+      colMap: mtdParsed.colMap,
+      rows: mtdParsed.rows,
+      headers: mtdParsed.headers,
+      fileHash: hashUploadBuffer(mtdDailyBuffer),
+    });
+
     return NextResponse.json({
       valid: true,
       errors: [],
       warnings: validation.warnings,
       detectedPlatform,
       platform,
+      uploadSessionId,
       headers: mtdParsed.headers,
       campaigns,
       campaignSpend,

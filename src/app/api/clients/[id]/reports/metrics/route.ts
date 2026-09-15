@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
-import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
-import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { detectPlatform } from "@/lib/nre/google-columns";
+import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
@@ -18,8 +15,7 @@ import {
   usesMetaObjectiveEngine,
 } from "@/lib/nre/platform-reporting";
 import { apiErrorResponse } from "@/lib/api-error";
-import { fileFromFormData } from "@/lib/http-file";
-import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
+import { parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
 /**
  * Part 3's optional Metric Review wizard step: run AFTER campaign selection
@@ -30,10 +26,8 @@ import { parseJsonFormField, platformSchema, selectedCampaignsSchema } from "@/l
  * never aggregated values; see available-metrics.ts's own file header for
  * why that's fine — the wizard step doesn't show numbers either.
  *
- * Re-parses the CSV rather than reusing analyze/route.ts's own parse, same
- * stateless-round-trip pattern preview/route.ts and reports/route.ts
- * already use (the wizard re-sends the file on every step; nothing is
- * persisted server-side between them).
+ * Loads the parsed CSV from the analyze upload session when uploadSessionId
+ * is sent — otherwise falls back to parsing mtdDailyCsv (backward compatible).
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -47,21 +41,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const formData = await req.formData().catch(() => null);
-    const mtdDailyBuffer = formData ? await fileFromFormData(formData, "mtdDailyCsv") : null;
-    if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
-      return NextResponse.json({ error: "MTD Daily CSV is required." }, { status: 400 });
+    const resolved = await resolveWizardMtdFromFormData(formData, { userId: session.user.id, clientId: id });
+    if (!resolved.ok) {
+      return NextResponse.json(resolved.body, { status: resolved.status });
     }
-
-    const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
-    const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
-    const platform = platformOverride ?? detectPlatform(headers);
+    const { parsed: mtdParsed } = resolved.data;
+    const platform = mtdParsed.platform;
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
-    if (!validation.valid) {
-      return NextResponse.json({ error: "CSV failed validation.", errors: validation.errors }, { status: 200 });
-    }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
     const metricsPlatform = metricsDictionaryPlatform(platform);
