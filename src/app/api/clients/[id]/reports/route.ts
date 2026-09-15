@@ -3,8 +3,6 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
-import type { Platform } from "@/lib/nre/google-columns";
-import type { ColumnMap, NreRow } from "@/lib/nre/columns";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { dispatchReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
 import {
@@ -14,20 +12,17 @@ import {
   type PreviousMonthSummaryJobPayload,
   type StandardReportJobPayload,
 } from "@/lib/nre/report-generation-job";
-import { buildComparisonReportData, buildPreviousMonthSummaryReportData, buildReportData, type ReportData } from "@/lib/nre/report-data";
+import { createReportEngine } from "@/lib/nre/report-engine";
+import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
-import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
-import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
-import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
-import { detectAdNameColumn, hasAdLevelData } from "@/lib/nre/ad-level";
-import { computeCsvDateBounds, computeDailyRangeIso } from "@/lib/nre/date-range";
-import type { ReportType } from "@/lib/nre/report-data";
+import { computeCsvDateBounds } from "@/lib/nre/date-range";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignMetricOverridesSchema,
@@ -35,89 +30,15 @@ import {
   comparisonPeriodSchema,
   confirmedCampaignObjectivesSchema,
   historicalMonthCountSchema,
-  dateSelectionSchema,
   parseJsonFormField,
   platformSchema,
   reportTitleSchema,
   reportTypeSchema,
-  selectedAdSetsSchema,
   selectedCampaignsSchema,
   selectedMetricsSchema,
   uploadSessionIdSchema,
   resolveIncludePreviousMonthComparison,
-  resolveShowBudgetPacingOnCover,
 } from "@/lib/validators/report-wizard";
-import type { Client } from "@/generated/prisma/client";
-
-/** Meta/Google/TikTok path: full campaign/ad-set selection + date-range resolution + Previous Month Data. */
-async function buildMetaData(
-  client: Client,
-  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] },
-  formData: FormData | null,
-  platform: Platform = "META",
-): Promise<{ error: string } | { data: ReportData }> {
-  const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
-  const selectedAdSets = formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) : undefined;
-  const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
-  const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
-  const campaignMetricOverrides = formData ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema) : undefined;
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-
-  const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
-  const adNameColumn = detectAdNameColumn(mtdParsed.headers);
-
-  let reportType: ReportType = "WEEKLY";
-  if (parsedReportType === "MONTHLY") reportType = "MONTHLY";
-  else if (parsedReportType === "DAILY") reportType = "DAILY";
-  else if (parsedReportType === "CREATIVE") reportType = "CREATIVE";
-  else if (parsedReportType === "QUARTER") reportType = "QUARTER";
-  else if (parsedReportType === "YTD") reportType = "YTD";
-
-  if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
-    return {
-      error: `Creative reporting requires an Ad-level CSV with an Ad Name column. Export from ${adsManagerName(platform)} → Ads tab with daily breakdown.`,
-    };
-  }
-
-  let weeklyRange: { startIso: string; endIso: string } | undefined;
-  if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
-    if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
-    weeklyRange = daily;
-  } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
-    if (!dateResolution.ok) {
-      return { error: dateResolution.error || "Invalid date selection." };
-    }
-    weeklyRange = dateResolution.weeklyRange;
-  }
-
-  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
-  const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
-
-  const data = buildReportData({
-    accountName: client.accountName,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
-    timezone: client.timezone,
-    monthlyBudget: client.monthlyBudget,
-    showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
-    mtdDailyRows: mtdParsed.rows,
-    periodRows,
-    selectedCampaigns: selectedCampaigns ?? null,
-    selectedAdSets: selectedAdSets ?? null,
-    weeklyRange,
-    reportType,
-    selectedMetrics,
-    campaignObjectives,
-    campaignMetricOverrides,
-    objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
-    adNameColumn,
-    creativeOnly: reportType === "CREATIVE",
-    platform,
-  });
-
-  return { data };
-}
 
 function enqueueResponse(reportId: string, shareToken?: string | null) {
   return NextResponse.json({
@@ -180,7 +101,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const currencySymbol = CURRENCY_SYMBOLS[client.currency];
-    const summaryData = buildPreviousMonthSummaryReportData({
+    const summaryEngine = createReportEngine(platform);
+    const summaryData = summaryEngine.buildPreviousMonthSummary({
       accountName: client.accountName,
       currencySymbol,
       timezone: client.timezone,
@@ -263,7 +185,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: coverage.error ?? "Comparison periods are not covered by your CSV." }, { status: 400 });
     }
 
-    const comparisonData = buildComparisonReportData({
+    const comparisonEngine = createReportEngine(platform);
+    const comparisonData = comparisonEngine.buildComparison({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -336,7 +259,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: coverage.error ?? "CSV does not cover the selected months." }, { status: 400 });
     }
 
-    const historicalData = buildHistoricalReportData({
+    const historicalEngine = createReportEngine(platform);
+    const historicalData = historicalEngine.buildHistorical({
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -394,7 +318,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return enqueueResponse(historicalReport.id, shareToken);
   }
 
-  const result = await buildMetaData(client, mtdParsed, formData, platform);
+  const result = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
