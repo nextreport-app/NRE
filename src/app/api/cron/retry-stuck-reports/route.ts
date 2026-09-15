@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { dispatchReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
+import { retryStuckReportGenerations } from "@/lib/nre/retry-stuck-report-generations";
 
-const STUCK_AFTER_MS = 10 * 60 * 1000;
-
-/** Re-dispatch reports stuck in GENERATING with a job payload (worker timeout/crash recovery). */
+/** Manual/on-demand stuck-report recovery — not scheduled on Hobby (daily limit). */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
@@ -16,20 +13,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cutoff = new Date(Date.now() - STUCK_AFTER_MS);
-  const stuck = await prisma.report.findMany({
-    where: {
-      status: "GENERATING",
-      jobPayload: { not: null },
-      updatedAt: { lt: cutoff },
-    },
-    select: { id: true },
-    take: 20,
-  });
-
-  for (const report of stuck) {
-    await dispatchReportGenerationJob(report.id);
-  }
-
-  return NextResponse.json({ ok: true, retried: stuck.length });
+  const retried = await retryStuckReportGenerations();
+  return NextResponse.json({ ok: true, retried });
 }

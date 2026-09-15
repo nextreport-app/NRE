@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/trial-reminders",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/retry-stuck-reports",
-      "schedule": "*/10 * * * *"
     }
   ]
 }
