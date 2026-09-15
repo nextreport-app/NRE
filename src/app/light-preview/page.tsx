@@ -43,14 +43,27 @@ const PLANS = [
     price: "$12",
     bestFor: "Freelancers and small agencies",
     highlighted: false,
-    features: ["Up to 10 client accounts", "Meta Ads reporting", "Google Ads reporting", "Unlimited report generation", "Email support"],
+    features: [
+      "Up to 10 clients — Meta, Google, TikTok & GA4 included",
+      "Meta Ads reporting",
+      "Google Ads reporting",
+      "Unlimited report generation",
+      "Email support",
+    ],
   },
   {
     name: "Professional",
     price: "$29",
     bestFor: "Growing agencies managing multiple clients",
     highlighted: true,
-    features: ["Unlimited client accounts", "Meta Ads reporting", "Google Ads reporting", "AI-written campaign summaries", "Google Drive auto-save", "Priority email support"],
+    features: [
+      "Unlimited clients — all platforms included",
+      "Meta Ads reporting",
+      "Google Ads reporting",
+      "AI-written campaign summaries",
+      "Google Drive auto-save",
+      "Priority email support",
+    ],
   },
 ];
 

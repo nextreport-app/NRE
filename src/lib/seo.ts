@@ -351,7 +351,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create a separate client workspace for each account. The Agency plan supports up to 10 clients; Professional includes unlimited clients.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 clients (Meta, Google, TikTok, and GA4 for each brand); Professional is unlimited. Platform connections are shared across clients — the limit is on brands, not platforms.",
   },
 ];
 

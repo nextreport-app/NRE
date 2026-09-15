@@ -4,7 +4,12 @@ import { useState } from "react";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
-import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
+import {
+  AGENCY_CLIENT_LIMIT_FEATURE,
+  getPlanDisplayName,
+  PROFESSIONAL_CLIENT_LIMIT_FEATURE,
+  type BillablePlanId,
+} from "@/lib/plan-labels";
 import type { BillingInterval } from "@/lib/razorpay";
 
 const ANNUAL_PRICES = {
@@ -30,7 +35,7 @@ const PLANS: Plan[] = [
     priceUsd: "$8",
     bestFor: "Freelancers and boutique agencies",
     features: [
-      "Up to 10 client accounts",
+      AGENCY_CLIENT_LIMIT_FEATURE,
       "Unlimited report generation",
       "Meta, Google Ads, TikTok & GA4 — API sync",
       "CSV upload — all four platforms",
@@ -50,7 +55,7 @@ const PLANS: Plan[] = [
     bestFor: "Growing agencies with larger client rosters",
     highlighted: true,
     features: [
-      "Unlimited client accounts",
+      PROFESSIONAL_CLIENT_LIMIT_FEATURE,
       "Everything in Agency",
       "All four platforms — API sync for every client",
       "Creative performance reporting",
