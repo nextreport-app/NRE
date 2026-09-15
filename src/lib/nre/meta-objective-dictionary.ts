@@ -702,3 +702,268 @@ export function resolveUniqueMappedObjectiveFromRows(
 export function specForObjectiveKey(key: string): MetaObjectiveSpec | undefined {
   return specByKey.get(key);
 }
+
+/** Fuzzy substring patterns for Step 1 (getResultLabels) — priority order, most specific first. */
+export interface MetaFuzzyCatalogEntry {
+  resultLabel: string;
+  costLabel: string;
+  pattern: RegExp;
+  canonicalText: string;
+}
+
+const MESSAGING_FUZZY_LABEL = "MESSAGING / CONVERSATIONS";
+const MESSAGING_FUZZY_COST = "COST PER CONVERSATION";
+
+/**
+ * Substring-matching catalog for human-readable result_type text. Checked before
+ * the exact alias map so phrases like "Phone call" → CALL LEADS win over the
+ * exact map's PHONE CALLS label for the same alias family.
+ */
+export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
+  {
+    resultLabel: "WEBSITE LEADS",
+    costLabel: "COST PER WEBSITE LEAD",
+    pattern: /website\s*submission|website\s*leads?|web\s*leads?|leads?\s*\(\s*website\s*\)|\bcontact\b/,
+    canonicalText: "Website lead",
+  },
+  {
+    resultLabel: "META FORM LEADS",
+    costLabel: "COST PER LEAD",
+    pattern: /instant\s*forms?|meta\s*leads?|leads?\s*forms?|forms?\s*leads?|leads?\s*\(\s*form\s*\)/,
+    canonicalText: "Meta lead",
+  },
+  {
+    resultLabel: MESSAGING_FUZZY_LABEL,
+    costLabel: MESSAGING_FUZZY_COST,
+    pattern: /messaging\s*conversations?|messenger\s*leads?|message\s*starts?/,
+    canonicalText: "Messaging conversations started",
+  },
+  {
+    resultLabel: "INSTAGRAM DM LEADS",
+    costLabel: "COST PER CONVERSATION",
+    pattern: /instagram\s*conversations?|instagram\s*dm/,
+    canonicalText: "Instagram DM",
+  },
+  {
+    resultLabel: "WHATSAPP LEADS",
+    costLabel: "COST PER CONVERSATION",
+    pattern: /whatsapp\s*conversations?|whatsapp\s*leads?/,
+    canonicalText: "Whatsapp lead",
+  },
+  {
+    resultLabel: "CALL LEADS",
+    costLabel: "COST PER CALL",
+    pattern: /phone\s*calls?|call\s*leads?|\bcalls?\b/,
+    canonicalText: "Call lead",
+  },
+  {
+    resultLabel: "APPOINTMENT LEADS",
+    costLabel: "COST PER BOOKING",
+    pattern: /\bschedule\b|appointments?|bookings?/,
+    canonicalText: "Appointment",
+  },
+  {
+    resultLabel: "REGISTRATIONS",
+    costLabel: "COST PER REGISTRATION",
+    pattern: /complete\s*registrations?|registrations?/,
+    canonicalText: "Registration",
+  },
+  {
+    resultLabel: "APPLICATIONS",
+    costLabel: "COST PER APPLICATION",
+    pattern: /submit\s*applications?|applications?/,
+    canonicalText: "Application",
+  },
+  {
+    resultLabel: "SUBSCRIPTIONS",
+    costLabel: "COST PER SUBSCRIPTION",
+    pattern: /subscribe|subscriptions?/,
+    canonicalText: "Subscription",
+  },
+  {
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    pattern: /custom\s*conversions?/,
+    canonicalText: "Custom conversion",
+  },
+  {
+    resultLabel: "APP EVENTS",
+    costLabel: "COST PER APP EVENT",
+    pattern: /app\s*events?|in-?app\s*purchases?/,
+    canonicalText: "App event",
+  },
+  {
+    resultLabel: "PURCHASES",
+    costLabel: "COST PER PURCHASE",
+    pattern: /purchases?|website\s*purchases?|\bbuy\b|checkout\s*complete|\border\b|catalog\s*sales/,
+    canonicalText: "Purchase",
+  },
+  {
+    resultLabel: "ADD TO CART",
+    costLabel: "COST PER ADD TO CART",
+    pattern: /adds?\s*to\s*cart|addtocart/,
+    canonicalText: "Add to cart",
+  },
+  {
+    resultLabel: "INITIATE CHECKOUT",
+    costLabel: "COST PER CHECKOUT",
+    pattern: /initiate\s*checkout|initiatecheckout|checkouts?\s*initiated/,
+    canonicalText: "Initiate checkout",
+  },
+  {
+    resultLabel: "PAYMENT INFO",
+    costLabel: "COST PER PAYMENT INFO",
+    pattern: /add\s*payment\s*info|addpaymentinfo/,
+    canonicalText: "Add payment info",
+  },
+  {
+    resultLabel: "CONTENT VIEWS",
+    costLabel: "COST PER VIEW",
+    pattern: /view\s*content|viewcontent/,
+    canonicalText: "View content",
+  },
+  {
+    resultLabel: "LANDING PAGE VIEWS",
+    costLabel: "COST PER LPV",
+    pattern: /landing\s*page\s*views?|\blpv\b/,
+    canonicalText: "Landing page view",
+  },
+  {
+    resultLabel: "LINK CLICKS",
+    costLabel: "COST PER CLICK",
+    pattern: /link\s*clicks?|outbound\s*clicks?/,
+    canonicalText: "Link click",
+  },
+  {
+    resultLabel: "APP INSTALLS",
+    costLabel: "COST PER INSTALL",
+    pattern: /app\s*installs?|mobile\s*app\s*installs?/,
+    canonicalText: "App install",
+  },
+  {
+    resultLabel: "REACH",
+    costLabel: "COST PER 1K REACH",
+    pattern: /\breach\b|people\s*reached/,
+    canonicalText: "Reach",
+  },
+  {
+    resultLabel: "IMPRESSIONS",
+    costLabel: "CPM",
+    pattern: /impressions?|\bcpm\b/,
+    canonicalText: "Impression",
+  },
+  {
+    resultLabel: "AD RECALL LIFT",
+    costLabel: "COST PER RECALL LIFT",
+    pattern: /ad\s*recall|recall\s*lift/,
+    canonicalText: "Ad recall",
+  },
+  {
+    resultLabel: "POST ENGAGEMENTS",
+    costLabel: "COST PER ENGAGEMENT",
+    pattern: /post\s*engagements?|engagements?/,
+    canonicalText: "Post engagement",
+  },
+  {
+    resultLabel: "PAGE LIKES",
+    costLabel: "COST PER PAGE LIKE",
+    pattern: /page\s*likes?/,
+    canonicalText: "Page like",
+  },
+  {
+    resultLabel: "FOLLOWERS",
+    costLabel: "COST PER FOLLOW",
+    pattern: /followers?|\bfollow\b/,
+    canonicalText: "Follow",
+  },
+  {
+    resultLabel: "EVENT RESPONSES",
+    costLabel: "COST PER RESPONSE",
+    pattern: /event\s*responses?/,
+    canonicalText: "Event response",
+  },
+  {
+    resultLabel: "STORE VISITS",
+    costLabel: "COST PER STORE VISIT",
+    pattern: /store\s*visits?/,
+    canonicalText: "Store visit",
+  },
+  {
+    resultLabel: "DONATIONS",
+    costLabel: "COST PER DONATION",
+    pattern: /donations?|\bdonate\b/,
+    canonicalText: "Donate",
+  },
+  {
+    resultLabel: "FIND LOCATION",
+    costLabel: "COST PER LOCATION",
+    pattern: /find\s*locations?/,
+    canonicalText: "Find location",
+  },
+  {
+    resultLabel: "QUOTE REQUESTS",
+    costLabel: "COST PER QUOTE",
+    pattern: /quote\s*requests?/,
+    canonicalText: "Quote request",
+  },
+  {
+    resultLabel: "GROUP JOINS",
+    costLabel: "COST PER JOIN",
+    pattern: /group\s*joins?|join\s*group/,
+    canonicalText: "Group join",
+  },
+  {
+    resultLabel: "VIDEO VIEWS",
+    costLabel: "COST PER VIDEO VIEW",
+    pattern: /video\s*views?|video\s*plays?|thruplays?/,
+    canonicalText: "Video view",
+  },
+  { resultLabel: "LEADS", costLabel: "COST PER LEAD", pattern: /leads?/, canonicalText: "Lead" },
+];
+
+const META_EXACT_LABEL_LOOKUP = buildResultTypeMap();
+
+function isMachineReadableResultType(rt: string): boolean {
+  return rt.includes(".") || rt.includes("_");
+}
+
+/** Step 1 fuzzy + exact fallback for result_type text labeling. */
+export function getMetaResultLabels(resultType: string | null | undefined): {
+  resultLabel: string;
+  costLabel: string;
+} {
+  const rt = (resultType || "").toLowerCase().trim();
+  if (!rt) return { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
+
+  // Machine-readable API/export strings — exact map first (avoids generic
+  // /leads?/ catching "lead" inside "onsite_conversion.lead_grouped").
+  if (isMachineReadableResultType(rt)) {
+    const machineExact = META_EXACT_LABEL_LOOKUP[rt];
+    if (machineExact) return { resultLabel: machineExact.resultLabel, costLabel: machineExact.costLabel };
+  }
+
+  for (const def of META_FUZZY_CATALOG) {
+    if (def.pattern.test(rt)) return { resultLabel: def.resultLabel, costLabel: def.costLabel };
+  }
+
+  const exact = META_EXACT_LABEL_LOOKUP[rt];
+  if (exact) return { resultLabel: exact.resultLabel, costLabel: exact.costLabel };
+
+  const cleaned = String(resultType).trim().toUpperCase();
+  return { resultLabel: cleaned, costLabel: `COST PER ${cleaned}` };
+}
+
+export function getMetaCanonicalResultTypeText(resultLabel: string): string {
+  return META_FUZZY_CATALOG.find((def) => def.resultLabel === resultLabel)?.canonicalText ?? resultLabel;
+}
+
+/** Labels used only in fuzzy catalog (not exact spec resultLabel) — allowed drift. */
+export const META_FUZZY_ONLY_LABELS = new Set(["CALL LEADS", "CONVERSIONS"]);
+
+/** All spec + fuzzy result labels for consistency tests. */
+export function allMetaObjectiveResultLabels(): string[] {
+  const labels = new Set<string>();
+  for (const spec of META_OBJECTIVE_SPECS) labels.add(spec.resultLabel);
+  for (const entry of META_FUZZY_CATALOG) labels.add(entry.resultLabel);
+  return [...labels];
+}
