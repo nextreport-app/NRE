@@ -559,10 +559,14 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
       },
       columnObjective,
     );
-    if (!groups[label]) groups[label] = { costLabel: cost, count: 0, totalSpend: 0, totalReach: 0, rows: [] };
-    groups[label].count += parseCellNum(row.results);
-    groups[label].totalSpend += parseCellNum(row.spend);
-    groups[label].rows.push(row);
+    let group = groups[label];
+    if (!group) {
+      group = { costLabel: cost, count: 0, totalSpend: 0, totalReach: 0, rows: [] };
+      groups[label] = group;
+    }
+    group.count += parseCellNum(row.results);
+    group.totalSpend += parseCellNum(row.spend);
+    (group.rows ??= []).push(row);
   });
 
   for (const g of Object.values(groups)) {
