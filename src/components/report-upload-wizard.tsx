@@ -280,9 +280,17 @@ function defaultReportTitleFor(reportType: ReportTypeValue): string {
 // detects format from file content and decodes/parses appropriately.
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
-function buildUploadFormData(mtdFile: File, extra: Record<string, unknown> = {}): FormData {
+function buildUploadFormData(
+  mtdFile: File | null,
+  extra: Record<string, unknown> = {},
+  uploadSessionId?: string | null,
+): FormData {
   const formData = new FormData();
-  formData.append("mtdDailyCsv", mtdFile);
+  if (uploadSessionId) {
+    formData.append("uploadSessionId", JSON.stringify(uploadSessionId));
+  } else if (mtdFile) {
+    formData.append("mtdDailyCsv", mtdFile);
+  }
   for (const [key, value] of Object.entries(extra)) {
     if (value !== undefined) formData.append(key, JSON.stringify(value));
   }
@@ -491,6 +499,8 @@ export function ReportUploadWizard({
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
+  /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
+  const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
@@ -932,6 +942,7 @@ export function ReportUploadWizard({
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
+    setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
     setCampaigns(json.campaigns || []);
     setCampaignSpend(json.campaignSpend || {});
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
@@ -1062,9 +1073,22 @@ export function ReportUploadWizard({
     return Boolean(file?.name.includes("-api-sync-"));
   }
 
+  function handleUploadSessionExpired(message?: string) {
+    setUploadSessionId(null);
+    setStep(1);
+    setAnalyzeStatus("error");
+    setAnalyzeMessage(message || "Your upload session expired. Please analyze your file again.");
+  }
+
+  function handleMtdFileSelected(file: File | null) {
+    if (file !== mtdFile) setUploadSessionId(null);
+    setMtdFile(file);
+  }
+
   function handleDataSourceModeChange(mode: WizardDataSource) {
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
       setMtdFile(null);
+      setUploadSessionId(null);
       setAnalyzeStatus("idle");
       setAnalyzeErrors([]);
       setAnalyzeMessage(null);
@@ -1230,16 +1254,22 @@ export function ReportUploadWizard({
    * fully-committed value.
    */
   async function fetchObjectivesAndMetrics() {
-    if (!mtdFile) return;
+    if (!mtdFile && !uploadSessionId) return;
     setMetricsStatus("loading");
     setTouchedObjectiveCampaigns(new Set());
     setPerCampaignMinWarning(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }),
+      body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }, uploadSessionId),
     });
     const json = await res.json().catch(() => null);
+
+    if (json?.uploadSessionExpired) {
+      handleUploadSessionExpired(json.error);
+      setMetricsStatus("error");
+      return;
+    }
 
     if (!res.ok || !json || json.error) {
       // Objectives/Metrics are a nice-to-have preview, not a hard
@@ -1549,7 +1579,7 @@ export function ReportUploadWizard({
    * to gate on.
    */
   async function fetchPreview() {
-    if (!mtdFile) return;
+    if (!mtdFile && !uploadSessionId) return;
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
     // sent (buildReportData then uses the full MTD data with no weekly
@@ -1598,23 +1628,33 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, {
-        selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
-        selectedMetrics: currentSelectedMetricsPayload(),
-        campaignObjectives: currentCampaignObjectivesPayload(),
-        campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
-        dateSelection,
-        reportType,
-        platform,
-        comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
-        comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
-        historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
-        showBudgetPacingOnCover: showBudgetOnCover,
-        includePreviousMonthComparison,
-      }),
+      body: buildUploadFormData(
+        mtdFile,
+        {
+          selectedCampaigns: Array.from(selectedCampaigns),
+          selectedAdSets: Array.from(selectedAdSets),
+          selectedMetrics: currentSelectedMetricsPayload(),
+          campaignObjectives: currentCampaignObjectivesPayload(),
+          campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
+          dateSelection,
+          reportType,
+          platform,
+          comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
+          comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+          historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
+          showBudgetPacingOnCover: showBudgetOnCover,
+          includePreviousMonthComparison,
+        },
+        uploadSessionId,
+      ),
     });
     const json = await res.json().catch(() => null);
+
+    if (json?.uploadSessionExpired) {
+      handleUploadSessionExpired(json.error);
+      setPreviewStatus("error");
+      return;
+    }
 
     if (!res.ok || !json) {
       setPreviewStatus("error");
@@ -1667,7 +1707,7 @@ export function ReportUploadWizard({
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
-    if (!mtdFile) return;
+    if (!mtdFile && !uploadSessionId) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -1682,28 +1722,38 @@ export function ReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, {
-        selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
-        selectedMetrics: currentSelectedMetricsPayload(),
-        campaignObjectives: currentCampaignObjectivesPayload(),
-        campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
-        // Part 3 — every campaign the Objective Confirmation step showed,
-        // saved back to this client's objective memory cache once the
-        // report actually generates. Only sent here, never on preview.
-        confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
-        dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
-        reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
-        reportType,
-        platform,
-        comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
-        comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
-        historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
-        showBudgetPacingOnCover: showBudgetOnCover,
-        includePreviousMonthComparison,
-      }),
+      body: buildUploadFormData(
+        mtdFile,
+        {
+          selectedCampaigns: Array.from(selectedCampaigns),
+          selectedAdSets: Array.from(selectedAdSets),
+          selectedMetrics: currentSelectedMetricsPayload(),
+          campaignObjectives: currentCampaignObjectivesPayload(),
+          campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
+          // Part 3 — every campaign the Objective Confirmation step showed,
+          // saved back to this client's objective memory cache once the
+          // report actually generates. Only sent here, never on preview.
+          confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
+          dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
+          reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
+          reportType,
+          platform,
+          comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
+          comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+          historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
+          showBudgetPacingOnCover: showBudgetOnCover,
+          includePreviousMonthComparison,
+        },
+        uploadSessionId,
+      ),
     });
     const json = await res.json().catch(() => null);
+
+    if (json?.uploadSessionExpired) {
+      handleUploadSessionExpired(json.error);
+      setGenerateStatus("error");
+      return;
+    }
 
     if (!res.ok || !json?.ok) {
       setGenerateStatus("error");
@@ -1711,6 +1761,7 @@ export function ReportUploadWizard({
       return;
     }
 
+    setUploadSessionId(null);
     setReportId(json.reportId);
     setDownloadUrl(`/api/reports/${json.reportId}/download`);
     // Comparison reports don't get a share page (see share-report.ts's
@@ -1729,15 +1780,21 @@ export function ReportUploadWizard({
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
   async function handleGeneratePreviousMonthSummary() {
-    if (!mtdFile) return;
+    if (!mtdFile && !uploadSessionId) return;
     setPmsStatus("loading");
     setPmsError(null);
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, reportType: "PREVIOUS_MONTH_SUMMARY" }),
+      body: buildUploadFormData(mtdFile, { platform, reportType: "PREVIOUS_MONTH_SUMMARY" }, uploadSessionId),
     });
     const json = await res.json().catch(() => null);
+
+    if (json?.uploadSessionExpired) {
+      handleUploadSessionExpired(json.error);
+      setPmsStatus("error");
+      return;
+    }
 
     if (!res.ok || !json?.ok) {
       setPmsStatus("error");
@@ -1851,6 +1908,7 @@ export function ReportUploadWizard({
       setHasSavedPlatformPreference(false);
     }
     setMtdFile(null);
+    setUploadSessionId(null);
     setAnalyzeStatus("idle");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
@@ -2150,7 +2208,7 @@ export function ReportUploadWizard({
                 />
               ) : (
                 <>
-                  <UploadDropzone file={mtdFile} onFileSelected={setMtdFile} />
+                  <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
                   <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
                     <a
                       href="https://nextreport.in/help/download"
@@ -2293,6 +2351,7 @@ export function ReportUploadWizard({
                 setCsvWarningDismissed(false);
                 setCsvDateGuidance(null);
                 setMtdFile(null);
+                setUploadSessionId(null);
                 setStep(1);
               }}
             />
