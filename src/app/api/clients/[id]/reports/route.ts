@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
-import { dispatchReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
+import { scheduleReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
 import {
   serializeReportGenerationJob,
   type ComparisonReportJobPayload,
@@ -150,7 +150,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return apiErrorResponse(err, "reports:generate:create-previous-month-summary");
     }
 
-    await dispatchReportGenerationJob(summaryReport.id);
+    scheduleReportGenerationJob(summaryReport.id);
     return enqueueResponse(summaryReport.id, shareToken);
   }
 
@@ -240,7 +240,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return apiErrorResponse(err, "reports:generate:create-comparison");
     }
 
-    await dispatchReportGenerationJob(comparisonReport.id);
+    scheduleReportGenerationJob(comparisonReport.id);
     return enqueueResponse(comparisonReport.id);
   }
 
@@ -314,7 +314,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return apiErrorResponse(err, "reports:generate:create-historical");
     }
 
-    await dispatchReportGenerationJob(historicalReport.id);
+    scheduleReportGenerationJob(historicalReport.id);
     return enqueueResponse(historicalReport.id, shareToken);
   }
 
@@ -374,7 +374,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return apiErrorResponse(err, "reports:generate:create");
   }
 
-  await dispatchReportGenerationJob(report.id);
+  scheduleReportGenerationJob(report.id);
   return enqueueResponse(report.id, shareToken);
 }
 
