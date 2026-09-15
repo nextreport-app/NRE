@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
+import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { buildComparisonReportData, buildReportData } from "@/lib/nre/report-data";
 import { buildHistoricalReportData, validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
@@ -61,6 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const { parsed: mtdParsed } = resolved.data;
   const platform = mtdParsed.platform;
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
