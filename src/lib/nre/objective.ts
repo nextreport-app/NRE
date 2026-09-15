@@ -9,7 +9,12 @@
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
-import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType } from "./result-type-map";
+import {
+  DEFINITIVE_PROOF_ALIAS_TO_KEY,
+  resolveDefinitiveObjectiveFromRows,
+  resolveUniqueMappedObjectiveFromRows,
+} from "./meta-objective-dictionary";
+import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType, type ObjectiveInfo } from "./result-type-map";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -82,7 +87,7 @@ const OBJECTIVE_CATALOG: { resultLabel: string; costLabel: string; pattern: RegE
   {
     resultLabel: "APPOINTMENT LEADS",
     costLabel: "COST PER BOOKING",
-    pattern: /appointments?|bookings?/,
+    pattern: /\bschedule\b|appointments?|bookings?/,
     canonicalText: "Appointment",
   },
   {
@@ -120,19 +125,19 @@ const OBJECTIVE_CATALOG: { resultLabel: string; costLabel: string; pattern: RegE
   {
     resultLabel: "PURCHASES",
     costLabel: "COST PER PURCHASE",
-    pattern: /purchases?|\bbuy\b|checkout\s*complete|\border\b/,
+    pattern: /purchases?|website\s*purchases?|\bbuy\b|checkout\s*complete|\border\b|catalog\s*sales/,
     canonicalText: "Purchase",
   },
   {
     resultLabel: "ADD TO CART",
     costLabel: "COST PER ADD TO CART",
-    pattern: /add\s*to\s*cart|addtocart/,
+    pattern: /adds?\s*to\s*cart|addtocart/,
     canonicalText: "Add to cart",
   },
   {
     resultLabel: "INITIATE CHECKOUT",
     costLabel: "COST PER CHECKOUT",
-    pattern: /initiate\s*checkout|initiatecheckout/,
+    pattern: /initiate\s*checkout|initiatecheckout|checkouts?\s*initiated/,
     canonicalText: "Initiate checkout",
   },
   {
@@ -206,6 +211,36 @@ const OBJECTIVE_CATALOG: { resultLabel: string; costLabel: string; pattern: RegE
     costLabel: "COST PER RESPONSE",
     pattern: /event\s*responses?/,
     canonicalText: "Event response",
+  },
+  {
+    resultLabel: "STORE VISITS",
+    costLabel: "COST PER STORE VISIT",
+    pattern: /store\s*visits?/,
+    canonicalText: "Store visit",
+  },
+  {
+    resultLabel: "DONATIONS",
+    costLabel: "COST PER DONATION",
+    pattern: /donations?|\bdonate\b/,
+    canonicalText: "Donate",
+  },
+  {
+    resultLabel: "FIND LOCATION",
+    costLabel: "COST PER LOCATION",
+    pattern: /find\s*locations?/,
+    canonicalText: "Find location",
+  },
+  {
+    resultLabel: "QUOTE REQUESTS",
+    costLabel: "COST PER QUOTE",
+    pattern: /quote\s*requests?/,
+    canonicalText: "Quote request",
+  },
+  {
+    resultLabel: "GROUP JOINS",
+    costLabel: "COST PER JOIN",
+    pattern: /group\s*joins?|join\s*group/,
+    canonicalText: "Group join",
   },
   {
     resultLabel: "VIDEO VIEWS",
@@ -837,60 +872,9 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * Data — see buildReportData's Step 0) rather than re-building it per
  * consumer.
  */
-/**
- * Purchase-variant result_type text (Part 7 bug fix) — every human-readable
- * and machine-readable spelling Meta writes into result_type for a real
- * purchase conversion. Matched with an EXACT (not fuzzy/substring) equality
- * check after lower-casing/trimming, since resolveCampaignObjective below
- * treats even a single occurrence anywhere in a campaign's rows as
- * definitive proof — a loose/fuzzy match here would risk false-positives on
- * unrelated text.
- */
-const PURCHASE_RESULT_TYPE_TEXTS = new Set([
-  "purchase",
-  "purchases",
-  "website purchase",
-  "website purchases",
-  "offsite_conversion.fb_pixel_purchase",
-  "onsite_web_purchase",
-  "product_catalog_sales",
-]);
-
-/** Initiate-Checkout-variant result_type text — see PURCHASE_RESULT_TYPE_TEXTS' doc comment; same exact-match reasoning. */
-const INITIATE_CHECKOUT_RESULT_TYPE_TEXTS = new Set([
-  "initiate_checkout",
-  "initiate checkout",
-  "checkouts initiated",
-  "offsite_conversion.fb_pixel_initiate_checkout",
-  "onsite_web_initiate_checkout",
-]);
-
-/** Website/offsite lead result_type spellings — includes Meta's "website submission" export label. */
-const WEBSITE_LEADS_RESULT_TYPE_TEXTS = new Set([
-  "website submission",
-  "website lead",
-  "website leads",
-  "web lead",
-  "web leads",
-  "lead",
-  "contact",
-  "onsite_web_lead",
-  "offsite_conversion.fb_pixel_lead",
-]);
-
-function isPurchaseResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && PURCHASE_RESULT_TYPE_TEXTS.has(rt);
-}
-
-function isInitiateCheckoutResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && INITIATE_CHECKOUT_RESULT_TYPE_TEXTS.has(rt);
-}
-
 function isWebsiteLeadsResultTypeText(resultType: string | null | undefined): boolean {
   const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && WEBSITE_LEADS_RESULT_TYPE_TEXTS.has(rt);
+  return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "website_leads";
 }
 
 /**
@@ -1183,16 +1167,57 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
   return false;
 }
 
+/** Same incidental-traffic guards as shouldIgnoreDominantResultType, for the unique-mapped shortcut. */
+function shouldIgnoreUniqueMappedObjective(rows: MetricRow[], info: { key: string; resultLabel: string }): boolean {
+  if (info.key === "landing_page_views") {
+    const hasRealLeadsColumnData = rows.some(
+      (r) => parseCellNum(r.website_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.meta_leads) > 0,
+    );
+    if (hasRealLeadsColumnData) return true;
+  }
+  if (info.key === "landing_page_views" || info.key === "link_clicks") {
+    return shouldIgnoreDominantResultType(rows, info.key === "link_clicks" ? "link_click" : "landing_page_view");
+  }
+  if (info.key === "meta_form_leads") {
+    const messagingTotal = sumCampaignMessagingTotal(rows);
+    return messagingTotal > 0 || isMessagingCampaignName(rows);
+  }
+  if (info.key === "messaging") {
+    const websiteLeadsTotal = rows.reduce((sum, r) => sum + parseCellNum(r.website_leads), 0);
+    if (websiteLeadsTotal > 0 || isWebsiteLeadsCampaignName(rows)) return true;
+  }
+  return false;
+}
+
 /** Internal implementation shared by resolveCampaignObjective (public, unchanged signature — every existing caller/test keeps working exactly as before) and resolveCampaignObjectiveWithConfidence (new — the Objective Confirmation wizard step's own confidence badge, Part 6). See resolveCampaignObjective's own doc comment above for the full priority-chain writeup. */
+function shouldOverrideDefinitiveProof(rows: MetricRow[], info: ObjectiveInfo): boolean {
+  if (info.key === "meta_form_leads" && isMessagingCampaignName(rows)) {
+    if (sumCampaignMessagingTotal(rows) > 0) return true;
+    const headers = Object.keys(rows[0]?._raw || {});
+    if (headers.some((h) => h.toLowerCase().includes("messaging conversations started"))) return true;
+  }
+  return false;
+}
+
 function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
-  if (rows.some((r) => isPurchaseResultTypeText(r.result_type))) {
-    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", confidence: "high", requiresConfirmation: false };
+  const definitive = resolveDefinitiveObjectiveFromRows(rows, resolveObjectiveFromResultType);
+  if (definitive && !shouldOverrideDefinitiveProof(rows, definitive)) {
+    return {
+      resultLabel: definitive.resultLabel,
+      costLabel: definitive.costLabel,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
   }
-  if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
-    return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high", requiresConfirmation: false };
-  }
-  if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
-    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", confidence: "high", requiresConfirmation: false };
+
+  const uniqueMapped = resolveUniqueMappedObjectiveFromRows(rows, resolveObjectiveFromResultType);
+  if (uniqueMapped && !shouldIgnoreUniqueMappedObjective(rows, uniqueMapped)) {
+    return {
+      resultLabel: uniqueMapped.resultLabel,
+      costLabel: uniqueMapped.costLabel,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
   }
 
   const resultTypeCounts = new Map<string, number>();
