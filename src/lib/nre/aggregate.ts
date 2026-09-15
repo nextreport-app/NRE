@@ -27,6 +27,7 @@ import {
 } from "./objective";
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, getCalendarYesterday, type DateRangeIso } from "./date-range";
+import { aggregateReach } from "./reach-aggregation";
 
 export interface AggRow {
   campaign_name: string;
@@ -102,6 +103,8 @@ interface GroupAcc {
   freqs: number[];
   earliest_date: string;
   latest_date: string;
+  /** Source rows for period reach estimation (daily breakdown). */
+  sourceRows: NreRow[];
 }
 
 function average(values: number[]): number {
@@ -150,9 +153,11 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         freqs: [],
         earliest_date: "",
         latest_date: "",
+        sourceRows: [],
       };
     }
     const g = groups[key];
+    g.sourceRows.push(row);
 
     if (row.result_type && row.result_type.trim()) {
       g.result_type = row.result_type.trim();
@@ -161,7 +166,6 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       g.delivery_status = row.delivery_status.trim();
     }
     g.spend += parseCellNum(row.spend);
-    g.reach += parseCellNum(row.reach);
     g.impressions += parseCellNum(row.impressions);
     g.results += parseCellNum(row.results);
     g.link_clicks += parseCellNum(row.link_clicks || "0");
@@ -191,6 +195,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
   });
 
   return Object.values(groups).map((g): AggRow => {
+    const reach = aggregateReach(g.sourceRows);
     const ctr = average(g.ctrs);
     const frq = average(g.freqs);
     // CPC: average the platform-calculated daily CPC values (more reliable
@@ -207,7 +212,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       {
         result_type: g.result_type,
         results: g.results,
-        reach: g.reach,
+        reach,
         purchases: g.purchases,
         website_leads: g.website_leads,
         meta_leads: g.meta_leads,
@@ -234,8 +239,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       // row's own raw text exactly rather than substituting canonical text.
       actualCpr =
         resolution.resultLabel === "REACH"
-          ? g.reach > 0
-            ? (g.spend * 1000) / g.reach
+          ? reach > 0
+            ? (g.spend * 1000) / reach
             : 0
           : g.results > 0
             ? g.spend / g.results
@@ -298,7 +303,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
           break;
         case "REACH":
           actualResults = 0;
-          actualCpr = g.reach > 0 ? (g.spend * 1000) / g.reach : 0;
+          actualCpr = reach > 0 ? (g.spend * 1000) / reach : 0;
           break;
         default:
           actualCpr = g.results > 0 ? g.spend / g.results : 0;
@@ -312,7 +317,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       delivery_status: g.delivery_status,
       objectiveConfident,
       spend: g.spend,
-      reach: g.reach,
+      reach,
       impressions: g.impressions,
       results: actualResults,
       link_clicks: g.link_clicks,

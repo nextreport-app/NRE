@@ -24,6 +24,7 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
+import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
 import { adSetKey } from "./ad-sets";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { filterRowsByCampaigns } from "./campaigns";
@@ -521,16 +522,10 @@ export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, mon
  * MTD") so it reads clearly as a partial, still-in-progress month rather
  * than a completed one like the Period row's.
  *
- * Reach is a straight sum of every row's reach value for both rows, even
- * though for the MTD row that's summing per-day numbers and Meta re-counts
- * the same person on each day they saw an ad — a deliberate, known
- * approximation (product decision, not an oversight): every other reporting
- * tool agencies/clients use does the same, and a dash here reads as "no
- * data" rather than "this number is approximate," which was actively
- * confusing. Only Reach gets this treatment; CTR/CPC are neither summed nor
- * simply averaged (see impliedClicks below) — they're recalculated from
- * this row set's combined totals instead, since a plain average would give
- * a low-volume row's rate equal weight to a high-volume row's.
+ * Reach uses aggregateReachAcrossCampaigns — Sainsbury period estimation
+ * per ad set plus overlap correction across parallel ad sets, so daily
+ * breakdown exports align with Ads Manager campaign view. CTR/CPC are
+ * recalculated from combined totals (see impliedClicks below).
  */
 /** Per-row date for period labels — daily rows use Day/Date; monthly totals use Reporting starts/ends (date_start/date_end), never campaign Starts. */
 function rowRangeStart(row: MetricRow): string {
@@ -593,7 +588,6 @@ function computeTableRow(
   }
 
   let totalSpend = 0;
-  let totalReach = 0;
   let totalImpr = 0;
   let totalClicks = 0;
   let rawStart = "";
@@ -617,7 +611,6 @@ function computeTableRow(
     const spend = parseCellNum(row.spend);
     const impr = parseCellNum(row.impressions);
     totalSpend += spend;
-    totalReach += parseCellNum(row.reach);
     totalImpr += impr;
     totalClicks += impliedClicks(row, spend, impr);
   });
@@ -629,6 +622,7 @@ function computeTableRow(
   // bug). Both are instead recalculated from combined totals, the same way
   // Meta computes them in the first place: CTR (All) = total clicks / total
   // impressions × 100, CPC (All) = total spend / total clicks.
+  const totalReach = aggregateReachAcrossCampaigns(rows);
   const combinedCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
   const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
@@ -1613,14 +1607,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const campRows = campaignGroups[campaignName];
 
     let totalSpend = 0;
-    let totalReach = 0;
     let totalImpr = 0;
     let totalConversions = 0;
     const ctrs: number[] = [];
     const cpcs: number[] = [];
     campRows.forEach((row) => {
       totalSpend += parseCellNum(row.spend);
-      totalReach += parseCellNum(row.reach);
       totalImpr += parseCellNum(row.impressions);
       totalConversions += parseCellNum(row.results);
       const ctr = parseCellNum(row.ctr);
@@ -1628,6 +1620,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       if (ctr > 0) ctrs.push(ctr);
       if (cpc > 0) cpcs.push(cpc);
     });
+    const campRaw = campaignRawGroups[campaignName] ?? [];
+    const totalReach = aggregateReach(campRaw);
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
@@ -1646,16 +1640,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
 
-    let totalFreq = 0;
-    let freqRows = 0;
-    campRows.forEach((row) => {
-      const f = rowFrequency(row);
-      if (f > 0) {
-        totalFreq += f;
-        freqRows++;
-      }
-    });
-    const avgFreq = freqRows > 0 ? totalFreq / freqRows : 0;
+    const avgFreq = totalReach > 0 && totalImpr > 0 ? totalImpr / totalReach : 0;
 
     const statusIndicator = hasDeliveryStatusData
       ? campaignStatusIndicator(campRows.map((r) => r.delivery_status))
@@ -2133,12 +2118,16 @@ function comparisonObjectiveTotals(rows: MetricRow[], objective: ResultLabels): 
   let count = 0;
   let totalSpend = 0;
   let totalReach = 0;
+  let campaignReachAdded = false;
   rows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
       totalSpend += parseCellNum(row.spend);
-      totalReach += parseCellNum(row.reach);
+      if (!campaignReachAdded) {
+        totalReach = aggregateReach(rows);
+        campaignReachAdded = true;
+      }
     }
   });
   // Same uncounted-Reach special case as buildResultGroups/
@@ -2250,8 +2239,8 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
 
     const spendA = sumField(campRowsA, "spend");
     const spendB = sumField(campRowsB, "spend");
-    const reachA = sumField(campRowsA, "reach");
-    const reachB = sumField(campRowsB, "reach");
+    const reachA = aggregateReach(campRowsA);
+    const reachB = aggregateReach(campRowsB);
 
     const googleKey = googleCampaignTypeMap?.get(campaignName) ?? googleFileObjectiveKey ?? "search";
     const campaignObjective = isGoogle

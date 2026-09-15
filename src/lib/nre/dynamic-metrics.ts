@@ -17,6 +17,8 @@ import type { MetricFormat } from "./meta-dictionary";
 import { formatMetricValue, parseCellNum } from "./format";
 import { META_METRIC_DICTIONARY } from "./meta-dictionary";
 import { GOOGLE_METRIC_DICTIONARY } from "./google-dictionary";
+import { aggregateReach } from "./reach-aggregation";
+import type { MetricRow } from "./types";
 
 /** Any raw CSV row shape that still carries its original column values — both NreRow (Meta) and GoogleRow (Google) satisfy this. */
 export interface RawMetricRow {
@@ -218,7 +220,10 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
         continue;
       }
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      const totalCount = sumByKey(metric.perUnitOf);
+      const totalCount =
+        metric.perUnitOf === "reach"
+          ? aggregateReach(rows as MetricRow[])
+          : sumByKey(metric.perUnitOf);
       result[metric.key] = totalCount > 0 ? (totalSpend / totalCount) * (metric.perUnitScale ?? 1) : NaN;
       continue;
     }
