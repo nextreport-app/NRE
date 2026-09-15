@@ -214,6 +214,33 @@ describe("detectObjectiveFromCampaignRows — mixed-objective account exports", 
     );
   });
 
+  it("detects all three objectives from mixed-objectives-messaging.csv (Website_TOF, InstantForms, Messaging)", () => {
+    const csvPath = resolve(
+      process.cwd(),
+      "src/lib/nre/__tests__/fixtures/mixed-objectives-messaging.csv",
+    );
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const websiteRows = rows.filter((r) => r.campaign_name === "Lead Campaign_ Website_TOF");
+    expect(detectObjectiveFromCampaignRows(websiteRows)?.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolveCampaignObjective(websiteRows).resultLabel).toBe("WEBSITE LEADS");
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_ Website_TOF"))?.resultLabel).toBe(
+      "WEBSITE LEADS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_Messaging"))?.resultLabel).toBe(
+      "MESSAGING / CONVERSATIONS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("Lead Campaign_ InstantForms"))?.resultLabel).toBe(
+      "META FORM LEADS",
+    );
+
+    const websiteResolution = resolveCampaignObjectiveWithConfidence(websiteRows);
+    expect(websiteResolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(websiteResolution.confidence).toBe("high");
+    expect(websiteResolution.requiresConfirmation).toBe(false);
+  });
+
   it("ignores dominant Link clicks result_type when messaging column data exists (API-sync-shaped rows)", () => {
     const rows: MetricRow[] = [
       metricRow({

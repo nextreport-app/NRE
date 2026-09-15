@@ -60,6 +60,24 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("recognizes Website_TOF naming and prefers website leads over stray messaging", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "Lead Campaign_ Website_TOF",
+      adset_name: "Lead Campaign_ Website_TOF-broad",
+      actions: [
+        { action_type: "link_click", value: "215" },
+        { action_type: "landing_page_view", value: "130" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "5" },
+        { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+      ],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toEqual({
+      action_type: "offsite_conversion.fb_pixel_lead",
+      value: "5",
+    });
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal", () => {
     const row: MetaInsightRow = {
       actions: [

@@ -318,6 +318,10 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
 
   const messagingCampaign = isMessagingCampaignName(rows);
   const websiteLeadsCampaign = isWebsiteLeadsCampaignName(rows);
+  const metaFormLeadsCampaign = isMetaFormLeadsCampaignName(rows);
+
+  const headers = Object.keys(rows[0]._raw || {});
+  const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
 
   const signals = [
     { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", value: websiteLeadsTotal },
@@ -332,12 +336,22 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     if (websiteLeadsCampaign && websiteLeadsTotal > 0) {
       return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
     }
+    if (metaFormLeadsCampaign && metaLeadsTotal > 0) {
+      return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+    }
+    // Mixed exports often carry one stray messaging count on website campaigns
+    // (e.g. Lead Campaign_ Website_TOF) — name + traffic columns beat that noise.
+    if (
+      websiteLeadsCampaign &&
+      messagingTotal > 0 &&
+      websiteLeadsTotal === 0 &&
+      (hasHeader("website leads") || isIncidentalMessagingForWebsiteCampaign(rows, messagingTotal))
+    ) {
+      return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+    }
     signals.sort((a, b) => b.value - a.value);
     return { resultLabel: signals[0].resultLabel, costLabel: signals[0].costLabel };
   }
-
-  const headers = Object.keys(rows[0]._raw || {});
-  const hasHeader = (substr: string) => headers.some((h) => h.toLowerCase().includes(substr));
 
   if (hasHeader("messaging conversations started") && messagingCampaign) {
     return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
@@ -942,17 +956,44 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
   return total;
 }
 
+function campaignNameHaystack(rows: MetricRow[]): string {
+  return rows
+    .map((r) => `${r.campaign_name ?? ""} ${r.ad_set_name ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+}
+
 function isMessagingCampaignName(rows: MetricRow[]): boolean {
-  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
-  return /messag|messenger/.test(name);
+  return /messag|messenger/.test(campaignNameHaystack(rows));
+}
+
+/** Meta instant-form lead campaigns — InstantForms, Leads (form), etc. */
+function isMetaFormLeadsCampaignName(rows: MetricRow[]): boolean {
+  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(
+    campaignNameHaystack(rows),
+  );
 }
 
 /** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
 function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
-  const name = (rows[0]?.campaign_name || rows[0]?.ad_set_name || "").toLowerCase();
+  const haystack = campaignNameHaystack(rows);
   if (isMessagingCampaignName(rows)) return false;
-  if (/whatsapp|instant.?form|meta.?form|lead.?form/.test(name)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b/.test(name);
+  if (isMetaFormLeadsCampaignName(rows)) return false;
+  if (/whatsapp/.test(haystack)) return false;
+  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
+}
+
+/** Stray messaging counts on website campaigns (shared export columns) vs real traffic. */
+function isIncidentalMessagingForWebsiteCampaign(rows: MetricRow[], messagingTotal: number): boolean {
+  let linkClicks = 0;
+  let landingPageViews = 0;
+  for (const row of rows) {
+    linkClicks += parseCellNum(row.link_clicks);
+    landingPageViews += parseCellNum(row.landing_page_views);
+  }
+  const traffic = Math.max(linkClicks, landingPageViews);
+  if (traffic <= 0) return false;
+  return messagingTotal <= Math.max(1, Math.floor(traffic * 0.05));
 }
 
 /** Meta always populates link clicks / LPV / generic lead result_types on lead campaigns — never trust them over real messaging column data or a messaging campaign name. */
