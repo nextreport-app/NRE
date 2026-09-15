@@ -41,6 +41,66 @@ describe("fetchTikTokReportCsv", () => {
     vi.unstubAllGlobals();
   });
 
+  it("falls back to weekly chunks when the full range keeps failing with rate limit", async () => {
+    vi.useFakeTimers();
+    let fullRangeAttempts = 0;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { start_date?: string; end_date?: string };
+      const fullRange = body.start_date === "2026-09-01" && body.end_date === "2026-09-14";
+
+      if (fullRange) {
+        fullRangeAttempts += 1;
+        return {
+          ok: true,
+          json: async () => ({ code: 40100, message: "Too many requests" }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          code: 0,
+          message: "OK",
+          data: {
+            list: [
+              {
+                dimensions: { stat_time_day: `${body.start_date} 00:00:00` },
+                metrics: {
+                  campaign_name: "Chunked",
+                  adgroup_name: "Broad",
+                  spend: "10.00",
+                  reach: "1000",
+                  impressions: "2000",
+                  ctr: "0.01",
+                  cpc: "0.50",
+                  clicks: "20",
+                  frequency: "2",
+                  conversion: "0",
+                },
+              },
+            ],
+            page_info: { total_page: 1 },
+          },
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchTikTokReportCsv({
+      accessToken: "token",
+      advertiserId: "123",
+      timezone: "UTC",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-14",
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(fullRangeAttempts).toBeGreaterThan(0);
+    expect(result.rowCount).toBeGreaterThan(1);
+    vi.useRealTimers();
+  });
+
   it("produces Meta-shaped CSV with Complete payment when purchase metrics are present", async () => {
     vi.stubGlobal(
       "fetch",

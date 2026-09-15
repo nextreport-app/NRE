@@ -38,6 +38,54 @@ describe("fetchGoogleReportCsv", () => {
     vi.unstubAllGlobals();
   });
 
+  it("falls back to weekly chunks when the full range keeps failing with 503", async () => {
+    vi.useFakeTimers();
+    let fullRangeAttempts = 0;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string };
+      const query = body.query ?? "";
+      const fullRange = query.includes("BETWEEN '2026-09-01' AND '2026-09-14'");
+
+      if (fullRange) {
+        fullRangeAttempts += 1;
+        return {
+          ok: false,
+          status: 503,
+          text: async () => JSON.stringify({ error: { message: "Unavailable", status: "UNAVAILABLE" } }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              campaign: { name: "Chunked" },
+              adGroup: { name: "Broad" },
+              segments: { date: "2026-09-02" },
+              metrics: { costMicros: "1000000", clicks: "1", impressions: "100", ctr: 0.01, averageCpc: 1000000 },
+            },
+          ],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchGoogleReportCsv({
+      accessToken: "token",
+      customerId: "8983705082",
+      timezone: "UTC",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-14",
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(fullRangeAttempts).toBeGreaterThan(0);
+    expect(result.rowCount).toBeGreaterThan(1);
+    vi.useRealTimers();
+  });
+
   it("produces CSV that passes Google validation", async () => {
     const result = await fetchGoogleReportCsv({
       accessToken: "token",

@@ -1,5 +1,5 @@
-import { fetchTikTokIntegratedReport } from "@/lib/tiktok-api";
-import { computeLastNDaysIsoRange } from "./api-date-range";
+import { fetchTikTokIntegratedReport, isRetryableTikTokError, TikTokFetchError } from "@/lib/tiktok-api";
+import { computeLastNDaysIsoRange, splitIsoDateRangeIntoChunks } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
 import { resolveTikTokApiResultFields } from "./tiktok-result-type";
 
@@ -82,12 +82,32 @@ export async function fetchTikTokReportCsv(input: FetchTikTokReportCsvInput): Pr
       ? { sinceIso: input.sinceIso, untilIso: input.untilIso }
       : computeLastNDaysIsoRange(input.now ?? new Date(), input.timezone, input.days ?? 30);
 
-  const apiRows = await fetchTikTokIntegratedReport({
-    accessToken: input.accessToken,
-    advertiserId: input.advertiserId,
-    startDate: sinceIso,
-    endDate: untilIso,
-  });
+  let apiRows;
+  try {
+    apiRows = await fetchTikTokIntegratedReport({
+      accessToken: input.accessToken,
+      advertiserId: input.advertiserId,
+      startDate: sinceIso,
+      endDate: untilIso,
+    });
+  } catch (err) {
+    const retryable = err instanceof TikTokFetchError && isRetryableTikTokError(err.details);
+    if (!retryable) throw err;
+
+    const chunks = splitIsoDateRangeIntoChunks(sinceIso, untilIso, 7);
+    if (chunks.length <= 1) throw err;
+
+    apiRows = [];
+    for (const chunk of chunks) {
+      const chunkRows = await fetchTikTokIntegratedReport({
+        accessToken: input.accessToken,
+        advertiserId: input.advertiserId,
+        startDate: chunk.sinceIso,
+        endDate: chunk.untilIso,
+      });
+      apiRows.push(...chunkRows);
+    }
+  }
 
   const csvRows = apiRows.map(tiktokRowToCsvRow).filter((row) => row.some((cell) => cell !== ""));
   const csvText = rowsToCsv([...TIKTOK_AS_META_CSV_HEADERS], csvRows);
