@@ -149,6 +149,10 @@ model User {
   // lib/report-retention.ts for allowed values and plan caps.
   reportRetentionDays Int @default(30)
 
+  // Set when the user dismisses the dashboard onboarding checklist ("Skip for
+  // now"). Null means show the checklist until required steps are complete.
+  onboardingDismissedAt DateTime?
+
   accounts Account[]
   sessions Session[]
   clients  Client[]
