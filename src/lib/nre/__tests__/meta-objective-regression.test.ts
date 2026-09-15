@@ -41,13 +41,33 @@ describe("Meta objective regression fixtures", () => {
     },
   );
 
-  it("manifest covers at least one fixture per major lead/sales family", () => {
+  it("manifest covers every major Meta objective family", () => {
     const labels = new Set(
       META_OBJECTIVE_REGRESSION_FIXTURES.flatMap((f) => f.campaigns.map((c) => c.resultLabel)),
     );
-    expect(labels.has("WEBSITE LEADS")).toBe(true);
-    expect(labels.has("META FORM LEADS")).toBe(true);
-    expect(labels.has("MESSAGING / CONVERSATIONS")).toBe(true);
-    expect(labels.has("PURCHASES")).toBe(true);
+    const required = [
+      "WEBSITE LEADS",
+      "META FORM LEADS",
+      "MESSAGING / CONVERSATIONS",
+      "PURCHASES",
+      "INITIATE CHECKOUT",
+      "ADD TO CART",
+      "PHONE CALLS",
+      "WHATSAPP LEADS",
+      "INSTAGRAM DM LEADS",
+      "REGISTRATIONS",
+      "APP INSTALLS",
+      "REACH",
+      "LANDING PAGE VIEWS",
+      "LINK CLICKS",
+      "VIDEO VIEWS",
+      "IMPRESSIONS",
+      "AD RECALL LIFT",
+      "EVENT RESPONSES",
+      "STORE VISITS",
+    ];
+    for (const label of required) {
+      expect(labels.has(label), `missing regression coverage for ${label}`).toBe(true);
+    }
   });
 });

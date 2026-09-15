@@ -65,7 +65,7 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
   if (has("messaging conversations started")) return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
   if (has("whatsapp conversations started"))
     return { resultLabel: "WHATSAPP LEADS", costLabel: "COST PER CONVERSATION" };
-  if (has("phone calls") || has("calls")) return { resultLabel: "CALL LEADS", costLabel: "COST PER CALL" };
+  if (has("phone calls") || has("calls")) return { resultLabel: "PHONE CALLS", costLabel: "COST PER CALL" };
   if (has("purchases")) return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
   if (has("purchase roas")) return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
   if (has("adds to cart") || has("add to cart"))

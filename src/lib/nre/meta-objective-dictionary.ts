@@ -618,7 +618,8 @@ export function buildResultTypeMap(): Record<string, ObjectiveInfo> {
       costLabel: spec.costLabel,
       isReach: spec.isReach,
     };
-    for (const alias of spec.aliases) {
+    const aliases = spec.apiCsvLabel ? [...spec.aliases, spec.apiCsvLabel] : spec.aliases;
+    for (const alias of aliases) {
       out[alias.toLowerCase().trim()] = info;
     }
   }
@@ -632,7 +633,8 @@ export const DEFINITIVE_PROOF_ALIAS_TO_KEY: ReadonlyMap<string, string> = (() =>
   const map = new Map<string, string>();
   for (const spec of META_OBJECTIVE_SPECS) {
     if (!spec.definitiveProof) continue;
-    for (const alias of spec.aliases) {
+    const aliases = spec.apiCsvLabel ? [...spec.aliases, spec.apiCsvLabel] : spec.aliases;
+    for (const alias of aliases) {
       map.set(alias.toLowerCase().trim(), spec.key);
     }
   }
@@ -716,8 +718,7 @@ const MESSAGING_FUZZY_COST = "COST PER CONVERSATION";
 
 /**
  * Substring-matching catalog for human-readable result_type text. Checked before
- * the exact alias map so phrases like "Phone call" → CALL LEADS win over the
- * exact map's PHONE CALLS label for the same alias family.
+ * the exact alias map for substring matches on human-readable export text.
  */
 export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
   {
@@ -751,10 +752,10 @@ export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
     canonicalText: "Whatsapp lead",
   },
   {
-    resultLabel: "CALL LEADS",
+    resultLabel: "PHONE CALLS",
     costLabel: "COST PER CALL",
     pattern: /phone\s*calls?|call\s*leads?|\bcalls?\b/,
-    canonicalText: "Call lead",
+    canonicalText: "Phone call",
   },
   {
     resultLabel: "APPOINTMENT LEADS",
@@ -958,7 +959,7 @@ export function getMetaCanonicalResultTypeText(resultLabel: string): string {
 }
 
 /** Labels used only in fuzzy catalog (not exact spec resultLabel) — allowed drift. */
-export const META_FUZZY_ONLY_LABELS = new Set(["CALL LEADS", "CONVERSIONS"]);
+export const META_FUZZY_ONLY_LABELS = new Set(["CONVERSIONS"]);
 
 /** All spec + fuzzy result labels for consistency tests. */
 export function allMetaObjectiveResultLabels(): string[] {

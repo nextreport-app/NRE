@@ -70,9 +70,9 @@ describe("getResultLabels", () => {
     ["Instagram DM", "INSTAGRAM DM LEADS", "COST PER CONVERSATION"],
     ["Whatsapp conversation", "WHATSAPP LEADS", "COST PER CONVERSATION"],
     ["Whatsapp lead", "WHATSAPP LEADS", "COST PER CONVERSATION"],
-    ["Phone call", "CALL LEADS", "COST PER CALL"],
-    ["Call lead", "CALL LEADS", "COST PER CALL"],
-    ["Calls", "CALL LEADS", "COST PER CALL"],
+    ["Phone call", "PHONE CALLS", "COST PER CALL"],
+    ["Call lead", "PHONE CALLS", "COST PER CALL"],
+    ["Calls", "PHONE CALLS", "COST PER CALL"],
     ["Appointment", "APPOINTMENT LEADS", "COST PER BOOKING"],
     ["Booking", "APPOINTMENT LEADS", "COST PER BOOKING"],
     ["Complete registration", "REGISTRATIONS", "COST PER REGISTRATION"],
@@ -430,13 +430,13 @@ describe("detectObjectiveFromColumns", () => {
     });
   });
 
-  it("detects CALL LEADS from 'Calls' or 'Phone calls'", () => {
+  it("detects PHONE CALLS from 'Calls' or 'Phone calls'", () => {
     expect(detectObjectiveFromColumns(["Campaign name", "Calls"])).toEqual({
-      resultLabel: "CALL LEADS",
+      resultLabel: "PHONE CALLS",
       costLabel: "COST PER CALL",
     });
     expect(detectObjectiveFromColumns(["Campaign name", "Phone calls"])).toEqual({
-      resultLabel: "CALL LEADS",
+      resultLabel: "PHONE CALLS",
       costLabel: "COST PER CALL",
     });
   });

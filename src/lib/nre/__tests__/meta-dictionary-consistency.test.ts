@@ -75,8 +75,8 @@ describe("meta-objective-dictionary — internal consistency (CI guard)", () => 
   });
 
   it("documents fuzzy-only labels that intentionally differ from exact spec labels", () => {
-    expect(META_FUZZY_ONLY_LABELS.has("CALL LEADS")).toBe(true);
+    expect(META_FUZZY_ONLY_LABELS.has("CONVERSIONS")).toBe(true);
     expect(resolveObjectiveFromResultType("phone call")?.resultLabel).toBe("PHONE CALLS");
-    expect(getMetaResultLabels("Phone call").resultLabel).toBe("CALL LEADS");
+    expect(getMetaResultLabels("Phone call").resultLabel).toBe("PHONE CALLS");
   });
 });
