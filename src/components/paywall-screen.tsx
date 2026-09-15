@@ -1,11 +1,5 @@
 import Link from "next/link";
-import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
-import { SubscribeButton } from "./subscribe-button";
-
-const PLAN_OPTIONS = [
-  { id: "starter" as const, name: getPlanDisplayName("starter"), priceInr: "₹699", priceUsd: "$8" },
-  { id: "professional" as const, name: getPlanDisplayName("professional"), priceInr: "₹1,699", priceUsd: "$20" },
-];
+import { SubscribePlanCards } from "@/components/subscribe-plan-cards";
 
 /**
  * "Subscribe to Continue" screen shown in place of the client-creation or
@@ -29,24 +23,8 @@ export function PaywallScreen({
       <h1 className="text-xl font-semibold text-dash-ink">Subscribe to Continue</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">{message}</p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {PLAN_OPTIONS.map((plan) => (
-          <div key={plan.id} className="rounded-lg border border-dash-border p-4 text-left">
-            <p className="font-medium text-dash-ink">{plan.name}</p>
-            <p className="mt-1 text-lg font-semibold text-dash-ink">
-              {plan.priceInr}
-              <span className="text-[13px] font-normal text-dash-ink-secondary">/month</span>
-            </p>
-            <p className="text-[13px] text-dash-ink-secondary">or {plan.priceUsd}/month international</p>
-            <SubscribeButton
-              planId={plan.id}
-              loggedIn
-              userEmail={userEmail}
-              userName={userName}
-              className="mt-3 w-full rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover"
-            />
-          </div>
-        ))}
+      <div className="mt-6">
+        <SubscribePlanCards userEmail={userEmail} userName={userName} />
       </div>
 
       <Link href="/pricing" className="mt-6 inline-block text-sm text-dash-accent hover:underline">

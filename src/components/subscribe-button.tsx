@@ -87,7 +87,7 @@ export function SubscribeButton({
   loggedIn: boolean;
   userEmail?: string | null;
   userName?: string | null;
-  /** Which currency to charge in — defaults to INR for callers outside the currency-aware /pricing page (billing, upgrade prompts), which only ever show INR pricing. Razorpay bills USD orders directly using international card support, no FX conversion. */
+  /** Which currency to charge in — defaults to INR when omitted; paywall, billing, and upgrade flows pass the visitor's selected currency from SubscribeCheckoutControls. Razorpay bills USD directly via international cards, no FX conversion. */
   currency?: PricingCurrency;
   interval?: BillingInterval;
 }) {

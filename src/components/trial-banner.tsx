@@ -16,7 +16,7 @@ export function TrialBanner({ status }: { status: SubscriptionStatus }) {
     return (
       <div className="border-b border-amber-900 bg-amber-950/40 px-4 py-2 text-center text-sm text-amber-200">
         Your free trial ends in {status.trialDaysLeft} day{status.trialDaysLeft === 1 ? "" : "s"} —{" "}
-        <Link href="/billing" className="font-medium underline">
+        <Link href="/pricing" className="font-medium underline">
           Subscribe now
         </Link>
       </div>
@@ -26,7 +26,7 @@ export function TrialBanner({ status }: { status: SubscriptionStatus }) {
   return (
     <div className="border-b border-red-900 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
       Your free trial has ended —{" "}
-      <Link href="/billing" className="font-medium underline">
+      <Link href="/pricing" className="font-medium underline">
         Subscribe to continue
       </Link>
     </div>

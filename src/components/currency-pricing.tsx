@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BillingIntervalToggle } from "@/components/billing-interval-toggle";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
@@ -177,28 +178,7 @@ export function CurrencyPricing({
   return (
     <>
       <div className="mx-auto mb-8 flex max-w-xl justify-center">
-        <div className="flex items-center gap-1 rounded-full border border-navy-border bg-navy-panel p-1 text-sm">
-          <button
-            type="button"
-            onClick={() => setInterval("monthly")}
-            aria-pressed={interval === "monthly"}
-            className={`rounded-full px-4 py-1 transition-colors ${
-              interval === "monthly" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setInterval("annual")}
-            aria-pressed={interval === "annual"}
-            className={`rounded-full px-4 py-1 transition-colors ${
-              interval === "annual" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-secondary"
-            }`}
-          >
-            Annual (save 20%)
-          </button>
-        </div>
+        <BillingIntervalToggle interval={interval} onChange={setInterval} variant="pricing" />
       </div>
 
       <div className="mt-4 grid gap-8 sm:grid-cols-2">

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { getPlanDisplayName } from "@/lib/plan-labels";
-import { SubscribeButton } from "@/components/subscribe-button";
+import { SubscribePlanCards, SubscribeWithCheckoutOptions } from "@/components/subscribe-plan-cards";
 import { CancelSubscriptionButton } from "@/components/cancel-subscription-button";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -100,41 +100,28 @@ export default async function BillingPage() {
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          {(status.isTrialing || status.planId === "cancelled") && (
-            <>
-              <SubscribeButton
-                planId="starter"
-                loggedIn
-                userEmail={user.email}
-                userName={user.name}
-                label={`Subscribe to ${getPlanDisplayName("starter")}`}
-                className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
-              />
-              <SubscribeButton
-                planId="professional"
-                loggedIn
-                userEmail={user.email}
-                userName={user.name}
-                label="Subscribe to Professional"
-                className="rounded-md border border-dash-secondary px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-secondary/20"
-              />
-            </>
-          )}
+        {(status.isTrialing || status.planId === "cancelled") && (
+          <div className="mt-6">
+            <SubscribePlanCards userEmail={user.email} userName={user.name} />
+          </div>
+        )}
 
-          {status.planId === "starter" && (
-            <SubscribeButton
+        {status.planId === "starter" && (
+          <div className="mt-6">
+            <SubscribeWithCheckoutOptions
               planId="professional"
-              loggedIn
+              label="Upgrade to Professional"
               userEmail={user.email}
               userName={user.name}
-              label="Upgrade to Professional"
-              className="rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-dash-accent-hover"
             />
-          )}
+          </div>
+        )}
 
-          {!status.isAdminOverride && status.isSubscribed && <CancelSubscriptionButton />}
-        </div>
+        {!status.isAdminOverride && status.isSubscribed && (
+          <div className="mt-6">
+            <CancelSubscriptionButton />
+          </div>
+        )}
       </div>
 
       <Link href="/pricing" className="mt-4 inline-block text-[14px] text-dash-accent hover:underline">
