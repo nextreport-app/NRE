@@ -76,16 +76,18 @@ export async function createRazorpaySubscription(params: {
     }
   }
 
+  // ensureRazorpayCustomer persists razorpayCustomerId on User; notes carry
+  // customerId for webhook resolution (SDK create types omit customer_id).
   const subscription = await razorpayClient().subscriptions.create({
     plan_id: razorpayPlanId,
     total_count: subscriptionTotalCount(params.interval),
     customer_notify: 1,
-    customer_id: customerId,
     notes: {
       userId: params.userId,
       planId: params.planId,
       currency: params.currency,
       interval: params.interval,
+      customerId,
     },
   });
 

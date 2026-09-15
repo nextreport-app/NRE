@@ -136,6 +136,15 @@ async function resolveUserIdFromSubscription(sub: WebhookSubscriptionEntity): Pr
   const notesUserId = sub.notes?.userId;
   if (notesUserId) return notesUserId;
 
+  const notesCustomerId = sub.notes?.customerId;
+  if (notesCustomerId) {
+    const user = await prisma.user.findFirst({
+      where: { razorpayCustomerId: notesCustomerId },
+      select: { id: true },
+    });
+    if (user) return user.id;
+  }
+
   if (sub.customer_id) {
     const user = await prisma.user.findFirst({
       where: { razorpayCustomerId: sub.customer_id },
