@@ -2092,7 +2092,7 @@ export function ReportUploadWizard({
                 <ReportTypeCard
                   icon={<MetaAdsBrandIcon />}
                   heading="Meta Ads"
-                  description="Sync via Marketing API or upload a CSV export"
+                  description={wizardPlatformImportDescription("META")}
                   selected={selectedPlatformCard === "META"}
                   onSelect={() => choosePlatform("META")}
                   singleLineHeading
@@ -2100,7 +2100,7 @@ export function ReportUploadWizard({
                 <ReportTypeCard
                   icon={<GoogleAdsBrandIcon />}
                   heading="Google Ads"
-                  description="Sync via Ads API or upload a CSV export"
+                  description={wizardPlatformImportDescription("GOOGLE")}
                   selected={selectedPlatformCard === "GOOGLE"}
                   onSelect={() => choosePlatform("GOOGLE")}
                   singleLineHeading
@@ -2109,7 +2109,7 @@ export function ReportUploadWizard({
                   <ReportTypeCard
                     icon={<TikTokAdsBrandIcon />}
                     heading="TikTok Ads"
-                    description="Sync via Marketing API or upload a CSV export"
+                    description={wizardPlatformImportDescription("TIKTOK")}
                     selected={selectedPlatformCard === "TIKTOK"}
                     onSelect={() => choosePlatform("TIKTOK")}
                     singleLineHeading
@@ -2143,11 +2143,7 @@ export function ReportUploadWizard({
                     ? "Google Ads"
                     : "TikTok Ads"
               }
-              description={
-                selectedPlatformCard === "META" || selectedPlatformCard === "TIKTOK"
-                  ? "Sync via Marketing API or upload a CSV export"
-                  : "Sync via Ads API or upload a CSV export"
-              }
+              description={wizardPlatformImportDescription(selectedPlatformCard)}
               onChangePlatform={() => setPlatformPickerExpanded(true)}
             />
           ) : null}
@@ -4019,6 +4015,37 @@ function PreviousMonthSummaryOption({
   );
 }
 
+function wizardPlatformImportDescription(platform: "META" | "GOOGLE" | "TIKTOK"): string {
+  switch (platform) {
+    case "META":
+      return "Connect via API or upload a CSV from Ads Manager";
+    case "GOOGLE":
+      return "Connect via API or upload a CSV from Google Ads";
+    case "TIKTOK":
+      return "Connect via API or upload a CSV from TikTok Ads Manager";
+  }
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 6l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Step 1 — collapsed view for returning users who already picked a platform. */
 function WizardPlatformCompactBar({
   icon,
@@ -4032,23 +4059,27 @@ function WizardPlatformCompactBar({
   onChangePlatform: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-accent bg-dash-accent/10 px-4 py-3">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="inline-flex shrink-0" aria-hidden="true">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/70 px-4 py-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className="inline-flex shrink-0 rounded-md border border-dash-border bg-dash-card p-2"
+          aria-hidden="true"
+        >
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-white">{heading}</p>
-          <p className="text-[14px] text-dash-ink-secondary">{description}</p>
+          <p className="text-[15px] font-semibold leading-snug text-white">{heading}</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-secondary">{description}</p>
         </div>
       </div>
       <button
         type="button"
         onClick={onChangePlatform}
-        className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
         aria-expanded={false}
       >
-        Change platform ▼
+        Change platform
+        <ChevronDownIcon className="h-3.5 w-3.5 opacity-80" />
       </button>
     </div>
   );
