@@ -64,6 +64,7 @@ export const RESULT_TYPE_MAP: Record<string, ObjectiveInfo> = {
   // LEADS
   lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   website_lead: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
+  "website submission": { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   contact: { key: "website_leads", resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", isReach: false },
   "onsite_conversion.lead_grouped": { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
   "onsite_conversion.messaging_conversation_started_7d": {

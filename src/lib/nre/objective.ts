@@ -46,7 +46,7 @@ const OBJECTIVE_CATALOG: { resultLabel: string; costLabel: string; pattern: RegE
   {
     resultLabel: "WEBSITE LEADS",
     costLabel: "COST PER WEBSITE LEAD",
-    pattern: /website\s*leads?|web\s*leads?|leads?\s*\(\s*website\s*\)|\bcontact\b/,
+    pattern: /website\s*submission|website\s*leads?|web\s*leads?|leads?\s*\(\s*website\s*\)|\bcontact\b/,
     canonicalText: "Website lead",
   },
   {
@@ -314,7 +314,7 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     if (/leads?\s*\(\s*form|lead_grouped|onsite_conversion\.lead|meta leads?/.test(rt)) {
       metaLeadsTotal += parseCellNum(row.results);
     }
-    if (/website leads?|web leads?|offsite_conversion.*lead|fb_pixel_lead/.test(rt)) {
+    if (/website\s*submission|website leads?|web leads?|offsite_conversion.*lead|fb_pixel_lead/.test(rt)) {
       websiteLeadsTotal += parseCellNum(row.results);
     }
     messagingTotal += sumRawColumnByKeywords(row._raw, [
@@ -402,13 +402,24 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
   if (purchaseNamed) return purchaseNamed;
 
+  if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+
   const fromRows = detectObjectiveFromCampaignRows(rows);
   if (fromRows) return fromRows;
 
   const activeHeaders = activeHeadersForCampaign(rows);
   if (activeHeaders.length > 0) {
     const fromActive = detectObjectiveFromColumns(activeHeaders);
-    if (fromActive) return fromActive;
+    if (fromActive) {
+      const trafficOnlyLabels = new Set(["LANDING PAGE VIEWS", "LINK CLICKS"]);
+      if (trafficOnlyLabels.has(fromActive.resultLabel) && isWebsiteLeadsCampaignName(rows)) {
+        // Mid-funnel LPV/link clicks on a leads campaign — not the objective.
+      } else {
+        return fromActive;
+      }
+    }
   }
 
   const fromName = detectObjectiveFromCampaignNameAndHeaders(rows);
@@ -854,6 +865,19 @@ const INITIATE_CHECKOUT_RESULT_TYPE_TEXTS = new Set([
   "onsite_web_initiate_checkout",
 ]);
 
+/** Website/offsite lead result_type spellings — includes Meta's "website submission" export label. */
+const WEBSITE_LEADS_RESULT_TYPE_TEXTS = new Set([
+  "website submission",
+  "website lead",
+  "website leads",
+  "web lead",
+  "web leads",
+  "lead",
+  "contact",
+  "onsite_web_lead",
+  "offsite_conversion.fb_pixel_lead",
+]);
+
 function isPurchaseResultTypeText(resultType: string | null | undefined): boolean {
   const rt = (resultType || "").toLowerCase().trim();
   return rt !== "" && PURCHASE_RESULT_TYPE_TEXTS.has(rt);
@@ -862,6 +886,11 @@ function isPurchaseResultTypeText(resultType: string | null | undefined): boolea
 function isInitiateCheckoutResultTypeText(resultType: string | null | undefined): boolean {
   const rt = (resultType || "").toLowerCase().trim();
   return rt !== "" && INITIATE_CHECKOUT_RESULT_TYPE_TEXTS.has(rt);
+}
+
+function isWebsiteLeadsResultTypeText(resultType: string | null | undefined): boolean {
+  const rt = (resultType || "").toLowerCase().trim();
+  return rt !== "" && WEBSITE_LEADS_RESULT_TYPE_TEXTS.has(rt);
 }
 
 /**
@@ -1161,6 +1190,9 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
   }
   if (rows.some((r) => isInitiateCheckoutResultTypeText(r.result_type))) {
     return { resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", confidence: "high", requiresConfirmation: false };
+  }
+  if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD", confidence: "high", requiresConfirmation: false };
   }
 
   const resultTypeCounts = new Map<string, number>();
