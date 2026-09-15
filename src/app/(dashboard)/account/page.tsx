@@ -3,12 +3,17 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountSettingsForm } from "@/components/account-settings-form";
+import { ReportRetentionSettings } from "@/components/report-retention-settings";
+import {
+  allowedReportRetentionOptions,
+  normalizeReportRetentionDays,
+} from "@/lib/report-retention";
+import { getPlanDisplayName } from "@/lib/plan-labels";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
 import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import { getPlanDisplayName } from "@/lib/plan-labels";
 import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { Ga4Settings } from "@/components/ga4-settings";
 import { TikTokAdsSettings } from "@/components/tiktok-ads-settings";
@@ -64,6 +69,7 @@ export default async function AccountSettingsPage({
         automationWebhookUrl: true,
         planId: true,
         trialEndsAt: true,
+        reportRetentionDays: true,
       },
     }),
     searchParams,
@@ -77,6 +83,8 @@ export default async function AccountSettingsPage({
   const tiktokConfigured = isTikTokApiConfigured();
 
   const status = getSubscriptionStatus(user);
+  const retentionOptions = allowedReportRetentionOptions(status.planId);
+  const retentionDays = normalizeReportRetentionDays(user.reportRetentionDays, status.planId);
 
   return (
     <div className="mx-auto max-w-xl">
@@ -88,6 +96,15 @@ export default async function AccountSettingsPage({
       <section className="mb-10">
         <SectionHeading>Agency Details</SectionHeading>
         <AccountSettingsForm initialAgencyName={user.agencyName} />
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading>Report retention</SectionHeading>
+        <ReportRetentionSettings
+          initialRetentionDays={retentionDays}
+          options={retentionOptions}
+          planLabel={getPlanDisplayName(status.planId)}
+        />
       </section>
 
       <section className="mb-10">

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { purgeExpiredReports } from "@/lib/report-retention";
 import { retryStuckReportGenerations } from "@/lib/nre/retry-stuck-report-generations";
 
-/** Daily cron — removes reports older than 30 days and retries stuck async generates. Requires CRON_SECRET bearer token. */
+/** Daily cron — removes reports past each account's retention window and retries stuck async generates. Requires CRON_SECRET bearer token. */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {

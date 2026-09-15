@@ -144,6 +144,11 @@ model User {
   slackWebhookUrl      String? @db.Text
   automationWebhookUrl String? @db.Text
 
+  // How long generated PPTX/PDF reports are kept before the daily purge cron
+  // deletes them (blobs + DB row). Configurable in Account settings; see
+  // lib/report-retention.ts for allowed values and plan caps.
+  reportRetentionDays Int @default(30)
+
   accounts Account[]
   sessions Session[]
   clients  Client[]
