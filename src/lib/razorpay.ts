@@ -1,20 +1,18 @@
 /**
  * Razorpay integration — server-side only. RAZORPAY_KEY_SECRET must never
  * be imported by, or reachable from, any client component: it's read here
- * (and only here, plus the HMAC check in api/payments/verify) via
+ * (and only here, plus the HMAC checks in api/payments/verify) via
  * process.env, which Next.js does NOT inline into client bundles unless a
  * variable is explicitly prefixed NEXT_PUBLIC_. The publishable
  * NEXT_PUBLIC_RAZORPAY_KEY_ID is the only Razorpay credential the frontend
  * (components/subscribe-button.tsx) ever touches.
  *
- * This integrates Razorpay's one-time Orders API (create an order, collect
- * payment via Checkout, verify the signature) rather than its separate
- * Subscriptions API — that's what api/payments/create-order + verify
- * implement, matching the exact integration spec this was built from.
- * There is therefore no server-side recurring auto-charge: a "subscribed"
- * user's access doesn't automatically renew or re-charge after 30 days,
- * and User.razorpaySubscriptionId is unused today (reserved for if/when
- * real recurring billing via the Subscriptions API + webhooks is added).
+ * Billing modes (see docs/billing-subscriptions.md):
+ * - **Subscriptions API** (preferred when RAZORPAY_PLAN_* env vars are set):
+ *   recurring auto-charge via api/payments/create-subscription + subscription
+ *   webhooks; User.razorpayCustomerId / razorpaySubscriptionId populated.
+ * - **Orders API** (legacy fallback when plan IDs are unset): one-time
+ *   checkout via api/payments/create-order — no automatic renewal.
  */
 
 import Razorpay from "razorpay";
@@ -122,6 +120,48 @@ export function verifyPaymentSignature(
   keySecret: string,
 ): boolean {
   return timingSafeHexEqual(hmacSha256Hex(`${orderId}|${paymentId}`, keySecret), signature);
+}
+
+/** Subscription Checkout signature: HMAC-SHA256 of "{payment_id}|{subscription_id}". */
+export function verifySubscriptionPaymentSignature(
+  paymentId: string,
+  subscriptionId: string,
+  signature: string,
+  keySecret: string,
+): boolean {
+  return timingSafeHexEqual(hmacSha256Hex(`${paymentId}|${subscriptionId}`, keySecret), signature);
+}
+
+/** Razorpay Dashboard plan id for this product tier — null when not configured (Orders fallback). */
+export function getRazorpayPlanId(
+  planId: PlanId,
+  currency: PricingCurrency,
+  interval: BillingInterval,
+): string | null {
+  const envKey = `RAZORPAY_PLAN_${planId.toUpperCase()}_${currency}_${interval.toUpperCase()}`;
+  const value = process.env[envKey]?.trim();
+  return value || null;
+}
+
+export function isRazorpaySubscriptionsConfigured(): boolean {
+  return getRazorpayPlanId("starter", "INR", "monthly") !== null;
+}
+
+/** Reverse lookup from a Razorpay plan id back to our planId — used by webhooks. */
+export function planIdFromRazorpayPlan(razorpayPlanId: string): PlanId | null {
+  for (const planId of ["starter", "professional"] as const) {
+    for (const currency of ["INR", "USD"] as const) {
+      for (const interval of ["monthly", "annual"] as const) {
+        if (getRazorpayPlanId(planId, currency, interval) === razorpayPlanId) return planId;
+      }
+    }
+  }
+  return null;
+}
+
+/** Billing cycles Razorpay requires on subscription create — long enough to run until cancelled. */
+export function subscriptionTotalCount(interval: BillingInterval): number {
+  return interval === "annual" ? 10 : 120;
 }
 
 /**

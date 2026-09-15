@@ -35,11 +35,9 @@ model User {
   // route at all), without duplicating "now + 7 days" in two places that
   // could drift out of sync.
   //
-  // razorpayCustomerId/razorpaySubscriptionId are reserved for a future
-  // move to Razorpay's Subscriptions API (real recurring auto-billing).
-  // The current integration (api/payments/create-order + verify) only
-  // uses Razorpay's one-time Orders API — see lib/razorpay.ts's file
-  // header — so neither column is populated by that flow today.
+  // Populated when billing uses Razorpay Subscriptions (see
+  // docs/billing-subscriptions.md). Legacy one-time Orders subscribers
+  // may have planId set without razorpaySubscriptionId.
   planId                 String    @default("trial")
   trialEndsAt            DateTime  @default(dbgenerated("(now() + interval '7 days')"))
   subscribedAt           DateTime?

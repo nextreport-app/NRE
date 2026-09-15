@@ -35,7 +35,14 @@ export default async function BillingPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true, planId: true, trialEndsAt: true, subscribedAt: true },
+    select: {
+      name: true,
+      email: true,
+      planId: true,
+      trialEndsAt: true,
+      subscribedAt: true,
+      razorpaySubscriptionId: true,
+    },
   });
   if (!user) notFound();
 
@@ -75,7 +82,9 @@ export default async function BillingPage() {
 
         {status.isSubscribed && (
           <p className="mt-3 text-[15px] text-dash-ink-secondary">
-            Paid via one-time checkout — no automatic monthly charge. Access stays active until you cancel below.
+            {user.razorpaySubscriptionId
+              ? "Recurring subscription — renews automatically each billing period until you cancel below."
+              : "Paid via one-time checkout — no automatic renewal. Access stays active until you cancel below."}
             {user.subscribedAt ? (
               <>
                 {" "}

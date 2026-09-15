@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { planIdForAmount, razorpayClient, verifyWebhookSignature } from "@/lib/razorpay";
+import { planIdForAmount, planIdFromRazorpayPlan, razorpayClient, verifyWebhookSignature } from "@/lib/razorpay";
 import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
 import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
 
@@ -34,10 +34,19 @@ interface WebhookPaymentEntity {
   error_description?: string | null;
 }
 
+interface WebhookSubscriptionEntity {
+  id: string;
+  plan_id: string;
+  status: string;
+  customer_id?: string | null;
+  notes?: Record<string, string> | null;
+}
+
 interface RazorpayWebhookBody {
   event: string;
   payload?: {
     payment?: { entity?: WebhookPaymentEntity };
+    subscription?: { entity?: WebhookSubscriptionEntity };
   };
 }
 
@@ -123,6 +132,98 @@ async function handlePaymentCaptured(payment: WebhookPaymentEntity): Promise<voi
   }
 }
 
+async function resolveUserIdFromSubscription(sub: WebhookSubscriptionEntity): Promise<string | null> {
+  const notesUserId = sub.notes?.userId;
+  if (notesUserId) return notesUserId;
+
+  const notesCustomerId = sub.notes?.customerId;
+  if (notesCustomerId) {
+    const user = await prisma.user.findFirst({
+      where: { razorpayCustomerId: notesCustomerId },
+      select: { id: true },
+    });
+    if (user) return user.id;
+  }
+
+  if (sub.customer_id) {
+    const user = await prisma.user.findFirst({
+      where: { razorpayCustomerId: sub.customer_id },
+      select: { id: true },
+    });
+    if (user) return user.id;
+  }
+
+  if (sub.id) {
+    const user = await prisma.user.findFirst({
+      where: { razorpaySubscriptionId: sub.id },
+      select: { id: true },
+    });
+    if (user) return user.id;
+  }
+
+  return null;
+}
+
+async function syncSubscriptionAccess(
+  sub: WebhookSubscriptionEntity,
+  options: { sendWelcomeEmails: boolean },
+): Promise<void> {
+  const planId = planIdFromRazorpayPlan(sub.plan_id);
+  if (!planId) {
+    console.error(`[webhook:payments] subscription ${sub.id}: unknown plan_id ${sub.plan_id}`);
+    return;
+  }
+
+  const userId = await resolveUserIdFromSubscription(sub);
+  if (!userId) {
+    console.error(`[webhook:payments] subscription ${sub.id}: could not resolve user`);
+    return;
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        planId,
+        subscribedAt: new Date(),
+        razorpaySubscriptionId: sub.id,
+        ...(sub.customer_id ? { razorpayCustomerId: sub.customer_id } : {}),
+      },
+      select: { email: true, name: true },
+    });
+    console.log(`[webhook:payments] subscription ${sub.id}: synced user ${userId} to plan "${planId}"`);
+    if (options.sendWelcomeEmails) {
+      notifyBillingNewSubscription({
+        email: user.email,
+        name: user.name,
+        planId,
+        paymentId: sub.id,
+      });
+      sendSubscriptionConfirmedEmail({ to: user.email, name: user.name, planId });
+    }
+  } catch (err) {
+    console.error(`[webhook:payments] subscription ${sub.id}: failed to sync user ${userId}:`, err);
+  }
+}
+
+async function deactivateSubscription(sub: WebhookSubscriptionEntity): Promise<void> {
+  const userId = await resolveUserIdFromSubscription(sub);
+  if (!userId) {
+    console.error(`[webhook:payments] subscription ${sub.id}: could not resolve user for cancellation`);
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { planId: "cancelled", razorpaySubscriptionId: null },
+    });
+    console.log(`[webhook:payments] subscription ${sub.id}: cancelled user ${userId}`);
+  } catch (err) {
+    console.error(`[webhook:payments] subscription ${sub.id}: failed to cancel user ${userId}:`, err);
+  }
+}
+
 function handlePaymentFailed(payment: WebhookPaymentEntity): void {
   // Logged only — a failed payment never changes planId/subscribedAt.
   // A user who was already subscribed keeps their access; a trial/
@@ -162,6 +263,7 @@ export async function POST(req: Request) {
   }
 
   const payment = body.payload?.payment?.entity;
+  const subscription = body.payload?.subscription?.entity;
 
   switch (body.event) {
     case "payment.captured":
@@ -169,6 +271,18 @@ export async function POST(req: Request) {
       break;
     case "payment.failed":
       if (payment) handlePaymentFailed(payment);
+      break;
+    case "subscription.authenticated":
+    case "subscription.activated":
+      if (subscription) await syncSubscriptionAccess(subscription, { sendWelcomeEmails: true });
+      break;
+    case "subscription.charged":
+      if (subscription) await syncSubscriptionAccess(subscription, { sendWelcomeEmails: false });
+      break;
+    case "subscription.cancelled":
+    case "subscription.completed":
+    case "subscription.halted":
+      if (subscription) await deactivateSubscription(subscription);
       break;
     default:
       // Any other event type this endpoint doesn't act on yet (order.paid,

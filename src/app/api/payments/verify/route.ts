@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isPlanId, verifyPaymentSignature } from "@/lib/razorpay";
+import { isPlanId, verifyPaymentSignature, verifySubscriptionPaymentSignature } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
 import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
 import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
@@ -19,17 +19,29 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const { razorpay_payment_id, razorpay_order_id, razorpay_signature, planId } = body ?? {};
+  const {
+    razorpay_payment_id,
+    razorpay_order_id,
+    razorpay_subscription_id,
+    razorpay_signature,
+    planId,
+  } = body ?? {};
 
   if (
     typeof razorpay_payment_id !== "string" ||
     !razorpay_payment_id ||
-    typeof razorpay_order_id !== "string" ||
-    !razorpay_order_id ||
     typeof razorpay_signature !== "string" ||
     !razorpay_signature ||
     !isPlanId(planId)
   ) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  const isSubscriptionFlow =
+    typeof razorpay_subscription_id === "string" && razorpay_subscription_id.length > 0;
+  const isOrderFlow = typeof razorpay_order_id === "string" && razorpay_order_id.length > 0;
+
+  if (!isSubscriptionFlow && !isOrderFlow) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
@@ -40,7 +52,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Payments are not configured" }, { status: 500 });
   }
 
-  const valid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+  const valid = isSubscriptionFlow
+    ? verifySubscriptionPaymentSignature(
+        razorpay_payment_id,
+        razorpay_subscription_id,
+        razorpay_signature,
+        keySecret,
+      )
+    : verifyPaymentSignature(razorpay_order_id!, razorpay_payment_id, razorpay_signature, keySecret);
+
   if (!valid) {
     return NextResponse.json({ error: "Signature mismatch" }, { status: 400 });
   }
@@ -48,7 +68,11 @@ export async function POST(req: Request) {
   try {
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { planId, subscribedAt: new Date() },
+      data: {
+        planId,
+        subscribedAt: new Date(),
+        ...(isSubscriptionFlow ? { razorpaySubscriptionId: razorpay_subscription_id } : {}),
+      },
     });
 
     const email = session.user.email ?? "unknown";
