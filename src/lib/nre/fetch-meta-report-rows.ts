@@ -3,6 +3,7 @@ import {
   type MetaInsightAction,
   type MetaInsightRow,
 } from "@/lib/meta-api";
+import { metaApiActionToCsvResultType } from "./meta-objective-dictionary";
 import { computeLastNDaysIsoRange } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
 
@@ -112,32 +113,7 @@ const LEAD_COST_ACTION_TYPES = [
 
 /** Maps Meta action_type to the human-readable Result type strings our CSV pipeline expects. */
 function actionTypeToCsvResultType(actionType: string): string {
-  const map: Record<string, string> = {
-    link_click: "Link clicks",
-    purchase: "Purchase",
-    omni_purchase: "Purchase",
-    "offsite_conversion.fb_pixel_purchase": "Purchase",
-    lead: "Leads",
-    "offsite_conversion.fb_pixel_lead": "Website leads",
-    website_lead: "Website leads",
-    onsite_web_lead: "Website leads",
-    "onsite_conversion.lead_grouped": "Leads (form)",
-    "onsite_conversion.lead": "Leads (form)",
-    leadgen_grouped: "Leads (form)",
-    "onsite_conversion.messaging_conversation_started_7d": "Messaging conversations started",
-    messaging_conversation_started_7d: "Messaging conversations started",
-    "onsite_conversion.messaging_first_reply_7d": "Messaging conversations started",
-    new_messaging_connection: "Messaging conversations started",
-    whatsapp_message_send: "Messaging conversations started",
-    landing_page_view: "Landing page view",
-    mobile_app_install: "App installs",
-    omni_app_install: "App installs",
-    post_engagement: "Post engagements",
-    page_like: "Page likes",
-    video_view: "Video views",
-    thruplay: "Video views",
-  };
-  return map[actionType] ?? actionType.replace(/_/g, " ");
+  return metaApiActionToCsvResultType(actionType);
 }
 
 function actionValueMap(actions: MetaInsightAction[] | undefined): Map<string, number> {

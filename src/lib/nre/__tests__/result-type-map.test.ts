@@ -19,6 +19,16 @@ describe("resolveObjectiveFromResultType — exact machine result_type matching"
   // entry — only the machine-readable "onsite_conversion.lead_grouped"
   // variant did — so it fell through to the fuzzy fallback instead of
   // resolving to META FORM LEADS.
+  it("maps 'website submission' to WEBSITE LEADS (Meta website lead form exports)", () => {
+    expect(resolveObjectiveFromResultType("website submission")).toEqual({
+      key: "website_leads",
+      resultLabel: "WEBSITE LEADS",
+      costLabel: "COST PER WEBSITE LEAD",
+      isReach: false,
+    });
+    expect(resolveObjectiveFromResultType("Website submission")?.resultLabel).toBe("WEBSITE LEADS");
+  });
+
   it("maps 'Leads (form)' (both cases) to META FORM LEADS, same as onsite_conversion.lead_grouped", () => {
     expect(resolveObjectiveFromResultType("Leads (form)")).toEqual({
       key: "meta_form_leads",

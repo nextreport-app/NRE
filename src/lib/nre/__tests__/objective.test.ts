@@ -1179,6 +1179,19 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(tableGroups[0]).toMatchObject({ label: "PURCHASES", count: 3 });
   });
 
+  it("detects WEBSITE LEADS for website submission result_type despite LPV mid-funnel data (DC Credit Firm regression)", () => {
+    const csvPath = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/dc-credit-firm-leads.csv");
+    const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
+    const leadRows = rows.filter((r) => r.campaign_name === "DC Leads Campaign Main");
+    expect(resolveCampaignObjective(leadRows).resultLabel).toBe("WEBSITE LEADS");
+    const resolution = resolveCampaignObjectiveWithConfidence(leadRows);
+    expect(resolution.resultLabel).toBe("WEBSITE LEADS");
+    expect(resolution.confidence).toBe("high");
+    expect(buildCampaignObjectiveMap(leadRows).get(normalizeCampaignName("DC Leads Campaign Main"))?.resultLabel).toBe(
+      "WEBSITE LEADS",
+    );
+  });
+
   it("detects PURCHASES for a purchase-named campaign with add-to-cart data but zero purchases (DC CBO regression)", () => {
     const csvPath = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/dc-purchase-campaign-cbo.csv");
     const { rows } = parseCsvText(readFileSync(csvPath, "utf8"));
