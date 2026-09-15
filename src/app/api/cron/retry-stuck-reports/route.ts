@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { purgeExpiredReports } from "@/lib/report-retention";
 import { retryStuckReportGenerations } from "@/lib/nre/retry-stuck-report-generations";
 
-/** Daily cron — removes reports older than 30 days and retries stuck async generates. Requires CRON_SECRET bearer token. */
+/** Manual/on-demand stuck-report recovery — not scheduled on Hobby (daily limit). */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
@@ -14,6 +13,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [deleted, retriedStuck] = await Promise.all([purgeExpiredReports(), retryStuckReportGenerations()]);
-  return NextResponse.json({ ok: true, deleted, retriedStuck });
+  const retried = await retryStuckReportGenerations();
+  return NextResponse.json({ ok: true, retried });
 }

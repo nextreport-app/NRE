@@ -425,6 +425,9 @@ model Report {
   // reads, not just the small summary object the wizard/report list read.
   summaryJson  String? @db.Text
   errorMessage String? @db.Text
+  // Serialized wizard payload for async generate worker — cleared after
+  // status reaches COMPLETE or FAILED (see lib/nre/report-generation-job.ts).
+  jobPayload   String? @db.Text
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
