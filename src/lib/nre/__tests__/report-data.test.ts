@@ -141,27 +141,27 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(shoes.resultLabel).toBe("PURCHASES");
     expect(shoes.metrics).toEqual({
       spend: "₹1,050",
-      reach: "12,600",
+      reach: "6,634",
       impressions: "35,000",
       results: "21",
       ctr: "2.00%",
       cpr: "₹50.00",
       cpc: "₹3.50",
     });
-    expect(shoes.dateRangeLine).toBe("July 13 - July 19\nAd Frequency: 2.5x avg");
+    expect(shoes.dateRangeLine).toBe("July 13 - July 19\nAd Frequency: 5.3x avg ⚠️ High");
   });
 
   it("computes cost-per-1K-reach directly from reach for a reach campaign summary with 0 results", () => {
-    // spend 1400, reach 70000 → (1400 * 1000) / 70000 = 20.00
+    // spend 1400, deduplicated reach 37,692 → (1400 * 1000) / 37692 = 37.14
     const brand = data.campaignSlides.find((s) => s.campaignName === "Brand - Reach")!;
     expect(brand.resultLabel).toBe("REACH");
     expect(brand.metrics).toEqual({
       spend: "₹1,400",
-      reach: "70,000",
+      reach: "37,692",
       impressions: "105,000",
       results: "0",
       ctr: "0.80%",
-      cpr: "₹20.00",
+      cpr: "₹37.14",
       cpc: "—",
     });
   });
@@ -170,7 +170,7 @@ describe("buildReportData — multi-campaign integration", () => {
     const prospectingSlide = data.adSetSlides.find((s) => s.adSetName === "Prospecting")!;
     expect(prospectingSlide.metrics).toEqual({
       spend: "₹700",
-      reach: "7,000",
+      reach: "3,769",
       impressions: "21,000",
       results: "14",
       ctr: "1.50%",
@@ -252,18 +252,18 @@ describe("buildReportData — multi-campaign integration", () => {
     // has real spend, so it's shown with an N/A-free, genuinely computed
     // Cost Per 1K Reach — a per-objective-spend fix (this round): each
     // objective's cost divides ONLY that objective's own campaigns' spend,
-    // never the combined account-wide total, so Reach's ₹1,400 spend / 70,000
-    // reach = ₹20.00 per 1K, and Purchases' own ₹1,050 spend / 21 results =
-    // ₹50.00 (matching shoesChart.cpr above exactly) — not the old, wrongly
-    // inflated ₹2,450 (combined) / 21 = ₹116.67.
+    // never the combined account-wide total, so Reach's ₹1,400 spend /
+    // 37,692 deduplicated reach = ₹37.14 per 1K, and Purchases' own ₹1,050
+    // spend / 21 results = ₹50.00 (matching shoesChart.cpr above exactly) —
+    // not the old, wrongly inflated ₹2,450 (combined) / 21 = ₹116.67.
     expect(data.mtdRow).toMatchObject({
       hasData: true,
       // MTD labels use the calendar month (July 1 → yesterday), even when the
       // CSV's earliest row is later — totals still reflect rows present.
       monthLabel: "Jul 1 - 19",
       spend: "₹2,450",
-      // A straight sum of the daily rows' reach — see the dedicated reach test below.
-      reach: "82,600",
+      // Deduplicated period reach (Sainsbury estimator) — see dedicated reach test below.
+      reach: "44,325",
       impressions: "140,000",
       // Recalculated from combined totals (bug fix), not averaged across
       // the 3 campaigns' own per-row CTR/CPC: implied clicks per day are
@@ -279,10 +279,10 @@ describe("buildReportData — multi-campaign integration", () => {
       // exactly — see the "campaign summary metrics" tests above), never
       // the combined ₹2,450 account-wide total. Cost Per 1K Reach likewise
       // divides only the Reach campaign's own ₹1,400 spend by its own
-      // 70,000 reach. Ordered by each objective's own spend descending —
-      // Reach's ₹1,400 outspends Purchases' ₹1,050.
+      // 37,692 deduplicated reach. Ordered by each objective's own spend
+      // descending — Reach's ₹1,400 outspends Purchases' ₹1,050.
       resultColumns: [
-        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹20.00" },
+        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹37.14" },
         { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
       ],
     });
@@ -294,9 +294,9 @@ describe("buildReportData — multi-campaign integration", () => {
     });
   });
 
-  it("sums daily reach in the MTD row — a known approximation (Meta may recount a person across days), matching what other reporting tools show", () => {
-    // prospecting 1000/day + retargeting 800/day + awareness 10000/day, x7 days = 82,600.
-    expect(data.mtdRow.reach).toBe("82,600");
+  it("estimates deduplicated period reach in the MTD row (Meta reach is not additive across days)", () => {
+    // Sainsbury estimator per campaign: Brand ~37,692 + Shoes ~6,634 = 44,325.
+    expect(data.mtdRow.reach).toBe("44,325");
   });
 });
 
@@ -2906,9 +2906,9 @@ describe("buildReportData — Leads (form) + Website subscriptions campaigns", (
     });
   });
 
-  it("sums daily reach in the MTD row for this scenario too", () => {
-    // leadsForm 4000/day + websiteSubs 3000/day, x7 days = 49,000.
-    expect(data.mtdRow.reach).toBe("49,000");
+  it("estimates deduplicated period reach in the MTD row for this scenario too", () => {
+    // leadsForm + websiteSubs: Sainsbury estimate per campaign, not a raw daily sum.
+    expect(data.mtdRow.reach).toBe("26,385");
   });
 });
 
@@ -3700,10 +3700,9 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
       now: NOW,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    // 7 days x 50 = 350 spend; 7 days x 500 = 3500 reach (sum, matching the
-    // fixed-field pipeline's own spend/reach treatment).
+    // 7 days x 50 = 350 spend; 7 days x 500 reach/day → ~1,885 deduplicated.
     expect(slots[0]).toMatchObject({ key: "spend", label: "AD SPEND", value: "$350" });
-    expect(slots[1]).toMatchObject({ key: "reach", label: "REACH", value: "3,500" });
+    expect(slots[1]).toMatchObject({ key: "reach", label: "REACH", value: "1,885" });
     expect(slots[2]).toMatchObject({ key: "impressions", label: "IMPRESSIONS" });
     expect(slots[5]).toMatchObject({ key: "ctr", label: "CTR (ALL)", value: data.campaignSlides[0].metrics.ctr });
   });
@@ -4235,11 +4234,11 @@ describe("buildComparisonReportData", () => {
     const result = buildComparisonReportData(baseInput());
     const shoes = result.campaigns.find((c) => c.campaignName === "Shoes - Purchases")!;
 
-    // 6 days x 100/day = 600 in Period A, 6 days x 50/day = 300 in Period B.
+    // Spend sums daily; reach uses Sainsbury period estimate per campaign.
     expect(shoes.metricsA.spend.value).toBe(600);
     expect(shoes.metricsB.spend.value).toBe(300);
-    expect(shoes.metricsA.reach.value).toBe(6000);
-    expect(shoes.metricsB.reach.value).toBe(4800);
+    expect(shoes.metricsA.reach.value).toBe(3273);
+    expect(shoes.metricsB.reach.value).toBe(2618);
     expect(shoes.metricsA.results.value).toBe(12);
     expect(shoes.metricsB.results.value).toBe(6);
   });
@@ -4252,8 +4251,8 @@ describe("buildComparisonReportData", () => {
     expect(shoes.changes.spend.percent).toBeCloseTo(100);
     expect(shoes.changes.spend.direction).toBe("up");
 
-    // Reach: (6000-4800)/4800*100 = 25%.
-    expect(shoes.changes.reach.percent).toBeCloseTo(25);
+    // Reach: (3273-2618)/2618*100 ≈ 25%.
+    expect(shoes.changes.reach.percent).toBeCloseTo(25, 0);
     expect(shoes.changes.reach.direction).toBe("up");
 
     // Cost per result stayed flat at $50 in both periods -> 0%, "flat".

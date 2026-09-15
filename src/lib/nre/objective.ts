@@ -7,6 +7,7 @@
  */
 
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
+import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
@@ -451,6 +452,7 @@ interface ObjectiveBucket {
   count: number;
   totalSpend: number;
   totalReach: number;
+  rows?: MetricRow[];
 }
 
 /** Shared tail of getResultGroups/groupResultsByCampaignObjective: turns accumulated per-label buckets into sorted ResultGroup[], computing REACH's cost-per-1K special case (see getResultGroups' doc comment). */
@@ -557,11 +559,15 @@ export function getResultGroups(rows: MetricRow[]): ResultGroup[] {
       },
       columnObjective,
     );
-    if (!groups[label]) groups[label] = { costLabel: cost, count: 0, totalSpend: 0, totalReach: 0 };
+    if (!groups[label]) groups[label] = { costLabel: cost, count: 0, totalSpend: 0, totalReach: 0, rows: [] };
     groups[label].count += parseCellNum(row.results);
     groups[label].totalSpend += parseCellNum(row.spend);
-    groups[label].totalReach += parseCellNum(row.reach);
+    groups[label].rows.push(row);
   });
+
+  for (const g of Object.values(groups)) {
+    g.totalReach = aggregateReachAcrossCampaigns(g.rows ?? []);
+  }
 
   return buildResultGroups(groups);
 }
@@ -1259,12 +1265,16 @@ export function groupResultsByCampaignObjective(
     const label = objective.resultLabel;
     if (!groups[label]) groups[label] = { costLabel: objective.costLabel, count: 0, totalSpend: 0, totalReach: 0 };
     let campaignValueSum = 0;
+    let campaignReachAdded = false;
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label);
       groups[label].count += value;
       if (shouldAttributeSpendForObjective(row, label, value)) {
         groups[label].totalSpend += parseCellNum(row.spend);
-        groups[label].totalReach += parseCellNum(row.reach);
+        if (!campaignReachAdded) {
+          groups[label].totalReach += aggregateReach(campRows);
+          campaignReachAdded = true;
+        }
       }
       campaignValueSum += value;
       if (debugLabel) {
@@ -1345,12 +1355,16 @@ export function getGroupedResultDisplayForObjective(
   let count = 0;
   let totalSpend = 0;
   let totalReach = 0;
+  let campaignReachAdded = false;
   campRows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
       totalSpend += parseCellNum(row.spend);
-      totalReach += parseCellNum(row.reach);
+      if (!campaignReachAdded) {
+        totalReach = aggregateReach(campRows);
+        campaignReachAdded = true;
+      }
     }
   });
 
