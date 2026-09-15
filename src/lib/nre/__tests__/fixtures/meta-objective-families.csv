@@ -1,0 +1,46 @@
+"Campaign name","Ad set name",Day,"Result type",Results,"Amount spent (USD)","Cost per result",Reach,Impressions
+"Reach Campaign","Reach Broad",2026-09-12,Reach,50000,120.00,0.0024,50000,75000
+"Reach Campaign","Reach Broad",2026-09-11,Reach,48000,115.00,0.0024,48000,72000
+"Reach Campaign","Reach Broad",2026-09-10,Reach,52000,125.00,0.0024,52000,78000
+"LPV Campaign","LPV Broad",2026-09-12,"Landing page view",850,45.00,0.0529,12000,18000
+"LPV Campaign","LPV Broad",2026-09-11,"Landing page view",920,48.00,0.0522,13000,19500
+"LPV Campaign","LPV Broad",2026-09-10,"Landing page view",780,42.00,0.0538,11000,16500
+"Link Clicks Campaign","Clicks Broad",2026-09-12,"Link clicks",1200,60.00,0.05,8000,12000
+"Link Clicks Campaign","Clicks Broad",2026-09-11,"Link clicks",1100,55.00,0.05,7500,11250
+"Link Clicks Campaign","Clicks Broad",2026-09-10,"Link clicks",1300,65.00,0.05,8500,12750
+"IC Campaign","Checkout Broad",2026-09-12,"Initiate checkout",45,90.00,2.00,5000,8000
+"IC Campaign","Checkout Broad",2026-09-11,"Initiate checkout",38,76.00,2.00,4500,7200
+"IC Campaign","Checkout Broad",2026-09-10,"Initiate checkout",52,104.00,2.00,5500,8800
+"ATC Campaign","Cart Broad",2026-09-12,"Add to cart",120,48.00,0.40,6000,9000
+"ATC Campaign","Cart Broad",2026-09-11,"Add to cart",95,38.00,0.40,5500,8250
+"ATC Campaign","Cart Broad",2026-09-10,"Add to cart",110,44.00,0.40,5800,8700
+"Phone Calls Campaign","Calls Broad",2026-09-12,"Phone call",12,96.00,8.00,3000,4500
+"Phone Calls Campaign","Calls Broad",2026-09-11,"Phone call",10,80.00,8.00,2800,4200
+"Phone Calls Campaign","Calls Broad",2026-09-10,"Phone call",14,112.00,8.00,3200,4800
+"WhatsApp Campaign","WhatsApp Broad",2026-09-12,"WhatsApp conversations started",25,75.00,3.00,4000,6000
+"WhatsApp Campaign","WhatsApp Broad",2026-09-11,"WhatsApp conversations started",22,66.00,3.00,3800,5700
+"WhatsApp Campaign","WhatsApp Broad",2026-09-10,"WhatsApp conversations started",28,84.00,3.00,4200,6300
+"Instagram DM Campaign","IG DM Broad",2026-09-12,"Instagram conversation",18,54.00,3.00,3500,5250
+"Instagram DM Campaign","IG DM Broad",2026-09-11,"Instagram conversation",15,45.00,3.00,3200,4800
+"Instagram DM Campaign","IG DM Broad",2026-09-10,"Instagram conversation",20,60.00,3.00,3700,5550
+"Registration Campaign","Reg Broad",2026-09-12,"Complete registration",30,90.00,3.00,5000,7500
+"Registration Campaign","Reg Broad",2026-09-11,"Complete registration",28,84.00,3.00,4800,7200
+"Registration Campaign","Reg Broad",2026-09-10,"Complete registration",32,96.00,3.00,5200,7800
+"App Install Campaign","Install Broad",2026-09-12,"App installs",200,100.00,0.50,10000,15000
+"App Install Campaign","Install Broad",2026-09-11,"App installs",180,90.00,0.50,9500,14250
+"App Install Campaign","Install Broad",2026-09-10,"App installs",220,110.00,0.50,10500,15750
+"Video Views Campaign","Video Broad",2026-09-12,ThruPlay,5000,50.00,0.01,20000,30000
+"Video Views Campaign","Video Broad",2026-09-11,ThruPlay,4800,48.00,0.01,19000,28500
+"Video Views Campaign","Video Broad",2026-09-10,ThruPlay,5200,52.00,0.01,21000,31500
+"Impressions Campaign","Impr Broad",2026-09-12,Impressions,100000,80.00,0.0008,60000,100000
+"Impressions Campaign","Impr Broad",2026-09-11,Impressions,95000,76.00,0.0008,57000,95000
+"Impressions Campaign","Impr Broad",2026-09-10,Impressions,105000,84.00,0.0008,63000,105000
+"Ad Recall Campaign","Recall Broad",2026-09-12,"Ad recall lift",1500,75.00,0.05,25000,37500
+"Ad Recall Campaign","Recall Broad",2026-09-11,"Ad recall lift",1400,70.00,0.05,24000,36000
+"Ad Recall Campaign","Recall Broad",2026-09-10,"Ad recall lift",1600,80.00,0.05,26000,39000
+"Event Response Campaign","Event Broad",2026-09-12,"Event response",40,40.00,1.00,3000,4500
+"Event Response Campaign","Event Broad",2026-09-11,"Event response",35,35.00,1.00,2800,4200
+"Event Response Campaign","Event Broad",2026-09-10,"Event response",45,45.00,1.00,3200,4800
+"Store Visit Campaign","Store Broad",2026-09-12,"Store visit",60,120.00,2.00,8000,12000
+"Store Visit Campaign","Store Broad",2026-09-11,"Store visit",55,110.00,2.00,7500,11250
+"Store Visit Campaign","Store Broad",2026-09-10,"Store visit",65,130.00,2.00,8500,12750

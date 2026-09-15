@@ -1177,7 +1177,7 @@ export function ReportUploadWizard({
 
   /**
    * The Objective Confirmation dropdown's fixed option list is the common
-   * 16 objectives (see result-type-map.ts's OBJECTIVE_DROPDOWN_OPTIONS) —
+   * full OBJECTIVE_DROPDOWN_OPTIONS list (see result-type-map.ts) —
    * but the engine's own detection can legitimately return something rarer
    * that isn't one of them (e.g. "AD RECALL LIFT"). Rather than silently
    * mis-mapping that to the nearest dropdown entry (misrepresenting what

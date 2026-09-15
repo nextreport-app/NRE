@@ -12,7 +12,7 @@
  * just objective.key, despite that being the more compact option) so a
  * cached objective always round-trips losslessly even for the rare case
  * where the engine's own detection falls outside result-type-map.ts's
- * common ~16-entry OBJECTIVE_DROPDOWN_OPTIONS list (e.g. "AD RECALL LIFT") —
+ * OBJECTIVE_DROPDOWN_OPTIONS list (e.g. "AD RECALL LIFT") —
  * reconstructing resultLabel/costLabel from a bare key alone would be lossy
  * for exactly those cases.
  */
