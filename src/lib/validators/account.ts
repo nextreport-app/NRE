@@ -14,6 +14,7 @@ export const accountSettingsSchema = z.object({
     .max(150)
     .optional()
     .transform((v) => (v === undefined ? undefined : v || null)),
+  reportRetentionDays: z.coerce.number().int().positive().optional(),
   slackWebhookUrl: webhookUrlField,
   automationWebhookUrl: webhookUrlField,
 });

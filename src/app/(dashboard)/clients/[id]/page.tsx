@@ -12,7 +12,11 @@ import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
-import { purgeExpiredReports, REPORT_RETENTION_DAYS } from "@/lib/report-retention";
+import {
+  normalizeReportRetentionDays,
+  purgeExpiredReportsForUser,
+} from "@/lib/report-retention";
+import { getSubscriptionStatus } from "@/lib/subscription";
 import {
   isGoogleAdsApiConfigured,
   isGa4ApiConfigured,
@@ -54,10 +58,10 @@ export default async function ClientDetailPage({
   const session = await auth();
   if (!session?.user) notFound();
 
-  await purgeExpiredReports().catch(() => undefined);
-
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
+
+  await purgeExpiredReportsForUser(session.user.id).catch(() => undefined);
 
   const [reports, reportCount, owner] = await Promise.all([
     prisma.report.findMany({
@@ -78,11 +82,19 @@ export default async function ClientDetailPage({
         ga4Enabled: true,
         ga4ConnectedEmail: true,
         tiktokRefreshToken: true,
+        reportRetentionDays: true,
+        planId: true,
+        trialEndsAt: true,
+        email: true,
         tiktokAdsEnabled: true,
         tiktokConnectedName: true,
       },
     }),
   ]);
+
+  const reportRetentionDays = owner
+    ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
+    : 30;
 
   let previousMonthCampaigns: string[] = [];
   if (client.previousMonthDataUrl) {
@@ -211,7 +223,7 @@ export default async function ClientDetailPage({
         {reportCount > 0 ? (
           <Card>
             <CardHeading
-              hint={`Showing the latest ${RECENT_REPORTS_LIMIT}. Reports auto-delete after ${REPORT_RETENTION_DAYS} days.`}
+              hint={`Showing the latest ${RECENT_REPORTS_LIMIT}. Reports auto-delete after ${reportRetentionDays} days (change in Account settings).`}
             >
               Recent reports
             </CardHeading>
