@@ -1217,10 +1217,14 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
       return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
     }
     if (label === "WEBSITE LEADS") {
-      return parseCellNum(row.website_leads) || parseCellNum(row.results);
+      // Results = Meta's attributed result for the row's Result type (e.g.
+      // "Website applications submitted"). Website leads column can differ on
+      // the same day — prefer Results; fall back to website_leads when Results
+      // is blank (API-sync rows or sparse exports).
+      return parseCellNum(row.results) || parseCellNum(row.website_leads);
     }
     if (label === "META FORM LEADS") {
-      return parseCellNum(row.meta_leads) || parseCellNum(row.leads) || parseCellNum(row.results);
+      return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
     }
     return parseCellNum(row.results);
   }
