@@ -28,6 +28,19 @@ import {
 import { getRowDate, type NreRow } from "./columns";
 import { computeEffectiveYesterday, getCalendarYesterday, type DateRangeIso } from "./date-range";
 import { aggregateReach } from "./reach-aggregation";
+import type { MetricRow } from "./types";
+
+/** Meta's Results column for the row's Result type; Website leads can differ on the same day. */
+function sumWebsiteLeadsFromRows(rows: MetricRow[]): number {
+  return rows.reduce((sum, row) => sum + (parseCellNum(row.results) || parseCellNum(row.website_leads)), 0);
+}
+
+function sumMetaFormLeadsFromRows(rows: MetricRow[]): number {
+  return rows.reduce(
+    (sum, row) => sum + (parseCellNum(row.results) || parseCellNum(row.leads) || parseCellNum(row.meta_leads)),
+    0,
+  );
+}
 
 export interface AggRow {
   campaign_name: string;
@@ -263,10 +276,10 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
           actualResults = g.add_to_cart;
           break;
         case "WEBSITE LEADS":
-          actualResults = g.website_leads;
+          actualResults = sumWebsiteLeadsFromRows(g.sourceRows);
           break;
         case "META FORM LEADS":
-          actualResults = g.leads > 0 ? g.leads : g.meta_leads;
+          actualResults = sumMetaFormLeadsFromRows(g.sourceRows);
           break;
         case "APP INSTALLS":
           actualResults = resolution.source === "priority1" ? g.mobile_app_installs : g.results;
