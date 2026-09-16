@@ -176,15 +176,23 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   if (messagingCampaign) {
     const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
     if (messagingMatch) return messagingMatch;
+    // Meta CSV exports leave result blank on non-messaging days — do not fall
+    // through to link_click/LPV/incidental lead actions from the Insights API.
+    return null;
+  }
+
+  if (isMetaFormLeadsCampaignRow(row)) {
+    const metaMatch = firstActionWithValue(map, META_LEAD_ACTION_TYPES);
+    if (metaMatch) return metaMatch;
+    return null;
   }
 
   if (websiteLeadsCampaign) {
     const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
     if (websiteMatch) return websiteMatch;
-    const genericLead = map.get("lead");
-    if (genericLead != null && genericLead > 0) {
-      return { action_type: "lead", value: String(genericLead) };
-    }
+    // Same as Meta CSV: no website-lead result on days without a pixel/web
+    // lead action — ignore generic `lead`, meta-form, and traffic actions.
+    return null;
   }
 
   if (row.optimization_goal) {
@@ -255,15 +263,18 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
   const result = pickResultAction(row);
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
-  const metaLeads = sumActionValues(actionMap, META_LEAD_ACTION_TYPES);
-  const websiteLeads = sumActionValues(actionMap, WEBSITE_LEAD_ACTION_TYPES);
+  const metaLeadMatch = firstActionWithValue(actionMap, META_LEAD_ACTION_TYPES);
+  const websiteLeadMatch = firstActionWithValue(actionMap, WEBSITE_LEAD_ACTION_TYPES);
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
 
-  // Generic "lead" only when no dedicated lead columns were populated — avoids double-counting.
-  let metaLeadsOut = metaLeads;
-  let websiteLeadsOut = websiteLeads;
+  // One canonical count per day — Meta CSV never sums fb_pixel_lead + website_lead.
+  let metaLeadsOut = metaLeadMatch ? parseFloat(metaLeadMatch.value) : 0;
+  let websiteLeadsOut = websiteLeadMatch ? parseFloat(websiteLeadMatch.value) : 0;
+
   const genericLead = actionMap.get("lead") ?? 0;
-  if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0) {
+  const typedCampaign =
+    isMessagingCampaignRow(row) || isMetaFormLeadsCampaignRow(row) || isWebsiteLeadsCampaignRow(row);
+  if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
     if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
       websiteLeadsOut = genericLead;
     } else {
