@@ -1216,6 +1216,12 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
     if (label === "LANDING PAGE VIEWS") {
       return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
     }
+    if (label === "WEBSITE LEADS") {
+      return parseCellNum(row.website_leads) || parseCellNum(row.results);
+    }
+    if (label === "META FORM LEADS") {
+      return parseCellNum(row.meta_leads) || parseCellNum(row.leads) || parseCellNum(row.results);
+    }
     return parseCellNum(row.results);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);

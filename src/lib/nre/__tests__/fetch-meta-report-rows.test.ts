@@ -78,6 +78,28 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("returns null for website-leads campaigns when only generic lead exists (Meta CSV leaves day blank)", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "New Leads campaign_Kaizen Homes_Website",
+      actions: [{ action_type: "lead", value: "2" }],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toBeNull();
+  });
+
+  it("returns null for website-leads campaigns when only incidental meta-form lead exists", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "New Leads campaign_Kaizen Homes_Website",
+      actions: [
+        { action_type: "link_click", value: "24" },
+        { action_type: "landing_page_view", value: "11" },
+        { action_type: "onsite_conversion.lead_grouped", value: "1" },
+      ],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toBeNull();
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal", () => {
     const row: MetaInsightRow = {
       actions: [
@@ -195,6 +217,124 @@ describe("fetchMetaReportCsv", () => {
     expect(mapped.results).toBe("25");
     expect(mapped.result_type).toBe("Leads (form)");
     expect(mapped.link_clicks).toBe("150");
+  });
+
+  it("does not double-count multiple website-lead action types in Website leads column", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: "New Leads campaign_Kaizen Homes_Website",
+              adset_name: "New Leads campaign_Kaizen Homes_Website",
+              date_start: "2026-09-06",
+              spend: "15.05",
+              reach: "620",
+              impressions: "817",
+              optimization_goal: "OUTCOME_LEADS",
+              actions: [
+                { action_type: "offsite_conversion.fb_pixel_lead", value: "3" },
+                { action_type: "website_lead", value: "3" },
+                { action_type: "onsite_web_lead", value: "3" },
+              ],
+              cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "5.02" }],
+            },
+          ],
+        }),
+      })),
+    );
+
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-06",
+      untilIso: "2026-09-06",
+    });
+
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const wlIdx = headers.indexOf("Website leads");
+    const values = lines[1].split(",");
+    expect(values[wlIdx]).toBe("3");
+    vi.unstubAllGlobals();
+  });
+
+  it("matches manual CSV lead totals for Kaizen-style API rows (no stray leads on blank days)", async () => {
+    const kaizenLeadDays: Array<{ date: string; leads: number; spend: string }> = [
+      { date: "2026-09-15", leads: 2, spend: "11.51" },
+      { date: "2026-09-14", leads: 1, spend: "10.11" },
+      { date: "2026-09-13", leads: 1, spend: "11.30" },
+      { date: "2026-09-07", leads: 2, spend: "11.87" },
+      { date: "2026-09-06", leads: 3, spend: "15.05" },
+      { date: "2026-09-04", leads: 1, spend: "7.55" },
+    ];
+    const blankDays = ["2026-09-12", "2026-09-11", "2026-09-10", "2026-09-09", "2026-09-08"];
+
+    const data = [
+      ...kaizenLeadDays.map(({ date, leads, spend }) => ({
+        campaign_name: "New Leads campaign_Kaizen Homes_Website",
+        adset_name: "New Leads campaign_Kaizen Homes_Website",
+        date_start: date,
+        spend,
+        reach: "500",
+        impressions: "600",
+        optimization_goal: "OUTCOME_LEADS",
+        actions: [{ action_type: "offsite_conversion.fb_pixel_lead", value: String(leads) }],
+        cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "5.00" }],
+      })),
+      ...blankDays.map((date) => ({
+        campaign_name: "New Leads campaign_Kaizen Homes_Website",
+        adset_name: "New Leads campaign_Kaizen Homes_Website",
+        date_start: date,
+        spend: "8.00",
+        reach: "400",
+        impressions: "500",
+        optimization_goal: "OUTCOME_LEADS",
+        actions: [
+          { action_type: "link_click", value: "24" },
+          { action_type: "landing_page_view", value: "11" },
+          { action_type: "lead", value: "2" },
+          { action_type: "onsite_conversion.lead_grouped", value: "1" },
+        ],
+      })),
+    ];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ data }),
+      })),
+    );
+
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-15",
+    });
+
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows } = readRowsWithAutoMap(headers, dataRows);
+
+    const report = buildReportData({
+      accountName: "Kaizen",
+      currencySymbol: "$",
+      timezone: "UTC",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: new Date("2026-09-16T12:00:00Z"),
+    });
+
+    const wlCol = report.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(wlCol?.value).toBe("10");
+    vi.unstubAllGlobals();
   });
 
   it("buildReportData resolves META FORM LEADS from API-sync-shaped CSV rows", async () => {
