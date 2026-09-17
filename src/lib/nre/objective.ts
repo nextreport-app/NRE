@@ -6,6 +6,7 @@
  * priority chain — see the comment above OBJECTIVE_CATALOG.
  */
 
+import { hasRealRowDate } from "./columns";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
 import type { MetricRow } from "./types";
@@ -201,9 +202,9 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   if (activeHeaders.length > 0) {
     const fromActive = detectObjectiveFromColumns(activeHeaders);
     if (fromActive) {
-      const trafficOnlyLabels = new Set(["LANDING PAGE VIEWS", "LINK CLICKS"]);
-      if (trafficOnlyLabels.has(fromActive.resultLabel) && isWebsiteLeadsCampaignName(rows)) {
-        // Mid-funnel LPV/link clicks on a leads campaign — not the objective.
+      if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromActive.resultLabel) && isLeadFamilyCampaignName(rows)) {
+        const leadFromName = leadObjectiveFromCampaignNameOnly(rows);
+        if (leadFromName) return leadFromName;
       } else {
         return fromActive;
       }
@@ -227,7 +228,12 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
     "WHATSAPP LEADS",
     "LEADS",
   ]);
-  if (!leadFamilyLabels.has(fromHeaders.resultLabel)) return fromHeaders;
+  if (!leadFamilyLabels.has(fromHeaders.resultLabel)) {
+    if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromHeaders.resultLabel) && isLeadFamilyCampaignName(rows)) {
+      return leadObjectiveFromCampaignNameOnly(rows);
+    }
+    return fromHeaders;
+  }
   if (fromHeaders.resultLabel === "WEBSITE LEADS" && isWebsiteLeadsCampaignName(rows)) return fromHeaders;
   if (fromHeaders.resultLabel === "META FORM LEADS" && isMetaFormLeadsCampaignName(rows)) return fromHeaders;
   if (
@@ -838,6 +844,23 @@ function isMetaFormLeadsCampaignName(rows: MetricRow[]): boolean {
   );
 }
 
+const TRAFFIC_ONLY_OBJECTIVE_LABELS = new Set(["LANDING PAGE VIEWS", "LINK CLICKS", "REACH"]);
+
+function isLeadFamilyCampaignName(rows: MetricRow[]): boolean {
+  return isMetaFormLeadsCampaignName(rows) || isWebsiteLeadsCampaignName(rows);
+}
+
+/** Lead objective from campaign/ad-set naming alone — used when LPV/link-click columns exist in the export but the row has no lead yet. */
+function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | null {
+  if (isMetaFormLeadsCampaignName(rows)) {
+    return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  }
+  if (isWebsiteLeadsCampaignName(rows)) {
+    return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+  return null;
+}
+
 /** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
 function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
   const haystack = campaignNameHaystack(rows);
@@ -1239,10 +1262,58 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   return 0;
 }
 
+/**
+ * Daily Meta exports often have zero-lead days (blank result_type, link
+ * clicks only) inside an ad set that otherwise produces leads. Row-level
+ * resolveObjective labels those days LINK CLICKS / LPV, which used to drop
+ * their spend from CPL while Ad Spend still counted it — GZ Australia Aug
+ * CPL bug (1795/43 showed $37.67, not 41.74). Only dated rows in an ad
+ * set that also has lead days qualify; undated fixture rows (minority LPV/
+ * Reach signals in tests) stay excluded.
+ */
+function isDailyOffDayInLeadCampaign(row: MetricRow, campRows: MetricRow[], ownLabel: string): boolean {
+  if (!hasRealRowDate(row)) return false;
+  if (parseCellNum(row.results) > 0) return false;
+  if (parseCellNum(row.website_leads) > 0 || parseCellNum(row.meta_leads) > 0 || parseCellNum(row.leads) > 0) {
+    return false;
+  }
+  const rt = (row.result_type || "").trim();
+  if (rt && getResultLabels(rt).resultLabel !== "RESULTS") return false;
+
+  const adSet = row.ad_set_name || "";
+  const adSetHasLeadDays = campRows.some(
+    (r) => (r.ad_set_name || "") === adSet && parseCellNum(r.results) > 0 && hasRealRowDate(r),
+  );
+  if (!adSetHasLeadDays) return false;
+
+  if (ownLabel === "LINK CLICKS") return parseCellNum(row.link_clicks) > 0;
+  if (ownLabel === "LANDING PAGE VIEWS") {
+    const lpv = parseCellNum(row.landing_page_views);
+    return lpv > 0 && lpv <= 3;
+  }
+  if (ownLabel === "RESULTS") return !rt;
+  return false;
+}
+
 /** Spend/reach roll into an objective bucket only when the row contributes to that objective's results (or spent on that objective with zero results). Prevents another objective's spend from inflating cost-per on the chart slide and Combined Total table. */
-export function shouldAttributeSpendForObjective(row: MetricRow, label: string, attributedValue: number): boolean {
+export function shouldAttributeSpendForObjective(
+  row: MetricRow,
+  label: string,
+  attributedValue: number,
+  campaignObjectiveLabel?: string,
+  campRows?: MetricRow[],
+): boolean {
   if (attributedValue > 0) return true;
-  return resolveCampaignObjective([row]).resultLabel === label;
+  const ownLabel = resolveCampaignObjective([row]).resultLabel;
+  if (ownLabel === label) return true;
+  if (
+    campaignObjectiveLabel === label &&
+    campRows &&
+    isDailyOffDayInLeadCampaign(row, campRows, ownLabel)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -1283,7 +1354,7 @@ export function groupResultsByCampaignObjective(
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label);
       groups[label].count += value;
-      if (shouldAttributeSpendForObjective(row, label, value)) {
+      if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
         groups[label].totalSpend += parseCellNum(row.spend);
         if (!campaignReachAdded) {
           groups[label].totalReach += aggregateReach(campRows);
@@ -1373,7 +1444,7 @@ export function getGroupedResultDisplayForObjective(
   campRows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
+    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
         totalReach = aggregateReach(campRows);
