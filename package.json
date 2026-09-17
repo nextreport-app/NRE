@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:objective-regression": "vitest run src/lib/nre/__tests__/meta-objective-regression.test.ts src/lib/nre/__tests__/google-objective-regression.test.ts src/lib/nre/__tests__/tiktok-objective-regression.test.ts src/lib/nre/__tests__/meta-dictionary-consistency.test.ts",
+    "test:objective-regression": "vitest run src/lib/nre/__tests__/meta-objective-regression.test.ts src/lib/nre/__tests__/google-objective-regression.test.ts src/lib/nre/__tests__/tiktok-objective-regression.test.ts src/lib/nre/__tests__/meta-dictionary-consistency.test.ts src/lib/nre/__tests__/gz-australia-cpl.test.ts src/lib/nre/__tests__/gz-australia-api-objective.test.ts",
     "test:api-routes": "vitest run src/app/api/__tests__",
     "meta:tier-qualification": "node scripts/meta-tier-qualification.js",
     "postinstall": "prisma generate"
