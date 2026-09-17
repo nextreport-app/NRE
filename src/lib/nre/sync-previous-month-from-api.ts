@@ -6,12 +6,12 @@
 import { prisma } from "@/lib/prisma";
 import { deletePreviousMonthDataFile, readPreviousMonthDataFile, savePreviousMonthDataFile } from "@/lib/storage";
 import { computePreviousCalendarMonthIsoRange } from "./api-date-range";
-import { extractSpendingCampaignNames } from "./campaigns";
+import { extractCampaignSpend, extractSpendingCampaignNames } from "./campaigns";
 import type { NreRow } from "./columns";
 import { fetchGoogleReportCsv } from "./fetch-google-report-rows";
 import { fetchMetaReportCsv } from "./fetch-meta-report-rows";
 import { fetchTikTokReportCsv } from "./fetch-tiktok-report-rows";
-import { mergePreviousMonthSelection } from "./merge-previous-month-selection";
+import { mergePreviousMonthSelectionWithLowSpend } from "./merge-previous-month-selection";
 import { parseUploadedFile } from "./parse-file";
 import { parsePreviousMonthSelectedCampaigns } from "./previous-month-data";
 import { getPreviousMonthComparisonInfo } from "./previous-month-data-status";
@@ -67,9 +67,16 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
 
   const buffer = Buffer.from(result.csvText, "utf-8");
   const campaigns = input.extractCampaigns(buffer);
+  const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
+  const campaignSpend = extractCampaignSpend(rows);
   const previousSelected = parsePreviousMonthSelectedCampaigns(input.previousMonthSelectedCampaigns);
   const previousAllCampaigns = await loadPreviousMonthCampaignsFromUrl(input.previousMonthDataUrl);
-  const selectedCampaigns = mergePreviousMonthSelection(campaigns, previousSelected, previousAllCampaigns);
+  const { selectedCampaigns } = mergePreviousMonthSelectionWithLowSpend(
+    campaigns,
+    campaignSpend,
+    previousSelected,
+    previousAllCampaigns,
+  );
 
   const previousUrl = input.previousMonthDataUrl;
   const previousMonthDataUrl = await savePreviousMonthDataFile(

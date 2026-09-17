@@ -10,6 +10,7 @@ import { isGoogleAdsApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } 
 import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 import {
   loadPreviousMonthDataCampaigns,
+  loadPreviousMonthDataCampaignSpend,
   parsePreviousMonthSelectedCampaigns,
 } from "@/lib/nre/previous-month-data";
 
@@ -45,11 +46,14 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   const showTikTokOption = await shouldShowTikTokForCurrentVisitor();
 
   let previousMonthCampaigns: string[] = [];
+  let previousMonthCampaignSpend: Record<string, number> = {};
   if (client.previousMonthDataUrl) {
     try {
       previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl);
     } catch {
       previousMonthCampaigns = [];
+      previousMonthCampaignSpend = {};
     }
   }
   const previousMonthSelectedCampaigns = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
@@ -79,6 +83,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           initialPreviousMonthDataUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
           initialPreviousMonthCampaigns={previousMonthCampaigns}
           initialPreviousMonthSelectedCampaigns={previousMonthSelectedCampaigns}
+          initialPreviousMonthCampaignSpend={previousMonthCampaignSpend}
           clientTemplate={client.template}
           metaConnected={!!user.metaAccessToken}
           metaConnectedName={user.metaConnectedName}

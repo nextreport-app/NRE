@@ -51,7 +51,9 @@ export function WizardImportStep() {
     pmsError,
     pmsResult,
     pmsStatus,
+    currencySymbol,
     previousMonthCampaigns,
+    previousMonthCampaignSpend,
     previousMonthHasFile,
     previousMonthSelectedCampaigns,
     previousMonthUpdatedAt,
@@ -61,6 +63,7 @@ export function WizardImportStep() {
     setIncludePreviousMonthComparison,
     setPlatformPickerExpanded,
     setPreviousMonthCampaigns,
+    setPreviousMonthCampaignSpend,
     setPreviousMonthHasFile,
     setPreviousMonthSelectedCampaigns,
     setPreviousMonthUpdatedAt,
@@ -182,10 +185,12 @@ export function WizardImportStep() {
               <PreviousMonthDataWizardPanel
                 clientId={clientId}
                 clientTimezone={clientTimezone}
+                currencySymbol={currencySymbol}
                 initialHasFile={previousMonthHasFile}
                 initialUpdatedAt={previousMonthUpdatedAt}
                 initialCampaigns={previousMonthCampaigns}
                 initialSelectedCampaigns={previousMonthSelectedCampaigns}
+                initialCampaignSpend={previousMonthCampaignSpend}
                 includeInReport={includePreviousMonthComparison}
                 onIncludeInReportChange={setIncludePreviousMonthComparison}
                 onUploaded={(meta) => {
@@ -194,6 +199,7 @@ export function WizardImportStep() {
                   if (meta) {
                     setPreviousMonthCampaigns(meta.campaigns);
                     setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                    if (meta.campaignSpend) setPreviousMonthCampaignSpend(meta.campaignSpend);
                   }
                 }}
                 onCampaignsChange={(meta) => {

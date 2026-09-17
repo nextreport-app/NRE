@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isLowSpendCampaign, LOW_SPEND_CAMPAIGN_THRESHOLD } from "@/lib/nre/campaigns";
 
 /** Checkbox list for Previous Month Data campaign inclusion — shared by client page and wizard. */
 export function PreviousMonthCampaignSelector({
   clientId,
   campaigns,
   initialSelected,
+  campaignSpend = {},
+  currencySymbol = "$",
   onSelectionChange,
   compact = false,
 }: {
   clientId: string;
   campaigns: string[];
   initialSelected: string[] | null;
+  campaignSpend?: Record<string, number>;
+  currencySymbol?: string;
   onSelectionChange?: (selected: string[]) => void;
   compact?: boolean;
 }) {
@@ -23,6 +28,11 @@ export function PreviousMonthCampaignSelector({
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const lowSpendCampaigns = useMemo(
+    () => campaigns.filter((name) => isLowSpendCampaign(name, campaignSpend)),
+    [campaigns, campaignSpend],
+  );
 
   const filteredCampaigns = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -88,6 +98,18 @@ export function PreviousMonthCampaignSelector({
 
   return (
     <div className={compact ? "space-y-2" : "mt-4 border-t border-dash-border pt-4"}>
+      {lowSpendCampaigns.length > 0 ? (
+        <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[13px] text-dash-ink">
+          <strong>
+            {lowSpendCampaigns.length} campaign{lowSpendCampaigns.length === 1 ? "" : "s"}
+          </strong>{" "}
+          had less than {currencySymbol}
+          {LOW_SPEND_CAMPAIGN_THRESHOLD} spend in this previous-month file and{" "}
+          {lowSpendCampaigns.length === 1 ? "was" : "were"} excluded by default. Check any you still want in the
+          previous-month row.
+        </div>
+      ) : null}
+
       <div className="mb-2 flex items-center justify-between">
         <label className="flex items-center gap-2 text-[13px] font-medium text-dash-ink">
           <input
@@ -121,20 +143,34 @@ export function PreviousMonthCampaignSelector({
         {filteredCampaigns.length === 0 ? (
           <li className="px-3 py-3 text-[13px] text-dash-ink-secondary">No campaigns match your search.</li>
         ) : null}
-        {filteredCampaigns.map((name) => (
-          <li key={name} className="flex items-center gap-3 px-3 py-2">
-            <input
-              type="checkbox"
-              id={`prev-month-campaign-${name}`}
-              checked={selected.has(name)}
-              onChange={() => toggleCampaign(name)}
-              className="h-4 w-4 accent-accent"
-            />
-            <label htmlFor={`prev-month-campaign-${name}`} className="cursor-pointer truncate text-[13px] text-dash-ink">
-              {name}
-            </label>
-          </li>
-        ))}
+        {filteredCampaigns.map((name) => {
+          const spend = campaignSpend[name] ?? 0;
+          const lowSpend = isLowSpendCampaign(name, campaignSpend);
+          return (
+            <li key={name} className="flex items-center gap-3 px-3 py-2">
+              <input
+                type="checkbox"
+                id={`prev-month-campaign-${name}`}
+                checked={selected.has(name)}
+                onChange={() => toggleCampaign(name)}
+                className="h-4 w-4 accent-accent"
+              />
+              <label
+                htmlFor={`prev-month-campaign-${name}`}
+                className="min-w-0 flex-1 cursor-pointer truncate text-[13px] text-dash-ink"
+                title={name}
+              >
+                {name}
+              </label>
+              {lowSpend ? (
+                <span className="shrink-0 text-[12px] font-semibold tabular-nums text-amber-400">
+                  Prev. month · {currencySymbol}
+                  {Math.round(spend).toLocaleString("en-US")}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
       {selectionError ? <p className="mt-2 text-[13px] text-red-400">{selectionError}</p> : null}
     </div>
