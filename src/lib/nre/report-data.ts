@@ -504,6 +504,17 @@ export function freqLine(freq: number): string {
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
+/** MTD table label end — calendar yesterday in the account TZ, but never past the latest day in the row set (incomplete "today" must not appear when data ends earlier). */
+function mtdLabelEndIso(mtdCalendarRange: DateRangeIso, rawEnd: string): string {
+  if (!rawEnd) return mtdCalendarRange.endIso;
+  const endFromRows = parseDate(rawEnd);
+  const endFromCal = parseDate(mtdCalendarRange.endIso);
+  if (!endFromRows || !endFromCal) return mtdCalendarRange.endIso;
+  const rowTs = Date.UTC(endFromRows.year, endFromRows.month - 1, endFromRows.day);
+  const calTs = Date.UTC(endFromCal.year, endFromCal.month - 1, endFromCal.day);
+  return rowTs <= calTs ? toIsoDate(endFromRows) : mtdCalendarRange.endIso;
+}
+
 /** Fix 3 (round 4)/Fix 2 (round 5) — "Jul 1 - 31" for a same-month, multi-day range; "Sep 1 - 2" for early MTD. Falls back to getDateRangeAbbrLabel when the range crosses a calendar month boundary. Exported for google-report-data.ts's own Combined Total table row. */
 export function compactSameMonthRangeLabel(rawStart: string, rawEnd: string, monthName: string | null): string {
   const s = parseDate(rawStart);
@@ -686,13 +697,16 @@ function computeTableRow(
       : "Previous Month";
   let fullMonthLabel = rawMonthLabel;
 
-  // MTD row labels use the intended calendar month (day 1 → yesterday), not
-  // only the days present in the CSV — so "August 1 - 31" stays correct even
-  // when a Last-30-Days export starts on the 2nd. Totals still reflect actual rows.
+  // MTD row labels use day 1 of the calendar month through yesterday (account
+  // TZ), but never label a day beyond the latest row actually in this MTD set —
+  // e.g. Australia/Sydney can already be "Sep 18" while UTC is still Sep 17,
+  // making calendar-yesterday Sep 17 even though API/CSV data only runs through
+  // Sep 16. Totals always reflect actual rows; the label must match.
   if (isMtdRow && mtdCalendarRange) {
     const calMonthName = getMonthName(mtdCalendarRange.startIso);
-    monthLabel = compactSameMonthRangeLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso, calMonthName);
-    fullMonthLabel = getDateRangeAbbrLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
+    const labelEndIso = mtdLabelEndIso(mtdCalendarRange, rawEnd);
+    monthLabel = compactSameMonthRangeLabel(mtdCalendarRange.startIso, labelEndIso, calMonthName);
+    fullMonthLabel = getDateRangeAbbrLabel(mtdCalendarRange.startIso, labelEndIso);
   }
 
   return {
