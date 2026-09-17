@@ -25,6 +25,18 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
     return d >= "2026-08-01" && d <= "2026-08-31";
   });
 
+  it("MTD label ends on latest data day (Sep 16), not timezone-ahead calendar yesterday (Sep 17)", () => {
+    const data = buildReportData({
+      accountName: "GZ Australia",
+      currencySymbol: "A$",
+      timezone: "Australia/Sydney",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: new Date("2026-09-17T14:29:00Z"),
+    });
+    expect(data.mtdRow.monthLabel).toBe("Sep 1 - 16");
+  });
+
   it("Sep 1–16: CPL equals total spend / total leads (956.63 / 17)", () => {
     const data = buildReportData({
       accountName: "GZ Australia",
