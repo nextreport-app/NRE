@@ -2122,7 +2122,7 @@ function comparisonObjectiveTotals(rows: MetricRow[], objective: ResultLabels): 
   rows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value)) {
+    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, rows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
         totalReach = aggregateReach(rows);
