@@ -118,8 +118,8 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(data.fileDateRange).toBe("07/13/2026 to 07/19/2026");
   });
 
-  it("formats the report date in the client's timezone", () => {
-    expect(data.cover.reportDate).toBe("07-20-2026");
+  it("formats the report date as the latest complete data day in the client's timezone", () => {
+    expect(data.cover.reportDate).toBe("07-19-2026");
   });
 
   it("builds one campaign summary slide per campaign, in default-sorted order", () => {
