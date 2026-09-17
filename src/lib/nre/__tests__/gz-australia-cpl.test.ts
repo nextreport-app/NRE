@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getRowDate } from "../columns";
 import { parseCsvText } from "../parse-csv";
 import { buildReportData } from "../report-data";
@@ -14,7 +15,7 @@ beforeAll(() => {
   process.env.TZ = "UTC";
 });
 
-const CSV_PATH = "/home/ubuntu/.cursor/projects/workspace/uploads/DC-weekly-GZ-Australia_2c48.csv";
+const CSV_PATH = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/gz-australia-lead-forms.csv");
 
 describe("GZ Australia CSV — CPL matches spend / leads", () => {
   const { rows } = parseCsvText(readFileSync(CSV_PATH, "utf8"));
