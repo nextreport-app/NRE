@@ -73,6 +73,7 @@ import { findMetaMetricByKey } from "./meta-dictionary";
 import { detectAdNameColumn } from "./ad-level";
 import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
 import {
+  capRangeToData,
   computeCreativeRangeIso,
   computeEffectiveYesterday,
   computeMtdRangeIso,
@@ -80,6 +81,7 @@ import {
   computeWeeklyRangeOptions,
   computeYtdRangeIso,
   filterNreRowsByDateRange,
+  getCalendarYesterday,
   toIsoDate,
 } from "./date-range";
 import { buildBudgetSummary } from "./budget-pacing";
@@ -504,7 +506,13 @@ export function freqLine(freq: number): string {
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
-/** MTD table label end — calendar yesterday in the account TZ, but never past the latest day in the row set (incomplete "today" must not appear when data ends earlier). */
+function formatCoverReportDate(rows: NreRow[], now: Date, timezone: string): string {
+  const effective = computeEffectiveYesterday(rows, now, timezone);
+  const labelDay = effective ?? getCalendarYesterday(now, timezone);
+  return `${String(labelDay.month).padStart(2, "0")}-${String(labelDay.day).padStart(2, "0")}-${labelDay.year}`;
+}
+
+/** MTD table label end — calendar yesterday capped to the latest day in this row set. */
 function mtdLabelEndIso(mtdCalendarRange: DateRangeIso, rawEnd: string): string {
   if (!rawEnd) return mtdCalendarRange.endIso;
   const endFromRows = parseDate(rawEnd);
@@ -934,7 +942,12 @@ function buildLast30DaysChartSlide(params: {
   mtdRow: TableRowData;
   slideCampaignNames?: string[];
 }): ChartSlideData | null {
-  const chartRange = computeCreativeRangeIso(params.filteredMtdDailyRows, params.now, 30, params.timezone);
+  const chartRange = capRangeToData(
+    computeCreativeRangeIso(params.filteredMtdDailyRows, params.now, 30, params.timezone),
+    params.filteredMtdDailyRows,
+    params.now,
+    params.timezone,
+  );
   const chartRawRows = filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso);
   const chartRows: AggRow[] = aggregateRows(chartRawRows);
   const chartGroups: Record<string, AggRow[]> = {};
@@ -1244,10 +1257,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // Global reporting date range — the intended weekly or MTD window, not the
   // min/max dates of whichever campaigns happened to deliver during it.
   let globalWeekDateRange = "";
-  if (isCalendarSpanReport) {
-    globalWeekDateRange = getDateRangeShortLabel(mtdCalendarRange.startIso, mtdCalendarRange.endIso);
+  let displayWeeklyRange: DateRangeIso | undefined;
+  const displayCalendarRange = isCalendarSpanReport
+    ? capRangeToData(mtdCalendarRange, filteredMtdDailyRows, now, timezone)
+    : undefined;
+  if (isCalendarSpanReport && displayCalendarRange) {
+    globalWeekDateRange = getDateRangeShortLabel(displayCalendarRange.startIso, displayCalendarRange.endIso);
   } else if (resolvedWeeklyRange) {
-    globalWeekDateRange = getDateRangeShortLabel(resolvedWeeklyRange.startIso, resolvedWeeklyRange.endIso);
+    displayWeeklyRange = capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone);
+    globalWeekDateRange = getDateRangeShortLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso);
   } else {
     let globalWeekStart = "";
     let globalWeekEnd = "";
@@ -1258,27 +1276,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     globalWeekDateRange = globalWeekStart && globalWeekEnd ? getDateRangeShortLabel(globalWeekStart, globalWeekEnd) : "";
   }
 
-  const fileStartDate = globalWeekDateRange ? formatDateUS(resolvedWeeklyRange?.startIso ?? mtdCalendarRange.startIso) : "unknown";
-  const fileEndDate = globalWeekDateRange ? formatDateUS(resolvedWeeklyRange?.endIso ?? mtdCalendarRange.endIso) : "unknown";
+  const fileRangeStart =
+    displayWeeklyRange?.startIso ?? displayCalendarRange?.startIso ?? resolvedWeeklyRange?.startIso ?? mtdCalendarRange.startIso;
+  const fileRangeEnd =
+    displayWeeklyRange?.endIso ?? displayCalendarRange?.endIso ?? resolvedWeeklyRange?.endIso ?? mtdCalendarRange.endIso;
+  const fileStartDate = globalWeekDateRange ? formatDateUS(fileRangeStart) : "unknown";
+  const fileEndDate = globalWeekDateRange ? formatDateUS(fileRangeEnd) : "unknown";
   const fileDateRange =
     fileStartDate !== "unknown" && fileEndDate !== "unknown"
       ? fileStartDate + " to " + fileEndDate
       : "Date range unavailable";
 
-  const reportDate = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-  })
-    .formatToParts(now)
-    .reduce((acc, part) => {
-      if (part.type === "month") acc.month = part.value;
-      if (part.type === "day") acc.day = part.value;
-      if (part.type === "year") acc.year = part.value;
-      return acc;
-    }, { month: "", day: "", year: "" } as { month: string; day: string; year: string });
-  const reportDateStr = `${reportDate.month}-${reportDate.day}-${reportDate.year}`;
+  const reportDateStr = formatCoverReportDate(filteredMtdDailyRows, now, timezone);
 
   const mtdSpendTotal = mtdRows.reduce((sum, row) => sum + (row.spend || 0), 0);
   const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
@@ -1948,20 +1957,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
     resultColumns: periodRow.resultColumns.map((c) => ({ label: c.label, costLabel: c.costLabel })),
   };
 
-  // Same "MM-DD-YYYY, in the client's own timezone" computation buildReportData
-  // itself uses for CoverData.reportDate.
-  const reportDateParts = new Intl.DateTimeFormat("en-US", { timeZone: timezone, month: "2-digit", day: "2-digit", year: "numeric" })
-    .formatToParts(now)
-    .reduce(
-      (acc, part) => {
-        if (part.type === "month") acc.month = part.value;
-        if (part.type === "day") acc.day = part.value;
-        if (part.type === "year") acc.year = part.value;
-        return acc;
-      },
-      { month: "", day: "", year: "" } as { month: string; day: string; year: string },
-    );
-  const reportDateStr = `${reportDateParts.month}-${reportDateParts.day}-${reportDateParts.year}`;
+  const reportDateStr = formatCoverReportDate(periodRows, now, timezone);
 
   return {
     isPaused: false,
@@ -2308,24 +2304,10 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   const totalCprA = totalResultsA > 0 ? totalSpendA / totalResultsA : 0;
   const totalCprB = totalResultsB > 0 ? totalSpendB / totalResultsB : 0;
 
-  const reportDate = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-  })
-    .formatToParts(now)
-    .reduce((acc, part) => {
-      if (part.type === "month") acc.month = part.value;
-      if (part.type === "day") acc.day = part.value;
-      if (part.type === "year") acc.year = part.value;
-      return acc;
-    }, { month: "", day: "", year: "" } as { month: string; day: string; year: string });
-
   return {
     isPaused: totalSpendA === 0 && totalSpendB === 0,
     accountName,
-    reportDate: `${reportDate.month}-${reportDate.day}-${reportDate.year}`,
+    reportDate: formatCoverReportDate(campaignFilteredRows, now, timezone),
     periodALabel: getComparisonPeriodLabel(periodA.startIso, periodA.endIso),
     periodBLabel: getComparisonPeriodLabel(periodB.startIso, periodB.endIso),
     campaigns,

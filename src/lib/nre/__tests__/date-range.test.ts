@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  capRangeToData,
   computeCreativeRangeIso,
   computeCsvDateBounds,
   computeEffectiveYesterday,
@@ -44,6 +45,28 @@ describe("computeEffectiveYesterday", () => {
 
   it("returns null when no row has a parseable date", () => {
     expect(computeEffectiveYesterday([{ _raw: {} }], new Date("2026-07-25T12:00:00Z"))).toBeNull();
+  });
+});
+
+describe("capRangeToData", () => {
+  it("pulls the end back to the CSV max and shifts the start to preserve span", () => {
+    const rows = daysInclusive("2026-08-01", "2026-09-16");
+    const now = new Date("2026-09-17T14:29:00Z"); // Sydney = Sep 18; calendar yesterday = Sep 17
+    const last7 = computeWeeklyRangeOptions(rows, now, "Australia/Sydney").last7;
+    expect(capRangeToData(last7, rows, now, "Australia/Sydney")).toEqual({
+      startIso: "2026-09-10",
+      endIso: "2026-09-16",
+    });
+  });
+
+  it("preserves a 30-day span when capping Last 30 Days to data max", () => {
+    const rows = daysInclusive("2026-08-01", "2026-09-16");
+    const now = new Date("2026-09-17T14:29:00Z");
+    const last30 = computeCreativeRangeIso(rows, now, 30, "Australia/Sydney");
+    expect(capRangeToData(last30, rows, now, "Australia/Sydney")).toEqual({
+      startIso: "2026-08-18",
+      endIso: "2026-09-16",
+    });
   });
 });
 

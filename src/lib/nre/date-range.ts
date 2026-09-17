@@ -52,6 +52,41 @@ export function computeEffectiveYesterday(
   return dateFromTs(Math.min(latestTs, yesterdayTs));
 }
 
+/** Label end date — calendar end capped to the latest day with data (never label a day the CSV/API hasn't reached). */
+export function capRangeEndToData(
+  endIso: string,
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): string {
+  const effective = computeEffectiveYesterday(rows, now, timezone);
+  if (!effective) return endIso;
+  const effectiveIso = toIsoDate(effective);
+  return effectiveIso < endIso ? effectiveIso : endIso;
+}
+
+/** Same cap as capRangeEndToData, shifting the start back so the day span stays fixed (last 7 / last 30 labels). */
+export function capRangeToData(
+  range: DateRangeIso,
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): DateRangeIso {
+  const cappedEnd = capRangeEndToData(range.endIso, rows, now, timezone);
+  if (cappedEnd === range.endIso) return range;
+  const start = parseDate(range.startIso);
+  const end = parseDate(range.endIso);
+  const cappedEndParsed = parseDate(cappedEnd);
+  if (!start || !end || !cappedEndParsed) return { ...range, endIso: cappedEnd };
+  const spanDays =
+    Math.round(
+      (Date.UTC(end.year, end.month - 1, end.day) - Date.UTC(start.year, start.month - 1, start.day)) /
+        86400000,
+    ) + 1;
+  const newStart = addDays(cappedEndParsed, -(spanDays - 1));
+  return { startIso: toIsoDate(newStart), endIso: cappedEnd };
+}
+
 export interface DateRangeIso {
   startIso: string;
   endIso: string;

@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getRowDate } from "../columns";
 import { parseCsvText } from "../parse-csv";
 import { buildReportData } from "../report-data";
@@ -14,7 +15,7 @@ beforeAll(() => {
   process.env.TZ = "UTC";
 });
 
-const CSV_PATH = "/home/ubuntu/.cursor/projects/workspace/uploads/DC-weekly-GZ-Australia_2c48.csv";
+const CSV_PATH = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/gz-australia-lead-forms.csv");
 
 describe("GZ Australia CSV — CPL matches spend / leads", () => {
   const { rows } = parseCsvText(readFileSync(CSV_PATH, "utf8"));
@@ -25,7 +26,7 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
     return d >= "2026-08-01" && d <= "2026-08-31";
   });
 
-  it("MTD label ends on latest data day (Sep 16), not timezone-ahead calendar yesterday (Sep 17)", () => {
+  it("all slide date labels align to Sep 16 when Sydney is already Sep 18 but data ends Sep 16", () => {
     const data = buildReportData({
       accountName: "GZ Australia",
       currencySymbol: "A$",
@@ -35,6 +36,9 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
       now: new Date("2026-09-17T14:29:00Z"),
     });
     expect(data.mtdRow.monthLabel).toBe("Sep 1 - 16");
+    expect(data.cover.reportDate).toBe("09-16-2026");
+    expect(data.cover.dateRange).toBe("September 10 - September 16");
+    expect(data.chart?.periodSubLabel).toBe("Aug 18 - Sep 16, 2026");
   });
 
   it("Sep 1–16: CPL equals total spend / total leads (956.63 / 17)", () => {
