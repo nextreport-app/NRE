@@ -11,7 +11,7 @@
 
 import { readPreviousMonthDataFile } from "@/lib/storage";
 import { parseUploadedFile } from "./parse-file";
-import { extractSpendingCampaignNames, filterRowsByCampaigns } from "./campaigns";
+import { extractCampaignSpend, extractSpendingCampaignNames, filterRowsByCampaigns } from "./campaigns";
 import type { NreRow } from "./columns";
 
 /**
@@ -68,4 +68,13 @@ export async function loadPreviousMonthDataCampaigns(previousMonthDataUrl: strin
   const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
   const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
   return extractSpendingCampaignNames(rows);
+}
+
+/** Per-campaign previous-month spend — powers low-spend badges on the selection UI. */
+export async function loadPreviousMonthDataCampaignSpend(
+  previousMonthDataUrl: string,
+): Promise<Record<string, number>> {
+  const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
+  const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
+  return extractCampaignSpend(rows);
 }

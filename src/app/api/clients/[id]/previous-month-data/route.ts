@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileEntryFromFormData } from "@/lib/http-file";
 import { parseUploadedFile } from "@/lib/nre/parse-file";
-import { extractSpendingCampaignNames } from "@/lib/nre/campaigns";
-import { mergePreviousMonthSelection } from "@/lib/nre/merge-previous-month-selection";
+import { extractCampaignSpend, extractSpendingCampaignNames } from "@/lib/nre/campaigns";
+import { mergePreviousMonthSelectionWithLowSpend } from "@/lib/nre/merge-previous-month-selection";
 import {
   loadPreviousMonthDataCampaigns,
   parsePreviousMonthSelectedCampaigns,
@@ -64,7 +64,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       previousAllCampaigns = [];
     }
   }
-  const selectedCampaigns = mergePreviousMonthSelection(campaigns, previousSelected, previousAllCampaigns);
+  const campaignSpend = extractCampaignSpend(parsed.rows);
+  const { selectedCampaigns, lowSpendCampaigns } = mergePreviousMonthSelectionWithLowSpend(
+    campaigns,
+    campaignSpend,
+    previousSelected,
+    previousAllCampaigns,
+  );
 
   try {
     const previousUrl = client.previousMonthDataUrl;
@@ -93,6 +99,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       fileName: previousMonthDataFileName(previousMonthDataUrl),
       campaigns,
       selectedCampaigns,
+      campaignSpend,
+      lowSpendCampaigns,
     });
   } catch (err) {
     return apiErrorResponse(err, "clients:previous-month-data:upload");

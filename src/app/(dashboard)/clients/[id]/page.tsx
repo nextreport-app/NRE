@@ -10,7 +10,12 @@ import { Ga4PropertyPicker } from "@/components/ga4-property-picker";
 import { ClientPlatformConnections } from "@/components/client-platform-connections";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
-import { loadPreviousMonthDataCampaigns } from "@/lib/nre/previous-month-data";
+import {
+  loadPreviousMonthDataCampaigns,
+  loadPreviousMonthDataCampaignSpend,
+  parsePreviousMonthSelectedCampaigns,
+} from "@/lib/nre/previous-month-data";
+import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import {
   normalizeReportRetentionDays,
@@ -97,23 +102,17 @@ export default async function ClientDetailPage({
     : 30;
 
   let previousMonthCampaigns: string[] = [];
+  let previousMonthCampaignSpend: Record<string, number> = {};
   if (client.previousMonthDataUrl) {
     try {
       previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
+      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl);
     } catch {
       previousMonthCampaigns = [];
+      previousMonthCampaignSpend = {};
     }
   }
-  const previousMonthSelectedCampaigns: string[] | null = client.previousMonthSelectedCampaigns
-    ? (() => {
-        try {
-          const parsed = JSON.parse(client.previousMonthSelectedCampaigns!);
-          return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === "string") : null;
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  const previousMonthSelectedCampaigns = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
 
   const reportItems = reports.map((r) => ({
     id: r.id,
@@ -178,6 +177,8 @@ export default async function ClientDetailPage({
             initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
             initialCampaigns={previousMonthCampaigns}
             initialSelectedCampaigns={previousMonthSelectedCampaigns}
+            initialCampaignSpend={previousMonthCampaignSpend}
+            currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
           />
         </Card>
 

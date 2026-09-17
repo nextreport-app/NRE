@@ -22,6 +22,8 @@ export function PreviousMonthDataUpload({
   initialUpdatedAt,
   initialCampaigns,
   initialSelectedCampaigns,
+  initialCampaignSpend = {},
+  currencySymbol = "$",
 }: {
   clientId: string;
   initialFileName: string | null;
@@ -29,11 +31,14 @@ export function PreviousMonthDataUpload({
   initialUpdatedAt: string | null;
   initialCampaigns: string[];
   initialSelectedCampaigns: string[] | null;
+  initialCampaignSpend?: Record<string, number>;
+  currencySymbol?: string;
 }) {
   const [fileName, setFileName] = useState(initialFileName);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[] | null>(initialSelectedCampaigns);
+  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>(initialCampaignSpend);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +66,13 @@ export function PreviousMonthDataUpload({
       setUpdatedAt(new Date().toISOString());
       const newCampaigns: string[] = Array.isArray(data.campaigns) ? data.campaigns : [];
       const newSelected: string[] = Array.isArray(data.selectedCampaigns) ? data.selectedCampaigns : newCampaigns;
+      const newSpend =
+        data.campaignSpend && typeof data.campaignSpend === "object"
+          ? (data.campaignSpend as Record<string, number>)
+          : {};
       setCampaigns(newCampaigns);
       setSelectedCampaigns(newSelected);
+      setCampaignSpend(newSpend);
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -85,6 +95,7 @@ export function PreviousMonthDataUpload({
       setUpdatedAt(null);
       setCampaigns([]);
       setSelectedCampaigns(null);
+      setCampaignSpend({});
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -146,6 +157,8 @@ export function PreviousMonthDataUpload({
           clientId={clientId}
           campaigns={campaigns}
           initialSelected={selectedCampaigns}
+          campaignSpend={campaignSpend}
+          currencySymbol={currencySymbol}
           onSelectionChange={setSelectedCampaigns}
         />
       )}

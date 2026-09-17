@@ -54,10 +54,12 @@ function collapsedHint(info: PreviousMonthComparisonInfo): string {
 export function PreviousMonthDataWizardPanel({
   clientId,
   clientTimezone,
+  currencySymbol = "$",
   initialHasFile,
   initialUpdatedAt,
   initialCampaigns,
   initialSelectedCampaigns,
+  initialCampaignSpend = {},
   includeInReport,
   onIncludeInReportChange,
   onUploaded,
@@ -65,19 +67,26 @@ export function PreviousMonthDataWizardPanel({
 }: {
   clientId: string;
   clientTimezone: string;
+  currencySymbol?: string;
   initialHasFile: boolean;
   initialUpdatedAt: string | null;
   initialCampaigns: string[];
   initialSelectedCampaigns: string[] | null;
+  initialCampaignSpend?: Record<string, number>;
   includeInReport: boolean;
   onIncludeInReportChange: (include: boolean) => void;
-  onUploaded?: (meta?: { campaigns: string[]; selectedCampaigns: string[] }) => void;
+  onUploaded?: (meta?: {
+    campaigns: string[];
+    selectedCampaigns: string[];
+    campaignSpend?: Record<string, number>;
+  }) => void;
   onCampaignsChange?: (meta: { campaigns: string[]; selectedCampaigns: string[] }) => void;
 }) {
   const [hasFile, setHasFile] = useState(initialHasFile);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[] | null>(initialSelectedCampaigns);
+  const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>(initialCampaignSpend);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +96,8 @@ export function PreviousMonthDataWizardPanel({
     setUpdatedAt(initialUpdatedAt);
     setCampaigns(initialCampaigns);
     setSelectedCampaigns(initialSelectedCampaigns);
-  }, [initialHasFile, initialUpdatedAt, initialCampaigns, initialSelectedCampaigns]);
+    setCampaignSpend(initialCampaignSpend);
+  }, [initialHasFile, initialUpdatedAt, initialCampaigns, initialSelectedCampaigns, initialCampaignSpend]);
 
   const info = getPreviousMonthComparisonInfo(hasFile, updatedAt, clientTimezone);
   const selectedCount = selectedCampaigns?.length ?? campaigns.length;
@@ -112,11 +122,16 @@ export function PreviousMonthDataWizardPanel({
       }
       const newCampaigns: string[] = Array.isArray(data.campaigns) ? data.campaigns : [];
       const newSelected: string[] = Array.isArray(data.selectedCampaigns) ? data.selectedCampaigns : newCampaigns;
+      const newSpend =
+        data.campaignSpend && typeof data.campaignSpend === "object"
+          ? (data.campaignSpend as Record<string, number>)
+          : {};
       setHasFile(true);
       setUpdatedAt(new Date().toISOString());
       setCampaigns(newCampaigns);
       setSelectedCampaigns(newSelected);
-      onUploaded?.({ campaigns: newCampaigns, selectedCampaigns: newSelected });
+      setCampaignSpend(newSpend);
+      onUploaded?.({ campaigns: newCampaigns, selectedCampaigns: newSelected, campaignSpend: newSpend });
     } catch {
       setError("Could not reach the server. Please try again.");
     } finally {
@@ -184,6 +199,8 @@ export function PreviousMonthDataWizardPanel({
             onFileChange={handleFileChange}
             campaigns={campaigns}
             selectedCampaigns={selectedCampaigns}
+            campaignSpend={campaignSpend}
+            currencySymbol={currencySymbol}
             onSelectionChange={handleSelectionChange}
           />
         </div>
@@ -201,6 +218,8 @@ function PreviousMonthDataWizardContent({
   onFileChange,
   campaigns,
   selectedCampaigns,
+  campaignSpend,
+  currencySymbol,
   onSelectionChange,
 }: {
   clientId: string;
@@ -211,6 +230,8 @@ function PreviousMonthDataWizardContent({
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   campaigns: string[];
   selectedCampaigns: string[] | null;
+  campaignSpend: Record<string, number>;
+  currencySymbol: string;
   onSelectionChange: (selected: string[]) => void;
 }) {
   const manageHref = `/clients/${clientId}#previous-month-data`;
@@ -242,6 +263,8 @@ function PreviousMonthDataWizardContent({
                 clientId={clientId}
                 campaigns={campaigns}
                 initialSelected={selectedCampaigns}
+                campaignSpend={campaignSpend}
+                currencySymbol={currencySymbol}
                 onSelectionChange={onSelectionChange}
                 compact
               />

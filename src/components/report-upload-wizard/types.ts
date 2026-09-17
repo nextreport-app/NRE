@@ -57,6 +57,7 @@ export interface ReportUploadWizardProps {
   initialPreviousMonthDataUpdatedAt: string | null;
   initialPreviousMonthCampaigns?: string[];
   initialPreviousMonthSelectedCampaigns?: string[] | null;
+  initialPreviousMonthCampaignSpend?: Record<string, number>;
   clientTemplate: (typeof TEMPLATES)[number];
   metaConnected?: boolean;
   metaConnectedName?: string | null;

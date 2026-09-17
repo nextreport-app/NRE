@@ -85,6 +85,7 @@ export function useReportUploadWizard({
   initialPreviousMonthDataUpdatedAt,
   initialPreviousMonthCampaigns = [],
   initialPreviousMonthSelectedCampaigns = null,
+  initialPreviousMonthCampaignSpend = {},
   clientTemplate,
   metaConnected = false,
   metaConnectedName = null,
@@ -280,6 +281,9 @@ export function useReportUploadWizard({
   const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
     initialPreviousMonthSelectedCampaigns,
+  );
+  const [previousMonthCampaignSpend, setPreviousMonthCampaignSpend] = useState<Record<string, number>>(
+    initialPreviousMonthCampaignSpend,
   );
   const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
 
@@ -730,6 +734,7 @@ export function useReportUploadWizard({
     previousMonthCampaigns?: string[];
     previousMonthSelectedCampaigns?: string[] | null;
     previousMonthUpdatedAt?: string | null;
+    previousMonthCampaignSpend?: Record<string, number>;
   };
 
   /** API-sync artifacts use a synthetic filename — discard when switching to manual CSV upload. */
@@ -802,6 +807,9 @@ export function useReportUploadWizard({
       if (meta.previousMonthCampaigns) setPreviousMonthCampaigns(meta.previousMonthCampaigns);
       if (meta.previousMonthSelectedCampaigns !== undefined) {
         setPreviousMonthSelectedCampaigns(meta.previousMonthSelectedCampaigns);
+      }
+      if (meta.previousMonthCampaignSpend) {
+        setPreviousMonthCampaignSpend(meta.previousMonthCampaignSpend);
       }
     }
     if (meta?.previousMonthSynced) {
@@ -1869,6 +1877,8 @@ export function useReportUploadWizard({
     setPreviousMonthCampaigns,
     previousMonthSelectedCampaigns,
     setPreviousMonthSelectedCampaigns,
+    previousMonthCampaignSpend,
+    setPreviousMonthCampaignSpend,
     includePreviousMonthComparison,
     setIncludePreviousMonthComparison,
     previousMonthComparisonReady,
