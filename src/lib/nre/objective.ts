@@ -401,6 +401,18 @@ export function resolveObjective(
   if (mobileAppInstalls > 0) {
     return { resultLabel: "APP INSTALLS", costLabel: "COST PER INSTALL", source: "priority1" };
   }
+  // Meta leads column (API sync) must beat incidental messaging counts — API
+  // CSV always exports both columns; aggregateRows sums both and messaging
+  // used to win here (GZ Australia Lead Forms → MESSAGING / CONVERSATIONS).
+  if (metaLeads > 0) {
+    return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority1" };
+  }
+  const formLeadResultType =
+    results > 0 &&
+    /leads?\s*\(\s*form|lead_grouped|onsite_conversion\.lead|meta leads?/i.test(signals.result_type ?? "");
+  if (formLeadResultType && messaging > 0) {
+    return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority1" };
+  }
   if (messaging > 0) {
     return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL, source: "priority1" };
   }
@@ -413,6 +425,7 @@ export function resolveObjective(
 
   if (columnObjective) return { ...columnObjective, source: "priority3" };
 
+  // metaLeads handled above (priority1); keep for callers that omit it from signals.
   if (metaLeads > 0) return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", source: "priority4" };
   if (landingPageViews > 0) {
     return { resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV", source: "priority4" };
@@ -933,7 +946,7 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
     "meta leads",
     "lead",
   ]);
-  if (metaLeadResultTypes.has(rt) && (messagingTotal > 0 || isMessagingCampaign)) {
+  if (metaLeadResultTypes.has(rt) && isMessagingCampaign) {
     return true;
   }
 
@@ -947,6 +960,11 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
   if (messagingResultTypes.has(rt) && !isMessagingCampaign) {
     const websiteLeadsTotal = rows.reduce((sum, r) => sum + parseCellNum(r.website_leads), 0);
     if (websiteLeadsTotal > 0 || isWebsiteLeadsCampaignName(rows)) return true;
+    const metaLeadsTotal = rows.reduce(
+      (sum, r) => sum + parseCellNum(r.meta_leads) + parseCellNum(r.leads) + parseCellNum(r.results),
+      0,
+    );
+    if (metaLeadsTotal > 0 || isMetaFormLeadsCampaignName(rows)) return true;
   }
 
   return false;
@@ -964,12 +982,16 @@ function shouldIgnoreUniqueMappedObjective(rows: MetricRow[], info: { key: strin
     return shouldIgnoreDominantResultType(rows, info.key === "link_clicks" ? "link_click" : "landing_page_view");
   }
   if (info.key === "meta_form_leads") {
-    const messagingTotal = sumCampaignMessagingTotal(rows);
-    return messagingTotal > 0 || isMessagingCampaignName(rows);
+    return isMessagingCampaignName(rows) && sumCampaignMessagingTotal(rows) > 0;
   }
   if (info.key === "messaging") {
     const websiteLeadsTotal = rows.reduce((sum, r) => sum + parseCellNum(r.website_leads), 0);
     if (websiteLeadsTotal > 0 || isWebsiteLeadsCampaignName(rows)) return true;
+    const metaLeadsTotal = rows.reduce(
+      (sum, r) => sum + parseCellNum(r.meta_leads) + parseCellNum(r.leads) + parseCellNum(r.results),
+      0,
+    );
+    if (metaLeadsTotal > 0 || isMetaFormLeadsCampaignName(rows)) return true;
   }
   return false;
 }
