@@ -45,6 +45,19 @@ export const META_OBJECTIVE_REGRESSION_FIXTURES: readonly MetaObjectiveRegressio
     ],
   },
   {
+    id: "gz-australia-lead-forms",
+    file: "gz-australia-lead-forms.csv",
+    description:
+      "Lead Forms account — zero-lead days carry LPV/link-click row labels; must stay META FORM LEADS (regressed after meta-objective-dictionary push)",
+    campaigns: [
+      {
+        campaignName: "GZ Australia | Lead Forms | Top Funnel | A3HD",
+        resultLabel: "META FORM LEADS",
+        minConfidence: "high",
+      },
+    ],
+  },
+  {
     id: "meta-objective-families",
     file: "meta-objective-families.csv",
     description: "Synthetic corpus — one campaign per major Meta result_type family",
