@@ -1273,6 +1273,16 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
     }
     return parseCellNum(row.results);
   }
+  // Campaign names like "* website leads *" plus a Website leads column in
+  // the export can make per-row detection resolve to WEBSITE LEADS even when
+  // Result type is "Quote Request Submitted". The Combined Total table still
+  // groups the campaign under QUOTE REQUESTS (from result_type at map
+  // build time) — honor the row's explicit Result type when it matches the
+  // bucket being summed.
+  const rowResultLabel = getResultLabels(row.result_type).resultLabel;
+  if (rowResultLabel === label) {
+    return parseCellNum(row.results);
+  }
   if (label === "PURCHASES") return parseCellNum(row.purchases);
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
   if (label === "ADD TO CART") return rowAddToCart(row);
