@@ -820,7 +820,7 @@ export function WizardGenerateStep() {
                   </div>
                   {shareToken && reportId && !publishedAt ? (
                     <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                      PPT and live link update after you review and publish.
+                      PPT and the live link are ready now. Review or edit before downloading or sharing.
                     </p>
                   ) : null}
                   {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
