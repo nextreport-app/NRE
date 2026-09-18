@@ -72,7 +72,6 @@ export function WizardGenerateStep() {
     monthComparisonOptions,
     mtdRange,
     needsLongRangeConfirm,
-    pdfAvailable,
     persistGenerateSnapshot,
     platform,
     pmsError,
@@ -795,15 +794,8 @@ export function WizardGenerateStep() {
                 ) : null}
 
                 {(() => {
-                  const showPdf = !!(shareToken && reportId && (publishedAt || pdfAvailable));
                   const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
-                  const downloadCount = 1 + (showPdf ? 1 : 0) + (showDrive ? 1 : 0);
-                  const gridClass =
-                    downloadCount === 1
-                      ? "grid grid-cols-1 gap-2"
-                      : downloadCount === 2
-                        ? "grid grid-cols-2 gap-2"
-                        : "grid grid-cols-2 sm:grid-cols-3 gap-2";
+                  const gridClass = showDrive ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2";
 
                   return (
                 <div>
@@ -815,14 +807,6 @@ export function WizardGenerateStep() {
                     >
                       PPTX
                     </a>
-                    {showPdf ? (
-                      <a
-                        href={`/api/reports/${reportId}/download-pdf`}
-                        className="flex items-center justify-center rounded-lg border border-[#63b3ed]/50 bg-[#0d1b2e] px-3 py-3 text-[14px] font-medium text-white hover:border-[#63b3ed]"
-                      >
-                        PDF
-                      </a>
-                    ) : null}
                     {showDrive ? (
                       <button
                         type="button"
@@ -834,9 +818,9 @@ export function WizardGenerateStep() {
                       </button>
                     ) : null}
                   </div>
-                  {shareToken && reportId && !showPdf ? (
+                  {shareToken && reportId && !publishedAt ? (
                     <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                      PDF unlocks after you review and publish.
+                      PPT and live link update after you review and publish.
                     </p>
                   ) : null}
                   {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (

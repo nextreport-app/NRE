@@ -722,15 +722,6 @@ export function ShareReportView({
                 <span className="hidden min-[400px]:inline">Download </span>PPTX
               </a>
             ) : null}
-            {shareToken && visibleData.publishedAt ? (
-              <a
-                href={`/api/r/${shareToken}/download-pdf`}
-                className="inline-flex items-center justify-center rounded-md border border-[#63b3ed] px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-[#63b3ed]/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
-                style={{ backgroundColor: "#1e293b" }}
-              >
-                <span className="hidden min-[400px]:inline">Download </span>PDF
-              </a>
-            ) : null}
           </div>
         </div>
       </header>
