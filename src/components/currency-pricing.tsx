@@ -42,7 +42,6 @@ const PLANS: Plan[] = [
       "CSV upload — all four platforms",
       "AI-written campaign summaries & insights",
       "PowerPoint, Google Slides & live browser share",
-      "PDF download on every report",
       "Google Drive auto-save",
       "Slack & Zapier webhooks",
       "Email support within 24 hours",

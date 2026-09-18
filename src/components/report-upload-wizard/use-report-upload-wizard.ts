@@ -357,7 +357,6 @@ export function useReportUploadWizard({
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
-  const [pdfAvailable, setPdfAvailable] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   // "Save to Google Drive" — an explicit, per-report action the user takes
   // right here on the download screen (see handleSaveToDrive below), not
@@ -465,13 +464,12 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setPublishedAt(null);
-    setPdfAvailable(false);
   }
 
   function buildGenerateSnapshot(
     core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
     extras?: Partial<
-      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt" | "pdfAvailable">
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt">
     >,
   ): WizardGenerateSnapshot {
     return {
@@ -503,7 +501,6 @@ export function useReportUploadWizard({
       driveSaveUrl: extras?.driveSaveUrl ?? driveSaveUrl,
       rememberedFolder: extras?.rememberedFolder ?? rememberedFolder,
       publishedAt: extras?.publishedAt ?? publishedAt,
-      pdfAvailable: extras?.pdfAvailable ?? pdfAvailable,
     };
   }
 
@@ -537,7 +534,6 @@ export function useReportUploadWizard({
     setDriveSaveUrl(snapshot.driveSaveUrl);
     setRememberedFolder(snapshot.rememberedFolder);
     setPublishedAt(snapshot.publishedAt ?? null);
-    setPdfAvailable(snapshot.pdfAvailable ?? false);
     setGenerateStatus("done");
     setGenerateMessage(null);
   }
@@ -545,7 +541,7 @@ export function useReportUploadWizard({
   function persistGenerateSnapshot(
     core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
     extras?: Partial<
-      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt" | "pdfAvailable">
+      Pick<WizardGenerateSnapshot, "driveView" | "driveSaveUrl" | "rememberedFolder" | "publishedAt">
     >,
   ) {
     saveWizardGenerateSnapshot(clientId, buildGenerateSnapshot(core, extras));
@@ -581,7 +577,6 @@ export function useReportUploadWizard({
       setDownloadUrl(`/api/reports/${resumeReportId}/download`);
       setShareToken(json.shareToken ?? null);
       setPublishedAt(json.publishedAt ?? null);
-      setPdfAvailable(!!(json.publishedAt ?? json.pdfAvailable));
       setGenerateStatus("done");
       setGenerateMessage(null);
       persistGenerateSnapshot(
@@ -592,7 +587,6 @@ export function useReportUploadWizard({
         },
         {
           publishedAt: json.publishedAt ?? null,
-          pdfAvailable: !!json.pdfAvailable,
         },
       );
       setStepState(4);
@@ -1455,7 +1449,6 @@ export function useReportUploadWizard({
     setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);
-    setPdfAvailable(false);
     setGenerateStatus("done");
     persistGenerateSnapshot(
       {
@@ -1463,7 +1456,7 @@ export function useReportUploadWizard({
         downloadUrl: `/api/reports/${json.reportId}/download`,
         shareToken: finalShareToken,
       },
-      { publishedAt: null, pdfAvailable: false },
+      { publishedAt: null },
     );
   }
 
@@ -1935,7 +1928,6 @@ export function useReportUploadWizard({
     reportId,
     downloadUrl,
     publishedAt,
-    pdfAvailable,
     shareToken,
     rememberedFolder,
     driveView,

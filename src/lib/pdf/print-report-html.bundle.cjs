@@ -28,6 +28,841 @@ var import_server = require("react-dom/server");
 // src/lib/nre/dates.ts
 var IST_OFFSET_MS = 5.5 * 60 * 60 * 1e3;
 
+// src/lib/nre/meta-objective-dictionary.ts
+var META_OBJECTIVE_SPECS = [
+  {
+    key: "purchases",
+    resultLabel: "PURCHASES",
+    costLabel: "COST PER PURCHASE",
+    isReach: false,
+    canonicalText: "Purchase",
+    apiCsvLabel: "Purchase",
+    definitiveProof: true,
+    aliases: [
+      "purchase",
+      "purchases",
+      "website purchase",
+      "website purchases",
+      "omni_purchase",
+      "onsite_conversion.purchase",
+      "onsite_web_purchase",
+      "onsite_web_app_purchase",
+      "offsite_conversion.fb_pixel_purchase",
+      "product_catalog_sales",
+      "catalog sales",
+      "product catalog sales"
+    ]
+  },
+  {
+    key: "initiate_checkout",
+    resultLabel: "INITIATE CHECKOUT",
+    costLabel: "COST PER CHECKOUT",
+    isReach: false,
+    canonicalText: "Initiate checkout",
+    apiCsvLabel: "Initiate checkout",
+    definitiveProof: true,
+    aliases: [
+      "initiate_checkout",
+      "initiate checkout",
+      "checkouts initiated",
+      "offsite_conversion.fb_pixel_initiate_checkout",
+      "onsite_web_initiate_checkout"
+    ]
+  },
+  {
+    key: "add_to_cart",
+    resultLabel: "ADD TO CART",
+    costLabel: "COST PER ADD TO CART",
+    isReach: false,
+    canonicalText: "Add to cart",
+    apiCsvLabel: "Add to cart",
+    definitiveProof: true,
+    aliases: [
+      "add_to_cart",
+      "add to cart",
+      "adds to cart",
+      "offsite_conversion.fb_pixel_add_to_cart",
+      "onsite_web_add_to_cart",
+      "onsite_web_app_add_to_cart",
+      "onsite_conversion.add_to_cart"
+    ]
+  },
+  {
+    key: "payment_info",
+    resultLabel: "PAYMENT INFO",
+    costLabel: "COST PER PAYMENT INFO",
+    isReach: false,
+    canonicalText: "Add payment info",
+    apiCsvLabel: "Add payment info",
+    definitiveProof: true,
+    aliases: [
+      "add_payment_info",
+      "add payment info",
+      "addpaymentinfo",
+      "offsite_conversion.fb_pixel_add_payment_info"
+    ]
+  },
+  {
+    key: "content_views",
+    resultLabel: "CONTENT VIEWS",
+    costLabel: "COST PER VIEW",
+    isReach: false,
+    canonicalText: "View content",
+    apiCsvLabel: "View content",
+    definitiveProof: true,
+    aliases: ["view_content", "view content", "viewcontent", "offsite_conversion.fb_pixel_view_content"]
+  },
+  {
+    key: "website_leads",
+    resultLabel: "WEBSITE LEADS",
+    costLabel: "COST PER WEBSITE LEAD",
+    isReach: false,
+    canonicalText: "Website lead",
+    apiCsvLabel: "Website leads",
+    definitiveProof: true,
+    aliases: [
+      "website submission",
+      "website lead",
+      "website leads",
+      "web lead",
+      "web leads",
+      "website_lead",
+      "onsite_web_lead",
+      "offsite_conversion.fb_pixel_lead",
+      "contact",
+      "quality_lead",
+      "lead"
+    ]
+  },
+  {
+    key: "meta_form_leads",
+    resultLabel: "META FORM LEADS",
+    costLabel: "COST PER LEAD",
+    isReach: false,
+    canonicalText: "Meta lead",
+    apiCsvLabel: "Leads (form)",
+    definitiveProof: true,
+    aliases: [
+      "leads (form)",
+      "lead (form)",
+      "meta lead",
+      "meta leads",
+      "instant form leads",
+      "onsite_conversion.lead_grouped",
+      "onsite_conversion.lead",
+      "leadgen_grouped",
+      "lead_grouped"
+    ]
+  },
+  {
+    key: "messaging",
+    resultLabel: "MESSAGING / CONVERSATIONS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+    canonicalText: "Messaging conversations started",
+    apiCsvLabel: "Messaging conversations started",
+    definitiveProof: true,
+    aliases: [
+      "messaging conversations started",
+      "messaging conversation started",
+      "onsite_conversion.messaging_conversation_started_7d",
+      "messaging_conversation_started_7d",
+      "onsite_conversion.messaging_first_reply_7d",
+      "new_messaging_connection",
+      "whatsapp_message_send"
+    ]
+  },
+  {
+    key: "whatsapp_leads",
+    resultLabel: "WHATSAPP LEADS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+    canonicalText: "Whatsapp lead",
+    apiCsvLabel: "WhatsApp conversations started",
+    definitiveProof: true,
+    aliases: ["whatsapp conversations started", "whatsapp conversation started"]
+  },
+  {
+    key: "instagram_dm_leads",
+    resultLabel: "INSTAGRAM DM LEADS",
+    costLabel: "COST PER CONVERSATION",
+    isReach: false,
+    canonicalText: "Instagram DM",
+    apiCsvLabel: "Instagram conversation",
+    definitiveProof: true,
+    aliases: ["instagram conversation", "instagram conversations", "instagram dm"]
+  },
+  {
+    key: "phone_calls",
+    resultLabel: "PHONE CALLS",
+    costLabel: "COST PER CALL",
+    isReach: false,
+    canonicalText: "Phone call",
+    apiCsvLabel: "Phone call",
+    definitiveProof: true,
+    aliases: [
+      "phone_call",
+      "phone call",
+      "phone_call_confirm",
+      "click_to_call",
+      "call_confirm",
+      "call placed"
+    ]
+  },
+  {
+    key: "appointment_leads",
+    resultLabel: "APPOINTMENT LEADS",
+    costLabel: "COST PER BOOKING",
+    isReach: false,
+    canonicalText: "Appointment",
+    apiCsvLabel: "Schedule",
+    definitiveProof: true,
+    aliases: [
+      "schedule",
+      "appointment",
+      "appointments",
+      "booking",
+      "bookings",
+      "offsite_conversion.fb_pixel_schedule"
+    ]
+  },
+  {
+    key: "registrations",
+    resultLabel: "REGISTRATIONS",
+    costLabel: "COST PER REGISTRATION",
+    isReach: false,
+    canonicalText: "Registration",
+    apiCsvLabel: "Complete registration",
+    definitiveProof: true,
+    aliases: [
+      "complete registration",
+      "complete_registration",
+      "registration",
+      "registrations",
+      "omni_complete_registration",
+      "offsite_conversion.fb_pixel_complete_registration"
+    ]
+  },
+  {
+    key: "applications",
+    resultLabel: "APPLICATIONS",
+    costLabel: "COST PER APPLICATION",
+    isReach: false,
+    canonicalText: "Application",
+    apiCsvLabel: "Submit application",
+    definitiveProof: true,
+    aliases: [
+      "submit application",
+      "submit_application",
+      "application",
+      "applications",
+      "offsite_conversion.fb_pixel_submit_application"
+    ]
+  },
+  {
+    key: "subscriptions",
+    resultLabel: "SUBSCRIPTIONS",
+    costLabel: "COST PER SUBSCRIPTION",
+    isReach: false,
+    canonicalText: "Subscription",
+    apiCsvLabel: "Subscribe",
+    definitiveProof: true,
+    aliases: [
+      "subscribe",
+      "subscription",
+      "subscriptions",
+      "recurring_subscription_payment_made",
+      "offsite_conversion.fb_pixel_subscribe",
+      "start trial",
+      "start_trial",
+      "offsite_conversion.fb_pixel_start_trial"
+    ]
+  },
+  {
+    key: "quote_requests",
+    resultLabel: "QUOTE REQUESTS",
+    costLabel: "COST PER QUOTE",
+    isReach: false,
+    canonicalText: "Quote request",
+    apiCsvLabel: "Quote request",
+    definitiveProof: true,
+    aliases: ["quote_request", "quote request"]
+  },
+  {
+    key: "app_events",
+    resultLabel: "APP EVENTS",
+    costLabel: "COST PER APP EVENT",
+    isReach: false,
+    canonicalText: "App event",
+    apiCsvLabel: "App event",
+    definitiveProof: true,
+    aliases: ["app_event", "app event", "in-app purchase", "in app purchase"]
+  },
+  {
+    key: "app_installs",
+    resultLabel: "APP INSTALLS",
+    costLabel: "COST PER INSTALL",
+    isReach: false,
+    canonicalText: "App install",
+    apiCsvLabel: "App installs",
+    definitiveProof: true,
+    aliases: [
+      "mobile_app_install",
+      "omni_app_install",
+      "app_install",
+      "app install",
+      "app installs",
+      "mobile app install",
+      "mobile app installs",
+      "offsite_conversion.fb_mobile_activate_app"
+    ]
+  },
+  {
+    key: "link_clicks",
+    resultLabel: "LINK CLICKS",
+    costLabel: "COST PER CLICK",
+    isReach: false,
+    canonicalText: "Link click",
+    apiCsvLabel: "Link clicks",
+    aliases: ["link_click", "link click", "link clicks", "outbound_click", "outbound clicks", "outbound click"]
+  },
+  {
+    key: "landing_page_views",
+    resultLabel: "LANDING PAGE VIEWS",
+    costLabel: "COST PER LPV",
+    isReach: false,
+    canonicalText: "Landing page view",
+    apiCsvLabel: "Landing page view",
+    aliases: ["landing_page_view", "landing page view", "landing page views", "lpv"]
+  },
+  {
+    key: "video_views",
+    resultLabel: "VIDEO VIEWS",
+    costLabel: "COST PER VIDEO VIEW",
+    isReach: false,
+    canonicalText: "Video view",
+    apiCsvLabel: "Video views",
+    aliases: [
+      "video_view",
+      "video views",
+      "video view",
+      "video play",
+      "video plays",
+      "thruplay",
+      "thruplays",
+      "video_plays_at_least_2_secs",
+      "2_second_continuous_video_plays"
+    ]
+  },
+  {
+    key: "post_engagements",
+    resultLabel: "POST ENGAGEMENTS",
+    costLabel: "COST PER ENGAGEMENT",
+    isReach: false,
+    canonicalText: "Post engagement",
+    apiCsvLabel: "Post engagements",
+    aliases: [
+      "post_engagement",
+      "post engagement",
+      "post engagements",
+      "page_engagement",
+      "engagement",
+      "engagements",
+      "onsite_conversion.post_save"
+    ]
+  },
+  {
+    key: "page_likes",
+    resultLabel: "PAGE LIKES",
+    costLabel: "COST PER PAGE LIKE",
+    isReach: false,
+    canonicalText: "Page like",
+    apiCsvLabel: "Page likes",
+    aliases: ["page_like", "page like", "page likes"]
+  },
+  {
+    key: "followers",
+    resultLabel: "FOLLOWERS",
+    costLabel: "COST PER FOLLOW",
+    isReach: false,
+    canonicalText: "Follow",
+    apiCsvLabel: "Follow",
+    aliases: ["follow", "follower", "followers"]
+  },
+  {
+    key: "event_responses",
+    resultLabel: "EVENT RESPONSES",
+    costLabel: "COST PER RESPONSE",
+    isReach: false,
+    canonicalText: "Event response",
+    apiCsvLabel: "Event response",
+    aliases: ["event_response", "event response", "event responses"]
+  },
+  {
+    key: "profile_visits",
+    resultLabel: "PROFILE VISITS",
+    costLabel: "COST PER VISIT",
+    isReach: false,
+    canonicalText: "Profile visit",
+    apiCsvLabel: "Instagram profile visit",
+    aliases: [
+      "instagram_profile_visit",
+      "instagram profile visit",
+      "profile visit",
+      "profile visits",
+      "photo_view",
+      "photo view",
+      "check_in",
+      "check-in",
+      "check in"
+    ]
+  },
+  {
+    key: "reach",
+    resultLabel: "REACH",
+    costLabel: "COST PER 1K REACH",
+    isReach: true,
+    canonicalText: "Reach",
+    apiCsvLabel: "Reach",
+    aliases: ["reach", "people reached"]
+  },
+  {
+    key: "impressions",
+    resultLabel: "IMPRESSIONS",
+    costLabel: "CPM",
+    isReach: true,
+    canonicalText: "Impression",
+    apiCsvLabel: "Impressions",
+    aliases: ["impressions", "impression", "cpm"]
+  },
+  {
+    key: "ad_recall_lift",
+    resultLabel: "AD RECALL LIFT",
+    costLabel: "COST PER RECALL LIFT",
+    isReach: true,
+    canonicalText: "Ad recall",
+    apiCsvLabel: "Ad recall lift",
+    aliases: ["ad_recall_lift", "estimated_ad_recall_lift", "ad recall", "recall lift"]
+  },
+  {
+    key: "conversions",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    isReach: false,
+    canonicalText: "Custom conversion",
+    apiCsvLabel: "Custom conversion",
+    definitiveProof: false,
+    aliases: [
+      "conversions",
+      "custom conversion",
+      "custom conversions",
+      "offsite_conversion",
+      "onsite_conversion",
+      "onsite_conversion.flow_complete"
+    ]
+  },
+  {
+    key: "group_joins",
+    resultLabel: "GROUP JOINS",
+    costLabel: "COST PER JOIN",
+    isReach: false,
+    canonicalText: "Group join",
+    apiCsvLabel: "Join group",
+    definitiveProof: true,
+    aliases: ["join_group", "join group"]
+  },
+  {
+    key: "store_visits",
+    resultLabel: "STORE VISITS",
+    costLabel: "COST PER STORE VISIT",
+    isReach: false,
+    canonicalText: "Store visit",
+    apiCsvLabel: "Store visit",
+    definitiveProof: true,
+    aliases: ["store_visit", "store visit", "store visits", "onsite_conversion.store_visit"]
+  },
+  {
+    key: "leads",
+    resultLabel: "LEADS",
+    costLabel: "COST PER LEAD",
+    isReach: false,
+    canonicalText: "Lead",
+    apiCsvLabel: "Leads",
+    definitiveProof: false,
+    aliases: ["leads"]
+  },
+  {
+    key: "donate",
+    resultLabel: "DONATIONS",
+    costLabel: "COST PER DONATION",
+    isReach: false,
+    canonicalText: "Donate",
+    apiCsvLabel: "Donate",
+    definitiveProof: true,
+    aliases: ["donate", "donation", "donations", "offsite_conversion.fb_pixel_donate"]
+  },
+  {
+    key: "find_location",
+    resultLabel: "FIND LOCATION",
+    costLabel: "COST PER LOCATION",
+    isReach: false,
+    canonicalText: "Find location",
+    apiCsvLabel: "Find location",
+    definitiveProof: true,
+    aliases: ["find location", "find_location", "offsite_conversion.fb_pixel_find_location"]
+  }
+];
+var META_API_ACTION_TO_CSV = (() => {
+  const map = {};
+  for (const spec of META_OBJECTIVE_SPECS) {
+    if (!spec.apiCsvLabel) continue;
+    for (const alias of spec.aliases) {
+      if (alias.includes(".") || alias.includes("_")) {
+        map[alias] = spec.apiCsvLabel;
+      }
+    }
+  }
+  const extras = {
+    link_click: "Link clicks",
+    purchase: "Purchase",
+    omni_purchase: "Purchase",
+    "offsite_conversion.fb_pixel_purchase": "Purchase",
+    lead: "Leads",
+    "offsite_conversion.fb_pixel_lead": "Website leads",
+    website_lead: "Website leads",
+    onsite_web_lead: "Website leads",
+    "onsite_conversion.lead_grouped": "Leads (form)",
+    "onsite_conversion.lead": "Leads (form)",
+    leadgen_grouped: "Leads (form)",
+    "onsite_conversion.messaging_conversation_started_7d": "Messaging conversations started",
+    messaging_conversation_started_7d: "Messaging conversations started",
+    "onsite_conversion.messaging_first_reply_7d": "Messaging conversations started",
+    new_messaging_connection: "Messaging conversations started",
+    whatsapp_message_send: "Messaging conversations started",
+    landing_page_view: "Landing page view",
+    mobile_app_install: "App installs",
+    omni_app_install: "App installs",
+    post_engagement: "Post engagements",
+    page_like: "Page likes",
+    video_view: "Video views",
+    thruplay: "Video views",
+    omni_complete_registration: "Complete registration",
+    "offsite_conversion.fb_pixel_complete_registration": "Complete registration",
+    "offsite_conversion.fb_pixel_add_payment_info": "Add payment info",
+    "offsite_conversion.fb_pixel_submit_application": "Submit application",
+    "offsite_conversion.fb_pixel_subscribe": "Subscribe",
+    "offsite_conversion.fb_pixel_schedule": "Schedule",
+    "offsite_conversion.fb_pixel_donate": "Donate",
+    "offsite_conversion.fb_pixel_find_location": "Find location",
+    "offsite_conversion.fb_pixel_start_trial": "Start trial",
+    outbound_click: "Outbound clicks",
+    initiate_checkout: "Initiate checkout",
+    add_to_cart: "Add to cart",
+    view_content: "View content",
+    click_to_call: "Phone call",
+    reach: "Reach",
+    impressions: "Impressions"
+  };
+  return { ...map, ...extras };
+})();
+function buildResultTypeMap() {
+  const out = {};
+  for (const spec of META_OBJECTIVE_SPECS) {
+    const info = {
+      key: spec.key,
+      resultLabel: spec.resultLabel,
+      costLabel: spec.costLabel,
+      isReach: spec.isReach
+    };
+    const aliases = spec.apiCsvLabel ? [...spec.aliases, spec.apiCsvLabel] : spec.aliases;
+    for (const alias of aliases) {
+      out[alias.toLowerCase().trim()] = info;
+    }
+  }
+  return out;
+}
+var specByKey = new Map(META_OBJECTIVE_SPECS.map((s) => [s.key, s]));
+var DEFINITIVE_PROOF_ALIAS_TO_KEY = (() => {
+  const map = /* @__PURE__ */ new Map();
+  for (const spec of META_OBJECTIVE_SPECS) {
+    if (!spec.definitiveProof) continue;
+    const aliases = spec.apiCsvLabel ? [...spec.aliases, spec.apiCsvLabel] : spec.aliases;
+    for (const alias of aliases) {
+      map.set(alias.toLowerCase().trim(), spec.key);
+    }
+  }
+  return map;
+})();
+var META_EXACT_LABEL_LOOKUP = buildResultTypeMap();
+
+// src/lib/nre/tiktok-objective-dictionary.ts
+function parseNum(raw) {
+  if (!raw) return 0;
+  const n = parseFloat(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+function formatMoney(raw) {
+  if (!raw) return "0";
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return raw;
+  return n.toFixed(2);
+}
+var TIKTOK_OBJECTIVE_SPECS = [
+  {
+    key: "complete_payment",
+    resultLabel: "PURCHASES",
+    costLabel: "COST PER PURCHASE",
+    apiCsvLabel: "Complete payment",
+    aliases: ["complete payment", "complete_payment", "tiktok complete payment"],
+    detectionPriority: 10,
+    matchesApiMetrics: (m) => parseNum(m.complete_payment) > 0,
+    readApiFields: (m) => ({
+      results: m.complete_payment ?? "0",
+      resultType: "Complete payment",
+      costPerResult: formatMoney(m.cost_per_complete_payment)
+    })
+  },
+  {
+    key: "form_submission",
+    resultLabel: "LEADS",
+    costLabel: "COST PER LEAD",
+    apiCsvLabel: "Form submission",
+    aliases: ["form submission", "form_submission", "tiktok form submission"],
+    detectionPriority: 20,
+    matchesApiMetrics: (m) => parseNum(m.form_submission) > 0,
+    readApiFields: (m) => ({
+      results: m.form_submission ?? "0",
+      resultType: "Form submission",
+      costPerResult: formatMoney(m.cost_per_form_submission)
+    })
+  },
+  {
+    key: "conversions",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    apiCsvLabel: "Conversions",
+    aliases: ["conversions", "conversion", "total conversions"],
+    detectionPriority: 30,
+    matchesApiMetrics: (m) => parseNum(m.conversion) > 0,
+    readApiFields: (m) => ({
+      results: m.conversion ?? "0",
+      resultType: "Conversions",
+      costPerResult: formatMoney(m.cost_per_conversion)
+    })
+  },
+  {
+    key: "video_views",
+    resultLabel: "VIDEO VIEWS",
+    costLabel: "COST PER VIDEO VIEW",
+    apiCsvLabel: "Video views",
+    aliases: ["video views", "video view", "video_play_actions", "video play actions"],
+    detectionPriority: 40,
+    matchesApiMetrics: (m) => parseNum(m.video_play_actions) > 0,
+    readApiFields: (m) => ({
+      results: m.video_play_actions ?? "0",
+      resultType: "Video views",
+      costPerResult: formatMoney(m.cost_per_video_play)
+    })
+  },
+  {
+    key: "reach",
+    resultLabel: "REACH",
+    costLabel: "COST PER 1K REACH",
+    apiCsvLabel: "Reach",
+    aliases: ["reach", "people reached"],
+    detectionPriority: 50,
+    matchesApiMetrics: (m) => {
+      const reach = parseNum(m.reach);
+      const clicks = parseNum(m.clicks);
+      return reach > 0 && clicks <= reach * 0.05;
+    },
+    readApiFields: (m) => {
+      const reach = parseNum(m.reach);
+      return {
+        results: m.reach ?? "0",
+        resultType: "Reach",
+        costPerResult: reach > 0 ? formatMoney(String(parseNum(m.spend) / reach)) : formatMoney(m.cpc)
+      };
+    }
+  },
+  {
+    key: "link_clicks",
+    resultLabel: "LINK CLICKS",
+    costLabel: "COST PER CLICK",
+    apiCsvLabel: "Link clicks",
+    aliases: ["link clicks", "link click", "clicks", "clicks (destination)"],
+    detectionPriority: 60,
+    matchesApiMetrics: () => true,
+    readApiFields: (m) => ({
+      results: m.clicks ?? "0",
+      resultType: "Link clicks",
+      costPerResult: formatMoney(m.cpc)
+    })
+  }
+];
+function buildTikTokResultTypeAliases(base) {
+  const out = {};
+  for (const spec of TIKTOK_OBJECTIVE_SPECS) {
+    const info = {
+      key: spec.key,
+      resultLabel: spec.resultLabel,
+      costLabel: spec.costLabel,
+      isReach: spec.key === "reach"
+    };
+    const candidates = [spec.apiCsvLabel, ...spec.aliases].map((a) => a.toLowerCase());
+    for (const alias of candidates) {
+      if (base && alias in base) continue;
+      out[alias] = info;
+    }
+  }
+  return out;
+}
+
+// src/lib/nre/result-type-map.ts
+var META_RESULT_TYPE_MAP = buildResultTypeMap();
+var RESULT_TYPE_MAP = {
+  ...META_RESULT_TYPE_MAP,
+  ...buildTikTokResultTypeAliases(META_RESULT_TYPE_MAP)
+};
+var MESSAGING_OBJECTIVE = {
+  key: "messaging",
+  resultLabel: "MESSAGING / CONVERSATIONS",
+  costLabel: "COST PER CONVERSATION",
+  isReach: false
+};
+
+// src/lib/nre/objective.ts
+var { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
+
+// src/lib/nre/google-objective-dictionary.ts
+var CONV_RATE = "conv_rate";
+var GOOGLE_OBJECTIVE_SPECS = [
+  {
+    key: "local",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    headerSignals: ["store visits", "cost per store visit"],
+    detectionPriority: 10,
+    slot4MetricKey: "conversions",
+    slot5MetricKey: "cost_per_conv",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE"
+  },
+  {
+    key: "performance_max",
+    resultLabel: "CONV. VALUE",
+    costLabel: "ROAS",
+    headerSignals: ["asset group", "listing group"],
+    detectionPriority: 20,
+    slot4MetricKey: "conv_value",
+    slot5MetricKey: "roas",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE",
+    primaryMetricKey: "conv_value",
+    secondaryMetricKey: "roas"
+  },
+  {
+    key: "shopping",
+    resultLabel: "CONV. VALUE",
+    costLabel: "ROAS",
+    headerSignals: ["orders", "conv. value / cost", "units sold", "avg. cart size", "gross profit"],
+    detectionPriority: 30,
+    slot4MetricKey: "conv_value",
+    slot5MetricKey: "roas",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE",
+    primaryMetricKey: "conv_value",
+    secondaryMetricKey: "roas"
+  },
+  {
+    key: "video",
+    resultLabel: "VIDEO VIEWS",
+    costLabel: "AVG. CPV",
+    headerSignals: ["trueview", "video played to", "avg. cpv", "video views"],
+    detectionPriority: 40,
+    slot4MetricKey: "video_views",
+    slot5MetricKey: "avg_cpv",
+    slot8MetricKey: "video_p100",
+    slot8Label: "VIDEO AT 100%",
+    primaryMetricKey: "video_views",
+    secondaryMetricKey: "avg_cpv"
+  },
+  {
+    key: "youtube",
+    resultLabel: "VIDEO VIEWS",
+    costLabel: "AVG. CPV",
+    headerSignals: ["youtube"],
+    detectionPriority: 45,
+    slot4MetricKey: "video_views",
+    slot5MetricKey: "avg_cpv",
+    slot8MetricKey: "video_p100",
+    slot8Label: "VIDEO AT 100%",
+    primaryMetricKey: "video_views",
+    secondaryMetricKey: "avg_cpv"
+  },
+  {
+    key: "demand_gen",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    headerSignals: ["engagements", "engagement rate", "avg. cpe"],
+    detectionPriority: 50,
+    slot4MetricKey: "conversions",
+    slot5MetricKey: "cost_per_conv",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE"
+  },
+  {
+    key: "display",
+    resultLabel: "VIEWABLE IMPR.",
+    costLabel: "VIEWABLE RATE",
+    headerSignals: ["viewable impr.", "viewable rate", "avg. viewable cpm"],
+    detectionPriority: 60,
+    slot4MetricKey: "viewable_impr",
+    slot5MetricKey: "viewable_rate",
+    slot8MetricKey: "avg_viewable_cpm",
+    slot8Label: "VIEWABLE CPM",
+    primaryMetricKey: "viewable_impr",
+    secondaryMetricKey: "viewable_rate"
+  },
+  {
+    key: "app",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    headerSignals: ["avg. cost"],
+    headerSignalsExclude: ["avg. cpc"],
+    detectionPriority: 70,
+    slot4MetricKey: "conversions",
+    slot5MetricKey: "cost_per_conv",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE"
+  },
+  {
+    key: "leads",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    headerSignals: ["lead revenue", "lead gross profit", "lead units sold"],
+    detectionPriority: 80,
+    slot4MetricKey: "conversions",
+    slot5MetricKey: "cost_per_conv",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE"
+  },
+  {
+    key: "search",
+    resultLabel: "CONVERSIONS",
+    costLabel: "COST PER CONVERSION",
+    headerSignals: [],
+    detectionPriority: 999,
+    slot4MetricKey: "conversions",
+    slot5MetricKey: "cost_per_conv",
+    slot8MetricKey: CONV_RATE,
+    slot8Label: "CONV. RATE"
+  }
+];
+var specByKey2 = new Map(
+  GOOGLE_OBJECTIVE_SPECS.map((s) => [s.key, s])
+);
+
 // src/lib/nre/packs.ts
 function pack(id, objective, performanceGoal, slot4, slot5, slot7, slot8, extraPoolExamples) {
   return {
@@ -61,25 +896,228 @@ var METRIC_PACKS = [
   pack("sales_initiate_checkout", "SALES", "Initiate checkout", "initiate_checkout", "cost_per_initiate_checkout", "add_to_cart", "purchases", ["results_roas"])
 ];
 
+// src/lib/nre/available-metrics.ts
+var MESSAGING_ONLY_METRIC_KEYS = [
+  "messaging_conversations_started",
+  "cost_per_conversation",
+  "new_messaging_contacts",
+  "cost_per_new_contact",
+  "messaging_contacts",
+  "cost_per_messaging_contact",
+  "messages_delivered",
+  "messaging_subscriptions",
+  "cost_per_messaging_subscription",
+  "returning_messaging_contacts"
+];
+function withMessagingBlocked(keys) {
+  return [...keys, ...MESSAGING_ONLY_METRIC_KEYS];
+}
+var NEVER_BACKFILL_KEYS = {
+  meta_form_leads: withMessagingBlocked([
+    "website_leads",
+    "cost_per_website_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "thruplays",
+    "app_installs"
+  ]),
+  website_leads: withMessagingBlocked([
+    "meta_form_leads",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs"
+  ]),
+  leads: withMessagingBlocked(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  purchases: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "video_views",
+    "app_installs"
+  ]),
+  initiate_checkout: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  add_to_cart: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  landing_page_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ]),
+  video_views: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "link_clicks",
+    "app_installs"
+  ]),
+  reach: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results"
+  ]),
+  unique_reach: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results"
+  ]),
+  awareness: withMessagingBlocked([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results"
+  ]),
+  messaging: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  messaging_leads: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  messaging_conversations: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  messaging_conversations_started: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  conversations: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  app_installs: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views"]),
+  mobile_app_installs: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views"])
+};
+
 // src/lib/nre/slot-assignment.ts
+var MESSAGING_ONLY_METRIC_KEYS2 = [
+  "messaging_conversations_started",
+  "cost_per_conversation",
+  "new_messaging_contacts",
+  "cost_per_new_contact",
+  "messaging_contacts",
+  "cost_per_messaging_contact",
+  "messages_delivered",
+  "messaging_subscriptions",
+  "cost_per_messaging_subscription",
+  "returning_messaging_contacts"
+];
+function withMessagingBlocked2(keys) {
+  return [...keys, ...MESSAGING_ONLY_METRIC_KEYS2];
+}
 var NEVER_KEYS_FOR_OBJECTIVE = {
-  meta_form_leads: ["website_leads", "cost_per_website_lead", "purchases", "cost_per_purchase", "video_views", "thruplays", "app_installs"],
-  website_leads: ["meta_form_leads", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "video_views", "app_installs"],
-  leads: ["purchases", "cost_per_purchase", "video_views", "app_installs"],
-  purchases: ["website_leads", "meta_form_leads", "cost_per_website_lead", "video_views", "app_installs"],
-  initiate_checkout: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  add_to_cart: ["website_leads", "meta_form_leads", "video_views", "app_installs"],
-  link_clicks: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  landing_page_views: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"],
-  video_views: ["website_leads", "meta_form_leads", "purchases", "link_clicks", "app_installs"],
-  reach: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  awareness: ["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs", "results"],
-  messaging: ["website_leads", "purchases", "video_views", "app_installs"],
-  app_installs: ["website_leads", "meta_form_leads", "purchases", "video_views"]
+  meta_form_leads: withMessagingBlocked2([
+    "website_leads",
+    "cost_per_website_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "thruplays",
+    "app_installs"
+  ]),
+  website_leads: withMessagingBlocked2([
+    "meta_form_leads",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs"
+  ]),
+  leads: withMessagingBlocked2(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  purchases: withMessagingBlocked2([
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "video_views",
+    "app_installs"
+  ]),
+  initiate_checkout: withMessagingBlocked2(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  add_to_cart: withMessagingBlocked2(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked2(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  landing_page_views: withMessagingBlocked2([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ]),
+  video_views: withMessagingBlocked2([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "link_clicks",
+    "app_installs"
+  ]),
+  reach: withMessagingBlocked2([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results"
+  ]),
+  awareness: withMessagingBlocked2([
+    "website_leads",
+    "meta_form_leads",
+    "purchases",
+    "video_views",
+    "app_installs",
+    "results"
+  ]),
+  messaging: [
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "video_views",
+    "app_installs"
+  ],
+  app_installs: withMessagingBlocked2(["website_leads", "meta_form_leads", "purchases", "video_views"])
 };
 NEVER_KEYS_FOR_OBJECTIVE.unique_reach = NEVER_KEYS_FOR_OBJECTIVE.reach;
 NEVER_KEYS_FOR_OBJECTIVE.mobile_app_installs = NEVER_KEYS_FOR_OBJECTIVE.app_installs;
 NEVER_KEYS_FOR_OBJECTIVE.messaging_leads = NEVER_KEYS_FOR_OBJECTIVE.messaging;
+NEVER_KEYS_FOR_OBJECTIVE.messaging_conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 NEVER_KEYS_FOR_OBJECTIVE.messaging_conversations_started = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 NEVER_KEYS_FOR_OBJECTIVE.conversations = NEVER_KEYS_FOR_OBJECTIVE.messaging;
 
@@ -92,7 +1130,50 @@ var COMBINED_TOTAL_STATIC_HEADERS = [
   "CTR (All)",
   "CPC (All)"
 ];
-function buildCombinedTotalTableGrid(periodRow, mtdRow, headers) {
+var COMBINED_TOTAL_STACKED_OBJECTIVE_THRESHOLD = 4;
+function shouldUseStackedCombinedTotalLayout(objectiveCount) {
+  return objectiveCount >= COMBINED_TOTAL_STACKED_OBJECTIVE_THRESHOLD;
+}
+function staticCombinedTotalRow(row) {
+  return [row.monthLabel, row.spend, row.reach, row.impressions, row.ctr, row.cpc];
+}
+function buildCombinedTotalStackedTableGrid(periodRow, mtdRow, headers, options = {}) {
+  const showMtdRow = options.showMtdRow !== false;
+  const showPeriodRow = options.showPeriodRow !== false;
+  const dualPeriod = showMtdRow && showPeriodRow;
+  const grid = [[...COMBINED_TOTAL_STATIC_HEADERS]];
+  if (showMtdRow) grid.push(staticCombinedTotalRow(mtdRow));
+  if (showPeriodRow) grid.push(staticCombinedTotalRow(periodRow));
+  if (dualPeriod) {
+    grid.push(["Objective", "MTD Results", "MTD Cost", "Period Results", "Period Cost", ""]);
+  } else {
+    grid.push(["Objective", "Results", "Cost per result", "", "", ""]);
+  }
+  const mtdByLabel = new Map(mtdRow.resultColumns.map((c) => [c.label, c]));
+  const periodByLabel = new Map(periodRow.resultColumns.map((c) => [c.label, c]));
+  for (const { label } of headers.resultColumns) {
+    const mtdCol = mtdByLabel.get(label);
+    const periodCol = periodByLabel.get(label);
+    if (dualPeriod) {
+      grid.push([
+        label,
+        mtdCol?.value ?? "\u2014",
+        mtdCol?.cprValue ?? "\u2014",
+        periodCol?.value ?? "\u2014",
+        periodCol?.cprValue ?? "\u2014",
+        ""
+      ]);
+    } else {
+      const col = showMtdRow ? mtdCol : periodCol;
+      grid.push([label, col?.value ?? "\u2014", col?.cprValue ?? "\u2014", "", "", ""]);
+    }
+  }
+  return grid;
+}
+function buildCombinedTotalTableGrid(periodRow, mtdRow, headers, options = {}) {
+  if (shouldUseStackedCombinedTotalLayout(headers.resultColumns.length)) {
+    return buildCombinedTotalStackedTableGrid(periodRow, mtdRow, headers, options);
+  }
   const headerRow = [
     ...COMBINED_TOTAL_STATIC_HEADERS,
     ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])
@@ -125,7 +1206,11 @@ function buildHistoricalComparisonTableGrid(rows, headers) {
 
 // src/lib/nre/google-combined-total.ts
 var GOOGLE_TABLE_STATIC_HEADERS = ["Month", "Cost", "Clicks", "Impressions", "CTR", "Avg. CPC"];
-function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers) {
+function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, options = {}) {
+  if (shouldUseStackedCombinedTotalLayout(headers.resultColumns.length)) {
+    const stacked = buildCombinedTotalStackedTableGrid(periodRow, mtdRow, headers, options);
+    return stacked.map((row, i) => i === 0 ? [...GOOGLE_TABLE_STATIC_HEADERS] : row);
+  }
   const headerRow = [...GOOGLE_TABLE_STATIC_HEADERS, ...headers.resultColumns.flatMap((c) => [c.label, c.costLabel])];
   const periodDataRow = periodRow.hasData ? [
     periodRow.monthLabel,
@@ -692,9 +1777,75 @@ function ShareMtdOverviewSlide({ chart }) {
 }
 function CombinedTotalTable({ data, compact = false }) {
   const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
-  const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels);
   const hidePeriodRow = isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
+  const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
+  const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
+  const stacked = !isHistoricalMultiMonth && shouldUseStackedCombinedTotalLayout(data.tableHeaderLabels.resultColumns.length);
+  if (stacked) {
+    const staticRowCount = 1 + (hideMtdRow ? 0 : 1) + (hidePeriodRow ? 0 : 1);
+    const staticHeader = grid[0];
+    const staticBody = grid.slice(1, staticRowCount);
+    const objectiveHeader = grid[staticRowCount];
+    const objectiveRows = grid.slice(staticRowCount + 1);
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: compact ? "print-combined-table space-y-4" : "space-y-4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: compact ? "overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        "table",
+        {
+          className: compact ? "w-full border-collapse text-left text-[12px]" : "w-full min-w-[640px] border-collapse text-left text-[16px]",
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { className: "bg-navy-border", children: staticHeader.map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              "th",
+              {
+                className: compact ? "px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink" : "whitespace-nowrap px-4 py-3 text-[14px] font-semibold uppercase tracking-wide text-ink",
+                children: h
+              },
+              i
+            )) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: staticBody.map((cells, ri) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              "tr",
+              {
+                className: ri === staticBody.length - 1 && !hidePeriodRow && !hideMtdRow ? "bg-navy-panel" : "bg-navy",
+                children: cells.map((cell, ci) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "td",
+                  {
+                    className: (compact ? "px-1.5 py-2 text-[12px] text-ink " : "whitespace-nowrap px-4 py-3 text-[16px] text-ink ") + (ci === 0 ? "text-left font-semibold" : "text-center"),
+                    children: cell
+                  },
+                  ci
+                ))
+              },
+              ri
+            )) })
+          ]
+        }
+      ) }),
+      objectiveHeader && objectiveRows.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: compact ? "overflow-x-auto rounded-lg border border-navy-border" : "overflow-x-auto rounded-lg border border-navy-border", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        "table",
+        {
+          className: compact ? "w-full border-collapse text-left text-[12px]" : "w-full min-w-[480px] border-collapse text-left text-[16px]",
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { className: "bg-navy-border", children: objectiveHeader.filter(Boolean).map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              "th",
+              {
+                className: compact ? "px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink" : "whitespace-nowrap px-4 py-3 text-[14px] font-semibold uppercase tracking-wide text-ink",
+                children: h
+              },
+              i
+            )) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: objectiveRows.map((cells, ri) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { className: "bg-navy", children: cells.slice(0, objectiveHeader.filter(Boolean).length).map((cell, ci) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              "td",
+              {
+                className: (compact ? "px-1.5 py-2 text-[12px] text-ink " : "whitespace-nowrap px-4 py-3 text-[16px] text-ink ") + (ci === 0 ? "text-left font-semibold" : "text-center"),
+                children: cell
+              },
+              ci
+            )) }, ri)) })
+          ]
+        }
+      ) }) : null
+    ] });
+  }
   const bodyRows = isHistoricalMultiMonth ? grid.slice(1).map((cells) => ({ cells, isPeriod: false })) : (() => {
     const [, mtdRow, periodRow] = grid;
     return [
@@ -809,18 +1960,6 @@ function ShareReportView({
                     children: [
                       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden min-[400px]:inline", children: "Download " }),
                       "PPTX"
-                    ]
-                  }
-                ) : null,
-                shareToken && visibleData.publishedAt ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-                  "a",
-                  {
-                    href: `/api/r/${shareToken}/download-pdf`,
-                    className: "inline-flex items-center justify-center rounded-md border border-[#63b3ed] px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-[#63b3ed]/10 sm:px-3.5 sm:py-2 sm:text-[14px]",
-                    style: { backgroundColor: "#1e293b" },
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "hidden min-[400px]:inline", children: "Download " }),
-                      "PDF"
                     ]
                   }
                 ) : null

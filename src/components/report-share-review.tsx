@@ -237,7 +237,6 @@ export function ReportShareReview({
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [canSyncPpt, setCanSyncPpt] = useState(true);
-  const [pdfAvailable, setPdfAvailable] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
 
   useEffect(() => {
@@ -266,7 +265,6 @@ export function ReportShareReview({
       setCombinedTotalEdit(cloneCombinedTotalEdit(loaded));
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
       setCanSyncPpt(json.canSyncPpt !== false);
-      setPdfAvailable(!!(json.publishedAt ?? loaded.publishedAt));
       setSelectedSlideId("cover");
       setError(null);
       setLoading(false);
@@ -407,11 +405,10 @@ export function ReportShareReview({
     const json = await res.json().catch(() => ({}));
     const ts = (json.publishedAt as string | undefined) ?? new Date().toISOString();
     setPublishedAt(ts);
-    setPdfAvailable(true);
     setJustPublished(true);
     setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
-    updateGenerateSnapshotAfterPublish(clientId, reportId, ts, true);
-    showToast("Published — live link, PPTX, and PDF download are updated.");
+    updateGenerateSnapshotAfterPublish(clientId, reportId, ts);
+    showToast("Published — live link and PPTX download are updated.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -444,7 +441,7 @@ export function ReportShareReview({
             {justPublished ? "✓ Published successfully" : "✓ Last published"}
           </p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            Your live browser link{canSyncPpt ? ", Download PPTX," : ""} and Download PDF now match this review.
+            Your live browser link{canSyncPpt ? " and Download PPTX" : ""} now match this review.
             {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
           </p>
           {returnToGenerateHref ? (
@@ -460,7 +457,7 @@ export function ReportShareReview({
           <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
             {visibleCount} slides on the live link. <strong>Publish</strong> updates the browser report
-            {canSyncPpt ? ", Download PPTX," : ""} and Download PDF (after review) — not a Google Slides file already in Drive.
+            {canSyncPpt ? " and Download PPTX" : ""} — not a Google Slides file already in Drive.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -473,14 +470,6 @@ export function ReportShareReview({
             >
               Preview live link
             </Link>
-          ) : null}
-          {publishedAt ? (
-            <a
-              href={`/api/reports/${reportId}/download-pdf`}
-              className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"
-            >
-              Download PDF
-            </a>
           ) : null}
           <button
             type="button"
