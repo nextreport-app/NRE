@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
@@ -20,6 +21,20 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
   );
 }
 
+function WizardClientLine({ clientName }: { clientName: string }) {
+  return (
+    <p className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[14px]">
+      <span className="font-semibold text-[#f6ad55]">{clientName}</span>
+      <span className="text-dash-ink-secondary" aria-hidden="true">
+        ·
+      </span>
+      <Link href="/clients" className="font-medium text-dash-accent underline decoration-dash-accent/40 underline-offset-2 hover:decoration-dash-accent">
+        Select client
+      </Link>
+    </p>
+  );
+}
+
 function ReportUploadWizardBody() {
   const w = useWizardContext();
 
@@ -27,7 +42,7 @@ function ReportUploadWizardBody() {
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{w.clientName}</p>
+          <WizardClientLine clientName={w.clientName} />
           <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
           <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
@@ -39,7 +54,7 @@ function ReportUploadWizardBody() {
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{w.clientName}</p>
+          <WizardClientLine clientName={w.clientName} />
           <h1 className="mb-1 text-[20px] font-bold text-white">Google Analytics</h1>
           <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
@@ -69,7 +84,7 @@ function ReportUploadWizardBody() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-0.5 text-[14px] font-semibold text-[#f6ad55]">{w.clientName}</p>
+        <WizardClientLine clientName={w.clientName} />
         <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(w.step, w.platform)}</h1>
         {getWizardStepSubtitle(w.step, w.platform) ? (
           <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(w.step, w.platform)}</p>
