@@ -23,15 +23,16 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
 
 function WizardClientLine({ clientName }: { clientName: string }) {
   return (
-    <p className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[14px]">
-      <span className="font-semibold text-[#f6ad55]">{clientName}</span>
-      <span className="text-dash-ink-secondary" aria-hidden="true">
-        ·
-      </span>
-      <Link href="/clients" className="font-medium text-dash-accent underline decoration-dash-accent/40 underline-offset-2 hover:decoration-dash-accent">
-        Select client
+    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/40 border-l-4 border-l-[#f6ad55] bg-dash-card/90 px-4 py-3 shadow-sm">
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Client</span>
+      <span className="text-[17px] font-bold leading-tight text-[#fbd38d]">{clientName}</span>
+      <Link
+        href="/clients"
+        className="ml-auto text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
+      >
+        Select client →
       </Link>
-    </p>
+    </div>
   );
 }
 
