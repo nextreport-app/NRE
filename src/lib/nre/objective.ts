@@ -134,6 +134,9 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     if (metaFormLeadsCampaign && metaLeadsTotal > 0) {
       return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
     }
+    if (isQuoteRequestCampaignName(rows) && hasQuoteRequestResultTypeRows(rows)) {
+      return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
+    }
     // Mixed exports often carry one stray messaging count on website campaigns
     // (e.g. Lead Campaign_ Website_TOF) — name + traffic columns beat that noise.
     if (
@@ -888,6 +891,14 @@ function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
   return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
+function isQuoteRequestCampaignName(rows: MetricRow[]): boolean {
+  return /quote[\s_]*request/.test(campaignNameHaystack(rows));
+}
+
+function hasQuoteRequestResultTypeRows(rows: MetricRow[]): boolean {
+  return rows.some((r) => resolveObjectiveFromResultType(r.result_type)?.key === "quote_requests");
+}
+
 /** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
 function isPurchaseCampaignName(rows: MetricRow[]): boolean {
   const haystack = campaignNameHaystack(rows);
@@ -970,6 +981,7 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
       0,
     );
     if (metaLeadsTotal > 0 || isMetaFormLeadsCampaignName(rows)) return true;
+    if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) return true;
   }
 
   return false;
@@ -997,6 +1009,7 @@ function shouldIgnoreUniqueMappedObjective(rows: MetricRow[], info: { key: strin
       0,
     );
     if (metaLeadsTotal > 0 || isMetaFormLeadsCampaignName(rows)) return true;
+    if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) return true;
   }
   return false;
 }
