@@ -1,0 +1,1795 @@
+{
+  "sourceSheetId": "1J1qw2sVOghbFhiwhuvXt4woieMaLKIF8u577SMFaGSE",
+  "performanceGoalRows": [
+    {
+      "campaignObjective": "Awareness",
+      "conversionLocation": null,
+      "performanceGoal": "Maximise reach of ads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Awareness",
+      "conversionLocation": null,
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Awareness",
+      "conversionLocation": null,
+      "performanceGoal": "Maximise ad recall lift",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Awareness",
+      "conversionLocation": null,
+      "performanceGoal": "Maximise ThruPlay views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Awareness",
+      "conversionLocation": null,
+      "performanceGoal": "Maximise 2-second continuous video plays",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of landing page views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Instagram or Facebook",
+      "performanceGoal": "Maximise number of Instagram profile and Facebook Page visits",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Traffic",
+      "conversionLocation": "Calls",
+      "performanceGoal": "Maximise number of calls",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise ThruPlay views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise ThruPlay views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise 2-second continuous video plays",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise engagement with a post",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise number of event responses",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise engagement with a post",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "On your ad",
+      "performanceGoal": "Maximise reminders set",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Calls",
+      "performanceGoal": "Maximise number of calls",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of landing page views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "App Install"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app events",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize value of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize pre-registration",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram or Facebook",
+      "performanceGoal": "Maximise number of Instagram profile and Facebook Page visits",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram or Facebook",
+      "performanceGoal": "Maximise number of Page likes",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instant forms and Messenger",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of landing page views",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instant forms",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instant forms",
+      "performanceGoal": "Maximise number of qualified leads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Messenger",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "WhatsApp",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Calls",
+      "performanceGoal": "Maximise number of calls",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "App Install"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app events",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize value of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize pre-registration",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "App Install"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app events",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize value of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize pre-registration",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of landing page views",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "App Install"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app events",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize value of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize pre-registration",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of conversations",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise daily unique reach",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Message destinations",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Calls",
+      "performanceGoal": "Maximise number of calls",
+      "conversionEvent": "Conversion count"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of impressions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximise number of link clicks",
+      "conversionEvent": null
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Calls",
+      "performanceGoal": "Maximise number of calls",
+      "conversionEvent": null
+    }
+  ],
+  "conversionEventRows": [
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Content view"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Registration"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Engagement",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and instant forms",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of leads",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Content view"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Leads",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Content view"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Registration"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "App promotion",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website and calls",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Instagram live video",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Purchase"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Content view"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Sales",
+      "conversionLocation": "App",
+      "performanceGoal": "Maximize number of app installs",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise number of conversions",
+      "conversionEvent": "Lead"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add to cart"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Initiate checkout"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "View content"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Donate"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Contact"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Schedule"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Start trial"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Submit application"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Subscribe"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Add payment info"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Complete registration"
+    },
+    {
+      "campaignObjective": "Catalogue sales",
+      "conversionLocation": "Website",
+      "performanceGoal": "Maximise value of conversions",
+      "conversionEvent": "Lead"
+    }
+  ]
+}
