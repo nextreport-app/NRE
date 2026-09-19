@@ -18,7 +18,12 @@ import {
   resolveDefinitiveObjectiveFromRows,
   resolveUniqueMappedObjectiveFromRows,
 } from "./meta-objective-dictionary";
-import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType, type ObjectiveInfo } from "./result-type-map";
+import {
+  MESSAGING_OBJECTIVE,
+  objectiveInfoForDetectedLabel,
+  resolveObjectiveFromResultType,
+  type ObjectiveInfo,
+} from "./result-type-map";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -193,6 +198,9 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
 
   if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+  if (rows.some((r) => isQuoteRequestResultTypeText(r.result_type))) {
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
 
   const fromRows = detectObjectiveFromCampaignRows(rows);
@@ -658,6 +666,11 @@ function isWebsiteLeadsResultTypeText(resultType: string | null | undefined): bo
   return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "website_leads";
 }
 
+function isQuoteRequestResultTypeText(resultType: string | null | undefined): boolean {
+  const rt = (resultType || "").toLowerCase().trim();
+  return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "quote_requests";
+}
+
 /**
  * Objective Confirmation (permanent objective-detection fix) — per-campaign
  * objective resolution, now the single algorithm buildCampaignObjectiveMap
@@ -1063,7 +1076,13 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     const ignoreIncidentalTraffic =
       shouldIgnoreDominantResultType(rows, dominantResultType);
     if ((!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) && !ignoreIncidentalTraffic) {
-      const info = resolveObjectiveFromResultType(dominantResultType);
+      let info = resolveObjectiveFromResultType(dominantResultType);
+      if (!info) {
+        const fuzzy = getResultLabels(dominantResultType);
+        if (fuzzy.resultLabel !== "RESULTS") {
+          info = objectiveInfoForDetectedLabel(fuzzy.resultLabel, fuzzy.costLabel);
+        }
+      }
       if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high", requiresConfirmation: false };
     }
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through

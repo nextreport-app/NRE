@@ -326,7 +326,13 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
     canonicalText: "Quote request",
     apiCsvLabel: "Quote request",
     definitiveProof: true,
-    aliases: ["quote_request", "quote request"],
+    aliases: [
+      "quote_request",
+      "quote request",
+      "quote requests",
+      "quote request submitted",
+      "quote requests submitted",
+    ],
   },
   {
     key: "app_events",

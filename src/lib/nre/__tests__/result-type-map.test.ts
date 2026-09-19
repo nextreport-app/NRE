@@ -29,6 +29,11 @@ describe("resolveObjectiveFromResultType — exact machine result_type matching"
     expect(resolveObjectiveFromResultType("Website submission")?.resultLabel).toBe("WEBSITE LEADS");
   });
 
+  it("maps Meta custom quote conversion labels to QUOTE REQUESTS", () => {
+    expect(resolveObjectiveFromResultType("Quote Request Submitted")?.resultLabel).toBe("QUOTE REQUESTS");
+    expect(resolveObjectiveFromResultType("quote request submitted")?.resultLabel).toBe("QUOTE REQUESTS");
+  });
+
   it("maps 'Leads (form)' (both cases) to META FORM LEADS, same as onsite_conversion.lead_grouped", () => {
     expect(resolveObjectiveFromResultType("Leads (form)")).toEqual({
       key: "meta_form_leads",

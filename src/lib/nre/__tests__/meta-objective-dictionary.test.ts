@@ -26,6 +26,8 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
       ["Schedule", "APPOINTMENT LEADS"],
       ["Adds to cart", "ADD TO CART"],
       ["Checkouts initiated", "INITIATE CHECKOUT"],
+      ["Quote Request Submitted", "QUOTE REQUESTS"],
+      ["quote requests submitted", "QUOTE REQUESTS"],
       ["omni_purchase", "PURCHASES"],
       ["omni_app_install", "APP INSTALLS"],
     ];
