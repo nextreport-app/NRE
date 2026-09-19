@@ -800,36 +800,13 @@ export function WizardGenerateStep() {
                 ) : null}
 
                 {shareToken && reportId ? (
-                  <div className="rounded-lg border border-[#f6ad55]/40 bg-[#0d1b2e] p-4">
-                    <p className="text-[14px] leading-relaxed text-dash-ink">
-                      PPT and the live link are ready. Review or edit slides and copy before sharing — publish from
-                      Review updates the live link.
-                    </p>
-                    <Link
-                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="mt-3 flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-                      onClick={() => {
-                        if (reportId && downloadUrl) {
-                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                        }
-                      }}
-                    >
-                      {publishedAt ? "Edit review" : "Review before sharing"}
-                    </Link>
-                  </div>
+                  <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
+                    PPT and the live link are ready. Review slides and copy before sharing.
+                  </p>
                 ) : null}
 
                 {shareToken ? (
                   <>
-                    <a
-                      href={`https://${buildShareReportUrl(shareToken)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex w-full items-center justify-center rounded-lg text-[15px] font-semibold transition-opacity hover:opacity-90"
-                      style={{ height: "48px", backgroundColor: "#f5b45a", color: "#0d1b2e" }}
-                    >
-                      View in browser
-                    </a>
                     <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
                       <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
                         {buildShareReportUrl(shareToken)}
@@ -841,6 +818,31 @@ export function WizardGenerateStep() {
                       >
                         Copy
                       </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {shareToken && reportId ? (
+                        <Link
+                          href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                          className="flex items-center justify-center rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:border-[#f5b45a]/40 hover:bg-[#132238]"
+                          onClick={() => {
+                            if (reportId && downloadUrl) {
+                              persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+                            }
+                          }}
+                        >
+                          {publishedAt ? "Edit review" : "Review before sharing"}
+                        </Link>
+                      ) : null}
+                      <a
+                        href={`https://${buildShareReportUrl(shareToken)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:border-[#f5b45a] ${
+                          shareToken && reportId ? "" : "sm:col-span-2"
+                        }`}
+                      >
+                        View in browser
+                      </a>
                     </div>
                   </>
                 ) : null}
