@@ -675,28 +675,31 @@ export function WebsiteReportWizard({
           <div className="mt-4 space-y-4">
             <p className="text-[16px] font-semibold text-emerald-400">Report ready</p>
             {shareToken && reportId ? (
-              <div className="rounded-lg border border-[#f6ad55]/40 bg-[#0d1b2e] p-4">
-                <p className="text-[14px] leading-relaxed text-dash-ink">
-                  Review slides and copy before sharing — publish from Review updates the live link.
-                </p>
-                <Link
-                  href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                  className="mt-3 flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-                >
-                  Review before sharing
-                </Link>
-              </div>
+              <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
+                PPT and the live link are ready. Review slides and copy before sharing.
+              </p>
             ) : null}
             {shareToken ? (
-              <a
-                href={`https://${buildShareReportUrl(shareToken)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold text-[#0d1b2e]"
-                style={{ backgroundColor: "#f5b45a" }}
-              >
-                View in browser
-              </a>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {shareToken && reportId ? (
+                  <Link
+                    href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                    className="flex items-center justify-center rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:border-[#f5b45a]/40 hover:bg-[#132238]"
+                  >
+                    Review before sharing
+                  </Link>
+                ) : null}
+                <a
+                  href={`https://${buildShareReportUrl(shareToken)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:border-[#f5b45a] ${
+                    shareToken && reportId ? "" : "sm:col-span-2"
+                  }`}
+                >
+                  View in browser
+                </a>
+              </div>
             ) : null}
             <a
               href={downloadUrl}
