@@ -350,6 +350,13 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot8 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5, slot7), v);
       break;
 
+    case "QUOTE REQUESTS":
+      slot4 = slot("results", "QUOTE REQUESTS", "number", baseline.resultValue);
+      slot5 = slot("cost_per_result", baseline.costLabel, "currency", baseline.cprValue);
+      slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
+      slot8 = pickSlot([COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
+      break;
+
     // META FORM LEADS (on-Facebook lead forms, result_type "Leads (form)" /
     // "onsite_conversion.lead_grouped"): a dedicated "on-Facebook leads" /
     // "cost per on-facebook lead" / "cost per lead" column, when the CSV

@@ -573,6 +573,12 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       slot7 = byKey("META", "link_clicks")!;
       slot8 = byKey("META", "landing_page_views")!;
       break;
+    case "QUOTE REQUESTS":
+      slot4 = byKey("META", "results", "QUOTE REQUESTS")!;
+      slot5 = byKey("META", "cost_per_result", resultCostLabel || "COST PER QUOTE")!;
+      slot7 = byKey("META", "link_clicks")!;
+      slot8 = costPerLinkClick;
+      break;
     // META FORM LEADS — mirrors slot-assignment.ts's buildMetaSlots exactly:
     // a dedicated "on-Facebook leads"/"cost per on-facebook lead"/"cost per
     // lead" column takes priority when the CSV has one; otherwise the
@@ -764,7 +770,17 @@ export function objectiveMetricKeys(resultLabel: string): { resultKey: string; c
  * Exported so slot-assignment.ts's per-campaign slide filter can treat the
  * same set as "generic, relevant to every campaign regardless of objective".
  */
-export const SECONDARY_FILL_KEYS = ["link_clicks", "cpc_all", "landing_page_views", "cost_per_lpv", "frequency", "clicks_all", "video_views", "thruplays"];
+export const SECONDARY_FILL_KEYS = [
+  "link_clicks",
+  "cpc_link_click",
+  "cpc_all",
+  "landing_page_views",
+  "cost_per_lpv",
+  "frequency",
+  "clicks_all",
+  "video_views",
+  "thruplays",
+];
 
 /**
  * Mixed-objective accounts — the account-wide counterpart to

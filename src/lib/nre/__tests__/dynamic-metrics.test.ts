@@ -173,6 +173,21 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     expect(aggregateDynamicMetrics(rowsAverage, [cpcAll()], "meta").cpc_all).toBe(0.6);
   });
 
+  it("cpc_link_click ignores CPC (all) and uses the link-click CPC column or spend/link clicks", () => {
+    const rowsWithBoth = [
+      row({
+        "Amount spent": "100",
+        "CPC (all)": "2.00",
+        "CPC (cost per link click)": "0.85",
+        "Link clicks": "4",
+      }),
+    ];
+    expect(aggregateDynamicMetrics(rowsWithBoth, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.85);
+
+    const rowsFallback = [row({ "Amount spent": "100", "CPC (all)": "2.00", "Link clicks": "4" })];
+    expect(aggregateDynamicMetrics(rowsFallback, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
+  });
+
   it("falls back to spend/clicks when the CPC column is missing, using whichever 'clicks' column variant is present", () => {
     const rows = [
       row({ "Amount spent": "50", "Clicks (all)": "20" }),

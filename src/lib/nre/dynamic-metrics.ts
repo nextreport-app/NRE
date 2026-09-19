@@ -102,18 +102,31 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
  * CPC card only ever shows "—" when spend or clicks are truly both absent.
  */
 const CPC_METRIC_KEYS = new Set(["cpc_all", "cpc_link_click"]);
-const CPC_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "cpc (cost per link click)", "average cpc"];
-const CPC_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "link clicks", "clicks"];
+const CPC_ALL_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "average cpc"];
+const CPC_LINK_VALUE_HEADER_CANDIDATES = ["cpc (cost per link click)"];
+/** Last resort for CPC (All) when the export only has link clicks, not clicks (all). */
+const CPC_ALL_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "clicks", "link clicks"];
+const CPC_LINK_CLICKS_HEADER_CANDIDATES = ["link clicks"];
 
-function aggregateCpc<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
-  for (const candidate of CPC_VALUE_HEADER_CANDIDATES) {
+function aggregateCpc<T extends RawMetricRow>(
+  rows: T[],
+  headerMap: Map<string, string>,
+  totalSpend: number,
+  metricKey: "cpc_all" | "cpc_link_click",
+): number {
+  const valueHeaders =
+    metricKey === "cpc_link_click" ? CPC_LINK_VALUE_HEADER_CANDIDATES : CPC_ALL_VALUE_HEADER_CANDIDATES;
+  const clickHeaders =
+    metricKey === "cpc_link_click" ? CPC_LINK_CLICKS_HEADER_CANDIDATES : CPC_ALL_CLICKS_HEADER_CANDIDATES;
+
+  for (const candidate of valueHeaders) {
     const header = headerMap.get(candidate);
     if (!header) continue;
     const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
     if (nonZero.length > 0) return nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length;
   }
 
-  for (const candidate of CPC_CLICKS_HEADER_CANDIDATES) {
+  for (const candidate of clickHeaders) {
     const header = headerMap.get(candidate);
     if (!header) continue;
     const totalClicks = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
@@ -200,7 +213,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   for (const metric of metrics) {
     if (CPC_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      result[metric.key] = aggregateCpc(rows, headerMap, totalSpend);
+      result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
       continue;
     }
 
