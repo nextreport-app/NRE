@@ -26,8 +26,6 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
       ["Schedule", "APPOINTMENT LEADS"],
       ["Adds to cart", "ADD TO CART"],
       ["Checkouts initiated", "INITIATE CHECKOUT"],
-      ["Quote Request Submitted", "QUOTE REQUESTS"],
-      ["quote requests submitted", "QUOTE REQUESTS"],
       ["omni_purchase", "PURCHASES"],
       ["omni_app_install", "APP INSTALLS"],
     ];
@@ -54,6 +52,12 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
     ];
     const info = resolveDefinitiveObjectiveFromRows(rows, resolveObjectiveFromResultType);
     expect(info?.resultLabel).toBe("PURCHASES");
+  });
+
+  it("Step 0 definitive proof accepts fuzzy-matched human CSV labels outside the exact alias list", () => {
+    const rows = [{ result_type: "Quote Request Submitted" }];
+    const info = resolveDefinitiveObjectiveFromRows(rows, resolveObjectiveFromResultType);
+    expect(info?.resultLabel).toBe("QUOTE REQUESTS");
   });
 
   it("unique-mapped shortcut trusts one objective when all typed rows agree (blank majority)", () => {

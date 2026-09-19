@@ -6,6 +6,7 @@
 
 import {
   buildResultTypeMap,
+  getMetaResultLabels,
   type ObjectiveInfo,
 } from "./meta-objective-dictionary";
 import { buildTikTokResultTypeAliases } from "./tiktok-objective-dictionary";
@@ -53,16 +54,37 @@ export function objectiveInfoForDetectedLabel(resultLabel: string, costLabel: st
   };
 }
 
-/** Case-insensitive exact-string lookup — `null` for anything not in RESULT_TYPE_MAP. */
+function isMachineReadableResultType(resultType: string): boolean {
+  return resultType.includes(".") || resultType.includes("_");
+}
+
+/**
+ * Resolve a CSV/API `result_type` to an objective.
+ *
+ * 1. Case-insensitive exact alias match (Meta machine names + known export labels)
+ * 2. For human-readable export text only: fuzzy substring catalog (spacing,
+ *    casing, suffixes like "Submitted", near-synonyms)
+ *
+ * Machine-readable strings (dots/underscores) stay exact-only so fuzzy patterns
+ * like `/leads?/` cannot misread API action names.
+ */
 export function resolveObjectiveFromResultType(resultType: string | null | undefined): ObjectiveInfo | null {
   if (!resultType) return null;
   const normalized = resultType.toLowerCase().trim();
-  const info = RESULT_TYPE_MAP[normalized];
-  if (!info) return null;
-  return {
-    ...info,
-    resultLabel: normalizeObjectiveLabel(info.resultLabel),
-  };
+  const exact = RESULT_TYPE_MAP[normalized];
+  if (exact) {
+    return {
+      ...exact,
+      resultLabel: normalizeObjectiveLabel(exact.resultLabel),
+    };
+  }
+
+  if (isMachineReadableResultType(normalized)) return null;
+
+  const fuzzy = getMetaResultLabels(resultType);
+  if (fuzzy.resultLabel === "RESULTS") return null;
+
+  return objectiveInfoForDetectedLabel(fuzzy.resultLabel, fuzzy.costLabel);
 }
 
 /**

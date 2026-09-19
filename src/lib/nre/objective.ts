@@ -12,18 +12,12 @@ import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregati
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
-  DEFINITIVE_PROOF_ALIAS_TO_KEY,
   getMetaCanonicalResultTypeText,
   getMetaResultLabels,
   resolveDefinitiveObjectiveFromRows,
   resolveUniqueMappedObjectiveFromRows,
 } from "./meta-objective-dictionary";
-import {
-  MESSAGING_OBJECTIVE,
-  objectiveInfoForDetectedLabel,
-  resolveObjectiveFromResultType,
-  type ObjectiveInfo,
-} from "./result-type-map";
+import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType, type ObjectiveInfo } from "./result-type-map";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -662,13 +656,11 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * consumer.
  */
 function isWebsiteLeadsResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "website_leads";
+  return resolveObjectiveFromResultType(resultType)?.key === "website_leads";
 }
 
 function isQuoteRequestResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "quote_requests";
+  return resolveObjectiveFromResultType(resultType)?.key === "quote_requests";
 }
 
 /**
@@ -1076,13 +1068,7 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     const ignoreIncidentalTraffic =
       shouldIgnoreDominantResultType(rows, dominantResultType);
     if ((!isLandingPageViewSpecialCase || !hasRealLeadsColumnData) && !ignoreIncidentalTraffic) {
-      let info = resolveObjectiveFromResultType(dominantResultType);
-      if (!info) {
-        const fuzzy = getResultLabels(dominantResultType);
-        if (fuzzy.resultLabel !== "RESULTS") {
-          info = objectiveInfoForDetectedLabel(fuzzy.resultLabel, fuzzy.costLabel);
-        }
-      }
+      const info = resolveObjectiveFromResultType(dominantResultType);
       if (info) return { resultLabel: info.resultLabel, costLabel: info.costLabel, confidence: "high", requiresConfirmation: false };
     }
     // isLandingPageViewSpecialCase && hasRealLeadsColumnData falls through

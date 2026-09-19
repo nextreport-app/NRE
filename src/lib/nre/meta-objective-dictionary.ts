@@ -326,13 +326,7 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
     canonicalText: "Quote request",
     apiCsvLabel: "Quote request",
     definitiveProof: true,
-    aliases: [
-      "quote_request",
-      "quote request",
-      "quote requests",
-      "quote request submitted",
-      "quote requests submitted",
-    ],
+    aliases: ["quote_request", "quote request"],
   },
   {
     key: "app_events",
@@ -659,14 +653,14 @@ export function resolveDefinitiveObjectiveFromRows(
   const keyToInfo = new Map<string, ObjectiveInfo>();
 
   for (const row of rows) {
-    const rt = (row.result_type || "").toLowerCase().trim();
-    if (!rt) continue;
-    const proofKey = DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt);
-    if (!proofKey) continue;
+    const rt = row.result_type;
+    if (!rt || !rt.trim()) continue;
     const info = lookup(rt);
     if (!info) continue;
-    foundKeys.add(proofKey);
-    keyToInfo.set(proofKey, info);
+    const spec = specByKey.get(info.key);
+    if (!spec?.definitiveProof) continue;
+    foundKeys.add(info.key);
+    keyToInfo.set(info.key, info);
   }
 
   if (foundKeys.size === 0) return null;
