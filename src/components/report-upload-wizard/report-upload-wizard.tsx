@@ -8,6 +8,7 @@ import { getAdWizardFlow, getWizardStepHeading, getWizardStepSubtitle } from "@/
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
 import { StepIndicator } from "./ui/step-indicator";
+import { UploadSessionRecoveryBanner } from "./ui/upload-session-recovery-banner";
 import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
@@ -92,6 +93,15 @@ function ReportUploadWizardBody() {
         ) : null}
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+
+      {w.uploadSessionRecovery ? (
+        <UploadSessionRecoveryBanner
+          message={w.uploadSessionRecovery}
+          reanalyzing={w.reanalyzeSessionStatus === "loading"}
+          onReanalyze={() => void w.handleReanalyzeSession()}
+          onStartOver={() => w.setStep(1)}
+        />
+      ) : null}
 
       {w.step === 4 && (
         <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">

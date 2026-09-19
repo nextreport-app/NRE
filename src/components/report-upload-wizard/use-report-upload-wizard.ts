@@ -109,11 +109,35 @@ export function useReportUploadWizard({
   // shown. Only grows (a step, once visited, stays "completed" even after
   // navigating back to it and forward again).
   const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(new Set([1]));
+  const stepRef = useRef<Step>(1);
+  const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
+  const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
+  const [previewRefreshing, setPreviewRefreshing] = useState(false);
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generateStatusRef = useRef<GenerateStatus>("idle");
+
+  function invalidateDownstreamFromStep(target: Step) {
+    if (target <= 3) {
+      resetGenerateState();
+      resetPreviewState();
+    }
+    if (target <= 2) {
+      resetMetricsState();
+    }
+  }
+
   /** Every step transition in the wizard goes through this — records the step as visited alongside switching to it. */
   function setStep(s: Step) {
+    const current = stepRef.current;
+    if (s < current) invalidateDownstreamFromStep(s);
+    stepRef.current = s;
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
+
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -448,6 +472,30 @@ export function useReportUploadWizard({
     }
   }
 
+  function resetPreviewState() {
+    setPreviewStatus("idle");
+    setPreviewErrors([]);
+    setPreviewMessage(null);
+    setPreviewKind("normal");
+    setData(null);
+    setComparisonData(null);
+    setHistoricalData(null);
+    setPreviewRefreshing(false);
+  }
+
+  function resetMetricsState() {
+    setMetricsFetchedForSelection(null);
+    setMetricsStatus("idle");
+    setPerCampaignMetrics(new Map());
+    setPerCampaignAvailablePool(new Map());
+    setCampaignObjectives(new Map());
+    setCampaignObjectiveConfidence(new Map());
+    setCampaignRequiresConfirmation(new Map());
+    setTouchedObjectiveCampaigns(new Set());
+    setPerCampaignMinWarning(null);
+    setExpandedCsvExtras(new Set());
+  }
+
   /** Resets everything the Preview/Generate/Download screen (step 6) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
   function resetGenerateState() {
     setGenerateStatus("idle");
@@ -465,6 +513,10 @@ export function useReportUploadWizard({
     setCopied(false);
     setPublishedAt(null);
   }
+
+  useEffect(() => {
+    generateStatusRef.current = generateStatus;
+  }, [generateStatus]);
 
   function buildGenerateSnapshot(
     core: Pick<WizardGenerateSnapshot, "reportId" | "downloadUrl" | "shareToken">,
@@ -567,8 +619,8 @@ export function useReportUploadWizard({
       const json = await res.json().catch(() => null);
       if (cancelled) return;
       if (!res.ok || !json?.ok) {
-        showToast("Could not reopen that report. Generate a new one or pick it from report history.", "error");
-        router.replace(`/clients/${clientId}/reports/new`);
+        showToast("Could not restore the generate screen. Your report is in history.", "error");
+        router.replace(`/clients/${clientId}/reports`);
         setResumeBootstrapping(false);
         return;
       }
@@ -593,7 +645,7 @@ export function useReportUploadWizard({
       setVisitedSteps(new Set([1, 2, 3, 4]));
       router.replace(`/clients/${clientId}/reports/new`);
       setResumeBootstrapping(false);
-      showToast("Download links restored — open this report from history if the full screen looks incomplete.");
+      showToast("Download links restored. Open report history if the full screen looks incomplete.");
     })();
 
     return () => {
@@ -636,8 +688,12 @@ export function useReportUploadWizard({
     setCustomEnd(savedSelection.customEnd || "");
     setLongRangeConfirmed(false);
     setComparisonPreset("thisWeek");
-    setComparisonPeriodA(json.weeklyOptions?.last7 || null);
     setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
+    setComparisonPeriodA(json.weeklyOptions?.last7 || null);
+    resetMetricsState();
+    resetPreviewState();
+    resetGenerateState();
+    setUploadSessionRecovery(null);
   }
 
   /** Populates data/comparisonData from a successful /preview response, and clears any stale generate/Drive state left over from a previous attempt. */
@@ -660,7 +716,9 @@ export function useReportUploadWizard({
       setHistoricalData(null);
     }
     setPreviewStatus("idle");
-    resetGenerateState();
+    if (generateStatusRef.current !== "done") {
+      resetGenerateState();
+    }
   }
 
   /** All ad platforms land on Step 2 (Select Campaigns) after analyze — /metrics is fetched on that step's Continue click. */
@@ -738,13 +796,61 @@ export function useReportUploadWizard({
 
   function handleUploadSessionExpired(message?: string) {
     setUploadSessionId(null);
-    setStep(1);
-    setAnalyzeStatus("error");
-    setAnalyzeMessage(message || "Your upload session expired. Please analyze your file again.");
+    setUploadSessionRecovery(
+      message || "Your parsed upload expired. Re-analyze the same file to continue — no need to re-upload.",
+    );
+  }
+
+  async function handleReanalyzeSession() {
+    if (!mtdFile || !platform) {
+      setUploadSessionRecovery(null);
+      setStep(1);
+      return;
+    }
+    setReanalyzeSessionStatus("loading");
+    setUploadSessionRecovery(null);
+    setAnalyzeStatus("loading");
+    setAnalyzeMessage(null);
+
+    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+      method: "POST",
+      body: buildUploadFormData(mtdFile, { platform }),
+    });
+    const json = await res.json().catch(() => null);
+    setReanalyzeSessionStatus("idle");
+
+    if (!res.ok || !json?.valid) {
+      setAnalyzeStatus("error");
+      setAnalyzeMessage(
+        json?.errors?.[0]?.message || "Could not re-analyze your file. Try uploading again from step 1.",
+      );
+      return;
+    }
+
+    applyAnalyzeResult(json);
+    setAnalyzeStatus("idle");
+
+    const currentStep = stepRef.current;
+    if (currentStep >= 2 && selectedCampaigns.size > 0) {
+      await fetchObjectivesAndMetrics();
+      setMetricsFetchedForSelection(selectedCampaignsKey());
+    }
+    if (currentStep >= 4) {
+      void fetchPreview();
+    }
+    showToast("Upload session restored — continue where you left off.");
   }
 
   function handleMtdFileSelected(file: File | null) {
-    if (file !== mtdFile) setUploadSessionId(null);
+    if (file !== mtdFile) {
+      setUploadSessionId(null);
+      setUploadSessionRecovery(null);
+      invalidateDownstreamFromStep(2);
+      setAnalyzeStatus("idle");
+      setAnalyzeErrors([]);
+      setAnalyzeMessage(null);
+      setMismatchWarning(false);
+    }
     setMtdFile(file);
   }
 
@@ -981,18 +1087,35 @@ export function useReportUploadWizard({
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
     const selectionKey = selectedCampaignsKey();
-    const objectivesReady = metricsFetchedForSelection === selectionKey;
 
-    if (!objectivesReady) {
+    if (metricsFetchedForSelection !== selectionKey || metricsStatus === "loading") {
       await fetchObjectivesAndMetrics();
       setMetricsFetchedForSelection(selectionKey);
-      // First Continue only loads objectives inline — stay on step 2 so the user can review.
-      return;
     }
 
     if (hasBlockingObjectives()) return;
     setStep(3);
   }
+
+  // Prefetch objectives when campaigns step opens or selection changes.
+  useEffect(() => {
+    if (step !== 2) return;
+    if (!mtdFile && !uploadSessionId) return;
+    if (selectedCampaigns.size === 0) return;
+    const key = selectedCampaignsKey();
+    if (metricsFetchedForSelection === key || metricsStatus === "loading") return;
+
+    let cancelled = false;
+    void (async () => {
+      await fetchObjectivesAndMetrics();
+      if (!cancelled) setMetricsFetchedForSelection(key);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, metricsFetchedForSelection, metricsStatus, uploadSessionId, mtdFile, selectedCampaigns]);
 
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
@@ -1288,7 +1411,12 @@ export function useReportUploadWizard({
     // weekly date-mode with nothing.
     if (dateSelection) await saveSelection({ dateSelection });
 
-    setPreviewStatus("loading");
+    const hasExistingPreview = !!(data || comparisonData || historicalData);
+    if (!hasExistingPreview) {
+      setPreviewStatus("loading");
+    } else {
+      setPreviewRefreshing(true);
+    }
     setPreviewErrors([]);
     setPreviewMessage(null);
 
@@ -1319,21 +1447,25 @@ export function useReportUploadWizard({
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
       setPreviewStatus("error");
+      setPreviewRefreshing(false);
       return;
     }
 
     if (!res.ok || !json) {
       setPreviewStatus("error");
       setPreviewMessage("Something went wrong building the preview. Please try again.");
+      setPreviewRefreshing(false);
       return;
     }
     if (!json.valid) {
       setPreviewStatus("invalid");
       setPreviewErrors(json.errors || []);
+      setPreviewRefreshing(false);
       return;
     }
 
     applyPreviewResult(json);
+    setPreviewRefreshing(false);
   }
 
   // Google Ads has no Reporting Period section on Step 5 at all (see this
@@ -1347,11 +1479,15 @@ export function useReportUploadWizard({
   // navigation needed.
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
-    // fetchPreview's first line sets state (previewStatus "loading") — a
-    // microtask hop keeps that out of this effect's own synchronous call
-    // stack, matching react-hooks/set-state-in-effect's expectations
-    // without changing when the fetch actually starts.
-    void Promise.resolve().then(() => fetchPreview());
+
+    if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+    previewDebounceRef.current = setTimeout(() => {
+      void fetchPreview();
+    }, 500);
+
+    return () => {
+      if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     step,
@@ -1765,6 +1901,16 @@ export function useReportUploadWizard({
     const range = driveDateRangeLabel();
     return `📊 ${clientName} — ${reportTypeLabel()}${range ? " " + range : ""}`;
   }
+
+  const importPipelineLabel =
+    dataSourceMode === "api"
+      ? apiSyncStatus === "loading"
+        ? "Syncing from API…"
+        : analyzeStatus === "loading"
+          ? "Analyzing campaigns…"
+          : null
+      : null;
+
   return {
     clientId,
     clientName,
@@ -1973,5 +2119,10 @@ export function useReportUploadWizard({
     LOW_SPEND_CAMPAIGN_THRESHOLD,
     expandedCsvExtras,
     setExpandedCsvExtras,
+    uploadSessionRecovery,
+    reanalyzeSessionStatus,
+    handleReanalyzeSession,
+    previewRefreshing,
+    importPipelineLabel,
   };
 }

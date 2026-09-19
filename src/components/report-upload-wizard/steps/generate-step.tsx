@@ -12,6 +12,8 @@ import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShar
 import { ReportTypeCard } from "../ui/report-type-card";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
+import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
+import { formatRelativeReportDate } from "@/lib/client-display";
 
 const PRIMARY_REPORT_TYPES = new Set(["WEEKLY", "MONTHLY", "DAILY"]);
 
@@ -84,6 +86,7 @@ export function WizardGenerateStep() {
     previewKind,
     previewMessage,
     previewStatus,
+    previewRefreshing,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
@@ -126,17 +129,10 @@ export function WizardGenerateStep() {
     () => !PRIMARY_REPORT_TYPES.has(reportType),
   );
 
+  const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
+
   return (
-        <div className="space-y-6">
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStep(3)}
-              className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
-            >
-              Back
-            </button>
-          </div>
+        <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
@@ -530,6 +526,9 @@ export function WizardGenerateStep() {
                   Loading preview…
                 </div>
               )}
+              {previewRefreshing && (data || comparisonData || historicalData) ? (
+                <p className="text-[13px] text-dash-ink-secondary">Updating preview…</p>
+              ) : null}
             </div>
           )}
 
@@ -751,7 +750,7 @@ export function WizardGenerateStep() {
                 done/error, so there's no navigation between "getting ready"
                 and "here's your file". */}
             {generateStatus === "idle" && (
-              <div>
+              <div className="hidden md:block">
                 <button
                   onClick={handleGenerate}
                   className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
@@ -764,14 +763,14 @@ export function WizardGenerateStep() {
           </div>
 
           {generateStatus === "loading" && (
-            <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
+            <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
               <Spinner />
               Generating your report…
             </div>
           )}
 
           {generateStatus === "error" && (
-            <div className="space-y-3">
+            <div className="hidden space-y-3 md:block">
               <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                 {generateMessage}
               </div>
@@ -794,6 +793,33 @@ export function WizardGenerateStep() {
               </div>
 
               <div className="space-y-5 p-5">
+                {publishedAt ? (
+                  <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
+                    Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
+                    {driveSaveUrl ? " Re-save to Google Drive manually if you updated the PPT." : null}
+                  </div>
+                ) : null}
+
+                {shareToken && reportId ? (
+                  <div className="rounded-lg border border-[#f6ad55]/40 bg-[#0d1b2e] p-4">
+                    <p className="text-[14px] leading-relaxed text-dash-ink">
+                      PPT and the live link are ready. Review or edit slides and copy before sharing — publish from
+                      Review updates the live link.
+                    </p>
+                    <Link
+                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                      className="mt-3 flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                      onClick={() => {
+                        if (reportId && downloadUrl) {
+                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+                        }
+                      }}
+                    >
+                      {publishedAt ? "Edit review" : "Review before sharing"}
+                    </Link>
+                  </div>
+                ) : null}
+
                 {shareToken ? (
                   <>
                     <a
@@ -863,25 +889,6 @@ export function WizardGenerateStep() {
                 </div>
                   );
                 })()}
-
-                {shareToken && reportId ? (
-                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
-                    <p className="min-w-0 flex-1 text-[14px] leading-snug text-dash-ink">
-                      PPT and the live link are ready. Review or edit slides and copy before sharing.
-                    </p>
-                    <Link
-                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="shrink-0 text-[14px] font-semibold text-dash-accent hover:underline"
-                      onClick={() => {
-                        if (reportId && downloadUrl) {
-                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                        }
-                      }}
-                    >
-                      Review →
-                    </Link>
-                  </div>
-                ) : null}
 
                 {shareToken ? (
                   <details className="group rounded-lg border border-dash-border bg-[#0d1b2e]">
@@ -1089,6 +1096,30 @@ export function WizardGenerateStep() {
           )}
             </>
           )}
+
+          {showGenerateFooter ? (
+            <WizardStickyFooter
+              stepLabel={
+                generateStatus === "loading"
+                  ? "Step 4 of 4 · Generating…"
+                  : generateStatus === "error"
+                    ? "Step 4 of 4 · Try again"
+                    : "Step 4 of 4 · Generate"
+              }
+              onBack={() => setStep(3)}
+              backLabel="Back to metrics"
+              primaryLabel={
+                generateStatus === "loading"
+                  ? "Generating…"
+                  : generateStatus === "error"
+                    ? "Try again"
+                    : "Generate Report"
+              }
+              onPrimary={handleGenerate}
+              primaryDisabled={generateStatus === "loading" || previewStatus === "loading"}
+              primaryLoading={generateStatus === "loading"}
+            />
+          ) : null}
         </div>
 
   );

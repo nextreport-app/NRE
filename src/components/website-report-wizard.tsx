@@ -12,8 +12,19 @@ import {
 } from "@/lib/nre/website-report-data";
 import type { WebsiteReportData } from "@/lib/nre/website-report-data";
 import { useToast } from "@/components/toast";
+import { UploadDropzone } from "@/components/report-upload-wizard/ui/upload-dropzone";
+import { WizardStickyFooter } from "@/components/report-upload-wizard/ui/wizard-sticky-footer";
+import { buildShareReportUrl } from "@/components/report-upload-wizard/utils";
 
 import type { WebsiteDataSource } from "@/lib/nre/website-report-resolve";
+
+function WebsiteWizardStepLabel({ step, title }: { step: number; title: string }) {
+  return (
+    <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-dash-accent">
+      Step {step} · {title}
+    </p>
+  );
+}
 
 type PreviewStatus = "idle" | "loading" | "error" | "ready";
 type GenerateStatus = "idle" | "loading" | "done" | "error";
@@ -155,6 +166,7 @@ export function WebsiteReportWizard({
   const [slideCount, setSlideCount] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
 
   const selectedBreakdownCount = countSelectedBreakdowns(config.breakdowns);
   const tooManyBreakdowns = selectedBreakdownCount > MAX_WEBSITE_BREAKDOWN_SLIDES;
@@ -249,6 +261,7 @@ export function WebsiteReportWizard({
     setGenerateStatus("idle");
     setDownloadUrl(null);
     setShareToken(null);
+    setReportId(null);
   }
 
   function toggleBreakdown(key: BreakdownKey) {
@@ -293,6 +306,7 @@ export function WebsiteReportWizard({
       if (!res.ok) throw new Error(json.error ?? "Generation failed");
       setDownloadUrl(json.downloadUrl ?? null);
       setShareToken(json.shareToken ?? null);
+      setReportId(json.reportId ?? null);
       setGenerateStatus("done");
       showToast("Website Traffic report ready");
     } catch (err) {
@@ -349,8 +363,10 @@ export function WebsiteReportWizard({
     );
   }
 
+  const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-0" : ""}`}>
       {!embedded ? (
         <div>
           <Link href={`/clients/${clientId}`} className="text-[14px] text-dash-ink-secondary hover:text-dash-ink">
@@ -372,6 +388,7 @@ export function WebsiteReportWizard({
 
       {/* Data source */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <WebsiteWizardStepLabel step={1} title="Data" />
         <h2 className="text-[16px] font-semibold text-dash-ink">Data source</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
@@ -407,14 +424,11 @@ export function WebsiteReportWizard({
         {dataSource === "csv" ? (
           <div className="mt-4 space-y-2">
             <p className="text-[14px] text-dash-ink-secondary">Export from GA4 with Sessions and your chosen breakdown dimensions.</p>
-            <input
-              type="file"
-              accept=".csv,.tsv,.txt,.xlsx,.xls,.ods"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
+            <UploadDropzone
+              file={csvFile}
+              onFileSelected={(file) => {
                 if (file) void analyzeCsv(file);
               }}
-              className="block w-full text-[14px] text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[14px] file:font-semibold file:text-dash-ink"
             />
             {analyzeStatus === "loading" ? (
               <p className="text-[14px] text-dash-ink-secondary">Analyzing CSV…</p>
@@ -429,8 +443,9 @@ export function WebsiteReportWizard({
         )}
       </div>
 
-      {/* Date range */}
+      {/* Configure */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <WebsiteWizardStepLabel step={2} title="Configure" />
         <h2 className="text-[16px] font-semibold text-dash-ink">Report period</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {DATE_PRESETS.map((preset) => (
@@ -598,8 +613,9 @@ export function WebsiteReportWizard({
         ) : null}
       </div>
 
-      {/* Preview */}
+      {/* Preview & Generate */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
+        <WebsiteWizardStepLabel step={3} title="Preview & Generate" />
         <h2 className="text-[16px] font-semibold text-dash-ink">Preview</h2>
         {tooManyBreakdowns || selectedBreakdownCount === 0 || (dataSource === "csv" && analyzeStatus !== "ready") ? (
           <p className="mt-3 text-[14px] text-dash-ink-secondary">Complete the steps above to load a preview.</p>
@@ -648,41 +664,82 @@ export function WebsiteReportWizard({
         ) : null}
       </div>
 
-      {/* Generate */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h2 className="text-[16px] font-semibold text-dash-ink">Generate</h2>
         <p className="mt-2 text-[14px] text-dash-ink-secondary">
-          Creates a branded PowerPoint (.pptx) and a browser share link. PDF export and publish review are coming soon — ad reports already support those steps.
+          Creates a branded PowerPoint (.pptx) and a browser share link. Review and publish from the same flow as ad
+          reports.
         </p>
         {generateError ? <p className="mt-3 text-[14px] text-red-300">{generateError}</p> : null}
         {generateStatus === "done" && downloadUrl ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
+            <p className="text-[16px] font-semibold text-emerald-400">Report ready</p>
+            {shareToken && reportId ? (
+              <div className="rounded-lg border border-[#f6ad55]/40 bg-[#0d1b2e] p-4">
+                <p className="text-[14px] leading-relaxed text-dash-ink">
+                  Review slides and copy before sharing — publish from Review updates the live link.
+                </p>
+                <Link
+                  href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                  className="mt-3 flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                >
+                  Review before sharing
+                </Link>
+              </div>
+            ) : null}
+            {shareToken ? (
+              <a
+                href={`https://${buildShareReportUrl(shareToken)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold text-[#0d1b2e]"
+                style={{ backgroundColor: "#f5b45a" }}
+              >
+                View in browser
+              </a>
+            ) : null}
             <a
               href={downloadUrl}
-              className="inline-flex rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-[#f5b45a]/50 px-4 py-3 text-[14px] font-medium text-white hover:border-[#f5b45a]"
             >
-              Download PPT
+              Download PPTX
             </a>
-            {shareToken ? (
-              <p className="text-[14px] text-dash-ink-secondary">
-                Browser link:{" "}
-                <a href={`/r/${shareToken}`} className="text-dash-accent underline" target="_blank" rel="noreferrer">
-                  Open share page
-                </a>
-              </p>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => resetGenerateState()}
+              className="w-full text-center text-[14px] font-medium text-dash-accent hover:underline"
+            >
+              Generate another website report
+            </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => void handleGenerate()}
             disabled={previewStatus !== "ready" || generateStatus === "loading" || !canPreview}
-            className="mt-4 h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40 sm:w-auto sm:px-8"
+            className="mt-4 hidden h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40 md:inline-flex md:w-auto md:px-8"
           >
             {generateStatus === "loading" ? "Generating…" : "Generate Website Traffic Report"}
           </button>
         )}
       </div>
+
+      {showGenerateFooter ? (
+        <WizardStickyFooter
+          stepLabel={
+            generateStatus === "loading"
+              ? "Generating website report…"
+              : generateStatus === "error"
+                ? "Try again"
+                : "Website report"
+          }
+          showBack={false}
+          primaryLabel={generateStatus === "loading" ? "Generating…" : generateStatus === "error" ? "Try again" : "Generate Report"}
+          onPrimary={() => void handleGenerate()}
+          primaryDisabled={previewStatus !== "ready" || generateStatus === "loading" || !canPreview}
+          primaryLoading={generateStatus === "loading"}
+        />
+      ) : null}
     </div>
   );
 }
