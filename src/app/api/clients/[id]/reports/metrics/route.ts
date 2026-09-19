@@ -5,15 +5,13 @@ import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
-import { filterAddableMetrics, listSelectableMetrics, type AvailableMetric, type SelectedMetric } from "@/lib/nre/available-metrics";
-import { objectiveKeyFor, stripNeverKeys } from "@/lib/nre/slot-assignment";
+import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import {
-  defaultMetricSelectionForCampaign,
   googleObjectiveKeyFromHeaders,
   googleSlideObjectiveLabels,
-  metricsDictionaryPlatform,
   usesMetaObjectiveEngine,
 } from "@/lib/nre/platform-reporting";
+import { buildCampaignMetricBundle } from "@/lib/nre/wizard-campaign-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
 import { parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
 
@@ -50,7 +48,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
-    const metricsPlatform = metricsDictionaryPlatform(platform);
     const googleObjectiveKey = platform === "GOOGLE" ? googleObjectiveKeyFromHeaders(mtdParsed.headers) : undefined;
     const googleLabels = googleSlideObjectiveLabels(googleObjectiveKey ?? "search");
 
@@ -78,26 +75,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
-    const fullPool = listSelectableMetrics(mtdParsed.headers, metricsPlatform);
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
 
     for (const [normalizedName, info] of Object.entries(campaignObjectives)) {
-      const objectiveKey = usesMetaObjectiveEngine(platform) ? objectiveKeyFor(info.resultLabel) : undefined;
-      const selection = defaultMetricSelectionForCampaign(platform, {
-        resultLabel: info.resultLabel,
-        costLabel: info.costLabel,
-        headers: mtdParsed.headers,
+      const bundle = buildCampaignMetricBundle(
+        platform,
+        mtdParsed.headers,
+        info.resultLabel,
+        info.costLabel,
         googleObjectiveKey,
-      }).filter((m): m is SelectedMetric => m !== null);
-
-      const strippedSelection = objectiveKey ? stripNeverKeys(selection, objectiveKey).filter((m): m is SelectedMetric => m !== null) : selection;
-      perCampaignSelection[normalizedName] = strippedSelection;
-
-      perCampaignAvailable[normalizedName] = filterAddableMetrics(
-        (objectiveKey ? stripNeverKeys(fullPool, objectiveKey) : fullPool).filter((m): m is AvailableMetric => m !== null),
-        strippedSelection,
       );
+      perCampaignSelection[normalizedName] = bundle.selection;
+      perCampaignAvailable[normalizedName] = bundle.available;
     }
 
     return NextResponse.json({

@@ -18,6 +18,14 @@ import {
   resolveUniqueMappedObjectiveFromRows,
 } from "./meta-objective-dictionary";
 import { MESSAGING_OBJECTIVE, resolveObjectiveFromResultType, type ObjectiveInfo } from "./result-type-map";
+import {
+  isLeadFamilyCampaignName,
+  isMessagingCampaignName,
+  isMetaFormLeadsCampaignName,
+  isPurchaseCampaignName,
+  isQuoteRequestCampaignName,
+  isWebsiteLeadsCampaignName,
+} from "./campaign-name-heuristics";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -853,29 +861,7 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
   return total;
 }
 
-function campaignNameHaystack(rows: MetricRow[]): string {
-  return rows
-    .map((r) => `${r.campaign_name ?? ""} ${r.ad_set_name ?? ""}`)
-    .join(" ")
-    .toLowerCase();
-}
-
-function isMessagingCampaignName(rows: MetricRow[]): boolean {
-  return /messag|messenger/.test(campaignNameHaystack(rows));
-}
-
-/** Meta instant-form lead campaigns — InstantForms, Leads (form), etc. */
-function isMetaFormLeadsCampaignName(rows: MetricRow[]): boolean {
-  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(
-    campaignNameHaystack(rows),
-  );
-}
-
 const TRAFFIC_ONLY_OBJECTIVE_LABELS = new Set(["LANDING PAGE VIEWS", "LINK CLICKS", "REACH"]);
-
-function isLeadFamilyCampaignName(rows: MetricRow[]): boolean {
-  return isMetaFormLeadsCampaignName(rows) || isWebsiteLeadsCampaignName(rows);
-}
 
 /** Lead objective from campaign/ad-set naming alone — used when LPV/link-click columns exist in the export but the row has no lead yet. */
 function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | null {
@@ -891,33 +877,8 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
   return null;
 }
 
-/** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
-function isWebsiteLeadsCampaignName(rows: MetricRow[]): boolean {
-  const haystack = campaignNameHaystack(rows);
-  if (isMessagingCampaignName(rows)) return false;
-  if (isMetaFormLeadsCampaignName(rows)) return false;
-  if (/whatsapp/.test(haystack)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
-}
-
-function isQuoteRequestCampaignName(rows: MetricRow[]): boolean {
-  return /quote[\s_]*request/.test(campaignNameHaystack(rows));
-}
-
 function hasQuoteRequestResultTypeRows(rows: MetricRow[]): boolean {
   return rows.some((r) => resolveObjectiveFromResultType(r.result_type)?.key === "quote_requests");
-}
-
-/** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
-function isPurchaseCampaignName(rows: MetricRow[]): boolean {
-  const haystack = campaignNameHaystack(rows);
-  if (/\batc\b|add.?to.?cart/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
-    return false;
-  }
-  if (/\bic\b|initiate.?checkout/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
-    return false;
-  }
-  return /purchase|purchases|conversion/.test(haystack);
 }
 
 function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {

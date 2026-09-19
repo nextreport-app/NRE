@@ -3,6 +3,13 @@ import {
   type MetaInsightAction,
   type MetaInsightRow,
 } from "@/lib/meta-api";
+import {
+  campaignNameHaystack,
+  isMetaFormLeadsCampaignHaystack,
+  isMessagingCampaignHaystack,
+  isQuoteRequestCampaignHaystack,
+  isWebsiteLeadsCampaignHaystack,
+} from "./campaign-name-heuristics";
 import { metaApiActionToCsvResultType } from "./meta-objective-dictionary";
 import { resolveObjectiveFromResultType } from "./result-type-map";
 import { computeLastNDaysIsoRange } from "./api-date-range";
@@ -174,26 +181,19 @@ const LEAD_FAMILY_GOALS = new Set([
 ]);
 
 function isMessagingCampaignRow(row: MetaInsightRow): boolean {
-  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
-  return /messag|messenger/.test(haystack);
+  return isMessagingCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
 function isMetaFormLeadsCampaignRow(row: MetaInsightRow): boolean {
-  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
-  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(haystack);
+  return isMetaFormLeadsCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
 function isWebsiteLeadsCampaignRow(row: MetaInsightRow): boolean {
-  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
-  if (isMessagingCampaignRow(row)) return false;
-  if (isMetaFormLeadsCampaignRow(row)) return false;
-  if (/whatsapp/.test(haystack)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
+  return isWebsiteLeadsCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
 function isQuoteRequestCampaignRow(row: MetaInsightRow): boolean {
-  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
-  return /quote[\s_]*request/.test(haystack);
+  return isQuoteRequestCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
 function firstActionMatchingPattern(
