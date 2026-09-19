@@ -34,6 +34,12 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
     }
   });
 
+  it("maps quote-request custom conversion API actions to Quote Request Submitted", () => {
+    expect(metaApiActionToCsvResultType("offsite_conversion.custom.quote_request_submitted")).toBe(
+      "Quote Request Submitted",
+    );
+  });
+
   it("API action types map to the same CSV labels the manual export uses", () => {
     expect(metaApiActionToCsvResultType("omni_purchase")).toBe("Purchase");
     expect(metaApiActionToCsvResultType("offsite_conversion.fb_pixel_lead")).toBe("Website leads");

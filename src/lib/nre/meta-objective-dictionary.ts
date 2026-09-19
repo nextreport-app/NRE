@@ -642,7 +642,10 @@ export const DEFINITIVE_PROOF_ALIAS_TO_KEY: ReadonlyMap<string, string> = (() =>
 })();
 
 export function metaApiActionToCsvResultType(actionType: string): string {
-  return META_API_ACTION_TO_CSV[actionType] ?? actionType.replace(/_/g, " ");
+  const mapped = META_API_ACTION_TO_CSV[actionType];
+  if (mapped) return mapped;
+  if (/quote[\s_]*request/i.test(actionType)) return "Quote Request Submitted";
+  return actionType.replace(/_/g, " ");
 }
 
 export function resolveDefinitiveObjectiveFromRows(

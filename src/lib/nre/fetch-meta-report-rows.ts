@@ -4,6 +4,7 @@ import {
   type MetaInsightRow,
 } from "@/lib/meta-api";
 import { metaApiActionToCsvResultType } from "./meta-objective-dictionary";
+import { resolveObjectiveFromResultType } from "./result-type-map";
 import { computeLastNDaysIsoRange } from "./api-date-range";
 import { isoToCsvDay, rowsToCsv } from "./rows-to-csv";
 
@@ -165,6 +166,38 @@ function isWebsiteLeadsCampaignRow(row: MetaInsightRow): boolean {
   return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
+function isQuoteRequestCampaignRow(row: MetaInsightRow): boolean {
+  const haystack = `${row.campaign_name ?? ""} ${row.adset_name ?? ""}`.toLowerCase();
+  return /quote[\s_]*request/.test(haystack);
+}
+
+function firstActionMatchingPattern(
+  map: Map<string, number>,
+  pattern: RegExp,
+): { action_type: string; value: string } | null {
+  for (const [actionType, value] of map) {
+    if (value > 0 && pattern.test(actionType)) {
+      return { action_type: actionType, value: String(value) };
+    }
+  }
+  return null;
+}
+
+/** Prefer actions whose CSV result_type resolves to a specific objective (same resolver as manual CSV). */
+function firstActionForObjectiveKey(
+  map: Map<string, number>,
+  objectiveKey: string,
+): { action_type: string; value: string } | null {
+  for (const [actionType, value] of map) {
+    if (value <= 0) continue;
+    const csvLabel = actionTypeToCsvResultType(actionType);
+    if (resolveObjectiveFromResultType(csvLabel)?.key === objectiveKey) {
+      return { action_type: actionType, value: String(value) };
+    }
+  }
+  return null;
+}
+
 /** Picks the objective-aligned result — NOT the highest action count (link clicks must not steal leads). */
 export function pickResultAction(row: MetaInsightRow): { action_type: string; value: string } | null {
   const map = actionValueMap(row.actions);
@@ -172,6 +205,21 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
 
   const messagingCampaign = isMessagingCampaignRow(row);
   const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
+  const quoteRequestCampaign = isQuoteRequestCampaignRow(row);
+
+  if (quoteRequestCampaign) {
+    const quoteMatch =
+      firstActionForObjectiveKey(map, "quote_requests") ??
+      firstActionMatchingPattern(map, /quote[\s_]*request/i);
+    if (quoteMatch) return quoteMatch;
+    const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
+    if (websiteMatch) return websiteMatch;
+    return null;
+  }
+
+  const quoteMatch =
+    firstActionForObjectiveKey(map, "quote_requests") ?? firstActionMatchingPattern(map, /quote[\s_]*request/i);
+  if (quoteMatch) return quoteMatch;
 
   if (messagingCampaign) {
     const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
