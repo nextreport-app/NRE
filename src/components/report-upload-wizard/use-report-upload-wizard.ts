@@ -22,6 +22,7 @@ import {
   objectiveInfoForDetectedLabel,
 } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
+import { buildCampaignMetricBundle } from "@/lib/nre/wizard-campaign-metrics";
 import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
@@ -216,6 +217,8 @@ export function useReportUploadWizard({
   // resolveCampaignSelection, which the /analyze route calls to decide the
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
+  /** CSV column headers from /analyze — used to recompute metric cards when objective changes. */
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
   const [lowSpendCampaigns, setLowSpendCampaigns] = useState<string[]>([]);
@@ -655,6 +658,7 @@ export function useReportUploadWizard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any) {
     setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
+    setCsvHeaders(Array.isArray(json.headers) ? json.headers : []);
     setCampaigns(json.campaigns || []);
     setCampaignSpend(json.campaignSpend || {});
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
@@ -1022,7 +1026,7 @@ export function useReportUploadWizard({
    * here, in a function invoked from a later user click, is always the
    * fully-committed value.
    */
-  async function fetchObjectivesAndMetrics() {
+  async function fetchObjectivesAndMetrics(selectionKey: string) {
     if (!mtdFile && !uploadSessionId) return;
     setMetricsStatus("loading");
     setTouchedObjectiveCampaigns(new Set());
@@ -1033,6 +1037,9 @@ export function useReportUploadWizard({
       body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }, uploadSessionId),
     });
     const json = await res.json().catch(() => null);
+
+    // Ignore stale responses when the user changed selection mid-fetch.
+    if (selectedCampaignsKey() !== selectionKey) return;
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
@@ -1079,9 +1086,8 @@ export function useReportUploadWizard({
       return metricsFetchInFlightRef.current.promise;
     }
 
-    const promise = fetchObjectivesAndMetrics()
+    const promise = fetchObjectivesAndMetrics(key)
       .then(() => {
-        // Ignore stale responses when the user changed selection mid-fetch.
         if (selectedCampaignsKey() !== key) return;
         metricsFetchedKeyRef.current = key;
         setMetricsFetchedForSelection(key);
@@ -1177,6 +1183,14 @@ export function useReportUploadWizard({
     });
   }
 
+  /** Recompute this campaign's metric card defaults when its objective changes. */
+  function refreshCampaignMetrics(normalized: string, info: ObjectiveInfo) {
+    if (csvHeaders.length === 0) return;
+    const bundle = buildCampaignMetricBundle(platform, csvHeaders, info.resultLabel, info.costLabel);
+    setPerCampaignMetrics((prev) => new Map(prev).set(normalized, bundle.selection));
+    setPerCampaignAvailablePool((prev) => new Map(prev).set(normalized, bundle.available));
+  }
+
   // ── Step 3: Objective Confirmation (the permanent objective-detection fix) ──
   /** Dropdown onChange — records the user's choice AND marks the campaign as touched, so only campaigns the user actually reviewed/changed are sent back as an override (see currentCampaignObjectivesPayload) — an untouched campaign keeps the engine's own true detection rather than a copy of whatever was pre-filled. Keyed by normalizeCampaignName, matching the server's own campaignObjectiveMap keys exactly. Also clears any confidence badge for this campaign — once the user has picked a value themselves, a badge describing where the PRE-fill came from is no longer meaningful. */
   function setCampaignObjective(campaignName: string, objectiveKey: string) {
@@ -1185,6 +1199,7 @@ export function useReportUploadWizard({
     const normalized = normalizeCampaignName(campaignName);
     setCampaignObjectives((prev) => new Map(prev).set(normalized, option));
     setTouchedObjectiveCampaigns((prev) => new Set(prev).add(normalized));
+    refreshCampaignMetrics(normalized, option);
     setCampaignObjectiveConfidence((prev) => {
       if (!prev.has(normalized)) return prev;
       const next = new Map(prev);

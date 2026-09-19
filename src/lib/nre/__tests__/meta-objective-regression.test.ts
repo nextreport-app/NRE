@@ -46,6 +46,7 @@ describe("Meta objective regression fixtures", () => {
       META_OBJECTIVE_REGRESSION_FIXTURES.flatMap((f) => f.campaigns.map((c) => c.resultLabel)),
     );
     const required = [
+      "QUOTE REQUESTS",
       "WEBSITE LEADS",
       "META FORM LEADS",
       "MESSAGING / CONVERSATIONS",

@@ -45,6 +45,19 @@ export const META_OBJECTIVE_REGRESSION_FIXTURES: readonly MetaObjectiveRegressio
     ],
   },
   {
+    id: "bumpertech-quote-requests-account",
+    file: "bumpertech-sep-weekly-quote-requests.csv",
+    description:
+      "Real BumperTech account — all campaigns use Quote Request Submitted in CSV despite website-leads naming",
+    campaigns: [
+      { campaignName: "Re-Targeting Quote Requests", resultLabel: "QUOTE REQUESTS", minConfidence: "high" },
+      { campaignName: "Website Retargeting Campaign-September", resultLabel: "QUOTE REQUESTS", minConfidence: "high" },
+      { campaignName: "Brisbane North - cold traffic - website leads", resultLabel: "QUOTE REQUESTS", minConfidence: "high" },
+      { campaignName: "Brisbane South - cold traffic - website leads", resultLabel: "QUOTE REQUESTS", minConfidence: "high" },
+      { campaignName: "Brisbane North - Remarketing - website leads", resultLabel: "QUOTE REQUESTS", minConfidence: "high" },
+    ],
+  },
+  {
     id: "meta-objective-families",
     file: "meta-objective-families.csv",
     description: "Synthetic corpus — one campaign per major Meta result_type family",
