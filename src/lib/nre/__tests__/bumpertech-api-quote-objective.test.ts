@@ -9,6 +9,8 @@ import type { MetaInsightRow } from "@/lib/meta-api";
 
 const RETARGET_CAMPAIGN = "Re-Targeting Quote Requests";
 const RETARGET_ADSET = "Retargeting - Quote Requests";
+const WEBSITE_LEADS_CAMPAIGN = "Brisbane North - cold traffic - website leads";
+const WEBSITE_LEADS_ADSET = "Brisbane North - cold traffic - website leads - broad";
 
 function retargetQuoteDay(date: string, quotes: number, spend: string, messaging = 1): MetaInsightRow {
   return {
@@ -203,6 +205,65 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
 
     expect(retargetRows[0]?.result_type).toBe("");
     expect(resolveCampaignObjectiveWithConfidence(retargetRows).resultLabel).toBe("QUOTE REQUESTS");
+  });
+
+  it("detects QUOTE REQUESTS for website-leads-named campaigns when API returns custom conversions", async () => {
+    expect(
+      pickResultAction({
+        campaign_name: WEBSITE_LEADS_CAMPAIGN,
+        adset_name: WEBSITE_LEADS_ADSET,
+        optimization_goal: "OUTCOME_LEADS",
+        actions: [
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+          { action_type: "offsite_conversion.custom.9876543210", value: "3" },
+          { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+        ],
+      }),
+    ).toEqual({
+      action_type: "offsite_conversion.custom.9876543210",
+      value: "3",
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: WEBSITE_LEADS_CAMPAIGN,
+              adset_name: WEBSITE_LEADS_ADSET,
+              date_start: "2026-09-18",
+              spend: "11.89",
+              reach: "621",
+              impressions: "764",
+              optimization_goal: "OUTCOME_LEADS",
+              actions: [
+                { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+                { action_type: "offsite_conversion.custom.9876543210", value: "1" },
+              ],
+            },
+          ],
+        }),
+      })),
+    );
+
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-18",
+      untilIso: "2026-09-18",
+    });
+
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows } = readRowsWithAutoMap(headers, dataRows);
+    const campRows = rows.filter((r) => r.campaign_name === WEBSITE_LEADS_CAMPAIGN);
+
+    expect(campRows[0]?.result_type).toBe("Quote Request Submitted");
+    expect(resolveCampaignObjectiveWithConfidence(campRows).resultLabel).toBe("QUOTE REQUESTS");
   });
 
   it("detects QUOTE REQUESTS (not MESSAGING) for API-sync rows on first import", async () => {

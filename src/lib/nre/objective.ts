@@ -125,6 +125,9 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
   ].filter((s) => s.value > 0);
 
   if (signals.length >= 1) {
+    if (hasQuoteRequestResultTypeRows(rows)) {
+      return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
+    }
     if (messagingCampaign && messagingTotal > 0) {
       return { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL };
     }

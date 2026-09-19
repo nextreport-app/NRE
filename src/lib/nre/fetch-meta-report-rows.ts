@@ -115,7 +115,16 @@ const LEAD_COST_ACTION_TYPES = [
 const CUSTOM_CONVERSION_ACTION = /offsite_conversion\.custom\./i;
 
 /** Maps Meta action_type to the human-readable Result type strings our CSV pipeline expects. */
-function actionTypeToCsvResultType(actionType: string, row?: MetaInsightRow): string {
+function actionTypeToCsvResultType(
+  actionType: string,
+  row?: MetaInsightRow,
+  pickedAsPrimaryResult = false,
+): string {
+  if (pickedAsPrimaryResult && CUSTOM_CONVERSION_ACTION.test(actionType)) {
+    // Meta API reports quote-request optimizations as anonymous custom.* actions —
+    // manual CSV exports label them "Quote Request Submitted" regardless of campaign name.
+    return "Quote Request Submitted";
+  }
   if (row && isQuoteRequestCampaignRow(row) && CUSTOM_CONVERSION_ACTION.test(actionType)) {
     return "Quote Request Submitted";
   }
@@ -199,6 +208,14 @@ function firstActionMatchingPattern(
   return null;
 }
 
+function pickQuoteRequestAction(map: Map<string, number>): { action_type: string; value: string } | null {
+  return (
+    firstActionForObjectiveKey(map, "quote_requests") ??
+    firstActionMatchingPattern(map, /quote[\s_]*request/i) ??
+    firstCustomConversionAction(map)
+  );
+}
+
 /** Prefer actions whose CSV result_type resolves to a specific objective (same resolver as manual CSV). */
 function firstActionForObjectiveKey(
   map: Map<string, number>,
@@ -224,18 +241,14 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   const quoteRequestCampaign = isQuoteRequestCampaignRow(row);
 
   if (quoteRequestCampaign) {
-    const quoteMatch =
-      firstActionForObjectiveKey(map, "quote_requests") ??
-      firstActionMatchingPattern(map, /quote[\s_]*request/i) ??
-      firstCustomConversionAction(map);
+    const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
     const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
     if (websiteMatch) return websiteMatch;
     return null;
   }
 
-  const quoteMatch =
-    firstActionForObjectiveKey(map, "quote_requests") ?? firstActionMatchingPattern(map, /quote[\s_]*request/i);
+  const quoteMatch = pickQuoteRequestAction(map);
   if (quoteMatch) return quoteMatch;
 
   if (messagingCampaign) {
@@ -253,6 +266,10 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   }
 
   if (websiteLeadsCampaign) {
+    // Many "website leads" named campaigns still optimize for a quote-request custom
+    // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
+    const quoteMatch = pickQuoteRequestAction(map);
+    if (quoteMatch) return quoteMatch;
     const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
     if (websiteMatch) return websiteMatch;
     // Same as Meta CSV: no website-lead result on days without a pixel/web
@@ -359,7 +376,7 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
     row.campaign_name ?? "",
     row.adset_name ?? "",
     row.date_start ? isoToCsvDay(row.date_start) : "",
-    result ? actionTypeToCsvResultType(result.action_type, row) : "",
+    result ? actionTypeToCsvResultType(result.action_type, row, true) : "",
     result?.value ?? "",
     formatMoney(row.spend),
     cpr,
