@@ -282,12 +282,8 @@ export function useReportUploadWizard({
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "loading" | "error">("idle");
   /** Sorted campaign names the last /metrics fetch used — refetch when selection changes. */
   const [metricsFetchedForSelection, setMetricsFetchedForSelection] = useState<string | null>(null);
-  useEffect(() => {
-    const key = [...selectedCampaigns].sort().join("\0");
-    if (metricsFetchedForSelection && metricsFetchedForSelection !== key) {
-      setMetricsFetchedForSelection(null);
-    }
-  }, [selectedCampaigns, metricsFetchedForSelection]);
+  const metricsFetchedKeyRef = useRef<string | null>(null);
+  const metricsFetchInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
   const [overflowDialog, setOverflowDialog] = useState<{
     campaignName: string;
@@ -484,6 +480,8 @@ export function useReportUploadWizard({
   }
 
   function resetMetricsState() {
+    metricsFetchedKeyRef.current = null;
+    metricsFetchInFlightRef.current = null;
     setMetricsFetchedForSelection(null);
     setMetricsStatus("idle");
     setPerCampaignMetrics(new Map());
@@ -832,8 +830,7 @@ export function useReportUploadWizard({
 
     const currentStep = stepRef.current;
     if (currentStep >= 2 && selectedCampaigns.size > 0) {
-      await fetchObjectivesAndMetrics();
-      setMetricsFetchedForSelection(selectedCampaignsKey());
+      await ensureObjectivesForSelection(selectedCampaignsKey());
     }
     if (currentStep >= 4) {
       void fetchPreview();
@@ -1072,6 +1069,33 @@ export function useReportUploadWizard({
     return [...selectedCampaigns].sort().join("\0");
   }
 
+  /** One in-flight /metrics call per selection key — shared by prefetch and Continue. */
+  function ensureObjectivesForSelection(key: string): Promise<void> {
+    if (!mtdFile && !uploadSessionId) return Promise.resolve();
+    if (!key) return Promise.resolve();
+
+    if (metricsFetchedKeyRef.current === key) return Promise.resolve();
+    if (metricsFetchInFlightRef.current?.key === key) {
+      return metricsFetchInFlightRef.current.promise;
+    }
+
+    const promise = fetchObjectivesAndMetrics()
+      .then(() => {
+        // Ignore stale responses when the user changed selection mid-fetch.
+        if (selectedCampaignsKey() !== key) return;
+        metricsFetchedKeyRef.current = key;
+        setMetricsFetchedForSelection(key);
+      })
+      .finally(() => {
+        if (metricsFetchInFlightRef.current?.key === key) {
+          metricsFetchInFlightRef.current = null;
+        }
+      });
+
+    metricsFetchInFlightRef.current = { key, promise };
+    return promise;
+  }
+
   function hasBlockingObjectives(): boolean {
     return campaigns.some((name) => {
       const normalized = normalizeCampaignName(name);
@@ -1087,35 +1111,29 @@ export function useReportUploadWizard({
   async function handleCampaignsContinue() {
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
     const selectionKey = selectedCampaignsKey();
-
-    if (metricsFetchedForSelection !== selectionKey || metricsStatus === "loading") {
-      await fetchObjectivesAndMetrics();
-      setMetricsFetchedForSelection(selectionKey);
-    }
+    await ensureObjectivesForSelection(selectionKey);
 
     if (hasBlockingObjectives()) return;
     setStep(3);
   }
 
+  const selectedCampaignsKeyValue = useMemo(() => selectedCampaignsKey(), [selectedCampaigns]);
+
+  // When selection changes, drop cached objectives so the prefetch refetches.
+  useEffect(() => {
+    if (metricsFetchedKeyRef.current && metricsFetchedKeyRef.current !== selectedCampaignsKeyValue) {
+      metricsFetchedKeyRef.current = null;
+      setMetricsFetchedForSelection(null);
+    }
+  }, [selectedCampaignsKeyValue]);
+
   // Prefetch objectives when campaigns step opens or selection changes.
   useEffect(() => {
     if (step !== 2) return;
-    if (!mtdFile && !uploadSessionId) return;
     if (selectedCampaigns.size === 0) return;
-    const key = selectedCampaignsKey();
-    if (metricsFetchedForSelection === key || metricsStatus === "loading") return;
-
-    let cancelled = false;
-    void (async () => {
-      await fetchObjectivesAndMetrics();
-      if (!cancelled) setMetricsFetchedForSelection(key);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    void ensureObjectivesForSelection(selectedCampaignsKeyValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, metricsFetchedForSelection, metricsStatus, uploadSessionId, mtdFile, selectedCampaigns]);
+  }, [step, selectedCampaignsKeyValue, uploadSessionId, mtdFile]);
 
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
