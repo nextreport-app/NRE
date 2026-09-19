@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OBJECTIVE_DROPDOWN_OPTIONS, RESULT_TYPE_MAP, resolveObjectiveFromResultType } from "../result-type-map";
 
-describe("resolveObjectiveFromResultType — exact machine result_type matching", () => {
+describe("resolveObjectiveFromResultType — exact + fuzzy result_type matching", () => {
   it("is case-insensitive and trims whitespace", () => {
     expect(resolveObjectiveFromResultType("  Purchase  ")?.resultLabel).toBe("PURCHASES");
     expect(resolveObjectiveFromResultType("PURCHASE")?.resultLabel).toBe("PURCHASES");
@@ -27,6 +27,17 @@ describe("resolveObjectiveFromResultType — exact machine result_type matching"
       isReach: false,
     });
     expect(resolveObjectiveFromResultType("Website submission")?.resultLabel).toBe("WEBSITE LEADS");
+  });
+
+  it("fuzzy-matches human CSV quote labels (spacing, casing, suffixes) without an exact alias", () => {
+    expect(resolveObjectiveFromResultType("Quote Request Submitted")?.resultLabel).toBe("QUOTE REQUESTS");
+    expect(resolveObjectiveFromResultType("quote request submitted")?.resultLabel).toBe("QUOTE REQUESTS");
+    expect(resolveObjectiveFromResultType("  QUOTE   REQUESTS  ")?.resultLabel).toBe("QUOTE REQUESTS");
+  });
+
+  it("keeps machine-readable API action names exact-only", () => {
+    expect(resolveObjectiveFromResultType("onsite_conversion.lead_grouped")?.resultLabel).toBe("META FORM LEADS");
+    expect(resolveObjectiveFromResultType("made_up.action_with_lead_in_name")).toBeNull();
   });
 
   it("maps 'Leads (form)' (both cases) to META FORM LEADS, same as onsite_conversion.lead_grouped", () => {

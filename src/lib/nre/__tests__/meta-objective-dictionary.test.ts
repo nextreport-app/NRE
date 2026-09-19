@@ -54,6 +54,12 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
     expect(info?.resultLabel).toBe("PURCHASES");
   });
 
+  it("Step 0 definitive proof accepts fuzzy-matched human CSV labels outside the exact alias list", () => {
+    const rows = [{ result_type: "Quote Request Submitted" }];
+    const info = resolveDefinitiveObjectiveFromRows(rows, resolveObjectiveFromResultType);
+    expect(info?.resultLabel).toBe("QUOTE REQUESTS");
+  });
+
   it("unique-mapped shortcut trusts one objective when all typed rows agree (blank majority)", () => {
     const rows = [
       { result_type: "website submission" },

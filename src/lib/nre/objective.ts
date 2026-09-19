@@ -12,7 +12,6 @@ import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregati
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
-  DEFINITIVE_PROOF_ALIAS_TO_KEY,
   getMetaCanonicalResultTypeText,
   getMetaResultLabels,
   resolveDefinitiveObjectiveFromRows,
@@ -193,6 +192,9 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
 
   if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+  if (rows.some((r) => isQuoteRequestResultTypeText(r.result_type))) {
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
 
   const fromRows = detectObjectiveFromCampaignRows(rows);
@@ -654,8 +656,11 @@ function pickPrimaryResultGroup(campaignGroups: ResultGroup[]): ResultGroup | un
  * consumer.
  */
 function isWebsiteLeadsResultTypeText(resultType: string | null | undefined): boolean {
-  const rt = (resultType || "").toLowerCase().trim();
-  return rt !== "" && DEFINITIVE_PROOF_ALIAS_TO_KEY.get(rt) === "website_leads";
+  return resolveObjectiveFromResultType(resultType)?.key === "website_leads";
+}
+
+function isQuoteRequestResultTypeText(resultType: string | null | undefined): boolean {
+  return resolveObjectiveFromResultType(resultType)?.key === "quote_requests";
 }
 
 /**
