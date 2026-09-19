@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { SupportTicketLink } from "@/components/support-ticket-link";
@@ -39,6 +40,12 @@ function WizardClientLine({ clientName }: { clientName: string }) {
 
 function ReportUploadWizardBody() {
   const w = useWizardContext();
+  const wizardTopRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    wizardTopRef.current?.scrollIntoView({ block: "start" });
+    window.scrollTo({ top: 0, left: 0 });
+  }, [w.step]);
 
   if (w.resumeBootstrapping) {
     return (
@@ -85,7 +92,7 @@ function ReportUploadWizardBody() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} />
         <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(w.step, w.platform)}</h1>
         {getWizardStepSubtitle(w.step, w.platform) ? (

@@ -569,8 +569,7 @@ export function WizardGenerateStep() {
                     className="text-dash-accent hover:underline"
                   >
                     Set budget in Client Settings
-                  </Link>{" "}
-                  <span className="text-dash-ink-secondary">(opens in a new tab — your report setup stays on this page)</span>
+                  </Link>
                 </p>
               )}
             </div>
