@@ -112,9 +112,25 @@ const LEAD_COST_ACTION_TYPES = [
   "lead",
 ] as const;
 
+const CUSTOM_CONVERSION_ACTION = /offsite_conversion\.custom\./i;
+
 /** Maps Meta action_type to the human-readable Result type strings our CSV pipeline expects. */
-function actionTypeToCsvResultType(actionType: string): string {
+function actionTypeToCsvResultType(actionType: string, row?: MetaInsightRow): string {
+  if (row && isQuoteRequestCampaignRow(row) && CUSTOM_CONVERSION_ACTION.test(actionType)) {
+    return "Quote Request Submitted";
+  }
   return metaApiActionToCsvResultType(actionType);
+}
+
+function firstCustomConversionAction(map: Map<string, number>): { action_type: string; value: string } | null {
+  let best: { action_type: string; value: string } | null = null;
+  for (const [actionType, value] of map) {
+    if (value <= 0 || !CUSTOM_CONVERSION_ACTION.test(actionType)) continue;
+    if (!best || value > parseFloat(best.value)) {
+      best = { action_type: actionType, value: String(value) };
+    }
+  }
+  return best;
 }
 
 function actionValueMap(actions: MetaInsightAction[] | undefined): Map<string, number> {
@@ -190,7 +206,7 @@ function firstActionForObjectiveKey(
 ): { action_type: string; value: string } | null {
   for (const [actionType, value] of map) {
     if (value <= 0) continue;
-    const csvLabel = actionTypeToCsvResultType(actionType);
+    const csvLabel = metaApiActionToCsvResultType(actionType);
     if (resolveObjectiveFromResultType(csvLabel)?.key === objectiveKey) {
       return { action_type: actionType, value: String(value) };
     }
@@ -210,7 +226,8 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   if (quoteRequestCampaign) {
     const quoteMatch =
       firstActionForObjectiveKey(map, "quote_requests") ??
-      firstActionMatchingPattern(map, /quote[\s_]*request/i);
+      firstActionMatchingPattern(map, /quote[\s_]*request/i) ??
+      firstCustomConversionAction(map);
     if (quoteMatch) return quoteMatch;
     const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
     if (websiteMatch) return websiteMatch;
@@ -321,7 +338,10 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
 
   const genericLead = actionMap.get("lead") ?? 0;
   const typedCampaign =
-    isMessagingCampaignRow(row) || isMetaFormLeadsCampaignRow(row) || isWebsiteLeadsCampaignRow(row);
+    isMessagingCampaignRow(row) ||
+    isMetaFormLeadsCampaignRow(row) ||
+    isWebsiteLeadsCampaignRow(row) ||
+    isQuoteRequestCampaignRow(row);
   if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
     if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
       websiteLeadsOut = genericLead;
@@ -339,7 +359,7 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
     row.campaign_name ?? "",
     row.adset_name ?? "",
     row.date_start ? isoToCsvDay(row.date_start) : "",
-    result ? actionTypeToCsvResultType(result.action_type) : "",
+    result ? actionTypeToCsvResultType(result.action_type, row) : "",
     result?.value ?? "",
     formatMoney(row.spend),
     cpr,
