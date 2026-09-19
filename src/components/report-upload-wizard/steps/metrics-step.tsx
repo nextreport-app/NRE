@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 
 export function WizardMetricsStep() {
+  const [metricsExpanded, setMetricsExpanded] = useState(false);
   const w = useWizardContext();
   if (w.step !== 3) return null;
   const {
@@ -30,6 +32,12 @@ export function WizardMetricsStep() {
     setStep
   } = w;
 
+  const activeCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
+  const totalMetricChips = activeCampaigns.reduce(
+    (sum, name) => sum + (perCampaignMetrics.get(normalizeCampaignName(name))?.length ?? 0),
+    0,
+  );
+
   return (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
           {metricsStatus === "error" && (
@@ -38,6 +46,29 @@ export function WizardMetricsStep() {
             </div>
           )}
 
+          {!metricsExpanded ? (
+            <div className="rounded-lg border border-dash-border bg-[#1e293b] p-4">
+              <p className="text-[15px] font-semibold text-white">Metrics look good</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-dash-ink-secondary">
+                {activeCampaigns.length === 1
+                  ? "1 campaign"
+                  : `${activeCampaigns.length} campaigns`}{" "}
+                · {totalMetricChips} metric{totalMetricChips === 1 ? "" : "s"} selected from your CSV
+              </p>
+              {perCampaignMinWarning ? (
+                <p className="mt-2 text-[14px] text-amber-300">{perCampaignMinWarning}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setMetricsExpanded(true)}
+                className="mt-3 text-[14px] font-medium text-dash-accent hover:underline"
+              >
+                Customize metrics
+              </button>
+            </div>
+          ) : null}
+
+          {metricsExpanded ? (
           <div>
             {campaigns
               .filter((name) => selectedCampaigns.has(name))
@@ -143,6 +174,7 @@ export function WizardMetricsStep() {
                 );
               })}
           </div>
+          ) : null}
 
           <div className="flex gap-3">
             <button

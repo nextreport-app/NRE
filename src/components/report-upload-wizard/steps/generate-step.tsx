@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
@@ -11,6 +12,8 @@ import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShar
 import { ReportTypeCard } from "../ui/report-type-card";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
+
+const PRIMARY_REPORT_TYPES = new Set(["WEEKLY", "MONTHLY", "DAILY"]);
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
@@ -119,6 +122,10 @@ export function WizardGenerateStep() {
     weeklyRangeIso
   } = w;
 
+  const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
+    () => !PRIMARY_REPORT_TYPES.has(reportType),
+  );
+
   return (
         <div className="space-y-6">
           <div className="flex gap-3">
@@ -134,21 +141,13 @@ export function WizardGenerateStep() {
             <div className="space-y-5">
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <ReportTypeCard
                 icon="📊"
                 heading="Weekly Performance Report"
                 description="One week with a daily chart."
                 selected={reportType === "WEEKLY"}
                 onSelect={() => handleReportTypeChange("WEEKLY")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="☀️"
-                heading="Daily Performance Report"
-                description="Yesterday only."
-                selected={reportType === "DAILY"}
-                onSelect={() => handleReportTypeChange("DAILY")}
                 layout="compact"
               />
               <ReportTypeCard
@@ -160,48 +159,76 @@ export function WizardGenerateStep() {
                 layout="compact"
               />
               <ReportTypeCard
-                icon="📈"
-                heading="Quarterly Performance Report"
-                description="Current quarter to date."
-                selected={reportType === "QUARTER"}
-                onSelect={() => handleReportTypeChange("QUARTER")}
+                icon="☀️"
+                heading="Daily Performance Report"
+                description="Yesterday only."
+                selected={reportType === "DAILY"}
+                onSelect={() => handleReportTypeChange("DAILY")}
                 layout="compact"
               />
-              <ReportTypeCard
-                icon="🗓️"
-                heading="Year-to-Date Report"
-                description="Jan 1 through yesterday."
-                selected={reportType === "YTD"}
-                onSelect={() => handleReportTypeChange("YTD")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="🎨"
-                heading="Creative Performance Report"
-                description={
-                  hasAdLevelCsv ? "Ad-level winners and video metrics." : "Requires ad-level CSV."
-                }
-                selected={reportType === "CREATIVE"}
-                onSelect={() => handleReportTypeChange("CREATIVE")}
-                disabled={!hasAdLevelCsv}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="🔀"
-                heading="Comparison Report"
-                description="Two periods side by side."
-                selected={reportType === "COMPARISON"}
-                onSelect={() => handleReportTypeChange("COMPARISON")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="📆"
-                heading="Multi-Month Historical Report"
-                description="Several past months in one deck."
-                selected={reportType === "HISTORICAL"}
-                onSelect={() => handleReportTypeChange("HISTORICAL")}
-                layout="compact"
-              />
+            </div>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setMoreReportTypesOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
+                aria-expanded={moreReportTypesOpen}
+              >
+                <span>
+                  More report types
+                  {!PRIMARY_REPORT_TYPES.has(reportType) ? (
+                    <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel()}</span>
+                  ) : null}
+                </span>
+                <span className="text-dash-ink-secondary">{moreReportTypesOpen ? "▲" : "▼"}</span>
+              </button>
+              {moreReportTypesOpen ? (
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <ReportTypeCard
+                    icon="📈"
+                    heading="Quarterly Performance Report"
+                    description="Current quarter to date."
+                    selected={reportType === "QUARTER"}
+                    onSelect={() => handleReportTypeChange("QUARTER")}
+                    layout="compact"
+                  />
+                  <ReportTypeCard
+                    icon="🗓️"
+                    heading="Year-to-Date Report"
+                    description="Jan 1 through yesterday."
+                    selected={reportType === "YTD"}
+                    onSelect={() => handleReportTypeChange("YTD")}
+                    layout="compact"
+                  />
+                  <ReportTypeCard
+                    icon="🎨"
+                    heading="Creative Performance Report"
+                    description={
+                      hasAdLevelCsv ? "Ad-level winners and video metrics." : "Requires ad-level CSV."
+                    }
+                    selected={reportType === "CREATIVE"}
+                    onSelect={() => handleReportTypeChange("CREATIVE")}
+                    disabled={!hasAdLevelCsv}
+                    layout="compact"
+                  />
+                  <ReportTypeCard
+                    icon="🔀"
+                    heading="Comparison Report"
+                    description="Two periods side by side."
+                    selected={reportType === "COMPARISON"}
+                    onSelect={() => handleReportTypeChange("COMPARISON")}
+                    layout="compact"
+                  />
+                  <ReportTypeCard
+                    icon="📆"
+                    heading="Multi-Month Historical Report"
+                    description="Several past months in one deck."
+                    selected={reportType === "HISTORICAL"}
+                    onSelect={() => handleReportTypeChange("HISTORICAL")}
+                    layout="compact"
+                  />
+                </div>
+              ) : null}
             </div>
             {hasAdLevelCsv && reportType !== "CREATIVE" && (
               <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[14px] text-emerald-200">
@@ -818,11 +845,6 @@ export function WizardGenerateStep() {
                       </button>
                     ) : null}
                   </div>
-                  {shareToken && reportId && !publishedAt ? (
-                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                      PPT and the live link are ready now. Review or edit before downloading or sharing.
-                    </p>
-                  ) : null}
                   {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
                     <p className="mt-2 text-[14px] text-dash-ink-secondary">
                       Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
@@ -844,8 +866,8 @@ export function WizardGenerateStep() {
 
                 {shareToken && reportId ? (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-3">
-                    <p className="min-w-0 flex-1 text-[14px] leading-snug text-dash-ink sm:whitespace-nowrap">
-                      Review slides and copy before sharing or downloading.
+                    <p className="min-w-0 flex-1 text-[14px] leading-snug text-dash-ink">
+                      PPT and the live link are ready. Review or edit slides and copy before sharing.
                     </p>
                     <Link
                       href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
