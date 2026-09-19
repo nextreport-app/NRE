@@ -40,6 +40,7 @@ export function WizardImportStep() {
     handleMismatchContinueAnyway,
     handleMismatchGoBack,
     handleMtdFileSelected,
+    importPipelineLabel,
     hasSavedPlatformPreference,
     includePreviousMonthComparison,
     metaConfigured,
@@ -134,6 +135,12 @@ export function WizardImportStep() {
             <div className="space-y-3">
               <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
 
+              {importPipelineLabel ? (
+                <p className="rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2 text-[14px] text-dash-ink-secondary">
+                  {importPipelineLabel}
+                </p>
+              ) : null}
+
               {dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
                   clientId={clientId}
@@ -209,10 +216,16 @@ export function WizardImportStep() {
                       type="button"
                       role="switch"
                       aria-checked={includePreviousMonthComparison}
-                      onClick={() => setIncludePreviousMonthComparison(true)}
-                      className="relative h-6 w-11 shrink-0 rounded-full bg-dash-border transition-colors"
+                      onClick={() => setIncludePreviousMonthComparison(!includePreviousMonthComparison)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                        includePreviousMonthComparison ? "bg-dash-accent" : "bg-dash-border"
+                      }`}
                     >
-                      <span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform translate-x-0" />
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                          includePreviousMonthComparison ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
                     </button>
                   </label>
                 </div>

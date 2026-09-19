@@ -7,6 +7,7 @@ import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
+import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 
 export function WizardCampaignsStep() {
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
@@ -54,7 +55,7 @@ export function WizardCampaignsStep() {
   } = w;
 
   return (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
           {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
             <CsvDateGuidanceBanner
               guidance={csvDateGuidance}
@@ -358,7 +359,7 @@ export function WizardCampaignsStep() {
             );
           })()}
 
-          <div className="flex gap-3">
+          <div className="hidden gap-3 md:flex">
             <button
               onClick={() => setStep(1)}
               className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
@@ -374,13 +375,22 @@ export function WizardCampaignsStep() {
               }
               className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
-              {metricsStatus === "loading"
-                ? "Loading…"
-                : metricsFetchedForSelection === selectedCampaignsKey()
-                  ? "Continue to metrics"
-                  : "Continue"}
+              {metricsStatus === "loading" ? "Loading objectives…" : "Continue to metrics"}
             </button>
           </div>
+
+          <WizardStickyFooter
+            stepLabel="Step 2 of 4 · Campaign Data"
+            onBack={() => setStep(1)}
+            primaryLabel={metricsStatus === "loading" ? "Loading objectives…" : "Continue to metrics"}
+            onPrimary={handleCampaignsContinue}
+            primaryDisabled={
+              selectedCampaigns.size === 0 ||
+              metricsStatus === "loading" ||
+              (metricsFetchedForSelection === selectedCampaignsKey() && hasBlockingObjectives())
+            }
+            primaryLoading={metricsStatus === "loading"}
+          />
         </div>
   );
 }

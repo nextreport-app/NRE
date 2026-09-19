@@ -61,7 +61,8 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
 
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
 export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform): string {
-  if (step === 4) return "Pick a report type, then generate.";
-  if (step === 2) return "Pick campaigns first, then set campaign objectives below.";
+  if (step === 4) return "Pick a report type, review the summary, then generate.";
+  if (step === 3) return "Metrics are pre-selected — customize only if needed.";
+  if (step === 2) return "Pick campaigns first; objectives load automatically.";
   return "";
 }
