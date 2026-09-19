@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
@@ -8,6 +9,7 @@ import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner"
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 
 export function WizardCampaignsStep() {
+  const [objectivesExpanded, setObjectivesExpanded] = useState(false);
   const w = useWizardContext();
   if (w.step !== 2) return null;
   const {
@@ -245,50 +247,57 @@ export function WizardCampaignsStep() {
             })()}
           </ul>
 
-          {metricsFetchedForSelection === selectedCampaignsKey() && (
+          {metricsFetchedForSelection === selectedCampaignsKey() && (() => {
+            const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
+            const confidenceTiers = shownCampaigns.map((name) =>
+              campaignObjectiveConfidence.get(normalizeCampaignName(name)),
+            );
+            const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
+            const blockingCount = campaigns.filter((name) => {
+              const normalized = normalizeCampaignName(name);
+              return (
+                selectedCampaigns.has(name) &&
+                campaignRequiresConfirmation.get(normalized) === true &&
+                !touchedObjectiveCampaigns.has(normalized)
+              );
+            }).length;
+            const showObjectiveList = blockingCount > 0 || !allConfirmed || objectivesExpanded;
+
+            return (
             <div className="space-y-4 border-t border-dash-border pt-4">
-              <div>
-                <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
-                <p className="mt-1 text-[13px] text-dash-ink-secondary">
-                  Objectives are auto-detected from your data. Change a dropdown only if the selection looks wrong.
-                </p>
-              </div>
+              {allConfirmed && blockingCount === 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-800/50 bg-emerald-950/25 px-3 py-2.5">
+                  <p className="text-[14px] text-emerald-200">
+                    All objectives confirmed from your previous report.
+                  </p>
+                  {!objectivesExpanded ? (
+                    <button
+                      type="button"
+                      onClick={() => setObjectivesExpanded(true)}
+                      className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
+                    >
+                      Review objectives
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
+                  <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                    Objectives are auto-detected from your data. Change a dropdown only if the selection looks wrong.
+                  </p>
+                </div>
+              )}
 
-              {(() => {
-                const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
-                const confidenceTiers = shownCampaigns.map((name) =>
-                  campaignObjectiveConfidence.get(normalizeCampaignName(name)),
-                );
-                const allConfirmed = shownCampaigns.length > 0 && confidenceTiers.every((t) => t === "cached");
-                return (
-                  allConfirmed && (
-                    <div className="rounded-md border border-[#f6ad55]/40 bg-amber-950/20 px-3 py-2 text-[14px] text-amber-200">
-                      All objectives confirmed from your previous report. Review or click Continue.
-                    </div>
-                  )
-                );
-              })()}
+              {blockingCount > 0 && (
+                <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[14px] text-[#fc8181]">
+                  {blockingCount === 1
+                    ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
+                    : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
+                </div>
+              )}
 
-              {(() => {
-                const blockingCount = campaigns.filter((name) => {
-                  const normalized = normalizeCampaignName(name);
-                  return (
-                    selectedCampaigns.has(name) &&
-                    campaignRequiresConfirmation.get(normalized) === true &&
-                    !touchedObjectiveCampaigns.has(normalized)
-                  );
-                }).length;
-                return (
-                  blockingCount > 0 && (
-                    <div className="rounded-md border border-[#fc8181]/40 bg-red-950/20 px-3 py-2 text-[14px] text-[#fc8181]">
-                      {blockingCount === 1
-                        ? "1 campaign's objective could not be reliably detected — pick a value from its dropdown to continue."
-                        : `${blockingCount} campaigns' objectives could not be reliably detected — pick a value from each dropdown to continue.`}
-                    </div>
-                  )
-                );
-              })()}
-
+              {showObjectiveList ? (
               <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
                 {campaigns
                   .filter((name) => selectedCampaigns.has(name))
@@ -344,8 +353,10 @@ export function WizardCampaignsStep() {
                     );
                   })}
               </ul>
+              ) : null}
             </div>
-          )}
+            );
+          })()}
 
           <div className="flex gap-3">
             <button

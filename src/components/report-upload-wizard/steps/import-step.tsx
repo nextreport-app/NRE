@@ -6,6 +6,7 @@ import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
+import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { wizardPlatformImportDescription, isNoDataRowsError, isSpecificFieldError } from "../utils";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
@@ -71,6 +72,14 @@ export function WizardImportStep() {
     tiktokConfigured,
     tiktokConnected
   } = w;
+
+  const previousMonthInfo = getPreviousMonthComparisonInfo(
+    previousMonthHasFile,
+    previousMonthUpdatedAt,
+    clientTimezone,
+  );
+  const showCompactPreviousMonth =
+    previousMonthInfo.status === "current" && !includePreviousMonthComparison;
 
   return (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
@@ -182,31 +191,58 @@ export function WizardImportStep() {
                 </>
               )}
 
-              <PreviousMonthDataWizardPanel
-                clientId={clientId}
-                clientTimezone={clientTimezone}
-                currencySymbol={currencySymbol}
-                initialHasFile={previousMonthHasFile}
-                initialUpdatedAt={previousMonthUpdatedAt}
-                initialCampaigns={previousMonthCampaigns}
-                initialSelectedCampaigns={previousMonthSelectedCampaigns}
-                initialCampaignSpend={previousMonthCampaignSpend}
-                includeInReport={includePreviousMonthComparison}
-                onIncludeInReportChange={setIncludePreviousMonthComparison}
-                onUploaded={(meta) => {
-                  setPreviousMonthHasFile(true);
-                  setPreviousMonthUpdatedAt(new Date().toISOString());
-                  if (meta) {
+              {showCompactPreviousMonth ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
+                  <p className="text-[14px] text-dash-ink-secondary">
+                    <span className="font-medium text-emerald-400">{previousMonthInfo.expectedMonthName} on file ✓</span>
+                    {" · "}
+                    <Link
+                      href={`/clients/${clientId}#previous-month-data`}
+                      className="font-medium text-dash-accent hover:underline"
+                    >
+                      Manage
+                    </Link>
+                  </p>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <span className="text-[12px] font-medium text-dash-ink-secondary">Include in report</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={includePreviousMonthComparison}
+                      onClick={() => setIncludePreviousMonthComparison(true)}
+                      className="relative h-6 w-11 shrink-0 rounded-full bg-dash-border transition-colors"
+                    >
+                      <span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform translate-x-0" />
+                    </button>
+                  </label>
+                </div>
+              ) : (
+                <PreviousMonthDataWizardPanel
+                  clientId={clientId}
+                  clientTimezone={clientTimezone}
+                  currencySymbol={currencySymbol}
+                  initialHasFile={previousMonthHasFile}
+                  initialUpdatedAt={previousMonthUpdatedAt}
+                  initialCampaigns={previousMonthCampaigns}
+                  initialSelectedCampaigns={previousMonthSelectedCampaigns}
+                  initialCampaignSpend={previousMonthCampaignSpend}
+                  includeInReport={includePreviousMonthComparison}
+                  onIncludeInReportChange={setIncludePreviousMonthComparison}
+                  onUploaded={(meta) => {
+                    setPreviousMonthHasFile(true);
+                    setPreviousMonthUpdatedAt(new Date().toISOString());
+                    if (meta) {
+                      setPreviousMonthCampaigns(meta.campaigns);
+                      setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
+                      if (meta.campaignSpend) setPreviousMonthCampaignSpend(meta.campaignSpend);
+                    }
+                  }}
+                  onCampaignsChange={(meta) => {
                     setPreviousMonthCampaigns(meta.campaigns);
                     setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
-                    if (meta.campaignSpend) setPreviousMonthCampaignSpend(meta.campaignSpend);
-                  }
-                }}
-                onCampaignsChange={(meta) => {
-                  setPreviousMonthCampaigns(meta.campaigns);
-                  setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
-                }}
-              />
+                  }}
+                />
+              )}
             </div>
           )}
 
