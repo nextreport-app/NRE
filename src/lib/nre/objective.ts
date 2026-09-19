@@ -134,7 +134,7 @@ export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels
     if (metaFormLeadsCampaign && metaLeadsTotal > 0) {
       return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
     }
-    if (isQuoteRequestCampaignName(rows) && hasQuoteRequestResultTypeRows(rows)) {
+    if (isQuoteRequestCampaignName(rows)) {
       return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
     }
     // Mixed exports often carry one stray messaging count on website campaigns
@@ -172,6 +172,9 @@ function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLab
   }
   if ((hasHeader("meta leads") || hasHeader("leads (form)")) && metaFormLeadsCampaign) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+  }
+  if (isQuoteRequestCampaignName(rows)) {
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
 
   return null;
@@ -878,6 +881,9 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
   }
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
+  }
+  if (isQuoteRequestCampaignName(rows)) {
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
   return null;
 }

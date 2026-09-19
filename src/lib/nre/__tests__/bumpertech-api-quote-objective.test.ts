@@ -61,6 +61,24 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
     vi.unstubAllGlobals();
   });
 
+  it("pickResultAction prefers numeric custom conversion IDs on quote campaigns", () => {
+    expect(
+      pickResultAction({
+        campaign_name: RETARGET_CAMPAIGN,
+        adset_name: RETARGET_ADSET,
+        optimization_goal: "OUTCOME_LEADS",
+        actions: [
+          { action_type: "link_click", value: "11" },
+          { action_type: "offsite_conversion.custom.9876543210", value: "20" },
+          { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+        ],
+      }),
+    ).toEqual({
+      action_type: "offsite_conversion.custom.9876543210",
+      value: "20",
+    });
+  });
+
   it("pickResultAction prefers quote conversions over incidental messaging", () => {
     expect(
       pickResultAction({
@@ -98,6 +116,93 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
 
     expect(retargetRows.length).toBe(3);
     expect(retargetRows.every((r) => r.result_type === "Quote Request Submitted")).toBe(true);
+  });
+
+  it("detects QUOTE REQUESTS when Meta only returns numeric custom conversion IDs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: RETARGET_CAMPAIGN,
+              adset_name: RETARGET_ADSET,
+              date_start: "2026-09-18",
+              spend: "25.50",
+              reach: "1500",
+              impressions: "2200",
+              optimization_goal: "OUTCOME_LEADS",
+              actions: [
+                { action_type: "offsite_conversion.custom.9876543210", value: "20" },
+                { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+              ],
+            },
+          ],
+        }),
+      })),
+    );
+
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-18",
+      untilIso: "2026-09-18",
+    });
+
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows } = readRowsWithAutoMap(headers, dataRows);
+    const retargetRows = rows.filter((r) => r.campaign_name === RETARGET_CAMPAIGN);
+
+    expect(retargetRows[0]?.result_type).toBe("Quote Request Submitted");
+    expect(resolveCampaignObjectiveWithConfidence(retargetRows).resultLabel).toBe("QUOTE REQUESTS");
+  });
+
+  it("uses campaign naming when API rows only carry incidental messaging columns", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: RETARGET_CAMPAIGN,
+              adset_name: RETARGET_ADSET,
+              date_start: "2026-09-18",
+              spend: "25.50",
+              reach: "1500",
+              impressions: "2200",
+              optimization_goal: "OUTCOME_LEADS",
+              actions: [
+                { action_type: "link_click", value: "11" },
+                { action_type: "landing_page_view", value: "8" },
+                { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+              ],
+            },
+          ],
+        }),
+      })),
+    );
+
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-18",
+      untilIso: "2026-09-18",
+    });
+
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows } = readRowsWithAutoMap(headers, dataRows);
+    const retargetRows = rows.filter((r) => r.campaign_name === RETARGET_CAMPAIGN);
+
+    expect(retargetRows[0]?.result_type).toBe("");
+    expect(resolveCampaignObjectiveWithConfidence(retargetRows).resultLabel).toBe("QUOTE REQUESTS");
   });
 
   it("detects QUOTE REQUESTS (not MESSAGING) for API-sync rows on first import", async () => {
