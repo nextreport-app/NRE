@@ -22,6 +22,7 @@ export type PackId =
   | "traffic_landing_page_views"
   | "leads_meta_form"
   | "leads_website"
+  | "leads_quote_requests"
   | "leads_messaging"
   | "sales_purchase"
   | "sales_add_to_cart"
@@ -74,6 +75,7 @@ export const METRIC_PACKS: readonly MetricPack[] = [
   pack("traffic_landing_page_views", "TRAFFIC", "Maximise landing page views", "landing_page_views", "cost_per_lpv", "link_clicks", "cpc_link_click", ["cpc_all", "frequency"]),
   LEADS_META_FORM_PACK,
   pack("leads_website", "LEADS", "Website lead", "website_leads", "cost_per_website_lead", "landing_page_views", "link_clicks", ["cpc_all", "cpc_link_click", "frequency"]),
+  pack("leads_quote_requests", "LEADS", "Quote request submitted", "results", "cost_per_result", "link_clicks", "cpc_link_click", ["landing_page_views", "cost_per_lpv", "cpc_all", "frequency"]),
   pack("leads_messaging", "LEADS", "Messaging conversations", "messaging_conversations_started", "cost_per_conversation", "new_messaging_contacts", "link_clicks", ["frequency"]),
   pack("sales_purchase", "SALES", "Purchase", "purchases", "cost_per_purchase", "add_to_cart", "results_roas", ["initiate_checkout", "cost_per_add_to_cart", "landing_page_views"]),
   pack("sales_add_to_cart", "SALES", "Add to cart", "add_to_cart", "cost_per_add_to_cart", "initiate_checkout", "purchases", ["results_roas"]),
@@ -84,6 +86,7 @@ const RESULT_LABEL_TO_PACK: Record<string, PackId> = {
   "META FORM LEADS": "leads_meta_form",
   "WEBSITE LEADS": "leads_website",
   LEADS: "leads_website",
+  "QUOTE REQUESTS": "leads_quote_requests",
   "LINK CLICKS": "traffic_link_clicks",
   "LANDING PAGE VIEWS": "traffic_landing_page_views",
   REACH: "awareness_reach",

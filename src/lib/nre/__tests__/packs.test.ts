@@ -24,6 +24,7 @@ describe("METRIC_PACKS", () => {
       "cpc_link_click",
     ]);
     expect(packForResultLabel("META FORM LEADS")?.id).toBe("leads_meta_form");
+    expect(packForResultLabel("QUOTE REQUESTS")?.id).toBe("leads_quote_requests");
     const headers = [
       "Campaign name",
       "Amount spent",
