@@ -676,34 +676,48 @@ export function WebsiteReportWizard({
             <p className="text-[16px] font-semibold text-emerald-400">Report ready</p>
             {shareToken && reportId ? (
               <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                PPT and the live link are ready. Review slides and copy before sharing.
+                PPT and the live link are ready.{" "}
+                <Link
+                  href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
+                  className="font-medium text-dash-accent hover:underline"
+                >
+                  Review slides and copy
+                </Link>{" "}
+                before sharing.
               </p>
             ) : null}
             {shareToken ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {shareToken && reportId ? (
-                  <Link
-                    href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                    className="flex items-center justify-center rounded-lg border border-dash-border bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:border-[#f5b45a]/40 hover:bg-[#132238]"
+              <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
+                <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
+                  {buildShareReportUrl(shareToken)}
+                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <a
+                    href={`https://${buildShareReportUrl(shareToken)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
                   >
-                    Review before sharing
-                  </Link>
-                ) : null}
-                <a
-                  href={`https://${buildShareReportUrl(shareToken)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-center rounded-lg border border-[#f5b45a]/50 bg-[#0d1b2e] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:border-[#f5b45a] ${
-                    shareToken && reportId ? "" : "sm:col-span-2"
-                  }`}
-                >
-                  View in browser
-                </a>
+                    View
+                  </a>
+                  <span className="text-[12px] text-dash-border" aria-hidden="true">
+                    ·
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`https://${buildShareReportUrl(shareToken)}`);
+                    }}
+                    className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
             ) : null}
             <a
               href={downloadUrl}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-[#f5b45a]/50 px-4 py-3 text-[14px] font-medium text-white hover:border-[#f5b45a]"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-[#f5b45a]/30 bg-[#f5b45a]/10 px-4 py-3 text-[14px] font-medium text-[#f0c27a] transition-colors hover:border-[#f5b45a]/50 hover:bg-[#f5b45a]/15"
             >
               Download PPTX
             </a>
