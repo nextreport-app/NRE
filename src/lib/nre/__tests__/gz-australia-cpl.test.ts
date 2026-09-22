@@ -26,7 +26,7 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
     return d >= "2026-08-01" && d <= "2026-08-31";
   });
 
-  it("all slide date labels align to Sep 16 when Sydney is already Sep 18 but data ends Sep 16", () => {
+  it("MTD labels cap to Sep 16 when data ends Sep 16, but cover report date is today in Sydney (Sep 18)", () => {
     const data = buildReportData({
       accountName: "GZ Australia",
       currencySymbol: "A$",
@@ -36,7 +36,7 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
       now: new Date("2026-09-17T14:29:00Z"),
     });
     expect(data.mtdRow.monthLabel).toBe("Sep 1 - 16");
-    expect(data.cover.reportDate).toBe("09-16-2026");
+    expect(data.cover.reportDate).toBe("09-18-2026");
     expect(data.cover.dateRange).toBe("September 10 - September 16");
     expect(data.chart?.periodSubLabel).toBe("Aug 18 - Sep 16, 2026");
   });

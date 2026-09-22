@@ -38,7 +38,16 @@ import {
   type DeliveryStatusIndicator,
 } from "./delivery-status";
 import { buildChartSnapshotKpis, type ChartSnapshotKpis } from "./chart-snapshot-kpis";
-import { getDateRangeShortLabel, getDateRangeAbbrLabel, getComparisonPeriodLabel, formatDateUS, getMonthName, getMonthAbbrName, parseDate } from "./dates";
+import {
+  getCalendarDateInTimezone,
+  getDateRangeShortLabel,
+  getDateRangeAbbrLabel,
+  getComparisonPeriodLabel,
+  formatDateUS,
+  getMonthName,
+  getMonthAbbrName,
+  parseDate,
+} from "./dates";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth } from "./health";
 import {
@@ -81,7 +90,6 @@ import {
   computeWeeklyRangeOptions,
   computeYtdRangeIso,
   filterNreRowsByDateRange,
-  getCalendarYesterday,
   toIsoDate,
 } from "./date-range";
 import { buildBudgetSummary } from "./budget-pacing";
@@ -506,10 +514,10 @@ export function freqLine(freq: number): string {
   return "\nAd Frequency: " + freq.toFixed(1) + "x avg" + (freq > 3.5 ? " ⚠️ High" : "");
 }
 
-function formatCoverReportDate(rows: NreRow[], now: Date, timezone: string): string {
-  const effective = computeEffectiveYesterday(rows, now, timezone);
-  const labelDay = effective ?? getCalendarYesterday(now, timezone);
-  return `${String(labelDay.month).padStart(2, "0")}-${String(labelDay.day).padStart(2, "0")}-${labelDay.year}`;
+/** Cover stamp under the client name — the day the report is generated/presented (client TZ), not the CSV's last data day (that lives in dateRange). */
+function formatCoverReportDate(_rows: NreRow[], now: Date, timezone: string): string {
+  const today = getCalendarDateInTimezone(now, timezone);
+  return `${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}-${today.year}`;
 }
 
 /** MTD table label end — calendar yesterday capped to the latest day in this row set. */
@@ -1142,8 +1150,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const creativeAgg = aggregateRows(creativeRaw);
     const creativeMtdSpendTotal = creativeAgg.reduce((sum, row) => sum + (row.spend || 0), 0);
     const { score, badge } = calculateAccountHealth(creativeAgg, "Weekly");
-    const yesterday = computeEffectiveYesterday(filteredMtdDailyRows, now, timezone);
-    const coverDate = yesterday ? formatDateUS(toIsoDate(yesterday)) : "";
+    const coverDate = formatCoverReportDate(filteredMtdDailyRows, now, timezone);
     const emptyRow = computeTableRow([], currencySymbol, false, new Map(), now, undefined, timezone);
     return {
       isPaused: !creative || creative.overviewSlides.length === 0,
