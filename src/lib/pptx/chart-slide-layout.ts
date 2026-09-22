@@ -1,4 +1,4 @@
-/** MTD Visual Chart slide — two-panel layout (960×540 pt). */
+/** MTD Visual Chart slide — single-panel leaderboard layout (960×540 pt). */
 export const MTD_SLIDE_W = 960;
 export const MTD_SLIDE_H = 540;
 
@@ -35,6 +35,9 @@ export const MTD_VISUAL = {
   sepX: 412,
   rightX: 428,
   rightW: 480,
+  /** Full-width panel for the unified performance leaderboard. */
+  fullPanelX: 52,
+  fullPanelW: 856,
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
   barH: 26,
@@ -44,7 +47,7 @@ export const MTD_VISUAL = {
   groupedDonutLegendRowH: 22,
   groupedDonutLegendRowGap: 8,
   groupedDonutLegendSizePt: 16,
-  barTrackMaxW: 448,
+  barTrackMaxW: 824,
   labelColW: 0,
   panelHeadingH: 26,
   panelPad: 14,

@@ -286,15 +286,15 @@ describe("renderPptx — real template end-to-end", () => {
     expect(adset2).toContain("Retargeting (Ad Set)");
     expect(adset2).toContain("₹350");
 
-    // Combined MTD overview slide — native editable KPI cards, donut, spend bars.
+    // Combined MTD overview slide — single-panel performance leaderboard.
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
-    expect(chartXmlFromZip).toContain('prst="pie"');
+    expect(chartXmlFromZip).toContain("BY CAMPAIGN");
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
     expect(chartSvg).toContain("Last 30 Days Campaign Performance");
     expect(chartSvg).toContain("Jun 20 - Jul 19, 2026");
-    expect(chartSvg).toContain("BUDGET DISTRIBUTION");
+    expect(chartSvg).toContain("BY CAMPAIGN");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
 

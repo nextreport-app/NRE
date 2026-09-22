@@ -7,9 +7,7 @@ import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-tot
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
-import { ShareChartDonut } from "@/components/share-chart-donut";
-import { formatGroupedDonutLegendEntry } from "@/lib/nre/visual-chart-slide";
-import { groupedDonutLayout, MTD_VISUAL, resultBarLayout } from "@/lib/pptx/chart-slide-layout";
+import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
@@ -286,12 +284,14 @@ function AdSetCard({
 }
 
 function VisualResultBar({
+  rank,
   name,
   color,
   statLine,
   barPct,
   compact = false,
 }: {
+  rank: number;
   name: string;
   color: string;
   statLine: string;
@@ -301,31 +301,34 @@ function VisualResultBar({
   const widthPct = Math.max(0, Math.min(100, barPct));
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-start gap-2">
         <span
-          className={`inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`}
+          className={`mt-1 inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`}
           style={{ backgroundColor: `#${color}` }}
           aria-hidden="true"
         />
-        <p
-          className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold leading-tight text-ink ${compact ? "text-[13px]" : "text-[15px]"}`}
-        >
-          {name}
-        </p>
-      </div>
-      <p
-        className={`overflow-hidden text-ellipsis whitespace-nowrap pl-5 font-bold leading-tight text-[#94a3b8] ${compact ? "mt-0.5 text-[13px]" : "mt-1 text-[16px]"}`}
-      >
-        {statLine}
-      </p>
-      <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`}>
-        <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
+        <div className="min-w-0 flex-1">
+          <p
+            className={`line-clamp-2 break-words font-semibold leading-snug text-ink [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`}
+          >
+            <span className="mr-1.5 text-[#94a3b8]">{rank}.</span>
+            {name}
+          </p>
+          <p
+            className={`mt-0.5 font-bold leading-tight text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`}
+          >
+            {statLine}
+          </p>
+          <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`}>
+            <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/** Browser chart slide — two-panel budget + results layout (matches editable PPT slide). */
+/** Browser chart slide — single-panel performance leaderboard (matches editable PPT slide). */
 export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const model = chart.visualSlide;
   if (!model) return null;
@@ -333,20 +336,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const barCount = model.resultBars.length;
   const barLayout = resultBarLayout(barCount);
   const compactBars = barCount >= 4;
-  const barGapClass = barCount >= 5 ? "space-y-2" : barCount >= 4 ? "space-y-3" : "space-y-6";
-  const donutSegmentCount = model.groupedDonut?.length ?? 0;
-  const donutLayout =
-    donutSegmentCount > 0 ? groupedDonutLayout(donutSegmentCount, MTD_VISUAL.panelY) : null;
-  const donutSizePx = donutLayout ? Math.round((donutLayout.donutD / MTD_VISUAL.groupedDonutD) * 204) : 204;
-  const legendTextClass =
-    donutLayout && donutLayout.legendSizePt <= 12
-      ? "text-[12px]"
-      : donutLayout && donutLayout.legendSizePt <= 13
-        ? "text-[13px]"
-        : donutLayout && donutLayout.legendSizePt <= 14
-          ? "text-[14px]"
-          : "text-[16px]";
-  const legendGapClass = donutSegmentCount >= 5 ? "space-y-1" : "space-y-2";
+  const barGapClass = barCount >= 5 ? "space-y-2.5" : barCount >= 4 ? "space-y-3.5" : "space-y-5";
 
   return (
     <SlideCard>
@@ -355,53 +345,16 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           {model.title}
         </h2>
 
-        <div className="mt-5 grid grid-cols-1 items-center gap-3 min-[720px]:grid-cols-[348px_1fr]">
-          <div
-            className="flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4"
-            style={{ backgroundColor: "#111f35" }}
-          >
-            <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
-            {model.groupedDonut && model.groupedDonut.length > 0 ? (
-              <div className="mt-4 space-y-3">
-              <div className="relative mx-auto" style={{ width: donutSizePx, height: donutSizePx }}>
-                <ShareChartDonut
-                  segments={model.groupedDonut.map((s) => ({
-                    name: s.name,
-                    spendLabel: s.spendLabel,
-                    percentage: s.percentage,
-                    color: s.color,
-                  }))}
-                  totalSpendLabel={model.groupedDonutCenterLabel}
-                  size={donutSizePx}
-                />
-              </div>
-              <div className={`mt-3 ${legendGapClass}`}>
-                {model.groupedDonut.map((seg) => (
-                  <div key={seg.name} className="flex items-center justify-center gap-2">
-                    <span
-                      className={`inline-block shrink-0 rounded-full ${donutSegmentCount >= 5 ? "h-2.5 w-2.5" : "h-3 w-3"}`}
-                      style={{ backgroundColor: `#${seg.color}` }}
-                      aria-hidden="true"
-                    />
-                    <p className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-ink ${legendTextClass}`}>
-                      {formatGroupedDonutLegendEntry(seg)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
         <div
-          className="flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4"
+          className="mt-5 flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4 sm:p-5"
           style={{ backgroundColor: "#111f35" }}
         >
-          <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+          <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.panelHeading}</p>
           <div className={`mt-4 ${barGapClass}`}>
             {model.resultBars.map((bar) => (
               <VisualResultBar
-                key={bar.name}
+                key={`${bar.rank}-${bar.name}`}
+                rank={bar.rank}
                 name={bar.name}
                 color={bar.color}
                 statLine={bar.statLine}
@@ -411,7 +364,6 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
             ))}
           </div>
         </div>
-      </div>
 
         <p className="mt-5 text-center text-[16px] text-[#94a3b8]">{model.summaryLine}</p>
       </div>

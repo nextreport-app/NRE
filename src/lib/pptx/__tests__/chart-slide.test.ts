@@ -95,12 +95,11 @@ describe("buildDonutSegments", () => {
   });
 });
 
-describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
+describe("buildChartSlideBundle — MTD overview leaderboard", () => {
   it("slide XML uses native editable shapes with title text", async () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
     expect(bundle.xml).toContain("Campaign Performance");
-    expect(bundle.xml).toContain('prst="pie"');
-    expect(bundle.xml).toContain("BUDGET DISTRIBUTION");
+    expect(bundle.xml).toContain("PURCHASES BY CAMPAIGN");
     expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
 
@@ -114,14 +113,14 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
     expect(bundle.xml.slice(runStart, titleIdx)).toContain('<a:srgbClr val="94a3b8"/>');
   });
 
-  it("embeds native OOXML chart shapes with KPI cards and campaign spend bars", async () => {
+  it("embeds native OOXML chart shapes with campaign performance bars", async () => {
     const bundle = await buildChartSlideBundle(
       buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]),
       "C$",
       BACKGROUND,
     );
-    expect(bundle.xml).toContain("BUDGET DISTRIBUTION");
-    expect(bundle.xml).toContain("PURCHASES");
+    expect(bundle.xml).toContain("PURCHASES BY CAMPAIGN");
+    expect(bundle.xml).toContain("spend");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(
@@ -129,15 +128,15 @@ describe("buildChartSlideBundle — MTD overview (KPI + donut)", () => {
         "C$",
       ),
     );
-    expect(svg).toContain("BUDGET DISTRIBUTION");
-    expect(svg).toContain("Purchases");
+    expect(svg).toContain("PURCHASES BY CAMPAIGN");
+    expect(svg).toContain("purchases");
   });
 
-  it("buildMtdOverviewSvg includes mini donut rings for campaign spend", () => {
+  it("buildMtdOverviewSvg renders colored result bars", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain('stroke="#f6ad55"');
-    expect(svg).toContain("BUDGET DISTRIBUTION");
+    expect(svg).toContain('fill="#f6ad55"');
+    expect(svg).toContain("PURCHASES BY CAMPAIGN");
   });
 
   it("buildMtdOverviewSvg renders result bars for each campaign", () => {

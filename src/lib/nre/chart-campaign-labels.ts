@@ -1,6 +1,8 @@
-/** Compact, distinguishable labels for campaigns on the visual chart slide. */
+/** Campaign labels for the visual chart slide. */
 
 export const CHART_CAMPAIGN_LABEL_MAX = 24;
+/** Full-width leaderboard rows — preserve the start of the name; truncate at the end only. */
+export const CHART_CAMPAIGN_DISPLAY_MAX = 44;
 
 const DELIMITERS = [" | ", " - ", " – ", " — ", " / ", ": ", " · "] as const;
 
@@ -91,4 +93,9 @@ export function buildCampaignShortLabels(names: string[], max = CHART_CAMPAIGN_L
 /** Rank-prefixed label for color matching between donut legend and result bars. */
 export function formatRankedCampaignLabel(rank: number, shortLabel: string): string {
   return `${rank}. ${shortLabel}`;
+}
+
+/** Display name for chart rows — keeps the beginning of the campaign name readable. */
+export function formatCampaignDisplayName(name: string, max = CHART_CAMPAIGN_DISPLAY_MAX): string {
+  return truncateLabel(name.trim(), max);
 }

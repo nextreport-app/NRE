@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCampaignShortLabels, formatRankedCampaignLabel } from "../chart-campaign-labels";
+import { buildCampaignShortLabels, formatCampaignDisplayName, formatRankedCampaignLabel } from "../chart-campaign-labels";
 
 describe("buildCampaignShortLabels", () => {
   it("strips a shared prefix so similar campaign names stay distinguishable", () => {
@@ -39,5 +39,11 @@ describe("buildCampaignShortLabels", () => {
 
   it("formats ranked labels for chart rows", () => {
     expect(formatRankedCampaignLabel(1, "LPV Campaign A")).toBe("1. LPV Campaign A");
+  });
+
+  it("preserves the start of long campaign names when truncating for display", () => {
+    const name = "Tractor - DC - Traffic Campaign Extra Long Name";
+    expect(formatCampaignDisplayName(name)).toBe("Tractor - DC - Traffic Campaign Extra Long…");
+    expect(formatCampaignDisplayName("Traffic - Tractor")).toBe("Traffic - Tractor");
   });
 });

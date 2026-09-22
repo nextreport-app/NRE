@@ -120,12 +120,13 @@ describe("buildShareReportData", () => {
     expect(a.metrics).toEqual(realDynamicMetrics);
   });
 
-  it("projects the MTD visual chart with budget + result panels", () => {
+  it("projects the MTD visual chart with a single performance leaderboard", () => {
     expect(data.chart).not.toBeNull();
     expect(share.chart).not.toBeNull();
     expect(share.chart!.title).toContain("Campaign Performance");
     expect(share.chart!.visualSlide).toBeTruthy();
-    expect(share.chart!.visualSlide!.leftHeading).toBe("BUDGET DISTRIBUTION");
+    expect(share.chart!.visualSlide!.panelHeading).toContain("by Campaign");
+    expect(share.chart!.visualSlide!.groupedDonut).toBeNull();
     expect(share.chart!.snapshot.mtdSpendLabel).toContain("₹");
     expect(share.chart!.donutSegments.length).toBeGreaterThan(0);
     expect(share.chart!.donutSegments[0]?.color).toBe("f6ad55");
