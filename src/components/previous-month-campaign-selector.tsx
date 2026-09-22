@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isLowSpendCampaign, LOW_SPEND_CAMPAIGN_THRESHOLD } from "@/lib/nre/campaigns";
+import { isLowSpendCampaign, LOW_SPEND_CAMPAIGN_THRESHOLD, sortCampaignsBySpend } from "@/lib/nre/campaigns";
 import { resolvePreviousMonthUiSelection } from "@/lib/nre/merge-previous-month-selection";
 
 /** Checkbox list for Previous Month Data campaign inclusion — shared by client page and wizard. */
@@ -36,11 +36,16 @@ export function PreviousMonthCampaignSelector({
     [campaigns, campaignSpend],
   );
 
+  const campaignsBySpend = useMemo(
+    () => sortCampaignsBySpend(campaigns, campaignSpend),
+    [campaigns, campaignSpend],
+  );
+
   const filteredCampaigns = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return campaigns;
-    return campaigns.filter((name) => name.toLowerCase().includes(q));
-  }, [campaigns, search]);
+    if (!q) return campaignsBySpend;
+    return campaignsBySpend.filter((name) => name.toLowerCase().includes(q));
+  }, [campaignsBySpend, search]);
 
   useEffect(() => {
     const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, initialSelected);
@@ -165,12 +170,16 @@ export function PreviousMonthCampaignSelector({
               >
                 {name}
               </label>
-              {lowSpend ? (
-                <span className="shrink-0 text-[12px] font-semibold tabular-nums text-amber-400">
-                  Prev. month · {currencySymbol}
-                  {Math.round(spend).toLocaleString("en-US")}
-                </span>
-              ) : null}
+              <span
+                className={
+                  lowSpend
+                    ? "shrink-0 text-[12px] font-semibold tabular-nums text-amber-400"
+                    : "shrink-0 text-[12px] tabular-nums text-dash-ink-secondary"
+                }
+              >
+                Prev. month · {currencySymbol}
+                {Math.round(spend).toLocaleString("en-US")}
+              </span>
             </li>
           );
         })}
