@@ -50,8 +50,18 @@ export const MTD_VISUAL = {
   barTrackMaxW: 824,
   labelColW: 0,
   panelHeadingH: 26,
+  panelSubheadingH: 16,
+  panelSubheadingGap: 4,
   panelPad: 14,
 } as const;
+
+export function chartPanelHeaderHeight(hasSubheading = true): number {
+  return (
+    MTD_VISUAL.panelHeadingH +
+    (hasSubheading ? MTD_VISUAL.panelSubheadingH + MTD_VISUAL.panelSubheadingGap : 0) +
+    8
+  );
+}
 
 /** @deprecated Legacy layout constants — kept for tests referencing old geometry. */
 export const MTD_DONUT_D = 220;
@@ -131,9 +141,9 @@ export interface ResultBarLayout {
   metricsSizePt: number;
 }
 
-/** Scales right-panel result bars to fit inside the panel when campaign count is high. */
-export function resultBarLayout(barCount: number): ResultBarLayout {
-  const header = MTD_VISUAL.panelHeadingH + 8;
+/** Scales result bars to fit inside the panel when campaign count is high. */
+export function resultBarLayout(barCount: number, hasSubheading = true): ResultBarLayout {
+  const header = chartPanelHeaderHeight(hasSubheading);
   const available = MTD_VISUAL.panelH - header;
   const minRowH = 52;
 

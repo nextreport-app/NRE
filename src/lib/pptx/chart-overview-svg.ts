@@ -32,6 +32,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   }
 
   const heading = model.panelHeading || model.rightHeading;
+  const hasSubheading = Boolean(model.panelSubheading?.trim());
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
@@ -40,8 +41,14 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     `<text x="${MTD_VISUAL.fullPanelX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(heading.toUpperCase())}</text>`,
   ];
 
+  if (hasSubheading) {
+    parts.push(
+      `<text x="${MTD_VISUAL.fullPanelX}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap + 12}" fill="${MUTED}" font-family="Poppins" font-size="12">${escapeXml(model.panelSubheading)}</text>`,
+    );
+  }
+
   const cols = resultBarColumns();
-  const barLayout = resultBarLayout(model.resultBars.length);
+  const barLayout = resultBarLayout(model.resultBars.length, hasSubheading);
   let rowY = barLayout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);

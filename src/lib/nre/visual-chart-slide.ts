@@ -35,8 +35,10 @@ export interface VisualResultBar {
   resultCount: number;
   resultLine: string;
   costLine: string;
-  /** Single-line stats — e.g. "$599 spend · 2,112 landing page views · $0.28 CPLPV". */
+  /** Single-line stats — e.g. "$599 spend · 2,112 landing page views · $0.28 CPLPV · 36.6% of total". */
   statLine: string;
+  /** Share of total results across all campaigns/objectives on the chart. */
+  resultsSharePct: number;
   /** 0–100 relative to the largest results count in the set. */
   barPct: number;
 }
@@ -46,6 +48,8 @@ export interface VisualChartSlideModel {
   isMultiObjective: boolean;
   /** Single panel heading for the unified leaderboard. */
   panelHeading: string;
+  /** Explains what the bars and percentages represent. */
+  panelSubheading: string;
   /** @deprecated Left panel removed — use panelHeading. */
   leftHeading: string;
   /** @deprecated Right panel removed — use panelHeading. */
@@ -90,13 +94,35 @@ function formatCostLine(cpr: number, cprLabel: string, currencySymbol: string, h
   return `${fmtCurrency2dp(cpr, currencySymbol)} ${shortCostAbbrev(cprLabel)}`;
 }
 
+function formatResultsSharePct(results: number, totalResults: number): number {
+  if (results <= 0 || totalResults <= 0) return 0;
+  return Math.round((results / totalResults) * 1000) / 10;
+}
+
+function formatResultsShareLabel(results: number, totalResults: number): string {
+  const pct = formatResultsSharePct(results, totalResults);
+  if (pct <= 0) return "";
+  const label = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
+  return `${label}% of total`;
+}
+
 function formatPerformanceStatLine(
   spendLabel: string,
   resultLine: string,
   costLine: string,
+  resultsShareLabel: string,
 ): string {
-  if (costLine.startsWith("N/A")) return `${spendLabel} spend · ${resultLine}`;
-  return `${spendLabel} spend · ${resultLine} · ${costLine}`;
+  const shareSuffix = resultsShareLabel ? ` · ${resultsShareLabel}` : "";
+  if (costLine.startsWith("N/A")) return `${spendLabel} spend · ${resultLine}${shareSuffix}`;
+  return `${spendLabel} spend · ${resultLine} · ${costLine}${shareSuffix}`;
+}
+
+export function buildPanelSubheading(resLabel: string, isMultiObjective: boolean): string {
+  if (isMultiObjective) {
+    return "Bar length shows result volume · % is share of total results";
+  }
+  const metric = toTitleCaseChartLabel(resLabel).toLowerCase();
+  return `Bar length shows ${metric} volume · % is share of total ${metric}`;
 }
 
 /** Parse CPR from snapshot fields — falls back to spend ÷ results when stored CPR rounded to $0. */
@@ -148,6 +174,7 @@ function buildResultBars(
   }[],
   currencySymbol: string,
 ): VisualResultBar[] {
+  const totalResults = rows.reduce((sum, row) => sum + row.results, 0);
   const maxResults = Math.max(1, ...rows.map((r) => r.results));
   return rows
     .slice()
@@ -157,6 +184,8 @@ function buildResultBars(
       const resultLine = formatResultLine(row.results, row.resLabel);
       const costLine = formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
       const spendLabel = fmtCurrencyAdaptive(row.spend, currencySymbol);
+      const resultsSharePct = formatResultsSharePct(row.results, totalResults);
+      const resultsShareLabel = formatResultsShareLabel(row.results, totalResults);
       return {
         rank: index + 1,
         name: row.name,
@@ -165,7 +194,8 @@ function buildResultBars(
         resultCount: row.results,
         resultLine,
         costLine,
-        statLine: formatPerformanceStatLine(spendLabel, resultLine, costLine),
+        statLine: formatPerformanceStatLine(spendLabel, resultLine, costLine, resultsShareLabel),
+        resultsSharePct,
         barPct: computeBarPct(row.results, maxResults),
       };
     });
@@ -255,11 +285,13 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     );
 
     const panelHeading = "Results by Objective";
+    const panelSubheading = buildPanelSubheading("", true);
 
     return {
       title,
       isMultiObjective: true,
       panelHeading,
+      panelSubheading,
       leftHeading: panelHeading,
       rightHeading: panelHeading,
       miniDonuts: [],
@@ -272,6 +304,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const panelHeading = `${toTitleCaseChartLabel(primaryResLabel)} by Campaign`;
+  const panelSubheading = buildPanelSubheading(primaryResLabel, false);
   const resultBars = buildResultBars(
     chart.campaigns.map((c) => ({
       name: formatCampaignDisplayName(c.name),
@@ -293,6 +326,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     title,
     isMultiObjective: false,
     panelHeading,
+    panelSubheading,
     leftHeading: panelHeading,
     rightHeading: panelHeading,
     miniDonuts: [],
