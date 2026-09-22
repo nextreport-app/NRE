@@ -811,7 +811,7 @@ export function WizardGenerateStep() {
                         }
                       }}
                     >
-                      {publishedAt ? "Edit review" : "Review slides and copy"}
+                      {publishedAt ? "Edit review" : "Review slides and edit"}
                     </Link>{" "}
                     before sharing.
                   </p>
@@ -866,7 +866,7 @@ export function WizardGenerateStep() {
                         disabled={driveSaving}
                         className="flex items-center justify-center rounded-lg border border-[#68d391]/30 bg-[#68d391]/10 px-3 py-3 text-[14px] font-medium text-[#9ae6b4] transition-colors hover:border-[#68d391]/50 hover:bg-[#68d391]/15 disabled:opacity-50"
                       >
-                        {driveSaving ? "Saving…" : driveSaveUrl ? "Drive (update)" : "Google Drive"}
+                        {driveSaving ? "Saving…" : "Google Drive"}
                       </button>
                     ) : null}
                   </div>

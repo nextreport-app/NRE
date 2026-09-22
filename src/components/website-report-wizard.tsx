@@ -681,7 +681,7 @@ export function WebsiteReportWizard({
                   href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
                   className="font-medium text-dash-accent hover:underline"
                 >
-                  Review slides and copy
+                  Review slides and edit
                 </Link>{" "}
                 before sharing.
               </p>
