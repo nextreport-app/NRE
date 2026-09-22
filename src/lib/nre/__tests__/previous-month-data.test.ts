@@ -50,6 +50,33 @@ describe("loadPreviousMonthDataRows — previousMonthSelectedCampaigns bug fix",
     expect(rows?.map((r) => r.campaign_name).sort()).toEqual(["Campaign A", "Campaign B"]);
   });
 
+  it("excludes sub-threshold spend campaigns when saved selection is null (legacy all-selected)", async () => {
+    vi.mocked(readPreviousMonthDataFile).mockResolvedValue(Buffer.from(csv));
+
+    const rows = await loadPreviousMonthDataRows({
+      previousMonthDataUrl: "https://blob.example/previous-month-data/client1/file.csv",
+      previousMonthSelectedCampaigns: null,
+    });
+
+    expect(rows?.map((r) => r.campaign_name)).toEqual(["Campaign A", "Campaign B", "Campaign C"]);
+  });
+
+  it("excludes sub-threshold spend when saved selection lists every campaign (legacy upload)", async () => {
+    const lowSpendCsv = [
+      CSV_HEADER,
+      "Big Co,active,500,2000,4000,10,2%,3,01-06-2026,30-06-2026",
+      "Tiny Co,active,2,100,200,0,0.5%,0,01-06-2026,30-06-2026",
+    ].join("\n");
+    vi.mocked(readPreviousMonthDataFile).mockResolvedValue(Buffer.from(lowSpendCsv));
+
+    const rows = await loadPreviousMonthDataRows({
+      previousMonthDataUrl: "https://blob.example/previous-month-data/client1/file.csv",
+      previousMonthSelectedCampaigns: JSON.stringify(["Big Co", "Tiny Co"]),
+    });
+
+    expect(rows?.map((r) => r.campaign_name)).toEqual(["Big Co"]);
+  });
+
   it("excludes a campaign not present in previousMonthSelectedCampaigns", async () => {
     vi.mocked(readPreviousMonthDataFile).mockResolvedValue(Buffer.from(csv));
 

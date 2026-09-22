@@ -52,10 +52,18 @@ async function maybeSyncPreviousMonthDataFromFetch(input: {
     input.now,
   );
   if (info.status === "current") {
-    const campaigns = await loadPreviousMonthCampaignsFromUrl(input.previousMonthDataUrl);
-    const selected =
-      parsePreviousMonthSelectedCampaigns(input.previousMonthSelectedCampaigns) ?? campaigns;
-    return { synced: false, reason: "already current", campaigns, selectedCampaigns: selected };
+    const buffer = await readPreviousMonthDataFile(input.previousMonthDataUrl!);
+    const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
+    const campaigns = extractSpendingCampaignNames(rows);
+    const campaignSpend = extractCampaignSpend(rows);
+    const previousSelected = parsePreviousMonthSelectedCampaigns(input.previousMonthSelectedCampaigns);
+    const { selectedCampaigns } = mergePreviousMonthSelectionWithLowSpend(
+      campaigns,
+      campaignSpend,
+      previousSelected,
+      campaigns,
+    );
+    return { synced: false, reason: "already current", campaigns, selectedCampaigns };
   }
 
   const { sinceIso, untilIso } = computePreviousCalendarMonthIsoRange(input.now ?? new Date(), input.timezone);

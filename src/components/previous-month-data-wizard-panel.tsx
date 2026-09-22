@@ -7,6 +7,7 @@ import {
   getPreviousMonthComparisonInfo,
   type PreviousMonthComparisonInfo,
 } from "@/lib/nre/previous-month-data-status";
+import { resolvePreviousMonthUiSelection } from "@/lib/nre/merge-previous-month-selection";
 
 const ACCEPTED_FILE_TYPES = ".csv,.tsv,.txt,.xlsx,.xls,.ods";
 
@@ -100,7 +101,9 @@ export function PreviousMonthDataWizardPanel({
   }, [initialHasFile, initialUpdatedAt, initialCampaigns, initialSelectedCampaigns, initialCampaignSpend]);
 
   const info = getPreviousMonthComparisonInfo(hasFile, updatedAt, clientTimezone);
-  const selectedCount = selectedCampaigns?.length ?? campaigns.length;
+  const selectedCount =
+    selectedCampaigns?.length ??
+    resolvePreviousMonthUiSelection(campaigns, campaignSpend, null).selectedCampaigns.length;
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -235,7 +238,9 @@ function PreviousMonthDataWizardContent({
   onSelectionChange: (selected: string[]) => void;
 }) {
   const manageHref = `/clients/${clientId}#previous-month-data`;
-  const selectedCount = selectedCampaigns?.length ?? campaigns.length;
+  const selectedCount =
+    selectedCampaigns?.length ??
+    resolvePreviousMonthUiSelection(campaigns, campaignSpend, null).selectedCampaigns.length;
 
   if (info.status === "current") {
     return (
