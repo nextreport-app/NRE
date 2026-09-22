@@ -73,6 +73,8 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBe(40);
     expect(model.resultBars[0]!.statLine).toContain("spend");
+    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.panelSubheading).toContain("Bar length shows");
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -206,7 +208,7 @@ describe("buildVisualChartSlideModel", () => {
 
     const linkBar = model.resultBars.find((b) => b.name === "Link Clicks");
     expect(linkBar).toBeDefined();
-    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC");
+    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC · 12.8% of total");
     expect(linkBar!.statLine).not.toContain("\n");
     expect(linkBar!.costLine).toBe("$0.29 CPC");
   });
@@ -307,6 +309,8 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
+    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.panelSubheading).toContain("landing page views");
   });
 
   it("summary line shows fractional average CPC (not rounded to $0)", () => {

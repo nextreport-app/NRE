@@ -51,7 +51,8 @@ function roundedBar(opts: { x: number; y: number; w: number; h: number; fillHex:
 function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, isLight: boolean): void {
   const c = palette(isLight);
   const cols = resultBarColumns();
-  const layout = resultBarLayout(model.resultBars.length);
+  const hasSubheading = Boolean(model.panelSubheading?.trim());
+  const layout = resultBarLayout(model.resultBars.length, hasSubheading);
   const heading = model.panelHeading || model.rightHeading;
 
   shapes.push(
@@ -67,6 +68,24 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
       align: "l",
     }),
   );
+
+  if (hasSubheading) {
+    shapes.push(
+      textBox({
+        x: MTD_VISUAL.fullPanelX,
+        y: MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap,
+        w: MTD_VISUAL.fullPanelW,
+        h: MTD_VISUAL.panelSubheadingH,
+        text: model.panelSubheading,
+        sizePt: 12,
+        colorHex: c.inkMuted,
+        align: "l",
+        anchor: "t",
+        clipOverflow: true,
+        nowrap: true,
+      }),
+    );
+  }
 
   let rowY = layout.startY;
   for (const bar of model.resultBars) {
