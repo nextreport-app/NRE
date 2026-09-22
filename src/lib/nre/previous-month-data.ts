@@ -12,6 +12,7 @@
 import { readPreviousMonthDataFile } from "@/lib/storage";
 import { parseUploadedFile } from "./parse-file";
 import { extractCampaignSpend, extractSpendingCampaignNames, filterRowsByCampaigns } from "./campaigns";
+import { resolvePreviousMonthUiSelection } from "./merge-previous-month-selection";
 import type { NreRow } from "./columns";
 
 /**
@@ -30,7 +31,10 @@ export async function loadPreviousMonthDataRows(client: {
   if (!client.previousMonthDataUrl) return undefined;
   const buffer = await readPreviousMonthDataFile(client.previousMonthDataUrl);
   const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
-  const selectedCampaigns = parseSelectedCampaigns(client.previousMonthSelectedCampaigns);
+  const savedSelected = parseSelectedCampaigns(client.previousMonthSelectedCampaigns);
+  const campaigns = extractSpendingCampaignNames(rows);
+  const campaignSpend = extractCampaignSpend(rows);
+  const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, savedSelected);
   return filterRowsByCampaigns(rows, selectedCampaigns);
 }
 

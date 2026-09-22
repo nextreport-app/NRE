@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isLowSpendCampaign, LOW_SPEND_CAMPAIGN_THRESHOLD } from "@/lib/nre/campaigns";
+import { resolvePreviousMonthUiSelection } from "@/lib/nre/merge-previous-month-selection";
 
 /** Checkbox list for Previous Month Data campaign inclusion — shared by client page and wizard. */
 export function PreviousMonthCampaignSelector({
@@ -21,9 +22,10 @@ export function PreviousMonthCampaignSelector({
   onSelectionChange?: (selected: string[]) => void;
   compact?: boolean;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(initialSelected ?? campaigns),
-  );
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, initialSelected);
+    return new Set(selectedCampaigns);
+  });
   const [savingSelection, setSavingSelection] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -41,8 +43,9 @@ export function PreviousMonthCampaignSelector({
   }, [campaigns, search]);
 
   useEffect(() => {
-    setSelected(new Set(initialSelected ?? campaigns));
-  }, [campaigns, initialSelected]);
+    const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, initialSelected);
+    setSelected(new Set(selectedCampaigns));
+  }, [campaigns, campaignSpend, initialSelected]);
 
   useEffect(() => {
     if (selectAllRef.current) {
