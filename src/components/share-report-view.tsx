@@ -350,7 +350,10 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           style={{ backgroundColor: "#111f35" }}
         >
           <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.panelHeading}</p>
-          <div className={`mt-4 ${barGapClass}`}>
+          {model.panelSubheading ? (
+            <p className="mt-1 text-[13px] leading-snug text-[#64748b] sm:text-[14px]">{model.panelSubheading}</p>
+          ) : null}
+          <div className={`mt-3 ${barGapClass}`}>
             {model.resultBars.map((bar) => (
               <VisualResultBar
                 key={`${bar.rank}-${bar.name}`}
