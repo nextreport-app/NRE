@@ -51,80 +51,29 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 }
 
 describe("buildVisualChartSlideModel", () => {
-  it("formats grouped donut legend as one row per campaign", () => {
-    const model = buildVisualChartSlideModel(chart(), "$");
-    const lines = model.groupedDonut!.map(formatGroupedDonutLegendEntry);
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(/1\. Alpha · .*% · \$/);
-    expect(lines[1]).toMatch(/2\. Beta · .*% · \$/);
+  it("formats grouped donut legend helper for legacy segments", () => {
+    const line = formatGroupedDonutLegendEntry({
+      name: "Alpha",
+      percentage: 28.5,
+      spendLabel: "$602",
+    });
+    expect(line).toBe("Alpha · 28.5% · $602");
   });
 
-  it("builds grouped spend donut and result bars for single-objective accounts", () => {
+  it("builds a single-panel performance leaderboard for single-objective accounts", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
     expect(model.miniDonuts).toHaveLength(0);
-    expect(model.groupedDonut).toHaveLength(2);
-    expect(model.rightHeading).toContain("Purchases");
+    expect(model.groupedDonut).toBeNull();
+    expect(model.panelHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
-    expect(model.resultBars[0]!.name).toBe("1. Alpha");
+    expect(model.resultBars[0]!.rank).toBe(1);
+    expect(model.resultBars[0]!.name).toBe("Alpha");
     expect(model.resultBars[0]!.barPct).toBe(100);
+    expect(model.resultBars[1]!.barPct).toBe(40);
+    expect(model.resultBars[0]!.statLine).toContain("spend");
     expect(model.summaryLine).toContain("Total Spend");
-  });
-
-  it("uses full campaign spend per objective for the donut (not row-filtered partial spend)", () => {
-    const model = buildVisualChartSlideModel(
-      chart({
-        totalAllSpend: 3520,
-        campaigns: [
-          campaign("Instant Forms", { spend: 2818, resLabel: "META FORM LEADS", cprLabel: "COST PER LEAD" }),
-          campaign("Website TOF", { spend: 567.12, resLabel: "WEBSITE LEADS", cprLabel: "COST PER WEBSITE LEAD", results: 0 }),
-          campaign("Messaging", { spend: 135, resLabel: "MESSAGING / CONVERSATIONS", cprLabel: "COST PER CONVERSATION", results: 3, cpr: 44.92 }),
-        ],
-        snapshot: {
-          mode: "multi",
-          mtdSpendFormatted: "$3,520",
-          activeCampaignCount: 3,
-          objectives: [
-            {
-              label: "META FORM LEADS",
-              resultsValue: "17",
-              cprValue: "$165.79",
-              cprLabel: "COST PER LEAD",
-              spendFormatted: "$2,818",
-            },
-            {
-              label: "WEBSITE LEADS",
-              resultsValue: "0",
-              cprValue: "N/A",
-              cprLabel: "COST PER WEBSITE LEAD",
-              spendFormatted: "$169",
-            },
-            {
-              label: "MESSAGING / CONVERSATIONS",
-              resultsValue: "3",
-              cprValue: "$44.92",
-              cprLabel: "COST PER CONVERSATION",
-              spendFormatted: "$135",
-            },
-          ],
-          objectivesOmittedCount: 0,
-          primaryResultsValue: "17",
-          primaryResultsLabel: "META FORM LEADS",
-          primaryCprValue: "$165.79",
-          primaryCprLabel: "COST PER LEAD",
-          primarySpendFormatted: "$2,818",
-        },
-      }),
-      "$",
-    );
-
-    expect(model.groupedDonut).toHaveLength(3);
-    expect(model.groupedDonut!.find((s) => s.name === "Other spend")).toBeUndefined();
-    const website = model.groupedDonut!.find((s) => s.name === "Website Leads");
-    expect(website?.spendLabel).toBe("$567.12");
-    const totalPct = model.groupedDonut!.reduce((sum, s) => sum + s.percentage, 0);
-    expect(totalPct).toBeCloseTo(100, 0);
   });
 
   it("uses cost per result wording for messaging conversations", () => {
@@ -206,9 +155,9 @@ describe("buildVisualChartSlideModel", () => {
     );
     expect(model.isMultiObjective).toBe(true);
     expect(model.miniDonuts).toHaveLength(0);
-    expect(model.groupedDonut).toHaveLength(2);
+    expect(model.groupedDonut).toBeNull();
     expect(model.resultBars).toHaveLength(2);
-    expect(model.rightHeading).toBe("RESULTS BY OBJECTIVE");
+    expect(model.panelHeading).toBe("Results by Objective");
     expect(model.summaryLine).toContain("|");
     expect(model.summaryLine).not.toContain("Budget Used");
   });
@@ -257,12 +206,12 @@ describe("buildVisualChartSlideModel", () => {
 
     const linkBar = model.resultBars.find((b) => b.name === "Link Clicks");
     expect(linkBar).toBeDefined();
-    expect(linkBar!.statLine).toBe("6,626 link clicks $0.29 CPC");
+    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC");
     expect(linkBar!.statLine).not.toContain("\n");
     expect(linkBar!.costLine).toBe("$0.29 CPC");
   });
 
-  it("fills result bars proportionally to spend, not results count", () => {
+  it("scales result bars proportionally to results, not spend", () => {
     const model = buildVisualChartSlideModel(
       chart({
         totalAllSpend: 5780,
@@ -305,70 +254,62 @@ describe("buildVisualChartSlideModel", () => {
     );
 
     const byName = Object.fromEntries(model.resultBars.map((b) => [b.name, b.barPct]));
-    expect(byName["Meta Form Leads"]).toBe(100);
-    expect(byName["Link Clicks"]).toBeGreaterThan(byName["Reach"]!);
-    expect(byName["Link Clicks"]).not.toBe(byName["Reach"]);
+    expect(byName["Reach"]).toBe(100);
+    expect(byName["Link Clicks"]).toBeGreaterThan(byName["Meta Form Leads"]!);
+    expect(byName["Link Clicks"]).not.toBe(100);
   });
 
-  it("uses ranked short labels for long shared-prefix campaign names", () => {
+  it("keeps full campaign names readable and avoids duplicate 100% bars for close results", () => {
     const names = [
-      "Sherwood Tractor Sales | LPV Campaign A",
-      "Sherwood Tractor Sales | LPV Campaign B",
-      "Sherwood Tractor Parts | LPV Campaign C",
-      "Sherwood Tractor Events | LPV Campaign D",
+      "Tractor - DC - Traffic Campaign",
+      "Traffic - Tractor",
+      "Traffic - UTV",
+      "Traffic - CFMOTO",
+      "Tractor_Traffic_September",
     ];
     const model = buildVisualChartSlideModel(
       chart({
-        totalAllSpend: 2108,
+        totalAllSpend: 2180,
         campaigns: names.map((name, index) =>
           campaign(name, {
-            spend: [602, 600, 454, 452][index]!,
-            results: [1593, 2387, 882, 1076][index]!,
+            spend: [599, 598, 451, 450, 83][index]!,
+            results: [2112, 1391, 1044, 825, 395][index]!,
             resLabel: "LANDING PAGE VIEWS",
             cprLabel: "COST PER LANDING PAGE VIEW",
-            cpr: [0.38, 0.25, 0.51, 0.42][index]!,
+            cpr: [0.28, 0.43, 0.43, 0.55, 0.21][index]!,
           }),
         ),
         snapshot: {
           mode: "single",
-          mtdSpendFormatted: "$2,108",
-          activeCampaignCount: 4,
+          mtdSpendFormatted: "$2,180",
+          activeCampaignCount: 5,
           objectives: [
             {
               label: "LANDING PAGE VIEWS",
-              resultsValue: "5,938",
-              cprValue: "$0.36",
+              resultsValue: "5,767",
+              cprValue: "$0.38",
               cprLabel: "COST PER LANDING PAGE VIEW",
-              spendFormatted: "$2,108",
+              spendFormatted: "$2,180",
             },
           ],
           objectivesOmittedCount: 0,
-          primaryResultsValue: "5,938",
+          primaryResultsValue: "5,767",
           primaryResultsLabel: "LANDING PAGE VIEWS",
-          primaryCprValue: "$0.36",
+          primaryCprValue: "$0.38",
           primaryCprLabel: "COST PER LANDING PAGE VIEW",
-          primarySpendFormatted: "$2,108",
+          primarySpendFormatted: "$2,180",
         },
       }),
       "$",
     );
 
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual([
-      "1. LPV Campaign A",
-      "2. LPV Campaign B",
-      "3. LPV Campaign C",
-      "4. LPV Campaign D",
-    ]);
-    expect(model.resultBars.map((b) => b.name)).toEqual([
-      "1. LPV Campaign A",
-      "2. LPV Campaign B",
-      "3. LPV Campaign C",
-      "4. LPV Campaign D",
-    ]);
+    expect(model.resultBars.map((b) => b.name)).toEqual(names);
+    expect(model.resultBars[0]!.barPct).toBe(100);
+    expect(model.resultBars[1]!.barPct).toBeLessThan(100);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
   });
 
-  it("summary line shows fractional average CPC (not rounded to $0) and counts spend as active", () => {
+  it("summary line shows fractional average CPC (not rounded to $0)", () => {
     const model = buildVisualChartSlideModel(
       chart({
         totalAllSpend: 391,
@@ -409,6 +350,5 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.summaryLine).toContain("Average Cost Per Link Clicks: $0.25");
     expect(model.summaryLine).not.toContain("$0 ·");
     expect(model.summaryLine).not.toContain("Active Campaign");
-    expect(model.groupedDonut![0]!.color).toBe("f6ad55");
   });
 });
