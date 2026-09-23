@@ -17,15 +17,15 @@ export interface IstDayBounds {
   label: string;
 }
 
-/** Bounds for the IST calendar day that just ended when `now` is ~midnight IST. */
+/** Bounds for the current IST calendar day — used when the cron runs at ~11:59 PM IST. */
 export function istDayBoundsForDigest(now = new Date()): IstDayBounds {
   const istNow = new Date(now.getTime() + IST_OFFSET_MS);
   const y = istNow.getUTCFullYear();
   const m = istNow.getUTCMonth();
   const d = istNow.getUTCDate();
 
-  const end = new Date(Date.UTC(y, m, d) - IST_OFFSET_MS);
-  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  const start = new Date(Date.UTC(y, m, d) - IST_OFFSET_MS);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   const labelDate = new Date(start.getTime() + IST_OFFSET_MS);
   const label = labelDate.toLocaleDateString("en-US", {
     year: "numeric",

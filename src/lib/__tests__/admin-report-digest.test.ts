@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { formatDailyReportDigestEmail, istDayBoundsForDigest } from "../admin-report-digest";
 
 describe("admin report daily digest", () => {
-  it("uses the IST day that just ended at midnight IST", () => {
-    // Sep 24, 2026 00:30 IST = Sep 23, 2026 19:00 UTC
-    const bounds = istDayBoundsForDigest(new Date("2026-09-23T19:00:00.000Z"));
+  it("covers the current IST calendar day at 11:59 PM IST", () => {
+    // Sep 23, 2026 23:59 IST = Sep 23, 2026 18:29 UTC
+    const bounds = istDayBoundsForDigest(new Date("2026-09-23T18:29:00.000Z"));
     expect(bounds.start.toISOString()).toBe("2026-09-22T18:30:00.000Z");
     expect(bounds.end.toISOString()).toBe("2026-09-23T18:30:00.000Z");
+    expect(bounds.label).toBe("Sep 23, 2026");
   });
 
   it("formats a scannable digest without per-report lines", () => {

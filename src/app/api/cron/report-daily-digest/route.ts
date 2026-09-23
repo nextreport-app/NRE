@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { sendAdminDailyReportDigest } from "@/lib/admin-report-digest";
 
 /**
- * Daily cron — one team email summarizing reports generated yesterday (IST).
- * Schedule: 18:30 UTC = midnight IST (see vercel.json).
+ * Daily cron — one team email summarizing reports generated today (IST).
+ * Schedule: 18:29 UTC = 11:59 PM IST (see vercel.json).
  * Requires CRON_SECRET bearer token.
  */
 export async function GET(request: Request) {
