@@ -6,6 +6,7 @@ import type { ShareReportData } from "@/lib/nre/share-report";
 import { isShareWebsiteReportData, type ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { ShareReportView, reportTypeLabel } from "@/components/share-report-view";
 import { ShareWebsiteReportView, websiteReportTypeLabel } from "@/components/share-website-report-view";
+import { reportBrandingFromShareJson, sharePageTitleSuffix } from "@/lib/report-branding";
 
 type SharedReportPayload =
   | { kind: "ads"; data: ShareReportData }
@@ -49,10 +50,11 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
     return { title: "Report not found — NextReport" };
   }
 
+  const brandingSuffix = sharePageTitleSuffix(reportBrandingFromShareJson(payload.data));
   const title =
     payload.kind === "website"
-      ? `${payload.data.accountName} — ${websiteReportTypeLabel()} | NextReport`
-      : `${payload.data.accountName} — ${reportTypeLabel(payload.data)} | NextReport`;
+      ? `${payload.data.accountName} — ${websiteReportTypeLabel()} | ${brandingSuffix}`
+      : `${payload.data.accountName} — ${reportTypeLabel(payload.data)} | ${brandingSuffix}`;
   const description =
     payload.kind === "website"
       ? `${payload.data.accountName} website traffic — ${payload.data.dateRangeLabel}`

@@ -121,6 +121,13 @@ export function emailFooterSiteLine(branding: ReportBrandingSettings): string | 
   return null;
 }
 
+/** Browser tab / OG title suffix for shared report pages. */
+export function sharePageTitleSuffix(branding: ReportBrandingSettings): string {
+  if (branding.mode === "agency" && branding.agencyName) return branding.agencyName;
+  if (branding.mode === "hidden") return "Report";
+  return "NextReport";
+}
+
 export const REPORT_BRANDING_MODE_LABELS: Record<
   ReportBrandingMode,
   { title: string; description: string }

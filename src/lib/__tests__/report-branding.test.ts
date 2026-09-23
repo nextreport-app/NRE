@@ -5,6 +5,7 @@ import {
   emailGeneratedByLine,
   reportBrandingFromShareJson,
   resolveShareBrandingDisplay,
+  sharePageTitleSuffix,
 } from "../report-branding";
 
 describe("report branding", () => {
@@ -42,5 +43,11 @@ describe("report branding", () => {
   it("removes NextReport from client email when hidden", () => {
     expect(emailGeneratedByLine({ mode: "hidden", agencyName: null }, "Alex")).toBe("Alex");
     expect(emailFooterPrimary({ mode: "hidden", agencyName: null }, "Alex")).toBeNull();
+  });
+
+  it("uses agency or neutral suffix for share page titles", () => {
+    expect(sharePageTitleSuffix({ mode: "nextreport", agencyName: null })).toBe("NextReport");
+    expect(sharePageTitleSuffix({ mode: "agency", agencyName: "Bright Path" })).toBe("Bright Path");
+    expect(sharePageTitleSuffix({ mode: "hidden", agencyName: null })).toBe("Report");
   });
 });
