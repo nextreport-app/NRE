@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { PlatformBetaBadge } from "@/components/platform-beta-badge";
 
 export function ReportTypeCard({
   icon,
@@ -11,6 +12,7 @@ export function ReportTypeCard({
   disabled = false,
   singleLineHeading = false,
   layout = "vertical",
+  beta = false,
 }: {
   icon: ReactNode;
   heading: string;
@@ -21,6 +23,7 @@ export function ReportTypeCard({
   singleLineHeading?: boolean;
   /** Compact centered cards — icon on top, text below (Report Type grid). */
   layout?: "vertical" | "compact";
+  beta?: boolean;
 }) {
   const stateClass = disabled
     ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
@@ -40,7 +43,10 @@ export function ReportTypeCard({
         <span className="inline-flex shrink-0 text-[26px] leading-none" aria-hidden="true">
           {icon}
         </span>
-        <span className="mt-2 block text-[13px] font-semibold leading-snug text-white">{heading}</span>
+        <span className="mt-2 flex items-center justify-center gap-1.5">
+          <span className="block text-[13px] font-semibold leading-snug text-white">{heading}</span>
+          {beta ? <PlatformBetaBadge /> : null}
+        </span>
         <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
       </button>
     );
@@ -58,9 +64,10 @@ export function ReportTypeCard({
         {icon}
       </span>
       <p
-        className={`mt-2 text-[15px] font-semibold text-white${singleLineHeading ? " whitespace-nowrap" : ""}`}
+        className={`mt-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-white${singleLineHeading ? "" : ""}`}
       >
-        {heading}
+        <span className={singleLineHeading ? "whitespace-nowrap" : undefined}>{heading}</span>
+        {beta ? <PlatformBetaBadge /> : null}
       </p>
       <p className="mt-1 text-[14px] text-dash-ink-secondary">{description}</p>
     </button>

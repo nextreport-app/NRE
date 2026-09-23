@@ -11,6 +11,8 @@ import { wizardPlatformImportDescription, isNoDataRowsError, isSpecificFieldErro
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platform-picker";
+import { PlatformBetaNotice } from "@/components/platform-beta-badge";
+import { isPlatformBeta } from "@/lib/platform-beta";
 import { UploadDropzone } from "../ui/upload-dropzone";
 
 export function WizardImportStep() {
@@ -130,6 +132,10 @@ export function WizardImportStep() {
               />
             </>
           )}
+
+          {selectedPlatformCard && isPlatformBeta(selectedPlatformCard) ? (
+            <PlatformBetaNotice platform={selectedPlatformCard} />
+          ) : null}
 
           {selectedPlatformCard && (
             <div className="space-y-3">

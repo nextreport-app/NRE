@@ -7,6 +7,7 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
+import { isPlatformBeta } from "@/lib/platform-beta";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -60,6 +61,7 @@ export function WizardPlatformPickerGrid({
         selected={selectedPlatformCard === "GOOGLE"}
         onSelect={() => onChoosePlatform("GOOGLE")}
         singleLineHeading
+        beta={isPlatformBeta("GOOGLE")}
       />
       {showTikTokOption ? (
         <ReportTypeCard
@@ -69,15 +71,17 @@ export function WizardPlatformPickerGrid({
           selected={selectedPlatformCard === "TIKTOK"}
           onSelect={() => onChoosePlatform("TIKTOK")}
           singleLineHeading
+          beta={isPlatformBeta("TIKTOK")}
         />
       ) : null}
       <ReportTypeCard
         icon={<Ga4BrandIcon />}
         heading="Google Analytics"
-        description="Sessions, channels, and landing pages"
+        description="Sessions, channels, and landing pages (beta)"
         selected={false}
         onSelect={onChooseWebsitePlatform}
         singleLineHeading
+        beta={isPlatformBeta("GA4")}
       />
     </div>
   );

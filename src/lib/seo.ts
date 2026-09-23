@@ -331,7 +331,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads, Google Ads, TikTok Ads, and Google Analytics 4 (GA4) website reporting. Connect via official API or upload a CSV export from each platform.",
+      "NextReport supports Meta Ads (fully tested), plus Google Ads, TikTok Ads, and Google Analytics 4 (GA4) website reporting in beta. Connect via official API or upload a CSV export from each platform.",
   },
   {
     question: "What file formats can I upload?",

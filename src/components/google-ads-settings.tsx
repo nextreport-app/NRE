@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Google authorisation was cancelled — your Google Ads account was not connected.",
@@ -86,6 +87,7 @@ export function GoogleAdsSettings({
 
   return (
     <div id="google-ads" className="scroll-mt-6 space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+      <PlatformBetaNotice platform="GOOGLE" />
       {!googleAdsConfigured && (
         <p className="text-[13px] text-amber-300">
           Google Ads API credentials are not configured on this server yet. Add GOOGLE_ADS_CLIENT_ID and

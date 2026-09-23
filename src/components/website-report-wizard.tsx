@@ -12,6 +12,7 @@ import {
 } from "@/lib/nre/website-report-data";
 import type { WebsiteReportData } from "@/lib/nre/website-report-data";
 import { useToast } from "@/components/toast";
+import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { UploadDropzone } from "@/components/report-upload-wizard/ui/upload-dropzone";
 import { WizardStickyFooter } from "@/components/report-upload-wizard/ui/wizard-sticky-footer";
 import { buildShareReportUrl } from "@/components/report-upload-wizard/utils";
@@ -385,6 +386,8 @@ export function WebsiteReportWizard({
           </p>
         </div>
       ) : null}
+
+      <PlatformBetaNotice platform="GA4" />
 
       {/* Data source */}
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
