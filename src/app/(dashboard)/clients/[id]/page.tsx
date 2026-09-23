@@ -245,7 +245,7 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Meta, Google Ads, TikTok, and Google Analytics — all in one wizard.">
+          <CardHeading hint="Meta Ads is fully tested. Google Ads, TikTok, and GA4 are in beta — verify before sending to clients.">
             Generate report
           </CardHeading>
           <Link

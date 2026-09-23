@@ -49,7 +49,9 @@ export function BetaBanner() {
       style={{ backgroundColor: "#f5b45a", color: "#0d1b2e" }}
     >
       <p className="min-w-0 flex-1 text-center text-[11px] font-medium leading-snug sm:text-[13px]">
-        <span className="block sm:inline">🚀 Now in beta — 7-day free trial, no card required</span>
+        <span className="block sm:inline">
+          🚀 Meta Ads fully supported · Google, TikTok &amp; GA4 in beta — 7-day free trial, no card required
+        </span>
         <span className="hidden sm:inline"> · </span>
         <a
           href="mailto:hello@nextreport.in"

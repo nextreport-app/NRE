@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Google authorisation was cancelled — Google Analytics was not connected.",
@@ -87,7 +88,8 @@ export function Ga4Settings({
 
   return (
     <div id="ga4" className="scroll-mt-24">
-      <p className="mb-4 text-[14px] leading-relaxed text-dash-ink-secondary">
+      <PlatformBetaNotice platform="GA4" />
+      <p className="mb-4 mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
         Connect Google Analytics 4 to pull website traffic data — sessions, engagement, channels, and conversions —
         into Website Traffic reports. This uses a separate OAuth grant from Google Ads.
       </p>

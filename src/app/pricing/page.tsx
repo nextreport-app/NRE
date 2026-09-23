@@ -76,6 +76,10 @@ const FAQS = [
     q: "Can I hide NextReport branding on client reports?",
     a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
   },
+  {
+    q: "Which platforms are fully tested vs beta?",
+    a: "Meta Ads is fully tested and production-ready. Google Ads, TikTok Ads, and GA4 website reporting are available in beta — you can generate reports, but please verify outputs carefully before sending them to clients.",
+  },
 ];
 
 export default async function PricingPage() {
@@ -106,8 +110,8 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV, then share a live link,
-            download a PDF, or export PowerPoint (.pptx).
+            Meta Ads is fully tested. Google Ads, TikTok, and GA4 are in beta — connect via API or CSV, then share a
+            live link, download a PDF, or export PowerPoint (.pptx).
           </p>
         </div>
 

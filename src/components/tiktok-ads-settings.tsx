@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "TikTok authorisation was cancelled — your ad account was not connected.",
@@ -86,7 +87,8 @@ export function TikTokAdsSettings({
 
   return (
     <div id="tiktok-ads" className="scroll-mt-24">
-      <p className="mb-4 text-[14px] leading-relaxed text-dash-ink-secondary">
+      <PlatformBetaNotice platform="TIKTOK" />
+      <p className="mb-4 mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
         Connect TikTok Ads Manager for read-only campaign reporting. Built for US and global advertiser accounts
         (USD). Indian agencies managing US clients via VPN can connect the same way.
       </p>
