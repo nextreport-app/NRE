@@ -33,6 +33,11 @@ describe("inbound-notifications", () => {
     expect(inboundNotifyRecipients("support")).toEqual(["support@nextreport.in"]);
   });
 
+  it("routes report notifications to hello@ by default", () => {
+    delete process.env.REPORTS_NOTIFY_EMAILS;
+    expect(inboundNotifyRecipients("reports")).toEqual(["hello@nextreport.in"]);
+  });
+
   it("sends team notification with visitor reply-to", async () => {
     const result = await sendInboundEmail({
       channel: "contact",

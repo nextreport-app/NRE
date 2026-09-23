@@ -8,7 +8,7 @@
 import { getResendClient, FROM_ADDRESS } from "@/lib/email";
 import { getPlanDisplayName } from "@/lib/plan-labels";
 
-export type InboundChannel = "contact" | "demo" | "newsletter" | "support" | "billing";
+export type InboundChannel = "contact" | "demo" | "newsletter" | "support" | "billing" | "reports";
 
 const CHANNEL_ENV: Record<InboundChannel, string> = {
   contact: "CONTACT_NOTIFY_EMAILS",
@@ -16,6 +16,7 @@ const CHANNEL_ENV: Record<InboundChannel, string> = {
   newsletter: "NEWSLETTER_NOTIFY_EMAILS",
   support: "SUPPORT_NOTIFY_EMAILS",
   billing: "BILLING_NOTIFY_EMAILS",
+  reports: "REPORTS_NOTIFY_EMAILS",
 };
 
 /** Default routing — override with env vars on Vercel. */
@@ -25,6 +26,7 @@ const CHANNEL_DEFAULT: Record<InboundChannel, string> = {
   newsletter: "hello@nextreport.in",
   support: "support@nextreport.in",
   billing: "billing@nextreport.in",
+  reports: "hello@nextreport.in",
 };
 
 function parseRecipients(raw: string | undefined, fallback: string): string[] {
@@ -43,6 +45,16 @@ export function inboundNotifyRecipients(channel: InboundChannel): string[] {
 
   // Billing falls back to legacy SIGNUP_NOTIFY_EMAILS then ADMIN_EMAILS.
   if (channel === "billing") {
+    const signup = parseRecipients(process.env.SIGNUP_NOTIFY_EMAILS, "");
+    if (signup.length > 0) return signup;
+    const admin = parseRecipients(process.env.ADMIN_EMAILS, "");
+    if (admin.length > 0) return admin;
+  }
+
+  // Report-generation alerts fall back to billing recipients.
+  if (channel === "reports") {
+    const billing = parseRecipients(process.env.BILLING_NOTIFY_EMAILS, "");
+    if (billing.length > 0) return billing;
     const signup = parseRecipients(process.env.SIGNUP_NOTIFY_EMAILS, "");
     if (signup.length > 0) return signup;
     const admin = parseRecipients(process.env.ADMIN_EMAILS, "");

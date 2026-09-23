@@ -16,6 +16,22 @@ describe("report branding", () => {
     expect(display.footerPrimary).toContain("NextReport");
   });
 
+  it("snapshots agency logo only in agency mode", () => {
+    const branding = buildReportBrandingSettings({
+      reportBrandingMode: "agency",
+      agencyName: "Bright Path",
+      agencyLogoUrl: "blob://logo",
+    });
+    expect(branding.agencyLogoUrl).toBe("blob://logo");
+
+    const hidden = buildReportBrandingSettings({
+      reportBrandingMode: "hidden",
+      agencyName: "Bright Path",
+      agencyLogoUrl: "blob://logo",
+    });
+    expect(hidden.agencyLogoUrl).toBeNull();
+  });
+
   it("uses agency name when agency mode is selected", () => {
     const display = resolveShareBrandingDisplay(
       buildReportBrandingSettings({ reportBrandingMode: "agency", agencyName: "Bright Path" }),

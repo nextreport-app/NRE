@@ -13,7 +13,7 @@ export interface ReportHistoryItem {
   status: string;
   reportType: string;
   createdAt: string; // ISO
-  /** Report.shareToken — null for a report generated before this feature existed, or a COMPARISON report (share pages don't support that data shape yet — see lib/nre/share-report.ts's header). */
+  /** Report.shareToken — null for reports generated before share links existed. */
   shareToken: string | null;
   /** Report.displayName, already resolved to the auto-generated default (lib/nre/report-display-name.ts) when no custom name was saved — always a non-empty display string, never re-derived client-side. */
   displayName: string;

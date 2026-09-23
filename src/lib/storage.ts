@@ -63,6 +63,22 @@ export async function deleteReportFile(url: string): Promise<void> {
 
 const LOGO_FORMATS: LogoFormat[] = ["png", "jpeg", "webp", "svg"];
 
+export async function saveAgencyLogo(userId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
+  const keyPrefix = `logos/agency-${userId}`;
+  const ext = extensionForLogoFormat(format);
+  const blob = await put(`${keyPrefix}.${ext}`, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: contentTypeForLogoFormat(format),
+  });
+  await Promise.all(
+    LOGO_FORMATS.filter((f) => f !== format).map((f) =>
+      deleteLogoFile(`${keyPrefix}.${extensionForLogoFormat(f)}`).catch(() => {}),
+    ),
+  );
+  return blob.url;
+}
+
 export async function saveClientLogo(clientId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
   const keyPrefix = `logos/client-${clientId}`;
   const ext = extensionForLogoFormat(format);
