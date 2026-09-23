@@ -31,6 +31,8 @@ export const AGENCY_CLIENT_LIMIT_FEATURE =
 
 export const PROFESSIONAL_CLIENT_LIMIT_FEATURE = "Unlimited clients — all platforms included";
 
+export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
+
 /** Short explainer for paywall / upgrade screens. */
 export const CLIENT_LIMIT_EXPLAINER =
   "Each client is one brand workspace. Meta, Google, TikTok, and GA4 reports for that brand all count as one client — not one slot per platform.";

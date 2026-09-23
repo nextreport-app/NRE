@@ -21,4 +21,13 @@ describe("accountSettingsSchema", () => {
     const parsed = accountSettingsSchema.parse({});
     expect(parsed).toEqual({});
   });
+
+  it("accepts report branding mode values", () => {
+    expect(accountSettingsSchema.parse({ reportBrandingMode: "hidden" }).reportBrandingMode).toBe("hidden");
+  });
+
+  it("rejects agency branding without an agency name", () => {
+    const result = accountSettingsSchema.safeParse({ reportBrandingMode: "agency", agencyName: "" });
+    expect(result.success).toBe(false);
+  });
 });

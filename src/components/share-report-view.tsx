@@ -7,6 +7,7 @@ import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-tot
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
+import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -628,6 +629,7 @@ export function ShareReportView({
   const showMetricGuide = visibleData.visibility?.metricGuide !== false;
   const showOverview = visibleData.visibility?.overview !== false;
   const showCover = visibleData.visibility?.cover !== false;
+  const brandingDisplay = resolveShareBrandingDisplay(reportBrandingFromShareJson(visibleData));
 
   return (
     <div
@@ -656,18 +658,30 @@ export function ShareReportView({
       >
         <div className="mx-auto flex max-w-[960px] items-center justify-between gap-2 sm:min-h-[56px] sm:gap-3">
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="NextReport logo"
-              className="h-7 w-7 shrink-0 sm:h-9 sm:w-9"
-            />
-            <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-              NextReport
-            </span>
+            {brandingDisplay.showNextReportLogo ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo.png"
+                  alt="NextReport logo"
+                  className="h-7 w-7 shrink-0 sm:h-9 sm:w-9"
+                />
+                <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+                  NextReport
+                </span>
+              </>
+            ) : brandingDisplay.headerTitle ? (
+              <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+                {brandingDisplay.headerTitle}
+              </span>
+            ) : (
+              <span className="text-[15px] font-semibold text-ink-muted">Performance Report</span>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <span className="hidden text-[15px] text-white md:inline">Powered by NextReport</span>
+            {brandingDisplay.showPoweredBy ? (
+              <span className="hidden text-[15px] text-white md:inline">Powered by NextReport</span>
+            ) : null}
             {shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
@@ -772,10 +786,16 @@ export function ShareReportView({
         )}
       </main>
 
-      {!isPrint && (
+      {!isPrint && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
-        <div style={{ color: "#94a3b8", fontSize: "13px" }}>This report was generated using NextReport · nextreport.in</div>
-        <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>Generated on {generatedDate}</div>
+        {brandingDisplay.footerPrimary ? (
+          <div style={{ color: "#94a3b8", fontSize: "13px" }}>{brandingDisplay.footerPrimary}</div>
+        ) : null}
+        {brandingDisplay.showGeneratedDate ? (
+          <div style={{ color: "#64748b", fontSize: "12px", marginTop: brandingDisplay.footerPrimary ? "4px" : 0 }}>
+            Generated on {generatedDate}
+          </div>
+        ) : null}
       </footer>
       )}
     </div>

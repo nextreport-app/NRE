@@ -57,6 +57,8 @@ model User {
   // skipped at render time, never shown empty.
   agencyName    String?
   agencyLogoUrl String?
+  // Client-facing share/PDF branding: nextreport (default), agency (use agencyName), hidden.
+  reportBrandingMode String @default("nextreport")
 
   // Google Drive connection (account settings) — deliberately independent
   // of both the Credentials/Google sign-in above AND the NextAuth Account

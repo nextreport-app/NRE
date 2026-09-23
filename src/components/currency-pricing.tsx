@@ -9,6 +9,7 @@ import {
   AGENCY_CLIENT_LIMIT_FEATURE,
   getPlanDisplayName,
   PROFESSIONAL_CLIENT_LIMIT_FEATURE,
+  WHITE_LABEL_FEATURE,
   type BillablePlanId,
 } from "@/lib/plan-labels";
 import type { BillingInterval } from "@/lib/razorpay";
@@ -43,6 +44,7 @@ const PLANS: Plan[] = [
       "AI-written campaign summaries & insights",
       "PowerPoint, Google Slides & live browser share",
       "Google Drive auto-save",
+      WHITE_LABEL_FEATURE,
       "Slack & Zapier webhooks",
       "Email support within 24 hours",
     ],

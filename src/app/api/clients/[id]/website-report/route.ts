@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fileFromFormData } from "@/lib/http-file";
 import { buildShareWebsiteReportData } from "@/lib/nre/share-website-report";
+import { shareReportExtrasFromUser } from "@/lib/nre/user-report-branding";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
@@ -32,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       prisma.client.findUnique({ where: { id } }),
       prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { agencyName: true, slackWebhookUrl: true, automationWebhookUrl: true },
+        select: { agencyName: true, reportBrandingMode: true, slackWebhookUrl: true, automationWebhookUrl: true },
       }),
     ]);
   } catch (err) {
@@ -128,8 +129,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     const storedPath = await saveReportFile(report.id, pptxBuffer);
+    const brandingExtras = shareReportExtrasFromUser(user);
     const shareJson = buildShareWebsiteReportData(websiteData, {
-      agencyName: user?.agencyName,
+      agencyName: brandingExtras.agencyName,
+      reportBranding: brandingExtras.reportBranding,
       accountName: client.accountName,
     });
 
