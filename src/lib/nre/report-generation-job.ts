@@ -21,7 +21,6 @@ import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pp
 import { buildHistoricalAiCopyMap } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
-import { notifyAdminReportGenerated } from "@/lib/admin-report-notification";
 import { buildShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
@@ -131,16 +130,6 @@ function dispatchReportNotifications(params: {
     healthBadge: params.healthBadge,
   }).catch((err) => {
     console.error("[report-generation-job] notification failed:", err);
-  });
-
-  notifyAdminReportGenerated({
-    userId: params.userId,
-    reportId: params.report.id,
-    clientName: params.client.accountName,
-    platform: params.report.platform,
-    reportType: params.report.reportType,
-    displayName: params.report.displayName,
-    shareToken: params.report.shareToken,
   });
 }
 

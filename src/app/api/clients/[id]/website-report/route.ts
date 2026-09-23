@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fileFromFormData } from "@/lib/http-file";
 import { buildShareWebsiteReportData } from "@/lib/nre/share-website-report";
-import { notifyAdminReportGenerated } from "@/lib/admin-report-notification";
 import { shareReportExtrasFromUser } from "@/lib/nre/user-report-branding";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
@@ -163,16 +162,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       displayName,
     }).catch((err) => {
       console.error("[api:website-report:generate] notification failed:", err);
-    });
-
-    notifyAdminReportGenerated({
-      userId: session.user.id,
-      reportId: report.id,
-      clientName: client.accountName,
-      platform: "GA4",
-      reportType: "WEBSITE",
-      displayName,
-      shareToken: report.shareToken,
     });
 
     return NextResponse.json({
