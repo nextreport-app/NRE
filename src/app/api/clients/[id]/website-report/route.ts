@@ -33,7 +33,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       prisma.client.findUnique({ where: { id } }),
       prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { agencyName: true, reportBrandingMode: true, slackWebhookUrl: true, automationWebhookUrl: true },
+        select: {
+          agencyName: true,
+          agencyLogoUrl: true,
+          reportBrandingMode: true,
+          slackWebhookUrl: true,
+          automationWebhookUrl: true,
+        },
       }),
     ]);
   } catch (err) {

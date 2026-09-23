@@ -4,13 +4,16 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { ShareReportData } from "@/lib/nre/share-report";
 import { isShareWebsiteReportData, type ShareWebsiteReportData } from "@/lib/nre/share-website-report";
+import { ShareComparisonReportView, comparisonReportTypeLabel } from "@/components/share-comparison-report-view";
 import { ShareReportView, reportTypeLabel } from "@/components/share-report-view";
 import { ShareWebsiteReportView, websiteReportTypeLabel } from "@/components/share-website-report-view";
+import { isShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { reportBrandingFromShareJson, sharePageTitleSuffix } from "@/lib/report-branding";
 
 type SharedReportPayload =
   | { kind: "ads"; data: ShareReportData }
-  | { kind: "website"; data: ShareWebsiteReportData };
+  | { kind: "website"; data: ShareWebsiteReportData }
+  | { kind: "comparison"; data: import("@/lib/nre/share-comparison-report").ShareComparisonReportData };
 
 /**
  * Public, read-only, no-login report page — a client-shareable alternative
@@ -34,7 +37,10 @@ const getReportByToken = cache(async (token: string): Promise<SharedReportPayloa
     if (isShareWebsiteReportData(parsed)) {
       return { kind: "website", data: parsed };
     }
-    if (Array.isArray(parsed.campaigns)) {
+    if (isShareComparisonReportData(parsed)) {
+      return { kind: "comparison", data: parsed };
+    }
+    if (Array.isArray(parsed.campaigns) && parsed.version === 1) {
       return { kind: "ads", data: parsed as ShareReportData };
     }
     return null;
@@ -54,11 +60,15 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   const title =
     payload.kind === "website"
       ? `${payload.data.accountName} — ${websiteReportTypeLabel()} | ${brandingSuffix}`
-      : `${payload.data.accountName} — ${reportTypeLabel(payload.data)} | ${brandingSuffix}`;
+      : payload.kind === "comparison"
+        ? `${payload.data.accountName} — ${comparisonReportTypeLabel()} | ${brandingSuffix}`
+        : `${payload.data.accountName} — ${reportTypeLabel(payload.data)} | ${brandingSuffix}`;
   const description =
     payload.kind === "website"
       ? `${payload.data.accountName} website traffic — ${payload.data.dateRangeLabel}`
-      : `${payload.data.accountName} performance report — ${payload.data.cover.dateRange}`;
+      : payload.kind === "comparison"
+        ? `${payload.data.accountName} comparison — ${payload.data.periodALabel} vs ${payload.data.periodBLabel}`
+        : `${payload.data.accountName} performance report — ${payload.data.cover.dateRange}`;
 
   return {
     title,
@@ -85,6 +95,10 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
 
   if (payload.kind === "website") {
     return <ShareWebsiteReportView data={payload.data} shareToken={token} />;
+  }
+
+  if (payload.kind === "comparison") {
+    return <ShareComparisonReportView data={payload.data} shareToken={token} />;
   }
 
   return <ShareReportView data={payload.data} shareToken={token} />;

@@ -8,6 +8,7 @@ import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
+import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -629,7 +630,8 @@ export function ShareReportView({
   const showMetricGuide = visibleData.visibility?.metricGuide !== false;
   const showOverview = visibleData.visibility?.overview !== false;
   const showCover = visibleData.visibility?.cover !== false;
-  const brandingDisplay = resolveShareBrandingDisplay(reportBrandingFromShareJson(visibleData));
+  const branding = reportBrandingFromShareJson(visibleData);
+  const brandingDisplay = resolveShareBrandingDisplay(branding);
 
   return (
     <div
@@ -652,37 +654,12 @@ export function ShareReportView({
       }
     >
       {!isPrint ? (
-      <header
-        className="sticky top-0 z-10 border-b border-navy-border px-3 py-2 sm:px-6 sm:py-0"
-        style={{ backgroundColor: "#0d1b2e" }}
-      >
-        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-2 sm:min-h-[56px] sm:gap-3">
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            {brandingDisplay.showNextReportLogo ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo.png"
-                  alt="NextReport logo"
-                  className="h-7 w-7 shrink-0 sm:h-9 sm:w-9"
-                />
-                <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-                  NextReport
-                </span>
-              </>
-            ) : brandingDisplay.headerTitle ? (
-              <span className="truncate text-[17px] font-bold text-ink sm:text-[22px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-                {brandingDisplay.headerTitle}
-              </span>
-            ) : (
-              <span className="text-[15px] font-semibold text-ink-muted">Performance Report</span>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {brandingDisplay.showPoweredBy ? (
-              <span className="hidden text-[15px] text-white md:inline">Powered by NextReport</span>
-            ) : null}
-            {shareToken ? (
+        <ShareReportBrandingHeader
+          brandingDisplay={brandingDisplay}
+          branding={branding}
+          shareToken={shareToken}
+          rightSlot={
+            shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
                 className="inline-flex items-center justify-center rounded-md border border-accent-orange px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-accent-orange/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
@@ -690,10 +667,9 @@ export function ShareReportView({
               >
                 <span className="hidden min-[400px]:inline">Download </span>PPTX
               </a>
-            ) : null}
-          </div>
-        </div>
-      </header>
+            ) : null
+          }
+        />
       ) : null}
 
       <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-3 py-4 sm:px-6 sm:py-6"}>

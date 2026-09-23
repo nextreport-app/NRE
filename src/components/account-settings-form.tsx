@@ -8,12 +8,17 @@ import {
   type ReportBrandingMode,
 } from "@/lib/report-branding";
 
+const ACCEPTED_LOGO_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
 export function AccountSettingsForm({
   initialAgencyName,
   initialReportBrandingMode,
+  hasAgencyLogo = false,
 }: {
   initialAgencyName: string | null;
   initialReportBrandingMode: ReportBrandingMode;
+  hasAgencyLogo?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -21,8 +26,15 @@ export function AccountSettingsForm({
   const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
     initialReportBrandingMode,
   );
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const logoPreviewSrc =
+    logoPreviewUrl ?? (hasAgencyLogo && !removeLogo ? "/api/account/logo" : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,8 +56,48 @@ export function AccountSettingsForm({
       return;
     }
 
+    if (logoFile) {
+      const logoFormData = new FormData();
+      logoFormData.append("logo", logoFile);
+      const logoRes = await fetch("/api/account/logo", { method: "POST", body: logoFormData });
+      if (!logoRes.ok) {
+        const logoData = await logoRes.json().catch(() => ({}));
+        const message = logoData.error || "Settings saved, but the logo upload failed.";
+        showToast(message, "error");
+        router.refresh();
+        return;
+      }
+    } else if (removeLogo) {
+      await fetch("/api/account/logo", { method: "DELETE" });
+    }
+
     showToast("Agency details saved.");
     router.refresh();
+  }
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setLogoError(null);
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError("Logo file must be 2MB or smaller.");
+      return;
+    }
+    setLogoFile(file);
+    setRemoveLogo(false);
+    setLogoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function handleRemoveLogo() {
+    setLogoFile(null);
+    setLogoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setRemoveLogo(true);
   }
 
   return (
@@ -61,6 +113,35 @@ export function AccountSettingsForm({
         />
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
           Shown as &quot;Prepared by {agencyName || "..."}&quot; on every report&apos;s cover slide.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm text-dash-ink-secondary">Agency logo — optional</label>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="file"
+            accept={ACCEPTED_LOGO_TYPES}
+            onChange={handleLogoChange}
+            className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
+          />
+          {((hasAgencyLogo && !removeLogo) || logoFile) && (
+            <button
+              type="button"
+              onClick={handleRemoveLogo}
+              className="text-sm text-dash-error hover:underline"
+            >
+              Remove logo
+            </button>
+          )}
+        </div>
+        {logoPreviewSrc && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoPreviewSrc} alt="Agency logo preview" className="mt-3 h-12 w-auto max-w-[200px] object-contain" />
+        )}
+        {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Shown in the header on shared client reports when &quot;Show my agency name&quot; is selected. PNG, JPG, WebP, or SVG — max 2MB.
         </p>
       </div>
 

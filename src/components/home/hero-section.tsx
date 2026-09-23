@@ -64,6 +64,9 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV. Download a branded
             PowerPoint (.pptx), share a live browser link, or export a PDF, with AI-written insights on every slide.
           </p>
+          <p className="mt-3 text-sm text-ink-secondary">
+            White-label every client report — hide NextReport or show your agency name and logo instead.
+          </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
             {loggedIn ? (

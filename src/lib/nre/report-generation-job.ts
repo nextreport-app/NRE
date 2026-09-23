@@ -21,6 +21,7 @@ import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pp
 import { buildHistoricalAiCopyMap } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
+import { buildShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
 import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
@@ -227,10 +228,18 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
       const shareToken = generateShareToken();
+      const brandingExtras = shareReportExtrasFromUser(user);
+      const shareData = buildShareComparisonReportData(job.comparisonData, job.platform, brandingExtras);
 
       await prisma.report.update({
         where: { id: reportId },
-        data: { status: "COMPLETE", filePath, shareToken, jobPayload: null },
+        data: {
+          status: "COMPLETE",
+          filePath,
+          shareToken,
+          summaryJson: JSON.stringify(shareData),
+          jobPayload: null,
+        },
       });
 
       dispatchReportNotifications({

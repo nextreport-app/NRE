@@ -5,6 +5,8 @@ export type ReportBrandingMode = "nextreport" | "agency" | "hidden";
 export interface ReportBrandingSettings {
   mode: ReportBrandingMode;
   agencyName: string | null;
+  /** Private blob URL snapshotted at generation — served via /api/r/[token]/agency-logo. */
+  agencyLogoUrl?: string | null;
 }
 
 export interface ShareBrandingDisplay {
@@ -24,13 +26,19 @@ export function normalizeReportBrandingMode(value: unknown): ReportBrandingMode 
 export function buildReportBrandingSettings(user: {
   reportBrandingMode?: string | null;
   agencyName?: string | null;
+  agencyLogoUrl?: string | null;
 }): ReportBrandingSettings {
   const mode = normalizeReportBrandingMode(user.reportBrandingMode);
   const agencyName = user.agencyName?.trim() || null;
+  const agencyLogoUrl = user.agencyLogoUrl?.trim() || null;
   if (mode === "agency" && !agencyName) {
-    return { mode: "hidden", agencyName: null };
+    return { mode: "hidden", agencyName: null, agencyLogoUrl: null };
   }
-  return { mode, agencyName };
+  return {
+    mode,
+    agencyName,
+    agencyLogoUrl: mode === "agency" ? agencyLogoUrl : null,
+  };
 }
 
 /** Read branding snapshotted in summaryJson, or fall back to legacy NextReport default. */
@@ -43,6 +51,7 @@ export function reportBrandingFromShareJson(value: unknown): ReportBrandingSetti
     return buildReportBrandingSettings({
       reportBrandingMode: record.reportBranding.mode,
       agencyName: record.reportBranding.agencyName ?? record.agencyName,
+      agencyLogoUrl: record.reportBranding.agencyLogoUrl,
     });
   }
   return { mode: "nextreport", agencyName: record.agencyName?.trim() || null };
@@ -138,7 +147,7 @@ export const REPORT_BRANDING_MODE_LABELS: Record<
   },
   agency: {
     title: "Show my agency name",
-    description: "Replace NextReport with your agency name on shared reports and client emails.",
+    description: "Replace NextReport with your agency name and logo on shared reports and client emails.",
   },
   hidden: {
     title: "Hide third-party branding",
