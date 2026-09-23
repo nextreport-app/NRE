@@ -72,6 +72,10 @@ const FAQS = [
     q: "Is my client data secure?",
     a: "Yes. Your CSV data is processed on our servers and used only to generate your report. We do not store your raw campaign data after the report is generated. All data is transmitted over encrypted HTTPS connections.",
   },
+  {
+    q: "Can I hide NextReport branding on client reports?",
+    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
+  },
 ];
 
 export default async function PricingPage() {
@@ -110,7 +114,8 @@ export default async function PricingPage() {
         <PricingCurrencyBanner />
 
         <p className="mt-8 text-center text-xs text-ink-muted">
-          ✓ 7-day free trial · ✓ No credit card required · ✓ Cancel anytime · ✓ INR or USD billing
+          ✓ 7-day free trial · ✓ White-label client reports · ✓ No credit card required · ✓ Cancel anytime · ✓
+          INR or USD billing
         </p>
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />

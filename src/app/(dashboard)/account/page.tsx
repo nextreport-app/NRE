@@ -9,6 +9,7 @@ import {
   normalizeReportRetentionDays,
 } from "@/lib/report-retention";
 import { getPlanDisplayName } from "@/lib/plan-labels";
+import { normalizeReportBrandingMode } from "@/lib/report-branding";
 import { GoogleDriveSettings } from "@/components/google-drive-settings";
 import { MetaAdsSettings } from "@/components/meta-ads-settings";
 import { GoogleAdsSettings } from "@/components/google-ads-settings";
@@ -56,6 +57,7 @@ export default async function AccountSettingsPage({
       select: {
         email: true,
         agencyName: true,
+        reportBrandingMode: true,
         googleConnectedEmail: true,
         metaConnectedName: true,
         metaConnectedUserId: true,
@@ -90,12 +92,15 @@ export default async function AccountSettingsPage({
     <div className="mx-auto max-w-xl">
       <h1 className="mb-2 text-[24px] font-bold text-dash-ink">Account settings</h1>
       <p className="mb-8 text-[15px] text-dash-ink-secondary">
-        Agency branding shown on every report you generate for any client.
+        Agency name and white-label settings apply to every report you generate for any client.
       </p>
 
       <section className="mb-10">
-        <SectionHeading>Agency Details</SectionHeading>
-        <AccountSettingsForm initialAgencyName={user.agencyName} />
+        <SectionHeading>Agency &amp; white-label branding</SectionHeading>
+        <AccountSettingsForm
+          initialAgencyName={user.agencyName}
+          initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
+        />
       </section>
 
       <section className="mb-10">

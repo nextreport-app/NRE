@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { sendReportEmail } from "@/lib/email";
+import { reportBrandingFromShareJson } from "@/lib/report-branding";
 
 const bodySchema = z.object({
   to: z.string().trim().toLowerCase().email("Enter a valid email address"),
@@ -60,11 +61,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, agencyName: true },
+      select: { name: true, email: true, agencyName: true, reportBrandingMode: true },
     });
     const senderName = user?.name || user?.email || "NextReport user";
 
     const dateRange = report.weekStart && report.weekEnd ? `${report.weekStart} - ${report.weekEnd}` : "—";
+    let summaryBranding = reportBrandingFromShareJson({
+      agencyName: user?.agencyName,
+      reportBrandingMode: user?.reportBrandingMode,
+    });
+    if (report.summaryJson) {
+      try {
+        summaryBranding = reportBrandingFromShareJson(JSON.parse(report.summaryJson));
+      } catch {
+        // Keep account-level fallback when summaryJson is unreadable.
+      }
+    }
 
     const result = await sendReportEmail({
       to: parsed.data.to,
@@ -75,6 +87,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       driveLink: report.slidesUrl ?? undefined,
       senderName,
       agencyName: user?.agencyName ?? undefined,
+      reportBranding: summaryBranding,
       message: parsed.data.message,
     });
 

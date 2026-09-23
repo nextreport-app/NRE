@@ -2,6 +2,7 @@
  * Share-page JSON for Website Traffic (GA4) reports — stored in Report.summaryJson.
  */
 
+import type { ReportBrandingSettings } from "@/lib/report-branding";
 import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns, type WebsiteBreakdownOptions, type WebsiteGeoDimension } from "./website-report-config";
 import type { WebsiteReportData } from "./website-report-data";
 
@@ -118,12 +119,17 @@ export interface ShareWebsiteReportData {
   demographicsNote?: string;
   attributionNote: string;
   agencyName?: string | null;
+  reportBranding?: ReportBrandingSettings;
   publishedAt?: string | null;
 }
 
 export function buildShareWebsiteReportData(
   data: WebsiteReportData,
-  options: { agencyName?: string | null; accountName?: string } = {},
+  options: {
+    agencyName?: string | null;
+    accountName?: string;
+    reportBranding?: ReportBrandingSettings;
+  } = {},
 ): ShareWebsiteReportData {
   const mapCard = (c: WebsiteReportData["overviewMetrics"][number]): ShareWebsiteMetricCard => ({
     label: c.label,
@@ -232,6 +238,7 @@ export function buildShareWebsiteReportData(
     demographicsNote: data.demographicsNote,
     attributionNote: data.attributionNote,
     agencyName: options.agencyName ?? null,
+    reportBranding: options.reportBranding,
     publishedAt: null,
   };
 }

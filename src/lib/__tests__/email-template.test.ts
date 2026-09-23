@@ -65,6 +65,15 @@ describe("buildReportEmailHtml", () => {
     expect(html).toContain("This report was prepared by Jordan Lee using NextReport");
   });
 
+  it("omits NextReport from email when white-label hidden branding is used", () => {
+    const html = buildReportEmailHtml(
+      baseProps({ reportBranding: { mode: "hidden", agencyName: null } }),
+    );
+    expect(html).not.toContain("via NextReport");
+    expect(html).not.toContain("using NextReport");
+    expect(html).not.toContain(">nextreport.in<");
+  });
+
   it("includes the domain and the recipient-context disclaimer", () => {
     const html = buildReportEmailHtml(baseProps());
     expect(html).toContain("nextreport.in");

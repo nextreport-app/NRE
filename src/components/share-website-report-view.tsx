@@ -1,5 +1,6 @@
 import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { shareBreakdowns } from "@/lib/nre/share-website-report";
+import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
 import { geoColumnHeader, geoSlideTitle } from "@/lib/nre/website-report-config";
 
 function MetricCardGrid({ title, metrics }: { title: string; metrics: ShareWebsiteReportData["overviewMetrics"] }) {
@@ -85,6 +86,7 @@ export function ShareWebsiteReportView({
 }) {
   const breakdowns = shareBreakdowns(data);
   const geoDim = data.geoDimension ?? "city";
+  const brandingDisplay = resolveShareBrandingDisplay(reportBrandingFromShareJson(data));
 
   return (
     <div
@@ -304,7 +306,10 @@ export function ShareWebsiteReportView({
         <p className="text-xs leading-relaxed text-slate-500">{data.attributionNote}</p>
 
         {!isPrint && shareToken ? (
-          <p className="mt-8 text-center text-xs text-slate-600">Shared via NextReport · {shareToken.slice(0, 6)}…</p>
+          <p className="mt-8 text-center text-xs text-slate-600">
+            {brandingDisplay.footerPrimary ??
+              (brandingDisplay.showNextReportLogo ? `Shared via NextReport · ${shareToken.slice(0, 6)}…` : null)}
+          </p>
         ) : null}
       </main>
     </div>

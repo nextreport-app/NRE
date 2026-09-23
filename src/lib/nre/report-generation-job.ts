@@ -12,6 +12,7 @@ import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
+import { shareReportExtrasFromUser, USER_REPORT_BRANDING_SELECT } from "@/lib/nre/user-report-branding";
 import { generateShareToken } from "@/lib/share-token";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
@@ -167,7 +168,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     if (job.kind === "PREVIOUS_MONTH_SUMMARY") {
       const currencySymbol = CURRENCY_SYMBOLS[client.currency];
       const [user, clientLogo] = await Promise.all([
-        prisma.user.findUnique({ where: { id: job.userId }, select: { agencyName: true } }),
+        prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
         loadLogoAsset(client.logoUrl),
       ]);
 
@@ -183,10 +184,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       });
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
-      const shareData = buildShareReportData(job.summaryData, new Map(), new Date(), {
-        currencySymbol,
-        agencyName: user?.agencyName,
-      });
+      const shareData = buildShareReportData(
+        job.summaryData,
+        new Map(),
+        new Date(),
+        shareReportExtrasFromUser(user, currencySymbol),
+      );
 
       await prisma.report.update({
         where: { id: reportId },
@@ -212,7 +215,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     }
 
     if (job.kind === "COMPARISON") {
-      const user = await prisma.user.findUnique({ where: { id: job.userId }, select: { agencyName: true } });
+      const user = await prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT });
       const templateBuffer = await loadTemplateBufferForPlatform(job.platform, client.template);
       const pptxBuffer = await renderComparisonPptx({
         templateBuffer,
@@ -248,7 +251,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
     if (job.kind === "HISTORICAL") {
       const [user, clientLogo] = await Promise.all([
-        prisma.user.findUnique({ where: { id: job.userId }, select: { agencyName: true } }),
+        prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
         loadLogoAsset(client.logoUrl),
       ]);
 
@@ -268,9 +271,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       });
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
-      const shareData = buildHistoricalShareReportData(job.historicalData, aiCopyMap, new Date(), {
-        agencyName: user?.agencyName,
-      });
+      const shareData = buildHistoricalShareReportData(
+        job.historicalData,
+        aiCopyMap,
+        new Date(),
+        shareReportExtrasFromUser(user),
+      );
       const shareWithArchive = {
         ...shareData,
         _renderArchive: {
@@ -309,7 +315,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
       generateInsights(reportData, aiKeysFromEnv()),
-      prisma.user.findUnique({ where: { id: job.userId }, select: { agencyName: true } }),
+      prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
     ]);
 
@@ -326,10 +332,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     });
 
     const filePath = await saveReportFile(reportId, pptxBuffer);
-    const shareData = buildShareReportData(reportData, aiCopyBySlideKey, new Date(), {
-      currencySymbol,
-      agencyName: user?.agencyName,
-    });
+    const shareData = buildShareReportData(
+      reportData,
+      aiCopyBySlideKey,
+      new Date(),
+      shareReportExtrasFromUser(user, currencySymbol),
+    );
     const shareWithArchive = {
       ...shareData,
       _renderArchive: {
