@@ -6,6 +6,8 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-data";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -18,6 +20,7 @@ import {
   campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
+  dateSelectionSchema,
   historicalMonthCountSchema,
   parseJsonFormField,
   platformSchema,
@@ -158,6 +161,61 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isHistorical: true, data });
+  }
+
+  if (parsedReportType === "DAY_BREAKDOWN") {
+    if (platform !== "META") {
+      return NextResponse.json(
+        {
+          valid: false,
+          errors: [{ field: "reportType", message: "Day-by-Day reports are available for Meta only in this version." }],
+          warnings: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
+    if (!dateResolution.ok || !dateResolution.weeklyRange) {
+      return NextResponse.json(
+        {
+          valid: false,
+          errors: [{ field: "dateSelection", message: dateResolution.error ?? "Choose a valid date range." }],
+          warnings: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    const coverage = validateDayBreakdownReportInput(mtdParsed.rows, dateResolution.weeklyRange);
+    if (!coverage.valid) {
+      return NextResponse.json(
+        {
+          valid: false,
+          errors: [{ field: "dateSelection", message: coverage.error ?? "CSV does not cover the selected dates." }],
+          warnings: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    const dayBreakdownEngine = createReportEngine(platform);
+    const data = dayBreakdownEngine.buildDayBreakdown({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      mtdDailyRows: mtdParsed.rows,
+      dateRange: dateResolution.weeklyRange,
+      selectedCampaigns: selectedCampaigns ?? null,
+      selectedMetrics,
+      campaignObjectives,
+      campaignMetricOverrides,
+      objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+      platform,
+    });
+
+    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isDayBreakdown: true, data });
   }
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {

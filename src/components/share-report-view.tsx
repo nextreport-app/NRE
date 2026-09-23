@@ -27,6 +27,7 @@ import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons"
 
 export function reportTypeLabel(data: ShareReportData): string {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";
 }
@@ -385,10 +386,16 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
  * row's own month.
  */
 function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; compact?: boolean }) {
-  const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
+  const isHistoricalMultiMonth =
+    (data.reportType === "HISTORICAL" || data.reportType === "DAY_BREAKDOWN") &&
+    (data.historicalComparisonRows?.length ?? 0) > 0;
 
   const hidePeriodRow =
-    isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
+    isHistoricalMultiMonth ||
+    data.reportType === "MONTHLY" ||
+    data.reportType === "HISTORICAL" ||
+    data.reportType === "DAY_BREAKDOWN" ||
+    !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
 

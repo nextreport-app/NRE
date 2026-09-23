@@ -1,5 +1,6 @@
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
+import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
 
 import type { WizardReportType } from "@/lib/validators/report-wizard";
 
@@ -27,11 +28,12 @@ export interface WizardGenerateSnapshot {
   comparisonPeriodA: { startIso: string; endIso: string } | null;
   comparisonPeriodB: { startIso: string; endIso: string } | null;
   historicalMonthCount: number;
-  previewKind: "normal" | "comparison" | "historical";
+  previewKind: "normal" | "comparison" | "historical" | "dayBreakdown";
   previewStatus: "idle" | "loading" | "invalid" | "error";
   data: ReportData | null;
   comparisonData: ComparisonReportData | null;
   historicalData: HistoricalReportData | null;
+  dayBreakdownData: DayBreakdownReportData | null;
   reportTitle: string;
   reportTitleTouched: boolean;
   customTitleExpanded: boolean;

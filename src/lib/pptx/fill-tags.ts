@@ -186,6 +186,7 @@ const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
+const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Performance Report";
 const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
 const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
@@ -198,6 +199,7 @@ const GENERIC_REPORT_TITLES = new Set(
     DEFAULT_CREATIVE_REPORT_TITLE,
     DEFAULT_COMPARISON_REPORT_TITLE,
     DEFAULT_HISTORICAL_REPORT_TITLE,
+    DEFAULT_DAY_BREAKDOWN_REPORT_TITLE,
     DEFAULT_QUARTER_REPORT_TITLE,
     DEFAULT_YTD_REPORT_TITLE,
     DEFAULT_WEBSITE_REPORT_TITLE,
@@ -207,7 +209,7 @@ const GENERIC_REPORT_TITLES = new Set(
 /** Resolves the cover subtitle — custom titles win; generic defaults follow reportType. */
 export function resolveCoverReportTitle(
   reportTitle: string | null | undefined,
-  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "WEBSITE",
+  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "DAY_BREAKDOWN" | "WEBSITE",
 ): string {
   const defaultTitle =
     reportType === "MONTHLY"
@@ -224,6 +226,8 @@ export function resolveCoverReportTitle(
                 ? DEFAULT_COMPARISON_REPORT_TITLE
                 : reportType === "HISTORICAL"
                   ? DEFAULT_HISTORICAL_REPORT_TITLE
+                  : reportType === "DAY_BREAKDOWN"
+                    ? DEFAULT_DAY_BREAKDOWN_REPORT_TITLE
                   : reportType === "WEBSITE"
                     ? DEFAULT_WEBSITE_REPORT_TITLE
                     : DEFAULT_REPORT_TITLE;
@@ -250,7 +254,7 @@ export interface CoverSlideOptions {
    * `ReportType`, which stays WEEKLY/MONTHLY-only throughout the existing
    * engine this function otherwise serves unchanged.
    */
-  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "WEBSITE";
+  reportType?: ReportType | "COMPARISON" | "HISTORICAL" | "DAY_BREAKDOWN" | "WEBSITE";
   isLightTemplate?: boolean;
 }
 
@@ -777,6 +781,35 @@ export function buildHistoricalTableSlideXml(
     color: reportHeaderColor(isLightTemplate),
   });
   out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", "MULTI-MONTH PERFORMANCE OVERVIEW");
+  return out;
+}
+
+/** Day-by-Day — account totals per calendar day on the Combined Total template. */
+export function buildDayBreakdownTableSlideXml(
+  template: TemplateSlide,
+  rows: TableRowData[],
+  headers: TableHeaderLabels,
+  isLightTemplate = false,
+  platform: Platform = "META",
+  slideIndex = 0,
+  slideCount = 1,
+): string {
+  const grid = buildHistoricalComparisonTableGrid(rows, headers);
+  const xml = fillCombinedTotalTable(template.xml, grid, {
+    hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
+    isLightTemplate,
+  });
+  const headerText =
+    slideCount > 1 && slideIndex > 0
+      ? "DAY-BY-DAY PERFORMANCE OVERVIEW (CONTINUED)"
+      : "DAY-BY-DAY PERFORMANCE OVERVIEW";
+  let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
+    bold: true,
+    sizePt: REPORT_HEADER_SIZE_PT,
+    color: reportHeaderColor(isLightTemplate),
+  });
+  out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", headerText);
+  void platform;
   return out;
 }
 

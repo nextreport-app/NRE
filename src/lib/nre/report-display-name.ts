@@ -7,7 +7,8 @@ export type ReportDisplayNameType =
   | "COMPARISON"
   | "CREATIVE"
   | "WEBSITE"
-  | "HISTORICAL";
+  | "HISTORICAL"
+  | "DAY_BREAKDOWN";
 
 const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   WEEKLY: "Weekly",
@@ -19,6 +20,7 @@ const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   CREATIVE: "Creative",
   WEBSITE: "Website Traffic",
   HISTORICAL: "Multi-Month",
+  DAY_BREAKDOWN: "Day-by-Day",
 };
 
 const MONTHS = [
@@ -77,7 +79,7 @@ export function defaultReportDisplayName(
   if (reportType === "COMPARISON") {
     return periodLabel ? `${typeLabel} — ${periodLabel}` : typeLabel;
   }
-  if (reportType === "HISTORICAL") {
+  if (reportType === "HISTORICAL" || reportType === "DAY_BREAKDOWN") {
     return periodLabel ? `${typeLabel} — ${periodLabel}` : typeLabel;
   }
   if (!weekStart || !weekEnd) return typeLabel;

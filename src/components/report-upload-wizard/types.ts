@@ -1,6 +1,7 @@
 import type { WizardReportType } from "@/lib/validators/report-wizard";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
+import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
@@ -18,7 +19,7 @@ export type GenerateStatus = "idle" | "loading" | "done" | "error";
 export type DateMode = "last7" | "prev7" | "last14" | "custom";
 export type ReportTypeValue = WizardReportType;
 export type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
-export type PreviewKind = "normal" | "comparison" | "historical";
+export type PreviewKind = "normal" | "comparison" | "historical" | "dayBreakdown";
 export type DriveView = "collapsed" | "editing" | "success";
 
 export interface RememberedDriveFolder {
@@ -86,6 +87,7 @@ export type {
   ReportData,
   ComparisonReportData,
   HistoricalReportData,
+  DayBreakdownReportData,
   ValidationIssue,
   SelectedMetric,
   ObjectiveInfo,

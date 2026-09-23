@@ -52,6 +52,7 @@ import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
 import type { ValidationIssue } from "@/lib/nre/validate";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
+import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
 import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import {
   ADD_FROM_CSV_VISIBLE,
@@ -359,6 +360,7 @@ export function useReportUploadWizard({
   const [data, setData] = useState<ReportData | null>(null);
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
+  const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
   const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
   // False until the user actually types in the Report Title field — while
   // false, switching Report Type keeps swapping the title's own default
@@ -479,6 +481,7 @@ export function useReportUploadWizard({
     setData(null);
     setComparisonData(null);
     setHistoricalData(null);
+    setDayBreakdownData(null);
     setPreviewRefreshing(false);
   }
 
@@ -546,6 +549,7 @@ export function useReportUploadWizard({
       data,
       comparisonData,
       historicalData,
+      dayBreakdownData,
       reportTitle,
       reportTitleTouched,
       customTitleExpanded,
@@ -579,6 +583,7 @@ export function useReportUploadWizard({
     setData(snapshot.data);
     setComparisonData(snapshot.comparisonData);
     setHistoricalData(snapshot.historicalData ?? null);
+    setDayBreakdownData(snapshot.dayBreakdownData ?? null);
     setReportTitle(snapshot.reportTitle);
     setReportTitleTouched(snapshot.reportTitleTouched);
     setCustomTitleExpanded(snapshot.customTitleExpanded);
@@ -705,10 +710,18 @@ export function useReportUploadWizard({
       setPreviewKind("comparison");
       setComparisonData(json.data);
       setHistoricalData(null);
+      setDayBreakdownData(null);
       setData(null);
     } else if (json.isHistorical) {
       setPreviewKind("historical");
       setHistoricalData(json.data);
+      setDayBreakdownData(null);
+      setComparisonData(null);
+      setData(null);
+    } else if (json.isDayBreakdown) {
+      setPreviewKind("dayBreakdown");
+      setDayBreakdownData(json.data);
+      setHistoricalData(null);
       setComparisonData(null);
       setData(null);
     } else {
@@ -716,6 +729,7 @@ export function useReportUploadWizard({
       setData(json.data);
       setComparisonData(null);
       setHistoricalData(null);
+      setDayBreakdownData(null);
     }
     setPreviewStatus("idle");
     if (generateStatusRef.current !== "done") {
@@ -1407,12 +1421,22 @@ export function useReportUploadWizard({
     // sent (buildReportData then uses the full MTD data with no weekly
     // window — see report-data.ts's primaryRows). Comparison has its own
     // Period A/B requirement instead.
-    if (reportType === "WEEKLY") {
+    if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
       if (!validateCustomRange()) return;
-      const spanDays = customSpanDays();
-      if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
-        return; // the inline "Continue anyway?" prompt handles confirmation
+      if (reportType === "WEEKLY") {
+        const spanDays = customSpanDays();
+        if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
+          return; // the inline "Continue anyway?" prompt handles confirmation
+        }
       }
+    }
+
+    if (reportType === "DAY_BREAKDOWN" && platform !== "META") {
+      setPreviewStatus("invalid");
+      setPreviewErrors([
+        { field: "reportType", message: "Day-by-Day reports are available for Meta only in this version." },
+      ]);
+      return;
     }
 
     if (reportType === "COMPARISON" && !comparisonPeriodsReady()) {
@@ -1438,13 +1462,14 @@ export function useReportUploadWizard({
       return;
     }
 
-    const dateSelection = reportType === "WEEKLY" ? currentDateSelection() : undefined;
+    const dateSelection =
+      reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined;
     // Only persist a weekly preference when one was actually made — a
     // Monthly/Comparison run shouldn't overwrite the client's remembered
     // weekly date-mode with nothing.
     if (dateSelection) await saveSelection({ dateSelection });
 
-    const hasExistingPreview = !!(data || comparisonData || historicalData);
+    const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
     if (!hasExistingPreview) {
       setPreviewStatus("loading");
     } else {
@@ -1834,7 +1859,12 @@ export function useReportUploadWizard({
 
   const spanDays = customSpanDays();
   const needsLongRangeConfirm =
-    dateMode === "custom" && spanDays !== null && spanDays > 7 && !customRangeError && !longRangeConfirmed;
+    reportType === "WEEKLY" &&
+    dateMode === "custom" &&
+    spanDays !== null &&
+    spanDays > 7 &&
+    !customRangeError &&
+    !longRangeConfirmed;
   const weeklyRangeIso = currentWeeklyRangeIso();
 
   /**
@@ -1846,6 +1876,7 @@ export function useReportUploadWizard({
   function reportTypeLabel(): string {
     if (previewKind === "comparison") return "Comparison Report";
     if (previewKind === "historical") return "Multi-Month Report";
+    if (previewKind === "dayBreakdown") return "Day-by-Day Report";
     if (reportType === "MONTHLY") return "Monthly Report";
     if (reportType === "QUARTER") return "Quarterly Report";
     if (reportType === "YTD") return "Year-to-Date Report";
@@ -1869,6 +1900,9 @@ export function useReportUploadWizard({
     if (previewKind === "comparison" && comparisonData) return comparisonData.campaigns.map((c) => c.campaignName);
     if (previewKind === "historical" && historicalData) {
       return Array.from(new Set(historicalData.slides.map((s) => s.campaignName))).sort();
+    }
+    if (previewKind === "dayBreakdown" && dayBreakdownData) {
+      return [`${dayBreakdownData.dayCount} day${dayBreakdownData.dayCount === 1 ? "" : "s"} with spend`];
     }
     if (data) return data.campaignSlides.map((s) => s.campaignName);
     return [];
@@ -1914,7 +1948,8 @@ export function useReportUploadWizard({
   function driveDateRangeLabel(): string {
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
-    if (reportType === "WEEKLY" && weeklyRangeIso) return formatIsoRange(weeklyRangeIso);
+    if (previewKind === "dayBreakdown" && dayBreakdownData) return dayBreakdownData.rangeLabel;
+    if ((reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso) return formatIsoRange(weeklyRangeIso);
     if (mtdRange) return formatIsoRange(mtdRange);
     return "";
   }
@@ -1925,6 +1960,9 @@ export function useReportUploadWizard({
     if (previewKind === "historical" && historicalData) {
       const continuation = historicalData.slides.filter((s) => s.additionalMetricsSlide).length;
       return 1 + historicalData.slides.length + continuation;
+    }
+    if (previewKind === "dayBreakdown" && dayBreakdownData) {
+      return 1 + dayBreakdownData.tableSlides.length;
     }
     return 1 + summaryCampaignNames().length + selectedAdSets.size + 1 + 1 + 1;
   }
@@ -2088,6 +2126,7 @@ export function useReportUploadWizard({
     data,
     comparisonData,
     historicalData,
+    dayBreakdownData,
     reportTitle,
     setReportTitle,
     reportTitleTouched,

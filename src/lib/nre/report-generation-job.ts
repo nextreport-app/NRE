@@ -11,13 +11,14 @@ import type { Platform } from "@/lib/nre/google-columns";
 import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
-import { buildShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
+import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
+import { buildShareReportData, buildDayBreakdownShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import { shareReportExtrasFromUser, USER_REPORT_BRANDING_SELECT } from "@/lib/nre/user-report-branding";
 import { generateShareToken } from "@/lib/share-token";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
 import { generateInsights } from "@/lib/ai/generate-insights";
-import { renderComparisonPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
+import { renderComparisonPptx, renderDayBreakdownPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
 import { buildHistoricalAiCopyMap } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
@@ -33,6 +34,7 @@ export type ReportGenerationJobPayload =
   | StandardReportJobPayload
   | ComparisonReportJobPayload
   | HistoricalReportJobPayload
+  | DayBreakdownReportJobPayload
   | PreviousMonthSummaryJobPayload;
 
 interface BaseJobPayload {
@@ -61,6 +63,14 @@ export interface HistoricalReportJobPayload extends BaseJobPayload {
   platform: Platform;
   reportTitle?: string;
   historicalData: HistoricalReportData;
+  shareToken: string;
+}
+
+export interface DayBreakdownReportJobPayload extends BaseJobPayload {
+  kind: "DAY_BREAKDOWN";
+  platform: Platform;
+  reportTitle?: string;
+  dayBreakdownData: DayBreakdownReportData;
   shareToken: string;
 }
 
@@ -311,6 +321,59 @@ export async function processReportGeneration(reportId: string): Promise<void> {
           shareToken: job.shareToken,
           reportType: "HISTORICAL",
           platform: job.platform === "TIKTOK" ? "TIKTOK" : "META",
+          displayName: report.displayName,
+        },
+      });
+      await cleanupUploadSession(job.userId, job.clientId, job.uploadSessionId);
+      return;
+    }
+
+    if (job.kind === "DAY_BREAKDOWN") {
+      const [user, clientLogo] = await Promise.all([
+        prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
+        loadLogoAsset(client.logoUrl),
+      ]);
+
+      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const pptxBuffer = await renderDayBreakdownPptx({
+        templateBuffer,
+        data: job.dayBreakdownData,
+        reportTitle: job.reportTitle,
+        agencyName: user?.agencyName,
+        clientLogo,
+        isLightTemplate: isLightReportTemplate(client.template),
+      });
+
+      const filePath = await saveReportFile(reportId, pptxBuffer);
+      const shareData = buildDayBreakdownShareReportData(
+        job.dayBreakdownData,
+        new Date(),
+        shareReportExtrasFromUser(user),
+      );
+      const shareWithArchive = {
+        ...shareData,
+        _renderArchive: {
+          dayBreakdownData: job.dayBreakdownData,
+          reportTitle: job.reportTitle,
+          agencyName: user?.agencyName ?? null,
+          isLightTemplate: isLightReportTemplate(client.template),
+        },
+      };
+
+      await prisma.report.update({
+        where: { id: reportId },
+        data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive), jobPayload: null },
+      });
+
+      dispatchReportNotifications({
+        userId: job.userId,
+        integrations: userIntegrations,
+        client,
+        report: {
+          id: reportId,
+          shareToken: job.shareToken,
+          reportType: "DAY_BREAKDOWN",
+          platform: "META",
           displayName: report.displayName,
         },
       });

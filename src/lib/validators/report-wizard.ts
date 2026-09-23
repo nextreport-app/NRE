@@ -60,6 +60,7 @@ export const reportTypeSchema = z.enum([
   "CREATIVE",
   "PREVIOUS_MONTH_SUMMARY",
   "HISTORICAL",
+  "DAY_BREAKDOWN",
 ]);
 
 /** Wizard Step 5 report types (excludes generate-only PREVIOUS_MONTH_SUMMARY). */

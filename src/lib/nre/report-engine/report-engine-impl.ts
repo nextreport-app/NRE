@@ -8,6 +8,7 @@ import {
   type BuildReportDataInput,
 } from "../report-data";
 import { buildHistoricalReportData, type BuildHistoricalReportDataInput } from "../historical-report-data";
+import { buildDayBreakdownReportData, type BuildDayBreakdownReportDataInput } from "../day-breakdown-report-data";
 import type { ReportEngine } from "./types";
 
 class ReportEngineImpl implements ReportEngine {
@@ -31,6 +32,10 @@ class ReportEngineImpl implements ReportEngine {
 
   buildHistorical(input: BuildHistoricalReportDataInput) {
     return buildHistoricalReportData({ ...input, platform: input.platform ?? this.platform });
+  }
+
+  buildDayBreakdown(input: BuildDayBreakdownReportDataInput) {
+    return buildDayBreakdownReportData({ ...input, platform: input.platform ?? this.platform });
   }
 }
 
