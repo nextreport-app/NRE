@@ -11,6 +11,7 @@ import type {
   ReportData,
 } from "../report-data";
 import type { BuildHistoricalReportDataInput, HistoricalReportData } from "../historical-report-data";
+import type { BuildDayBreakdownReportDataInput, DayBreakdownReportData } from "../day-breakdown-report-data";
 
 export interface ReportEngine {
   readonly platform: Platform;
@@ -19,7 +20,8 @@ export interface ReportEngine {
   buildComparison(input: BuildComparisonReportDataInput): ComparisonReportData;
   buildPreviousMonthSummary(input: BuildPreviousMonthSummaryReportDataInput): ReportData;
   buildHistorical(input: BuildHistoricalReportDataInput): HistoricalReportData;
+  buildDayBreakdown(input: BuildDayBreakdownReportDataInput): DayBreakdownReportData;
 }
 
 export type { BuildReportDataInput, BuildComparisonReportDataInput, BuildPreviousMonthSummaryReportDataInput };
-export type { ComparisonReportData, ReportData, HistoricalReportData };
+export type { ComparisonReportData, ReportData, HistoricalReportData, DayBreakdownReportData };

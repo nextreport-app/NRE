@@ -69,6 +69,7 @@ export function WizardGenerateStep() {
     handleShowBudgetOnCoverChange,
     hasAdLevelCsv,
     hasGoogleDriveConnected,
+    dayBreakdownData,
     historicalData,
     historicalMonthCount,
     historicalMonthLabels,
@@ -223,6 +224,19 @@ export function WizardGenerateStep() {
                     onSelect={() => handleReportTypeChange("HISTORICAL")}
                     layout="compact"
                   />
+                  <ReportTypeCard
+                    icon="📋"
+                    heading="Day-by-Day Performance Report"
+                    description={
+                      platform === "META"
+                        ? "Account totals per day in a custom range."
+                        : "Meta only in this version."
+                    }
+                    selected={reportType === "DAY_BREAKDOWN"}
+                    onSelect={() => handleReportTypeChange("DAY_BREAKDOWN")}
+                    disabled={platform !== "META"}
+                    layout="compact"
+                  />
                 </div>
               ) : null}
             </div>
@@ -264,10 +278,17 @@ export function WizardGenerateStep() {
             )}
           </section>
 
-          {/* Section 2 — Date range (Weekly only) */}
-          {reportType === "WEEKLY" && (
+          {/* Section 2 — Date range (Weekly + Day-by-Day) */}
+          {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">Select report period</h4>
+              <h4 className="text-[16px] font-semibold text-white">
+                {reportType === "DAY_BREAKDOWN" ? "Select date range" : "Select report period"}
+              </h4>
+              {reportType === "DAY_BREAKDOWN" && (
+                <p className="mt-2 text-[14px] text-dash-ink-secondary">
+                  Pick any range covered by your day-level CSV. Quick picks are optional — custom dates work best.
+                </p>
+              )}
 
               <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks</p>
               <div className="mt-2 flex flex-wrap gap-3">
@@ -520,13 +541,13 @@ export function WizardGenerateStep() {
                   {previewMessage}
                 </div>
               )}
-              {previewStatus === "loading" && !data && !comparisonData && !historicalData && (
+              {previewStatus === "loading" && !data && !comparisonData && !historicalData && !dayBreakdownData && (
                 <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
                   <Spinner />
                   Loading preview…
                 </div>
               )}
-              {previewRefreshing && (data || comparisonData || historicalData) ? (
+              {previewRefreshing && (data || comparisonData || historicalData || dayBreakdownData) ? (
                 <p className="text-[13px] text-dash-ink-secondary">Updating preview…</p>
               ) : null}
             </div>
@@ -575,7 +596,7 @@ export function WizardGenerateStep() {
             </div>
           )}
 
-          {(data || comparisonData || historicalData) && (
+          {(data || comparisonData || historicalData || dayBreakdownData) && (
             <>
             <div className="space-y-4">
               {/* Section 1 — Report summary card, amber left border. Merges
@@ -632,6 +653,13 @@ export function WizardGenerateStep() {
                       Months covered:{" "}
                       <span className="text-[14px] text-white">{historicalData.monthsLabel}</span>
                     </p>
+                  ) : previewKind === "dayBreakdown" && dayBreakdownData ? (
+                    <p className="text-[14px] text-[#94a3b8]">
+                      Date range:{" "}
+                      <span className="text-[14px] text-white">{dayBreakdownData.rangeLabel}</span>
+                      {" · "}
+                      {dayBreakdownData.dayCount} day{dayBreakdownData.dayCount === 1 ? "" : "s"} with data
+                    </p>
                   ) : (
                     <>
                       {reportType === "DAILY" && dailyRange && (
@@ -639,9 +667,9 @@ export function WizardGenerateStep() {
                           Daily period: <span className="text-[14px] text-white">{formatSummaryRange(dailyRange)}</span>
                         </p>
                       )}
-                      {reportType === "WEEKLY" && weeklyRangeIso && (
+                      {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          {weeklyPeriodSummaryLabel()}:{" "}
+                          {reportType === "DAY_BREAKDOWN" ? "Date range" : weeklyPeriodSummaryLabel()}:{" "}
                           <span className="text-[14px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
                         </p>
                       )}
@@ -691,6 +719,12 @@ export function WizardGenerateStep() {
             {previewKind === "historical" && historicalData?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
                 No campaign spend found in the selected months. Check your CSV date range and campaign selection.
+              </div>
+            )}
+
+            {previewKind === "dayBreakdown" && dayBreakdownData?.isPaused && (
+              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
+                No campaign spend found in the selected date range. Check your CSV dates and campaign selection.
               </div>
             )}
 
@@ -1067,6 +1101,7 @@ export function WizardGenerateStep() {
               {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
               {reportType !== "COMPARISON" &&
                 reportType !== "HISTORICAL" &&
+                reportType !== "DAY_BREAKDOWN" &&
                 includePreviousMonthComparison &&
                 !previousMonthComparisonReady && (
                 <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">

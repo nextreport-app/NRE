@@ -250,6 +250,7 @@ enum ReportType {
   CREATIVE
   WEBSITE
   HISTORICAL
+  DAY_BREAKDOWN
 }
 
 // Which ad platform a report's CSV came from — detected automatically from

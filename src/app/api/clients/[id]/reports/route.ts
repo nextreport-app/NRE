@@ -8,6 +8,7 @@ import { scheduleReportGenerationJob } from "@/lib/nre/dispatch-report-generatio
 import {
   serializeReportGenerationJob,
   type ComparisonReportJobPayload,
+  type DayBreakdownReportJobPayload,
   type HistoricalReportJobPayload,
   type PreviousMonthSummaryJobPayload,
   type StandardReportJobPayload,
@@ -18,6 +19,8 @@ import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
+import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-data";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
@@ -29,6 +32,7 @@ import {
   campaignObjectivesSchema,
   comparisonPeriodSchema,
   confirmedCampaignObjectivesSchema,
+  dateSelectionSchema,
   historicalMonthCountSchema,
   parseJsonFormField,
   platformSchema,
@@ -316,6 +320,77 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     scheduleReportGenerationJob(historicalReport.id);
     return enqueueResponse(historicalReport.id, shareToken);
+  }
+
+  if (reportType === "DAY_BREAKDOWN") {
+    if (platform !== "META") {
+      return NextResponse.json({ error: "Day-by-Day reports are available for Meta only in this version." }, { status: 400 });
+    }
+
+    const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+    const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
+    if (!dateResolution.ok || !dateResolution.weeklyRange) {
+      return NextResponse.json({ error: dateResolution.error ?? "Choose a valid date range." }, { status: 400 });
+    }
+
+    const coverage = validateDayBreakdownReportInput(mtdParsed.rows, dateResolution.weeklyRange);
+    if (!coverage.valid) {
+      return NextResponse.json({ error: coverage.error ?? "CSV does not cover the selected dates." }, { status: 400 });
+    }
+
+    const dayBreakdownEngine = createReportEngine(platform);
+    const dayBreakdownData = dayBreakdownEngine.buildDayBreakdown({
+      accountName: client.accountName,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      timezone: client.timezone,
+      mtdDailyRows: mtdParsed.rows,
+      dateRange: dateResolution.weeklyRange,
+      selectedCampaigns: selectedCampaigns ?? null,
+      platform,
+    });
+
+    const fileName = `Day-by-Day Report - ${dayBreakdownData.rangeLabel}.pptx`.replace(/[\s/]/g, "_");
+    const shareToken = generateShareToken();
+
+    let dayBreakdownReport;
+    try {
+      const jobPayload: DayBreakdownReportJobPayload = {
+        version: 1,
+        kind: "DAY_BREAKDOWN",
+        userId: session.user.id,
+        clientId: id,
+        uploadSessionId,
+        platform,
+        reportTitle,
+        dayBreakdownData,
+        shareToken,
+      };
+
+      dayBreakdownReport = await prisma.report.create({
+        data: {
+          clientId: client.id,
+          status: "GENERATING",
+          reportType: "DAY_BREAKDOWN",
+          platform,
+          fileName,
+          displayName: defaultReportDisplayName("DAY_BREAKDOWN", null, null, dayBreakdownData.rangeLabel),
+          shareToken,
+          summaryJson: JSON.stringify({
+            isPaused: dayBreakdownData.isPaused,
+            rangeLabel: dayBreakdownData.rangeLabel,
+            dayCount: dayBreakdownData.dayCount,
+            tableSlideCount: dayBreakdownData.tableSlides.length,
+          }),
+          jobPayload: serializeReportGenerationJob(jobPayload),
+        },
+      });
+    } catch (err) {
+      return apiErrorResponse(err, "reports:generate:create-day-breakdown");
+    }
+
+    scheduleReportGenerationJob(dayBreakdownReport.id);
+    return enqueueResponse(dayBreakdownReport.id, shareToken);
   }
 
   const result = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });

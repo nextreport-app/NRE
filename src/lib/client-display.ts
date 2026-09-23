@@ -26,6 +26,7 @@ const REPORT_TYPE_LABELS: Record<string, string> = {
   CREATIVE: "Creative",
   WEBSITE: "Website",
   HISTORICAL: "Multi-Month",
+  DAY_BREAKDOWN: "Day-by-Day",
 };
 
 /** Human-readable timezone for client list cards — keeps IANA id in title attribute. */

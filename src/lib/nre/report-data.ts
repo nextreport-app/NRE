@@ -894,6 +894,16 @@ export function buildCombinedTotalTableGrid(
   return [headerRow, dataRow(mtdRow), dataRow(periodRow)];
 }
 
+/** Account-level Combined Total row from already-aggregated campaign/ad-set rows. */
+export function buildAggregatedTableRow(
+  rows: MetricRow[],
+  currencySymbol: string,
+  objectiveMap: Map<string, ResultLabels>,
+  timezone = "UTC",
+): TableRowData {
+  return computeTableRow(rows, currencySymbol, false, objectiveMap, new Date(), undefined, timezone);
+}
+
 /** Multi-Month Historical final slide — one data row per calendar month (oldest first). */
 export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers: TableHeaderLabels): string[][] {
   const headerRow = [

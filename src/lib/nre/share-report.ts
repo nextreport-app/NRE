@@ -39,6 +39,7 @@ import { freqLine } from "./report-data";
 import type { DynamicMetricValue } from "./dynamic-metrics";
 import type { DeliveryStatusIndicator } from "./delivery-status";
 import type { HistoricalReportData } from "./historical-report-data";
+import type { DayBreakdownReportData } from "./day-breakdown-report-data";
 import type { ReportBrandingSettings } from "@/lib/report-branding";
 
 export interface ShareCampaignData {
@@ -146,7 +147,7 @@ export interface ShareReportData {
   version: 1;
   accountName: string;
   platform: Platform;
-  reportType: ReportType | "HISTORICAL";
+  reportType: ReportType | "HISTORICAL" | "DAY_BREAKDOWN";
   isPaused: boolean;
   pausedMessage: string | null;
   fileDateRange: string;
@@ -338,6 +339,49 @@ function historicalSlideReportTypeLabel(performanceHeader?: string): string | un
     .replace(/ PERFORMANCE REPORT$/, " Performance Report")
     .replace(/ MONTH TOTAL$/, " Month Total")
     .replace(/^([A-Z]+)/, (word) => word.charAt(0) + word.slice(1).toLowerCase());
+}
+
+/** Share-page payload for Day-by-Day reports — table-only, reuses historicalComparisonRows shape. */
+export function buildDayBreakdownShareReportData(
+  data: DayBreakdownReportData,
+  now: Date = new Date(),
+  extras: ShareReportExtras = {},
+): ShareReportData {
+  return {
+    version: 1,
+    accountName: data.accountName,
+    platform: data.platform,
+    reportType: "DAY_BREAKDOWN",
+    isPaused: data.isPaused,
+    pausedMessage: data.isPaused ? "No campaign spend found in the selected date range." : null,
+    fileDateRange: data.rangeLabel,
+    cover: {
+      reportDate: data.reportDate,
+      dateRange: data.rangeLabel,
+      healthBadge: "Day-by-Day",
+      healthScore: 0,
+      budgetSummary: "",
+    },
+    campaigns: [],
+    adSets: [],
+    chart: null,
+    tableHeaderLabels: data.tableHeaderLabels,
+    periodRow: EMPTY_TABLE_ROW,
+    mtdRow: EMPTY_TABLE_ROW,
+    historicalComparisonRows: data.dayRows,
+    metricGuide: [],
+    agencyName: extras.agencyName ?? null,
+    reportBranding: extras.reportBranding,
+    generatedAt: now.toISOString(),
+    visibility: {
+      cover: true,
+      overview: false,
+      combinedTotal: data.dayRows.length > 0,
+      metricGuide: false,
+      campaigns: {},
+      adSets: {},
+    },
+  };
 }
 
 /** Share-page payload for Multi-Month Historical reports — parallel to buildShareReportData. */

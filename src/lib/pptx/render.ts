@@ -13,13 +13,14 @@
 
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { HistoricalReportData } from "../nre/historical-report-data";
+import type { DayBreakdownReportData } from "../nre/day-breakdown-report-data";
 import { historicalSlideShareKey } from "../nre/share-report";
 import type { WebsiteReportData } from "../nre/website-report-data";
 import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-report-config";
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
-import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
+import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildDayBreakdownTableSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
 import { buildLegendSlideXml } from "./legend-slide";
@@ -509,6 +510,87 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
   }
 
   void isLightTemplate;
+  return assemblePptx(template, slides);
+}
+
+export interface RenderDayBreakdownPptxInput {
+  templateBuffer: Buffer;
+  data: DayBreakdownReportData;
+  reportTitle?: string | null;
+  agencyName?: string | null;
+  clientLogo?: ImageAsset | null;
+  isLightTemplate?: boolean;
+}
+
+/** Day-by-Day — cover plus paginated account-level daily table slides. */
+export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput): Promise<Buffer> {
+  const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
+  const template = await loadTemplate(templateBuffer);
+  const hasAgencyName = !!agencyName?.trim();
+
+  if (clientLogo) {
+    template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, clientLogo.extension, clientLogo.contentType);
+    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
+      baseName: "client-logo",
+      shapeName: "Client Logo",
+      style: CLIENT_LOGO_STYLE,
+    });
+    template.cover = embedded.slide;
+    template.staticFiles.set(embedded.mediaPath, embedded.mediaBytes);
+  }
+
+  const cover = {
+    accountName: data.accountName,
+    reportDate: data.reportDate,
+    dateRange: data.rangeLabel,
+    healthBadge: "Day-by-Day",
+    healthScore: 0,
+    budgetSummary: "",
+  };
+
+  const slides: SlideToInsert[] = [
+    {
+      xml: buildCoverSlideXml(template.cover, cover, {
+        reportTitle,
+        agencyName,
+        reportType: "DAY_BREAKDOWN",
+        isLightTemplate,
+      }),
+      rels: template.cover.rels,
+    },
+  ];
+
+  if (data.isPaused) {
+    slides.push({
+      xml: buildPausedSlideXml(
+        template.campaign,
+        data.accountName,
+        "No campaign spend found in the selected date range.",
+        data.rangeLabel,
+        "DAILY",
+        data.platform,
+        isLightTemplate,
+      ),
+      rels: template.campaign.rels,
+    });
+  } else {
+    const slideCount = data.tableSlides.length;
+    data.tableSlides.forEach((chunk, index) => {
+      slides.push({
+        xml: buildDayBreakdownTableSlideXml(
+          template.table,
+          chunk,
+          data.tableHeaderLabels,
+          isLightTemplate,
+          data.platform,
+          index,
+          slideCount,
+        ),
+        rels: template.table.rels,
+      });
+    });
+  }
+
   return assemblePptx(template, slides);
 }
 
