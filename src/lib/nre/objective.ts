@@ -24,6 +24,7 @@ import {
   isMetaFormLeadsCampaignName,
   isPurchaseCampaignName,
   isQuoteRequestCampaignName,
+  isReachCampaignName,
   isWebsiteLeadsCampaignName,
 } from "./campaign-name-heuristics";
 
@@ -187,6 +188,9 @@ function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLab
   if (isQuoteRequestCampaignName(rows)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
+  if (isReachCampaignName(rows)) {
+    return { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
+  }
 
   return null;
 }
@@ -206,6 +210,9 @@ function activeHeadersForCampaign(rows: MetricRow[]): string[] {
 export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
   const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
   if (purchaseNamed) return purchaseNamed;
+
+  const reachNamed = reachObjectiveIfNamedCampaign(rows);
+  if (reachNamed) return reachNamed;
 
   if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
@@ -440,7 +447,16 @@ export function resolveObjective(
   }
 
   const rt = getResultLabels(signals.result_type);
-  if (rt.resultLabel !== "RESULTS") return { ...rt, source: "resultType" };
+  if (rt.resultLabel !== "RESULTS") {
+    if (
+      columnObjective?.resultLabel === "REACH" &&
+      (rt.resultLabel === "LINK CLICKS" || rt.resultLabel === "LANDING PAGE VIEWS") &&
+      reach > 0
+    ) {
+      return { ...columnObjective, source: "priority3" };
+    }
+    return { ...rt, source: "resultType" };
+  }
 
   if (columnObjective) return { ...columnObjective, source: "priority3" };
 
@@ -895,6 +911,16 @@ function purchaseObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | nul
   return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
 }
 
+function hasReachDelivery(rows: MetricRow[]): boolean {
+  return rows.some((r) => parseCellNum(r.reach) > 0);
+}
+
+/** Reach-named campaign with real reach delivery → REACH even when Meta fills link clicks / blank result_type. */
+function reachObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
+  if (!isReachCampaignName(rows) || !hasReachDelivery(rows)) return null;
+  return { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
+}
+
 /** Stray messaging counts on website campaigns (shared export columns) vs real traffic. */
 function isIncidentalMessagingForWebsiteCampaign(rows: MetricRow[], messagingTotal: number): boolean {
   let linkClicks = 0;
@@ -920,6 +946,7 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
     rt === "link click" ||
     rt === "landing_page_view"
   ) {
+    if (isReachCampaignName(rows) && hasReachDelivery(rows)) return true;
     return messagingTotal > 0 || isMessagingCampaign;
   }
 
@@ -1015,6 +1042,15 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     };
   }
 
+  const reachNamed = reachObjectiveIfNamedCampaign(rows);
+  if (reachNamed) {
+    return {
+      ...reachNamed,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
+  }
+
   const resultTypeCounts = new Map<string, number>();
   let blankCount = 0;
   for (const row of rows) {
@@ -1089,6 +1125,15 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
       return {
         ...purchaseNamed,
         confidence: purchasesTotal > 0 ? "high" : "medium",
+        requiresConfirmation: false,
+      };
+    }
+
+    const reachNamed = reachObjectiveIfNamedCampaign(rows);
+    if (reachNamed) {
+      return {
+        ...reachNamed,
+        confidence: "high",
         requiresConfirmation: false,
       };
     }
