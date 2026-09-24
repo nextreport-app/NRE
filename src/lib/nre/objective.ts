@@ -1304,6 +1304,9 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
     if (label === "META FORM LEADS") {
       return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
     }
+    if (label === "REACH") {
+      return parseCellNum(row.reach) || parseCellNum(row.results);
+    }
     return parseCellNum(row.results);
   }
   // Campaign names like "* website leads *" plus a Website leads column in
@@ -1314,6 +1317,7 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   // bucket being summed.
   const rowResultLabel = getResultLabels(row.result_type).resultLabel;
   if (rowResultLabel === label) {
+    if (label === "REACH") return parseCellNum(row.reach) || parseCellNum(row.results);
     return parseCellNum(row.results);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);

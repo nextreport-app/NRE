@@ -1003,7 +1003,14 @@ function buildLast30DaysChartSlide(params: {
     };
     const resLabel = chartObjective.resultLabel;
     const cprLabel = chartObjective.costLabel;
-    const { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
+    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
+    if (resLabel === "REACH" && rows.length > 0) {
+      const periodReach = aggregateReach(rows);
+      if (periodReach > 0) {
+        results = periodReach;
+        cpr = spend > 0 ? (spend * 1000) / periodReach : 0;
+      }
+    }
     totalAllSpend += spend;
 
     const isActive =
