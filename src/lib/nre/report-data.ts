@@ -94,7 +94,6 @@ import {
   toIsoDate,
 } from "./date-range";
 import { buildBudgetSummary } from "./budget-pacing";
-import { buildCompanionSpendSegments } from "./chart-companion-spend";
 import { createPlatformReportAdapter } from "./report-engine/platform-adapter";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
@@ -252,8 +251,6 @@ export interface ChartSlideData {
   periodSubLabel: string;
   /** Inclusive day count backing periodSubLabel — when less than 30, the chart title drops the "Last 30 Days" prefix. */
   actualPeriodDays?: number;
-  /** Spend mix for the single-campaign split panel (ad sets, or weekly buckets). */
-  companionSpendSegments?: { name: string; spend: number }[];
 }
 
 export interface ResultColumnData {
@@ -1036,8 +1033,6 @@ function buildLast30DaysChartSlide(params: {
             86400000,
         ) + 1
       : undefined;
-  const companionSpendSegments =
-    chartCampaigns.length === 1 ? buildCompanionSpendSegments(chartRawRows) : undefined;
   const campaignSpendByObjective = new Map<string, number>();
   chartCampaigns.forEach((c) => {
     campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
@@ -1071,7 +1066,6 @@ function buildLast30DaysChartSlide(params: {
     mtdMonthName: getMonthName(chartRange.endIso) ?? params.mtdRow.monthName,
     periodSubLabel,
     actualPeriodDays,
-    companionSpendSegments,
   };
 }
 

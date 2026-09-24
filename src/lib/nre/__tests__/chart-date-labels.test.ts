@@ -49,5 +49,7 @@ describe("chart + MTD labels for mid-month campaign start", () => {
 
     const model = buildVisualChartSlideModel(data.chart!, "C$");
     expect(model.title).toBe("Campaign Performance: Sep 16 - Sep 23, 2026");
+    expect(model.useSplitPanel).toBe(false);
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
   });
 });

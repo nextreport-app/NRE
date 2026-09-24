@@ -125,7 +125,7 @@ const IDEAL_RESULT_BAR_ROW_H =
   MTD_VISUAL.barNameH +
   4 +
   MTD_VISUAL.barMetricsH +
-  6 +
+  10 +
   MTD_VISUAL.barH +
   MTD_VISUAL.barRowGap;
 

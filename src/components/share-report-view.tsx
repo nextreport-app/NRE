@@ -315,10 +315,15 @@ function VisualSpendDonut({
           {centerLabel}
         </div>
       </div>
-      <ul className="mt-4 w-full space-y-1.5 text-[13px] text-[#94a3b8]">
+      <ul className="mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]">
         {segments.map((seg) => (
-          <li key={seg.name} className="truncate">
-            {seg.name} · {seg.percentage}% · {seg.spendLabel}
+          <li key={seg.name} className="flex min-w-0 items-start gap-2">
+            <span
+              className="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: `#${seg.color}` }}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 truncate">{seg.name} · {seg.percentage}% · {seg.spendLabel}</span>
           </li>
         ))}
       </ul>
@@ -358,11 +363,11 @@ function VisualResultBar({
             {name}
           </p>
           <p
-            className={`mt-0.5 font-bold leading-tight text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`}
+            className={`mt-1 font-bold leading-snug text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`}
           >
             {statLine}
           </p>
-          <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`}>
+          <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-3 h-5" : "mt-4 h-7"}`}>
             <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
           </div>
         </div>
