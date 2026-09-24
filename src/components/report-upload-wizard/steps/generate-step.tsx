@@ -11,6 +11,7 @@ import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShareReportUrl, buildSlackShareUrl, buildTelegramShareUrl, buildWhatsAppShareUrl } from "../utils";
 import { ReportTypeCard } from "../ui/report-type-card";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
+import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { formatRelativeReportDate } from "@/lib/client-display";
@@ -284,123 +285,107 @@ export function WizardGenerateStep() {
               <h4 className="text-[16px] font-semibold text-white">
                 {reportType === "DAY_BREAKDOWN" ? "Select date range" : "Select report period"}
               </h4>
-              {reportType === "DAY_BREAKDOWN" && (
-                <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                  Pick any range covered by your day-level CSV. Quick picks are optional — custom dates work best.
-                </p>
-              )}
-
-              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Quick picks</p>
-              <div className="mt-2 flex flex-wrap gap-3">
-                {weeklyOptions && (
-                  <WeeklyPeriodOption
-                    selected={dateMode === "last7"}
-                    label="Last 7 days"
-                    sublabel={formatIsoRange(weeklyOptions.last7)}
-                    onSelect={() => {
-                      setDateMode("last7");
+              {reportType === "DAY_BREAKDOWN" ? (
+                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                  <p className="text-[14px] text-dash-ink-secondary">
+                    Pick any range covered by your day-level CSV
+                    {dateBounds
+                      ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
+                      : ""}
+                    .
+                  </p>
+                  <WizardDateRangeFields
+                    startIso={customStart}
+                    endIso={customEnd}
+                    minIso={dateBounds?.minIso}
+                    maxIso={dateBounds?.maxIso}
+                    onStartChange={(iso) => {
+                      setDateMode("custom");
+                      setCustomStart(iso);
+                      setLongRangeConfirmed(false);
+                      setCustomRangeError(null);
+                    }}
+                    onEndChange={(iso) => {
+                      setDateMode("custom");
+                      setCustomEnd(iso);
+                      setLongRangeConfirmed(false);
                       setCustomRangeError(null);
                     }}
                   />
-                )}
-                {weeklyOptions && (
-                  <WeeklyPeriodOption
-                    selected={dateMode === "prev7"}
-                    label="Previous 7 days"
-                    sublabel={formatIsoRange(weeklyOptions.prev7)}
-                    onSelect={() => {
-                      setDateMode("prev7");
-                      setCustomRangeError(null);
-                    }}
-                  />
-                )}
-                {weeklyOptions && (
-                  <WeeklyPeriodOption
-                    selected={dateMode === "last14"}
-                    label="Last 14 days (bi-weekly)"
-                    sublabel={formatIsoRange(weeklyOptions.last14)}
-                    onSelect={() => {
-                      setDateMode("last14");
-                      setCustomRangeError(null);
-                    }}
-                  />
-                )}
-              </div>
-
-              <p className="mt-4 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Custom dates</p>
-              <div className="mt-2 flex flex-wrap gap-3">
-                <WeeklyPeriodOption
-                  selected={dateMode === "custom"}
-                  label="Custom date range"
-                  sublabel={
-                    dateBounds
-                      ? `Any dates within ${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
-                      : "Pick any start and end date in your CSV"
-                  }
-                  onSelect={() => setDateMode("custom")}
-                />
-              </div>
-
-              {dateMode === "custom" && (
-                <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
-                  <div className="flex flex-wrap gap-3">
-                    <div>
-                      <label className="mb-1 block text-[14px] text-dash-ink-secondary">Start date</label>
-                      <input
-                        type="date"
-                        value={customStart}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => {
-                          setCustomStart(e.target.value);
-                          setLongRangeConfirmed(false);
+                  {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {weeklyOptions ? (
+                      <WeeklyPeriodOption
+                        selected={dateMode === "last7"}
+                        label="Last 7 days"
+                        sublabel={formatIsoRange(weeklyOptions.last7)}
+                        onSelect={() => {
+                          setDateMode("last7");
                           setCustomRangeError(null);
                         }}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                       />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-[14px] text-dash-ink-secondary">End date</label>
-                      <input
-                        type="date"
-                        value={customEnd}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => {
-                          setCustomEnd(e.target.value);
-                          setLongRangeConfirmed(false);
-                          setCustomRangeError(null);
-                        }}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                      />
-                    </div>
+                    ) : null}
+                    <WeeklyPeriodOption
+                      selected={dateMode === "custom"}
+                      label="Custom date range"
+                      sublabel={
+                        dateBounds
+                          ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
+                          : "Pick any start and end date in your CSV"
+                      }
+                      onSelect={() => setDateMode("custom")}
+                    />
                   </div>
 
-                  {customRangeError && <p className="text-[14px] text-red-400">{customRangeError}</p>}
+                  {dateMode === "custom" ? (
+                    <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                      <WizardDateRangeFields
+                        startIso={customStart}
+                        endIso={customEnd}
+                        minIso={dateBounds?.minIso}
+                        maxIso={dateBounds?.maxIso}
+                        onStartChange={(iso) => {
+                          setCustomStart(iso);
+                          setLongRangeConfirmed(false);
+                          setCustomRangeError(null);
+                        }}
+                        onEndChange={(iso) => {
+                          setCustomEnd(iso);
+                          setLongRangeConfirmed(false);
+                          setCustomRangeError(null);
+                        }}
+                      />
 
-                  {needsLongRangeConfirm && (
-                    <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                      <p className="mb-2 text-[14px] text-amber-200">
-                        You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
-                        longer period anyway?
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setLongRangeConfirmed(true)}
-                          className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                        >
-                          Yes
-                        </button>
-                        <button
-                          onClick={() => setCustomEnd("")}
-                          className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
-                        >
-                          No
-                        </button>
-                      </div>
+                      {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+
+                      {needsLongRangeConfirm ? (
+                        <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
+                          <p className="mb-2 text-[14px] text-amber-200">
+                            You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with
+                            this longer period anyway?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setLongRangeConfirmed(true)}
+                              className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setCustomEnd("")}
+                              className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                  )}
-                </div>
+                  ) : null}
+                </>
               )}
             </section>
           )}
@@ -438,50 +423,32 @@ export function WizardGenerateStep() {
               </div>
 
               {comparisonPreset === "custom" && (
-                <div className="mt-4 space-y-3 rounded-md border border-dash-border p-3">
+                <div className="mt-4 space-y-4 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
                   <div>
-                    <p className="mb-1 text-[14px] text-dash-ink-secondary">Period A (current)</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="date"
-                        value={comparisonPeriodA?.startIso ?? ""}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => updateComparisonPeriodA("startIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                      />
-                      <span className="text-[14px] text-dash-ink-secondary">to</span>
-                      <input
-                        type="date"
-                        value={comparisonPeriodA?.endIso ?? ""}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => updateComparisonPeriodA("endIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                      />
-                    </div>
+                    <p className="mb-3 text-[14px] font-medium text-white">Period A (current)</p>
+                    <WizardDateRangeFields
+                      startIso={comparisonPeriodA?.startIso ?? ""}
+                      endIso={comparisonPeriodA?.endIso ?? ""}
+                      minIso={dateBounds?.minIso}
+                      maxIso={dateBounds?.maxIso}
+                      startLabel="Start"
+                      endLabel="End"
+                      onStartChange={(iso) => updateComparisonPeriodA("startIso", iso)}
+                      onEndChange={(iso) => updateComparisonPeriodA("endIso", iso)}
+                    />
                   </div>
                   <div>
-                    <p className="mb-1 text-[14px] text-dash-ink-secondary">Period B (compare)</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="date"
-                        value={comparisonPeriodB?.startIso ?? ""}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => updateComparisonPeriodB("startIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                      />
-                      <span className="text-[14px] text-dash-ink-secondary">to</span>
-                      <input
-                        type="date"
-                        value={comparisonPeriodB?.endIso ?? ""}
-                        min={dateBounds?.minIso}
-                        max={dateBounds?.maxIso}
-                        onChange={(e) => updateComparisonPeriodB("endIso", e.target.value)}
-                        className="rounded-md border border-dash-border bg-dash-bg px-2 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                      />
-                    </div>
+                    <p className="mb-3 text-[14px] font-medium text-white">Period B (compare)</p>
+                    <WizardDateRangeFields
+                      startIso={comparisonPeriodB?.startIso ?? ""}
+                      endIso={comparisonPeriodB?.endIso ?? ""}
+                      minIso={dateBounds?.minIso}
+                      maxIso={dateBounds?.maxIso}
+                      startLabel="Start"
+                      endLabel="End"
+                      onStartChange={(iso) => updateComparisonPeriodB("startIso", iso)}
+                      onEndChange={(iso) => updateComparisonPeriodB("endIso", iso)}
+                    />
                   </div>
                 </div>
               )}
