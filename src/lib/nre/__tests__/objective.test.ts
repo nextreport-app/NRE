@@ -1248,6 +1248,34 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(groups.every((g) => g.label === "REACH")).toBe(true);
   });
 
+  it("LeadGen / Traffic naming wins over generic Lead result_type (definitive WEBSITE LEADS bleed)", () => {
+    const leadRows: MetricRow[] = [
+      metricRow({
+        campaign_name: "SouthavenRV&Marine_LeadGen_InstantForm",
+        ad_set_name: "Retargeting",
+        _raw: { "Meta leads": "1", Results: "1" },
+        result_type: "Lead",
+        meta_leads: 1,
+        results: 1,
+        spend: 35,
+      }),
+    ];
+    const trafficRows: MetricRow[] = [
+      metricRow({
+        campaign_name: "SouthavenRV&Marine_Traffic_LinkClicks",
+        ad_set_name: "Interests",
+        _raw: { "Link clicks": "210", Results: "210" },
+        result_type: "Lead",
+        link_clicks: 210,
+        results: 210,
+        spend: 66,
+      }),
+    ];
+
+    expect(resolveCampaignObjective(leadRows).resultLabel).toBe("META FORM LEADS");
+    expect(resolveCampaignObjective(trafficRows).resultLabel).toBe("LINK CLICKS");
+  });
+
   it("detects META FORM LEADS and LINK CLICKS for Southaven LeadGen / Traffic naming — not WEBSITE LEADS", () => {
     const leadRows: MetricRow[] = [
       metricRow({

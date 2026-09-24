@@ -1237,11 +1237,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // slide or table row is built, and reused by every consumer below —
   // computeTableRow's MTD row, every campaign/ad-set summary slide (Phase
   // A1/A2), and the Combined Total table's column grouping. Built from
-  // mtdRows ∪ primaryRows so the map covers every campaign either the table
-  // (always MTD-based) or the slides (weekly OR MTD-based, depending on
-  // reportType) might ask about, even the rare case where a custom weekly
-  // window falls partly outside the current MTD span.
-  const campaignObjectiveMap = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
+  // Raw daily rows (with _raw headers) — aggregated ad-set rows lose column
+  // context and can mis-detect mixed-objective exports (Southaven LeadGen +
+  // Traffic both folded to WEBSITE LEADS). filteredMtdDailyRows already spans
+  // the full uploaded CSV for every selected campaign.
+  const campaignObjectiveMap = buildCampaignObjectiveMap(filteredMtdDailyRows as MetricRow[]);
   // Objective Confirmation wizard step — a user-reviewed/corrected
   // objective always wins over the engine's own detection, for every
   // consumer that reads campaignObjectiveMap below (campaign slides,

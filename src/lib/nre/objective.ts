@@ -102,6 +102,9 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
 export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels | null {
   if (rows.length === 0) return null;
 
+  const named = namedCampaignObjectiveFromRows(rows);
+  if (named) return named;
+
   let websiteLeadsTotal = 0;
   let metaLeadsTotal = 0;
   let messagingTotal = 0;
@@ -1066,7 +1069,25 @@ function shouldOverrideDefinitiveProof(rows: MetricRow[], info: ObjectiveInfo): 
   return false;
 }
 
+/** Explicit campaign/ad-set naming beats generic result_type bleed (e.g. "Lead" → WEBSITE LEADS on a LeadGen_InstantForm campaign). */
+function namedCampaignObjectiveFromRows(rows: MetricRow[]): ResultLabels | null {
+  return (
+    reachObjectiveIfNamedCampaign(rows) ??
+    metaFormLeadsObjectiveIfNamedCampaign(rows) ??
+    linkClicksObjectiveIfNamedCampaign(rows)
+  );
+}
+
 function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
+  const named = namedCampaignObjectiveFromRows(rows);
+  if (named) {
+    return {
+      ...named,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
+  }
+
   const definitive = resolveDefinitiveObjectiveFromRows(rows, resolveObjectiveFromResultType);
   if (definitive && !shouldOverrideDefinitiveProof(rows, definitive)) {
     return {
@@ -1082,33 +1103,6 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     return {
       resultLabel: uniqueMapped.resultLabel,
       costLabel: uniqueMapped.costLabel,
-      confidence: "high",
-      requiresConfirmation: false,
-    };
-  }
-
-  const reachNamed = reachObjectiveIfNamedCampaign(rows);
-  if (reachNamed) {
-    return {
-      ...reachNamed,
-      confidence: "high",
-      requiresConfirmation: false,
-    };
-  }
-
-  const metaFormNamed = metaFormLeadsObjectiveIfNamedCampaign(rows);
-  if (metaFormNamed) {
-    return {
-      ...metaFormNamed,
-      confidence: "high",
-      requiresConfirmation: false,
-    };
-  }
-
-  const linkClicksNamed = linkClicksObjectiveIfNamedCampaign(rows);
-  if (linkClicksNamed) {
-    return {
-      ...linkClicksNamed,
       confidence: "high",
       requiresConfirmation: false,
     };
