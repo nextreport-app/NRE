@@ -340,13 +340,41 @@ function costPerActionType(
   return "";
 }
 
+function csvResultTypeForPickedAction(row: MetaInsightRow, actionType: string): string {
+  if (
+    isWebsiteLeadsCampaignRow(row) &&
+    (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
+  ) {
+    // Match Meta Ads Manager manual exports (e.g. DC Credit Firm "website submission").
+    return "website submission";
+  }
+  return actionTypeToCsvResultType(actionType, row, true);
+}
+
 function insightToCsvRow(row: MetaInsightRow): string[] {
   const actionMap = actionValueMap(row.actions);
   const result = pickResultAction(row);
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
-  const metaLeadMatch = firstActionWithValue(actionMap, META_LEAD_ACTION_TYPES);
-  const websiteLeadMatch = firstActionWithValue(actionMap, WEBSITE_LEAD_ACTION_TYPES);
+  const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
+  const metaFormCampaign = isMetaFormLeadsCampaignRow(row);
+  const messagingCampaign = isMessagingCampaignRow(row);
+
+  // Only populate the lead-family column that matches this campaign's naming —
+  // Meta API attaches incidental meta-form / website-lead actions on every
+  // campaign; writing them all (old behaviour) made API sync disagree with
+  // manual CSV on leads, CPL, and chart slides (Credit Firm regression).
+  let metaLeadMatch = metaFormCampaign
+    ? firstActionWithValue(actionMap, META_LEAD_ACTION_TYPES)
+    : null;
+  let websiteLeadMatch = websiteLeadsCampaign
+    ? firstActionWithValue(actionMap, WEBSITE_LEAD_ACTION_TYPES)
+    : null;
+  if (messagingCampaign) {
+    metaLeadMatch = null;
+    websiteLeadMatch = null;
+  }
+
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
 
   // One canonical count per day — Meta CSV never sums fb_pixel_lead + website_lead.
@@ -355,10 +383,7 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
 
   const genericLead = actionMap.get("lead") ?? 0;
   const typedCampaign =
-    isMessagingCampaignRow(row) ||
-    isMetaFormLeadsCampaignRow(row) ||
-    isWebsiteLeadsCampaignRow(row) ||
-    isQuoteRequestCampaignRow(row);
+    messagingCampaign || metaFormCampaign || websiteLeadsCampaign || isQuoteRequestCampaignRow(row);
   if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
     if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
       websiteLeadsOut = genericLead;
@@ -376,7 +401,7 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
     row.campaign_name ?? "",
     row.adset_name ?? "",
     row.date_start ? isoToCsvDay(row.date_start) : "",
-    result ? actionTypeToCsvResultType(result.action_type, row, true) : "",
+    result ? csvResultTypeForPickedAction(row, result.action_type) : "",
     result?.value ?? "",
     formatMoney(row.spend),
     cpr,
