@@ -82,4 +82,21 @@ describe("analyzeCsvDateGuidance", () => {
     expect(guidance.warnings[0]?.suggestedDownload).toBe("last_30_days");
     expect(guidance.warnings[0]?.missingDateLabel).toBe("September 1");
   });
+
+  it("Sep 24 + CSV from Sep 16 (new campaign) does not warn about missing Sep 1", () => {
+    const rows = daysInclusive("2026-09-16", "2026-09-23");
+    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-24T12:00:00Z"), "UTC");
+
+    expect(guidance.warnings).toHaveLength(0);
+    expect(guidance.mtdRange).toEqual({ startIso: "2026-09-01", endIso: "2026-09-23" });
+  });
+
+  it("Sep 24 + CSV from Sep 22 warns when default weekly spans pre-launch days", () => {
+    const rows = daysInclusive("2026-09-22", "2026-09-23");
+    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-24T12:00:00Z"), "UTC");
+
+    expect(guidance.warnings).toHaveLength(1);
+    expect(guidance.warnings[0]?.kind).toBe("weekly_period_partial");
+    expect(guidance.warnings[0]?.title).toContain("September 22");
+  });
 });
