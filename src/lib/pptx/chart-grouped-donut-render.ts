@@ -56,7 +56,7 @@ export function appendGroupedDonutOoxml(
       y: donutY + layout.donutD / 2 - 14,
       w: layout.donutD,
       h: 28,
-      text: centerLabel,
+      text: opts.centerLabel,
       sizePt: 18,
       bold: true,
       colorHex: opts.colors.inkMuted,
