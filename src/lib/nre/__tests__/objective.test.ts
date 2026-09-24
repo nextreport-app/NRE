@@ -1212,6 +1212,42 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     );
   });
 
+  it("detects REACH for a reach-named campaign with blank result_type, link clicks, and real reach delivery (Southaven regression)", () => {
+    const rows: MetricRow[] = [
+      metricRow({
+        campaign_name: "SouthavenRV_Reach_Retargeting_April 9",
+        ad_set_name: "Retargeting",
+        _raw: { Reach: "12000", "Link clicks": "45", Results: "0" },
+        result_type: "",
+        reach: 12000,
+        link_clicks: 45,
+        results: 0,
+        spend: 350,
+      }),
+      metricRow({
+        campaign_name: "SouthavenRV_Reach_Retargeting_April 9",
+        ad_set_name: "Prospecting",
+        _raw: { Reach: "8000", "Link clicks": "30", Results: "0" },
+        result_type: "Link clicks",
+        reach: 8000,
+        link_clicks: 30,
+        results: 0,
+        spend: 280,
+      }),
+    ];
+
+    expect(resolveCampaignObjective(rows).resultLabel).toBe("REACH");
+    const resolution = resolveCampaignObjectiveWithConfidence(rows);
+    expect(resolution.resultLabel).toBe("REACH");
+    expect(resolution.confidence).toBe("high");
+
+    const objectiveMap = buildCampaignObjectiveMap(rows);
+    expect(objectiveMap.get(normalizeCampaignName("SouthavenRV_Reach_Retargeting_April 9"))?.resultLabel).toBe("REACH");
+
+    const groups = getResultGroups(rows);
+    expect(groups.every((g) => g.label === "REACH")).toBe(true);
+  });
+
   it("MTD-row bug fix — the reverse case: a campaign assigned INITIATE CHECKOUT correctly excludes a mismatched Purchases-classified row's own results", () => {
     const rows: MetricRow[] = [
       metricRow({

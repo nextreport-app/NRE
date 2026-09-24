@@ -36,6 +36,14 @@ export function isQuoteRequestCampaignHaystack(haystack: string): boolean {
   return /quote[\s_]*request/.test(haystack);
 }
 
+/** Reach/awareness campaigns — underscore-safe match avoids "outreach"/"breach" false positives. */
+export function isReachCampaignHaystack(haystack: string): boolean {
+  if (/\bawareness\b/.test(haystack)) return true;
+  if (/\breach\b/.test(haystack)) return true;
+  // Meta names often use underscores (e.g. Brand_Reach_Retargeting) where \b fails.
+  return /(?:^|[\s_\-])reach(?:[\s_\-]|$)/.test(haystack);
+}
+
 /** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
 export function isPurchaseCampaignHaystack(haystack: string): boolean {
   if (/\batc\b|add.?to.?cart/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
@@ -65,6 +73,10 @@ export function isQuoteRequestCampaignName(rows: MetricRow[]): boolean {
 
 export function isPurchaseCampaignName(rows: MetricRow[]): boolean {
   return isPurchaseCampaignHaystack(campaignNameHaystackFromRows(rows));
+}
+
+export function isReachCampaignName(rows: MetricRow[]): boolean {
+  return isReachCampaignHaystack(campaignNameHaystackFromRows(rows));
 }
 
 export function isLeadFamilyCampaignName(rows: MetricRow[]): boolean {
