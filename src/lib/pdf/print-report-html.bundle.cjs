@@ -1526,6 +1526,7 @@ function resolveMetricIconId(metric) {
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function reportTypeLabel(data) {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";
 }
@@ -1786,8 +1787,8 @@ function ShareMtdOverviewSlide({ chart }) {
   ] }) });
 }
 function CombinedTotalTable({ data, compact = false }) {
-  const isHistoricalMultiMonth = data.reportType === "HISTORICAL" && (data.historicalComparisonRows?.length ?? 0) > 0;
-  const hidePeriodRow = isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || !data.periodRow.hasData;
+  const isHistoricalMultiMonth = (data.reportType === "HISTORICAL" || data.reportType === "DAY_BREAKDOWN") && (data.historicalComparisonRows?.length ?? 0) > 0;
+  const hidePeriodRow = isHistoricalMultiMonth || data.reportType === "MONTHLY" || data.reportType === "HISTORICAL" || data.reportType === "DAY_BREAKDOWN" || !data.periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
   const grid = isHistoricalMultiMonth ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows, data.tableHeaderLabels) : data.platform === "GOOGLE" ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions) : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);

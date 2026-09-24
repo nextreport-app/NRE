@@ -22,7 +22,7 @@ describe("rasterizeSvgToPng", () => {
         title: "Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026",
         isMultiObjective: false,
         panelHeading: "Purchases by Campaign",
-        panelSubheading: "Bar length shows purchases volume · % is share of total purchases",
+        panelSubheading: "",
         leftHeading: "Purchases by Campaign",
         rightHeading: "Purchases by Campaign",
         miniDonuts: [],
