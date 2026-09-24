@@ -335,7 +335,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const resultLabel = toTitleCaseChartLabel(primaryResLabel);
   const reportingCampaigns = chart.campaigns.filter((c) => c.spend > 0 || c.results > 0);
-  const useSplitPanel = reportingCampaigns.length >= 2;
+  const useSplitPanel = reportingCampaigns.length >= 1 && chart.totalAllSpend > 0;
   const groupedDonut = useSplitPanel
     ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol)
     : null;
@@ -354,7 +354,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     {
       includeSpend: false,
       includeResultsShare: reportingCampaigns.length > 1,
-      singleCampaignBarCap: reportingCampaigns.length === 1,
+      singleCampaignBarCap: false,
     },
   );
 
