@@ -543,7 +543,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     accountName: data.accountName,
     reportDate: data.reportDate,
     dateRange: data.rangeLabel,
-    healthBadge: "Day-by-Day",
+    healthBadge: "Daily",
     healthScore: 0,
     budgetSummary: "",
   };

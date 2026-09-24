@@ -324,7 +324,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (reportType === "DAY_BREAKDOWN") {
     if (platform !== "META") {
-      return NextResponse.json({ error: "Day-by-Day reports are available for Meta only in this version." }, { status: 400 });
+      return NextResponse.json({ error: "Daily table reports are available for Meta only in this version." }, { status: 400 });
     }
 
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -350,7 +350,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    const fileName = `Day-by-Day Report - ${dayBreakdownData.rangeLabel}.pptx`.replace(/[\s/]/g, "_");
+    const fileName = `Daily Report - ${dayBreakdownData.rangeLabel}.pptx`.replace(/[\s/]/g, "_");
     const shareToken = generateShareToken();
 
     let dayBreakdownReport;

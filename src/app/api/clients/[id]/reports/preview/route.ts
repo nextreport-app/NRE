@@ -168,7 +168,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json(
         {
           valid: false,
-          errors: [{ field: "reportType", message: "Day-by-Day reports are available for Meta only in this version." }],
+          errors: [{ field: "reportType", message: "Daily table reports are available for Meta only in this version." }],
           warnings: [],
         },
         { status: 200 },

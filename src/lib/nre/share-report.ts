@@ -358,7 +358,7 @@ export function buildDayBreakdownShareReportData(
     cover: {
       reportDate: data.reportDate,
       dateRange: data.rangeLabel,
-      healthBadge: "Day-by-Day",
+      healthBadge: "Daily",
       healthScore: 0,
       budgetSummary: "",
     },
