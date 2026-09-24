@@ -287,6 +287,45 @@ function AdSetCard({
   );
 }
 
+function VisualSpendDonut({
+  segments,
+  centerLabel,
+}: {
+  segments: { name: string; color: string; percentage: number; spendLabel: string }[];
+  centerLabel: string;
+}) {
+  let cursor = 0;
+  const gradient = segments
+    .map((seg) => {
+      const start = cursor;
+      cursor += seg.percentage;
+      return `#${seg.color} ${start}% ${cursor}%`;
+    })
+    .join(", ");
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="relative flex h-[188px] w-[188px] items-center justify-center rounded-full"
+        style={{ background: `conic-gradient(${gradient})` }}
+      >
+        <div
+          className="flex h-[122px] w-[122px] items-center justify-center rounded-full text-center text-[18px] font-bold text-[#94a3b8]"
+          style={{ backgroundColor: "#111f35" }}
+        >
+          {centerLabel}
+        </div>
+      </div>
+      <ul className="mt-4 w-full space-y-1.5 text-[13px] text-[#94a3b8]">
+        {segments.map((seg) => (
+          <li key={seg.name} className="truncate">
+            {seg.name} · {seg.percentage}% · {seg.spendLabel}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function VisualResultBar({
   rank,
   name,
@@ -341,6 +380,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const barLayout = resultBarLayout(barCount);
   const compactBars = barCount >= 4;
   const barGapClass = barCount >= 5 ? "space-y-2.5" : barCount >= 4 ? "space-y-3.5" : "space-y-5";
+  const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
 
   return (
     <SlideCard>
@@ -353,23 +393,53 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           className="mt-5 flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4 sm:p-5"
           style={{ backgroundColor: "#111f35" }}
         >
-          <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.panelHeading}</p>
-          {model.panelSubheading ? (
-            <p className="mt-1 text-[13px] leading-snug text-[#64748b] sm:text-[14px]">{model.panelSubheading}</p>
-          ) : null}
-          <div className={`mt-3 ${barGapClass}`}>
-            {model.resultBars.map((bar) => (
-              <VisualResultBar
-                key={`${bar.rank}-${bar.name}`}
-                rank={bar.rank}
-                name={bar.name}
-                color={bar.color}
-                statLine={bar.statLine}
-                barPct={bar.barPct}
-                compact={compactBars || barLayout.rowH < 72}
-              />
-            ))}
-          </div>
+          {splitPanel ? (
+            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.2fr)] lg:items-center">
+              <div className="min-w-0">
+                <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
+                <div className="mt-4 flex justify-center lg:justify-start">
+                  <VisualSpendDonut segments={model.groupedDonut!} centerLabel={model.groupedDonutCenterLabel} />
+                </div>
+              </div>
+              <div className="hidden h-[280px] w-px bg-[#1e3a5f] lg:block" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+                <div className={`mt-3 ${barGapClass}`}>
+                  {model.resultBars.map((bar) => (
+                    <VisualResultBar
+                      key={`${bar.rank}-${bar.name}`}
+                      rank={bar.rank}
+                      name={bar.name}
+                      color={bar.color}
+                      statLine={bar.statLine}
+                      barPct={bar.barPct}
+                      compact={compactBars || barLayout.rowH < 72}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.panelHeading}</p>
+              {model.panelSubheading ? (
+                <p className="mt-1 text-[13px] leading-snug text-[#64748b] sm:text-[14px]">{model.panelSubheading}</p>
+              ) : null}
+              <div className={`mt-3 ${barGapClass}`}>
+                {model.resultBars.map((bar) => (
+                  <VisualResultBar
+                    key={`${bar.rank}-${bar.name}`}
+                    rank={bar.rank}
+                    name={bar.name}
+                    color={bar.color}
+                    statLine={bar.statLine}
+                    barPct={bar.barPct}
+                    compact={compactBars || barLayout.rowH < 72}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <p className="mt-5 text-center text-[16px] text-[#94a3b8]">{model.summaryLine}</p>

@@ -65,6 +65,33 @@ export function capRangeEndToData(
   return effectiveIso < endIso ? effectiveIso : endIso;
 }
 
+/**
+ * Min/max dates actually present in `rows` within an inclusive ISO window.
+ * Used for chart/MTD labels so headings never show calendar days with no data
+ * (e.g. a campaign that started Sep 16 must not read "Aug 25 - Sep 23").
+ */
+export function computeActualDataRangeInWindow(
+  rows: NreRow[],
+  range: DateRangeIso,
+): DateRangeIso | null {
+  const startTs = Date.parse(range.startIso + "T00:00:00Z");
+  const endTs = Date.parse(range.endIso + "T00:00:00Z");
+  if (Number.isNaN(startTs) || Number.isNaN(endTs)) return null;
+
+  let minTs: number | null = null;
+  let maxTs: number | null = null;
+  rows.forEach((row) => {
+    const d = parseDate(getRowDate(row));
+    if (!d) return;
+    const ts = Date.UTC(d.year, d.month - 1, d.day);
+    if (ts < startTs || ts > endTs) return;
+    if (minTs === null || ts < minTs) minTs = ts;
+    if (maxTs === null || ts > maxTs) maxTs = ts;
+  });
+  if (minTs === null || maxTs === null) return null;
+  return { startIso: toIsoDate(dateFromTs(minTs)), endIso: toIsoDate(dateFromTs(maxTs)) };
+}
+
 /** Same cap as capRangeEndToData, shifting the start back so the day span stays fixed (last 7 / last 30 labels). */
 export function capRangeToData(
   range: DateRangeIso,

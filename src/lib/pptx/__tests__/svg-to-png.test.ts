@@ -21,6 +21,7 @@ describe("rasterizeSvgToPng", () => {
       visualSlide: {
         title: "Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026",
         isMultiObjective: false,
+        useSplitPanel: false,
         panelHeading: "Purchases by Campaign",
         panelSubheading: "",
         leftHeading: "Purchases by Campaign",

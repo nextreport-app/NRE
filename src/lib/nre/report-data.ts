@@ -83,6 +83,7 @@ import { detectAdNameColumn } from "./ad-level";
 import { buildCreativeReportSections, filterRawRowsToRange, type CreativeReportSections } from "./creative-report-data";
 import {
   capRangeToData,
+  computeActualDataRangeInWindow,
   computeCreativeRangeIso,
   computeEffectiveYesterday,
   computeMtdRangeIso,
@@ -93,6 +94,7 @@ import {
   toIsoDate,
 } from "./date-range";
 import { buildBudgetSummary } from "./budget-pacing";
+import { buildCompanionSpendSegments } from "./chart-companion-spend";
 import { createPlatformReportAdapter } from "./report-engine/platform-adapter";
 
 /** Rebuild the campaign's 8 (or N) chips in the order the wizard posted, not account-union order. */
@@ -248,6 +250,10 @@ export interface ChartSlideData {
    * with no ": ..." suffix at all.
    */
   periodSubLabel: string;
+  /** Inclusive day count backing periodSubLabel — when less than 30, the chart title drops the "Last 30 Days" prefix. */
+  actualPeriodDays?: number;
+  /** Spend mix for the single-campaign split panel (ad sets, or weekly buckets). */
+  companionSpendSegments?: { name: string; spend: number }[];
 }
 
 export interface ResultColumnData {
@@ -721,8 +727,18 @@ function computeTableRow(
   if (isMtdRow && mtdCalendarRange) {
     const calMonthName = getMonthName(mtdCalendarRange.startIso);
     const labelEndIso = mtdLabelEndIso(mtdCalendarRange, rawEnd);
-    monthLabel = compactSameMonthRangeLabel(mtdCalendarRange.startIso, labelEndIso, calMonthName);
-    fullMonthLabel = getDateRangeAbbrLabel(mtdCalendarRange.startIso, labelEndIso);
+    let labelStartIso = mtdCalendarRange.startIso;
+    if (rows.some(hasRealRowDate) && rawStart) {
+      const rowStartParsed = parseDate(rawStart);
+      const calStartParsed = parseDate(mtdCalendarRange.startIso);
+      if (rowStartParsed && calStartParsed) {
+        const rowTs = Date.UTC(rowStartParsed.year, rowStartParsed.month - 1, rowStartParsed.day);
+        const calTs = Date.UTC(calStartParsed.year, calStartParsed.month - 1, calStartParsed.day);
+        if (rowTs > calTs) labelStartIso = toIsoDate(rowStartParsed);
+      }
+    }
+    monthLabel = compactSameMonthRangeLabel(labelStartIso, labelEndIso, calMonthName);
+    fullMonthLabel = getDateRangeAbbrLabel(labelStartIso, labelEndIso);
   }
 
   return {
@@ -1005,10 +1021,23 @@ function buildLast30DaysChartSlide(params: {
 
   if (chartCampaigns.length === 0 || totalAllSpend <= 0) return null;
 
-  const chartRangeLabel = getDateRangeAbbrLabel(chartRange.startIso, chartRange.endIso);
-  const chartRangeYear = parseDate(chartRange.endIso)?.year;
+  const actualChartRange = computeActualDataRangeInWindow(chartRawRows, chartRange) ?? chartRange;
+  const chartRangeLabel = getDateRangeAbbrLabel(actualChartRange.startIso, actualChartRange.endIso);
+  const chartRangeYear = parseDate(actualChartRange.endIso)?.year;
   const periodSubLabel =
     chartRangeLabel && chartRangeYear ? `${chartRangeLabel}, ${chartRangeYear}` : chartRangeLabel;
+  const startParsed = parseDate(actualChartRange.startIso);
+  const endParsed = parseDate(actualChartRange.endIso);
+  const actualPeriodDays =
+    startParsed && endParsed
+      ? Math.round(
+          (Date.UTC(endParsed.year, endParsed.month - 1, endParsed.day) -
+            Date.UTC(startParsed.year, startParsed.month - 1, startParsed.day)) /
+            86400000,
+        ) + 1
+      : undefined;
+  const companionSpendSegments =
+    chartCampaigns.length === 1 ? buildCompanionSpendSegments(chartRawRows) : undefined;
   const campaignSpendByObjective = new Map<string, number>();
   chartCampaigns.forEach((c) => {
     campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
@@ -1041,6 +1070,8 @@ function buildLast30DaysChartSlide(params: {
     reportType: params.reportType,
     mtdMonthName: getMonthName(chartRange.endIso) ?? params.mtdRow.monthName,
     periodSubLabel,
+    actualPeriodDays,
+    companionSpendSegments,
   };
 }
 
@@ -1351,7 +1382,21 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
   let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now, undefined, timezone);
-  const mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange, timezone);
+  let mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange, timezone);
+  const mtdDailyInCalendarMonth = filterNreRowsByDateRange(filteredMtdDailyRows, mtdCalendarRange);
+  const actualMtdLabelRange = computeActualDataRangeInWindow(mtdDailyInCalendarMonth, mtdCalendarRange);
+  if (actualMtdLabelRange && mtdRow.hasData) {
+    const calMonthName = getMonthName(mtdCalendarRange.startIso);
+    mtdRow = {
+      ...mtdRow,
+      monthLabel: compactSameMonthRangeLabel(
+        actualMtdLabelRange.startIso,
+        actualMtdLabelRange.endIso,
+        calMonthName,
+      ),
+      fullMonthLabel: getDateRangeAbbrLabel(actualMtdLabelRange.startIso, actualMtdLabelRange.endIso),
+    };
+  }
 
   // sameMonthAsCurrentMTD: both rows have real data AND land in the same
   // calendar month (e.g. a report generated on the 1st, before the new
