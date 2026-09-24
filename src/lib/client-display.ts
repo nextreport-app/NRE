@@ -21,12 +21,12 @@ const FRIENDLY_TIMEZONES: Record<string, string> = {
 const REPORT_TYPE_LABELS: Record<string, string> = {
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
-  DAILY: "Daily",
+  DAILY: "Yesterday",
   COMPARISON: "Comparison",
   CREATIVE: "Creative",
   WEBSITE: "Website",
   HISTORICAL: "Multi-Month",
-  DAY_BREAKDOWN: "Day-by-Day",
+  DAY_BREAKDOWN: "Daily",
 };
 
 /** Human-readable timezone for client list cards — keeps IANA id in title attribute. */

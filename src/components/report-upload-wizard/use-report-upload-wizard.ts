@@ -1443,7 +1443,7 @@ export function useReportUploadWizard({
     if (reportType === "DAY_BREAKDOWN" && platform !== "META") {
       setPreviewStatus("invalid");
       setPreviewErrors([
-        { field: "reportType", message: "Day-by-Day reports are available for Meta only in this version." },
+        { field: "reportType", message: "Daily table reports are available for Meta only in this version." },
       ]);
       return;
     }
@@ -1886,11 +1886,11 @@ export function useReportUploadWizard({
   function reportTypeLabel(): string {
     if (previewKind === "comparison") return "Comparison Report";
     if (previewKind === "historical") return "Multi-Month Report";
-    if (previewKind === "dayBreakdown") return "Day-by-Day Report";
+    if (previewKind === "dayBreakdown") return "Daily Report";
     if (reportType === "MONTHLY") return "Monthly Report";
     if (reportType === "QUARTER") return "Quarterly Report";
     if (reportType === "YTD") return "Year-to-Date Report";
-    if (reportType === "DAILY") return "Daily Report";
+    if (reportType === "DAILY") return "Yesterday Report";
     if (reportType === "CREATIVE") return "Creative Report";
     return "Weekly Report";
   }

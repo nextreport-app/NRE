@@ -18,7 +18,12 @@ import {
 import type { NreRow } from "./columns";
 import { getRowDate } from "./columns";
 
-export type CsvDateWarningKind = "first_of_month" | "missing_month_start" | "early_month_last30";
+export type CsvDateWarningKind =
+  | "first_of_month"
+  | "missing_month_start"
+  | "early_month_last30"
+  /** Default weekly period spans days before the account had any delivery. */
+  | "weekly_period_partial";
 
 export interface CsvDateWarning {
   kind: CsvDateWarningKind;
@@ -66,6 +71,17 @@ export function getMetaCsvDownloadTip(now: Date = new Date(), timezone = "UTC"):
   return "Export Last 30 Days with Day breakdown.";
 }
 
+function daysBetween(startIso: string, endIso: string): number {
+  const startTs = Date.parse(startIso + "T00:00:00Z");
+  const endTs = Date.parse(endIso + "T00:00:00Z");
+  if (Number.isNaN(startTs) || Number.isNaN(endTs)) return 0;
+  return Math.round((endTs - startTs) / (24 * 60 * 60 * 1000));
+}
+
+function isRangeWithinBounds(range: DateRangeIso, bounds: { minIso: string; maxIso: string }): boolean {
+  return range.startIso >= bounds.minIso && range.endIso <= bounds.maxIso;
+}
+
 function monthStartPresentInCsv(rows: NreRow[], monthStartIso: string): boolean {
   return rows.some((row) => {
     const raw = getRowDate(row);
@@ -110,18 +126,41 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), t
     const missingDateLabel = friendlyDate(mtdRange.startIso);
     const csvStartLabel = friendlyDate(csvBounds.minIso);
     const usePreviousMonth = dayOfMonth === 1;
-    warnings.push({
-      kind: usePreviousMonth ? "first_of_month" : "missing_month_start",
-      title: `${missingDateLabel} missing from your CSV`,
-      message: usePreviousMonth
-        ? `Your file starts ${csvStartLabel}, so last month's totals skip ${missingDateLabel}. Re-export Previous Month (${intendedMtdLabel}) with Day breakdown.`
-        : `Your file starts ${csvStartLabel}, so MTD skips ${missingDateLabel}. Re-export Last 30 Days with Day breakdown (${intendedMtdLabel}).`,
-      missingDateLabel,
-      csvStartLabel,
-      intendedMtdLabel,
-      weeklyRangeLabel,
-      suggestedDownload: usePreviousMonth ? "previous_month" : "last_30_days",
-    });
+    const gapFromMonthStart = daysBetween(mtdRange.startIso, csvBounds.minIso);
+    const weeklyCovered = weeklyOptions ? isRangeWithinBounds(weeklyOptions.last7, csvBounds) : false;
+
+    // Newer campaigns / API sync often start mid-month — no delivery before csv min.
+    // When the default weekly window is fully covered, skip the scary re-export prompt.
+    if (weeklyCovered && !usePreviousMonth) {
+      // No warning — MTD/chart simply cover from first delivery day onward.
+    } else if (
+      !usePreviousMonth &&
+      gapFromMonthStart > 2 &&
+      weeklyOptions &&
+      csvBounds.minIso > weeklyOptions.last7.startIso
+    ) {
+      warnings.push({
+        kind: "weekly_period_partial",
+        title: `Campaign data starts ${csvStartLabel}`,
+        message: `There's no delivery before ${csvStartLabel} in this export — normal when campaigns went live recently. The default last-7-days period (${weeklyRangeLabel ?? "see Generate step"}) includes earlier dates with no activity. Pick a custom range from ${csvStartLabel} onward on the Generate step, or continue with partial weekly data.`,
+        csvStartLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "last_30_days",
+      });
+    } else {
+      warnings.push({
+        kind: usePreviousMonth ? "first_of_month" : "missing_month_start",
+        title: `${missingDateLabel} missing from your CSV`,
+        message: usePreviousMonth
+          ? `Your file starts ${csvStartLabel}, so last month's totals skip ${missingDateLabel}. Re-export Previous Month (${intendedMtdLabel}) with Day breakdown.`
+          : `Your file starts ${csvStartLabel}, so MTD skips ${missingDateLabel}. Re-export Last 30 Days with Day breakdown (${intendedMtdLabel}).`,
+        missingDateLabel,
+        csvStartLabel,
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: usePreviousMonth ? "previous_month" : "last_30_days",
+      });
+    }
   }
 
   const yesterday = computeEffectiveYesterday(rows, now, timezone);

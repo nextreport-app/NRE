@@ -181,12 +181,12 @@ export function presentedToTopY(hasAgencyName: boolean): number {
   return hasAgencyName ? PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU : PRESENTED_TO_Y;
 }
 
-const DEFAULT_DAILY_REPORT_TITLE = "Daily Performance Report";
+const DEFAULT_DAILY_REPORT_TITLE = "Yesterday Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
-const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Performance Report";
+const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Daily Performance Report";
 const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
 const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
@@ -429,7 +429,7 @@ function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): strin
   if (reportType === "MONTHLY") return "YOUR MONTHLY PERFORMANCE REPORT";
   if (reportType === "QUARTER") return "YOUR QUARTERLY PERFORMANCE REPORT";
   if (reportType === "YTD") return "YOUR YEAR-TO-DATE PERFORMANCE REPORT";
-  if (reportType === "DAILY") return "YOUR DAILY PERFORMANCE REPORT";
+  if (reportType === "DAILY") return "YOUR YESTERDAY PERFORMANCE REPORT";
   if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
   if (reportType === "WEBSITE") return "YOUR WEBSITE TRAFFIC REPORT";
   return "YOUR WEEKLY PERFORMANCE REPORT";
