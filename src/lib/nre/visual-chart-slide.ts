@@ -1,18 +1,18 @@
 /**
  * Last-30-days visual chart slide — shared data model for browser, OOXML, and SVG.
- * Single full-width performance leaderboard: one bar per campaign (or objective),
- * bar length proportional to results, spend + cost shown inline.
+ * Two-panel layout (2+ campaigns): spend donut left, results + cost-per-result bars right.
+ * Single campaign: results bar only — no redundant "100% of total" or spend-by-week donut.
  */
 
 import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
-import type { SpendSegment } from "./chart-companion-spend";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { formatCampaignDisplayName } from "./chart-campaign-labels";
 
 export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
 const INACTIVE_COLOR = "4a5568";
 const MAX_ROWS = 5;
+const SINGLE_CAMPAIGN_BAR_CAP = 75;
 
 export interface VisualChartSegment {
   name: string;
@@ -36,38 +36,28 @@ export interface VisualResultBar {
   resultCount: number;
   resultLine: string;
   costLine: string;
-  /** Single-line stats — e.g. "$599 spend · 2,112 landing page views · $0.28 CPLPV · 36.6% of total". */
+  /** Metrics under the campaign name — spend omitted on split/single-campaign layouts. */
   statLine: string;
-  /** Share of total results across all campaigns/objectives on the chart. */
   resultsSharePct: number;
-  /** 0–100 relative to the largest results count in the set. */
   barPct: number;
 }
 
 export interface VisualChartSlideModel {
   title: string;
   isMultiObjective: boolean;
-  /** Left + right panels when a single campaign gets a companion spend donut. */
+  /** Spend donut (left) + results bars (right) when 2+ campaigns. */
   useSplitPanel: boolean;
-  /** Single panel heading for the unified leaderboard. */
   panelHeading: string;
-  /** Optional helper line under the panel heading — left empty (bars are self-explanatory). */
   panelSubheading: string;
-  /** @deprecated Left panel removed — use panelHeading. */
   leftHeading: string;
-  /** @deprecated Right panel removed — use panelHeading. */
   rightHeading: string;
-  /** @deprecated Always empty — donut removed from chart slide. */
   miniDonuts: VisualMiniDonut[];
-  /** @deprecated Donut removed — always null for new slides. */
   groupedDonut: VisualChartSegment[] | null;
-  /** Total spend — kept for share editor backward compatibility. */
   groupedDonutCenterLabel: string;
   resultBars: VisualResultBar[];
   summaryLine: string;
 }
 
-/** Short cost suffix for stat lines — readable on the chart slide, not cryptic abbreviations. */
 function shortCostAbbrev(cprLabel: string): string {
   const u = cprLabel.toUpperCase();
   if (u.includes("CONVERSATION")) return "cost per result";
@@ -109,18 +99,24 @@ function formatResultsShareLabel(results: number, totalResults: number): string 
   return `${label}% of total`;
 }
 
-function formatPerformanceStatLine(
-  spendLabel: string,
-  resultLine: string,
-  costLine: string,
-  resultsShareLabel: string,
-): string {
-  const shareSuffix = resultsShareLabel ? ` · ${resultsShareLabel}` : "";
-  if (costLine.startsWith("N/A")) return `${spendLabel} spend · ${resultLine}${shareSuffix}`;
-  return `${spendLabel} spend · ${resultLine} · ${costLine}${shareSuffix}`;
+function formatStatLine(params: {
+  spendLabel: string;
+  resultLine: string;
+  costLine: string;
+  resultsShareLabel: string;
+  includeSpend: boolean;
+}): string {
+  const shareSuffix = params.resultsShareLabel ? ` · ${params.resultsShareLabel}` : "";
+  const metrics = params.includeSpend
+    ? params.costLine.startsWith("N/A")
+      ? `${params.spendLabel} spend · ${params.resultLine}${shareSuffix}`
+      : `${params.spendLabel} spend · ${params.resultLine} · ${params.costLine}${shareSuffix}`
+    : params.costLine.startsWith("N/A")
+      ? `${params.resultLine}${shareSuffix}`
+      : `${params.resultLine} · ${params.costLine}${shareSuffix}`;
+  return metrics;
 }
 
-/** Parse CPR from snapshot fields — falls back to spend ÷ results when stored CPR rounded to $0. */
 export function resolveObjectiveCpr(params: {
   resultsValue: string;
   cprValue: string;
@@ -135,7 +131,7 @@ export function resolveObjectiveCpr(params: {
 }
 
 function assignCampaignColors(campaigns: ChartCampaignData[]): Map<string, string> {
-  const sorted = [...campaigns].sort((a, b) => b.results - a.results || b.spend - a.spend);
+  const sorted = [...campaigns].sort((a, b) => b.spend - a.spend || b.results - a.results);
   const map = new Map<string, string>();
   sorted.forEach((c, i) => {
     const color = c.spend > 0 || c.results > 0 ? VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]! : INACTIVE_COLOR;
@@ -168,6 +164,7 @@ function buildResultBars(
     cprLabel: string;
   }[],
   currencySymbol: string,
+  options: { includeSpend: boolean; includeResultsShare: boolean; singleCampaignBarCap?: boolean },
 ): VisualResultBar[] {
   const totalResults = rows.reduce((sum, row) => sum + row.results, 0);
   const maxResults = Math.max(1, ...rows.map((r) => r.results));
@@ -179,8 +176,13 @@ function buildResultBars(
       const resultLine = formatResultLine(row.results, row.resLabel);
       const costLine = formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
       const spendLabel = fmtCurrencyAdaptive(row.spend, currencySymbol);
-      const resultsSharePct = formatResultsSharePct(row.results, totalResults);
-      const resultsShareLabel = formatResultsShareLabel(row.results, totalResults);
+      const resultsShareLabel = options.includeResultsShare
+        ? formatResultsShareLabel(row.results, totalResults)
+        : "";
+      let barPct = computeBarPct(row.results, maxResults);
+      if (options.singleCampaignBarCap && rows.length === 1) {
+        barPct = Math.min(barPct, SINGLE_CAMPAIGN_BAR_CAP);
+      }
       return {
         rank: index + 1,
         name: row.name,
@@ -189,9 +191,15 @@ function buildResultBars(
         resultCount: row.results,
         resultLine,
         costLine,
-        statLine: formatPerformanceStatLine(spendLabel, resultLine, costLine, resultsShareLabel),
-        resultsSharePct,
-        barPct: computeBarPct(row.results, maxResults),
+        statLine: formatStatLine({
+          spendLabel,
+          resultLine,
+          costLine,
+          resultsShareLabel,
+          includeSpend: options.includeSpend,
+        }),
+        resultsSharePct: formatResultsSharePct(row.results, totalResults),
+        barPct,
       };
     });
 }
@@ -227,10 +235,7 @@ function formatSummaryCost(count: number, cprValue: string, cprLabel: string): s
   return `${cprValue} ${suffix}`;
 }
 
-function buildSummaryMulti(
-  chart: ChartSlideData,
-  currencySymbol: string,
-): string {
+function buildSummaryMulti(chart: ChartSlideData, currencySymbol: string): string {
   const objectives = chart.snapshot.objectives.slice(0, MAX_ROWS);
   const chunks = objectives.map((obj) => {
     const count = parseInt(obj.resultsValue.replace(/,/g, ""), 10) || 0;
@@ -242,7 +247,6 @@ function buildSummaryMulti(
   return [...prefix, ...chunks].join("  |  ");
 }
 
-/** @deprecated Donut removed — kept for tests referencing legend format. */
 export function formatGroupedDonutLegendEntry(
   segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
@@ -257,19 +261,23 @@ export function buildVisualChartTitle(chart: ChartSlideData): string {
   return `Last 30 Days Campaign Performance: ${range}`;
 }
 
-function buildGroupedDonutFromSpendSegments(
-  segments: SpendSegment[],
+function buildGroupedDonutFromCampaigns(
+  campaigns: ChartCampaignData[],
+  colorByCampaign: Map<string, string>,
   totalSpend: number,
   currencySymbol: string,
 ): VisualChartSegment[] {
-  const top = segments.filter((s) => s.spend > 0).slice(0, 5);
-  const topSpend = top.reduce((sum, s) => sum + s.spend, 0);
+  const withSpend = campaigns
+    .filter((c) => c.spend > 0)
+    .sort((a, b) => b.spend - a.spend || b.results - a.results);
+  const top = withSpend.slice(0, MAX_ROWS);
+  const topSpend = top.reduce((sum, c) => sum + c.spend, 0);
   const otherSpend = Math.max(0, totalSpend - topSpend);
-  const slices: VisualChartSegment[] = top.map((seg, i) => ({
-    name: seg.name,
-    color: VISUAL_CHART_PALETTE[i % VISUAL_CHART_PALETTE.length]!,
-    percentage: totalSpend > 0 ? Math.round((seg.spend / totalSpend) * 1000) / 10 : 0,
-    spendLabel: fmtCurrencyAdaptive(seg.spend, currencySymbol),
+  const slices: VisualChartSegment[] = top.map((c) => ({
+    name: formatCampaignDisplayName(c.name),
+    color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
+    percentage: totalSpend > 0 ? Math.round((c.spend / totalSpend) * 1000) / 10 : 0,
+    spendLabel: fmtCurrencyAdaptive(c.spend, currencySymbol),
   }));
   if (otherSpend > 0.005) {
     slices.push({
@@ -282,12 +290,6 @@ function buildGroupedDonutFromSpendSegments(
   return slices;
 }
 
-function companionPanelHeading(segments: SpendSegment[]): string {
-  const first = segments[0]?.name ?? "";
-  if (first.includes(" - ") && /^[A-Z][a-z]{2} \d/.test(first)) return "Spend by Week";
-  return "Spend by Ad Set";
-}
-
 export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol: string): VisualChartSlideModel {
   const isMultiObjective = chart.snapshot.mode === "multi" && chart.snapshot.objectives.length >= 2;
   const title = buildVisualChartTitle(chart);
@@ -296,7 +298,6 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   if (isMultiObjective) {
     const objectives = chart.snapshot.objectives.slice(0, MAX_ROWS);
-
     const resultBars = buildResultBars(
       objectives.map((obj, i) => ({
         name: toTitleCaseChartLabel(obj.label),
@@ -311,17 +312,16 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         cprLabel: obj.cprLabel,
       })),
       currencySymbol,
+      { includeSpend: true, includeResultsShare: objectives.length > 1 },
     );
 
     const panelHeading = "Results by Objective";
-    const panelSubheading = "";
-
     return {
       title,
       isMultiObjective: true,
       useSplitPanel: false,
       panelHeading,
-      panelSubheading,
+      panelSubheading: "",
       leftHeading: panelHeading,
       rightHeading: panelHeading,
       miniDonuts: [],
@@ -333,17 +333,14 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   }
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
-  const panelHeading = `${toTitleCaseChartLabel(primaryResLabel)} by Campaign`;
-  const panelSubheading = "";
-  const companionSegments = chart.companionSpendSegments ?? [];
-  const useSplitPanel = chart.campaigns.length === 1 && companionSegments.length >= 2;
+  const resultLabel = toTitleCaseChartLabel(primaryResLabel);
+  const reportingCampaigns = chart.campaigns.filter((c) => c.spend > 0 || c.results > 0);
+  const useSplitPanel = reportingCampaigns.length >= 2;
   const groupedDonut = useSplitPanel
-    ? buildGroupedDonutFromSpendSegments(companionSegments, chart.totalAllSpend, currencySymbol)
+    ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol)
     : null;
-  const leftHeading = useSplitPanel ? companionPanelHeading(companionSegments) : panelHeading;
-  const rightHeading = panelHeading;
 
-  let resultBars = buildResultBars(
+  const resultBars = buildResultBars(
     chart.campaigns.map((c) => ({
       name: formatCampaignDisplayName(c.name),
       color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
@@ -354,11 +351,12 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       cprLabel: c.cprLabel,
     })),
     currencySymbol,
+    {
+      includeSpend: false,
+      includeResultsShare: reportingCampaigns.length > 1,
+      singleCampaignBarCap: reportingCampaigns.length === 1,
+    },
   );
-
-  if (!useSplitPanel && resultBars.length === 1) {
-    resultBars = resultBars.map((bar) => ({ ...bar, barPct: Math.min(bar.barPct, 72) }));
-  }
 
   const primaryResults = chart.campaigns.reduce((s, c) => s + c.results, 0);
   const primaryCpr =
@@ -368,10 +366,10 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     title,
     isMultiObjective: false,
     useSplitPanel,
-    panelHeading,
-    panelSubheading,
-    leftHeading,
-    rightHeading,
+    panelHeading: `${resultLabel} by Campaign`,
+    panelSubheading: "",
+    leftHeading: "Spend by Campaign",
+    rightHeading: `${resultLabel} by Campaign`,
     miniDonuts: [],
     groupedDonut,
     groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),

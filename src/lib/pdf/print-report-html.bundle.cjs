@@ -1461,7 +1461,7 @@ function chartPanelHeaderHeight(hasSubheading = true) {
 }
 var MTD_DONUT_D = 220;
 var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
-var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 6 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
+var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 10 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
 function resultBarLayout(barCount, hasSubheading = true) {
   const header = chartPanelHeaderHeight(hasSubheading);
   const available = MTD_VISUAL.panelH - header;
@@ -1735,12 +1735,22 @@ function VisualSpendDonut({
         )
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "mt-4 w-full space-y-1.5 text-[13px] text-[#94a3b8]", children: segments.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("li", { className: "truncate", children: [
-      seg.name,
-      " \xB7 ",
-      seg.percentage,
-      "% \xB7 ",
-      seg.spendLabel
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]", children: segments.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("li", { className: "flex min-w-0 items-start gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "span",
+        {
+          className: "mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full",
+          style: { backgroundColor: `#${seg.color}` },
+          "aria-hidden": "true"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "min-w-0 truncate", children: [
+        seg.name,
+        " \xB7 ",
+        seg.percentage,
+        "% \xB7 ",
+        seg.spendLabel
+      ] })
     ] }, seg.name)) })
   ] });
 }
@@ -1779,11 +1789,11 @@ function VisualResultBar({
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
         "p",
         {
-          className: `mt-0.5 font-bold leading-tight text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`,
+          className: `mt-1 font-bold leading-snug text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`,
           children: statLine
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-1.5 h-5" : "mt-2 h-7"}`, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-3 h-5" : "mt-4 h-7"}`, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
     ] })
   ] }) });
 }

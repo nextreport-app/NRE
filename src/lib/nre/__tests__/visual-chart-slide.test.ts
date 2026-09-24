@@ -60,22 +60,17 @@ describe("buildVisualChartSlideModel", () => {
     expect(line).toBe("Alpha · 28.5% · $602");
   });
 
-  it("builds a single-panel performance leaderboard for single-objective accounts", () => {
+  it("uses spend donut + results bars when two or more campaigns report", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
-    expect(model.useSplitPanel).toBe(false);
-    expect(model.miniDonuts).toHaveLength(0);
-    expect(model.groupedDonut).toBeNull();
-    expect(model.panelHeading).toContain("Purchases");
+    expect(model.useSplitPanel).toBe(true);
+    expect(model.groupedDonut).not.toBeNull();
+    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
-    expect(model.resultBars[0]!.rank).toBe(1);
-    expect(model.resultBars[0]!.name).toBe("Alpha");
-    expect(model.resultBars[0]!.barPct).toBe(100);
-    expect(model.resultBars[1]!.barPct).toBe(40);
-    expect(model.resultBars[0]!.statLine).toContain("spend");
+    expect(model.resultBars[0]!.statLine).not.toContain("spend");
     expect(model.resultBars[0]!.statLine).toContain("% of total");
-    expect(model.panelSubheading).toBe("");
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -309,27 +304,34 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars.map((b) => b.name)).toEqual(names);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
+    expect(model.useSplitPanel).toBe(true);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
     expect(model.resultBars[0]!.statLine).toContain("% of total");
-    expect(model.panelSubheading).toBe("");
+    expect(model.resultBars[0]!.statLine).not.toContain("spend");
   });
 
-  it("uses a split spend donut + results bar for a single campaign with multiple ad sets", () => {
+  it("single campaign shows results + CPR only — no spend line, no share %, no donut", () => {
     const model = buildVisualChartSlideModel(
       chart({
-        campaigns: [campaign("Legacy Campaign", { spend: 730, results: 4, resLabel: "WEBSITE LEADS", cprLabel: "COST PER LEAD" })],
-        totalAllSpend: 730,
-        companionSpendSegments: [
-          { name: "Prospecting", spend: 400 },
-          { name: "Retargeting", spend: 330 },
+        campaigns: [
+          campaign("Legacy Campaign", {
+            spend: 730,
+            results: 4,
+            resLabel: "WEBSITE LEADS",
+            cprLabel: "COST PER LEAD",
+            cpr: 182.5,
+          }),
         ],
+        totalAllSpend: 730,
       }),
       "C$",
     );
-    expect(model.useSplitPanel).toBe(true);
-    expect(model.groupedDonut).toHaveLength(2);
-    expect(model.leftHeading).toBe("Spend by Ad Set");
-    expect(model.rightHeading).toContain("Website Leads");
+    expect(model.useSplitPanel).toBe(false);
+    expect(model.groupedDonut).toBeNull();
+    expect(model.resultBars[0]!.statLine).toBe("4 website leads · C$182.50 CPL");
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
+    expect(model.resultBars[0]!.statLine).not.toContain("spend");
+    expect(model.resultBars[0]!.barPct).toBeLessThanOrEqual(75);
   });
 
   it("summary line shows fractional average CPC (not rounded to $0)", () => {
