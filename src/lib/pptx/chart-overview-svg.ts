@@ -9,6 +9,7 @@ import {
   MTD_VISUAL,
   resultBarLayout,
 } from "./chart-slide-layout";
+import { buildGroupedDonutSvg, splitPanelSeparatorSvg } from "./chart-grouped-donut-render";
 import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
 
 const INK = "#ffffff";
@@ -31,15 +32,35 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}"></svg>`;
   }
 
-  const heading = model.panelHeading || model.rightHeading;
+  const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
+  const heading = splitPanel ? model.rightHeading : model.panelHeading || model.rightHeading;
+  const panelX = splitPanel ? MTD_VISUAL.rightX : MTD_VISUAL.fullPanelX;
   const hasSubheading = Boolean(model.panelSubheading?.trim());
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
     `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.titleY + 28}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
     `<rect x="${MTD_VISUAL.fullPanelX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.fullPanelW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
-    `<text x="${MTD_VISUAL.fullPanelX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(heading.toUpperCase())}</text>`,
   ];
+
+  if (splitPanel) {
+    parts.push(
+      `<text x="${MTD_VISUAL.leftX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(model.leftHeading.toUpperCase())}</text>`,
+      splitPanelSeparatorSvg(),
+      ...buildGroupedDonutSvg({
+        segments: model.groupedDonut!,
+        centerLabel: model.groupedDonutCenterLabel,
+        panelTopY: MTD_VISUAL.panelY,
+        leftX: MTD_VISUAL.leftX,
+        leftW: MTD_VISUAL.leftW,
+        panelFill: PANEL,
+      }),
+    );
+  }
+
+  parts.push(
+    `<text x="${panelX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(heading.toUpperCase())}</text>`,
+  );
 
   if (hasSubheading) {
     parts.push(
@@ -47,7 +68,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     );
   }
 
-  const cols = resultBarColumns();
+  const cols = resultBarColumns(splitPanel);
   const barLayout = resultBarLayout(model.resultBars.length, hasSubheading);
   let rowY = barLayout.startY;
   for (const bar of model.resultBars) {

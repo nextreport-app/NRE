@@ -19,6 +19,7 @@ import {
   MTD_VISUAL,
   resultBarLayout,
 } from "./chart-slide-layout";
+import { appendGroupedDonutOoxml } from "./chart-grouped-donut-render";
 import { ptToEmu } from "./ooxml";
 import {
   backgroundImage,
@@ -50,16 +51,51 @@ function roundedBar(opts: { x: number; y: number; w: number; h: number; fillHex:
 
 function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, isLight: boolean): void {
   const c = palette(isLight);
-  const cols = resultBarColumns();
+  const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
+  const cols = resultBarColumns(splitPanel);
   const hasSubheading = Boolean(model.panelSubheading?.trim());
   const layout = resultBarLayout(model.resultBars.length, hasSubheading);
-  const heading = model.panelHeading || model.rightHeading;
+  const heading = splitPanel ? model.rightHeading : model.panelHeading || model.rightHeading;
+  const panelX = splitPanel ? MTD_VISUAL.rightX : MTD_VISUAL.fullPanelX;
+  const panelW = splitPanel ? MTD_VISUAL.rightW : MTD_VISUAL.fullPanelW;
+
+  if (splitPanel) {
+    shapes.push(
+      textBox({
+        x: MTD_VISUAL.leftX,
+        y: MTD_VISUAL.panelY,
+        w: MTD_VISUAL.leftW,
+        h: MTD_VISUAL.panelHeadingH,
+        text: model.leftHeading.toUpperCase(),
+        sizePt: 16,
+        bold: true,
+        colorHex: c.heading,
+        align: "l",
+      }),
+      rectangle({
+        x: MTD_VISUAL.sepX,
+        y: MTD_VISUAL.panelY + 8,
+        w: 1,
+        h: MTD_VISUAL.panelH - 16,
+        fillHex: c.separator,
+      }),
+    );
+    appendGroupedDonutOoxml(shapes, {
+      segments: model.groupedDonut!,
+      centerLabel: model.groupedDonutCenterLabel,
+      panelTopY: MTD_VISUAL.panelY,
+      leftX: MTD_VISUAL.leftX,
+      leftW: MTD_VISUAL.leftW,
+      isLight,
+      colors: { inkMuted: c.inkMuted, panelFill: c.panelFill },
+    });
+  }
 
   shapes.push(
     textBox({
-      x: MTD_VISUAL.fullPanelX,
+      x: panelX,
       y: MTD_VISUAL.panelY,
-      w: MTD_VISUAL.fullPanelW,
+      w: panelW,
       h: MTD_VISUAL.panelHeadingH,
       text: heading.toUpperCase(),
       sizePt: 16,

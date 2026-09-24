@@ -56,7 +56,13 @@ export function resultBarFillWidth(barPct: number, trackW: number): number {
   return Math.round((pct / 100) * trackW);
 }
 
-export function resultBarColumns() {
+export function resultBarColumns(splitPanel = false) {
+  if (splitPanel) {
+    const { rightX, rightW, panelPad } = MTD_VISUAL;
+    const barX = rightX + panelPad;
+    const trackW = rightW - panelPad * 2;
+    return { labelX: barX, barX, labelColW: 0, trackW };
+  }
   const { fullPanelX, fullPanelW, panelPad, barTrackMaxW } = MTD_VISUAL;
   const barX = fullPanelX + panelPad;
   const trackW = Math.min(barTrackMaxW, fullPanelW - panelPad * 2);

@@ -64,6 +64,7 @@ describe("buildVisualChartSlideModel", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
+    expect(model.useSplitPanel).toBe(false);
     expect(model.miniDonuts).toHaveLength(0);
     expect(model.groupedDonut).toBeNull();
     expect(model.panelHeading).toContain("Purchases");
@@ -311,6 +312,24 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
     expect(model.resultBars[0]!.statLine).toContain("% of total");
     expect(model.panelSubheading).toBe("");
+  });
+
+  it("uses a split spend donut + results bar for a single campaign with multiple ad sets", () => {
+    const model = buildVisualChartSlideModel(
+      chart({
+        campaigns: [campaign("Legacy Campaign", { spend: 730, results: 4, resLabel: "WEBSITE LEADS", cprLabel: "COST PER LEAD" })],
+        totalAllSpend: 730,
+        companionSpendSegments: [
+          { name: "Prospecting", spend: 400 },
+          { name: "Retargeting", spend: 330 },
+        ],
+      }),
+      "C$",
+    );
+    expect(model.useSplitPanel).toBe(true);
+    expect(model.groupedDonut).toHaveLength(2);
+    expect(model.leftHeading).toBe("Spend by Ad Set");
+    expect(model.rightHeading).toContain("Website Leads");
   });
 
   it("summary line shows fractional average CPC (not rounded to $0)", () => {
