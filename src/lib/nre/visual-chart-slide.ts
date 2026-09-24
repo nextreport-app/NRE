@@ -272,6 +272,24 @@ function buildSummaryMulti(chart: ChartSlideData, currencySymbol: string): strin
   return [...prefix, ...chunks].join("  |  ");
 }
 
+/** Mixed-objective campaign chart — one footer line per campaign objective, not folded table columns. */
+function buildSummaryFromCampaigns(campaigns: ChartCampaignData[], totalSpend: number, currencySymbol: string): string {
+  const rows = campaigns
+    .filter((c) => c.spend > 0 || c.results > 0)
+    .slice()
+    .sort((a, b) => b.spend - a.spend || b.results - a.results);
+  const chunks = rows.map((c) => {
+    const label = formatDonutObjectiveLabel(c.resLabel);
+    const countLabel = formatResultLine(c.results, c.resLabel);
+    const cost =
+      c.results > 0 && c.cpr > 0
+        ? `${fmtCurrency2dp(c.cpr, currencySymbol)} ${shortCostAbbrev(c.cprLabel)}`
+        : "N/A";
+    return `${label}: ${countLabel} · ${cost}`;
+  });
+  return [`Total Spend: ${fmtCurrency(totalSpend, currencySymbol)}`, ...chunks].join("  |  ");
+}
+
 export function formatGroupedDonutLegendEntry(
   segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
@@ -368,9 +386,11 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       groupedDonut,
       groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
       resultBars,
-      summaryLine: isMultiObjective
-        ? buildSummaryMulti(chart, currencySymbol)
-        : buildSummarySingle(
+      summaryLine: mixedCampaignObjectives
+        ? buildSummaryFromCampaigns(reportingCampaigns, chart.totalAllSpend, currencySymbol)
+        : isMultiObjective
+          ? buildSummaryMulti(chart, currencySymbol)
+          : buildSummarySingle(
             chart,
             currencySymbol,
             primaryResLabel,

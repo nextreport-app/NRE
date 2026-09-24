@@ -22,6 +22,7 @@ import {
   isLeadFamilyCampaignName,
   isMessagingCampaignName,
   isMetaFormLeadsCampaignName,
+  isLinkClicksCampaignName,
   isPurchaseCampaignName,
   isQuoteRequestCampaignName,
   isReachCampaignName,
@@ -213,6 +214,12 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
 
   const reachNamed = reachObjectiveIfNamedCampaign(rows);
   if (reachNamed) return reachNamed;
+
+  const metaFormNamed = metaFormLeadsObjectiveIfNamedCampaign(rows);
+  if (metaFormNamed) return metaFormNamed;
+
+  const linkClicksNamed = linkClicksObjectiveIfNamedCampaign(rows);
+  if (linkClicksNamed) return linkClicksNamed;
 
   if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
@@ -452,6 +459,20 @@ export function resolveObjective(
       columnObjective?.resultLabel === "REACH" &&
       (rt.resultLabel === "LINK CLICKS" || rt.resultLabel === "LANDING PAGE VIEWS") &&
       reach > 0
+    ) {
+      return { ...columnObjective, source: "priority3" };
+    }
+    if (
+      columnObjective?.resultLabel === "META FORM LEADS" &&
+      (rt.resultLabel === "LINK CLICKS" ||
+        rt.resultLabel === "LANDING PAGE VIEWS" ||
+        rt.resultLabel === "WEBSITE LEADS")
+    ) {
+      return { ...columnObjective, source: "priority3" };
+    }
+    if (
+      columnObjective?.resultLabel === "LINK CLICKS" &&
+      (rt.resultLabel === "LANDING PAGE VIEWS" || rt.resultLabel === "WEBSITE LEADS")
     ) {
       return { ...columnObjective, source: "priority3" };
     }
@@ -921,6 +942,28 @@ function reachObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   return { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
 }
 
+function hasMetaFormLeadsDelivery(rows: MetricRow[]): boolean {
+  return rows.some(
+    (r) => parseCellNum(r.meta_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.results) > 0,
+  );
+}
+
+function hasLinkClicksDelivery(rows: MetricRow[]): boolean {
+  return rows.some((r) => parseCellNum(r.link_clicks) > 0 || parseCellNum(r.results) > 0);
+}
+
+/** LeadGen / InstantForm naming + lead delivery → META FORM LEADS over generic website-leads bleed. */
+function metaFormLeadsObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
+  if (!isMetaFormLeadsCampaignName(rows) || !hasMetaFormLeadsDelivery(rows)) return null;
+  return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
+}
+
+/** Traffic / LinkClicks naming + click delivery → LINK CLICKS over website-leads/LPV bleed. */
+function linkClicksObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
+  if (!isLinkClicksCampaignName(rows) || !hasLinkClicksDelivery(rows)) return null;
+  return { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK" };
+}
+
 /** Stray messaging counts on website campaigns (shared export columns) vs real traffic. */
 function isIncidentalMessagingForWebsiteCampaign(rows: MetricRow[], messagingTotal: number): boolean {
   let linkClicks = 0;
@@ -947,6 +990,8 @@ function shouldIgnoreDominantResultType(rows: MetricRow[], dominantResultType: s
     rt === "landing_page_view"
   ) {
     if (isReachCampaignName(rows) && hasReachDelivery(rows)) return true;
+    if (isMetaFormLeadsCampaignName(rows) && hasMetaFormLeadsDelivery(rows)) return true;
+    if (isLinkClicksCampaignName(rows) && hasLinkClicksDelivery(rows)) return true;
     return messagingTotal > 0 || isMessagingCampaign;
   }
 
@@ -1046,6 +1091,24 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
   if (reachNamed) {
     return {
       ...reachNamed,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
+  }
+
+  const metaFormNamed = metaFormLeadsObjectiveIfNamedCampaign(rows);
+  if (metaFormNamed) {
+    return {
+      ...metaFormNamed,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
+  }
+
+  const linkClicksNamed = linkClicksObjectiveIfNamedCampaign(rows);
+  if (linkClicksNamed) {
+    return {
+      ...linkClicksNamed,
       confidence: "high",
       requiresConfirmation: false,
     };
