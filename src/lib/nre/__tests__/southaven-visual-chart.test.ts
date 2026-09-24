@@ -65,5 +65,8 @@ describe("Southaven weekly CSV — visual chart slide", () => {
     expect(model.summaryLine).toContain("Traffic");
     expect(model.summaryLine).toContain("Reach");
     expect(model.summaryLine).not.toContain("Website Leads");
+
+    // Guard against folded snapshot summary (6173 = lead gen + traffic combined).
+    expect(model.summaryLine).not.toMatch(/Website Leads:\s*6,?173/);
   });
 });
