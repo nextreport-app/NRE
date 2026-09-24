@@ -148,9 +148,23 @@ function sumCampaignSpendByObjective(campaigns: ChartCampaignData[]): Map<string
   return map;
 }
 
-function computeBarPct(results: number, maxResults: number): number {
-  if (results <= 0 || maxResults <= 0) return 0;
-  return Math.floor((results / maxResults) * 100);
+function computeBarPct(value: number, maxValue: number): number {
+  if (value <= 0 || maxValue <= 0) return 0;
+  return Math.floor((value / maxValue) * 100);
+}
+
+/** Short donut-legend labels — campaign names live on the results bars panel. */
+export function formatDonutObjectiveLabel(resLabel: string): string {
+  const u = resLabel.toUpperCase();
+  if (u === "META FORM LEADS" || u === "LEADS") return "Meta Instant Form";
+  if (u === "LINK CLICKS") return "Traffic";
+  if (u === "REACH" || u === "UNIQUE REACH") return "Reach";
+  if (u === "WEBSITE LEADS") return "Website Leads";
+  if (u === "LANDING PAGE VIEWS") return "Landing Page Views";
+  if (u.includes("MESSAGING") || u.includes("WHATSAPP")) return "Messaging";
+  if (u === "PURCHASES") return "Purchases";
+  if (u === "VIDEO VIEWS" || u.includes("THRUPLAY")) return "Video Views";
+  return toTitleCaseChartLabel(resLabel);
 }
 
 function buildResultBars(
@@ -164,13 +178,23 @@ function buildResultBars(
     cprLabel: string;
   }[],
   currencySymbol: string,
-  options: { includeSpend: boolean; includeResultsShare: boolean; singleCampaignBarCap?: boolean },
+  options: {
+    includeSpend: boolean;
+    includeResultsShare: boolean;
+    singleCampaignBarCap?: boolean;
+    /** Bar fill width reflects spend share (default) or results share. */
+    barScale?: "spend" | "results";
+  },
 ): VisualResultBar[] {
+  const barScale = options.barScale ?? "spend";
   const totalResults = rows.reduce((sum, row) => sum + row.results, 0);
+  const maxSpend = Math.max(1, ...rows.map((r) => r.spend));
   const maxResults = Math.max(1, ...rows.map((r) => r.results));
   return rows
     .slice()
-    .sort((a, b) => b.results - a.results || b.spend - a.spend)
+    .sort((a, b) =>
+      barScale === "spend" ? b.spend - a.spend || b.results - a.results : b.results - a.results || b.spend - a.spend,
+    )
     .slice(0, MAX_ROWS)
     .map((row, index) => {
       const resultLine = formatResultLine(row.results, row.resLabel);
@@ -179,7 +203,8 @@ function buildResultBars(
       const resultsShareLabel = options.includeResultsShare
         ? formatResultsShareLabel(row.results, totalResults)
         : "";
-      let barPct = computeBarPct(row.results, maxResults);
+      let barPct =
+        barScale === "spend" ? computeBarPct(row.spend, maxSpend) : computeBarPct(row.results, maxResults);
       if (options.singleCampaignBarCap && rows.length === 1) {
         barPct = Math.min(barPct, SINGLE_CAMPAIGN_BAR_CAP);
       }
@@ -274,7 +299,7 @@ function buildGroupedDonutFromCampaigns(
   const topSpend = top.reduce((sum, c) => sum + c.spend, 0);
   const otherSpend = Math.max(0, totalSpend - topSpend);
   const slices: VisualChartSegment[] = top.map((c) => ({
-    name: formatCampaignDisplayName(c.name),
+    name: formatDonutObjectiveLabel(c.resLabel),
     color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
     percentage: totalSpend > 0 ? Math.round((c.spend / totalSpend) * 1000) / 10 : 0,
     spendLabel: fmtCurrencyAdaptive(c.spend, currencySymbol),
@@ -295,6 +320,68 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const title = buildVisualChartTitle(chart);
   const colorByCampaign = assignCampaignColors(chart.campaigns);
   const campaignSpendByObjective = sumCampaignSpendByObjective(chart.campaigns);
+  const reportingCampaigns = chart.campaigns.filter((c) => c.spend > 0 || c.results > 0);
+  const useSplitPanel = reportingCampaigns.length >= 1 && chart.totalAllSpend > 0;
+  const useCampaignBars = reportingCampaigns.length >= 2;
+  const uniqueObjectives = new Set(reportingCampaigns.map((c) => c.resLabel));
+  const mixedCampaignObjectives = uniqueObjectives.size > 1;
+
+  // Two or more campaigns: spend donut (objective labels) + per-campaign result bars.
+  if (useCampaignBars && useSplitPanel) {
+    const groupedDonut = buildGroupedDonutFromCampaigns(
+      reportingCampaigns,
+      colorByCampaign,
+      chart.totalAllSpend,
+      currencySymbol,
+    );
+    const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
+    const resultLabel = toTitleCaseChartLabel(primaryResLabel);
+    const rightHeading = mixedCampaignObjectives ? "Performance by Campaign" : `${resultLabel} by Campaign`;
+
+    const resultBars = buildResultBars(
+      chart.campaigns.map((c) => ({
+        name: formatCampaignDisplayName(c.name),
+        color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
+        spend: c.spend,
+        results: c.results,
+        resLabel: c.resLabel,
+        cpr: c.cpr,
+        cprLabel: c.cprLabel,
+      })),
+      currencySymbol,
+      {
+        includeSpend: false,
+        includeResultsShare: !mixedCampaignObjectives && reportingCampaigns.length > 1,
+        barScale: "spend",
+      },
+    );
+
+    return {
+      title,
+      isMultiObjective,
+      useSplitPanel: true,
+      panelHeading: rightHeading,
+      panelSubheading: "",
+      leftHeading: "Spend by Objective",
+      rightHeading,
+      miniDonuts: [],
+      groupedDonut,
+      groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
+      resultBars,
+      summaryLine: isMultiObjective
+        ? buildSummaryMulti(chart, currencySymbol)
+        : buildSummarySingle(
+            chart,
+            currencySymbol,
+            primaryResLabel,
+            chart.campaigns.reduce((s, c) => s + c.results, 0),
+            chart.campaigns.reduce((s, c) => s + c.results, 0) > 0 && chart.totalAllSpend > 0
+              ? chart.totalAllSpend / chart.campaigns.reduce((s, c) => s + c.results, 0)
+              : 0,
+            chart.campaigns[0]?.cprLabel ?? chart.snapshot.primaryCprLabel,
+          ),
+    };
+  }
 
   if (isMultiObjective) {
     const objectives = chart.snapshot.objectives.slice(0, MAX_ROWS);
@@ -312,7 +399,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         cprLabel: obj.cprLabel,
       })),
       currencySymbol,
-      { includeSpend: true, includeResultsShare: objectives.length > 1 },
+      { includeSpend: true, includeResultsShare: objectives.length > 1, barScale: "spend" },
     );
 
     const panelHeading = "Results by Objective";
@@ -334,8 +421,6 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const resultLabel = toTitleCaseChartLabel(primaryResLabel);
-  const reportingCampaigns = chart.campaigns.filter((c) => c.spend > 0 || c.results > 0);
-  const useSplitPanel = reportingCampaigns.length >= 1 && chart.totalAllSpend > 0;
   const groupedDonut = useSplitPanel
     ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol)
     : null;
@@ -355,6 +440,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       includeSpend: false,
       includeResultsShare: reportingCampaigns.length > 1,
       singleCampaignBarCap: false,
+      barScale: "spend",
     },
   );
 
@@ -368,7 +454,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     useSplitPanel,
     panelHeading: `${resultLabel} by Campaign`,
     panelSubheading: "",
-    leftHeading: "Spend by Campaign",
+    leftHeading: "Spend by Objective",
     rightHeading: `${resultLabel} by Campaign`,
     miniDonuts: [],
     groupedDonut,

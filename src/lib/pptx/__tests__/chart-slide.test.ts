@@ -120,7 +120,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
       BACKGROUND,
     );
     expect(bundle.xml).toContain("PURCHASES BY CAMPAIGN");
-    expect(bundle.xml).toContain("SPEND BY CAMPAIGN");
+    expect(bundle.xml).toContain("SPEND BY OBJECTIVE");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(
