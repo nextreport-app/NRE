@@ -74,7 +74,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[1]!.barPct).toBe(40);
     expect(model.resultBars[0]!.statLine).toContain("spend");
     expect(model.resultBars[0]!.statLine).toContain("% of total");
-    expect(model.panelSubheading).toContain("Bar length shows");
+    expect(model.panelSubheading).toBe("");
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -310,7 +310,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
     expect(model.resultBars[0]!.statLine).toContain("% of total");
-    expect(model.panelSubheading).toContain("landing page views");
+    expect(model.panelSubheading).toBe("");
   });
 
   it("summary line shows fractional average CPC (not rounded to $0)", () => {

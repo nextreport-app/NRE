@@ -48,7 +48,7 @@ export interface VisualChartSlideModel {
   isMultiObjective: boolean;
   /** Single panel heading for the unified leaderboard. */
   panelHeading: string;
-  /** Explains what the bars and percentages represent. */
+  /** Optional helper line under the panel heading — left empty (bars are self-explanatory). */
   panelSubheading: string;
   /** @deprecated Left panel removed — use panelHeading. */
   leftHeading: string;
@@ -115,14 +115,6 @@ function formatPerformanceStatLine(
   const shareSuffix = resultsShareLabel ? ` · ${resultsShareLabel}` : "";
   if (costLine.startsWith("N/A")) return `${spendLabel} spend · ${resultLine}${shareSuffix}`;
   return `${spendLabel} spend · ${resultLine} · ${costLine}${shareSuffix}`;
-}
-
-export function buildPanelSubheading(resLabel: string, isMultiObjective: boolean): string {
-  if (isMultiObjective) {
-    return "Bar length shows result volume · % is share of total results";
-  }
-  const metric = toTitleCaseChartLabel(resLabel).toLowerCase();
-  return `Bar length shows ${metric} volume · % is share of total ${metric}`;
 }
 
 /** Parse CPR from snapshot fields — falls back to spend ÷ results when stored CPR rounded to $0. */
@@ -285,7 +277,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     );
 
     const panelHeading = "Results by Objective";
-    const panelSubheading = buildPanelSubheading("", true);
+    const panelSubheading = "";
 
     return {
       title,
@@ -304,7 +296,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const panelHeading = `${toTitleCaseChartLabel(primaryResLabel)} by Campaign`;
-  const panelSubheading = buildPanelSubheading(primaryResLabel, false);
+  const panelSubheading = "";
   const resultBars = buildResultBars(
     chart.campaigns.map((c) => ({
       name: formatCampaignDisplayName(c.name),
