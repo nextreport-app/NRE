@@ -127,6 +127,59 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     expect(metaLeadsOnBlankDays).toBe(0);
   });
 
+  it("ignores incidental fb_pixel_lead on blank days when Meta reports no cost per result", async () => {
+    const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
+    const noisyInsights = manualRows.map((row) => {
+      const insight = manualRowToInsight(row);
+      const results = Number(row.results) || 0;
+      if (results === 0) {
+        insight.actions = [
+          ...(insight.actions ?? []),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+        ];
+      }
+      return insight;
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ data: noisyInsights }) })),
+    );
+    const apiCsv = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "America/New_York",
+      sinceIso: "2026-08-25",
+      untilIso: "2026-09-23",
+    });
+    const lines = apiCsv.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows: apiRows } = readRowsWithAutoMap(headers, dataRows);
+
+    const reportOpts = {
+      accountName: "Credit Firm",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      now: new Date("2026-09-24T12:00:00Z"),
+      reportType: "WEEKLY" as const,
+      selectedCampaigns: ["DC Leads Campaign Main"],
+    };
+    const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: manualRows });
+    const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
+
+    const manualWl = manualReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    const apiWl = apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(apiWl?.value).toBe(manualWl?.value);
+    expect(apiWl?.cprValue).toBe(manualWl?.cprValue);
+
+    const strayWebsiteLeads = apiRows.filter(
+      (r) => !r.result_type?.trim() && parseInt(String(r.website_leads || "0"), 10) > 0,
+    ).length;
+    expect(strayWebsiteLeads).toBe(0);
+  });
+
   it("does not let incidental meta-form actions on blank days flip website-leads campaigns to META FORM LEADS", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);

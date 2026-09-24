@@ -52,6 +52,7 @@ describe("pickResultAction", () => {
         { action_type: "offsite_conversion.fb_pixel_lead", value: "12" },
         { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
       ],
+      cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "4.50" }],
       optimization_goal: "OUTCOME_LEADS",
     };
     expect(pickResultAction(row)).toEqual({
@@ -70,12 +71,25 @@ describe("pickResultAction", () => {
         { action_type: "offsite_conversion.fb_pixel_lead", value: "5" },
         { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
       ],
+      cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "9.00" }],
       optimization_goal: "OUTCOME_LEADS",
     };
     expect(pickResultAction(row)).toEqual({
       action_type: "offsite_conversion.fb_pixel_lead",
       value: "5",
     });
+  });
+
+  it("returns null for website-leads campaigns when fb_pixel_lead has no cost per result (manual export blank day)", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      actions: [
+        { action_type: "link_click", value: "9" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+      ],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toBeNull();
   });
 
   it("returns null for website-leads campaigns when only generic lead exists (Meta CSV leaves day blank)", () => {
