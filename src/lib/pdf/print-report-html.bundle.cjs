@@ -1526,7 +1526,8 @@ function resolveMetricIconId(metric) {
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function reportTypeLabel(data) {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
-  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
+  if (data.reportType === "DAILY") return "Yesterday Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";
 }

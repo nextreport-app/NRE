@@ -13,14 +13,14 @@ export type ReportDisplayNameType =
 const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
-  DAILY: "Daily",
+  DAILY: "Yesterday",
   QUARTER: "Quarterly",
   YTD: "Year-to-Date",
   COMPARISON: "Comparison",
   CREATIVE: "Creative",
   WEBSITE: "Website Traffic",
   HISTORICAL: "Multi-Month",
-  DAY_BREAKDOWN: "Day-by-Day",
+  DAY_BREAKDOWN: "Daily",
 };
 
 const MONTHS = [
