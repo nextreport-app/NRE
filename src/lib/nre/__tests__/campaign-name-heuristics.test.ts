@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   campaignNameHaystack,
+  isLinkClicksCampaignHaystack,
+  isMetaFormLeadsCampaignHaystack,
   isQuoteRequestCampaignHaystack,
   isReachCampaignHaystack,
   isWebsiteLeadsCampaignHaystack,
@@ -27,5 +29,14 @@ describe("campaign-name-heuristics", () => {
     expect(isReachCampaignHaystack(campaignNameHaystack("Brand - Reach", "Awareness"))).toBe(true);
     expect(isReachCampaignHaystack(campaignNameHaystack("Outreach_Leads_Campaign", ""))).toBe(false);
     expect(isReachCampaignHaystack(campaignNameHaystack("Breach Protocol Leads", ""))).toBe(false);
+  });
+
+  it("Southaven lead gen and traffic naming resolves to meta form vs link clicks, not website leads", () => {
+    const leadGen = campaignNameHaystack("SouthavenRV&Marine_LeadGen_InstantForm", "");
+    const traffic = campaignNameHaystack("SouthavenRV&Marine_Traffic_LinkClicks", "");
+    expect(isMetaFormLeadsCampaignHaystack(leadGen)).toBe(true);
+    expect(isLinkClicksCampaignHaystack(traffic)).toBe(true);
+    expect(isWebsiteLeadsCampaignHaystack(leadGen)).toBe(false);
+    expect(isWebsiteLeadsCampaignHaystack(traffic)).toBe(false);
   });
 });

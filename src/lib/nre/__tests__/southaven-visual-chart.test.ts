@@ -55,6 +55,15 @@ describe("Southaven weekly CSV — visual chart slide", () => {
     expect(reachBar.barPct).toBeLessThan(trafficBar.barPct);
     expect(reachBar.resultCount).toBeGreaterThan(0);
     expect(reachBar.statLine).toContain("reach");
+    expect(leadBar.statLine).toContain("meta form lead");
+    expect(trafficBar.statLine).toContain("link click");
+    expect(leadBar.statLine).not.toContain("website lead");
+    expect(trafficBar.statLine).not.toContain("website lead");
     expect(leadBar.statLine).not.toContain("% of total");
+
+    expect(model.summaryLine).toContain("Meta Instant Form");
+    expect(model.summaryLine).toContain("Traffic");
+    expect(model.summaryLine).toContain("Reach");
+    expect(model.summaryLine).not.toContain("Website Leads");
   });
 });

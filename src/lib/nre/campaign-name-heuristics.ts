@@ -19,15 +19,27 @@ export function isMessagingCampaignHaystack(haystack: string): boolean {
   return /messag|messenger/.test(haystack);
 }
 
-/** Meta instant-form lead campaigns — InstantForms, Leads (form), etc. */
+/** Meta instant-form lead campaigns — InstantForms, LeadGen, Leads (form), etc. */
 export function isMetaFormLeadsCampaignHaystack(haystack: string): boolean {
-  return /instant.?form|instantforms|meta.?form|lead.?form|leads?\s*\(\s*form/.test(haystack);
+  return /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack);
 }
 
-/** Website/offsite lead campaigns — excludes messenger/instant-form naming. */
+/** Traffic / link-click campaigns — excludes reach, website-leads, and instant-form naming. */
+export function isLinkClicksCampaignHaystack(haystack: string): boolean {
+  if (isReachCampaignHaystack(haystack)) return false;
+  if (isMetaFormLeadsCampaignHaystack(haystack)) return false;
+  if (/website.?lead|web.?lead|_website\b|website_|\bwebsite\b/.test(haystack)) return false;
+  if (/linkclicks|link_clicks/.test(haystack)) return true;
+  if (/\blink[\s_\-]?clicks?\b/.test(haystack)) return true;
+  // Underscore-safe — JS \b misses Brand_Traffic_LinkClicks-style names.
+  return /(?:^|[\s_\-])traffic(?:[\s_\-]|$)|_traffic_/.test(haystack);
+}
+
+/** Website/offsite lead campaigns — excludes messenger/instant-form/traffic naming. */
 export function isWebsiteLeadsCampaignHaystack(haystack: string): boolean {
   if (isMessagingCampaignHaystack(haystack)) return false;
   if (isMetaFormLeadsCampaignHaystack(haystack)) return false;
+  if (isLinkClicksCampaignHaystack(haystack)) return false;
   if (/whatsapp/.test(haystack)) return false;
   return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
@@ -77,6 +89,10 @@ export function isPurchaseCampaignName(rows: MetricRow[]): boolean {
 
 export function isReachCampaignName(rows: MetricRow[]): boolean {
   return isReachCampaignHaystack(campaignNameHaystackFromRows(rows));
+}
+
+export function isLinkClicksCampaignName(rows: MetricRow[]): boolean {
+  return isLinkClicksCampaignHaystack(campaignNameHaystackFromRows(rows));
 }
 
 export function isLeadFamilyCampaignName(rows: MetricRow[]): boolean {

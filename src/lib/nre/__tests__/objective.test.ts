@@ -1248,6 +1248,44 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(groups.every((g) => g.label === "REACH")).toBe(true);
   });
 
+  it("detects META FORM LEADS and LINK CLICKS for Southaven LeadGen / Traffic naming — not WEBSITE LEADS", () => {
+    const leadRows: MetricRow[] = [
+      metricRow({
+        campaign_name: "SouthavenRV&Marine_LeadGen_InstantForm",
+        ad_set_name: "Retargeting",
+        _raw: { "Meta leads": "1", "Link clicks": "20", Results: "1" },
+        result_type: "Leads (form)",
+        meta_leads: 1,
+        link_clicks: 20,
+        results: 1,
+        spend: 35,
+      }),
+    ];
+    const trafficRows: MetricRow[] = [
+      metricRow({
+        campaign_name: "SouthavenRV&Marine_Traffic_LinkClicks",
+        ad_set_name: "Interests",
+        _raw: { "Link clicks": "210", "Landing page views": "3", Results: "210" },
+        result_type: "Link clicks",
+        link_clicks: 210,
+        landing_page_views: 3,
+        results: 210,
+        spend: 66,
+      }),
+    ];
+
+    expect(resolveCampaignObjective(leadRows).resultLabel).toBe("META FORM LEADS");
+    expect(resolveCampaignObjective(trafficRows).resultLabel).toBe("LINK CLICKS");
+
+    const objectiveMap = buildCampaignObjectiveMap([...leadRows, ...trafficRows]);
+    expect(objectiveMap.get(normalizeCampaignName("SouthavenRV&Marine_LeadGen_InstantForm"))?.resultLabel).toBe(
+      "META FORM LEADS",
+    );
+    expect(objectiveMap.get(normalizeCampaignName("SouthavenRV&Marine_Traffic_LinkClicks"))?.resultLabel).toBe(
+      "LINK CLICKS",
+    );
+  });
+
   it("MTD-row bug fix — the reverse case: a campaign assigned INITIATE CHECKOUT correctly excludes a mismatched Purchases-classified row's own results", () => {
     const rows: MetricRow[] = [
       metricRow({
