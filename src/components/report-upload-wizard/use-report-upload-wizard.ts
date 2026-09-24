@@ -60,6 +60,7 @@ import {
   DEFAULT_REPORT_TITLE,
   MIN_SELECTED_METRICS,
 } from "./constants";
+import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
 import {
   buildShareReportUrl,
   buildUploadFormData,
@@ -412,6 +413,13 @@ export function useReportUploadWizard({
     if (!reportTitleTouched) {
       setReportTitle(defaultReportTitleFor(next));
     }
+    if (next === "DAY_BREAKDOWN") {
+      setDateMode("custom");
+      if (weeklyOptions && !customStart && !customEnd) {
+        setCustomStart(weeklyOptions.last7.startIso);
+        setCustomEnd(weeklyOptions.last7.endIso);
+      }
+    }
   }
 
   function currentDateSelection(): DateSelection {
@@ -690,9 +698,10 @@ export function useReportUploadWizard({
     setDailyRange(json.dailyRange || null);
     setHasAdLevelCsv(!!json.hasAdLevelCsv);
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
-    setDateMode(savedSelection.mode);
-    setCustomStart(savedSelection.customStart || "");
-    setCustomEnd(savedSelection.customEnd || "");
+    const normalizedSelection = normalizeSavedDateSelection(savedSelection, json.weeklyOptions || null);
+    setDateMode(normalizedSelection.mode);
+    setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
+    setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
     setLongRangeConfirmed(false);
     setComparisonPreset("thisWeek");
     setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
@@ -1594,7 +1603,8 @@ export function useReportUploadWizard({
           // saved back to this client's objective memory cache once the
           // report actually generates. Only sent here, never on preview.
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
-          dateSelection: reportType === "WEEKLY" ? currentDateSelection() : undefined,
+          dateSelection:
+            reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined,
           reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
           reportType,
           platform,
