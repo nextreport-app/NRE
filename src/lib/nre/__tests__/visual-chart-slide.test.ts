@@ -310,7 +310,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
   });
 
-  it("single campaign shows results + CPR only — no spend line, no share %, no donut", () => {
+  it("single campaign uses spend donut + results bar — no share % on the bar", () => {
     const model = buildVisualChartSlideModel(
       chart({
         campaigns: [
@@ -326,12 +326,13 @@ describe("buildVisualChartSlideModel", () => {
       }),
       "C$",
     );
-    expect(model.useSplitPanel).toBe(false);
-    expect(model.groupedDonut).toBeNull();
+    expect(model.useSplitPanel).toBe(true);
+    expect(model.groupedDonut).toHaveLength(1);
+    expect(model.groupedDonut![0]!.percentage).toBe(100);
+    expect(model.leftHeading).toBe("Spend by Campaign");
     expect(model.resultBars[0]!.statLine).toBe("4 website leads · C$182.50 CPL");
     expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
-    expect(model.resultBars[0]!.barPct).toBeLessThanOrEqual(75);
   });
 
   it("summary line shows fractional average CPC (not rounded to $0)", () => {
