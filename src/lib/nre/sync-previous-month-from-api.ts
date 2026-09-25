@@ -9,7 +9,7 @@ import { computePreviousCalendarMonthIsoRange } from "./api-date-range";
 import { extractCampaignSpend, extractSpendingCampaignNames } from "./campaigns";
 import type { NreRow } from "./columns";
 import { fetchGoogleReportCsv } from "./fetch-google-report-rows";
-import { fetchMetaReportCsv } from "./fetch-meta-report-rows";
+import { fetchMetaReportCsv } from "./meta-api-sync";
 import { fetchTikTokReportCsv } from "./fetch-tiktok-report-rows";
 import { mergePreviousMonthSelectionWithLowSpend } from "./merge-previous-month-selection";
 import { parseUploadedFile } from "./parse-file";

@@ -6,7 +6,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import { refreshGoogleAdsAccessToken } from "@/lib/google-ads-api";
 import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
-import { fetchMetaReportCsv } from "@/lib/nre/fetch-meta-report-rows";
+import { fetchMetaReportCsv } from "@/lib/nre/meta-api-sync";
 import {
   maybeSyncPreviousMonthDataFromGoogleApi,
   maybeSyncPreviousMonthDataFromMetaApi,

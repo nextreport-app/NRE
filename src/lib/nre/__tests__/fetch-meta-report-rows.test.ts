@@ -230,7 +230,7 @@ describe("fetchMetaReportCsv", () => {
       "fetch",
       vi.fn(async (url: string) => {
         if (String(url).includes("/insights")) {
-          expect(String(url)).toContain("level=campaign");
+          expect(String(url)).toContain("level=adset");
           return {
             ok: true,
             json: async () => ({

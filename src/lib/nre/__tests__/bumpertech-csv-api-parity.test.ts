@@ -27,8 +27,9 @@ function csvRowToSyntheticInsight(row: {
   const actions: { action_type: string; value: string }[] = [];
   if (linkClicks > 0) actions.push({ action_type: "link_click", value: String(linkClicks) });
   if (lpv > 0) actions.push({ action_type: "landing_page_view", value: String(lpv) });
+  const customAction = "offsite_conversion.custom.9876543210";
   if (quotes > 0 && row.result_type?.toLowerCase().includes("quote")) {
-    actions.push({ action_type: "offsite_conversion.custom.9876543210", value: String(quotes) });
+    actions.push({ action_type: customAction, value: String(quotes) });
   }
   if (quotes > 0) {
     actions.push({ action_type: "offsite_conversion.fb_pixel_lead", value: "1" });
@@ -41,6 +42,17 @@ function csvRowToSyntheticInsight(row: {
     spend: String(row.spend ?? "0"),
     optimization_goal: "OUTCOME_LEADS",
     actions,
+    cost_per_action_type:
+      quotes > 0 && row.result_type?.toLowerCase().includes("quote")
+        ? [
+            {
+              action_type: customAction,
+              value: String(
+                Number(row.spend) > 0 && quotes > 0 ? Number(row.spend) / quotes : 1,
+              ),
+            },
+          ]
+        : [],
   };
 }
 
