@@ -20,27 +20,20 @@ export function saveWizardPlatformChoice(choice: WizardPlatformChoice) {
   }
 }
 
-export function readInitialPlatformPickerState(showTikTokOption: boolean): {
+export function readInitialPlatformPickerState(_showTikTokOption: boolean): {
   wizardKind: "ads" | "website";
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
   platformPickerExpanded: boolean;
   hasSavedPlatformPreference: boolean;
 } {
   const stored = typeof window === "undefined" ? null : readStoredWizardPlatform();
+  // GA4 website wizard + deferred ad platforms (Google, TikTok) → Meta during meta-v1.
   if (stored === "GA4" || (stored && !isLaunchPlatformEnabled(stored))) {
     return {
       wizardKind: "ads",
       selectedPlatformCard: "META",
       platformPickerExpanded: false,
       hasSavedPlatformPreference: true,
-    };
-  }
-  if (stored === "TIKTOK" && !showTikTokOption) {
-    return {
-      wizardKind: "ads",
-      selectedPlatformCard: "META",
-      platformPickerExpanded: true,
-      hasSavedPlatformPreference: false,
     };
   }
   if (stored === "META") {
