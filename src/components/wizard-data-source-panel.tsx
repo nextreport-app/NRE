@@ -212,10 +212,11 @@ export function WizardDataSourcePanel({
     }
   }
 
+  const isSyncing = syncStatus === "loading";
   const canSync =
     connected &&
     configured &&
-    syncStatus !== "loading" &&
+    !isSyncing &&
     (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   return (
@@ -431,25 +432,18 @@ export function WizardDataSourcePanel({
               {syncError}
             </div>
           ) : null}
-          {importComplete ? (
-            <button
-              type="button"
-              onClick={() => void handleSync()}
-              disabled={!canSync || syncStatus === "loading"}
-              className="h-10 w-full rounded-md border border-dash-border text-[14px] font-medium text-dash-ink-secondary hover:bg-dash-border disabled:opacity-40"
-            >
-              {syncStatus === "loading" ? "Syncing & analyzing…" : "Sync again"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleSync()}
-              disabled={!canSync || syncStatus === "loading"}
-              className="h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
-            >
-              {syncStatus === "loading" ? "Syncing & analyzing…" : "Analyze campaign data"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => void handleSync()}
+            disabled={!canSync}
+            className={
+              importComplete
+                ? "h-10 w-full rounded-md border border-dash-border text-[14px] font-medium text-dash-ink-secondary hover:bg-dash-border disabled:opacity-40"
+                : "h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+            }
+          >
+            {isSyncing ? "Syncing & analyzing…" : importComplete ? "Sync again" : "Analyze campaign data"}
+          </button>
         </>
       ) : null}
     </div>

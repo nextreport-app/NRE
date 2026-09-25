@@ -1265,6 +1265,15 @@ function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, options =
   return [headerRow, mtdDataRow, periodDataRow];
 }
 
+// src/lib/nre/visual-chart-slide.ts
+function visualResultBarRightLabel(bar) {
+  if (bar.resultsSharePct > 0) {
+    const label = Number.isInteger(bar.resultsSharePct) ? String(bar.resultsSharePct) : bar.resultsSharePct.toFixed(1);
+    return `${label}% of total`;
+  }
+  return `${Math.round(bar.barPct)}%`;
+}
+
 // src/lib/nre/share-report.ts
 function defaultShareVisibility(data) {
   return {
@@ -1442,9 +1451,9 @@ var MTD_VISUAL = {
   fullPanelW: 856,
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
-  barH: 26,
+  barH: 7,
   barNameH: 18,
-  barMetricsH: 20,
+  barMetricsH: 14,
   barRowGap: 16,
   groupedDonutLegendRowH: 22,
   groupedDonutLegendRowGap: 8,
@@ -1461,7 +1470,7 @@ function chartPanelHeaderHeight(hasSubheading = true) {
 }
 var MTD_DONUT_D = 220;
 var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
-var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barMetricsH + 10 + MTD_VISUAL.barH + MTD_VISUAL.barRowGap;
+var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barH + 4 + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
 function resultBarLayout(barCount, hasSubheading = true) {
   const header = chartPanelHeaderHeight(hasSubheading);
   const available = MTD_VISUAL.panelH - header;
@@ -1471,13 +1480,13 @@ function resultBarLayout(barCount, hasSubheading = true) {
   const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
   const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
   const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
-  const nameMetricsGap = Math.max(2, Math.round(4 * scale));
-  const metricsBarGap = Math.max(3, Math.round(6 * scale));
-  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 15;
-  const metricsSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 16;
+  const nameBarGap = Math.max(2, Math.round(4 * scale));
+  const barFooterGap = Math.max(2, Math.round(4 * scale));
+  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const metricsSizePt = scale <= 0.72 ? 10 : scale <= 0.82 ? 11 : scale <= 0.92 ? 11 : 12;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
-  return { rowH, startY, nameH, metricsH, barH, nameMetricsGap, metricsBarGap, nameSizePt, metricsSizePt };
+  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
 }
 
 // src/lib/pptx/metric-icons.ts
@@ -1760,25 +1769,19 @@ function VisualResultBar({
   color,
   statLine,
   barPct,
+  resultsSharePct,
   compact = false
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "min-w-0", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex min-w-0 items-start gap-2", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-      "span",
-      {
-        className: `mt-1 inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`,
-        style: { backgroundColor: `#${color}` },
-        "aria-hidden": "true"
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0 flex-1", children: [
+  const rightLabel = visualResultBarRightLabel({ barPct, resultsSharePct });
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-baseline justify-between gap-3", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
         "p",
         {
-          className: `line-clamp-2 break-words font-semibold leading-snug text-ink [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`,
+          className: `min-w-0 flex-1 truncate font-medium leading-snug text-white [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[14px]"}`,
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "mr-1.5 text-[#94a3b8]", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "mr-1 text-[#94a3b8]", children: [
               rank,
               "."
             ] }),
@@ -1786,16 +1789,23 @@ function VisualResultBar({
           ]
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-        "p",
-        {
-          className: `mt-1 font-bold leading-snug text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`,
-          children: statLine
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: `overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-3 h-5" : "mt-4 h-7"}`, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "h-full rounded", style: { width: `${widthPct}%`, backgroundColor: `#${color}` } }) })
-    ] })
-  ] }) });
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`, children: rightLabel })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      "div",
+      {
+        className: `relative mt-2 w-full overflow-hidden rounded-full bg-[#2a3441] ${compact ? "h-[6px]" : "h-[7px]"}`,
+        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "div",
+          {
+            className: "absolute inset-y-0 left-0 rounded-full",
+            style: { width: `${widthPct}%`, backgroundColor: `#${color}` }
+          }
+        )
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[11px]" : "text-[12px]"}`, children: statLine })
+  ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
   const model = chart.visualSlide;
@@ -1828,6 +1838,7 @@ function ShareMtdOverviewSlide({ chart }) {
                 color: bar.color,
                 statLine: bar.statLine,
                 barPct: bar.barPct,
+                resultsSharePct: bar.resultsSharePct,
                 compact: compactBars || barLayout.rowH < 72
               },
               `${bar.rank}-${bar.name}`
@@ -1844,6 +1855,7 @@ function ShareMtdOverviewSlide({ chart }) {
               color: bar.color,
               statLine: bar.statLine,
               barPct: bar.barPct,
+              resultsSharePct: bar.resultsSharePct,
               compact: compactBars || barLayout.rowH < 72
             },
             `${bar.rank}-${bar.name}`
