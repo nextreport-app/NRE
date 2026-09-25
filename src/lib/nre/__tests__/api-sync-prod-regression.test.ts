@@ -95,4 +95,73 @@ describe("API sync production regression (Meta results[] + stray costed pixel ac
     expect(apiReport.campaignSlides[0]?.metrics.results).toBe("4");
     expect(manualReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("9");
   });
+
+  it("lead days: Meta results[] lists actions:lead only while costed pixel lives in actions (matches manual CSV)", async () => {
+    const { rows: manualRows } = parseCsvText(readFileSync(USER_CSV, "utf8"));
+    const insights: MetaInsightRow[] = manualRows.map((row) => {
+      const insight = manualRowToMetaInsight(row);
+      const results = Number(row.results) || 0;
+      const spend = Number(row.spend) || 0;
+
+      if (results > 0) {
+        insight.actions = [
+          ...(insight.actions ?? []).filter((a) => a.action_type !== "offsite_conversion.fb_pixel_lead"),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: String(results) },
+        ];
+        insight.cost_per_action_type = [
+          { action_type: "offsite_conversion.fb_pixel_lead", value: String(spend / results) },
+        ];
+        insight.results = [{ indicator: "actions:lead", values: [{ value: String(results) }] }];
+        insight.cost_per_result = [
+          { indicator: "actions:lead", values: [{ value: String(spend / results) }] },
+        ];
+      } else {
+        insight.results = [{ indicator: "actions:lead", values: [{ value: "2" }] }];
+        insight.cost_per_result = [{ indicator: "actions:lead", values: [{ value: "3.50" }] }];
+        insight.actions = [
+          ...(insight.actions ?? []),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+          { action_type: "offsite_conversion.custom.1234567890", value: "1" },
+        ];
+        insight.cost_per_action_type = [
+          { action_type: "offsite_conversion.fb_pixel_lead", value: String(spend || 3.5) },
+        ];
+      }
+      return insight;
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ data: insights }) })),
+    );
+
+    const apiCsv = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "America/New_York",
+      sinceIso: "2026-08-26",
+      untilIso: "2026-09-24",
+    });
+    const lines = apiCsv.csvText.split("\n").filter(Boolean);
+    const { rows: apiRows } = readRowsWithAutoMap(
+      lines[0].split(","),
+      lines.slice(1).map((line) => line.split(",")),
+    );
+
+    const opts = {
+      accountName: "Credit Firm",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      now: new Date("2026-09-25T12:00:00Z"),
+      reportType: "WEEKLY" as const,
+      selectedCampaigns: ["DC Leads Campaign Main"],
+      weeklyRange: { startIso: "2026-09-18", endIso: "2026-09-24" },
+    };
+
+    const apiReport = buildReportData({ ...opts, mtdDailyRows: apiRows });
+    expect(apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("9");
+    expect(apiReport.chart?.campaigns[0]?.results).toBe(12);
+    expect(apiRows.every((r) => !r.result_type?.toLowerCase().includes("quote"))).toBe(true);
+  });
 });
