@@ -196,6 +196,16 @@ function isQuoteRequestCampaignRow(row: MetaInsightRow): boolean {
   return isQuoteRequestCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
+/** Website/offsite lead optimization — manual exports only count costed pixel/web lead days. */
+function isWebsiteLeadOptimizationGoal(row: MetaInsightRow): boolean {
+  const goal = row.optimization_goal?.toUpperCase();
+  return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
+}
+
+function usesWebsiteLeadResultPicking(row: MetaInsightRow): boolean {
+  return isWebsiteLeadsCampaignRow(row) || isWebsiteLeadOptimizationGoal(row);
+}
+
 function firstActionMatchingPattern(
   map: Map<string, number>,
   pattern: RegExp,
@@ -237,7 +247,6 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   if (map.size === 0) return null;
 
   const messagingCampaign = isMessagingCampaignRow(row);
-  const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
   const quoteRequestCampaign = isQuoteRequestCampaignRow(row);
 
   if (quoteRequestCampaign) {
@@ -265,14 +274,14 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     return null;
   }
 
-  if (websiteLeadsCampaign) {
+  if (usesWebsiteLeadResultPicking(row)) {
     // Many "website leads" named campaigns still optimize for a quote-request custom
     // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
     const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
     const websiteMatch = withCostedResult(row, firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES));
     if (websiteMatch) return websiteMatch;
-    // Same as Meta CSV: no website-lead result on days without a pixel/web
+    // Same as Meta CSV: no website-lead result on days without a costed pixel/web
     // lead action — ignore generic `lead`, meta-form, and traffic actions.
     return null;
   }
@@ -282,7 +291,12 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     const goalActions = OPTIMIZATION_GOAL_ACTION_TYPES[goalKey];
     if (goalActions) {
       const match = firstActionWithValue(map, goalActions);
-      if (match) return match;
+      if (match) {
+        if (isWebsiteLeadActionType(match.action_type)) {
+          return withCostedResult(row, match);
+        }
+        return match;
+      }
     }
   }
 
@@ -366,7 +380,7 @@ function isWebsiteLeadActionType(actionType: string): boolean {
 
 function csvResultTypeForPickedAction(row: MetaInsightRow, actionType: string): string {
   if (
-    isWebsiteLeadsCampaignRow(row) &&
+    usesWebsiteLeadResultPicking(row) &&
     (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
   ) {
     // Match Meta Ads Manager manual exports (e.g. DC Credit Firm "website submission").
@@ -380,7 +394,7 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
   const result = pickResultAction(row);
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
-  const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
+  const websiteLeadsFamily = usesWebsiteLeadResultPicking(row);
   const metaFormCampaign = isMetaFormLeadsCampaignRow(row);
   const messagingCampaign = isMessagingCampaignRow(row);
 
@@ -393,14 +407,14 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
   if (result && !messagingCampaign) {
     if (metaFormCampaign && isMetaLeadActionType(result.action_type)) {
       metaLeadsOut = parseFloat(result.value);
-    } else if (websiteLeadsCampaign && isWebsiteLeadActionType(result.action_type)) {
+    } else if (websiteLeadsFamily && isWebsiteLeadActionType(result.action_type)) {
       websiteLeadsOut = parseFloat(result.value);
     }
   }
 
   const genericLead = actionMap.get("lead") ?? 0;
   const typedCampaign =
-    messagingCampaign || metaFormCampaign || websiteLeadsCampaign || isQuoteRequestCampaignRow(row);
+    messagingCampaign || metaFormCampaign || websiteLeadsFamily || isQuoteRequestCampaignRow(row);
   if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
     if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
       websiteLeadsOut = genericLead;

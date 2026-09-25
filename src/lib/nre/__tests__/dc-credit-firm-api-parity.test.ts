@@ -9,6 +9,10 @@ import { readRowsWithAutoMap } from "../columns";
 import type { MetaInsightRow } from "@/lib/meta-api";
 
 const MANUAL_CSV = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures/dc-credit-firm-weekly-upload.csv");
+const USER_UPLOAD_CSV = resolve(
+  process.cwd(),
+  "src/lib/nre/__tests__/fixtures/dc-credit-firm-user-upload-sep2026.csv",
+);
 
 /** Synthetic Meta Insights row from one manual Credit Firm CSV day. */
 function manualRowToInsight(row: ReturnType<typeof parseCsvText>["rows"][number]): MetaInsightRow {
@@ -178,6 +182,78 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       (r) => !r.result_type?.trim() && parseInt(String(r.website_leads || "0"), 10) > 0,
     ).length;
     expect(strayWebsiteLeads).toBe(0);
+  });
+
+  it("OUTCOME_LEADS campaigns without 'leads' in the name ignore uncosted pixel leads on traffic days", async () => {
+    const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
+    const insights = manualRows.map((row) => {
+      const insight = manualRowToInsight(row);
+      insight.campaign_name = "DC Main Campaign";
+      const results = Number(row.results) || 0;
+      if (results === 0) {
+        insight.actions = [
+          ...(insight.actions ?? []),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+        ];
+      }
+      return insight;
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ data: insights }) })),
+    );
+    const apiCsv = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "America/New_York",
+      sinceIso: "2026-08-25",
+      untilIso: "2026-09-23",
+    });
+    const lines = apiCsv.csvText.split("\n");
+    const { rows: apiRows } = readRowsWithAutoMap(
+      lines[0].split(","),
+      lines.slice(1).map((line) => line.split(",")),
+    );
+
+    const reportOpts = {
+      accountName: "Credit Firm",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      now: new Date("2026-09-24T12:00:00Z"),
+      reportType: "WEEKLY" as const,
+      selectedCampaigns: ["DC Main Campaign"],
+    };
+    const renamedManual = manualRows.map((r) => ({ ...r, campaign_name: "DC Main Campaign" }));
+    const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: renamedManual });
+    const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
+    const manualWl = manualReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    const apiWl = apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
+    expect(apiWl?.value).toBe(manualWl?.value);
+    expect(apiWl?.value).toBe("9");
+  });
+
+  it("matches user-reported Sep 2026 upload: weekly 4, MTD 9, chart 12", async () => {
+    const { rows: manualRows } = parseCsvText(readFileSync(USER_UPLOAD_CSV, "utf8"));
+    const apiRows = await apiRowsFromManual(manualRows);
+    const reportOpts = {
+      accountName: "Credit Firm",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      now: new Date("2026-09-25T12:00:00Z"),
+      reportType: "WEEKLY" as const,
+      selectedCampaigns: ["DC Leads Campaign Main"],
+      weeklyRange: { startIso: "2026-09-18", endIso: "2026-09-24" },
+    };
+    const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: manualRows });
+    const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
+    expect(manualReport.campaignSlides[0]?.metrics.results).toBe("4");
+    expect(manualReport.chart?.campaigns[0]?.results).toBe(12);
+    expect(apiReport.campaignSlides[0]?.metrics.results).toBe("4");
+    expect(apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("9");
+    expect(apiReport.chart?.campaigns[0]?.results).toBe(12);
   });
 
   it("does not let incidental meta-form actions on blank days flip website-leads campaigns to META FORM LEADS", async () => {
