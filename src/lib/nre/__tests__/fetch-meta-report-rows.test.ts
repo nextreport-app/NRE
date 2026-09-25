@@ -80,6 +80,18 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("returns null for website-leads campaigns when only incidental fb_pixel_lead exists on a blank day", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      actions: [
+        { action_type: "link_click", value: "9" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+      ],
+      optimization_goal: "OUTCOME_LEADS",
+    };
+    expect(pickResultAction(row)).toBeNull();
+  });
+
   it("returns null for website-leads campaigns when only generic lead exists (Meta CSV leaves day blank)", () => {
     const row: MetaInsightRow = {
       campaign_name: "New Leads campaign_Kaizen Homes_Website",
