@@ -68,7 +68,6 @@ describe("GZ Australia API sync — META FORM LEADS not MESSAGING", () => {
           { action_type: "onsite_conversion.lead_grouped", value: "2" },
           { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "2" },
         ],
-        cost_per_action_type: [{ action_type: "onsite_conversion.lead_grouped", value: "42.57" }],
       }),
     ).toEqual({ action_type: "onsite_conversion.lead_grouped", value: "2" });
   });
