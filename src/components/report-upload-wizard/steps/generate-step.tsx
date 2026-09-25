@@ -102,6 +102,9 @@ export function WizardGenerateStep() {
     setCustomEnd,
     setCustomRangeError,
     setCustomStart,
+    editCustomEnd,
+    editCustomStart,
+    editDateMode,
     setCustomTitleExpanded,
     setDateMode,
     setDriveFolderLinkInput,
@@ -111,6 +114,7 @@ export function WizardGenerateStep() {
     setDriveSaveUrl,
     setDriveView,
     setHistoricalMonthCount,
+    editHistoricalMonthCount,
     setLongRangeConfirmed,
     setReportSummaryExpanded,
     setReportTitle,
@@ -252,7 +256,7 @@ export function WizardGenerateStep() {
                   How many complete prior months?
                   <select
                     value={historicalMonthCount}
-                    onChange={(e) => setHistoricalMonthCount(Number(e.target.value))}
+                    onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
                     className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
                   >
                     {[2, 3, 4, 5, 6, 8, 12].map((n) => (
@@ -300,16 +304,12 @@ export function WizardGenerateStep() {
                     minIso={dateBounds?.minIso}
                     maxIso={dateBounds?.maxIso}
                     onStartChange={(iso) => {
-                      setDateMode("custom");
-                      setCustomStart(iso);
-                      setLongRangeConfirmed(false);
-                      setCustomRangeError(null);
+                      editDateMode("custom");
+                      editCustomStart(iso);
                     }}
                     onEndChange={(iso) => {
-                      setDateMode("custom");
-                      setCustomEnd(iso);
-                      setLongRangeConfirmed(false);
-                      setCustomRangeError(null);
+                      editDateMode("custom");
+                      editCustomEnd(iso);
                     }}
                   />
                   {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
@@ -323,7 +323,7 @@ export function WizardGenerateStep() {
                         label="Last 7 days"
                         sublabel={formatIsoRange(weeklyOptions.last7)}
                         onSelect={() => {
-                          setDateMode("last7");
+                          editDateMode("last7");
                           setCustomRangeError(null);
                         }}
                       />
@@ -336,7 +336,7 @@ export function WizardGenerateStep() {
                           ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
                           : "Pick any start and end date in your CSV"
                       }
-                      onSelect={() => setDateMode("custom")}
+                      onSelect={() => editDateMode("custom")}
                     />
                   </div>
 
@@ -347,16 +347,8 @@ export function WizardGenerateStep() {
                         endIso={customEnd}
                         minIso={dateBounds?.minIso}
                         maxIso={dateBounds?.maxIso}
-                        onStartChange={(iso) => {
-                          setCustomStart(iso);
-                          setLongRangeConfirmed(false);
-                          setCustomRangeError(null);
-                        }}
-                        onEndChange={(iso) => {
-                          setCustomEnd(iso);
-                          setLongRangeConfirmed(false);
-                          setCustomRangeError(null);
-                        }}
+                        onStartChange={(iso) => editCustomStart(iso)}
+                        onEndChange={(iso) => editCustomEnd(iso)}
                       />
 
                       {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
