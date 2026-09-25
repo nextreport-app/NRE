@@ -17,10 +17,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { sent, stats } = await sendAdminDailyReportDigest();
+  const { sent, skipped, error, recipients, stats } = await sendAdminDailyReportDigest();
+
+  if (!sent) {
+    return NextResponse.json(
+      {
+        ok: false,
+        sent,
+        skipped,
+        error: error ?? "Digest email was not sent",
+        recipients,
+        day: stats.dayLabel,
+        total: stats.total,
+        activeUsers: stats.activeUsers,
+      },
+      { status: skipped ? 503 : 500 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     sent,
+    recipients,
     day: stats.dayLabel,
     total: stats.total,
     activeUsers: stats.activeUsers,
