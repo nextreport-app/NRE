@@ -211,6 +211,38 @@ export function computeDailyRangeIso(rows: NreRow[], now: Date = new Date(), tim
   return { startIso: iso, endIso: iso };
 }
 
+export type StandardChartReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "QUARTER" | "YTD";
+
+/**
+ * Chart slide window for standard (non-comparison) reports — aligned to each
+ * report type's primary reporting period. WEEKLY keeps the trailing-30-days
+ * trend (most-tested); calendar-span types use their calendar window; DAILY
+ * uses the single selected day (same as campaign slides).
+ */
+export function resolveStandardChartRange(params: {
+  reportType: StandardChartReportType;
+  rows: NreRow[];
+  now: Date;
+  timezone: string;
+  primaryRange?: DateRangeIso | null;
+  calendarRange: DateRangeIso;
+}): DateRangeIso {
+  const { reportType, rows, now, timezone, primaryRange, calendarRange } = params;
+  if (reportType === "DAILY" && primaryRange) {
+    return {
+      startIso: primaryRange.startIso,
+      endIso: capRangeEndToData(primaryRange.endIso, rows, now, timezone),
+    };
+  }
+  if (reportType === "MONTHLY" || reportType === "QUARTER" || reportType === "YTD") {
+    return {
+      startIso: calendarRange.startIso,
+      endIso: capRangeEndToData(calendarRange.endIso, rows, now, timezone),
+    };
+  }
+  return computeCreativeRangeIso(rows, now, 30, timezone);
+}
+
 /** Default creative / Last-30-Days chart window — trailing N days ending calendar yesterday (same anchor as weekly ranges, not CSV-max capped). */
 export function computeCreativeRangeIso(
   _rows: NreRow[],
