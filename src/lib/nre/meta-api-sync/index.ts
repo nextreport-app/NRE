@@ -3,7 +3,7 @@
  * fill rules to manual Ads Manager exports, then the normal NRE CSV import path.
  *
  * - Fetch: ad-set + daily (same grain as typical manual downloads)
- * - Transform: insight-engine.ts (manual export result picking)
+ * - Transform: manual-export-mapper.ts (Ads Manager Results column only)
  * - Serialize: shared rows-to-csv helper
  */
 export {
