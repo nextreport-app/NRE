@@ -139,7 +139,7 @@ function actionTypeToCsvResultType(
   if (
     pickedAsPrimaryResult &&
     row &&
-    isWebsiteLeadsCampaignRow(row) &&
+    usesWebsiteLeadResultPicking(row) &&
     (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
   ) {
     // Manual Meta exports for website-lead campaigns use "website submission".
@@ -179,7 +179,7 @@ function leadColumnsFromPickedResult(
     const typedCampaign =
       isMessagingCampaignRow(row) ||
       isMetaFormLeadsCampaignRow(row) ||
-      isWebsiteLeadsCampaignRow(row) ||
+      usesWebsiteLeadResultPicking(row) ||
       isQuoteRequestCampaignRow(row);
     if (typedCampaign) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
     return { metaLeadsOut: value, websiteLeadsOut: 0 };
@@ -245,6 +245,16 @@ function isQuoteRequestCampaignRow(row: MetaInsightRow): boolean {
   return isQuoteRequestCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
+/** Website/offsite lead optimization — manual exports only count costed pixel/web lead days. */
+function isWebsiteLeadOptimizationGoal(row: MetaInsightRow): boolean {
+  const goal = row.optimization_goal?.toUpperCase();
+  return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
+}
+
+function usesWebsiteLeadResultPicking(row: MetaInsightRow): boolean {
+  return isWebsiteLeadsCampaignRow(row) || isWebsiteLeadOptimizationGoal(row);
+}
+
 /**
  * Manual Meta exports leave Results blank on traffic days even when Insights API
  * attaches a single unattributed fb_pixel_lead. Real lead days carry
@@ -262,6 +272,37 @@ function isIncidentalWebsiteLead(
   const linkClicks = map.get("link_click") ?? 0;
   if (linkClicks <= 0) return false;
   return true;
+}
+
+/** Meta manual exports only show a lead result on days with a real Cost per result. */
+function actionHasCostedResult(row: MetaInsightRow, actionType: string): boolean {
+  const cost = costPerActionType(row.cost_per_action_type, [actionType]);
+  if (!cost) return false;
+  const n = parseFloat(cost);
+  return Number.isFinite(n) && n > 0;
+}
+
+function withCostedResult(
+  row: MetaInsightRow,
+  match: { action_type: string; value: string } | null,
+): { action_type: string; value: string } | null {
+  if (!match) return null;
+  return actionHasCostedResult(row, match.action_type) ? match : null;
+}
+
+function firstWebsiteLeadAction(
+  row: MetaInsightRow,
+  map: Map<string, number>,
+): { action_type: string; value: string } | null {
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const value = map.get(actionType);
+    if (value == null || value <= 0) continue;
+    const match = { action_type: actionType, value: String(value) };
+    if (isIncidentalWebsiteLead(row, match)) continue;
+    const costed = withCostedResult(row, match);
+    if (costed) return costed;
+  }
+  return null;
 }
 
 function firstActionMatchingPattern(
@@ -305,7 +346,6 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   if (map.size === 0) return null;
 
   const messagingCampaign = isMessagingCampaignRow(row);
-  const websiteLeadsCampaign = isWebsiteLeadsCampaignRow(row);
   const quoteRequestCampaign = isQuoteRequestCampaignRow(row);
 
   if (quoteRequestCampaign) {
@@ -330,14 +370,14 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     return null;
   }
 
-  if (websiteLeadsCampaign) {
+  if (usesWebsiteLeadResultPicking(row)) {
     // Many "website leads" named campaigns still optimize for a quote-request custom
     // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
     const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
-    const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
-    if (websiteMatch && !isIncidentalWebsiteLead(row, websiteMatch)) return websiteMatch;
-    // Same as Meta CSV: no website-lead result on days without a pixel/web
+    const websiteMatch = firstWebsiteLeadAction(row, map);
+    if (websiteMatch) return websiteMatch;
+    // Same as Meta CSV: no website-lead result on days without a costed pixel/web
     // lead action — ignore generic `lead`, meta-form, and traffic actions.
     return null;
   }
@@ -347,7 +387,12 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     const goalActions = OPTIMIZATION_GOAL_ACTION_TYPES[goalKey];
     if (goalActions) {
       const match = firstActionWithValue(map, goalActions);
-      if (match) return match;
+      if (match) {
+        if (isWebsiteLeadActionType(match.action_type)) {
+          return firstWebsiteLeadAction(row, map);
+        }
+        return match;
+      }
     }
   }
 

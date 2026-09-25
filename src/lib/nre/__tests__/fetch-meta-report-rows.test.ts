@@ -114,7 +114,7 @@ describe("pickResultAction", () => {
     expect(pickResultAction(row)).toBeNull();
   });
 
-  it("uses website lead action for OFFSITE_CONVERSIONS goal", () => {
+  it("uses website lead action for OFFSITE_CONVERSIONS goal when Meta reports cost per result", () => {
     const row: MetaInsightRow = {
       actions: [
         { action_type: "link_click", value: "90" },
@@ -122,6 +122,7 @@ describe("pickResultAction", () => {
         { action_type: "offsite_conversion.fb_pixel_lead", value: "12" },
       ],
       optimization_goal: "OFFSITE_CONVERSIONS",
+      cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "4.25" }],
     };
     expect(pickResultAction(row)).toEqual({
       action_type: "offsite_conversion.fb_pixel_lead",
