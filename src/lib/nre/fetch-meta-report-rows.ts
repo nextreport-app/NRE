@@ -467,47 +467,85 @@ function metricValueFromResultEntry(entry: { values?: Array<{ value?: string }> 
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Prefer Meta's Results / Cost per result fields — same source as Ads Manager exports. */
+/**
+ * Merges Meta `results` / `cost_per_result` into actions + cost_per_action_type,
+ * then runs the same pickResultAction rules as manual CSV parity (never the first
+ * results[] row — that is often combined `lead` and over-counts website campaigns).
+ */
+function mergeResultsFieldsIntoRow(row: MetaInsightRow): MetaInsightRow {
+  if (!row.results?.length && !row.cost_per_result?.length) return row;
+
+  const actionMap = actionValueMap(row.actions);
+  for (const entry of row.results ?? []) {
+    const actionType = actionTypeFromResultsIndicator(entry.indicator ?? "");
+    const count = metricValueFromResultEntry(entry);
+    if (!actionType || count <= 0) continue;
+    if ((actionMap.get(actionType) ?? 0) <= 0) {
+      actionMap.set(actionType, count);
+    }
+  }
+
+  const actions: MetaInsightAction[] = [...actionMap.entries()].map(([action_type, value]) => ({
+    action_type,
+    value: String(value),
+  }));
+
+  const costByType = new Map<string, string>();
+  for (const c of row.cost_per_action_type ?? []) {
+    if (c.action_type && c.value && parseFloat(c.value) > 0) {
+      costByType.set(c.action_type, c.value);
+    }
+  }
+  for (const entry of row.cost_per_result ?? []) {
+    const actionType = actionTypeFromResultsIndicator(entry.indicator ?? "");
+    const costVal = metricValueFromResultEntry(entry);
+    if (actionType && costVal > 0 && !costByType.has(actionType)) {
+      costByType.set(actionType, String(costVal));
+    }
+  }
+  const cost_per_action_type = [...costByType.entries()].map(([action_type, value]) => ({
+    action_type,
+    value,
+  }));
+
+  return { ...row, actions, cost_per_action_type };
+}
+
+/** Picks result + CPR using merged actions/results — exported for tests. */
 export function pickResultFromAdsManagerFields(
   row: MetaInsightRow,
 ): { action_type: string; value: string; cpr: string } | null {
-  for (const entry of row.results ?? []) {
-    const indicator = entry.indicator?.trim();
-    if (!indicator) continue;
-    const count = metricValueFromResultEntry(entry);
-    if (count <= 0) continue;
-    const actionType = actionTypeFromResultsIndicator(indicator);
-    if (!actionType) continue;
+  const merged = mergeResultsFieldsIntoRow(row);
+  const picked = pickResultAction(merged);
+  if (!picked) return null;
+  const cpr = costPerActionType(merged.cost_per_action_type, [picked.action_type]);
+  return { action_type: picked.action_type, value: picked.value, cpr };
+}
 
-    let cpr = "";
-    for (const costEntry of row.cost_per_result ?? []) {
-      if (costEntry.indicator?.trim() !== indicator) continue;
-      const costVal = metricValueFromResultEntry(costEntry);
-      if (costVal > 0) cpr = formatMoney(String(costVal));
-    }
-    if (!cpr) {
-      cpr = costPerActionType(row.cost_per_action_type, [actionType]);
-    }
-    return { action_type: actionType, value: String(count), cpr };
+function dedupeInsightsByCampaignDay(rows: MetaInsightRow[]): MetaInsightRow[] {
+  const byKey = new Map<string, MetaInsightRow>();
+  for (const row of rows) {
+    if (!row.campaign_name?.trim() || !row.date_start?.trim()) continue;
+    const key = `${row.campaign_name.trim()}\0${row.date_start.trim()}`;
+    if (!byKey.has(key)) byKey.set(key, row);
   }
-  return null;
+  return [...byKey.values()];
 }
 
 function insightToCsvRow(row: MetaInsightRow): string[] {
-  const actionMap = actionValueMap(row.actions);
-  const adsManagerResult = pickResultFromAdsManagerFields(row);
-  let result: { action_type: string; value: string } | null = adsManagerResult
-    ? { action_type: adsManagerResult.action_type, value: adsManagerResult.value }
-    : pickResultAction(row);
+  const merged = mergeResultsFieldsIntoRow(row);
+  const actionMap = actionValueMap(merged.actions);
+  const picked = pickResultFromAdsManagerFields(row);
+  let result: { action_type: string; value: string } | null = picked
+    ? { action_type: picked.action_type, value: picked.value }
+    : null;
   if (isReachCampaignInsightRow(row)) {
     const reachVal = parseFloat(row.reach ?? "0");
     if (Number.isFinite(reachVal) && reachVal > 0) {
       result = { action_type: "reach", value: row.reach! };
     }
   }
-  const cpr =
-    adsManagerResult?.cpr ||
-    (result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "");
+  const cpr = picked?.cpr || (result ? costPerActionType(merged.cost_per_action_type, [result.action_type]) : "");
 
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
   const { metaLeadsOut, websiteLeadsOut } = leadColumnsFromPickedResult(row, result);
@@ -582,7 +620,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     untilIso,
   });
 
-  const dataRows = insights
+  const dataRows = dedupeInsightsByCampaignDay(insights)
     .filter((r) => r.campaign_name && r.date_start)
     .map(insightToCsvRow);
 

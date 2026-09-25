@@ -227,6 +227,59 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     expect(apiWl?.value).toBe("9");
   });
 
+  it("ignores Meta results[] combined lead on every day (regression: ~49 MTD / ~61 chart)", async () => {
+    const { rows: manualRows } = parseCsvText(readFileSync(USER_UPLOAD_CSV, "utf8"));
+    const insights = manualRows.map((row) => {
+      const insight = manualRowToInsight(row);
+      const results = Number(row.results) || 0;
+      insight.results = [
+        { indicator: "actions:lead", values: [{ value: results > 0 ? String(results) : "2" }] },
+      ];
+      insight.cost_per_result = [
+        {
+          indicator: "actions:lead",
+          values: [{ value: results > 0 ? String(Number(row.spend) / results) : "3.00" }],
+        },
+      ];
+      return insight;
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ data: insights }) })),
+    );
+    const apiCsv = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "America/New_York",
+      sinceIso: "2026-08-25",
+      untilIso: "2026-09-24",
+    });
+    const lines = apiCsv.csvText.split("\n");
+    const { rows: apiRows } = readRowsWithAutoMap(
+      lines[0].split(","),
+      lines.slice(1).map((line) => line.split(",")),
+    );
+
+    const uploadOpts = {
+      accountName: "Credit Firm",
+      currencySymbol: "$",
+      timezone: "America/New_York",
+      monthlyBudget: null,
+      now: new Date("2026-09-25T12:00:00Z"),
+      reportType: "WEEKLY" as const,
+      selectedCampaigns: ["DC Leads Campaign Main"],
+      weeklyRange: { startIso: "2026-09-18", endIso: "2026-09-24" },
+    };
+    const manualReport = buildReportData({ ...uploadOpts, mtdDailyRows: manualRows });
+    const apiReport = buildReportData({ ...uploadOpts, mtdDailyRows: apiRows });
+
+    expect(apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("9");
+    expect(apiReport.chart?.campaigns[0]?.results).toBe(12);
+    expect(apiReport.campaignSlides[0]?.metrics.results).toBe("4");
+    expect(manualReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value).toBe("9");
+  });
+
   it("matches user-reported Sep 2026 upload: weekly 4, MTD 9, chart 12", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(USER_UPLOAD_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);

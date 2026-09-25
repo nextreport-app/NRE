@@ -141,6 +141,38 @@ describe("pickResultAction", () => {
     });
   });
 
+  it("ignores combined actions:lead in Meta results[] for website-leads campaigns (not first-result wins)", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      optimization_goal: "OUTCOME_LEADS",
+      results: [
+        { indicator: "actions:lead", values: [{ value: "2" }] },
+        { indicator: "actions:offsite_conversion.fb_pixel_lead", values: [{ value: "1" }] },
+      ],
+      cost_per_result: [
+        { indicator: "actions:lead", values: [{ value: "5.00" }] },
+        { indicator: "actions:offsite_conversion.fb_pixel_lead", values: [{ value: "12.00" }] },
+      ],
+      actions: [{ action_type: "link_click", value: "10" }],
+    };
+    expect(pickResultFromAdsManagerFields(row)).toEqual({
+      action_type: "offsite_conversion.fb_pixel_lead",
+      value: "1",
+      cpr: "12.00",
+    });
+  });
+
+  it("returns null when Meta results[] only reports combined lead on a blank website-leads day", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      optimization_goal: "OUTCOME_LEADS",
+      results: [{ indicator: "actions:lead", values: [{ value: "2" }] }],
+      cost_per_result: [{ indicator: "actions:lead", values: [{ value: "4.00" }] }],
+      actions: [{ action_type: "link_click", value: "9" }],
+    };
+    expect(pickResultFromAdsManagerFields(row)).toBeNull();
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal when Meta reports cost per result", () => {
     const row: MetaInsightRow = {
       actions: [
