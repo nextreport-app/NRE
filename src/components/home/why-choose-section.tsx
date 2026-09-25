@@ -16,8 +16,8 @@ const REASONS = [
   },
   {
     icon: "📊",
-    title: "Meta + Google Ads",
-    description: "Full reporting support for both platforms. More data sources coming soon.",
+    title: "Meta Ads — live today",
+    description: "Weekly, monthly, and comparison reports from CSV or API sync. Google, TikTok, and GA4 launching soon.",
   },
 ];
 

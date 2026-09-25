@@ -34,7 +34,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "connect-platforms",
       title: "Connect ad accounts (optional)",
-      description: "Link Meta, Google Ads, TikTok, or GA4 once in Account settings, then sync from API in the wizard.",
+      description: "Link Meta in Account settings to sync from API in the wizard. Google, TikTok, and GA4 connections are optional and launching soon.",
       href: "/account#meta-ads",
       done: input.hasPlatformConnection,
       optional: true,

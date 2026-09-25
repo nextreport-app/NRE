@@ -9,7 +9,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Book a Demo",
   description:
-    "Schedule a live NextReport walkthrough — see Meta, Google, TikTok, and GA4 reporting in under 2 minutes. We reply within one business day.",
+    "Schedule a live NextReport walkthrough — see Meta Ads reporting in under 2 minutes. We reply within one business day.",
   path: "/book-demo",
 });
 

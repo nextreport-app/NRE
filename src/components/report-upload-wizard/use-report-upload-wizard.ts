@@ -1838,22 +1838,11 @@ export function useReportUploadWizard({
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
-    const stored = readStoredWizardPlatform();
-    if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
-      setSelectedPlatformCard(stored);
-      setWizardKind("ads");
-      setPlatformPickerExpanded(false);
-      setHasSavedPlatformPreference(true);
-    } else if (stored === "GA4") {
-      setWizardKind("website");
-      setPlatformPickerExpanded(false);
-      setHasSavedPlatformPreference(true);
-    } else {
-      setSelectedPlatformCard("META");
-      setWizardKind("ads");
-      setPlatformPickerExpanded(true);
-      setHasSavedPlatformPreference(false);
-    }
+    const initial = readInitialPlatformPickerState(showTikTokOption);
+    setSelectedPlatformCard(initial.selectedPlatformCard);
+    setWizardKind(initial.wizardKind);
+    setPlatformPickerExpanded(initial.platformPickerExpanded);
+    setHasSavedPlatformPreference(initial.hasSavedPlatformPreference);
     setMtdFile(null);
     setUploadSessionId(null);
     setAnalyzeStatus("idle");
