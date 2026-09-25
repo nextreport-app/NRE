@@ -1,6 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { buildReportData } from "../report-data";
-import { fetchMetaReportCsv, pickResultAction } from "../fetch-meta-report-rows";
+import {
+  fetchMetaReportCsv,
+  pickResultAction,
+  pickResultFromAdsManagerFields,
+} from "../fetch-meta-report-rows";
 import { readRowsWithAutoMap } from "../columns";
 import { validateMtdDailyCsv } from "../validate";
 import type { MetaInsightRow } from "@/lib/meta-api";
@@ -114,6 +118,29 @@ describe("pickResultAction", () => {
     expect(pickResultAction(row)).toBeNull();
   });
 
+  it("pickResultFromAdsManagerFields uses Meta results/cost_per_result over actions", () => {
+    const row: MetaInsightRow = {
+      results: [
+        {
+          indicator: "actions:offsite_conversion.fb_pixel_lead",
+          values: [{ value: "3" }],
+        },
+      ],
+      cost_per_result: [
+        {
+          indicator: "actions:offsite_conversion.fb_pixel_lead",
+          values: [{ value: "7.00" }],
+        },
+      ],
+      actions: [{ action_type: "link_click", value: "200" }],
+    };
+    expect(pickResultFromAdsManagerFields(row)).toEqual({
+      action_type: "offsite_conversion.fb_pixel_lead",
+      value: "3",
+      cpr: "7.00",
+    });
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal when Meta reports cost per result", () => {
     const row: MetaInsightRow = {
       actions: [
@@ -137,6 +164,7 @@ describe("fetchMetaReportCsv", () => {
       "fetch",
       vi.fn(async (url: string) => {
         if (String(url).includes("/insights")) {
+          expect(String(url)).toContain("level=campaign");
           return {
             ok: true,
             json: async () => ({

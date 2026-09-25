@@ -454,16 +454,60 @@ function isReachCampaignInsightRow(row: MetaInsightRow): boolean {
   return isReachCampaignHaystack(campaignNameHaystack(row.campaign_name ?? "", row.adset_name ?? ""));
 }
 
+function actionTypeFromResultsIndicator(indicator: string): string | null {
+  const trimmed = indicator.trim();
+  if (trimmed.startsWith("actions:")) return trimmed.slice("actions:".length);
+  if (trimmed.includes(".")) return trimmed;
+  return null;
+}
+
+function metricValueFromResultEntry(entry: { values?: Array<{ value?: string }> }): number {
+  const raw = entry.values?.[0]?.value;
+  const n = parseFloat(raw ?? "");
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Prefer Meta's Results / Cost per result fields — same source as Ads Manager exports. */
+export function pickResultFromAdsManagerFields(
+  row: MetaInsightRow,
+): { action_type: string; value: string; cpr: string } | null {
+  for (const entry of row.results ?? []) {
+    const indicator = entry.indicator?.trim();
+    if (!indicator) continue;
+    const count = metricValueFromResultEntry(entry);
+    if (count <= 0) continue;
+    const actionType = actionTypeFromResultsIndicator(indicator);
+    if (!actionType) continue;
+
+    let cpr = "";
+    for (const costEntry of row.cost_per_result ?? []) {
+      if (costEntry.indicator?.trim() !== indicator) continue;
+      const costVal = metricValueFromResultEntry(costEntry);
+      if (costVal > 0) cpr = formatMoney(String(costVal));
+    }
+    if (!cpr) {
+      cpr = costPerActionType(row.cost_per_action_type, [actionType]);
+    }
+    return { action_type: actionType, value: String(count), cpr };
+  }
+  return null;
+}
+
 function insightToCsvRow(row: MetaInsightRow): string[] {
   const actionMap = actionValueMap(row.actions);
-  let result = pickResultAction(row);
+  const adsManagerResult = pickResultFromAdsManagerFields(row);
+  let result: { action_type: string; value: string } | null = adsManagerResult
+    ? { action_type: adsManagerResult.action_type, value: adsManagerResult.value }
+    : pickResultAction(row);
   if (isReachCampaignInsightRow(row)) {
     const reachVal = parseFloat(row.reach ?? "0");
     if (Number.isFinite(reachVal) && reachVal > 0) {
       result = { action_type: "reach", value: row.reach! };
     }
   }
-  const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
+  const cpr =
+    adsManagerResult?.cpr ||
+    (result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "");
 
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
   const { metaLeadsOut, websiteLeadsOut } = leadColumnsFromPickedResult(row, result);

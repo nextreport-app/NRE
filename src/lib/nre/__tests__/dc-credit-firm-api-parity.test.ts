@@ -249,6 +249,17 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     expect(apiReport.chart?.campaigns[0]?.results).toBe(12);
   });
 
+  it("ad-set-level duplicate rows would multiply leads 5x (campaign-level sync prevents this)", () => {
+    const { rows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
+    const base = buildReportData({ ...reportOpts, mtdDailyRows: rows });
+    const dup5 = rows.flatMap((r) => [r, r, r, r, r]);
+    const inflated = buildReportData({ ...reportOpts, mtdDailyRows: dup5 });
+    const wl = (report: ReturnType<typeof buildReportData>) =>
+      report.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS")?.value;
+    expect(wl(base)).toBe("9");
+    expect(wl(inflated)).toBe("45");
+  });
+
   it("does not let incidental meta-form actions on blank days flip website-leads campaigns to META FORM LEADS", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);

@@ -129,6 +129,12 @@ export interface MetaInsightAction {
   value: string;
 }
 
+/** Ads Manager "Results" / "Cost per result" — same numbers as the UI export, not raw actions[]. */
+export interface MetaInsightResultMetric {
+  indicator?: string;
+  values?: Array<{ value?: string }>;
+}
+
 export interface MetaInsightRow {
   campaign_name?: string;
   adset_name?: string;
@@ -145,6 +151,9 @@ export interface MetaInsightRow {
   optimization_goal?: string;
   actions?: MetaInsightAction[];
   cost_per_action_type?: MetaInsightAction[];
+  /** When present, matches Ads Manager Results column (preferred over inferring from actions). */
+  results?: MetaInsightResultMetric[];
+  cost_per_result?: MetaInsightResultMetric[];
 }
 
 export interface MetaGraphErrorDetails {
@@ -206,6 +215,8 @@ const META_INSIGHT_FIELDS = [
   "optimization_goal",
   "actions",
   "cost_per_action_type",
+  "results",
+  "cost_per_result",
   "date_start",
   "date_stop",
 ].join(",");
@@ -233,11 +244,14 @@ async function fetchMetaInsightsPageWithRetry(url: string, maxRetries = 3): Prom
   throw new MetaInsightsFetchError(lastError ?? { message: "Failed to fetch Meta insights" });
 }
 
+export type MetaInsightsLevel = "campaign" | "adset";
+
 async function fetchMetaAdAccountInsightsForRange(params: {
   accessToken: string;
   adAccountId: string;
   sinceIso: string;
   untilIso: string;
+  level?: MetaInsightsLevel;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
     ? params.adAccountId
@@ -248,7 +262,10 @@ async function fetchMetaAdAccountInsightsForRange(params: {
 
   const buildUrl = () => {
     const url = new URL(`${metaGraphBase()}/${accountId}/insights`);
-    url.searchParams.set("level", "adset");
+    // Campaign level matches Ads Manager campaign totals / manual CSV exports that
+    // aren't broken out by ad set. Ad-set level double-counts leads when the same
+    // conversion is attributed across multiple ad sets in one campaign (Credit Firm).
+    url.searchParams.set("level", params.level ?? "campaign");
     url.searchParams.set("time_increment", "1");
     url.searchParams.set("fields", META_INSIGHT_FIELDS);
     url.searchParams.set(
@@ -276,15 +293,18 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   return allRows;
 }
 
-/** Fetches daily ad-set-level insights for an ad account (paginated, retried, chunked on Meta code 1). */
+/** Fetches daily insights for an ad account (paginated, retried, chunked on Meta code 1). */
 export async function fetchMetaAdAccountInsights(params: {
   accessToken: string;
   adAccountId: string;
   sinceIso: string;
   untilIso: string;
+  /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
+  level?: MetaInsightsLevel;
 }): Promise<MetaInsightRow[]> {
+  const level = params.level ?? "campaign";
   try {
-    return await fetchMetaAdAccountInsightsForRange(params);
+    return await fetchMetaAdAccountInsightsForRange({ ...params, level });
   } catch (err) {
     if (!(err instanceof MetaInsightsFetchError) || err.meta.code !== 1) {
       throw err;
@@ -296,7 +316,7 @@ export async function fetchMetaAdAccountInsights(params: {
     }
 
     const chunkRows = await Promise.all(
-      chunks.map((chunk) => fetchMetaAdAccountInsightsForRange({ ...params, ...chunk })),
+      chunks.map((chunk) => fetchMetaAdAccountInsightsForRange({ ...params, ...chunk, level })),
     );
     return chunkRows.flat();
   }
