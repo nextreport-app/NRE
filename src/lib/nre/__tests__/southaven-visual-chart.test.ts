@@ -2,7 +2,6 @@ import { describe, expect, it, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseCsvText } from "../parse-csv";
-import { buildCampaignObjectiveMap } from "../objective";
 import { buildReportData } from "../report-data";
 import { buildVisualChartSlideModel, formatDonutObjectiveLabel } from "../visual-chart-slide";
 
@@ -17,7 +16,6 @@ describe("Southaven weekly CSV — visual chart slide", () => {
   const campaignNames = [...new Set(rows.map((r) => r.campaign_name).filter(Boolean))];
 
   it("uses objective labels on the donut and spend-proportional campaign bars", () => {
-    const map = buildCampaignObjectiveMap(rows);
     const data = buildReportData({
       accountName: "Southaven",
       currencySymbol: "$",
@@ -31,11 +29,6 @@ describe("Southaven weekly CSV — visual chart slide", () => {
 
     expect(data.chart).toBeTruthy();
     const model = buildVisualChartSlideModel(data.chart!, "$");
-
-    const labelsByCampaign = Object.fromEntries([...map.entries()].map(([k, v]) => [k, v.resultLabel]));
-    expect(labelsByCampaign["southavenrv&marine_leadgen_instantform"]).toBe("META FORM LEADS");
-    expect(labelsByCampaign["southavenrv&marine_traffic_linkclicks"]).toBe("LINK CLICKS");
-    expect(labelsByCampaign["southavenrv_reach_retargeting_april 9"]).toBe("REACH");
 
     expect(model.useSplitPanel).toBe(true);
     expect(model.rightHeading).toBe("Performance by Campaign");

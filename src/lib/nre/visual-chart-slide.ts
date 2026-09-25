@@ -4,6 +4,12 @@
  * Single campaign: results bar only — no redundant "100% of total" or spend-by-week donut.
  */
 
+import {
+  campaignNameHaystack,
+  isLinkClicksCampaignHaystack,
+  isMetaFormLeadsCampaignHaystack,
+  isReachCampaignHaystack,
+} from "./campaign-name-heuristics";
 import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
@@ -153,6 +159,33 @@ function computeBarPct(value: number, maxValue: number): number {
   return Math.floor((value / maxValue) * 100);
 }
 
+/** Chart slide display only — corrects mis-detected lead-family labels from campaign names. */
+function resolveChartDisplayObjective(campaignName: string, fallbackResLabel: string): string {
+  const fallback = fallbackResLabel.toUpperCase();
+  // Only override when the engine folded distinct campaigns into generic website/leads.
+  if (fallback !== "WEBSITE LEADS" && fallback !== "LEADS") return fallbackResLabel;
+  const haystack = campaignNameHaystack(campaignName);
+  if (isReachCampaignHaystack(haystack)) return "REACH";
+  if (isMetaFormLeadsCampaignHaystack(haystack)) return "META FORM LEADS";
+  if (isLinkClicksCampaignHaystack(haystack)) return "LINK CLICKS";
+  return fallbackResLabel;
+}
+
+function resolveChartDisplayCprLabel(displayResLabel: string, fallbackCprLabel: string): string {
+  const u = displayResLabel.toUpperCase();
+  if (u === "LINK CLICKS") return "COST PER CLICK";
+  if (u === "META FORM LEADS" || u === "LEADS") return "COST PER LEAD";
+  if (u === "REACH" || u === "UNIQUE REACH") return "COST PER 1K REACH";
+  if (u === "WEBSITE LEADS") return "COST PER WEBSITE LEAD";
+  if (u.includes("LANDING PAGE")) return "COST PER LANDING PAGE VIEW";
+  return fallbackCprLabel;
+}
+
+function chartCampaignDisplayFields(c: ChartCampaignData): { resLabel: string; cprLabel: string } {
+  const resLabel = resolveChartDisplayObjective(c.name, c.resLabel);
+  return { resLabel, cprLabel: resolveChartDisplayCprLabel(resLabel, c.cprLabel) };
+}
+
 /** Short donut-legend labels — campaign names live on the results bars panel. */
 export function formatDonutObjectiveLabel(resLabel: string): string {
   const u = resLabel.toUpperCase();
@@ -279,11 +312,12 @@ function buildSummaryFromCampaigns(campaigns: ChartCampaignData[], totalSpend: n
     .slice()
     .sort((a, b) => b.spend - a.spend || b.results - a.results);
   const chunks = rows.map((c) => {
-    const label = formatDonutObjectiveLabel(c.resLabel);
-    const countLabel = formatResultLine(c.results, c.resLabel);
+    const display = chartCampaignDisplayFields(c);
+    const label = formatDonutObjectiveLabel(display.resLabel);
+    const countLabel = formatResultLine(c.results, display.resLabel);
     const cost =
       c.results > 0 && c.cpr > 0
-        ? `${fmtCurrency2dp(c.cpr, currencySymbol)} ${shortCostAbbrev(c.cprLabel)}`
+        ? `${fmtCurrency2dp(c.cpr, currencySymbol)} ${shortCostAbbrev(display.cprLabel)}`
         : "N/A";
     return `${label}: ${countLabel} · ${cost}`;
   });
@@ -317,7 +351,7 @@ function buildGroupedDonutFromCampaigns(
   const topSpend = top.reduce((sum, c) => sum + c.spend, 0);
   const otherSpend = Math.max(0, totalSpend - topSpend);
   const slices: VisualChartSegment[] = top.map((c) => ({
-    name: formatDonutObjectiveLabel(c.resLabel),
+    name: formatDonutObjectiveLabel(chartCampaignDisplayFields(c).resLabel),
     color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
     percentage: totalSpend > 0 ? Math.round((c.spend / totalSpend) * 1000) / 10 : 0,
     spendLabel: fmtCurrencyAdaptive(c.spend, currencySymbol),
@@ -341,7 +375,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const reportingCampaigns = chart.campaigns.filter((c) => c.spend > 0 || c.results > 0);
   const useSplitPanel = reportingCampaigns.length >= 1 && chart.totalAllSpend > 0;
   const useCampaignBars = reportingCampaigns.length >= 2;
-  const uniqueObjectives = new Set(reportingCampaigns.map((c) => c.resLabel));
+  const uniqueObjectives = new Set(reportingCampaigns.map((c) => chartCampaignDisplayFields(c).resLabel));
   const mixedCampaignObjectives = uniqueObjectives.size > 1;
 
   // Two or more campaigns: spend donut (objective labels) + per-campaign result bars.
@@ -357,15 +391,18 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     const rightHeading = mixedCampaignObjectives ? "Performance by Campaign" : `${resultLabel} by Campaign`;
 
     const resultBars = buildResultBars(
-      chart.campaigns.map((c) => ({
-        name: formatCampaignDisplayName(c.name),
-        color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
-        spend: c.spend,
-        results: c.results,
-        resLabel: c.resLabel,
-        cpr: c.cpr,
-        cprLabel: c.cprLabel,
-      })),
+      chart.campaigns.map((c) => {
+        const display = chartCampaignDisplayFields(c);
+        return {
+          name: formatCampaignDisplayName(c.name),
+          color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
+          spend: c.spend,
+          results: c.results,
+          resLabel: display.resLabel,
+          cpr: c.cpr,
+          cprLabel: display.cprLabel,
+        };
+      }),
       currencySymbol,
       {
         includeSpend: false,
@@ -446,15 +483,18 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     : null;
 
   const resultBars = buildResultBars(
-    chart.campaigns.map((c) => ({
-      name: formatCampaignDisplayName(c.name),
-      color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
-      spend: c.spend,
-      results: c.results,
-      resLabel: c.resLabel,
-      cpr: c.cpr,
-      cprLabel: c.cprLabel,
-    })),
+    chart.campaigns.map((c) => {
+      const display = chartCampaignDisplayFields(c);
+      return {
+        name: formatCampaignDisplayName(c.name),
+        color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
+        spend: c.spend,
+        results: c.results,
+        resLabel: display.resLabel,
+        cpr: c.cpr,
+        cprLabel: display.cprLabel,
+      };
+    }),
     currencySymbol,
     {
       includeSpend: false,
