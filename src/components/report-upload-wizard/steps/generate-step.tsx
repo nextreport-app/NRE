@@ -163,7 +163,7 @@ export function WizardGenerateStep() {
               <ReportTypeCard
                 icon="☀️"
                 heading="Yesterday Performance Report"
-                description="Latest complete day — campaign slides with metrics."
+                description="Latest complete day"
                 selected={reportType === "DAILY"}
                 onSelect={() => handleReportTypeChange("DAILY")}
                 layout="compact"
@@ -234,7 +234,7 @@ export function WizardGenerateStep() {
                     heading="Daily Performance Report"
                     description={
                       platform === "META"
-                        ? "Multiple days — account totals in a table, one row per day."
+                        ? "Multiple days, one row per day"
                         : "Meta only in this version."
                     }
                     selected={reportType === "DAY_BREAKDOWN"}

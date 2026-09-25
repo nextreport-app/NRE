@@ -3123,8 +3123,8 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
       now: NOW,
     });
     expect(data.cover.dateRange).toBe("July 15 - July 17");
-    // MTD label uses calendar month start (July 1) through latest data day.
-    expect(data.mtdRow.monthLabel).toBe("Jul 1 - 19");
+    // MTD label reflects actual in-month data days present in the CSV (13-19 here).
+    expect(data.mtdRow.monthLabel).toBe("Jul 13 - 19");
   });
 });
 
@@ -3538,6 +3538,50 @@ describe("buildReportData — ad-set slide with $0 spend in the weekly window bu
   });
 });
 
+describe("buildReportData — DAILY (Yesterday) report window parity", () => {
+  function dailyRow(day: string, spend: number): NreRow {
+    return {
+      _raw: { Day: day },
+      campaign_name: "Shoes",
+      ad_set_name: "Set 1",
+      result_type: "website submission",
+      website_leads: String(spend > 80 ? 2 : 1),
+      spend: String(spend),
+      reach: "100",
+      impressions: "300",
+      results: String(spend > 80 ? 2 : 1),
+      ctr: "1.5",
+      cpc: "3",
+      date_start: day,
+      date_end: day,
+    };
+  }
+
+  const mtdDays = Array.from({ length: 19 }, (_, i) => `2026-07-${String(i + 1).padStart(2, "0")}`);
+  const rows: NreRow[] = mtdDays.map((day, index) => dailyRow(day, index === 18 ? 100 : 50));
+  const yesterdayRange = { startIso: "2026-07-19", endIso: "2026-07-19" };
+
+  it("aligns campaign slides, Combined Total current row, and chart to yesterday only", () => {
+    const data = buildReportData({
+      accountName: "Test Agency",
+      currencySymbol: "₹",
+      timezone: "Asia/Kolkata",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      reportType: "DAILY",
+      weeklyRange: yesterdayRange,
+      now: NOW,
+    });
+
+    expect(data.campaignSlides[0].metrics.spend).toBe("₹100");
+    expect(data.mtdRow.spend).toBe("₹100");
+    expect(data.chart?.totalAllSpend).toBe(100);
+    expect(data.chart?.periodSubLabel).toBe("Jul 19, 2026");
+    expect(data.chart?.actualPeriodDays).toBe(1);
+    expect(data.mtdRow.spend).not.toBe("₹950");
+  });
+});
+
 describe("buildReportData — Fix 8: Monthly Report option", () => {
   function dailyRow(campaignName: string, day: string, spend: number): NreRow {
     return {
@@ -3606,17 +3650,19 @@ describe("buildReportData — Fix 8: Monthly Report option", () => {
     expect(monthly.cover.healthBadge).not.toContain("Weekly");
   });
 
-  it("still computes the Combined Total table's MTD row from the full MTD data either way — unaffected by reportType", () => {
+  it("still computes the Combined Total table's MTD row from the full MTD data for Weekly and Monthly", () => {
     const weekly = build("WEEKLY");
     const monthly = build("MONTHLY");
     expect(weekly.mtdRow.spend).toBe(monthly.mtdRow.spend);
   });
 
-  it("uses the last-30-days window on the chart for Weekly and Monthly reports alike", () => {
+  it("aligns Monthly chart spend with full-MTD campaign slides; Weekly chart uses trailing-30 capped to CSV", () => {
     const weekly = build("WEEKLY");
     const monthly = build("MONTHLY");
-    expect(weekly.chart?.periodSubLabel).toBe("Jun 20 - Jul 19, 2026");
-    expect(monthly.chart?.periodSubLabel).toBe("Jun 20 - Jul 19, 2026");
+    expect(weekly.campaignSlides[0].metrics.spend).toBe("₹350");
+    expect(monthly.campaignSlides[0].metrics.spend).toBe("₹950");
+    expect(monthly.chart?.totalAllSpend).toBe(950);
+    expect(monthly.chart?.periodSubLabel).toBe("Jul 1 - Jul 19, 2026");
     expect(weekly.chart?.periodLabel).toBe("Last30");
   });
 
