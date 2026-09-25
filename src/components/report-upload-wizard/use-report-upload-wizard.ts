@@ -407,8 +407,16 @@ export function useReportUploadWizard({
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
 
+  /** After a successful generate, any config edit should bring the Generate CTA back. */
+  function acknowledgePostGenerateEdit() {
+    if (generateStatusRef.current !== "done") return;
+    resetGenerateState();
+    clearWizardGenerateSnapshot(clientId);
+  }
+
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
+    acknowledgePostGenerateEdit();
     setReportType(next);
     if (!reportTitleTouched) {
       setReportTitle(defaultReportTitleFor(next));
@@ -445,8 +453,33 @@ export function useReportUploadWizard({
     return Math.round((endTs - startTs) / (24 * 60 * 60 * 1000)) + 1;
   }
 
+  function editDateMode(mode: DateMode) {
+    acknowledgePostGenerateEdit();
+    setDateMode(mode);
+  }
+
+  function editCustomStart(iso: string) {
+    acknowledgePostGenerateEdit();
+    setCustomStart(iso);
+    setLongRangeConfirmed(false);
+    setCustomRangeError(null);
+  }
+
+  function editCustomEnd(iso: string) {
+    acknowledgePostGenerateEdit();
+    setCustomEnd(iso);
+    setLongRangeConfirmed(false);
+    setCustomRangeError(null);
+  }
+
+  function editHistoricalMonthCount(count: number) {
+    acknowledgePostGenerateEdit();
+    setHistoricalMonthCount(count);
+  }
+
   /** Comparison Report's preset pill onSelect (A1) — This week/This month presets recompute Period A/B from the server-provided options; Custom just switches to the date-picker view, leaving whatever dates are already there. */
   function handleComparisonPresetSelect(preset: ComparisonPreset) {
+    acknowledgePostGenerateEdit();
     setComparisonPreset(preset);
     if (preset === "thisWeek" && weeklyOptions) {
       setComparisonPeriodA(weeklyOptions.last7);
@@ -458,10 +491,12 @@ export function useReportUploadWizard({
   }
 
   function updateComparisonPeriodA(field: "startIso" | "endIso", value: string) {
+    acknowledgePostGenerateEdit();
     setComparisonPeriodA((prev) => ({ startIso: prev?.startIso ?? "", endIso: prev?.endIso ?? "", [field]: value }));
   }
 
   function updateComparisonPeriodB(field: "startIso" | "endIso", value: string) {
+    acknowledgePostGenerateEdit();
     setComparisonPeriodB((prev) => ({ startIso: prev?.startIso ?? "", endIso: prev?.endIso ?? "", [field]: value }));
   }
 
@@ -741,9 +776,7 @@ export function useReportUploadWizard({
       setDayBreakdownData(null);
     }
     setPreviewStatus("idle");
-    if (generateStatusRef.current !== "done") {
-      resetGenerateState();
-    }
+    resetGenerateState();
   }
 
   /** All ad platforms land on Step 2 (Select Campaigns) after analyze — /metrics is fetched on that step's Continue click. */
@@ -1546,6 +1579,8 @@ export function useReportUploadWizard({
   // navigation needed.
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
+    // Keep the post-generate success screen until the user edits report settings.
+    if (generateStatus === "done") return;
 
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     previewDebounceRef.current = setTimeout(() => {
@@ -1572,6 +1607,7 @@ export function useReportUploadWizard({
     historicalMonthCount,
     showBudgetOnCover,
     includePreviousMonthComparison,
+    generateStatus,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -1934,6 +1970,7 @@ export function useReportUploadWizard({
   }, [previewKind, data, clientMonthlyBudget, currencySymbol, clientTimezone]);
 
   async function handleShowBudgetOnCoverChange(next: boolean) {
+    acknowledgePostGenerateEdit();
     const previous = showBudgetOnCover;
     setShowBudgetOnCover(next);
     setBudgetToggleSaving(true);
@@ -2107,10 +2144,13 @@ export function useReportUploadWizard({
     mtdRange,
     dateMode,
     setDateMode,
+    editDateMode,
     customStart,
     setCustomStart,
+    editCustomStart,
     customEnd,
     setCustomEnd,
+    editCustomEnd,
     customRangeError,
     setCustomRangeError,
     longRangeConfirmed,
@@ -2125,6 +2165,7 @@ export function useReportUploadWizard({
     updateComparisonPeriodB,
     historicalMonthCount,
     setHistoricalMonthCount,
+    editHistoricalMonthCount,
     monthComparisonOptions,
     monthComparisonCoverage,
     dailyRange,
