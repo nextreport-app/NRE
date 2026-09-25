@@ -784,11 +784,14 @@ export function useReportUploadWizard({
       setDayBreakdownData(null);
     }
     setPreviewStatus("idle");
-    resetGenerateState();
+    if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done") {
+      resetGenerateState();
+    }
   }
 
-  /** All ad platforms land on Step 2 (Select Campaigns) after analyze — /metrics is fetched on that step's Continue click. */
-  async function dispatchAfterAnalyze(_platformValue: "META" | "GOOGLE" | "TIKTOK") {
+  /** Step 1 -> 2 after analyze — user confirms instead of auto-advancing. */
+  function handleImportContinue() {
+    if (!uploadSessionId || campaigns.length === 0) return;
     setStep(2);
   }
 
@@ -843,7 +846,6 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(detected);
-    await dispatchAfterAnalyze(detected);
   }
 
   type ApiSyncMeta = {
@@ -979,10 +981,9 @@ export function useReportUploadWizard({
     }
     if (meta?.previousMonthSynced) {
       showToast(
-        "Previous month data synced — review campaign checkboxes below, then uncheck any you don't manage.",
+        "Previous month data synced — review campaign checkboxes on the next step, then uncheck any you don't manage.",
       );
     }
-    await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
   /** Mismatch warning's "Continue anyway" — re-analyzes with the user's selected platform forced as an override, so a genuinely wrong-platform CSV fails validation honestly instead of silently being parsed as the wrong thing. */
@@ -1018,7 +1019,6 @@ export function useReportUploadWizard({
 
     applyAnalyzeResult(json);
     rememberPlatformChoice(selectedPlatformCard);
-    await dispatchAfterAnalyze(selectedPlatformCard);
   }
 
   /** Mismatch warning's "Go back" — just clears the warning locally, no re-fetch, so the user can reconsider the platform card or re-upload a different file. */
@@ -1588,7 +1588,7 @@ export function useReportUploadWizard({
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
     // Keep the post-generate success screen until the user edits report settings.
-    if (generateStatus === "done") return;
+    if (generateStatus === "done" || generateStatus === "loading") return;
 
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     previewDebounceRef.current = setTimeout(() => {
@@ -2068,6 +2068,13 @@ export function useReportUploadWizard({
     analyzeErrors,
     analyzeMessage,
     handleAnalyze,
+    handleImportContinue,
+    showImportContinue:
+      step === 1 &&
+      !!uploadSessionId &&
+      campaigns.length > 0 &&
+      analyzeStatus === "idle" &&
+      !mismatchWarning,
     handleApiSynced,
     handleMismatchContinueAnyway,
     handleMismatchGoBack,

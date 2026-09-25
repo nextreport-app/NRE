@@ -70,7 +70,7 @@ export function coerceLaunchPlatform(platform: string): LaunchEnabledPlatform {
 export const META_LAUNCH_HERO_BADGE = "Meta Ads — live now · Google, TikTok & GA4 — launching soon";
 
 export const META_LAUNCH_HERO_SUBHEAD =
-  "Connect Meta via official API or upload a CSV. Branded PowerPoint, live browser link, and PDF with AI-written insights — often under 2 minutes.";
+  "Connect Meta via official API or upload a CSV. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
 
 export const META_LAUNCH_FOOTER_BLURB =
   "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes. Google Ads, TikTok, and GA4 launching soon.";

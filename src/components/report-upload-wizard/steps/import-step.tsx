@@ -14,6 +14,7 @@ import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platfo
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { isPlatformBeta } from "@/lib/platform-beta";
 import { UploadDropzone } from "../ui/upload-dropzone";
+import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 
 export function WizardImportStep() {
   const w = useWizardContext();
@@ -35,6 +36,8 @@ export function WizardImportStep() {
     googleAdsConfigured,
     googleAdsConnected,
     handleAnalyze,
+    handleImportContinue,
+    showImportContinue,
     handleApiSynced,
     handleCancelPreviousMonthSummary,
     handleDataSourceModeChange,
@@ -85,7 +88,7 @@ export function WizardImportStep() {
     previousMonthInfo.status === "current" && !includePreviousMonthComparison;
 
   return (
-        <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+        <div className={`space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 ${showImportContinue ? "pb-24 md:pb-5" : ""}`}>
           {hasSavedPlatformPreference && selectedPlatformCard ? (
             <>
               <WizardPlatformCompactBar
@@ -338,6 +341,30 @@ export function WizardImportStep() {
               {analyzeMessage}
             </div>
           )}
+
+          {showImportContinue && (
+            <div className="space-y-3 border-t border-dash-border pt-4">
+              <div className="rounded-md border border-emerald-800/50 bg-emerald-950/25 px-4 py-3 text-[14px] text-emerald-200">
+                Data imported successfully — review your selection on the next step before generating.
+              </div>
+              <button
+                type="button"
+                onClick={handleImportContinue}
+                className="hidden h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover md:block"
+              >
+                Continue to campaigns
+              </button>
+            </div>
+          )}
+
+          {showImportContinue ? (
+            <WizardStickyFooter
+              stepLabel="Step 1 of 4 · Import"
+              showBack={false}
+              primaryLabel="Continue to campaigns"
+              onPrimary={handleImportContinue}
+            />
+          ) : null}
         </div>
   );
 }
