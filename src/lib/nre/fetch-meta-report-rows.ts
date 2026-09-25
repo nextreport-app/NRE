@@ -348,6 +348,82 @@ function pickQuoteRequestAction(map: Map<string, number>): { action_type: string
   );
 }
 
+/** Anonymous custom.* on website-leads-named campaigns (Credit Firm) must not steal objective. */
+function pickQuoteRequestActionForWebsiteLeadsRow(
+  row: MetaInsightRow,
+  map: Map<string, number>,
+): { action_type: string; value: string } | null {
+  const explicit =
+    firstActionForObjectiveKey(map, "quote_requests") ??
+    firstActionMatchingPattern(map, /quote[\s_]*request/i);
+  if (explicit) return explicit;
+
+  if (isQuoteRequestCampaignRow(row)) {
+    return firstCustomConversionAction(map);
+  }
+
+  if (!isWebsiteLeadsCampaignRow(row)) {
+    return firstCustomConversionAction(map);
+  }
+
+  const custom = firstCustomConversionAction(map);
+  if (!custom) return null;
+  const customCosted = withCostedResult(row, custom);
+  const website = firstWebsiteLeadAction(row, map);
+  const pixelFallback = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
+  const webN = website
+    ? parseFloat(website.value)
+    : pixelFallback
+      ? parseFloat(pixelFallback.value)
+      : 0;
+
+  if (customCosted) {
+    const customN = parseFloat(customCosted.value);
+    if (webN <= 0) return customCosted;
+    if (customN > webN) return customCosted;
+    if (!website && customN >= webN) return customCosted;
+  }
+
+  if (webN <= 0) return null;
+  return parseFloat(custom.value) > webN ? custom : null;
+}
+
+function combinedLeadCountFromMetaResults(row: MetaInsightRow): number {
+  let max = 0;
+  for (const entry of row.results ?? []) {
+    const actionType = actionTypeFromResultsIndicator(entry.indicator ?? "");
+    if (actionType !== "lead") continue;
+    max = Math.max(max, metricValueFromResultEntry(entry));
+  }
+  return max;
+}
+
+/**
+ * Manual Meta CSV: website submission only when costed pixel/web lead matches the
+ * Ads Manager Results column. Traffic days show combined `lead` in results[] that
+ * does not match the costed pixel count in actions — leave Results blank.
+ */
+function pickWebsiteLeadForManualCsvParity(
+  row: MetaInsightRow,
+): { action_type: string; value: string } | null {
+  const merged = mergeResultsFieldsIntoRow(row);
+  const map = actionValueMap(merged.actions);
+
+  const fromResults = websiteLeadFromMetaResultsField(row);
+  if (fromResults) return fromResults;
+
+  const websiteMatch = firstWebsiteLeadAction(row, map);
+  if (!websiteMatch) return null;
+
+  if (!row.results?.length) return websiteMatch;
+
+  const combinedLead = combinedLeadCountFromMetaResults(row);
+  const pixelVal = parseFloat(websiteMatch.value);
+  if (combinedLead > 0 && combinedLead !== pixelVal) return null;
+
+  return websiteMatch;
+}
+
 /** Prefer actions whose CSV result_type resolves to a specific objective (same resolver as manual CSV). */
 function firstActionForObjectiveKey(
   map: Map<string, number>,
@@ -394,20 +470,10 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   }
 
   if (usesWebsiteLeadResultPicking(row)) {
-    // Many "website leads" named campaigns still optimize for a quote-request custom
-    // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
-    const quoteMatch = pickQuoteRequestAction(map);
+    const quoteMatch = pickQuoteRequestActionForWebsiteLeadsRow(row, map);
     if (quoteMatch) return quoteMatch;
-    if (row.results?.length) {
-      const fromAdsManagerResults = websiteLeadFromMetaResultsField(row);
-      if (fromAdsManagerResults) return fromAdsManagerResults;
-      // Primary Results column is combined `lead` or traffic-only — manual export blank.
-      return null;
-    }
-    const websiteMatch = firstWebsiteLeadAction(row, map);
+    const websiteMatch = pickWebsiteLeadForManualCsvParity(row);
     if (websiteMatch) return websiteMatch;
-    // Same as Meta CSV: no website-lead result on days without a costed pixel/web
-    // lead action — ignore generic `lead`, meta-form, and traffic actions.
     return null;
   }
 

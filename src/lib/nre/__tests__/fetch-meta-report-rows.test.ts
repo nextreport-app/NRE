@@ -173,7 +173,7 @@ describe("pickResultAction", () => {
     expect(pickResultFromAdsManagerFields(row)).toBeNull();
   });
 
-  it("ignores costed fb_pixel_lead in actions when results[] has no website-lead indicator", () => {
+  it("ignores costed fb_pixel_lead in actions when results[] combined lead count mismatches pixel", () => {
     const row: MetaInsightRow = {
       campaign_name: "DC Leads Campaign Main",
       optimization_goal: "OUTCOME_LEADS",
@@ -186,6 +186,25 @@ describe("pickResultAction", () => {
       cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "12.00" }],
     };
     expect(pickResultFromAdsManagerFields(row)).toBeNull();
+  });
+
+  it("counts costed pixel when results[] actions:lead matches pixel count (real lead day)", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      optimization_goal: "OUTCOME_LEADS",
+      results: [{ indicator: "actions:lead", values: [{ value: "1" }] }],
+      cost_per_result: [{ indicator: "actions:lead", values: [{ value: "19.34" }] }],
+      actions: [
+        { action_type: "link_click", value: "8" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+      ],
+      cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "19.34" }],
+    };
+    expect(pickResultFromAdsManagerFields(row)).toEqual({
+      action_type: "offsite_conversion.fb_pixel_lead",
+      value: "1",
+      cpr: "19.34",
+    });
   });
 
   it("uses website lead action for OFFSITE_CONVERSIONS goal when Meta reports cost per result", () => {

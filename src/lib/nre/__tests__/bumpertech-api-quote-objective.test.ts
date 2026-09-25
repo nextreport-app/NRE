@@ -240,7 +240,10 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
               optimization_goal: "OUTCOME_LEADS",
               actions: [
                 { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
-                { action_type: "offsite_conversion.custom.9876543210", value: "1" },
+                { action_type: "offsite_conversion.custom.9876543210", value: "3" },
+              ],
+              cost_per_action_type: [
+                { action_type: "offsite_conversion.custom.9876543210", value: "3.96" },
               ],
             },
           ],
