@@ -33,7 +33,7 @@
 ## Engineering invariants (non-negotiable for launch)
 
 1. **One pipeline:** API sync synthesizes CSV rows → same `parseCsvText` → `buildReportData` as manual upload.
-2. **Golden fixtures:** Real anonymized accounts (Credit Firm, Southaven, GZ, BumperTech, …) — CI fails if manual ≠ API on leads, CPL, chart totals.
+2. **Golden fixtures:** Real anonymized accounts (Credit Firm, Southaven, GZ, BumperTech, …) — CI fails if manual ≠ API on leads, CPL, chart totals. See `src/lib/nre/__tests__/meta-golden-parity.test.ts` (all six launch report types on Credit Firm; weekly on GZ + Southaven).
 3. **Report windows:** Each report type uses one primary date window for campaign slides, Combined Total row, and chart (see `resolveStandardChartRange`).
 
 ## Marketing copy

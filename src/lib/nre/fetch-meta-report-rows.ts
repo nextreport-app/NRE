@@ -8,6 +8,7 @@ import {
   isMetaFormLeadsCampaignHaystack,
   isMessagingCampaignHaystack,
   isQuoteRequestCampaignHaystack,
+  isReachCampaignHaystack,
   isWebsiteLeadsCampaignHaystack,
 } from "./campaign-name-heuristics";
 import { metaApiActionToCsvResultType } from "./meta-objective-dictionary";
@@ -404,9 +405,19 @@ function costPerActionType(
   return "";
 }
 
+function isReachCampaignInsightRow(row: MetaInsightRow): boolean {
+  return isReachCampaignHaystack(campaignNameHaystack(row.campaign_name ?? "", row.adset_name ?? ""));
+}
+
 function insightToCsvRow(row: MetaInsightRow): string[] {
   const actionMap = actionValueMap(row.actions);
-  const result = pickResultAction(row);
+  let result = pickResultAction(row);
+  if (isReachCampaignInsightRow(row)) {
+    const reachVal = parseFloat(row.reach ?? "0");
+    if (Number.isFinite(reachVal) && reachVal > 0) {
+      result = { action_type: "reach", value: row.reach! };
+    }
+  }
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
