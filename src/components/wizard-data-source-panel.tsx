@@ -218,8 +218,7 @@ export function WizardDataSourcePanel({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
-        <p className="text-[13px] text-dash-ink-secondary">Reduce manual work — no more spreadsheets.</p>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+        <p className="text-[13px] text-dash-ink-secondary">
           Last 30 days through yesterday — Previous month loads automatically.
         </p>
       </div>

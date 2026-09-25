@@ -61,7 +61,7 @@ export function FeaturesSection() {
           Everything you need to send better Meta reports
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">
-          Launching with Meta Ads first — Google Ads, TikTok, and GA4 follow once parity testing is complete.
+          Launching with Meta Ads first — Google Ads, TikTok, and GA4 launching soon.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

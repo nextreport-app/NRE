@@ -63,8 +63,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
 
           <p className="mt-5 text-lg text-ink-muted">{META_LAUNCH_HERO_SUBHEAD}</p>
           <p className="mt-3 text-sm text-ink-secondary">
-            White-label every client report. Google Ads, TikTok, and GA4 are launching soon — we kept the integrations
-            in place so we can turn them on once Meta reporting is fully verified.
+            White-label every client report. Google Ads, TikTok, and GA4 are launching soon.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

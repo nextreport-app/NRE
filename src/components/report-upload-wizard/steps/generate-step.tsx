@@ -709,44 +709,7 @@ export function WizardGenerateStep() {
                 </>
               )}
             </div>
-
-            {/* Section 3 — Generate button. Same screen throughout: only
-                this changes as generateStatus moves idle -> loading ->
-                done/error, so there's no navigation between "getting ready"
-                and "here's your file". */}
-            {generateStatus === "idle" && (
-              <div className="hidden md:block">
-                <button
-                  onClick={handleGenerate}
-                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-                >
-                  Generate Report
-                </button>
-                <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
-              </div>
-            )}
           </div>
-
-          {generateStatus === "loading" && (
-            <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
-              <Spinner />
-              Generating your report…
-            </div>
-          )}
-
-          {generateStatus === "error" && (
-            <div className="hidden space-y-3 md:block">
-              <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
-                {generateMessage}
-              </div>
-              <button
-                onClick={handleGenerate}
-                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
 
           {generateStatus === "done" && downloadUrl && (
             <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
@@ -1063,6 +1026,47 @@ export function WizardGenerateStep() {
             </>
           )}
 
+          {showGenerateFooter && (
+            <div className="space-y-3">
+              {generateStatus === "idle" && previewStatus === "loading" && (
+                <p className="text-[14px] text-dash-ink-secondary">Loading preview…</p>
+              )}
+              {generateStatus === "idle" && (
+                <div className="hidden md:block">
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={previewStatus === "loading" || previewStatus === "invalid"}
+                    className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                  >
+                    Generate Report
+                  </button>
+                  <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                </div>
+              )}
+              {generateStatus === "loading" && (
+                <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
+                  <Spinner />
+                  Generating your report…
+                </div>
+              )}
+              {generateStatus === "error" && (
+                <div className="hidden space-y-3 md:block">
+                  <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
+                    {generateMessage}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {showGenerateFooter ? (
             <WizardStickyFooter
               stepLabel={
@@ -1082,7 +1086,9 @@ export function WizardGenerateStep() {
                     : "Generate Report"
               }
               onPrimary={handleGenerate}
-              primaryDisabled={generateStatus === "loading" || previewStatus === "loading"}
+              primaryDisabled={
+                generateStatus !== "loading" && (previewStatus === "loading" || previewStatus === "invalid")
+              }
               primaryLoading={generateStatus === "loading"}
             />
           ) : null}
