@@ -39,8 +39,8 @@ const PLANS: Plan[] = [
     features: [
       AGENCY_CLIENT_LIMIT_FEATURE,
       "Unlimited report generation",
-      "Meta Ads (full) · Google, TikTok & GA4 (beta) — API sync",
-      "CSV upload — all four platforms",
+      "Meta Ads — API sync & CSV upload (live)",
+      "Google, TikTok & GA4 — launching soon",
       "AI-written campaign summaries & insights",
       "PowerPoint, Google Slides & live browser share",
       "Google Drive auto-save",
@@ -59,8 +59,8 @@ const PLANS: Plan[] = [
     features: [
       PROFESSIONAL_CLIENT_LIMIT_FEATURE,
       "Everything in Agency",
-      "All four platforms — API sync for every client",
-      "Creative performance reporting",
+      "Meta for every client today — more platforms as we launch them",
+      "Quarterly, YTD & creative reports — launching soon",
       "Priority email support",
       "Early access to new features",
     ],

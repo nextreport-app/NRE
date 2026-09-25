@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
+import { META_LAUNCH_HERO_BADGE, META_LAUNCH_HERO_SUBHEAD } from "@/lib/meta-launch-scope";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -53,20 +54,17 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
-            Meta · Google Ads · TikTok · GA4
+            {META_LAUNCH_HERO_BADGE}
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
-            Send polished client reports in under 2 minutes.
+            Send polished Meta Ads client reports in under 2 minutes.
           </h1>
 
-          <p className="mt-5 text-lg text-ink-muted">
-            Meta, Google Ads, TikTok, and GA4 — connect via official API or upload a CSV. Download a branded
-            PowerPoint (.pptx), share a live browser link, or export a PDF, with AI-written insights on every slide.
-          </p>
+          <p className="mt-5 text-lg text-ink-muted">{META_LAUNCH_HERO_SUBHEAD}</p>
           <p className="mt-3 text-sm text-ink-secondary">
-            White-label every client report. Meta Ads is fully tested — Google Ads, TikTok, and GA4 are in beta;
-            verify reports before sending to clients.
+            White-label every client report. Google Ads, TikTok, and GA4 are launching soon — we kept the integrations
+            in place so we can turn them on once Meta reporting is fully verified.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

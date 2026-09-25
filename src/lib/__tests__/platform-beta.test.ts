@@ -10,7 +10,7 @@ describe("platform beta status", () => {
   it("marks Google, TikTok, and GA4 as beta", () => {
     for (const platform of ["GOOGLE", "TIKTOK", "GA4"] as const) {
       expect(isPlatformBeta(platform)).toBe(true);
-      expect(platformBetaCardNote(platform)).toContain("Beta");
+      expect(platformBetaCardNote(platform)).toContain("Launching soon");
     }
   });
 });

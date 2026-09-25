@@ -15,8 +15,16 @@ import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { formatRelativeReportDate } from "@/lib/client-display";
+import {
+  LAUNCH_PRIMARY_REPORT_TYPES,
+  LAUNCH_SECONDARY_REPORT_TYPES,
+} from "@/lib/meta-launch-scope";
 
-const PRIMARY_REPORT_TYPES = new Set(["WEEKLY", "MONTHLY", "DAILY"]);
+const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
+const LAUNCH_REPORT_TYPES = new Set<string>([
+  ...LAUNCH_PRIMARY_REPORT_TYPES,
+  ...LAUNCH_SECONDARY_REPORT_TYPES,
+]);
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
@@ -132,7 +140,7 @@ export function WizardGenerateStep() {
   } = w;
 
   const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
-    () => !PRIMARY_REPORT_TYPES.has(reportType),
+    () => LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
@@ -178,7 +186,9 @@ export function WizardGenerateStep() {
               >
                 <span>
                   More report types
-                  {!PRIMARY_REPORT_TYPES.has(reportType) ? (
+                  {LAUNCH_SECONDARY_REPORT_TYPES.includes(
+                    reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
+                  ) ? (
                     <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel()}</span>
                   ) : null}
                 </span>
@@ -186,33 +196,6 @@ export function WizardGenerateStep() {
               </button>
               {moreReportTypesOpen ? (
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  <ReportTypeCard
-                    icon="📈"
-                    heading="Quarterly Performance Report"
-                    description="Current quarter to date."
-                    selected={reportType === "QUARTER"}
-                    onSelect={() => handleReportTypeChange("QUARTER")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="🗓️"
-                    heading="Year-to-Date Report"
-                    description="Jan 1 through yesterday."
-                    selected={reportType === "YTD"}
-                    onSelect={() => handleReportTypeChange("YTD")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="🎨"
-                    heading="Creative Performance Report"
-                    description={
-                      hasAdLevelCsv ? "Ad-level winners and video metrics." : "Requires ad-level CSV."
-                    }
-                    selected={reportType === "CREATIVE"}
-                    onSelect={() => handleReportTypeChange("CREATIVE")}
-                    disabled={!hasAdLevelCsv}
-                    layout="compact"
-                  />
                   <ReportTypeCard
                     icon="🔀"
                     heading="Comparison Report"
@@ -232,24 +215,14 @@ export function WizardGenerateStep() {
                   <ReportTypeCard
                     icon="📋"
                     heading="Daily Performance Report"
-                    description={
-                      platform === "META"
-                        ? "Multiple days, one row per day"
-                        : "Meta only in this version."
-                    }
+                    description="Multiple days, one row per day"
                     selected={reportType === "DAY_BREAKDOWN"}
                     onSelect={() => handleReportTypeChange("DAY_BREAKDOWN")}
-                    disabled={platform !== "META"}
                     layout="compact"
                   />
                 </div>
               ) : null}
             </div>
-            {hasAdLevelCsv && reportType !== "CREATIVE" && (
-              <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[14px] text-emerald-200">
-                Ad-level data detected — creative slides will be included automatically.
-              </p>
-            )}
             {reportType === "HISTORICAL" && (
               <div className="mt-4 space-y-3">
                 <label className="block text-[14px] text-dash-ink-secondary">

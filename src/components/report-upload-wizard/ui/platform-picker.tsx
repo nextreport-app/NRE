@@ -7,7 +7,7 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import { isPlatformBeta } from "@/lib/platform-beta";
+import { DEFERRED_PLATFORMS } from "@/lib/meta-launch-scope";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -32,20 +32,16 @@ export function ChevronDownIcon({ className }: { className?: string }) {
 }
 
 export function WizardPlatformPickerGrid({
-  showTikTokOption,
   selectedPlatformCard,
   onChoosePlatform,
-  onChooseWebsitePlatform,
 }: {
-  showTikTokOption: boolean;
+  showTikTokOption?: boolean;
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
   onChoosePlatform: (next: "META" | "GOOGLE" | "TIKTOK") => void;
-  onChooseWebsitePlatform: () => void;
+  onChooseWebsitePlatform?: () => void;
 }) {
   return (
-    <div
-      className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showTikTokOption ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
-    >
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <ReportTypeCard
         icon={<MetaAdsBrandIcon />}
         heading="Meta Ads"
@@ -54,35 +50,29 @@ export function WizardPlatformPickerGrid({
         onSelect={() => onChoosePlatform("META")}
         singleLineHeading
       />
-      <ReportTypeCard
-        icon={<GoogleAdsBrandIcon />}
-        heading="Google Ads"
-        description={wizardPlatformImportDescription("GOOGLE")}
-        selected={selectedPlatformCard === "GOOGLE"}
-        onSelect={() => onChoosePlatform("GOOGLE")}
-        singleLineHeading
-        beta={isPlatformBeta("GOOGLE")}
-      />
-      {showTikTokOption ? (
-        <ReportTypeCard
-          icon={<TikTokAdsBrandIcon />}
-          heading="TikTok Ads"
-          description={wizardPlatformImportDescription("TIKTOK")}
-          selected={selectedPlatformCard === "TIKTOK"}
-          onSelect={() => onChoosePlatform("TIKTOK")}
-          singleLineHeading
-          beta={isPlatformBeta("TIKTOK")}
-        />
-      ) : null}
-      <ReportTypeCard
-        icon={<Ga4BrandIcon />}
-        heading="Google Analytics"
-        description="Sessions, channels, and landing pages (beta)"
-        selected={false}
-        onSelect={onChooseWebsitePlatform}
-        singleLineHeading
-        beta={isPlatformBeta("GA4")}
-      />
+      {DEFERRED_PLATFORMS.map((platform) => {
+        const icon =
+          platform.id === "GOOGLE" ? (
+            <GoogleAdsBrandIcon />
+          ) : platform.id === "TIKTOK" ? (
+            <TikTokAdsBrandIcon />
+          ) : (
+            <Ga4BrandIcon />
+          );
+        return (
+          <ReportTypeCard
+            key={platform.id}
+            icon={icon}
+            heading={platform.label}
+            description={platform.status}
+            selected={false}
+            onSelect={() => {}}
+            disabled
+            comingSoon
+            singleLineHeading
+          />
+        );
+      })}
     </div>
   );
 }

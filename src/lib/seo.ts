@@ -11,7 +11,7 @@ export const OG_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "NextReport — Meta, Google Ads, TikTok & GA4 reporting for agencies",
+  alt: "NextReport — Meta Ads reporting for agencies (Google, TikTok & GA4 launching soon)",
 } as const;
 
 /** High-intent and long-tail terms — used on homepage and key landing pages. */
@@ -132,11 +132,11 @@ export function pageMetadata({
 export const ROOT_METADATA: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Automated Ad & Website Reports in 2 Minutes",
+    default: "Automated Meta Ads Reports in 2 Minutes",
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta, Google Ads, TikTok & GA4 client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Free 7-day trial.",
+    "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,

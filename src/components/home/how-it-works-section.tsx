@@ -4,8 +4,7 @@ const STEPS = [
   {
     number: "1",
     title: "Connect or upload",
-    description:
-      "Sync Meta, Google Ads, TikTok, or GA4 via official API — or upload a CSV export.",
+    description: "Connect Meta via official API — or upload a CSV export from Ads Manager.",
   },
   {
     number: "2",

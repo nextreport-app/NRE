@@ -7,6 +7,8 @@ import { SocialLinks } from "@/components/social-links";
 import { FooterLinkColumn } from "@/components/footer-link-column";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
+import { ComingSoonBadge } from "@/components/coming-soon-badge";
+import { META_LAUNCH_FOOTER_BLURB } from "@/lib/meta-launch-scope";
 import {
   FOOTER_COMPANY_LINKS,
   FOOTER_LEGAL_LINKS,
@@ -37,24 +39,22 @@ export function SiteChromeFooter() {
                 <img src="/logo.png" alt="NextReport logo" className="h-8 w-8" />
                 <span className="text-base font-bold text-white">NextReport</span>
               </Link>
-              <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-muted">
-                Automated Meta Ads, Google Ads, TikTok Ads, and Google Analytics reporting for digital agencies — client-ready decks in under two minutes.
-              </p>
+              <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-muted">{META_LAUNCH_FOOTER_BLURB}</p>
               <div className="mt-5">
                 <SocialLinks />
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Meta API Sync
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2.5 py-1 text-[11px] font-medium text-emerald-200/90">
+                  Meta API Sync — live
                 </span>
-                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Google Ads API Sync
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  Google Ads <ComingSoonBadge />
                 </span>
-                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  TikTok Ads API Sync
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  TikTok <ComingSoonBadge />
                 </span>
-                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Google Analytics
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  GA4 <ComingSoonBadge />
                 </span>
               </div>
             </div>
