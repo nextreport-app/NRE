@@ -173,6 +173,21 @@ describe("pickResultAction", () => {
     expect(pickResultFromAdsManagerFields(row)).toBeNull();
   });
 
+  it("ignores costed fb_pixel_lead in actions when results[] has no website-lead indicator", () => {
+    const row: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      optimization_goal: "OUTCOME_LEADS",
+      results: [{ indicator: "actions:lead", values: [{ value: "2" }] }],
+      cost_per_result: [{ indicator: "actions:lead", values: [{ value: "4.00" }] }],
+      actions: [
+        { action_type: "link_click", value: "9" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+      ],
+      cost_per_action_type: [{ action_type: "offsite_conversion.fb_pixel_lead", value: "12.00" }],
+    };
+    expect(pickResultFromAdsManagerFields(row)).toBeNull();
+  });
+
   it("uses website lead action for OFFSITE_CONVERSIONS goal when Meta reports cost per result", () => {
     const row: MetaInsightRow = {
       actions: [

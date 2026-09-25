@@ -305,6 +305,29 @@ function firstWebsiteLeadAction(
   return null;
 }
 
+/**
+ * When Meta sends the Ads Manager `results[]` field, that column is the export
+ * parity source for website-lead campaigns — not costed pixel rows buried in
+ * `actions` on traffic days (Credit Firm: manual CSV blank, API actions ~1 lead).
+ */
+function websiteLeadFromMetaResultsField(
+  row: MetaInsightRow,
+): { action_type: string; value: string } | null {
+  if (!row.results?.length) return null;
+  const merged = mergeResultsFieldsIntoRow(row);
+  for (const entry of row.results) {
+    const actionType = actionTypeFromResultsIndicator(entry.indicator ?? "");
+    if (!actionType || !isWebsiteLeadActionType(actionType)) continue;
+    const count = metricValueFromResultEntry(entry);
+    if (count <= 0) continue;
+    const match = { action_type: actionType, value: String(count) };
+    if (isIncidentalWebsiteLead(merged, match)) continue;
+    const costed = withCostedResult(merged, match);
+    if (costed) return costed;
+  }
+  return null;
+}
+
 function firstActionMatchingPattern(
   map: Map<string, number>,
   pattern: RegExp,
@@ -375,6 +398,12 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
     const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
+    if (row.results?.length) {
+      const fromAdsManagerResults = websiteLeadFromMetaResultsField(row);
+      if (fromAdsManagerResults) return fromAdsManagerResults;
+      // Primary Results column is combined `lead` or traffic-only — manual export blank.
+      return null;
+    }
     const websiteMatch = firstWebsiteLeadAction(row, map);
     if (websiteMatch) return websiteMatch;
     // Same as Meta CSV: no website-lead result on days without a costed pixel/web

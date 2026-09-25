@@ -232,15 +232,35 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     const insights = manualRows.map((row) => {
       const insight = manualRowToInsight(row);
       const results = Number(row.results) || 0;
+      const spend = Number(row.spend) || 0;
       insight.results = [
         { indicator: "actions:lead", values: [{ value: results > 0 ? String(results) : "2" }] },
       ];
       insight.cost_per_result = [
         {
           indicator: "actions:lead",
-          values: [{ value: results > 0 ? String(Number(row.spend) / results) : "3.00" }],
+          values: [{ value: results > 0 ? String(spend / results) : "3.00" }],
         },
       ];
+      if (results > 0) {
+        insight.results!.unshift({
+          indicator: "actions:offsite_conversion.fb_pixel_lead",
+          values: [{ value: String(results) }],
+        });
+        insight.cost_per_result!.unshift({
+          indicator: "actions:offsite_conversion.fb_pixel_lead",
+          values: [{ value: String(spend / results) }],
+        });
+      } else {
+        insight.actions = [
+          ...(insight.actions ?? []),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+        ];
+        insight.cost_per_action_type = [
+          ...(insight.cost_per_action_type ?? []),
+          { action_type: "offsite_conversion.fb_pixel_lead", value: String(spend || 3.5) },
+        ];
+      }
       return insight;
     });
 
