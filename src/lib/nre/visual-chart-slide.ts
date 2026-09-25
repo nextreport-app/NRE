@@ -48,6 +48,15 @@ export interface VisualResultBar {
   barPct: number;
 }
 
+/** Right-aligned header label on chart result bars (matches usage-meter UI). */
+export function visualResultBarRightLabel(bar: Pick<VisualResultBar, "barPct" | "resultsSharePct">): string {
+  if (bar.resultsSharePct > 0) {
+    const label = Number.isInteger(bar.resultsSharePct) ? String(bar.resultsSharePct) : bar.resultsSharePct.toFixed(1);
+    return `${label}% of total`;
+  }
+  return `${Math.round(bar.barPct)}%`;
+}
+
 export interface VisualChartSlideModel {
   title: string;
   isMultiObjective: boolean;

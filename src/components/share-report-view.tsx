@@ -9,6 +9,7 @@ import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
+import { visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -337,6 +338,7 @@ function VisualResultBar({
   color,
   statLine,
   barPct,
+  resultsSharePct,
   compact = false,
 }: {
   rank: number;
@@ -344,34 +346,33 @@ function VisualResultBar({
   color: string;
   statLine: string;
   barPct: number;
+  resultsSharePct: number;
   compact?: boolean;
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
+  const rightLabel = visualResultBarRightLabel({ barPct, resultsSharePct });
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 items-start gap-2">
-        <span
-          className={`mt-1 inline-block shrink-0 rounded-full ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`}
-          style={{ backgroundColor: `#${color}` }}
-          aria-hidden="true"
-        />
-        <div className="min-w-0 flex-1">
-          <p
-            className={`line-clamp-2 break-words font-semibold leading-snug text-ink [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`}
-          >
-            <span className="mr-1.5 text-[#94a3b8]">{rank}.</span>
-            {name}
-          </p>
-          <p
-            className={`mt-1 font-bold leading-snug text-[#94a3b8] ${compact ? "text-[12px]" : "text-[14px]"}`}
-          >
-            {statLine}
-          </p>
-          <div className={`overflow-hidden rounded bg-[#1e293b] ${compact ? "mt-3 h-5" : "mt-4 h-7"}`}>
-            <div className="h-full rounded" style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }} />
-          </div>
-        </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p
+          className={`min-w-0 flex-1 truncate font-medium leading-snug text-white [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[14px]"}`}
+        >
+          <span className="mr-1 text-[#94a3b8]">{rank}.</span>
+          {name}
+        </p>
+        <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
+          {rightLabel}
+        </p>
       </div>
+      <div
+        className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#2a3441] ${compact ? "h-[6px]" : "h-[7px]"}`}
+      >
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
+        />
+      </div>
+      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[11px]" : "text-[12px]"}`}>{statLine}</p>
     </div>
   );
 }
@@ -418,6 +419,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                       color={bar.color}
                       statLine={bar.statLine}
                       barPct={bar.barPct}
+                      resultsSharePct={bar.resultsSharePct}
                       compact={compactBars || barLayout.rowH < 72}
                     />
                   ))}
@@ -439,6 +441,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                     color={bar.color}
                     statLine={bar.statLine}
                     barPct={bar.barPct}
+                    resultsSharePct={bar.resultsSharePct}
                     compact={compactBars || barLayout.rowH < 72}
                   />
                 ))}

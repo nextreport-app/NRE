@@ -40,9 +40,9 @@ export const MTD_VISUAL = {
   fullPanelW: 856,
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
-  barH: 26,
+  barH: 7,
   barNameH: 18,
-  barMetricsH: 20,
+  barMetricsH: 14,
   barRowGap: 16,
   groupedDonutLegendRowH: 22,
   groupedDonutLegendRowGap: 8,
@@ -124,9 +124,9 @@ export function miniDonutPosition(index: number, count: number): { x: number; y:
 const IDEAL_RESULT_BAR_ROW_H =
   MTD_VISUAL.barNameH +
   4 +
-  MTD_VISUAL.barMetricsH +
-  10 +
   MTD_VISUAL.barH +
+  4 +
+  MTD_VISUAL.barMetricsH +
   MTD_VISUAL.barRowGap;
 
 export interface ResultBarLayout {
@@ -135,8 +135,8 @@ export interface ResultBarLayout {
   nameH: number;
   metricsH: number;
   barH: number;
-  nameMetricsGap: number;
-  metricsBarGap: number;
+  nameBarGap: number;
+  barFooterGap: number;
   nameSizePt: number;
   metricsSizePt: number;
 }
@@ -156,15 +156,15 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
   const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
   const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
   const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
-  const nameMetricsGap = Math.max(2, Math.round(4 * scale));
-  const metricsBarGap = Math.max(3, Math.round(6 * scale));
-  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 15;
-  const metricsSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 16;
+  const nameBarGap = Math.max(2, Math.round(4 * scale));
+  const barFooterGap = Math.max(2, Math.round(4 * scale));
+  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const metricsSizePt = scale <= 0.72 ? 10 : scale <= 0.82 ? 11 : scale <= 0.92 ? 11 : 12;
 
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
 
-  return { rowH, startY, nameH, metricsH, barH, nameMetricsGap, metricsBarGap, nameSizePt, metricsSizePt };
+  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
 }
 
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
