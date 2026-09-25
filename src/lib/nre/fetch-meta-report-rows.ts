@@ -135,7 +135,55 @@ function actionTypeToCsvResultType(
   if (row && isQuoteRequestCampaignRow(row) && CUSTOM_CONVERSION_ACTION.test(actionType)) {
     return "Quote Request Submitted";
   }
+  if (
+    pickedAsPrimaryResult &&
+    row &&
+    isWebsiteLeadsCampaignRow(row) &&
+    (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
+  ) {
+    // Manual Meta exports for website-lead campaigns use "website submission".
+    return "website submission";
+  }
   return metaApiActionToCsvResultType(actionType);
+}
+
+function isMetaLeadActionType(actionType: string): boolean {
+  return (META_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+function isWebsiteLeadActionType(actionType: string): boolean {
+  return (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+function isMessagingActionType(actionType: string): boolean {
+  return (MESSAGING_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+/** Lead columns mirror manual CSV: only populated when that action was picked as Results. */
+function leadColumnsFromPickedResult(
+  row: MetaInsightRow,
+  result: { action_type: string; value: string } | null,
+): { metaLeadsOut: number; websiteLeadsOut: number } {
+  if (!result) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+  const value = parseFloat(result.value);
+  if (!Number.isFinite(value) || value <= 0) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+
+  if (isMetaLeadActionType(result.action_type)) {
+    return { metaLeadsOut: value, websiteLeadsOut: 0 };
+  }
+  if (isWebsiteLeadActionType(result.action_type)) {
+    return { metaLeadsOut: 0, websiteLeadsOut: value };
+  }
+  if (result.action_type === "lead") {
+    const typedCampaign =
+      isMessagingCampaignRow(row) ||
+      isMetaFormLeadsCampaignRow(row) ||
+      isWebsiteLeadsCampaignRow(row) ||
+      isQuoteRequestCampaignRow(row);
+    if (typedCampaign) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+    return { metaLeadsOut: value, websiteLeadsOut: 0 };
+  }
+  return { metaLeadsOut: 0, websiteLeadsOut: 0 };
 }
 
 function firstCustomConversionAction(map: Map<string, number>): { action_type: string; value: string } | null {
@@ -196,6 +244,25 @@ function isQuoteRequestCampaignRow(row: MetaInsightRow): boolean {
   return isQuoteRequestCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
+/**
+ * Manual Meta exports leave Results blank on traffic days even when Insights API
+ * attaches a single unattributed fb_pixel_lead. Real lead days carry
+ * cost_per_action_type for the pixel action (see DC Credit Firm weekly export).
+ */
+function isIncidentalWebsiteLead(
+  row: MetaInsightRow,
+  match: { action_type: string; value: string },
+): boolean {
+  const cost = costPerActionType(row.cost_per_action_type, [match.action_type]);
+  if (cost && parseFloat(cost) > 0) return false;
+  const leadCount = parseFloat(match.value);
+  if (!Number.isFinite(leadCount) || leadCount > 1) return false;
+  const map = actionValueMap(row.actions);
+  const linkClicks = map.get("link_click") ?? 0;
+  if (linkClicks <= 0) return false;
+  return true;
+}
+
 function firstActionMatchingPattern(
   map: Map<string, number>,
   pattern: RegExp,
@@ -248,9 +315,6 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     return null;
   }
 
-  const quoteMatch = pickQuoteRequestAction(map);
-  if (quoteMatch) return quoteMatch;
-
   if (messagingCampaign) {
     const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
     if (messagingMatch) return messagingMatch;
@@ -271,7 +335,7 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
     const websiteMatch = firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES);
-    if (websiteMatch) return websiteMatch;
+    if (websiteMatch && !isIncidentalWebsiteLead(row, websiteMatch)) return websiteMatch;
     // Same as Meta CSV: no website-lead result on days without a pixel/web
     // lead action — ignore generic `lead`, meta-form, and traffic actions.
     return null;
@@ -345,32 +409,24 @@ function insightToCsvRow(row: MetaInsightRow): string[] {
   const result = pickResultAction(row);
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
-  const metaLeadMatch = firstActionWithValue(actionMap, META_LEAD_ACTION_TYPES);
-  const websiteLeadMatch = firstActionWithValue(actionMap, WEBSITE_LEAD_ACTION_TYPES);
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
+  const { metaLeadsOut, websiteLeadsOut } = leadColumnsFromPickedResult(row, result);
 
-  // One canonical count per day — Meta CSV never sums fb_pixel_lead + website_lead.
-  let metaLeadsOut = metaLeadMatch ? parseFloat(metaLeadMatch.value) : 0;
-  let websiteLeadsOut = websiteLeadMatch ? parseFloat(websiteLeadMatch.value) : 0;
-
-  const genericLead = actionMap.get("lead") ?? 0;
-  const typedCampaign =
-    isMessagingCampaignRow(row) ||
-    isMetaFormLeadsCampaignRow(row) ||
-    isWebsiteLeadsCampaignRow(row) ||
-    isQuoteRequestCampaignRow(row);
-  if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
-    if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
-      websiteLeadsOut = genericLead;
-    } else {
-      metaLeadsOut = genericLead;
-    }
-  }
-
-  const costPerLead = costPerActionType(row.cost_per_action_type, LEAD_COST_ACTION_TYPES);
+  const isLeadFamilyResult =
+    result &&
+    (isMetaLeadActionType(result.action_type) ||
+      isWebsiteLeadActionType(result.action_type) ||
+      result.action_type === "lead");
+  const costPerLead = isLeadFamilyResult
+    ? cpr || costPerActionType(row.cost_per_action_type, LEAD_COST_ACTION_TYPES)
+    : "";
   const costPerLpv = costPerActionType(row.cost_per_action_type, ["landing_page_view"]);
-  const messagingConversations = sumActionValues(actionMap, MESSAGING_ACTION_TYPES);
-  const costPerMessaging = costPerActionType(row.cost_per_action_type, MESSAGING_ACTION_TYPES);
+  const messagingConversations =
+    result && isMessagingActionType(result.action_type) ? parseFloat(result.value) : 0;
+  const costPerMessaging =
+    result && isMessagingActionType(result.action_type)
+      ? cpr || costPerActionType(row.cost_per_action_type, MESSAGING_ACTION_TYPES)
+      : "";
 
   return [
     row.campaign_name ?? "",
