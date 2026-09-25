@@ -3,7 +3,7 @@
  */
 
 import type { ShareChartData } from "../nre/share-report";
-import type { VisualChartSlideModel } from "../nre/visual-chart-slide";
+import { visualResultBarRightLabel, type VisualChartSlideModel } from "../nre/visual-chart-slide";
 import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
 import { VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
@@ -127,18 +127,20 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
     const nameY = rowY;
-    const metricsY = rowY + layout.nameH + layout.nameMetricsGap;
-    const barY = metricsY + layout.metricsH + layout.metricsBarGap;
+    const barY = rowY + layout.nameH + layout.nameBarGap;
+    const footerY = barY + layout.barH + layout.barFooterGap;
+    const rightLabel = visualResultBarRightLabel(bar);
+    const rightLabelW = 96;
 
     shapes.push(
       textBox({
         x: cols.barX,
         y: nameY,
-        w: cols.trackW,
+        w: cols.trackW - rightLabelW,
         h: layout.nameH,
         text: `${bar.rank}. ${bar.name}`,
         sizePt: layout.nameSizePt,
-        bold: true,
+        bold: false,
         colorHex: c.ink,
         align: "l",
         anchor: "t",
@@ -146,24 +148,40 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         nowrap: true,
       }),
       textBox({
+        x: cols.barX + cols.trackW - rightLabelW,
+        y: nameY,
+        w: rightLabelW,
+        h: layout.nameH,
+        text: rightLabel,
+        sizePt: layout.nameSizePt,
+        bold: false,
+        colorHex: c.ink,
+        align: "r",
+        anchor: "t",
+        clipOverflow: true,
+        nowrap: true,
+      }),
+      roundedBar({ x: cols.barX, y: barY, w: cols.trackW, h: layout.barH, fillHex: c.track }),
+    );
+    if (fillW > 0) {
+      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
+    }
+    shapes.push(
+      textBox({
         x: cols.barX,
-        y: metricsY,
+        y: footerY,
         w: cols.trackW,
         h: layout.metricsH,
         text: bar.statLine,
         sizePt: layout.metricsSizePt,
-        bold: true,
+        bold: false,
         colorHex: c.inkMuted,
         align: "l",
         anchor: "t",
         clipOverflow: true,
         nowrap: true,
       }),
-      rectangle({ x: cols.barX, y: barY, w: cols.trackW, h: layout.barH, fillHex: c.track }),
     );
-    if (fillW > 0) {
-      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
-    }
     rowY += layout.rowH;
   }
 }

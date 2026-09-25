@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ComingSoonBadge } from "@/components/coming-soon-badge";
 import { PlatformBetaBadge } from "@/components/platform-beta-badge";
 
 export function ReportTypeCard({
@@ -13,6 +14,7 @@ export function ReportTypeCard({
   singleLineHeading = false,
   layout = "vertical",
   beta = false,
+  comingSoon = false,
 }: {
   icon: ReactNode;
   heading: string;
@@ -24,6 +26,7 @@ export function ReportTypeCard({
   /** Compact centered cards — icon on top, text below (Report Type grid). */
   layout?: "vertical" | "compact";
   beta?: boolean;
+  comingSoon?: boolean;
 }) {
   const stateClass = disabled
     ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
@@ -45,7 +48,8 @@ export function ReportTypeCard({
         </span>
         <span className="mt-2 flex items-center justify-center gap-1.5">
           <span className="block text-[13px] font-semibold leading-snug text-white">{heading}</span>
-          {beta ? <PlatformBetaBadge /> : null}
+          {comingSoon ? <ComingSoonBadge /> : null}
+          {!comingSoon && beta ? <PlatformBetaBadge /> : null}
         </span>
         <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
       </button>
@@ -67,7 +71,8 @@ export function ReportTypeCard({
         className={`mt-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-white${singleLineHeading ? "" : ""}`}
       >
         <span className={singleLineHeading ? "whitespace-nowrap" : undefined}>{heading}</span>
-        {beta ? <PlatformBetaBadge /> : null}
+        {comingSoon ? <ComingSoonBadge /> : null}
+        {!comingSoon && beta ? <PlatformBetaBadge /> : null}
       </p>
       <p className="mt-1 text-[14px] text-dash-ink-secondary">{description}</p>
     </button>

@@ -11,7 +11,7 @@ import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta, Google, TikTok & GA4 reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). Google, TikTok & GA4 launching soon. 7-day free trial.",
   path: "/pricing",
 });
 
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Can I connect Meta, Google Ads, TikTok, or GA4 directly instead of uploading a CSV?",
-    a: "Yes — NextReport syncs with Meta's Marketing API, Google's Ads API, TikTok's Marketing API, and GA4's Data API. Connect your accounts once in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported if you prefer manual exports.",
+    a: "Yes for Meta — NextReport syncs with Meta's Marketing API today. Connect once in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported. Google Ads, TikTok, and GA4 integrations are in place and launching soon.",
   },
   {
     q: "What file formats can I upload?",
@@ -77,8 +77,8 @@ const FAQS = [
     a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
   },
   {
-    q: "Which platforms are fully tested vs beta?",
-    a: "Meta Ads is fully tested and production-ready. Google Ads, TikTok Ads, and GA4 website reporting are available in beta — you can generate reports, but please verify outputs carefully before sending them to clients.",
+    q: "Which platforms are live today?",
+    a: "Meta Ads reporting is live and what we recommend for production use today. Google Ads, TikTok Ads, and GA4 website reporting are launching soon — you can connect accounts in settings, but the wizard stays Meta-only until parity testing is complete.",
   },
 ];
 
@@ -110,8 +110,8 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta Ads is fully tested. Google Ads, TikTok, and GA4 are in beta — connect via API or CSV, then share a
-            live link, download a PDF, or export PowerPoint (.pptx).
+            Meta Ads reporting is live — CSV or API sync, then share a live link, download a PDF, or export
+            PowerPoint (.pptx). Google, TikTok, and GA4 are launching soon.
           </p>
         </div>
 

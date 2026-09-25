@@ -11,7 +11,6 @@ import {
   maybeSyncPreviousMonthDataFromGoogleApi,
   maybeSyncPreviousMonthDataFromMetaApi,
   maybeSyncPreviousMonthDataFromTikTokApi,
-  type PreviousMonthSyncResult,
 } from "@/lib/nre/sync-previous-month-from-api";
 import { fetchGoogleReportCsv } from "@/lib/nre/fetch-google-report-rows";
 import { fetchTikTokReportCsv } from "@/lib/nre/fetch-tiktok-report-rows";
@@ -61,24 +60,6 @@ async function previousMonthPayloadFromClient(client: {
     previousMonthCampaigns: campaigns,
     previousMonthSelectedCampaigns: selected,
     previousMonthUpdatedAt: client.previousMonthDataUpdatedAt?.toISOString() ?? null,
-  };
-}
-
-function previousMonthPayloadFromSync(
-  sync: PreviousMonthSyncResult,
-  client: {
-    previousMonthDataUrl: string | null;
-    previousMonthDataUpdatedAt: Date | null;
-  },
-) {
-  return {
-    hasPreviousMonthData: true,
-    previousMonthSynced: sync.synced,
-    previousMonthCampaigns: sync.campaigns ?? [],
-    previousMonthSelectedCampaigns: sync.selectedCampaigns ?? sync.campaigns ?? [],
-    previousMonthUpdatedAt: sync.synced
-      ? new Date().toISOString()
-      : client.previousMonthDataUpdatedAt?.toISOString() ?? null,
   };
 }
 
@@ -149,23 +130,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
       });
 
-      let previousMonth = await previousMonthPayloadFromClient(client);
-      try {
-        const prevMonth = await maybeSyncPreviousMonthDataFromMetaApi({
-          clientId: client.id,
-          accessToken: fresh.accessToken,
-          adAccountId: metaAdAccountId,
-          timezone: client.timezone,
-          previousMonthDataUrl: client.previousMonthDataUrl,
-          previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
-          previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
-        });
-        if (prevMonth.campaigns) {
-          previousMonth = previousMonthPayloadFromSync(prevMonth, client);
-        }
-      } catch (err) {
+      const previousMonth = await previousMonthPayloadFromClient(client);
+      // Previous-month sync is a second Meta fetch — run in the background so the wizard can analyze MTD data immediately.
+      void maybeSyncPreviousMonthDataFromMetaApi({
+        clientId: client.id,
+        accessToken: fresh.accessToken,
+        adAccountId: metaAdAccountId,
+        timezone: client.timezone,
+        previousMonthDataUrl: client.previousMonthDataUrl,
+        previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+        previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
+      }).catch((err) => {
         console.error("[reports:sync-api] previous month auto-sync failed:", err);
-      }
+      });
 
       return NextResponse.json({
         ok: true,
@@ -210,23 +187,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: client.timezone,
       });
 
-      let previousMonth = await previousMonthPayloadFromClient(client);
-      try {
-        const prevMonth = await maybeSyncPreviousMonthDataFromTikTokApi({
-          clientId: client.id,
-          accessToken: fresh.accessToken,
-          advertiserId: tiktokAdvertiserId,
-          timezone: client.timezone,
-          previousMonthDataUrl: client.previousMonthDataUrl,
-          previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
-          previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
-        });
-        if (prevMonth.campaigns) {
-          previousMonth = previousMonthPayloadFromSync(prevMonth, client);
-        }
-      } catch (err) {
+      const previousMonth = await previousMonthPayloadFromClient(client);
+      void maybeSyncPreviousMonthDataFromTikTokApi({
+        clientId: client.id,
+        accessToken: fresh.accessToken,
+        advertiserId: tiktokAdvertiserId,
+        timezone: client.timezone,
+        previousMonthDataUrl: client.previousMonthDataUrl,
+        previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+        previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
+      }).catch((err) => {
         console.error("[reports:sync-api] TikTok previous month auto-sync failed:", err);
-      }
+      });
 
       return NextResponse.json({
         ok: true,
@@ -265,23 +237,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       timezone: client.timezone,
     });
 
-    let previousMonth = await previousMonthPayloadFromClient(client);
-    try {
-      const prevMonth = await maybeSyncPreviousMonthDataFromGoogleApi({
-        clientId: client.id,
-        accessToken,
-        customerId: googleCustomerId,
-        timezone: client.timezone,
-        previousMonthDataUrl: client.previousMonthDataUrl,
-        previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
-        previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
-      });
-      if (prevMonth.campaigns) {
-        previousMonth = previousMonthPayloadFromSync(prevMonth, client);
-      }
-    } catch (err) {
+    const previousMonth = await previousMonthPayloadFromClient(client);
+    void maybeSyncPreviousMonthDataFromGoogleApi({
+      clientId: client.id,
+      accessToken,
+      customerId: googleCustomerId,
+      timezone: client.timezone,
+      previousMonthDataUrl: client.previousMonthDataUrl,
+      previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+      previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
+    }).catch((err) => {
       console.error("[reports:sync-api] Google previous month auto-sync failed:", err);
-    }
+    });
 
     return NextResponse.json({
       ok: true,

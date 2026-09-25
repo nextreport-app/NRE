@@ -17,9 +17,9 @@ export function isPlatformBeta(platform: PlatformBetaId): boolean {
 /** Short line for cards and compact UI. */
 export function platformBetaCardNote(platform: PlatformBetaId): string | null {
   if (!isPlatformBeta(platform)) return null;
-  return "Beta — verify outputs before sending to clients.";
+  return "Launching soon — not open for report generation yet.";
 }
 
 /** Full notice for wizard and settings panels. */
 export const PLATFORM_BETA_NOTICE =
-  "Google Ads, TikTok Ads, and GA4 are in beta. Meta Ads is fully tested — other platforms may have gaps or incomplete reporting. Please verify every report before sharing with clients.";
+  "Google Ads, TikTok Ads, and GA4 are launching soon. Meta Ads reporting is live — other platforms stay connected in settings but report generation opens after parity testing.";

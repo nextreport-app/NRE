@@ -6,6 +6,7 @@ import {
   computeEffectiveYesterday,
   computeMonthComparisonRangeOptions,
   computeMtdRangeIso,
+  resolveStandardChartRange,
   computeWeeklyRangeOptions,
   toIsoDate,
   validateCustomWeeklyRange,
@@ -160,6 +161,51 @@ describe("validateCustomWeeklyRange", () => {
     const result = validateCustomWeeklyRange("2026-07-01", "2026-07-15", bounds);
     expect(result.valid).toBe(true);
     expect(result.spanDays).toBe(15);
+  });
+});
+
+describe("resolveStandardChartRange", () => {
+  const rows = daysInclusive("2026-07-01", "2026-07-19");
+  const now = new Date("2026-07-20T12:00:00Z");
+  const calendarRange = computeMtdRangeIso(rows, now, "UTC");
+
+  it("uses the primary single-day window for DAILY reports", () => {
+    expect(
+      resolveStandardChartRange({
+        reportType: "DAILY",
+        rows,
+        now,
+        timezone: "UTC",
+        primaryRange: { startIso: "2026-07-19", endIso: "2026-07-19" },
+        calendarRange,
+      }),
+    ).toEqual({ startIso: "2026-07-19", endIso: "2026-07-19" });
+  });
+
+  it("uses the calendar MTD window for MONTHLY reports", () => {
+    expect(
+      resolveStandardChartRange({
+        reportType: "MONTHLY",
+        rows,
+        now,
+        timezone: "UTC",
+        primaryRange: null,
+        calendarRange,
+      }),
+    ).toEqual({ startIso: "2026-07-01", endIso: "2026-07-19" });
+  });
+
+  it("keeps trailing 30 days for WEEKLY reports", () => {
+    expect(
+      resolveStandardChartRange({
+        reportType: "WEEKLY",
+        rows,
+        now,
+        timezone: "UTC",
+        primaryRange: { startIso: "2026-07-13", endIso: "2026-07-19" },
+        calendarRange,
+      }),
+    ).toEqual(computeCreativeRangeIso(rows, now, 30, "UTC"));
   });
 });
 

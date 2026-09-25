@@ -1,3 +1,4 @@
+import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
 import type { WizardPlatformChoice } from "./types";
 import { LAST_PLATFORM_STORAGE_KEY } from "./constants";
 
@@ -19,30 +20,23 @@ export function saveWizardPlatformChoice(choice: WizardPlatformChoice) {
   }
 }
 
-export function readInitialPlatformPickerState(showTikTokOption: boolean): {
+export function readInitialPlatformPickerState(_showTikTokOption: boolean): {
   wizardKind: "ads" | "website";
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
   platformPickerExpanded: boolean;
   hasSavedPlatformPreference: boolean;
 } {
   const stored = typeof window === "undefined" ? null : readStoredWizardPlatform();
-  if (stored === "GA4") {
+  // GA4 website wizard + deferred ad platforms (Google, TikTok) → Meta during meta-v1.
+  if (stored === "GA4" || (stored && !isLaunchPlatformEnabled(stored))) {
     return {
-      wizardKind: "website",
-      selectedPlatformCard: null,
+      wizardKind: "ads",
+      selectedPlatformCard: "META",
       platformPickerExpanded: false,
       hasSavedPlatformPreference: true,
     };
   }
-  if (stored === "TIKTOK" && !showTikTokOption) {
-    return {
-      wizardKind: "ads",
-      selectedPlatformCard: "META",
-      platformPickerExpanded: true,
-      hasSavedPlatformPreference: false,
-    };
-  }
-  if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
+  if (stored === "META") {
     return {
       wizardKind: "ads",
       selectedPlatformCard: stored,

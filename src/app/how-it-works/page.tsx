@@ -18,7 +18,7 @@ import { PLATFORM_LIST_API, PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — 5-Step Report Wizard",
   description:
-    "Set up a client, connect Meta, Google, TikTok, or GA4 via API or CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes.",
+    "Set up a client, connect Meta via API or CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes. Google, TikTok & GA4 launching soon.",
   path: "/how-it-works",
 });
 
@@ -38,19 +38,20 @@ const SETUP_STEPS = [
   },
   {
     title: "Connect ad accounts (optional)",
-    body: "In Account Settings, connect Meta, Google Ads, TikTok, or GA4 once. After that, choose Sync from API in the wizard instead of uploading CSVs.",
+    body: "In Account Settings, connect Meta once (Google, TikTok, and GA4 connections are optional and launching soon). After that, choose Sync from API in the wizard instead of uploading CSVs.",
   },
 ];
 
 const REPORT_TYPES: ReportType[] = [
   { name: "Weekly Performance Report", description: "Last 7 days vs month to date — the default for agency weekly check-ins." },
   { name: "Monthly Performance Report", description: "Full calendar month summary with MTD context where applicable." },
-  { name: "Bi-weekly Report", description: "Custom 14-day reporting window." },
+  { name: "Yesterday Report", description: "Single-day snapshot for quick daily client updates." },
   {
     name: "Comparison Report",
     description: "Compare any two periods side by side — this week vs last week, this month vs last month, or any custom range.",
   },
-  { name: "Custom Date Range", description: "Any start and end date you choose." },
+  { name: "Multi-Month Historical Report", description: "Several complete prior months in one deck." },
+  { name: "Daily Performance Report", description: "Day-by-day table for a custom date range." },
 ];
 
 interface Step {
@@ -62,7 +63,7 @@ interface Step {
 const WIZARD_STEPS: Step[] = [
   {
     title: "Add your ad data",
-    body: "Open New Report on a client. Pick Meta, Google Ads, TikTok, or GA4, then choose Sync from API or upload a CSV export. Meta users can also attach an optional Previous Month CSV for the overview row.",
+    body: "Open New Report on a client. Meta is live today — choose Sync from API or upload a CSV export. You can also attach an optional Previous Month CSV for the monthly overview row.",
     detail: "Step label in the app: Upload",
   },
   {
@@ -82,7 +83,7 @@ const WIZARD_STEPS: Step[] = [
   },
   {
     title: "Choose report type and generate",
-    body: "Pick weekly, monthly, comparison, or custom dates. Review the summary, then generate. Download .pptx, share a live browser link, export PDF, email, WhatsApp, or save to Google Drive.",
+    body: "Pick weekly, monthly, yesterday, comparison, historical, or daily performance. Review the summary, then generate. Download .pptx, share a live browser link, export PDF, email, WhatsApp, or save to Google Drive.",
     detail: "Step label in the app: Generate",
   },
 ];
@@ -171,7 +172,7 @@ export default async function HowItWorksPage() {
             faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
               "How to generate a client report with NextReport",
-              "Generate a branded Meta, Google, TikTok, or GA4 client report in under 2 minutes via API sync or CSV upload.",
+              "Generate a branded Meta Ads client report in under 2 minutes via API sync or CSV upload.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
           ],
@@ -259,20 +260,28 @@ export default async function HowItWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">TikTok Ads</h2>
+            <h2 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-white">
+              TikTok Ads
+              <span className="rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
+                Launching soon
+              </span>
+            </h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Connect TikTok Ads in Account Settings, then choose API sync or upload a TikTok CSV export. Campaign spend,
-              results, and KPIs land in the same branded deck as your Meta and Google reports. TikTok appears in the
-              wizard for supported regions; availability may vary by location.
+              TikTok reporting is built and waiting on the same parity bar as Meta. You can connect TikTok in Account
+              Settings today; the wizard will open once we finish golden tests.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">Website Traffic (GA4)</h2>
+            <h2 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-white">
+              Website Traffic (GA4)
+              <span className="rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
+                Launching soon
+              </span>
+            </h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              From any client page, open <span className="text-white">Website Traffic Report</span> to generate a GA4
-              deck — sessions, channels, landing pages, device and geo breakdowns, and more. Connect GA4 in Account
-              Settings, link a property to the client, then choose API sync or upload a GA4 CSV export.
+              GA4 website decks — sessions, channels, landing pages, device and geo breakdowns — are ready in code. Connect
+              GA4 and link a property per client in settings; report generation opens after Meta v1 ships.
             </p>
           </section>
 

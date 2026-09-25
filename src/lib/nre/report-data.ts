@@ -87,6 +87,7 @@ import {
   computeCreativeRangeIso,
   computeEffectiveYesterday,
   computeMtdRangeIso,
+  resolveStandardChartRange,
   computeQuarterRangeIso,
   computeWeeklyRangeOptions,
   computeYtdRangeIso,
@@ -964,6 +965,7 @@ export function buildPausedAccountMessage(accountName: string, reportType: Repor
 
 function buildLast30DaysChartSlide(params: {
   filteredMtdDailyRows: NreRow[];
+  chartRange: DateRangeIso;
   now: Date;
   timezone: string;
   campaignObjectiveMap: Map<string, CampaignObjectiveRef>;
@@ -974,7 +976,7 @@ function buildLast30DaysChartSlide(params: {
   slideCampaignNames?: string[];
 }): ChartSlideData | null {
   const chartRange = capRangeToData(
-    computeCreativeRangeIso(params.filteredMtdDailyRows, params.now, 30, params.timezone),
+    params.chartRange,
     params.filteredMtdDailyRows,
     params.now,
     params.timezone,
@@ -1237,11 +1239,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // slide or table row is built, and reused by every consumer below —
   // computeTableRow's MTD row, every campaign/ad-set summary slide (Phase
   // A1/A2), and the Combined Total table's column grouping. Built from
-  // Raw daily rows (with _raw headers) — aggregated ad-set rows lose column
-  // context and can mis-detect mixed-objective exports (Southaven LeadGen +
-  // Traffic both folded to WEBSITE LEADS). filteredMtdDailyRows already spans
-  // the full uploaded CSV for every selected campaign.
-  const campaignObjectiveMap = buildCampaignObjectiveMap(filteredMtdDailyRows as MetricRow[]);
+  // aggregated MTD + primary rows so the monthly overview and Combined Total
+  // table keep the same objective detection they had before chart-slide work.
+  const campaignObjectiveMap = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
   // Objective Confirmation wizard step — a user-reviewed/corrected
   // objective always wins over the engine's own detection, for every
   // consumer that reads campaignObjectiveMap below (campaign slides,
@@ -1338,6 +1338,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   const reportDateStr = formatCoverReportDate(filteredMtdDailyRows, now, timezone);
 
+  const chartRange = resolveStandardChartRange({
+    reportType,
+    rows: filteredMtdDailyRows,
+    now,
+    timezone,
+    primaryRange: displayWeeklyRange ?? resolvedWeeklyRange ?? null,
+    calendarRange: mtdCalendarRange,
+  });
+
   const mtdSpendTotal = mtdRows.reduce((sum, row) => sum + (row.spend || 0), 0);
   const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
     showOnCover: showBudgetPacingOnCover,
@@ -1383,19 +1392,39 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
   let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now, undefined, timezone);
-  let mtdRow = computeTableRow(mtdRows, currencySymbol, true, campaignObjectiveMap, now, mtdCalendarRange, timezone);
-  const mtdDailyInCalendarMonth = filterNreRowsByDateRange(filteredMtdDailyRows, mtdCalendarRange);
-  const actualMtdLabelRange = computeActualDataRangeInWindow(mtdDailyInCalendarMonth, mtdCalendarRange);
-  if (actualMtdLabelRange && mtdRow.hasData) {
-    const calMonthName = getMonthName(mtdCalendarRange.startIso);
+  // Combined Total "current period" row — same window as campaign slides for
+  // DAILY (yesterday only); full MTD for WEEKLY; calendar span for MONTHLY+.
+  const combinedTotalCurrentRows = isDailyReport ? primaryRows : mtdRows;
+  const combinedTotalCurrentRange = isDailyReport
+    ? (displayWeeklyRange ?? resolvedWeeklyRange ?? mtdCalendarRange)
+    : mtdCalendarRange;
+  let mtdRow = computeTableRow(
+    combinedTotalCurrentRows,
+    currencySymbol,
+    true,
+    campaignObjectiveMap,
+    now,
+    combinedTotalCurrentRange,
+    timezone,
+  );
+  const combinedTotalRawInRange = filterNreRowsByDateRange(filteredMtdDailyRows, combinedTotalCurrentRange);
+  const actualCombinedTotalLabelRange = computeActualDataRangeInWindow(
+    combinedTotalRawInRange,
+    combinedTotalCurrentRange,
+  );
+  if (actualCombinedTotalLabelRange && mtdRow.hasData) {
+    const calMonthName = getMonthName(combinedTotalCurrentRange.startIso);
     mtdRow = {
       ...mtdRow,
       monthLabel: compactSameMonthRangeLabel(
-        actualMtdLabelRange.startIso,
-        actualMtdLabelRange.endIso,
+        actualCombinedTotalLabelRange.startIso,
+        actualCombinedTotalLabelRange.endIso,
         calMonthName,
       ),
-      fullMonthLabel: getDateRangeAbbrLabel(actualMtdLabelRange.startIso, actualMtdLabelRange.endIso),
+      fullMonthLabel: getDateRangeAbbrLabel(
+        actualCombinedTotalLabelRange.startIso,
+        actualCombinedTotalLabelRange.endIso,
+      ),
     };
   }
 
@@ -1444,6 +1473,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     const chart = buildLast30DaysChartSlide({
       filteredMtdDailyRows,
+      chartRange,
       now,
       timezone,
       campaignObjectiveMap,
@@ -1942,6 +1972,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // ── Visual chart slide (last 30 days) ───────────────────────────────────
   const chart = buildLast30DaysChartSlide({
     filteredMtdDailyRows,
+    chartRange,
     now,
     timezone,
     campaignObjectiveMap,

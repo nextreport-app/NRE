@@ -13,6 +13,7 @@ const USER_UPLOAD_CSV = resolve(
   process.cwd(),
   "src/lib/nre/__tests__/fixtures/dc-credit-firm-user-upload-sep2026.csv",
 );
+const NOW = new Date("2026-09-24T12:00:00Z");
 
 /** Synthetic Meta Insights row from one manual Credit Firm CSV day. */
 function manualRowToInsight(row: ReturnType<typeof parseCsvText>["rows"][number]): MetaInsightRow {
@@ -30,6 +31,7 @@ function manualRowToInsight(row: ReturnType<typeof parseCsvText>["rows"][number]
   if (results === 0 && linkClicks > 0) {
     actions.push({ action_type: "lead", value: "1" });
     actions.push({ action_type: "onsite_conversion.lead_grouped", value: "1" });
+    actions.push({ action_type: "offsite_conversion.fb_pixel_lead", value: "1" });
   }
   const day = String(row._raw?.Day ?? row.date_start ?? "2026-09-23");
   const isoDay = day.includes("-") && day.length === 10 ? day : day.split("-").reverse().join("-");
@@ -79,7 +81,18 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     vi.unstubAllGlobals();
   });
 
-  it("API-sync CSV produces the same leads, CPL, and objective as manual CSV", async () => {
+  const reportOpts = {
+    accountName: "Credit Firm",
+    currencySymbol: "$",
+    timezone: "America/New_York",
+    monthlyBudget: null,
+    now: NOW,
+    reportType: "WEEKLY" as const,
+    selectedCampaigns: ["DC Leads Campaign Main"],
+    weeklyRange: { startIso: "2026-08-25", endIso: "2026-09-23" },
+  };
+
+  it("API-sync CSV produces the same leads, CPL, chart, and objective as manual CSV", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);
 
@@ -89,16 +102,6 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       manualMap.get("dc leads campaign main")?.resultLabel,
     );
 
-    const reportOpts = {
-      accountName: "Credit Firm",
-      currencySymbol: "$",
-      timezone: "America/New_York",
-      monthlyBudget: null,
-      now: new Date("2026-09-24T12:00:00Z"),
-      reportType: "WEEKLY" as const,
-      selectedCampaigns: ["DC Leads Campaign Main"],
-    };
-
     const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: manualRows });
     const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
 
@@ -107,17 +110,16 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
 
     expect(apiWl?.value).toBe(manualWl?.value);
     expect(apiWl?.cprValue).toBe(manualWl?.cprValue);
-    expect(apiReport.chart?.campaigns[0]?.resLabel).toBe(manualReport.chart?.campaigns[0]?.resLabel);
     expect(apiReport.chart?.campaigns[0]?.results).toBe(manualReport.chart?.campaigns[0]?.results);
+    expect(apiReport.chart?.campaigns[0]?.resLabel).toBe(manualReport.chart?.campaigns[0]?.resLabel);
     expect(apiReport.campaignSlides[0]?.resultLabel).toBe(manualReport.campaignSlides[0]?.resultLabel);
     expect(apiReport.campaignSlides[0]?.metrics.results).toBe(manualReport.campaignSlides[0]?.metrics.results);
 
-    // Credit Firm weekly upload: 9 website leads in the Sep window.
     expect(manualWl?.value).toBe("9");
     expect(apiWl?.value).toBe("9");
   });
 
-  it("uses website submission result type and no stray Meta leads column on blank days", async () => {
+  it("uses website submission result type and no stray lead columns on blank days", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(MANUAL_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);
 
@@ -129,6 +131,11 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       (r) => !r.result_type?.trim() && parseInt(String(r.meta_leads || "0"), 10) > 0,
     ).length;
     expect(metaLeadsOnBlankDays).toBe(0);
+
+    const websiteLeadsOnBlankDays = apiRows.filter(
+      (r) => !r.result_type?.trim() && parseInt(String(r.website_leads || "0"), 10) > 0,
+    ).length;
+    expect(websiteLeadsOnBlankDays).toBe(0);
   });
 
   it("ignores incidental fb_pixel_lead on blank days when Meta reports no cost per result", async () => {
@@ -161,15 +168,6 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
     const dataRows = lines.slice(1).map((line) => line.split(","));
     const { rows: apiRows } = readRowsWithAutoMap(headers, dataRows);
 
-    const reportOpts = {
-      accountName: "Credit Firm",
-      currencySymbol: "$",
-      timezone: "America/New_York",
-      monthlyBudget: null,
-      now: new Date("2026-09-24T12:00:00Z"),
-      reportType: "WEEKLY" as const,
-      selectedCampaigns: ["DC Leads Campaign Main"],
-    };
     const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: manualRows });
     const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
 
@@ -216,18 +214,13 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       lines.slice(1).map((line) => line.split(",")),
     );
 
-    const reportOpts = {
-      accountName: "Credit Firm",
-      currencySymbol: "$",
-      timezone: "America/New_York",
-      monthlyBudget: null,
-      now: new Date("2026-09-24T12:00:00Z"),
-      reportType: "WEEKLY" as const,
+    const renamedOpts = {
+      ...reportOpts,
       selectedCampaigns: ["DC Main Campaign"],
     };
     const renamedManual = manualRows.map((r) => ({ ...r, campaign_name: "DC Main Campaign" }));
-    const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: renamedManual });
-    const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
+    const manualReport = buildReportData({ ...renamedOpts, mtdDailyRows: renamedManual });
+    const apiReport = buildReportData({ ...renamedOpts, mtdDailyRows: apiRows });
     const manualWl = manualReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     const apiWl = apiReport.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(apiWl?.value).toBe(manualWl?.value);
@@ -237,7 +230,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
   it("matches user-reported Sep 2026 upload: weekly 4, MTD 9, chart 12", async () => {
     const { rows: manualRows } = parseCsvText(readFileSync(USER_UPLOAD_CSV, "utf8"));
     const apiRows = await apiRowsFromManual(manualRows);
-    const reportOpts = {
+    const uploadOpts = {
       accountName: "Credit Firm",
       currencySymbol: "$",
       timezone: "America/New_York",
@@ -247,8 +240,8 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       selectedCampaigns: ["DC Leads Campaign Main"],
       weeklyRange: { startIso: "2026-09-18", endIso: "2026-09-24" },
     };
-    const manualReport = buildReportData({ ...reportOpts, mtdDailyRows: manualRows });
-    const apiReport = buildReportData({ ...reportOpts, mtdDailyRows: apiRows });
+    const manualReport = buildReportData({ ...uploadOpts, mtdDailyRows: manualRows });
+    const apiReport = buildReportData({ ...uploadOpts, mtdDailyRows: apiRows });
     expect(manualReport.campaignSlides[0]?.metrics.results).toBe("4");
     expect(manualReport.chart?.campaigns[0]?.results).toBe(12);
     expect(apiReport.campaignSlides[0]?.metrics.results).toBe("4");

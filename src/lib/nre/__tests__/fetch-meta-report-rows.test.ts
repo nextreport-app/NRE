@@ -80,7 +80,7 @@ describe("pickResultAction", () => {
     });
   });
 
-  it("returns null for website-leads campaigns when fb_pixel_lead has no cost per result (manual export blank day)", () => {
+  it("returns null for website-leads campaigns when only incidental fb_pixel_lead exists on a blank day", () => {
     const row: MetaInsightRow = {
       campaign_name: "DC Leads Campaign Main",
       actions: [
@@ -349,6 +349,44 @@ describe("fetchMetaReportCsv", () => {
 
     const wlCol = report.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(wlCol?.value).toBe("10");
+    vi.unstubAllGlobals();
+  });
+
+  it("uses reach as the result for reach campaigns when no conversion actions exist", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              campaign_name: "SouthavenRV_Reach_Retargeting_April 9",
+              adset_name: "Reach Ad Set",
+              date_start: "2026-09-23",
+              spend: "28.93",
+              reach: "7522",
+              impressions: "9751",
+              inline_link_clicks: "4",
+              actions: [{ action_type: "link_click", value: "4" }],
+              optimization_goal: "REACH",
+            },
+          ],
+        }),
+      })),
+    );
+    const result = await fetchMetaReportCsv({
+      accessToken: "token",
+      adAccountId: "act_123",
+      timezone: "UTC",
+      sinceIso: "2026-09-23",
+      untilIso: "2026-09-23",
+    });
+    const lines = result.csvText.split("\n");
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map((line) => line.split(","));
+    const { rows } = readRowsWithAutoMap(headers, dataRows);
+    expect(rows[0]?.result_type).toBe("Reach");
+    expect(rows[0]?.results).toBe("7522");
     vi.unstubAllGlobals();
   });
 

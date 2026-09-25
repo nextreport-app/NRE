@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "About — Built for Agency Reporting",
   description:
-    "NextReport automates Meta, Google, TikTok & GA4 client reporting — built by agency people tired of spending hours formatting weekly PowerPoint decks.",
+    "NextReport automates Meta Ads client reporting — built by agency people tired of spending hours formatting weekly PowerPoint decks. Google, TikTok & GA4 launching soon.",
   path: "/about",
 });
 
@@ -17,13 +17,13 @@ const STORY_PARAGRAPHS = [
   "Every week, hours disappeared into the same repetitive task: downloading campaign CSVs, copying numbers into PowerPoint slides, writing the same campaign summaries, formatting the same tables. Not strategy. Data entry.",
   "The tools that existed were built for other markets — dollar pricing, enterprise features, complex setup. Nothing was built for how Indian agencies actually work, or for the reality of managing US client accounts from India.",
   "So NextReport was built.",
-  "It reads your Meta Ads, Google Ads, TikTok, and GA4 exports, detects what each campaign was trying to achieve, selects the right metrics automatically, and generates a branded PowerPoint report with AI-written insights — in under 2 minutes.",
+  "It reads your Meta Ads exports (API or CSV), detects what each campaign was trying to achieve, selects the right metrics automatically, and generates a branded PowerPoint report with AI-written insights — in under 2 minutes.",
   "The goal is simple: less time on formatting, more time on strategy.",
 ];
 
 const STATS = [
   "Under 2 minutes per report",
-  "Meta, Google Ads, TikTok & GA4",
+  "Meta Ads — live now",
   "API sync or CSV upload",
 ];
 
@@ -62,7 +62,7 @@ export default async function AboutPage() {
             <h2 className="text-2xl font-semibold text-accent-orange">Our Mission</h2>
             <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-secondary">
               To give every digital agency in India the same reporting power that large agencies have — fast,
-              professional, branded reports across Meta Ads, Google Ads, TikTok Ads, and GA4 website analytics,
+              professional, branded Meta Ads reports today — with Google Ads, TikTok, and GA4 website analytics launching soon,
               so you can focus on strategy instead of spreadsheets.
             </p>
           </div>

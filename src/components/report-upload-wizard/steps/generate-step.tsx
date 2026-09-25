@@ -15,8 +15,16 @@ import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { formatRelativeReportDate } from "@/lib/client-display";
+import {
+  LAUNCH_PRIMARY_REPORT_TYPES,
+  LAUNCH_SECONDARY_REPORT_TYPES,
+} from "@/lib/meta-launch-scope";
 
-const PRIMARY_REPORT_TYPES = new Set(["WEEKLY", "MONTHLY", "DAILY"]);
+const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
+const LAUNCH_REPORT_TYPES = new Set<string>([
+  ...LAUNCH_PRIMARY_REPORT_TYPES,
+  ...LAUNCH_SECONDARY_REPORT_TYPES,
+]);
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
@@ -102,6 +110,9 @@ export function WizardGenerateStep() {
     setCustomEnd,
     setCustomRangeError,
     setCustomStart,
+    editCustomEnd,
+    editCustomStart,
+    editDateMode,
     setCustomTitleExpanded,
     setDateMode,
     setDriveFolderLinkInput,
@@ -111,6 +122,7 @@ export function WizardGenerateStep() {
     setDriveSaveUrl,
     setDriveView,
     setHistoricalMonthCount,
+    editHistoricalMonthCount,
     setLongRangeConfirmed,
     setReportSummaryExpanded,
     setReportTitle,
@@ -128,7 +140,7 @@ export function WizardGenerateStep() {
   } = w;
 
   const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
-    () => !PRIMARY_REPORT_TYPES.has(reportType),
+    () => LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
@@ -159,7 +171,7 @@ export function WizardGenerateStep() {
               <ReportTypeCard
                 icon="☀️"
                 heading="Yesterday Performance Report"
-                description="Latest complete day — campaign slides with metrics."
+                description="Latest complete day"
                 selected={reportType === "DAILY"}
                 onSelect={() => handleReportTypeChange("DAILY")}
                 layout="compact"
@@ -174,7 +186,9 @@ export function WizardGenerateStep() {
               >
                 <span>
                   More report types
-                  {!PRIMARY_REPORT_TYPES.has(reportType) ? (
+                  {LAUNCH_SECONDARY_REPORT_TYPES.includes(
+                    reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
+                  ) ? (
                     <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel()}</span>
                   ) : null}
                 </span>
@@ -182,33 +196,6 @@ export function WizardGenerateStep() {
               </button>
               {moreReportTypesOpen ? (
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  <ReportTypeCard
-                    icon="📈"
-                    heading="Quarterly Performance Report"
-                    description="Current quarter to date."
-                    selected={reportType === "QUARTER"}
-                    onSelect={() => handleReportTypeChange("QUARTER")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="🗓️"
-                    heading="Year-to-Date Report"
-                    description="Jan 1 through yesterday."
-                    selected={reportType === "YTD"}
-                    onSelect={() => handleReportTypeChange("YTD")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="🎨"
-                    heading="Creative Performance Report"
-                    description={
-                      hasAdLevelCsv ? "Ad-level winners and video metrics." : "Requires ad-level CSV."
-                    }
-                    selected={reportType === "CREATIVE"}
-                    onSelect={() => handleReportTypeChange("CREATIVE")}
-                    disabled={!hasAdLevelCsv}
-                    layout="compact"
-                  />
                   <ReportTypeCard
                     icon="🔀"
                     heading="Comparison Report"
@@ -228,31 +215,21 @@ export function WizardGenerateStep() {
                   <ReportTypeCard
                     icon="📋"
                     heading="Daily Performance Report"
-                    description={
-                      platform === "META"
-                        ? "Multiple days — account totals in a table, one row per day."
-                        : "Meta only in this version."
-                    }
+                    description="Multiple days, one row per day"
                     selected={reportType === "DAY_BREAKDOWN"}
                     onSelect={() => handleReportTypeChange("DAY_BREAKDOWN")}
-                    disabled={platform !== "META"}
                     layout="compact"
                   />
                 </div>
               ) : null}
             </div>
-            {hasAdLevelCsv && reportType !== "CREATIVE" && (
-              <p className="mt-4 rounded-md border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-[14px] text-emerald-200">
-                Ad-level data detected — creative slides will be included automatically.
-              </p>
-            )}
             {reportType === "HISTORICAL" && (
               <div className="mt-4 space-y-3">
                 <label className="block text-[14px] text-dash-ink-secondary">
                   How many complete prior months?
                   <select
                     value={historicalMonthCount}
-                    onChange={(e) => setHistoricalMonthCount(Number(e.target.value))}
+                    onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
                     className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
                   >
                     {[2, 3, 4, 5, 6, 8, 12].map((n) => (
@@ -300,16 +277,12 @@ export function WizardGenerateStep() {
                     minIso={dateBounds?.minIso}
                     maxIso={dateBounds?.maxIso}
                     onStartChange={(iso) => {
-                      setDateMode("custom");
-                      setCustomStart(iso);
-                      setLongRangeConfirmed(false);
-                      setCustomRangeError(null);
+                      editDateMode("custom");
+                      editCustomStart(iso);
                     }}
                     onEndChange={(iso) => {
-                      setDateMode("custom");
-                      setCustomEnd(iso);
-                      setLongRangeConfirmed(false);
-                      setCustomRangeError(null);
+                      editDateMode("custom");
+                      editCustomEnd(iso);
                     }}
                   />
                   {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
@@ -323,7 +296,7 @@ export function WizardGenerateStep() {
                         label="Last 7 days"
                         sublabel={formatIsoRange(weeklyOptions.last7)}
                         onSelect={() => {
-                          setDateMode("last7");
+                          editDateMode("last7");
                           setCustomRangeError(null);
                         }}
                       />
@@ -336,7 +309,7 @@ export function WizardGenerateStep() {
                           ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
                           : "Pick any start and end date in your CSV"
                       }
-                      onSelect={() => setDateMode("custom")}
+                      onSelect={() => editDateMode("custom")}
                     />
                   </div>
 
@@ -347,16 +320,8 @@ export function WizardGenerateStep() {
                         endIso={customEnd}
                         minIso={dateBounds?.minIso}
                         maxIso={dateBounds?.maxIso}
-                        onStartChange={(iso) => {
-                          setCustomStart(iso);
-                          setLongRangeConfirmed(false);
-                          setCustomRangeError(null);
-                        }}
-                        onEndChange={(iso) => {
-                          setCustomEnd(iso);
-                          setLongRangeConfirmed(false);
-                          setCustomRangeError(null);
-                        }}
+                        onStartChange={(iso) => editCustomStart(iso)}
+                        onEndChange={(iso) => editCustomEnd(iso)}
                       />
 
                       {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
@@ -744,44 +709,7 @@ export function WizardGenerateStep() {
                 </>
               )}
             </div>
-
-            {/* Section 3 — Generate button. Same screen throughout: only
-                this changes as generateStatus moves idle -> loading ->
-                done/error, so there's no navigation between "getting ready"
-                and "here's your file". */}
-            {generateStatus === "idle" && (
-              <div className="hidden md:block">
-                <button
-                  onClick={handleGenerate}
-                  className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-                >
-                  Generate Report
-                </button>
-                <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
-              </div>
-            )}
           </div>
-
-          {generateStatus === "loading" && (
-            <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
-              <Spinner />
-              Generating your report…
-            </div>
-          )}
-
-          {generateStatus === "error" && (
-            <div className="hidden space-y-3 md:block">
-              <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
-                {generateMessage}
-              </div>
-              <button
-                onClick={handleGenerate}
-                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
 
           {generateStatus === "done" && downloadUrl && (
             <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
@@ -1098,6 +1026,47 @@ export function WizardGenerateStep() {
             </>
           )}
 
+          {showGenerateFooter && (
+            <div className="space-y-3">
+              {generateStatus === "idle" && previewStatus === "loading" && (
+                <p className="text-[14px] text-dash-ink-secondary">Loading preview…</p>
+              )}
+              {generateStatus === "idle" && (
+                <div className="hidden md:block">
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={previewStatus === "loading" || previewStatus === "invalid"}
+                    className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                  >
+                    Generate Report
+                  </button>
+                  <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                </div>
+              )}
+              {generateStatus === "loading" && (
+                <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
+                  <Spinner />
+                  Generating your report…
+                </div>
+              )}
+              {generateStatus === "error" && (
+                <div className="hidden space-y-3 md:block">
+                  <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
+                    {generateMessage}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {showGenerateFooter ? (
             <WizardStickyFooter
               stepLabel={
@@ -1117,7 +1086,9 @@ export function WizardGenerateStep() {
                     : "Generate Report"
               }
               onPrimary={handleGenerate}
-              primaryDisabled={generateStatus === "loading" || previewStatus === "loading"}
+              primaryDisabled={
+                generateStatus !== "loading" && (previewStatus === "loading" || previewStatus === "invalid")
+              }
               primaryLoading={generateStatus === "loading"}
             />
           ) : null}

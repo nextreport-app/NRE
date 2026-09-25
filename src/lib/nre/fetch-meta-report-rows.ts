@@ -8,6 +8,7 @@ import {
   isMetaFormLeadsCampaignHaystack,
   isMessagingCampaignHaystack,
   isQuoteRequestCampaignHaystack,
+  isReachCampaignHaystack,
   isWebsiteLeadsCampaignHaystack,
 } from "./campaign-name-heuristics";
 import { metaApiActionToCsvResultType } from "./meta-objective-dictionary";
@@ -135,7 +136,55 @@ function actionTypeToCsvResultType(
   if (row && isQuoteRequestCampaignRow(row) && CUSTOM_CONVERSION_ACTION.test(actionType)) {
     return "Quote Request Submitted";
   }
+  if (
+    pickedAsPrimaryResult &&
+    row &&
+    usesWebsiteLeadResultPicking(row) &&
+    (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
+  ) {
+    // Manual Meta exports for website-lead campaigns use "website submission".
+    return "website submission";
+  }
   return metaApiActionToCsvResultType(actionType);
+}
+
+function isMetaLeadActionType(actionType: string): boolean {
+  return (META_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+function isWebsiteLeadActionType(actionType: string): boolean {
+  return (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+function isMessagingActionType(actionType: string): boolean {
+  return (MESSAGING_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+/** Lead columns mirror manual CSV: only populated when that action was picked as Results. */
+function leadColumnsFromPickedResult(
+  row: MetaInsightRow,
+  result: { action_type: string; value: string } | null,
+): { metaLeadsOut: number; websiteLeadsOut: number } {
+  if (!result) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+  const value = parseFloat(result.value);
+  if (!Number.isFinite(value) || value <= 0) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+
+  if (isMetaLeadActionType(result.action_type)) {
+    return { metaLeadsOut: value, websiteLeadsOut: 0 };
+  }
+  if (isWebsiteLeadActionType(result.action_type)) {
+    return { metaLeadsOut: 0, websiteLeadsOut: value };
+  }
+  if (result.action_type === "lead") {
+    const typedCampaign =
+      isMessagingCampaignRow(row) ||
+      isMetaFormLeadsCampaignRow(row) ||
+      usesWebsiteLeadResultPicking(row) ||
+      isQuoteRequestCampaignRow(row);
+    if (typedCampaign) return { metaLeadsOut: 0, websiteLeadsOut: 0 };
+    return { metaLeadsOut: value, websiteLeadsOut: 0 };
+  }
+  return { metaLeadsOut: 0, websiteLeadsOut: 0 };
 }
 
 function firstCustomConversionAction(map: Map<string, number>): { action_type: string; value: string } | null {
@@ -206,6 +255,56 @@ function usesWebsiteLeadResultPicking(row: MetaInsightRow): boolean {
   return isWebsiteLeadsCampaignRow(row) || isWebsiteLeadOptimizationGoal(row);
 }
 
+/**
+ * Manual Meta exports leave Results blank on traffic days even when Insights API
+ * attaches a single unattributed fb_pixel_lead. Real lead days carry
+ * cost_per_action_type for the pixel action (see DC Credit Firm weekly export).
+ */
+function isIncidentalWebsiteLead(
+  row: MetaInsightRow,
+  match: { action_type: string; value: string },
+): boolean {
+  const cost = costPerActionType(row.cost_per_action_type, [match.action_type]);
+  if (cost && parseFloat(cost) > 0) return false;
+  const leadCount = parseFloat(match.value);
+  if (!Number.isFinite(leadCount) || leadCount > 1) return false;
+  const map = actionValueMap(row.actions);
+  const linkClicks = map.get("link_click") ?? 0;
+  if (linkClicks <= 0) return false;
+  return true;
+}
+
+/** Meta manual exports only show a lead result on days with a real Cost per result. */
+function actionHasCostedResult(row: MetaInsightRow, actionType: string): boolean {
+  const cost = costPerActionType(row.cost_per_action_type, [actionType]);
+  if (!cost) return false;
+  const n = parseFloat(cost);
+  return Number.isFinite(n) && n > 0;
+}
+
+function withCostedResult(
+  row: MetaInsightRow,
+  match: { action_type: string; value: string } | null,
+): { action_type: string; value: string } | null {
+  if (!match) return null;
+  return actionHasCostedResult(row, match.action_type) ? match : null;
+}
+
+function firstWebsiteLeadAction(
+  row: MetaInsightRow,
+  map: Map<string, number>,
+): { action_type: string; value: string } | null {
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const value = map.get(actionType);
+    if (value == null || value <= 0) continue;
+    const match = { action_type: actionType, value: String(value) };
+    if (isIncidentalWebsiteLead(row, match)) continue;
+    const costed = withCostedResult(row, match);
+    if (costed) return costed;
+  }
+  return null;
+}
+
 function firstActionMatchingPattern(
   map: Map<string, number>,
   pattern: RegExp,
@@ -257,9 +356,6 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     return null;
   }
 
-  const quoteMatch = pickQuoteRequestAction(map);
-  if (quoteMatch) return quoteMatch;
-
   if (messagingCampaign) {
     const messagingMatch = firstActionWithValue(map, MESSAGING_ACTION_TYPES);
     if (messagingMatch) return messagingMatch;
@@ -269,7 +365,7 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
   }
 
   if (isMetaFormLeadsCampaignRow(row)) {
-    const metaMatch = withCostedResult(row, firstActionWithValue(map, META_LEAD_ACTION_TYPES));
+    const metaMatch = firstActionWithValue(map, META_LEAD_ACTION_TYPES);
     if (metaMatch) return metaMatch;
     return null;
   }
@@ -279,7 +375,7 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
     // conversion — Meta API exposes that as offsite_conversion.custom.{id}, not fb_pixel_lead.
     const quoteMatch = pickQuoteRequestAction(map);
     if (quoteMatch) return quoteMatch;
-    const websiteMatch = withCostedResult(row, firstActionWithValue(map, WEBSITE_LEAD_ACTION_TYPES));
+    const websiteMatch = firstWebsiteLeadAction(row, map);
     if (websiteMatch) return websiteMatch;
     // Same as Meta CSV: no website-lead result on days without a costed pixel/web
     // lead action — ignore generic `lead`, meta-form, and traffic actions.
@@ -293,7 +389,7 @@ export function pickResultAction(row: MetaInsightRow): { action_type: string; va
       const match = firstActionWithValue(map, goalActions);
       if (match) {
         if (isWebsiteLeadActionType(match.action_type)) {
-          return withCostedResult(row, match);
+          return firstWebsiteLeadAction(row, map);
         }
         return match;
       }
@@ -354,85 +450,45 @@ function costPerActionType(
   return "";
 }
 
-/** Meta manual exports only show a lead result on days with a real Cost per result — not stray API actions. */
-function actionHasCostedResult(row: MetaInsightRow, actionType: string): boolean {
-  const cost = costPerActionType(row.cost_per_action_type, [actionType]);
-  if (!cost) return false;
-  const n = parseFloat(cost);
-  return Number.isFinite(n) && n > 0;
-}
-
-function withCostedResult(
-  row: MetaInsightRow,
-  match: { action_type: string; value: string } | null,
-): { action_type: string; value: string } | null {
-  if (!match) return null;
-  return actionHasCostedResult(row, match.action_type) ? match : null;
-}
-
-function isMetaLeadActionType(actionType: string): boolean {
-  return (META_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
-}
-
-function isWebsiteLeadActionType(actionType: string): boolean {
-  return (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
-}
-
-function csvResultTypeForPickedAction(row: MetaInsightRow, actionType: string): string {
-  if (
-    usesWebsiteLeadResultPicking(row) &&
-    (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType)
-  ) {
-    // Match Meta Ads Manager manual exports (e.g. DC Credit Firm "website submission").
-    return "website submission";
-  }
-  return actionTypeToCsvResultType(actionType, row, true);
+function isReachCampaignInsightRow(row: MetaInsightRow): boolean {
+  return isReachCampaignHaystack(campaignNameHaystack(row.campaign_name ?? "", row.adset_name ?? ""));
 }
 
 function insightToCsvRow(row: MetaInsightRow): string[] {
   const actionMap = actionValueMap(row.actions);
-  const result = pickResultAction(row);
+  let result = pickResultAction(row);
+  if (isReachCampaignInsightRow(row)) {
+    const reachVal = parseFloat(row.reach ?? "0");
+    if (Number.isFinite(reachVal) && reachVal > 0) {
+      result = { action_type: "reach", value: row.reach! };
+    }
+  }
   const cpr = result ? costPerActionType(row.cost_per_action_type, [result.action_type]) : "";
 
-  const websiteLeadsFamily = usesWebsiteLeadResultPicking(row);
-  const metaFormCampaign = isMetaFormLeadsCampaignRow(row);
-  const messagingCampaign = isMessagingCampaignRow(row);
-
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
+  const { metaLeadsOut, websiteLeadsOut } = leadColumnsFromPickedResult(row, result);
 
-  // Lead-family side columns follow the picked result only — never independent
-  // action-map scans (Meta attaches stray lead actions on most days).
-  let metaLeadsOut = 0;
-  let websiteLeadsOut = 0;
-  if (result && !messagingCampaign) {
-    if (metaFormCampaign && isMetaLeadActionType(result.action_type)) {
-      metaLeadsOut = parseFloat(result.value);
-    } else if (websiteLeadsFamily && isWebsiteLeadActionType(result.action_type)) {
-      websiteLeadsOut = parseFloat(result.value);
-    }
-  }
-
-  const genericLead = actionMap.get("lead") ?? 0;
-  const typedCampaign =
-    messagingCampaign || metaFormCampaign || websiteLeadsFamily || isQuoteRequestCampaignRow(row);
-  if (genericLead > 0 && metaLeadsOut === 0 && websiteLeadsOut === 0 && !typedCampaign) {
-    if (result?.action_type && (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(result.action_type)) {
-      websiteLeadsOut = genericLead;
-    } else {
-      metaLeadsOut = genericLead;
-    }
-  }
-
-  const costPerLead = costPerActionType(row.cost_per_action_type, LEAD_COST_ACTION_TYPES);
+  const isLeadFamilyResult =
+    result &&
+    (isMetaLeadActionType(result.action_type) ||
+      isWebsiteLeadActionType(result.action_type) ||
+      result.action_type === "lead");
+  const costPerLead = isLeadFamilyResult
+    ? cpr || costPerActionType(row.cost_per_action_type, LEAD_COST_ACTION_TYPES)
+    : "";
   const costPerLpv = costPerActionType(row.cost_per_action_type, ["landing_page_view"]);
-  const messagingConversations = sumActionValues(actionMap, MESSAGING_ACTION_TYPES);
-  const costPerMessaging = costPerActionType(row.cost_per_action_type, MESSAGING_ACTION_TYPES);
+  const messagingConversations =
+    result && isMessagingActionType(result.action_type) ? parseFloat(result.value) : 0;
+  const costPerMessaging =
+    result && isMessagingActionType(result.action_type)
+      ? cpr || costPerActionType(row.cost_per_action_type, MESSAGING_ACTION_TYPES)
+      : "";
 
   return [
     row.campaign_name ?? "",
     row.adset_name ?? "",
     row.date_start ? isoToCsvDay(row.date_start) : "",
-    result ? csvResultTypeForPickedAction(row, result.action_type) : "",
+    result ? actionTypeToCsvResultType(result.action_type, row, true) : "",
     result?.value ?? "",
     formatMoney(row.spend),
     cpr,

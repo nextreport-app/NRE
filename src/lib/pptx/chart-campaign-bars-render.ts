@@ -18,7 +18,7 @@ export const VISUAL_CHART_COLORS_DARK: CampaignBarColors = {
   ink: "ffffff",
   inkMuted: "94a3b8",
   accent: "f6ad55",
-  track: "1e293b",
+  track: "2a3441",
   panelFill: "111f35",
   separator: "1e3a5f",
   heading: "94a3b8",

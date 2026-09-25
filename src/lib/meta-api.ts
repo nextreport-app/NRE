@@ -295,12 +295,10 @@ export async function fetchMetaAdAccountInsights(params: {
       throw err;
     }
 
-    const merged: MetaInsightRow[] = [];
-    for (const chunk of chunks) {
-      const rows = await fetchMetaAdAccountInsightsForRange({ ...params, ...chunk });
-      merged.push(...rows);
-    }
-    return merged;
+    const chunkRows = await Promise.all(
+      chunks.map((chunk) => fetchMetaAdAccountInsightsForRange({ ...params, ...chunk })),
+    );
+    return chunkRows.flat();
   }
 }
 

@@ -3,7 +3,7 @@
  * how many reports were generated, broken down by user and platform.
  */
 
-import { notifyInboundFireAndForget } from "@/lib/inbound-notifications";
+import { inboundNotifyRecipients, sendInboundEmail } from "@/lib/inbound-notifications";
 import { prisma } from "@/lib/prisma";
 
 const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
@@ -186,18 +186,33 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Sends the digest for the IST day that just ended. Returns false when skipped (no API key). */
-export async function sendAdminDailyReportDigest(now = new Date()): Promise<{ sent: boolean; stats: DigestStats }> {
+export type DailyReportDigestSendResult = {
+  sent: boolean;
+  skipped?: boolean;
+  error?: string;
+  recipients: string[];
+  stats: DigestStats;
+};
+
+/** Sends the digest for the IST day that just ended. Awaits Resend — required on Vercel cron (no fire-and-forget). */
+export async function sendAdminDailyReportDigest(now = new Date()): Promise<DailyReportDigestSendResult> {
   const bounds = istDayBoundsForDigest(now);
   const stats = await buildDailyReportDigestStats(bounds);
   const { subject, text, html } = formatDailyReportDigestEmail(stats);
+  const recipients = inboundNotifyRecipients("reports");
 
-  notifyInboundFireAndForget({
+  const result = await sendInboundEmail({
     channel: "reports",
     subject,
     text,
     html,
   });
 
-  return { sent: true, stats };
+  return {
+    sent: result.success,
+    skipped: result.skipped,
+    error: result.error,
+    recipients,
+    stats,
+  };
 }
