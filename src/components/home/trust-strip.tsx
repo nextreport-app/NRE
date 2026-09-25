@@ -3,7 +3,7 @@ export function TrustStrip() {
   return (
     <div className="border-y border-navy-border bg-navy-panel px-4 py-4">
       <p className="mx-auto max-w-6xl overflow-x-auto text-center text-xs whitespace-nowrap text-ink-muted sm:text-sm">
-        Every number comes from your connected account or CSV export. We never modify Meta, Google, TikTok, or GA4 data.
+        Every number comes from your Meta account or CSV export. We never modify your campaign data.
       </p>
     </div>
   );

@@ -30,6 +30,12 @@ import { useToast } from "@/components/toast";
 import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
+import {
+  coerceLaunchPlatform,
+  coerceLaunchReportType,
+  isLaunchPlatformEnabled,
+  isLaunchReportTypeEnabled,
+} from "@/lib/meta-launch-scope";
 import type { WizardDataSource } from "@/components/wizard-data-source-panel";
 import type {
   AnalyzeStatus,
@@ -165,9 +171,10 @@ export function useReportUploadWizard({
   }
 
   function choosePlatform(next: "META" | "GOOGLE" | "TIKTOK") {
+    const platformChoice = coerceLaunchPlatform(next);
     setWizardKind("ads");
-    setSelectedPlatformCard(next);
-    rememberPlatformChoice(next);
+    setSelectedPlatformCard(platformChoice);
+    rememberPlatformChoice(platformChoice);
     setMismatchWarning(false);
     setAnalyzeStatus("idle");
     setAnalyzeErrors([]);
@@ -175,8 +182,8 @@ export function useReportUploadWizard({
   }
 
   function chooseWebsitePlatform() {
-    setWizardKind("website");
-    rememberPlatformChoice("GA4");
+    // GA4 website wizard deferred until post-Meta launch — stay on Meta ads flow.
+    choosePlatform("META");
   }
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName
@@ -417,11 +424,12 @@ export function useReportUploadWizard({
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
     acknowledgePostGenerateEdit();
-    setReportType(next);
+    const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
+    setReportType(reportTypeChoice);
     if (!reportTitleTouched) {
-      setReportTitle(defaultReportTitleFor(next));
+      setReportTitle(defaultReportTitleFor(reportTypeChoice));
     }
-    if (next === "DAY_BREAKDOWN") {
+    if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
         setCustomStart(weeklyOptions.last7.startIso);
@@ -608,8 +616,8 @@ export function useReportUploadWizard({
     setReportId(snapshot.reportId);
     setDownloadUrl(snapshot.downloadUrl);
     setShareToken(snapshot.shareToken);
-    setPlatform(snapshot.platform);
-    setReportType(snapshot.reportType);
+    setPlatform(coerceLaunchPlatform(snapshot.platform));
+    setReportType(coerceLaunchReportType(snapshot.reportType));
     setDateMode(snapshot.dateMode);
     setCustomStart(snapshot.customStart);
     setCustomEnd(snapshot.customEnd);

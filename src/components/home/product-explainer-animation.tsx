@@ -17,9 +17,9 @@ const FRAMES: ExplainerFrame[] = [
   {
     step: "1 / 5",
     title: "Add your ad data",
-    caption: "Connect Meta, Google, TikTok, or GA4 via official API — or upload a CSV export.",
+    caption: "Connect Meta via official API — or upload a CSV export.",
     voiceoverScript:
-      "Start by connecting your ad account through the official API, or upload a CSV export. NextReport supports Meta, Google Ads, TikTok, and GA4.",
+      "Start by connecting your Meta ad account through the official API, or upload a CSV export. Google, TikTok, and GA4 are launching soon.",
   },
   {
     step: "2 / 5",
@@ -58,9 +58,18 @@ function MockWizardPanel({ frameIndex }: { frameIndex: number }) {
         Sync from API or drop CSV
       </div>
       <div className="flex gap-1.5">
-        {["Meta", "Google", "TikTok", "GA4"].map((p) => (
-          <span key={p} className="rounded bg-navy-panel px-2 py-0.5 text-[9px] text-ink-secondary">
-            {p}
+        {[
+          { label: "Meta", live: true },
+          { label: "Google", live: false },
+          { label: "TikTok", live: false },
+          { label: "GA4", live: false },
+        ].map((p) => (
+          <span
+            key={p.label}
+            className={`rounded px-2 py-0.5 text-[9px] ${p.live ? "bg-emerald-950/40 text-emerald-200" : "bg-navy-panel text-ink-muted"}`}
+          >
+            {p.label}
+            {!p.live ? " · soon" : ""}
           </span>
         ))}
       </div>

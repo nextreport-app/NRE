@@ -73,8 +73,8 @@ export default async function ClientsPage() {
           </div>
           <h2 className="text-[20px] font-semibold text-dash-ink">No clients yet</h2>
           <p className="mt-2 max-w-sm text-[16px] leading-relaxed text-dash-ink-secondary">
-            Add your first client account — set currency and timezone once, then generate reports. Meta Ads is
-            fully tested; Google, TikTok, and GA4 are in beta.
+            Add your first client account — set currency and timezone once, then generate Meta Ads reports. Google,
+            TikTok, and GA4 are launching soon.
           </p>
           <Link
             href="/clients/new"

@@ -183,8 +183,11 @@ export default async function ClientDetailPage({
         </Card>
 
         <Card id="website-analytics">
-          <CardHeading hint="Pick one GA4 property for this client&rsquo;s Google Analytics reports.">
+          <CardHeading hint="Pick one GA4 property now — Website Traffic reports open after Meta v1 launch.">
             Google Analytics property
+            <span className="ml-2 rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
+              Launching soon
+            </span>
           </CardHeading>
           <Ga4PropertyPicker
             clientId={client.id}
@@ -245,7 +248,7 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Meta Ads is fully tested. Google Ads, TikTok, and GA4 are in beta — verify before sending to clients.">
+          <CardHeading hint="Meta Ads reporting is live. Google, TikTok, and GA4 open after parity testing completes.">
             Generate report
           </CardHeading>
           <Link

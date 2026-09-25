@@ -1,3 +1,4 @@
+import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
 import type { WizardPlatformChoice } from "./types";
 import { LAST_PLATFORM_STORAGE_KEY } from "./constants";
 
@@ -26,10 +27,10 @@ export function readInitialPlatformPickerState(showTikTokOption: boolean): {
   hasSavedPlatformPreference: boolean;
 } {
   const stored = typeof window === "undefined" ? null : readStoredWizardPlatform();
-  if (stored === "GA4") {
+  if (stored === "GA4" || (stored && !isLaunchPlatformEnabled(stored))) {
     return {
-      wizardKind: "website",
-      selectedPlatformCard: null,
+      wizardKind: "ads",
+      selectedPlatformCard: "META",
       platformPickerExpanded: false,
       hasSavedPlatformPreference: true,
     };
@@ -42,7 +43,7 @@ export function readInitialPlatformPickerState(showTikTokOption: boolean): {
       hasSavedPlatformPreference: false,
     };
   }
-  if (stored === "META" || stored === "GOOGLE" || stored === "TIKTOK") {
+  if (stored === "META") {
     return {
       wizardKind: "ads",
       selectedPlatformCard: stored,
