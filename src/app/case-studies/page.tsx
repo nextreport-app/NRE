@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Case Studies — NextReport",
-  description: "How agencies use NextReport to automate Meta Ads, Google Ads, and GA4 client reporting.",
+  description: "How agencies use NextReport to automate Meta Ads client reporting — Google, TikTok, and GA4 launching soon.",
 };
 
 const CASE_STUDIES = [
@@ -28,7 +28,7 @@ const CASE_STUDIES = [
     metrics: [
       { label: "Brand consistency", before: "Analyst-dependent", after: "Template + agency logo on every slide" },
       { label: "Onboarding new analyst", before: "2–3 weeks", after: "Same-day with wizard" },
-      { label: "Platforms", before: "Meta only", after: "Meta + Google Ads" },
+      { label: "Platforms", before: "Meta only", after: "Meta (live) + Google soon" },
     ],
     note: "Template case study — add client logo and permission before publishing.",
   },

@@ -30,7 +30,7 @@ export default async function NewWebsiteReportPage({ params }: { params: Promise
         <Link href="/account#ga4" className="font-medium text-dash-accent underline hover:no-underline">
           Account settings
         </Link>{" "}
-        and link a property on the client page — generation opens once Meta Ads reporting is fully launched.
+        and link a property on the client page — GA4 report generation opens after parity testing completes.
       </p>
       <Link
         href={`/clients/${client.id}/reports/new`}

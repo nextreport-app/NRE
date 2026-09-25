@@ -156,9 +156,9 @@ export const ROOT_METADATA: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "en_IN",
-    title: `Automated Ad & Website Reports in 2 Minutes — ${SITE_NAME}`,
+    title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta, Google Ads, TikTok & GA4 client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF.",
+      "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
     images: ogImages(),
   },
   twitter: {
@@ -216,7 +216,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads, Google Ads, TikTok Ads, and GA4 reporting for digital agencies — branded PowerPoint, live share links, and PDF exports in under two minutes.",
+        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and PDF exports in under two minutes. Google, TikTok, and GA4 launching soon.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -258,12 +258,13 @@ export const HOME_JSON_LD = {
         },
       ],
       description:
-        "Connect Meta Ads, Google Ads, TikTok Ads, or GA4 via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Connect Meta Ads via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
         "Meta Marketing API sync",
-        "Google Ads API sync",
-        "TikTok Marketing API sync",
-        "Google Analytics 4 website reporting",
+        "Meta Ads CSV upload",
+        "Google Ads API sync (launching soon)",
+        "TikTok Marketing API sync (launching soon)",
+        "Google Analytics 4 website reporting (launching soon)",
         "CSV to PowerPoint (.pptx)",
         "CSV to PDF",
         "Live browser share link",
@@ -331,7 +332,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads (fully tested), plus Google Ads, TikTok Ads, and Google Analytics 4 (GA4) website reporting in beta. Connect via official API or upload a CSV export from each platform.",
+      "NextReport supports Meta Ads reporting today via official API or CSV upload. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
   },
   {
     question: "What file formats can I upload?",
@@ -363,7 +364,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
     name: "Add your ad data",
-    text: "Connect Meta, Google Ads, TikTok, or GA4 via official API in Account Settings, or upload a CSV export in the report wizard.",
+    text: "Connect Meta via official API in Account Settings, or upload a Meta CSV export in the report wizard.",
   },
   {
     name: "Select campaigns and ad sets",

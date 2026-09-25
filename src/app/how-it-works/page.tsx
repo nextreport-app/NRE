@@ -172,7 +172,7 @@ export default async function HowItWorksPage() {
             faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
               "How to generate a client report with NextReport",
-              "Generate a branded Meta, Google, TikTok, or GA4 client report in under 2 minutes via API sync or CSV upload.",
+              "Generate a branded Meta Ads client report in under 2 minutes via API sync or CSV upload.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
           ],
