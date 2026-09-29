@@ -15,7 +15,8 @@ import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { formatCampaignDisplayName } from "./chart-campaign-labels";
 
-export const VISUAL_CHART_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4"] as const;
+/** Muted chart colors — aligned with dashboard usage meters (not neon accent palette). */
+export const VISUAL_CHART_PALETTE = ["8a9aad", "a8926e", "7a9878", "a88080", "9284a8"] as const;
 const INACTIVE_COLOR = "4a5568";
 const MAX_ROWS = 5;
 const SINGLE_CAMPAIGN_BAR_CAP = 75;
@@ -397,7 +398,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       colorByCampaign,
       chart.totalAllSpend,
       currencySymbol,
-      { labelByCampaign: !mixedCampaignObjectives, sortBy: barSort },
+      { labelByCampaign: false, sortBy: "spend" },
     );
     const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
@@ -430,7 +431,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       useSplitPanel: true,
       panelHeading: rightHeading,
       panelSubheading: "",
-      leftHeading: mixedCampaignObjectives ? "Spend by Objective" : "Spend by Campaign",
+      leftHeading: "Spend by Objective",
       rightHeading,
       miniDonuts: [],
       groupedDonut,
@@ -493,8 +494,8 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const resultLabel = toTitleCaseChartLabel(primaryResLabel);
   const groupedDonut = useSplitPanel
     ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol, {
-        labelByCampaign: true,
-        sortBy: "results",
+        labelByCampaign: false,
+        sortBy: "spend",
       })
     : null;
 
@@ -530,7 +531,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     useSplitPanel,
     panelHeading: `${resultLabel} by Campaign`,
     panelSubheading: "",
-    leftHeading: reportingCampaigns.length >= 2 ? "Spend by Campaign" : "Spend by Objective",
+    leftHeading: "Spend by Objective",
     rightHeading: `${resultLabel} by Campaign`,
     miniDonuts: [],
     groupedDonut,

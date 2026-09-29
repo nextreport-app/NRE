@@ -70,9 +70,12 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.isMultiObjective).toBe(false);
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).not.toBeNull();
-    expect(model.leftHeading).toBe("Spend by Campaign");
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual(["Alpha", "Beta"]);
-    expect(model.groupedDonut!.map((s) => s.color)).toEqual(model.resultBars.map((b) => b.color));
+    expect(model.leftHeading).toBe("Spend by Objective");
+    expect(model.groupedDonut!.map((s) => s.name)).toEqual([
+      formatDonutObjectiveLabel("PURCHASES"),
+      formatDonutObjectiveLabel("PURCHASES"),
+    ]);
+    expect(new Set(model.groupedDonut!.map((s) => s.color))).toEqual(new Set(model.resultBars.map((b) => b.color)));
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
     expect(model.resultBars[0]!.statLine).not.toContain("spend");

@@ -10,6 +10,7 @@ import { buildMtdOverviewSvg } from "../chart-overview-svg";
 import { projectChartSlideToShareChart } from "../../nre/share-chart-projection";
 import type { ChartCampaignData, ChartSlideData } from "../../nre/report-data";
 import type { TemplateBackgroundImage } from "../package";
+import { VISUAL_CHART_PALETTE } from "../../nre/visual-chart-slide";
 
 const BACKGROUND: TemplateBackgroundImage = {
   blipXml: '<a:blip r:embed="rId1"/>',
@@ -21,7 +22,7 @@ const BACKGROUND: TemplateBackgroundImage = {
   mediaTarget: "../media/background.png",
 };
 
-const PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4", "76e4f7", "f6e05e"];
+const PALETTE = [...VISUAL_CHART_PALETTE, "7a8991", "958070"];
 
 function campaign(name: string, overrides: Partial<ChartCampaignData> = {}): ChartCampaignData {
   return {
@@ -135,7 +136,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
   it("buildMtdOverviewSvg renders colored result bars", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain('fill="#f6ad55"');
+    expect(svg).toContain('fill="#8a9aad"');
     expect(svg).toContain("PURCHASES BY CAMPAIGN");
   });
 
