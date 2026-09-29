@@ -28,7 +28,15 @@ const LAUNCH_REPORT_TYPES = new Set<string>([
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
+  const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
+    () =>
+      LAUNCH_SECONDARY_REPORT_TYPES.includes(
+        w.reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
+      ),
+  );
+
   if (w.step !== 4) return null;
+
   const {
     budgetToggleSaving,
     clientId,
@@ -138,10 +146,6 @@ export function WizardGenerateStep() {
     weeklyPeriodSummaryLabel,
     weeklyRangeIso
   } = w;
-
-  const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
-    () => LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
-  );
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
 
