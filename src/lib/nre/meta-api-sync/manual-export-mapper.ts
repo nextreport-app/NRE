@@ -8,7 +8,7 @@
  * This module maps each insight day to that same triple, then the shared CSV import
  * path (parseCsv → buildReportData) matches manual upload exactly.
  */
-import type { MetaInsightAction, MetaInsightRow } from "@/lib/meta-api";
+import type { MetaInsightAction, MetaInsightResultMetric, MetaInsightRow } from "@/lib/meta-api";
 import {
   campaignNameHaystack,
   isMetaFormLeadsCampaignHaystack,
@@ -84,11 +84,11 @@ function metricValue(entry: { values?: Array<{ value?: string }>; value?: string
   return 0;
 }
 
-function costForIndicator(
-  row: MetaInsightRow,
+function costForIndicatorOnList(
+  entries: MetaInsightRow["cost_per_result"] | undefined,
   indicator: string,
 ): number {
-  for (const entry of row.cost_per_result ?? []) {
+  for (const entry of entries ?? []) {
     if ((entry.indicator ?? "").trim() !== indicator.trim()) continue;
     const n = metricValue(entry);
     if (n > 0) return n;
@@ -96,22 +96,49 @@ function costForIndicator(
   return 0;
 }
 
+function costForIndicator(row: MetaInsightRow, indicator: string): number {
+  return costForIndicatorOnList(row.cost_per_result, indicator);
+}
+
 type CostedAdsManagerResult = { actionType: string; count: number; cost: number };
 
-/** Rows Meta Ads Manager export would treat as having a costed Result that day. */
-function costedAdsManagerResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+function costedAdsManagerResultsFrom(
+  resultMetrics: MetaInsightResultMetric[] | undefined,
+  costMetrics: MetaInsightResultMetric[] | undefined,
+): CostedAdsManagerResult[] {
   const out: CostedAdsManagerResult[] = [];
-  for (const entry of row.results ?? []) {
+  for (const entry of resultMetrics ?? []) {
     const indicator = entry.indicator ?? "";
     const actionType = parseIndicator(indicator);
     if (!actionType) continue;
     const count = metricValue(entry);
     if (count <= 0) continue;
-    const cost = costForIndicator(row, indicator);
+    const cost = costForIndicatorOnList(costMetrics, indicator);
     if (cost <= 0) continue;
     out.push({ actionType, count, cost });
   }
   return out;
+}
+
+/** Rows Meta Ads Manager export would treat as having a costed Result that day. */
+function costedAdsManagerResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+  return costedAdsManagerResultsFrom(row.results, row.cost_per_result);
+}
+
+function costedObjectiveResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+  return costedAdsManagerResultsFrom(row.objective_results, row.cost_per_objective_result);
+}
+
+function linkClickCount(row: MetaInsightRow): number {
+  const fromInline = parseFloat(row.inline_link_clicks ?? "");
+  if (Number.isFinite(fromInline) && fromInline > 0) return fromInline;
+  return actionValueMap(row.actions).get("link_click") ?? 0;
+}
+
+/** Reject primary results that match link clicks — common Meta/API over-count vs Ads Manager export. */
+function isLikelyLinkClickMisattribution(row: MetaInsightRow, count: number): boolean {
+  const linkClicks = linkClickCount(row);
+  return linkClicks > 0 && count === linkClicks;
 }
 
 function costPerAction(row: MetaInsightRow, actionType: string): number {
@@ -161,68 +188,14 @@ function costedWebsiteLeadFromActions(row: MetaInsightRow): ManualExportPrimaryR
   return null;
 }
 
-function uncostedResultEntries(row: MetaInsightRow): Array<{ actionType: string; count: number }> {
-  const out: Array<{ actionType: string; count: number }> = [];
-  for (const entry of row.results ?? []) {
-    const actionType = parseIndicator(entry.indicator ?? "");
-    if (!actionType) continue;
-    const count = metricValue(entry);
-    if (count <= 0) continue;
-    out.push({ actionType, count });
-  }
-  return out;
-}
-
-function uncostedCombinedLeadCount(row: MetaInsightRow): number {
-  for (const entry of uncostedResultEntries(row)) {
-    if (entry.actionType === "lead") return entry.count;
-  }
-  return 0;
-}
-
-/** Meta often returns results[] counts without cost_per_result — derive CPR from spend like Ads Manager. */
-function uncostedWebsiteLeadFromResults(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  for (const entry of uncostedResultEntries(row)) {
-    if (!isWebsiteLeadAction(entry.actionType)) continue;
-    const spend = parseFloat(row.spend ?? "0");
-    if (spend <= 0) continue;
-    return pack(entry.actionType, entry.count, spend / entry.count, row, true);
-  }
-  return null;
-}
-
-function websiteLeadCountFromActions(row: MetaInsightRow): number {
-  const map = actionValueMap(row.actions);
-  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
-    const count = map.get(actionType);
-    if (count != null && count > 0) return count;
-  }
-  return 0;
-}
-
-function combinedLeadActionCount(row: MetaInsightRow): number {
-  const map = actionValueMap(row.actions);
-  const n = map.get("lead");
-  return n != null && n > 0 ? n : 0;
-}
-
-function websiteLeadFromActionsWithDerivedCpr(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  const costed = costedWebsiteLeadFromActions(row);
-  if (costed) return costed;
-
-  const count = websiteLeadCountFromActions(row);
-  if (count <= 0) return null;
-
-  const spend = parseFloat(row.spend ?? "0");
-  if (spend <= 0) return null;
-
-  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
-    const map = actionValueMap(row.actions);
-    const actionCount = map.get(actionType);
-    if (actionCount !== count) continue;
-    return pack(actionType, count, spend / count, row, true);
-  }
-  return null;
+function pickCostedWebsiteLeadFromCostedList(
+  row: MetaInsightRow,
+  costed: CostedAdsManagerResult[],
+): ManualExportPrimaryResult | null {
+  const fromWebIndicator = costed.find((c) => isWebsiteLeadAction(c.actionType));
+  if (!fromWebIndicator) return null;
+  if (isLikelyLinkClickMisattribution(row, fromWebIndicator.count)) return null;
+  return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
 }
 
 function firstCostedInActions(
@@ -307,58 +280,30 @@ function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
 }
 
-function websiteLeadFromConversionLeadFields(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  const count = parseFloat(row.conversion_leads ?? "");
-  if (!Number.isFinite(count) || count <= 0) return null;
-  const cpl = parseFloat(row.cost_per_conversion_lead ?? "");
-  const spend = parseFloat(row.spend ?? "0");
-  const cost =
-    Number.isFinite(cpl) && cpl > 0 ? cpl : spend > 0 && count > 0 ? spend / count : 0;
-  if (cost <= 0) return null;
-  return pack(WEBSITE_LEAD_ACTION_TYPES[0], count, cost, row, true);
-}
-
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  const fromConversionFields = websiteLeadFromConversionLeadFields(row);
-  if (fromConversionFields) return fromConversionFields;
+  const fromResults = pickCostedWebsiteLeadFromCostedList(row, costedAdsManagerResults(row));
+  if (fromResults) return fromResults;
 
-  const costed = costedAdsManagerResults(row);
-
-  const fromWebIndicator = costed.find((c) => isWebsiteLeadAction(c.actionType));
-  if (fromWebIndicator) {
-    return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
-  }
-
-  const uncostedWeb = uncostedWebsiteLeadFromResults(row);
-  if (uncostedWeb) return uncostedWeb;
+  const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
+  if (fromObjective) return fromObjective;
 
   const pixelFromActions = costedWebsiteLeadFromActions(row);
-  const hasResults = (row.results?.length ?? 0) > 0;
-
-  if (!hasResults) {
-    if (pixelFromActions) return pixelFromActions;
-    if (combinedLeadActionCount(row) > 0) return null;
-    return websiteLeadFromActionsWithDerivedCpr(row);
-  }
-
-  if (costed.length === 0) {
-    const leadCount = uncostedCombinedLeadCount(row);
-    if (leadCount <= 0) return null;
-    const derived = websiteLeadFromActionsWithDerivedCpr(row);
-    if (derived && leadCount === parseFloat(derived.value)) {
-      return derived;
-    }
+  if (pixelFromActions && isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))) {
     return null;
   }
 
+  if (!row.results?.length) {
+    return pixelFromActions;
+  }
+
+  const costed = costedAdsManagerResults(row);
   const leadInResults = costed.find((c) => c.actionType === "lead");
   if (!leadInResults) {
     return pixelFromActions;
   }
 
-  const actionFallback = pixelFromActions ?? websiteLeadFromActionsWithDerivedCpr(row);
-  if (actionFallback && leadInResults.count === parseFloat(actionFallback.value)) {
-    return actionFallback;
+  if (pixelFromActions && leadInResults.count === parseFloat(pixelFromActions.value)) {
+    return pixelFromActions;
   }
 
   return null;
