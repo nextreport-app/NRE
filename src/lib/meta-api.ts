@@ -154,6 +154,9 @@ export interface MetaInsightRow {
   /** When present, matches Ads Manager Results column (preferred over inferring from actions). */
   results?: MetaInsightResultMetric[];
   cost_per_result?: MetaInsightResultMetric[];
+  /** Lead-optimized campaigns — row-level lead count / CPR when results[] is unpaired. */
+  conversion_leads?: string;
+  cost_per_conversion_lead?: string;
 }
 
 export interface MetaGraphErrorDetails {
@@ -217,6 +220,8 @@ const META_INSIGHT_FIELDS = [
   "cost_per_action_type",
   "results",
   "cost_per_result",
+  "conversion_leads",
+  "cost_per_conversion_lead",
   "date_start",
   "date_stop",
 ].join(",");
