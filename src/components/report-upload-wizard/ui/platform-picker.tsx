@@ -68,7 +68,6 @@ export function WizardPlatformPickerGrid({
             selected={false}
             onSelect={() => {}}
             disabled
-            comingSoon
             singleLineHeading
           />
         );

@@ -7,7 +7,6 @@ import { SocialLinks } from "@/components/social-links";
 import { FooterLinkColumn } from "@/components/footer-link-column";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
-import { ComingSoonBadge } from "@/components/coming-soon-badge";
 import { META_LAUNCH_FOOTER_BLURB } from "@/lib/meta-launch-scope";
 import {
   FOOTER_COMPANY_LINKS,
@@ -47,14 +46,14 @@ export function SiteChromeFooter() {
                 <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2.5 py-1 text-[11px] font-medium text-emerald-200/90">
                   Meta CSV reports — live
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  Google Ads <ComingSoonBadge />
+                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  Google Ads
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  TikTok <ComingSoonBadge />
+                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  TikTok
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                  GA4 <ComingSoonBadge />
+                <span className="rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                  GA4
                 </span>
               </div>
             </div>
