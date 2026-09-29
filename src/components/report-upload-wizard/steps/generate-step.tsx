@@ -473,12 +473,6 @@ export function WizardGenerateStep() {
                   {previewMessage}
                 </div>
               )}
-              {previewStatus === "loading" && !data && !comparisonData && !historicalData && !dayBreakdownData && (
-                <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
-                  <Spinner />
-                  Loading preview…
-                </div>
-              )}
               {previewRefreshing && (data || comparisonData || historicalData || dayBreakdownData) ? (
                 <p className="text-[13px] text-dash-ink-secondary">Updating preview…</p>
               ) : null}
@@ -1028,15 +1022,12 @@ export function WizardGenerateStep() {
 
           {showGenerateFooter && (
             <div className="space-y-3">
-              {generateStatus === "idle" && previewStatus === "loading" && (
-                <p className="text-[14px] text-dash-ink-secondary">Loading preview…</p>
-              )}
               {generateStatus === "idle" && (
                 <div className="hidden md:block">
                   <button
                     type="button"
                     onClick={handleGenerate}
-                    disabled={previewStatus === "loading" || previewStatus === "invalid"}
+                    disabled={previewStatus === "invalid"}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
                     Generate Report
@@ -1086,9 +1077,7 @@ export function WizardGenerateStep() {
                     : "Generate Report"
               }
               onPrimary={handleGenerate}
-              primaryDisabled={
-                generateStatus !== "loading" && (previewStatus === "loading" || previewStatus === "invalid")
-              }
+              primaryDisabled={generateStatus !== "loading" && previewStatus === "invalid"}
               primaryLoading={generateStatus === "loading"}
             />
           ) : null}

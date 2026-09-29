@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
@@ -11,6 +11,8 @@ import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 
 export function WizardCampaignsStep() {
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
+  const [objectivesRevealed, setObjectivesRevealed] = useState(false);
+  const [revealingObjectives, setRevealingObjectives] = useState(false);
   const w = useWizardContext();
   if (w.step !== 2) return null;
   const {
@@ -30,6 +32,7 @@ export function WizardCampaignsStep() {
     data,
     deselectAllAdSetsForCampaign,
     expandedCampaigns,
+    ensureObjectivesForSelection,
     handleCampaignsContinue,
     hasBlockingObjectives,
     lowSpendCampaigns,
@@ -51,8 +54,27 @@ export function WizardCampaignsStep() {
     toggleAdSet,
     toggleCampaign,
     toggleCampaignExpanded,
-    touchedObjectiveCampaigns
+    touchedObjectiveCampaigns,
   } = w;
+
+  const selectionKey = selectedCampaignsKey();
+  const objectivesReady = metricsFetchedForSelection === selectionKey;
+
+  useEffect(() => {
+    if (objectivesReady && hasBlockingObjectives()) {
+      setObjectivesRevealed(true);
+      setObjectivesExpanded(true);
+    }
+  }, [objectivesReady, hasBlockingObjectives, selectedCampaigns, touchedObjectiveCampaigns]);
+
+  async function handleRevealObjectives() {
+    if (selectedCampaigns.size === 0) return;
+    setRevealingObjectives(true);
+    await ensureObjectivesForSelection(selectionKey);
+    setRevealingObjectives(false);
+    setObjectivesRevealed(true);
+    setObjectivesExpanded(true);
+  }
 
   return (
         <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
@@ -248,7 +270,28 @@ export function WizardCampaignsStep() {
             })()}
           </ul>
 
-          {metricsFetchedForSelection === selectedCampaignsKey() && (() => {
+          {selectedCampaigns.size > 0 && (
+            <div className="space-y-4 border-t border-dash-border pt-4">
+              {!objectivesRevealed ? (
+                <button
+                  type="button"
+                  onClick={() => void handleRevealObjectives()}
+                  disabled={revealingObjectives || metricsStatus === "loading"}
+                  className="flex w-full items-center justify-between rounded-lg border border-dash-border bg-[#0d1b2e]/60 px-4 py-3 text-left hover:bg-dash-border/30 disabled:opacity-50"
+                >
+                  <span>
+                    <span className="block text-[15px] font-semibold text-white">Campaign objectives</span>
+                    <span className="mt-0.5 block text-[13px] text-dash-ink-secondary">
+                      Optional — expand to review or adjust auto-detected objectives
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[14px] font-medium text-dash-accent">
+                    {revealingObjectives || metricsStatus === "loading" ? "Loading…" : "Show ▼"}
+                  </span>
+                </button>
+              ) : null}
+
+          {objectivesRevealed && objectivesReady && (() => {
             const shownCampaigns = campaigns.filter((name) => selectedCampaigns.has(name));
             const confidenceTiers = shownCampaigns.map((name) =>
               campaignObjectiveConfidence.get(normalizeCampaignName(name)),
@@ -262,10 +305,10 @@ export function WizardCampaignsStep() {
                 !touchedObjectiveCampaigns.has(normalized)
               );
             }).length;
-            const showObjectiveList = blockingCount > 0 || !allConfirmed || objectivesExpanded;
+            const showObjectiveList = blockingCount > 0 || objectivesExpanded;
 
             return (
-            <div className="space-y-4 border-t border-dash-border pt-4">
+            <div className="space-y-4">
               {allConfirmed && blockingCount === 0 ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-800/50 bg-emerald-950/25 px-3 py-2.5">
                   <p className="text-[14px] text-emerald-200">
@@ -277,16 +320,35 @@ export function WizardCampaignsStep() {
                       onClick={() => setObjectivesExpanded(true)}
                       className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
                     >
-                      Review objectives
+                      Show objectives
                     </button>
-                  ) : null}
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setObjectivesExpanded(false)}
+                      className="shrink-0 text-[14px] font-medium text-dash-ink-secondary hover:underline"
+                    >
+                      Hide
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div>
-                  <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
-                  <p className="mt-1 text-[13px] text-dash-ink-secondary">
-                    Objectives are auto-detected from your data. Change a dropdown only if the selection looks wrong.
-                  </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-white">Campaign Objectives</h3>
+                    <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                      Auto-detected from your CSV. Change a dropdown only if something looks wrong.
+                    </p>
+                  </div>
+                  {blockingCount === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setObjectivesExpanded((open) => !open)}
+                      className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
+                    >
+                      {objectivesExpanded ? "Collapse ▲" : "Expand ▼"}
+                    </button>
+                  ) : null}
                 </div>
               )}
 
@@ -358,6 +420,8 @@ export function WizardCampaignsStep() {
             </div>
             );
           })()}
+            </div>
+          )}
 
           <div className="hidden gap-3 md:flex">
             <button
@@ -368,11 +432,7 @@ export function WizardCampaignsStep() {
             </button>
             <button
               onClick={handleCampaignsContinue}
-              disabled={
-                selectedCampaigns.size === 0 ||
-                metricsStatus === "loading" ||
-                (metricsFetchedForSelection === selectedCampaignsKey() && hasBlockingObjectives())
-              }
+              disabled={selectedCampaigns.size === 0 || metricsStatus === "loading" || hasBlockingObjectives()}
               className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {metricsStatus === "loading" ? "Loading objectives…" : "Continue to metrics"}

@@ -43,8 +43,10 @@ function ReportUploadWizardBody() {
   const wizardTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    wizardTopRef.current?.scrollIntoView({ block: "start" });
-    window.scrollTo({ top: 0, left: 0 });
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (w.step !== 4) {
+      wizardTopRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    }
   }, [w.step]);
 
   if (w.resumeBootstrapping) {
