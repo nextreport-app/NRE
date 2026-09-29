@@ -287,26 +287,30 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
   if (fromObjective) return fromObjective;
 
-  const pixelFromActions = costedWebsiteLeadFromActions(row);
-  if (pixelFromActions && isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))) {
-    return null;
+  const hasResultMetrics = (row.results?.length ?? 0) > 0;
+
+  // When Meta omits results[] entirely, costed pixel in cost_per_action_type can match export.
+  if (!hasResultMetrics) {
+    const pixel = costedWebsiteLeadFromActions(row);
+    if (pixel && isLikelyLinkClickMisattribution(row, parseFloat(pixel.value))) return null;
+    return pixel;
   }
 
-  if (!row.results?.length) {
-    return pixelFromActions;
-  }
-
+  // When results[] exists, require costed combined lead matching costed pixel — not CPA alone.
   const costed = costedAdsManagerResults(row);
   const leadInResults = costed.find((c) => c.actionType === "lead");
   if (!leadInResults) {
-    return pixelFromActions;
+    return null;
   }
 
-  if (pixelFromActions && leadInResults.count === parseFloat(pixelFromActions.value)) {
-    return pixelFromActions;
+  const pixelFromActions = costedWebsiteLeadFromActions(row);
+  if (!pixelFromActions || leadInResults.count !== parseFloat(pixelFromActions.value)) {
+    return null;
   }
-
-  return null;
+  if (isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))) {
+    return null;
+  }
+  return pixelFromActions;
 }
 
 function pickQuoteManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
