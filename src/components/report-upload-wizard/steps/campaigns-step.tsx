@@ -10,11 +10,32 @@ import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 
 export function WizardCampaignsStep() {
+  const w = useWizardContext();
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
   const [objectivesRevealed, setObjectivesRevealed] = useState(false);
   const [revealingObjectives, setRevealingObjectives] = useState(false);
-  const w = useWizardContext();
-  if (w.step !== 2) return null;
+
+  const stepActive = w.step === 2;
+  const selectionKeyForEffect = stepActive ? w.selectedCampaignsKey() : "";
+  const objectivesReadyForEffect =
+    stepActive && w.metricsFetchedForSelection === selectionKeyForEffect;
+
+  useEffect(() => {
+    if (!stepActive) return;
+    if (objectivesReadyForEffect && w.hasBlockingObjectives()) {
+      setObjectivesRevealed(true);
+      setObjectivesExpanded(true);
+    }
+  }, [
+    stepActive,
+    objectivesReadyForEffect,
+    w.hasBlockingObjectives,
+    w.selectedCampaigns,
+    w.touchedObjectiveCampaigns,
+  ]);
+
+  if (!stepActive) return null;
+
   const {
     ADSET_CHIP_CLASS,
     LOW_SPEND_CAMPAIGN_THRESHOLD,
@@ -59,13 +80,6 @@ export function WizardCampaignsStep() {
 
   const selectionKey = selectedCampaignsKey();
   const objectivesReady = metricsFetchedForSelection === selectionKey;
-
-  useEffect(() => {
-    if (objectivesReady && hasBlockingObjectives()) {
-      setObjectivesRevealed(true);
-      setObjectivesExpanded(true);
-    }
-  }, [objectivesReady, hasBlockingObjectives, selectedCampaigns, touchedObjectiveCampaigns]);
 
   async function handleRevealObjectives() {
     if (selectedCampaigns.size === 0) return;

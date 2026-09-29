@@ -7,7 +7,17 @@ import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 
 export function WizardMetricsStep() {
   const w = useWizardContext();
-  if (w.step !== 3) return null;
+  const stepActive = w.step === 3;
+
+  const activeCampaigns = useMemo(() => {
+    if (!stepActive) return [];
+    return w.campaigns.filter((name) => w.selectedCampaigns.has(name));
+  }, [stepActive, w.campaigns, w.selectedCampaigns]);
+
+  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(false);
+
+  if (!stepActive) return null;
+
   const {
     ADD_FROM_CSV_VISIBLE,
     MAX_METRICS_PER_SLIDE,
@@ -32,13 +42,7 @@ export function WizardMetricsStep() {
     setStep,
   } = w;
 
-  const activeCampaigns = useMemo(
-    () => campaigns.filter((name) => selectedCampaigns.has(name)),
-    [campaigns, selectedCampaigns],
-  );
-
   const defaultPreviewCount = activeCampaigns.length >= 5 ? 1 : Math.min(2, activeCampaigns.length);
-  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(false);
 
   const visibleCampaigns =
     activeCampaigns.length <= 1 || showAllCampaignMetrics
