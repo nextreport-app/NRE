@@ -188,7 +188,7 @@ export function WizardImportStep() {
                   <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
                     After each sync we save a copy to your computer&apos;s Downloads folder (name starts with{" "}
                     <span className="text-dash-ink">meta-api-sync-</span>). Open that file next to{" "}
-                    <span className="text-dash-ink">credit-firm-manual.csv</span> in Excel or Google Sheets and compare
+                    your manual Ads Manager CSV in Excel or Google Sheets and compare
                     the <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>
                     , and <span className="text-dash-ink">Cost per result</span> columns.
                   </p>
@@ -249,7 +249,7 @@ export function WizardImportStep() {
                     </button>
                   )}
                 </>
-              )}
+              ) : null}
 
               {showCompactPreviousMonth ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
