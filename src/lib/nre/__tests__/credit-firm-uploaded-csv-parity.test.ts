@@ -16,18 +16,23 @@ const MANUAL = resolve(
 function productionShapedInsight(row: ReturnType<typeof parseCsvText>["rows"][number]) {
   const insight = manualRowToMetaInsight(row);
   const results = Number(row.results) || 0;
+  const spend = Number(row.spend) || 0;
   const rt = String(row.result_type ?? "").toLowerCase();
   insight.cost_per_result = [];
   insight.cost_per_action_type = [];
   if (results > 0 && rt.includes("website")) {
-    insight.results = [
+    insight.objective_results = [
       {
         indicator: "actions:offsite_conversion.fb_pixel_lead",
         values: [{ value: String(results) }],
       },
     ];
-  } else if (results > 0) {
-    insight.results = [{ indicator: "actions:lead", values: [{ value: String(results) }] }];
+    insight.cost_per_objective_result = [
+      {
+        indicator: "actions:offsite_conversion.fb_pixel_lead",
+        values: [{ value: String(spend / results) }],
+      },
+    ];
   } else {
     insight.results = [{ indicator: "actions:lead", values: [{ value: "1" }] }];
     insight.actions = (insight.actions ?? []).filter(
