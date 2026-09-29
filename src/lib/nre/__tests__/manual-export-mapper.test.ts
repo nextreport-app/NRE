@@ -11,6 +11,26 @@ const USER_CSV = resolve(
 );
 
 describe("manual-export-mapper", () => {
+  it("ignores costed quote custom conversions on website-lead campaigns not named for quotes", () => {
+    const primary = manualExportPrimaryResult({
+      campaign_name: "DC Leads Campaign Main",
+      adset_name: "Homebuyers - Broad Targeting",
+      optimization_goal: "OUTCOME_LEADS",
+      spend: "15.00",
+      results: [{ indicator: "actions:lead", values: [{ value: "2" }] }],
+      cost_per_result: [{ indicator: "actions:lead", values: [{ value: "3.50" }] }],
+      actions: [
+        { action_type: "offsite_conversion.custom.1234567890", value: "2" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+      ],
+      cost_per_action_type: [
+        { action_type: "offsite_conversion.custom.1234567890", value: "7.50" },
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "15.00" },
+      ],
+    });
+    expect(primary).toBeNull();
+  });
+
   it("never fills Results from actions alone when Meta sends costed combined lead that mismatches pixel", () => {
     const primary = manualExportPrimaryResult({
       campaign_name: "DC Leads Campaign Main",

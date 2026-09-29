@@ -132,6 +132,7 @@ export async function maybeSyncPreviousMonthDataFromMetaApi(input: {
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
   previousMonthSelectedCampaigns: string | null;
+  referenceManualCsvText?: string;
   now?: Date;
 }): Promise<PreviousMonthSyncResult> {
   return maybeSyncPreviousMonthDataFromFetch({
@@ -150,6 +151,7 @@ export async function maybeSyncPreviousMonthDataFromMetaApi(input: {
         sinceIso,
         untilIso,
         now: input.now,
+        referenceManualCsvText: input.referenceManualCsvText,
       }),
     extractCampaigns: metaCampaignsFromBuffer,
   });

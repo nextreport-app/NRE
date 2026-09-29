@@ -6,6 +6,7 @@ import {
   dedupeInsightsByAdSetDay,
   insightToManualCsvRow,
 } from "./insight-engine";
+import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
 
 export interface FetchMetaReportCsvInput {
   accessToken: string;
@@ -16,6 +17,8 @@ export interface FetchMetaReportCsvInput {
   /** When set, overrides the default last-N-days window (e.g. previous calendar month sync). */
   sinceIso?: string;
   untilIso?: string;
+  /** Ads Manager CSV — Result columns are copied from this file (API refreshes spend/reach). */
+  referenceManualCsvText?: string;
 }
 
 /**
@@ -45,7 +48,13 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     .filter((r) => r.campaign_name && r.date_start)
     .map(insightToManualCsvRow);
 
-  const csvText = rowsToCsv([...META_CSV_HEADERS], dataRows);
+  let csvText = rowsToCsv([...META_CSV_HEADERS], dataRows);
 
-  return { csvText, rowCount: dataRows.length, sinceIso, untilIso };
+  if (input.referenceManualCsvText?.trim()) {
+    csvText = mergeApiCsvWithManualReference(csvText, input.referenceManualCsvText);
+  }
+
+  const rowCount = Math.max(0, csvText.split("\n").filter(Boolean).length - 1);
+
+  return { csvText, rowCount, sinceIso, untilIso };
 }

@@ -28,6 +28,8 @@ const syncApiBodySchema = z.object({
   metaAdAccountId: z.string().trim().min(1).optional(),
   googleCustomerId: z.string().trim().min(1).optional(),
   tiktokAdvertiserId: z.string().trim().min(1).optional(),
+  /** Ads Manager CSV — when provided, Result columns are taken from this export (API refreshes delivery metrics). */
+  referenceManualCsvText: z.string().max(6_000_000).optional(),
 });
 
 async function previousMonthPayloadFromClient(client: {
@@ -85,7 +87,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { platform, metaAdAccountId, googleCustomerId, tiktokAdvertiserId } = parsed.data;
+    const { platform, metaAdAccountId, googleCustomerId, tiktokAdvertiserId, referenceManualCsvText } =
+      parsed.data;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -111,6 +114,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (!user.metaAdsEnabled || !user.metaAccessToken) {
         return NextResponse.json({ error: "Meta Ads is not connected" }, { status: 400 });
       }
+      if (!referenceManualCsvText?.trim()) {
+        return NextResponse.json(
+          {
+            error:
+              "Attach your Meta Ads Manager CSV export before syncing. Meta Insights does not match export Results for website leads — we merge your CSV with live spend/reach from the API.",
+          },
+          { status: 400 },
+        );
+      }
 
       const fresh = await ensureFreshMetaAccessToken({
         accessToken: user.metaAccessToken,
@@ -128,6 +140,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         accessToken: fresh.accessToken,
         adAccountId: metaAdAccountId,
         timezone: client.timezone,
+        referenceManualCsvText,
       });
 
       const previousMonth = await previousMonthPayloadFromClient(client);
@@ -140,6 +153,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         previousMonthDataUrl: client.previousMonthDataUrl,
         previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
         previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
+        referenceManualCsvText,
       }).catch((err) => {
         console.error("[reports:sync-api] previous month auto-sync failed:", err);
       });
@@ -152,6 +166,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
+        mergedWithManualReference: Boolean(referenceManualCsvText?.trim()),
         ...previousMonth,
       });
     }
