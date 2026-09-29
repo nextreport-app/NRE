@@ -107,8 +107,8 @@ export function PreviousMonthDataUpload({
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
         For Monthly reports, export last month&rsquo;s performance from Meta Ads Manager and upload it here once per
-        calendar month. We add it as the previous-month comparison row on overview slides. API sync can also fetch this
-        automatically.{" "}
+        calendar month. We add it as the previous-month comparison row on overview slides, or upload it in the report
+        wizard on Step 1.{" "}
         <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent underline hover:no-underline">
           CSV export guide →
         </Link>

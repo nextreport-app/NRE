@@ -52,7 +52,7 @@ export default function OpenGraphImage() {
             maxWidth: 880,
           }}
         >
-          Meta Ads — API sync or CSV → .pptx, live link & PDF · Google, TikTok & GA4 soon
+          Meta Ads — CSV upload → .pptx, live link & PDF · Google, TikTok & GA4 soon
         </div>
       </div>
     ),

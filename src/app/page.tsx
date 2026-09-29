@@ -17,7 +17,7 @@ import { TestimonialsSection } from "@/components/home/testimonials-section";
 export const metadata = pageMetadata({
   title: "Automated Meta Ads Reports in 2 Minutes",
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon. Free 7-day trial.",
+    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon. Free 7-day trial.",
   path: "/",
 });
 

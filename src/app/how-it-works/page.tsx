@@ -172,7 +172,7 @@ export default async function HowItWorksPage() {
             faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
               "How to generate a client report with NextReport",
-              "Generate a branded Meta Ads client report in under 2 minutes via API sync or CSV upload.",
+              "Generate a branded Meta Ads client report in under 2 minutes via CSV upload from Ads Manager.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
           ],
@@ -185,7 +185,7 @@ export default async function HowItWorksPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              From client setup to a branded client deck in under 2 minutes — API sync or CSV upload
+              From client setup to a branded client deck in under 2 minutes — CSV upload
             </p>
             <p className="mt-3 text-sm text-ink-secondary">
               Supports {PLATFORM_LIST_SHORT}

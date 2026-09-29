@@ -4,6 +4,7 @@ import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
+import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
@@ -148,15 +149,17 @@ export function WizardImportStep() {
 
           {selectedPlatformCard && (
             <div className="space-y-3">
-              <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
+              {AD_PLATFORM_API_SYNC_ENABLED ? (
+                <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
+              ) : null}
 
-              {importPipelineLabel ? (
+              {AD_PLATFORM_API_SYNC_ENABLED && importPipelineLabel ? (
                 <p className="rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2 text-[14px] text-dash-ink-secondary">
                   {importPipelineLabel}
                 </p>
               ) : null}
 
-              {dataSourceMode === "api" ? (
+              {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" ? (
                 <WizardDataSourcePanel
                   clientId={clientId}
                   platform={selectedPlatformCard}
@@ -182,7 +185,7 @@ export function WizardImportStep() {
                 />
               ) : null}
 
-              {dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
+              {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
                 <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3">
                   <p className="text-[14px] font-medium text-white">Download API data to compare with your manual CSV</p>
                   <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
@@ -205,7 +208,7 @@ export function WizardImportStep() {
                 </div>
               ) : null}
 
-              {dataSourceMode === "csv" ? (
+              {!AD_PLATFORM_API_SYNC_ENABLED || dataSourceMode === "csv" ? (
                 <>
                   <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
                   <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">

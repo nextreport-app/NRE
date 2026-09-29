@@ -3,13 +3,12 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
-import { isMetaApiConfigured, isGoogleAdsApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "CSV & API Export Guide",
   description:
-    "How to export Meta Ads, Google Ads, TikTok, and GA4 data for NextReport — required CSV columns, date ranges, and API sync setup steps.",
+    "How to export Meta Ads, Google Ads, TikTok, and GA4 data for NextReport — required CSV columns and date ranges.",
   path: "/help/download",
   keywords: [
     "meta ads csv export",
@@ -116,10 +115,6 @@ function StepCard({ number, step }: { number: number; step: Step }) {
 export default async function DownloadGuidePage() {
   const session = await auth();
   const loggedIn = !!session?.user;
-  const metaApiLive = isMetaApiConfigured();
-  const googleApiLive = isGoogleAdsApiConfigured();
-  const tiktokApiLive = isTikTokApiConfigured();
-
   return (
     <>
       <BetaBanner />
@@ -129,126 +124,53 @@ export default async function DownloadGuidePage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">Data guide</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              Connect via official APIs — or export CSVs manually if you prefer
+              Export CSVs from Ads Manager — upload in the report wizard
             </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
-          {/* API path — preferred */}
           <section>
-            <SectionHeading>Option A — Sync from API (recommended)</SectionHeading>
+            <SectionHeading>Ad reports — CSV upload</SectionHeading>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport syncs with{" "}
-              <span className="text-white">Meta&apos;s Marketing API</span>,{" "}
-              <span className="text-white">Google&apos;s Ads API</span>,{" "}
-              <span className="text-white">TikTok&apos;s Marketing API</span>, and{" "}
-              <span className="text-white">GA4&apos;s Data API</span>. Connect once in Account Settings and pull data
-              directly — no manual CSV export.
+              Meta, Google, and TikTok ad reports use a CSV export from each platform&apos;s ads manager. Upload the file
+              on Step 1 of the report wizard. Automatic API import for those platforms is turned off.
             </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-lg border border-[#63b3ed]/30 bg-navy-panel p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#63b3ed]">Meta Marketing API</p>
-                <h3 className="mt-2 text-base font-semibold text-white">Connect Meta Ads</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-                  Account Settings → Meta Ads → Connect. Read-only access — we never change your campaigns.
-                </p>
-                <p className="mt-3 text-xs text-ink-muted">
-                  {metaApiLive ? "Available on this site." : "Your admin must add META_APP_ID and META_APP_SECRET on Vercel."}
-                </p>
-                {loggedIn ? (
-                  <Link href="/account#meta-ads" className="mt-4 inline-block text-sm font-semibold text-accent-orange hover:underline">
-                    Open Account Settings →
-                  </Link>
-                ) : null}
-              </div>
-              <div className="rounded-lg border border-[#68d391]/30 bg-navy-panel p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#68d391]">Google Ads API</p>
-                <h3 className="mt-2 text-base font-semibold text-white">Connect Google Ads</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-                  Same pattern as Meta — OAuth in Account Settings, then pick account and dates in the report wizard.
-                </p>
-                <p className="mt-3 text-xs text-ink-muted">
-                  {googleApiLive ? "Available on this site." : "Google Ads API env vars are being rolled out — CSV upload works today."}
-                </p>
-                {loggedIn ? (
-                  <Link href="/account#google-ads" className="mt-4 inline-block text-sm font-semibold text-accent-orange hover:underline">
-                    Open Account Settings →
-                  </Link>
-                ) : null}
-              </div>
-              <div className="rounded-lg border border-[#fe2c55]/30 bg-navy-panel p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#fe2c55]">TikTok Marketing API</p>
-                <h3 className="mt-2 text-base font-semibold text-white">Connect TikTok Ads</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-                  Read-only USD reporting for US and global accounts. Same 5-step wizard as Meta after you connect.
-                </p>
-                <p className="mt-3 text-xs text-ink-muted">
-                  {tiktokApiLive ? "Available on this site." : "Add TIKTOK_APP_ID and TIKTOK_APP_SECRET on Vercel."}
-                </p>
-                {loggedIn ? (
-                  <Link href="/account#tiktok-ads" className="mt-4 inline-block text-sm font-semibold text-accent-orange hover:underline">
-                    Open Account Settings →
-                  </Link>
-                ) : null}
-              </div>
-            </div>
             <p className="mt-4 text-sm text-ink-muted">
-              GA4 website reports are available from Step 1 of the report wizard — choose{" "}
-              <span className="text-white">Google Analytics</span>. Connect in Account Settings
-              and link a property to each client first.
-            </p>
-            <p className="mt-2 text-sm text-ink-muted">
-              In the ad report wizard, choose <span className="text-white">Sync from API</span> on Step 1 after connecting.
-              CSV upload always works as a fallback.
+              GA4 website reports can still use API or CSV from Step 1 when you choose{" "}
+              <span className="text-white">Google Analytics</span> — connect in Account Settings and link a property to
+              each client first.
             </p>
 
             <div className="mt-8 rounded-lg border border-[#63b3ed]/40 border-l-4 border-l-[#63b3ed] bg-navy-panel p-5">
-              <h3 className="text-lg font-semibold text-white">API sync — limits, previous month &amp; metrics</h3>
+              <h3 className="text-lg font-semibold text-white">Previous month CSV</h3>
               <ul className="mt-4 space-y-4 text-[15px] leading-relaxed text-ink-secondary">
                 <li>
-                  <span className="font-semibold text-white">NextReport billing:</span> API sync costs the same as CSV
-                  upload — unlimited report generation on both plans. No per-sync credits.
+                  <span className="font-semibold text-white">Main report file:</span> Use{" "}
+                  <span className="text-white">last 30 complete days ending yesterday</span> with a daily breakdown for
+                  weekly slides, MTD, and charts.
                 </li>
                 <li>
-                  <span className="font-semibold text-white">Meta API limits:</span> Each sync uses a small number of
-                  read-only Marketing API calls (typically a handful per account). Meta applies hourly rate limits per ad
-                  account — normal weekly reporting is well within these. If sync fails with a rate-limit message, wait a
-                  few minutes and retry, or upload CSV that week. The 15,000/day figure applies to{" "}
-                  <span className="text-white">Google Ads API</span>, not Meta.
+                  <span className="font-semibold text-white">Previous calendar month:</span> Upload a separate CSV for
+                  the prior month when you want a previous-month comparison row on Combined Total (see the wizard panel on
+                  Step 1).
                 </li>
                 <li>
-                  <span className="font-semibold text-white">Two date ranges, not one file:</span> API sync pulls{" "}
-                  <span className="text-white">last 30 complete days ending yesterday</span> for the main report (weekly
-                  slides, MTD row, chart).{" "}
-                  <span className="text-white">Previous calendar month</span> is fetched separately when missing or stale
-                  — you usually do <span className="text-white">not</span> need a manual previous-month CSV upload after
-                  a successful sync. If the account had no spend last month, the previous-month row is simply skipped — no
-                  error. Upload previous month manually only if auto-sync did not run or you prefer a custom export.
-                </li>
-                <li>
-                  <span className="font-semibold text-white">Previous-month campaign selection:</span> After sync or
-                  upload, the wizard shows a checkbox list of campaigns detected in last month&apos;s data. Uncheck any
-                  campaigns you don&apos;t manage (e.g. run by another agency) — only checked campaigns appear in the
-                  Combined Total previous-month row. Your selection is saved per client and preserved on re-sync; newly
-                  appearing campaigns default to included.
+                  <span className="font-semibold text-white">Previous-month campaign selection:</span> After upload, the
+                  wizard shows a checkbox list of campaigns detected in last month&apos;s data. Uncheck any campaigns you
+                  don&apos;t manage — only checked campaigns appear in the Combined Total previous-month row. Your
+                  selection is saved per client.
                 </li>
                 <li>
                   <span className="font-semibold text-white">Report types supported:</span> Weekly, Monthly, Daily,
-                  Quarterly, YTD, Comparison, Multi-month Historical, and Demo reports all work from API sync the same
-                  way as CSV. <span className="text-white">Creative reports</span> still require an Ad-level CSV export
-                  (API sync is campaign/ad-set level only).
+                  Quarterly, YTD, Comparison, Multi-month Historical, and Demo reports all work from CSV.{" "}
+                  <span className="text-white">Creative reports</span> require an Ad-level CSV export.
                 </li>
                 <li>
-                  <span className="font-semibold text-white">How metrics are chosen:</span> API sync does not use
-                  Ads Manager&apos;s column picker. It pulls a{" "}
-                  <span className="text-white">fixed standard column set</span> (same as our CSV download guide — spend,
-                  reach, impressions, frequency, link clicks, results, lead columns, landing page views, etc.). After
-                  sync, the wizard runs the <span className="text-white">same pipeline as CSV</span>: objectives are
-                  detected per campaign, then Step 3 (Metrics) pre-selects eight chips per objective (e.g. Frequency +
-                  CPM for Reach, Meta form leads + cost per lead for Instant Forms). You can add or remove chips on Step
-                  3 — but only from metrics present in the synced data. CPM and cost per 1K reach are computed from
-                  spend/impressions/reach even when not separate columns.
+                  <span className="font-semibold text-white">Metrics in the wizard:</span> Use the column set in our
+                  download guides below. After upload, objectives are detected per campaign, then Step 3 (Metrics)
+                  pre-selects chips per objective. CPM and cost per 1K reach are computed from spend/impressions/reach
+                  when needed.
                 </li>
                 <li>
                   <span className="font-semibold text-white">Mixed objectives:</span> An account with Reach, Instant
@@ -256,9 +178,9 @@ export default async function DownloadGuidePage() {
                   <span className="text-white">per campaign</span>, not one global set.
                 </li>
                 <li>
-                  <span className="font-semibold text-white">When to use CSV instead:</span> Video metrics (ThruPlays,
-                  3-second views), purchase conversion value, CPC (all), or any column not in the standard API export —
-                  download from Ads Manager with those columns and upload manually for that report.
+                  <span className="font-semibold text-white">Extra columns:</span> Video metrics (ThruPlays, 3-second
+                  views), purchase conversion value, CPC (all), or any column not in our standard guide — add them in
+                  Ads Manager before export when your report needs them.
                 </li>
               </ul>
             </div>
@@ -266,7 +188,7 @@ export default async function DownloadGuidePage() {
 
           {/* CSV path */}
           <section id="meta-ads">
-            <SectionHeading>Option B — Upload CSV manually</SectionHeading>
+            <SectionHeading>Meta Ads — CSV upload</SectionHeading>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-secondary">
               Two files power a full Meta weekly report: your <span className="text-white">main Last 30 Days CSV</span>{" "}
               (every report) and an optional <span className="text-white">Previous Month CSV</span> (once per month) for
@@ -369,7 +291,7 @@ export default async function DownloadGuidePage() {
             <SectionHeading>Google Ads — CSV export</SectionHeading>
             <p className="mt-4 text-sm text-ink-secondary">
               Google uses a simplified 2-step wizard — every campaign in your CSV is included with month-to-date totals.
-              No campaign picker. API sync uses the same metrics once your Google Ads account is connected.
+              No campaign picker. Upload a CSV with the columns in our Google Ads guide below.
             </p>
             <div className="mt-6 space-y-4">
               {GOOGLE_STEPS.map((step, i) => (

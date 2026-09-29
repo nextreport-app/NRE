@@ -34,7 +34,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "connect-platforms",
       title: "Connect ad accounts (optional)",
-      description: "Link Meta in Account settings to sync from API in the wizard. Google, TikTok, and GA4 connections are optional and launching soon.",
+      description: "Optional — connect ad platforms in Account settings when API import returns. Reports use CSV upload today.",
       href: "/account#meta-ads",
       done: input.hasPlatformConnection,
       optional: true,
@@ -42,7 +42,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "generate-report",
       title: "Generate your first report",
-      description: "Open New Report on a client — upload a CSV or sync from API, then download .pptx or share a link.",
+      description: "Open New Report on a client — upload your Ads Manager CSV, then download .pptx or share a link.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },

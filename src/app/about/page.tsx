@@ -24,7 +24,7 @@ const STORY_PARAGRAPHS = [
 const STATS = [
   "Under 2 minutes per report",
   "Meta Ads — live now",
-  "API sync or CSV upload",
+  "CSV upload from Ads Manager",
 ];
 
 export default async function AboutPage() {

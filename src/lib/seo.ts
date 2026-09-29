@@ -136,7 +136,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -158,7 +158,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
     images: ogImages(),
   },
   twitter: {
@@ -260,10 +260,10 @@ export const HOME_JSON_LD = {
       description:
         "Connect Meta Ads via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
-        "Meta Marketing API sync",
+        "Meta Ads CSV import",
         "Meta Ads CSV upload",
-        "Google Ads API sync (launching soon)",
-        "TikTok Marketing API sync (launching soon)",
+        "Google Ads CSV import (launching soon)",
+        "TikTok CSV import (launching soon)",
         "Google Analytics 4 website reporting (launching soon)",
         "CSV to PowerPoint (.pptx)",
         "CSV to PDF",
@@ -342,7 +342,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "How long does it take to generate a report?",
     answer:
-      "Most reports generate in under 2 minutes from API sync or CSV upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
+      "Most reports generate in under 2 minutes from CSV upload upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
   },
   {
     question: "Is there a free trial?",
