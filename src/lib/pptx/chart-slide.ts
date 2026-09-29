@@ -14,7 +14,9 @@ export function chunkChartCampaigns<T>(campaigns: T[], _perPage = CHART_CAMPAIGN
   return campaigns.length === 0 ? [[]] : [campaigns];
 }
 
-const CAMPAIGN_COLOR_PALETTE = ["f6ad55", "63b3ed", "68d391", "fc8181", "b794f4", "76e4f7", "f6e05e"];
+import { VISUAL_CHART_PALETTE } from "../nre/visual-chart-slide";
+
+const CAMPAIGN_COLOR_PALETTE = [...VISUAL_CHART_PALETTE, "7a8991", "958070"];
 const EMPTY_RING_COLOR = "9ca3af";
 const OTHER_COLOR = "64748b";
 
