@@ -95,6 +95,20 @@ export function isApiSyncArtifact(file: File | null): boolean {
   return Boolean(file?.name.includes("-api-sync-"));
 }
 
+/** Save a wizard File to the user's Downloads folder (browser only). */
+export function downloadWizardCsvFile(file: File): void {
+  if (typeof window === "undefined") return;
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name.endsWith(".csv") ? file.name : `${file.name}.csv`;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function wizardPlatformImportDescription(platform: "META" | "GOOGLE" | "TIKTOK"): string {
   switch (platform) {
     case "META":
