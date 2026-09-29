@@ -114,15 +114,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (!user.metaAdsEnabled || !user.metaAccessToken) {
         return NextResponse.json({ error: "Meta Ads is not connected" }, { status: 400 });
       }
-      if (!referenceManualCsvText?.trim()) {
-        return NextResponse.json(
-          {
-            error:
-              "Attach your Meta Ads Manager CSV export before syncing. Meta Insights does not match export Results for website leads — we merge your CSV with live spend/reach from the API.",
-          },
-          { status: 400 },
-        );
-      }
 
       const fresh = await ensureFreshMetaAccessToken({
         accessToken: user.metaAccessToken,
