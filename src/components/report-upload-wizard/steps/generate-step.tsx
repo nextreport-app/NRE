@@ -105,6 +105,7 @@ export function WizardGenerateStep() {
     previewMessage,
     previewStatus,
     previewRefreshing,
+    generateStepPreviewReady,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
@@ -148,6 +149,17 @@ export function WizardGenerateStep() {
   } = w;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
+  const generateCtaDisabled = previewStatus === "invalid" || !generateStepPreviewReady;
+  const generateCtaLabel =
+    generateStatus === "loading"
+      ? "Generating…"
+      : generateStatus === "error"
+        ? "Try again"
+        : !generateStepPreviewReady
+          ? "Loading report options…"
+          : "Generate Report";
+  const showStandardCoverBudget =
+    reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
   return (
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
@@ -484,19 +496,27 @@ export function WizardGenerateStep() {
           )}
 
 
-          {previewKind === "normal" && data && (
+          {showStandardCoverBudget && (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <h4 className="text-[15px] font-semibold text-white">Cover slide budget</h4>
-              {clientMonthlyBudget != null && clientMonthlyBudget > 0 && coverBudgetPreviewLine ? (
+              {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
                 <div className="mt-3 space-y-3">
-                  <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
-                    {coverBudgetPreviewLine}
-                  </p>
-                  <label className={`flex items-start gap-3 ${budgetToggleSaving ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
+                  {coverBudgetPreviewLine ? (
+                    <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
+                      {coverBudgetPreviewLine}
+                    </p>
+                  ) : (
+                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-3 py-2.5 text-[14px] text-dash-ink-secondary">
+                      Calculating spend vs budget…
+                    </p>
+                  )}
+                  <label
+                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait opacity-70" : "cursor-pointer"}`}
+                  >
                     <input
                       type="checkbox"
                       checked={showBudgetOnCover}
-                      disabled={budgetToggleSaving}
+                      disabled={budgetToggleSaving || !generateStepPreviewReady}
                       onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
@@ -526,8 +546,6 @@ export function WizardGenerateStep() {
             </div>
           )}
 
-          {(data || comparisonData || historicalData || dayBreakdownData) && (
-            <>
             <div className="space-y-4">
               {/* Section 1 — Report summary card, amber left border. Merges
                   what used to be two separate cards (Reporting Period +
@@ -708,6 +726,10 @@ export function WizardGenerateStep() {
               )}
             </div>
           </div>
+
+          {!generateStepPreviewReady && previewStatus === "loading" && generateStatus === "idle" ? (
+            <p className="text-[14px] text-dash-ink-secondary">Loading report preview…</p>
+          ) : null}
 
           {generateStatus === "done" && downloadUrl && (
             <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
@@ -1021,8 +1043,6 @@ export function WizardGenerateStep() {
               </div>
             </div>
           )}
-            </>
-          )}
 
           {showGenerateFooter && (
             <div className="space-y-3">
@@ -1031,10 +1051,10 @@ export function WizardGenerateStep() {
                   <button
                     type="button"
                     onClick={handleGenerate}
-                    disabled={previewStatus === "invalid"}
+                    disabled={generateCtaDisabled}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
-                    Generate Report
+                    {generateCtaLabel}
                   </button>
                   <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
                 </div>
@@ -1073,16 +1093,10 @@ export function WizardGenerateStep() {
               }
               onBack={() => setStep(3)}
               backLabel="Back to metrics"
-              primaryLabel={
-                generateStatus === "loading"
-                  ? "Generating…"
-                  : generateStatus === "error"
-                    ? "Try again"
-                    : "Generate Report"
-              }
+              primaryLabel={generateCtaLabel}
               onPrimary={handleGenerate}
-              primaryDisabled={generateStatus !== "loading" && previewStatus === "invalid"}
-              primaryLoading={generateStatus === "loading"}
+              primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
+              primaryLoading={generateStatus === "loading" || (!generateStepPreviewReady && previewStatus === "loading")}
             />
           ) : null}
         </div>

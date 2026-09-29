@@ -1587,6 +1587,11 @@ export function useReportUploadWizard({
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
 
+    const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
+    if (!hasExistingPreview && previewStatus !== "invalid" && previewStatus !== "error") {
+      setPreviewStatus("loading");
+    }
+
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     previewDebounceRef.current = setTimeout(() => {
       void fetchPreview();
@@ -1618,6 +1623,7 @@ export function useReportUploadWizard({
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile && !uploadSessionId) return;
+    if (usesFullAdWizard(platform) && !generateStepPreviewReady) return;
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -1945,8 +1951,23 @@ export function useReportUploadWizard({
       return [`${dayBreakdownData.dayCount} day${dayBreakdownData.dayCount === 1 ? "" : "s"} with spend`];
     }
     if (data) return data.campaignSlides.map((s) => s.campaignName);
-    return [];
+    return campaigns.filter((name) => selectedCampaigns.has(name));
   }
+
+  const generateStepPreviewReady = useMemo(() => {
+    if (!usesFullAdWizard(platform)) return true;
+    if (previewStatus === "invalid" || previewStatus === "error") return false;
+    if (previewStatus === "loading" || previewRefreshing) return false;
+    return !!(data || comparisonData || historicalData || dayBreakdownData);
+  }, [
+    platform,
+    previewStatus,
+    previewRefreshing,
+    data,
+    comparisonData,
+    historicalData,
+    dayBreakdownData,
+  ]);
 
   const historicalMonthLabels = useMemo(
     () => computeHistoricalMonthRanges(historicalMonthCount, new Date(), clientTimezone).map((m) => m.fullMonthLabel),
@@ -2243,6 +2264,7 @@ export function useReportUploadWizard({
     reanalyzeSessionStatus,
     handleReanalyzeSession,
     previewRefreshing,
+    generateStepPreviewReady,
     importPipelineLabel,
   };
 }
