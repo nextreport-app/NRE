@@ -48,7 +48,7 @@ const FEATURES = [
   {
     icon: "🎵",
     title: "Google & TikTok Ads",
-    description: "Same branded template and wizard flow — API sync or CSV upload when we open the next platforms.",
+    description: "Same branded template and wizard flow — CSV upload when we open the next platforms.",
     live: false,
   },
 ];

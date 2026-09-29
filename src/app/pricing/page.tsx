@@ -110,7 +110,7 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta Ads reporting is live — CSV or API sync, then share a live link, download a PDF, or export
+            Meta Ads reporting is live — CSV upload, then share a live link, download a PDF, or export
             PowerPoint (.pptx). Google, TikTok, and GA4 are launching soon.
           </p>
         </div>

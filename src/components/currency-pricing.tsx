@@ -39,7 +39,7 @@ const PLANS: Plan[] = [
     features: [
       AGENCY_CLIENT_LIMIT_FEATURE,
       "Unlimited report generation",
-      "Meta Ads — API sync & CSV upload (live)",
+      "Meta Ads — CSV upload (live)",
       "Google, TikTok & GA4 — launching soon",
       "AI-written campaign summaries & insights",
       "PowerPoint, Google Slides & live browser share",

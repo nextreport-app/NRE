@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
+import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "TikTok authorisation was cancelled — your ad account was not connected.",
@@ -84,6 +85,18 @@ export function TikTokAdsSettings({
   }
 
   const errorMessage = connectError ? CONNECT_ERROR_MESSAGES[connectError] ?? connectError : null;
+
+  if (!AD_PLATFORM_API_SYNC_ENABLED) {
+    return (
+      <div id="tiktok-ads" className="scroll-mt-24 rounded-lg border border-dash-border bg-dash-card p-5">
+        <h3 className="text-[15px] font-semibold text-dash-ink">TikTok Ads</h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
+          Reports use a CSV export from TikTok Ads Manager — upload it in the report wizard. Automatic API import is
+          turned off.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div id="tiktok-ads" className="scroll-mt-24">

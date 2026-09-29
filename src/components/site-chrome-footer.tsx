@@ -45,7 +45,7 @@ export function SiteChromeFooter() {
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2.5 py-1 text-[11px] font-medium text-emerald-200/90">
-                  Meta API Sync — live
+                  Meta CSV reports — live
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-navy-border bg-navy-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted">
                   Google Ads <ComingSoonBadge />

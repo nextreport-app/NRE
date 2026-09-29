@@ -55,7 +55,7 @@ function MockWizardPanel({ frameIndex }: { frameIndex: number }) {
   const panels = [
     <div key="upload" className="space-y-2">
       <div className="rounded border border-dashed border-navy-border p-3 text-center text-[10px] text-ink-muted">
-        Sync from API or drop CSV
+        Upload your Ads Manager CSV
       </div>
       <div className="flex gap-1.5">
         {[
