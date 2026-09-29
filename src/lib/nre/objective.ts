@@ -473,10 +473,7 @@ export function resolveObjective(
     ) {
       return { ...columnObjective, source: "priority3" };
     }
-    if (
-      columnObjective?.resultLabel === "LINK CLICKS" &&
-      (rt.resultLabel === "LANDING PAGE VIEWS" || rt.resultLabel === "WEBSITE LEADS")
-    ) {
+    if (columnObjective?.resultLabel === "LINK CLICKS" && rt.resultLabel === "WEBSITE LEADS") {
       return { ...columnObjective, source: "priority3" };
     }
     return { ...rt, source: "resultType" };
@@ -955,15 +952,43 @@ function hasLinkClicksDelivery(rows: MetricRow[]): boolean {
   return rows.some((r) => parseCellNum(r.link_clicks) > 0 || parseCellNum(r.results) > 0);
 }
 
+/** Meta Traffic campaigns often optimize for LPV while names still contain "Traffic". */
+function campaignRowsOptimizeForLandingPageViews(rows: MetricRow[]): boolean {
+  let lpvResultTypeRows = 0;
+  let typedRows = 0;
+  for (const row of rows) {
+    const rt = (row.result_type || "").toLowerCase().trim();
+    if (!rt) continue;
+    typedRows++;
+    if (rt.includes("landing page view") || rt === "landing_page_view") lpvResultTypeRows++;
+  }
+  if (typedRows > 0 && lpvResultTypeRows > typedRows / 2) return true;
+
+  const anyLpvResultType = rows.some((r) =>
+    /landing page view|landing_page_view/i.test(r.result_type || ""),
+  );
+  if (!anyLpvResultType) return false;
+
+  let lpvTotal = 0;
+  let resultsTotal = 0;
+  for (const row of rows) {
+    lpvTotal += parseCellNum(row.landing_page_views);
+    resultsTotal += parseCellNum(row.results);
+  }
+  if (lpvTotal <= 0 || resultsTotal <= 0) return anyLpvResultType;
+  return Math.abs(lpvTotal - resultsTotal) <= Math.max(1, resultsTotal * 0.02);
+}
+
 /** LeadGen / InstantForm naming + lead delivery → META FORM LEADS over generic website-leads bleed. */
 function metaFormLeadsObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   if (!isMetaFormLeadsCampaignName(rows) || !hasMetaFormLeadsDelivery(rows)) return null;
   return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
 }
 
-/** Traffic / LinkClicks naming + click delivery → LINK CLICKS over website-leads/LPV bleed. */
+/** Traffic / LinkClicks naming + click delivery → LINK CLICKS over website-leads bleed (not LPV traffic). */
 function linkClicksObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   if (!isLinkClicksCampaignName(rows) || !hasLinkClicksDelivery(rows)) return null;
+  if (campaignRowsOptimizeForLandingPageViews(rows)) return null;
   return { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK" };
 }
 
@@ -1381,6 +1406,13 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
   if (label === "ADD TO CART") return rowAddToCart(row);
   if (label === "LINK CLICKS") return parseCellNum(row.link_clicks);
+  if (label === "LANDING PAGE VIEWS") {
+    const lpv = parseCellNum(row.landing_page_views);
+    if (lpv > 0) return lpv;
+    if (getResultLabels(row.result_type).resultLabel === "LANDING PAGE VIEWS") {
+      return parseCellNum(row.results);
+    }
+  }
   // No dedicated field tracks any other objective (Leads, Reach, ...) on a
   // mismatched row — it contributes nothing to a bucket it has no real
   // metric for, rather than reusing `results`, which measures something
