@@ -790,7 +790,7 @@ export function useReportUploadWizard({
     }
   }
 
-  /** Step 1 -> 2 after analyze — user confirms instead of auto-advancing. */
+  /** Legacy hook for import continue (UI no longer shows a second CTA). */
   function handleImportContinue() {
     if (!uploadSessionId || campaigns.length === 0) return;
     setStep(2);
@@ -847,6 +847,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(detected);
+    setStep(2);
   }
 
   type ApiSyncMeta = {
@@ -970,6 +971,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    setStep(2);
     if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
       setPreviousMonthHasFile(true);
       if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
@@ -1021,6 +1023,7 @@ export function useReportUploadWizard({
 
     applyAnalyzeResult(json);
     rememberPlatformChoice(selectedPlatformCard);
+    setStep(2);
   }
 
   /** Mismatch warning's "Go back" — just clears the warning locally, no re-fetch, so the user can reconsider the platform card or re-upload a different file. */
@@ -1198,14 +1201,6 @@ export function useReportUploadWizard({
       setMetricsFetchedForSelection(null);
     }
   }, [selectedCampaignsKeyValue]);
-
-  // Prefetch objectives when campaigns step opens or selection changes.
-  useEffect(() => {
-    if (step !== 2) return;
-    if (selectedCampaigns.size === 0) return;
-    void ensureObjectivesForSelection(selectedCampaignsKeyValue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, selectedCampaignsKeyValue, uploadSessionId, mtdFile]);
 
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
@@ -2071,12 +2066,8 @@ export function useReportUploadWizard({
     analyzeMessage,
     handleAnalyze,
     handleImportContinue,
-    showImportContinue:
-      step === 1 &&
-      !!uploadSessionId &&
-      campaigns.length > 0 &&
-      analyzeStatus === "idle" &&
-      !mismatchWarning,
+    ensureObjectivesForSelection,
+    showImportContinue: false,
     handleApiSynced,
     handleMismatchContinueAnyway,
     handleMismatchGoBack,
