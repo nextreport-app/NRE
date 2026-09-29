@@ -32,6 +32,8 @@ interface WizardDataSourcePanelProps {
   onSyncError: (message: string) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
+  /** User's Ads Manager CSV — Result columns are copied from this file when syncing Meta. */
+  referenceManualCsvFile?: File | null;
 }
 
 interface MetaAccountOption {
@@ -96,12 +98,16 @@ export function WizardDataSourcePanel({
   onSyncStart,
   onSyncError,
   importComplete = false,
+  referenceManualCsvFile = null,
 }: WizardDataSourcePanelProps) {
   const showMeta = platform === "META";
   const showGoogle = platform === "GOOGLE";
   const showTikTok = platform === "TIKTOK";
   const connected = showMeta ? metaConnected : showGoogle ? googleAdsConnected : tiktokConnected;
   const configured = showMeta ? metaConfigured : showGoogle ? googleAdsConfigured : tiktokConfigured;
+
+  const [attachedManualCsv, setAttachedManualCsv] = useState<File | null>(null);
+  const effectiveReferenceCsv = referenceManualCsvFile ?? attachedManualCsv;
 
   const [metaAccounts, setMetaAccounts] = useState<MetaAccountOption[]>([]);
   const [googleCustomers, setGoogleCustomers] = useState<GoogleCustomerOption[]>([]);
@@ -173,10 +179,18 @@ export function WizardDataSourcePanel({
         return;
       }
 
+      let referenceManualCsvText: string | undefined;
+      if (platform === "META" && effectiveReferenceCsv && !effectiveReferenceCsv.name.includes("-api-sync-")) {
+        referenceManualCsvText = await effectiveReferenceCsv.text();
+      }
+
       const res = await fetch(`/api/clients/${clientId}/reports/sync-api`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          ...body,
+          ...(referenceManualCsvText ? { referenceManualCsvText } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -217,15 +231,52 @@ export function WizardDataSourcePanel({
     connected &&
     configured &&
     !isSyncing &&
-    (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
+    (showMeta
+      ? !!selectedMetaAccount && !!effectiveReferenceCsv
+      : showGoogle
+        ? !!selectedGoogleCustomer
+        : !!selectedTikTokAdvertiser);
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
         <p className="text-[13px] text-dash-ink-secondary">
           Last 30 days through yesterday — Previous month loads automatically.
+          {platform === "META" ? (
+            <>
+              {" "}
+              For accurate website leads, upload your Meta CSV first (same file as Ads Manager), then sync — we
+              refresh spend/reach from the API and keep Results from your export.
+            </>
+          ) : null}
         </p>
       </div>
+
+      {showMeta && !effectiveReferenceCsv ? (
+        <div className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3">
+          <p className="text-[13px] font-medium text-[#fbd38d]">Attach your Meta Ads Manager CSV for accurate leads</p>
+          <p className="mt-1 text-[12px] text-dash-ink-secondary">
+            API-only sync cannot match Ads Manager lead counts for every account. Attach the same daily export you
+            would upload manually — sync will keep its Results and refresh spend from Meta.
+          </p>
+          <label className="mt-3 inline-flex cursor-pointer rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] font-medium text-white hover:border-dash-accent">
+            Choose CSV file
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="sr-only"
+              onChange={(e) => setAttachedManualCsv(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
+      ) : null}
+
+      {showMeta && effectiveReferenceCsv ? (
+        <p className="text-[13px] text-emerald-400">
+          Using Results from <span className="font-medium text-white">{effectiveReferenceCsv.name}</span> — API
+          will refresh delivery metrics.
+        </p>
+      ) : null}
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">

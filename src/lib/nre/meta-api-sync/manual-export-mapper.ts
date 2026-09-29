@@ -355,8 +355,13 @@ export function manualExportPrimaryResult(row: MetaInsightRow): ManualExportPrim
   }
 
   if (isWebsiteLeadCampaign(row)) {
-    const quote = pickQuoteManualExport(row);
-    if (quote) return quote;
+    // Only honor quote/custom-conversion Results when the campaign is named for quotes.
+    // Stray costed custom conversions on website-lead accounts (e.g. Credit Firm) must not
+    // override website submission from manual-export rules.
+    if (isQuoteRequestCampaignHaystack(hay)) {
+      const quote = pickQuoteManualExport(row);
+      if (quote) return quote;
+    }
     return pickWebsiteLeadManualExport(row);
   }
 
