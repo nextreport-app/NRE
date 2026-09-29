@@ -1,5 +1,3 @@
-import { ComingSoonBadge } from "@/components/coming-soon-badge";
-
 const FEATURES = [
   {
     icon: "✅",
@@ -73,10 +71,7 @@ export function FeaturesSection() {
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy-panel text-xl" aria-hidden="true">
                 {feature.icon}
               </span>
-              <h3 className="mt-4 flex flex-wrap items-center gap-2 text-base font-semibold text-white">
-                {feature.title}
-                {!feature.live ? <ComingSoonBadge compact={false} /> : null}
-              </h3>
+              <h3 className="mt-4 text-base font-semibold text-white">{feature.title}</h3>
               <p className="mt-1.5 text-sm text-ink-muted">{feature.description}</p>
             </div>
           ))}

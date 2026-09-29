@@ -112,10 +112,10 @@ export function downloadWizardCsvFile(file: File): void {
 export function wizardPlatformImportDescription(platform: "META" | "GOOGLE" | "TIKTOK"): string {
   switch (platform) {
     case "META":
-      return "Connect via API or upload a CSV from Ads Manager";
+      return "Upload a CSV export from Meta Ads Manager";
     case "GOOGLE":
-      return "Connect via API or upload a CSV from Google Ads";
+      return "Upload a CSV export from Google Ads";
     case "TIKTOK":
-      return "Connect via API or upload a CSV from TikTok Ads Manager";
+      return "Upload a CSV export from TikTok Ads Manager";
   }
 }
