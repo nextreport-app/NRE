@@ -298,18 +298,21 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   return allRows;
 }
 
-/** Fetches daily insights for an ad account (paginated, retried, chunked on Meta code 1). */
-export async function fetchMetaAdAccountInsights(params: {
+function proactiveInsightsChunkDays(level: MetaInsightsLevel): number {
+  // Ad-set rows are heavier (more rows × rich action/result fields) — smaller windows avoid Vercel timeouts.
+  return level === "adset" ? 5 : 7;
+}
+
+/** One date window: paginated fetch with Meta code-1 retry, then weekly sub-chunks if still failing. */
+async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   accessToken: string;
   adAccountId: string;
   sinceIso: string;
   untilIso: string;
-  /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
-  level?: MetaInsightsLevel;
+  level: MetaInsightsLevel;
 }): Promise<MetaInsightRow[]> {
-  const level = params.level ?? "campaign";
   try {
-    return await fetchMetaAdAccountInsightsForRange({ ...params, level });
+    return await fetchMetaAdAccountInsightsForRange(params);
   } catch (err) {
     if (!(err instanceof MetaInsightsFetchError) || err.meta.code !== 1) {
       throw err;
@@ -320,11 +323,40 @@ export async function fetchMetaAdAccountInsights(params: {
       throw err;
     }
 
-    const chunkRows = await Promise.all(
-      chunks.map((chunk) => fetchMetaAdAccountInsightsForRange({ ...params, ...chunk, level })),
-    );
-    return chunkRows.flat();
+    const allRows: MetaInsightRow[] = [];
+    for (const chunk of chunks) {
+      allRows.push(
+        ...(await fetchMetaAdAccountInsightsForRange({ ...params, ...chunk })),
+      );
+    }
+    return allRows;
   }
+}
+
+/** Fetches daily insights for an ad account (paginated, retried, chunked on Meta code 1). */
+export async function fetchMetaAdAccountInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+  /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
+  level?: MetaInsightsLevel;
+}): Promise<MetaInsightRow[]> {
+  const level = params.level ?? "campaign";
+  const chunkDays = proactiveInsightsChunkDays(level);
+  const chunks = splitIsoDateRangeIntoChunks(params.sinceIso, params.untilIso, chunkDays);
+
+  if (chunks.length > 1) {
+    const allRows: MetaInsightRow[] = [];
+    for (const chunk of chunks) {
+      allRows.push(
+        ...(await fetchMetaAdAccountInsightsForRangeResilient({ ...params, ...chunk, level })),
+      );
+    }
+    return allRows;
+  }
+
+  return fetchMetaAdAccountInsightsForRangeResilient({ ...params, level });
 }
 
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */
