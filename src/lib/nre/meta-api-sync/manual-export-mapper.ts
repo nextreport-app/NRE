@@ -198,6 +198,96 @@ function pickCostedWebsiteLeadFromCostedList(
   return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
 }
 
+function websitePixelCountFromActions(row: MetaInsightRow): { actionType: string; count: number } | null {
+  const map = actionValueMap(row.actions);
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const count = map.get(actionType);
+    if (count != null && count > 0) return { actionType, count };
+  }
+  return null;
+}
+
+function uncostedMetricCount(
+  metrics: MetaInsightResultMetric[] | undefined,
+  actionType: string,
+): number {
+  for (const entry of metrics ?? []) {
+    if (parseIndicator(entry.indicator ?? "") !== actionType) continue;
+    const count = metricValue(entry);
+    if (count > 0) return count;
+  }
+  return 0;
+}
+
+/** Production 79-lead bug: uncosted actions:lead in results[] + costed pixel CPA only. */
+function isInflatedUncostedLeadWithCostedPixelOnly(row: MetaInsightRow): boolean {
+  const leadInResults = uncostedMetricCount(row.results, "lead");
+  if (leadInResults <= 0) return false;
+  if (costForIndicator(row, "actions:lead") > 0) return false;
+  return costedWebsiteLeadFromActions(row) != null;
+}
+
+/**
+ * Meta often sends matching actions:lead + pixel in actions[] but omits cost_per_result[].
+ * Ads Manager still shows website submission with CPR = spend / results.
+ */
+function websiteLeadFromLeadResultsMatchingPixel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (isInflatedUncostedLeadWithCostedPixelOnly(row)) return null;
+
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const leadCount = uncostedMetricCount(row.results, "lead");
+  if (leadCount <= 0 || leadCount !== pixel.count) return null;
+
+  const pixelInResults = uncostedMetricCount(row.results, pixel.actionType);
+  let cost = costForIndicator(row, "actions:lead");
+  if (cost <= 0) {
+    if (pixelInResults <= 0) return null;
+    const spend = parseFloat(row.spend ?? "0");
+    if (spend <= 0) return null;
+    cost = spend / pixel.count;
+  }
+
+  return pack(pixel.actionType, pixel.count, cost, row, true);
+}
+
+/** Uncosted website pixel in results[] when count matches actions (objective channel missing). */
+function websiteLeadFromUncostedResultsPixel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const pixelInResults = uncostedMetricCount(row.results, pixel.actionType);
+  if (pixelInResults <= 0 || pixelInResults !== pixel.count) return null;
+  if (costForIndicator(row, `actions:${pixel.actionType}`) > 0) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+  return pack(pixel.actionType, pixel.count, spend / pixel.count, row, true);
+}
+
+/** No results[] — costed pixel CPA, or spend-derived CPR when Meta omits cost_per_action_type. */
+function websiteLeadFromActionsWhenNoResultsArray(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const costed = costPerAction(row, pixel.actionType);
+  if (costed > 0) {
+    return pack(pixel.actionType, pixel.count, costed, row, true);
+  }
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  // Incidental fb_pixel_lead=1 on blank days (no results[] / objective) — manual export stays blank.
+  if (pixel.count === 1) return null;
+
+  return pack(pixel.actionType, pixel.count, spend / pixel.count, row, true);
+}
+
 function firstCostedInActions(
   row: MetaInsightRow,
   actionTypes: readonly string[],
@@ -287,30 +377,40 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
   if (fromObjective) return fromObjective;
 
+  const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
+  if (fromLeadMatch) return fromLeadMatch;
+
+  const fromUncostedResultsPixel = websiteLeadFromUncostedResultsPixel(row);
+  if (fromUncostedResultsPixel) return fromUncostedResultsPixel;
+
   const hasResultMetrics = (row.results?.length ?? 0) > 0;
 
-  // When Meta omits results[] entirely, costed pixel in cost_per_action_type can match export.
   if (!hasResultMetrics) {
-    const pixel = costedWebsiteLeadFromActions(row);
-    if (pixel && isLikelyLinkClickMisattribution(row, parseFloat(pixel.value))) return null;
-    return pixel;
+    return websiteLeadFromActionsWhenNoResultsArray(row);
   }
 
-  // When results[] exists, require costed combined lead matching costed pixel — not CPA alone.
+  // Costed combined lead in results[] matching costed pixel — real lead day with full CPR payloads.
   const costed = costedAdsManagerResults(row);
   const leadInResults = costed.find((c) => c.actionType === "lead");
-  if (!leadInResults) {
+  if (leadInResults) {
+    const pixelFromActions = costedWebsiteLeadFromActions(row);
+    if (
+      pixelFromActions &&
+      leadInResults.count === parseFloat(pixelFromActions.value) &&
+      !isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))
+    ) {
+      return pixelFromActions;
+    }
     return null;
   }
 
-  const pixelFromActions = costedWebsiteLeadFromActions(row);
-  if (!pixelFromActions || leadInResults.count !== parseFloat(pixelFromActions.value)) {
+  if (isInflatedUncostedLeadWithCostedPixelOnly(row)) {
     return null;
   }
-  if (isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))) {
-    return null;
-  }
-  return pixelFromActions;
+
+  const pixel = costedWebsiteLeadFromActions(row);
+  if (pixel && isLikelyLinkClickMisattribution(row, parseFloat(pixel.value))) return null;
+  return pixel;
 }
 
 function pickQuoteManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
