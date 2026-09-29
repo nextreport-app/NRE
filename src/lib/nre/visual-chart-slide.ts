@@ -48,13 +48,9 @@ export interface VisualResultBar {
   barPct: number;
 }
 
-/** Right-aligned header label on chart result bars (matches usage-meter UI). */
-export function visualResultBarRightLabel(bar: Pick<VisualResultBar, "barPct" | "resultsSharePct">): string {
-  if (bar.resultsSharePct > 0) {
-    const label = Number.isInteger(bar.resultsSharePct) ? String(bar.resultsSharePct) : bar.resultsSharePct.toFixed(1);
-    return `${label}% of total`;
-  }
-  return `${Math.round(bar.barPct)}%`;
+/** Right-aligned bar label — intentionally empty; spend mix is on the donut only. */
+export function visualResultBarRightLabel(_bar: Pick<VisualResultBar, "barPct" | "resultsSharePct">): string {
+  return "";
 }
 
 export interface VisualChartSlideModel {
@@ -352,15 +348,21 @@ function buildGroupedDonutFromCampaigns(
   colorByCampaign: Map<string, string>,
   totalSpend: number,
   currencySymbol: string,
+  options: { labelByCampaign: boolean; sortBy: "spend" | "results" },
 ): VisualChartSegment[] {
-  const withSpend = campaigns
-    .filter((c) => c.spend > 0)
-    .sort((a, b) => b.spend - a.spend || b.results - a.results);
-  const top = withSpend.slice(0, MAX_ROWS);
+  const withSpend = campaigns.filter((c) => c.spend > 0);
+  const sorted = [...withSpend].sort((a, b) =>
+    options.sortBy === "results"
+      ? b.results - a.results || b.spend - a.spend
+      : b.spend - a.spend || b.results - a.results,
+  );
+  const top = sorted.slice(0, MAX_ROWS);
   const topSpend = top.reduce((sum, c) => sum + c.spend, 0);
   const otherSpend = Math.max(0, totalSpend - topSpend);
   const slices: VisualChartSegment[] = top.map((c) => ({
-    name: formatDonutObjectiveLabel(chartCampaignDisplayFields(c).resLabel),
+    name: options.labelByCampaign
+      ? formatCampaignDisplayName(c.name)
+      : formatDonutObjectiveLabel(chartCampaignDisplayFields(c).resLabel),
     color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
     percentage: totalSpend > 0 ? Math.round((c.spend / totalSpend) * 1000) / 10 : 0,
     spendLabel: fmtCurrencyAdaptive(c.spend, currencySymbol),
@@ -389,11 +391,13 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   // Two or more campaigns: spend donut (objective labels) + per-campaign result bars.
   if (useCampaignBars && useSplitPanel) {
+    const barSort: "spend" | "results" = mixedCampaignObjectives ? "spend" : "results";
     const groupedDonut = buildGroupedDonutFromCampaigns(
       reportingCampaigns,
       colorByCampaign,
       chart.totalAllSpend,
       currencySymbol,
+      { labelByCampaign: !mixedCampaignObjectives, sortBy: barSort },
     );
     const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
@@ -415,8 +419,8 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       currencySymbol,
       {
         includeSpend: false,
-        includeResultsShare: !mixedCampaignObjectives && reportingCampaigns.length > 1,
-        barScale: "spend",
+        includeResultsShare: false,
+        barScale: barSort,
       },
     );
 
@@ -426,7 +430,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       useSplitPanel: true,
       panelHeading: rightHeading,
       panelSubheading: "",
-      leftHeading: "Spend by Objective",
+      leftHeading: mixedCampaignObjectives ? "Spend by Objective" : "Spend by Campaign",
       rightHeading,
       miniDonuts: [],
       groupedDonut,
@@ -465,7 +469,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         cprLabel: obj.cprLabel,
       })),
       currencySymbol,
-      { includeSpend: true, includeResultsShare: objectives.length > 1, barScale: "spend" },
+      { includeSpend: true, includeResultsShare: false, barScale: "spend" },
     );
 
     const panelHeading = "Results by Objective";
@@ -488,7 +492,10 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
   const primaryResLabel = chart.campaigns[0]?.resLabel ?? chart.snapshot.primaryResultsLabel;
   const resultLabel = toTitleCaseChartLabel(primaryResLabel);
   const groupedDonut = useSplitPanel
-    ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol)
+    ? buildGroupedDonutFromCampaigns(reportingCampaigns, colorByCampaign, chart.totalAllSpend, currencySymbol, {
+        labelByCampaign: true,
+        sortBy: "results",
+      })
     : null;
 
   const resultBars = buildResultBars(
@@ -507,9 +514,9 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     currencySymbol,
     {
       includeSpend: false,
-      includeResultsShare: reportingCampaigns.length > 1,
+      includeResultsShare: false,
       singleCampaignBarCap: false,
-      barScale: "spend",
+      barScale: "results",
     },
   );
 
@@ -523,7 +530,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     useSplitPanel,
     panelHeading: `${resultLabel} by Campaign`,
     panelSubheading: "",
-    leftHeading: "Spend by Objective",
+    leftHeading: reportingCampaigns.length >= 2 ? "Spend by Campaign" : "Spend by Objective",
     rightHeading: `${resultLabel} by Campaign`,
     miniDonuts: [],
     groupedDonut,
