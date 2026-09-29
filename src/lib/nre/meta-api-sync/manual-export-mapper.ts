@@ -70,9 +70,18 @@ function parseIndicator(indicator: string): string | null {
   return null;
 }
 
-function metricValue(entry: { values?: Array<{ value?: string }> }): number {
-  const n = parseFloat(entry.values?.[0]?.value ?? "");
-  return Number.isFinite(n) ? n : 0;
+function metricValue(entry: { values?: Array<{ value?: string }>; value?: string }): number {
+  const nested = entry.values?.[0]?.value;
+  if (nested != null && nested !== "") {
+    const n = parseFloat(nested);
+    if (Number.isFinite(n)) return n;
+  }
+  const direct = entry.value;
+  if (direct != null && direct !== "") {
+    const n = parseFloat(direct);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
 function costForIndicator(
@@ -148,6 +157,70 @@ function costedWebsiteLeadFromActions(row: MetaInsightRow): ManualExportPrimaryR
     const cost = costPerAction(row, actionType);
     if (cost <= 0) continue;
     return pack(actionType, count, cost, row, true);
+  }
+  return null;
+}
+
+function uncostedResultEntries(row: MetaInsightRow): Array<{ actionType: string; count: number }> {
+  const out: Array<{ actionType: string; count: number }> = [];
+  for (const entry of row.results ?? []) {
+    const actionType = parseIndicator(entry.indicator ?? "");
+    if (!actionType) continue;
+    const count = metricValue(entry);
+    if (count <= 0) continue;
+    out.push({ actionType, count });
+  }
+  return out;
+}
+
+function uncostedCombinedLeadCount(row: MetaInsightRow): number {
+  for (const entry of uncostedResultEntries(row)) {
+    if (entry.actionType === "lead") return entry.count;
+  }
+  return 0;
+}
+
+/** Meta often returns results[] counts without cost_per_result — derive CPR from spend like Ads Manager. */
+function uncostedWebsiteLeadFromResults(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  for (const entry of uncostedResultEntries(row)) {
+    if (!isWebsiteLeadAction(entry.actionType)) continue;
+    const spend = parseFloat(row.spend ?? "0");
+    if (spend <= 0) continue;
+    return pack(entry.actionType, entry.count, spend / entry.count, row, true);
+  }
+  return null;
+}
+
+function websiteLeadCountFromActions(row: MetaInsightRow): number {
+  const map = actionValueMap(row.actions);
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const count = map.get(actionType);
+    if (count != null && count > 0) return count;
+  }
+  return 0;
+}
+
+function combinedLeadActionCount(row: MetaInsightRow): number {
+  const map = actionValueMap(row.actions);
+  const n = map.get("lead");
+  return n != null && n > 0 ? n : 0;
+}
+
+function websiteLeadFromActionsWithDerivedCpr(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const costed = costedWebsiteLeadFromActions(row);
+  if (costed) return costed;
+
+  const count = websiteLeadCountFromActions(row);
+  if (count <= 0) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const map = actionValueMap(row.actions);
+    const actionCount = map.get(actionType);
+    if (actionCount !== count) continue;
+    return pack(actionType, count, spend / count, row, true);
   }
   return null;
 }
@@ -234,7 +307,21 @@ function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
 }
 
+function websiteLeadFromConversionLeadFields(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const count = parseFloat(row.conversion_leads ?? "");
+  if (!Number.isFinite(count) || count <= 0) return null;
+  const cpl = parseFloat(row.cost_per_conversion_lead ?? "");
+  const spend = parseFloat(row.spend ?? "0");
+  const cost =
+    Number.isFinite(cpl) && cpl > 0 ? cpl : spend > 0 && count > 0 ? spend / count : 0;
+  if (cost <= 0) return null;
+  return pack(WEBSITE_LEAD_ACTION_TYPES[0], count, cost, row, true);
+}
+
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const fromConversionFields = websiteLeadFromConversionLeadFields(row);
+  if (fromConversionFields) return fromConversionFields;
+
   const costed = costedAdsManagerResults(row);
 
   const fromWebIndicator = costed.find((c) => isWebsiteLeadAction(c.actionType));
@@ -242,19 +329,36 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
     return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
   }
 
-  const pixelFromActions = costedWebsiteLeadFromActions(row);
+  const uncostedWeb = uncostedWebsiteLeadFromResults(row);
+  if (uncostedWeb) return uncostedWeb;
 
-  if (!row.results?.length) {
-    return pixelFromActions;
+  const pixelFromActions = costedWebsiteLeadFromActions(row);
+  const hasResults = (row.results?.length ?? 0) > 0;
+
+  if (!hasResults) {
+    if (pixelFromActions) return pixelFromActions;
+    if (combinedLeadActionCount(row) > 0) return null;
+    return websiteLeadFromActionsWithDerivedCpr(row);
+  }
+
+  if (costed.length === 0) {
+    const leadCount = uncostedCombinedLeadCount(row);
+    if (leadCount <= 0) return null;
+    const derived = websiteLeadFromActionsWithDerivedCpr(row);
+    if (derived && leadCount === parseFloat(derived.value)) {
+      return derived;
+    }
+    return null;
   }
 
   const leadInResults = costed.find((c) => c.actionType === "lead");
   if (!leadInResults) {
-    return null;
+    return pixelFromActions;
   }
 
-  if (pixelFromActions && leadInResults.count === parseFloat(pixelFromActions.value)) {
-    return pixelFromActions;
+  const actionFallback = pixelFromActions ?? websiteLeadFromActionsWithDerivedCpr(row);
+  if (actionFallback && leadInResults.count === parseFloat(actionFallback.value)) {
+    return actionFallback;
   }
 
   return null;
