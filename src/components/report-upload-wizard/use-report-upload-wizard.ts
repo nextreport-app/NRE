@@ -74,6 +74,7 @@ import {
   formatIso,
   formatIsoRange,
   formatSummaryRange,
+  downloadWizardCsvFile,
   isApiSyncArtifact,
 } from "./utils";
 import {
@@ -940,6 +941,7 @@ export function useReportUploadWizard({
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setMtdFile(file);
+    downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);

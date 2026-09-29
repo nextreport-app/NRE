@@ -7,7 +7,13 @@ import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-w
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
-import { wizardPlatformImportDescription, isNoDataRowsError, isSpecificFieldError } from "../utils";
+import {
+  wizardPlatformImportDescription,
+  isNoDataRowsError,
+  isSpecificFieldError,
+  isApiSyncArtifact,
+  downloadWizardCsvFile,
+} from "../utils";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platform-picker";
@@ -174,7 +180,32 @@ export function WizardImportStep() {
                   }}
                   importComplete={showImportContinue}
                 />
-              ) : (
+              ) : null}
+
+              {dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
+                <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3">
+                  <p className="text-[14px] font-medium text-white">Download API data to compare with your manual CSV</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+                    After each sync we save a copy to your computer&apos;s Downloads folder (name starts with{" "}
+                    <span className="text-dash-ink">meta-api-sync-</span>). Open that file next to{" "}
+                    <span className="text-dash-ink">credit-firm-manual.csv</span> in Excel or Google Sheets and compare
+                    the <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>
+                    , and <span className="text-dash-ink">Cost per result</span> columns.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => downloadWizardCsvFile(mtdFile)}
+                    className="mt-3 inline-flex h-10 items-center rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-[14px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                  >
+                    Download API sync CSV again
+                  </button>
+                  <p className="mt-2 text-[12px] text-dash-ink-secondary">
+                    File on this report: <span className="text-dash-ink">{mtdFile.name}</span>
+                  </p>
+                </div>
+              ) : null}
+
+              {dataSourceMode === "csv" ? (
                 <>
                   <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
                   <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
