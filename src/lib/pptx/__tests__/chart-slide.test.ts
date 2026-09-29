@@ -136,7 +136,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
   it("buildMtdOverviewSvg renders colored result bars", () => {
     const chart = buildChart([campaign("A", { spend: 442 }), campaign("B", { spend: 321 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "C$"));
-    expect(svg).toContain('fill="#8a9aad"');
+    expect(svg).toContain('fill="#5eb0ef"');
     expect(svg).toContain("PURCHASES BY CAMPAIGN");
   });
 

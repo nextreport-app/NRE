@@ -15,8 +15,8 @@ import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { formatCampaignDisplayName } from "./chart-campaign-labels";
 
-/** Muted chart colors — aligned with dashboard usage meters (not neon accent palette). */
-export const VISUAL_CHART_PALETTE = ["8a9aad", "a8926e", "7a9878", "a88080", "9284a8"] as const;
+/** Chart segment colors — vivid enough to read on navy slides, softer than legacy neon accents. */
+export const VISUAL_CHART_PALETTE = ["5eb0ef", "f2ab50", "5fd98d", "f48484", "b090ef"] as const;
 const INACTIVE_COLOR = "4a5568";
 const MAX_ROWS = 5;
 const SINGLE_CAMPAIGN_BAR_CAP = 75;

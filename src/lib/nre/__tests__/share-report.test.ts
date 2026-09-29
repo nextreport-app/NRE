@@ -130,7 +130,7 @@ describe("buildShareReportData", () => {
     expect(share.chart!.visualSlide!.useSplitPanel).toBe(true);
     expect(share.chart!.snapshot.mtdSpendLabel).toContain("₹");
     expect(share.chart!.donutSegments.length).toBeGreaterThan(0);
-    expect(share.chart!.donutSegments[0]?.color).toBe("8a9aad");
+    expect(share.chart!.donutSegments[0]?.color).toBe("5eb0ef");
   });
 
   it("includes default visibility flags for the pre-share editor", () => {
