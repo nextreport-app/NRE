@@ -28,6 +28,9 @@ export function ReportTypeCard({
   beta?: boolean;
   comingSoon?: boolean;
 }) {
+  const showSoonBadge =
+    comingSoon && !/launching soon/i.test(description.trim());
+
   const stateClass = disabled
     ? "cursor-not-allowed border-dash-border bg-dash-bg/50 opacity-60"
     : selected
@@ -48,8 +51,8 @@ export function ReportTypeCard({
         </span>
         <span className="mt-2 flex items-center justify-center gap-1.5">
           <span className="block text-[13px] font-semibold leading-snug text-white">{heading}</span>
-          {comingSoon ? <ComingSoonBadge /> : null}
-          {!comingSoon && beta ? <PlatformBetaBadge /> : null}
+          {showSoonBadge ? <ComingSoonBadge /> : null}
+          {!showSoonBadge && beta ? <PlatformBetaBadge /> : null}
         </span>
         <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
       </button>
@@ -71,8 +74,8 @@ export function ReportTypeCard({
         className={`mt-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-white${singleLineHeading ? "" : ""}`}
       >
         <span className={singleLineHeading ? "whitespace-nowrap" : undefined}>{heading}</span>
-        {comingSoon ? <ComingSoonBadge /> : null}
-        {!comingSoon && beta ? <PlatformBetaBadge /> : null}
+        {showSoonBadge ? <ComingSoonBadge /> : null}
+        {!showSoonBadge && beta ? <PlatformBetaBadge /> : null}
       </p>
       <p className="mt-1 text-[14px] text-dash-ink-secondary">{description}</p>
     </button>
