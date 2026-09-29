@@ -154,9 +154,6 @@ export function WizardImportStep() {
                 <WizardDataSourcePanel
                   clientId={clientId}
                   platform={selectedPlatformCard}
-                  referenceManualCsvFile={
-                    mtdFile && !mtdFile.name.includes("-api-sync-") ? mtdFile : null
-                  }
                   metaConnected={metaConnected}
                   metaConnectedName={metaConnectedName}
                   metaConfigured={metaConfigured}
