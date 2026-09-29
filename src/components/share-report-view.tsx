@@ -317,8 +317,8 @@ function VisualSpendDonut({
         </div>
       </div>
       <ul className="mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]">
-        {segments.map((seg) => (
-          <li key={seg.name} className="flex min-w-0 items-start gap-2">
+        {segments.map((seg, i) => (
+          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex min-w-0 items-start gap-2">
             <span
               className="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: `#${seg.color}` }}
@@ -360,9 +360,11 @@ function VisualResultBar({
           <span className="mr-1 text-[#94a3b8]">{rank}.</span>
           {name}
         </p>
-        <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
-          {rightLabel}
-        </p>
+        {rightLabel ? (
+          <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
+            {rightLabel}
+          </p>
+        ) : null}
       </div>
       <div
         className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#2a3441] ${compact ? "h-[6px]" : "h-[7px]"}`}

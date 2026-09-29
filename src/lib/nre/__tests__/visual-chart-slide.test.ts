@@ -70,15 +70,14 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.isMultiObjective).toBe(false);
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).not.toBeNull();
-    expect(model.leftHeading).toBe("Spend by Objective");
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual([
-      formatDonutObjectiveLabel("PURCHASES"),
-      formatDonutObjectiveLabel("PURCHASES"),
-    ]);
+    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.groupedDonut!.map((s) => s.name)).toEqual(["Alpha", "Beta"]);
+    expect(model.groupedDonut!.map((s) => s.color)).toEqual(model.resultBars.map((b) => b.color));
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
-    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
+    expect(model.resultBars[0]!.resultCount).toBeGreaterThanOrEqual(model.resultBars[1]!.resultCount);
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -222,7 +221,7 @@ describe("buildVisualChartSlideModel", () => {
 
     const linkBar = model.resultBars.find((b) => b.name === "Link Clicks");
     expect(linkBar).toBeDefined();
-    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC · 12.8% of total");
+    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC");
     expect(linkBar!.statLine).not.toContain("\n");
     expect(linkBar!.costLine).toBe("$0.29 CPC");
   });
@@ -322,13 +321,19 @@ describe("buildVisualChartSlideModel", () => {
       "$",
     );
 
-    expect(model.resultBars.map((b) => b.name)).toEqual(names);
+    expect(model.resultBars.map((b) => b.name)).toEqual([
+      "Tractor - DC - Traffic Campaign",
+      "Traffic - Tractor",
+      "Traffic - UTV",
+      "Traffic - CFMOTO",
+      "Tractor_Traffic_September",
+    ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
-    expect(model.resultBars[0]!.spendLabel).toContain("599");
+    expect(model.resultBars[0]!.resultCount).toBe(2112);
     expect(model.useSplitPanel).toBe(true);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
-    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
   });
 
