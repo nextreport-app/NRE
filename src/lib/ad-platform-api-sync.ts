@@ -1,5 +1,5 @@
 /**
  * Meta / Google / TikTok wizard "Sync from API" import.
- * Disabled — reports use Ads Manager CSV upload only.
+ * Set AD_PLATFORM_API_SYNC_ENABLED=false in the environment to hide API sync.
  */
-export const AD_PLATFORM_API_SYNC_ENABLED = false;
+export const AD_PLATFORM_API_SYNC_ENABLED = process.env.AD_PLATFORM_API_SYNC_ENABLED !== "false";
