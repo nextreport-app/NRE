@@ -214,10 +214,36 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
     const headers = ["Campaign name", "Amount spent", "Reach", "Impressions", "Results", "Cost per result", "CTR (All)", "Frequency"];
     const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers);
     const keys = preview.map((m) => m.key);
-    expect(keys).toEqual(["spend", "reach", "impressions", "meta_form_leads", "cost_per_meta_form_lead", "ctr"]);
+    expect(keys).toEqual([
+      "spend",
+      "reach",
+      "impressions",
+      "meta_form_leads",
+      "cost_per_meta_form_lead",
+      "ctr",
+      "frequency",
+    ]);
     expect(keys).not.toContain("link_clicks");
     expect(keys).not.toContain("cpc_link_click");
-    expect(keys).not.toContain("frequency");
+    expect(filterAddableMetrics(listSelectableMetrics(headers, "META"), preview)).toHaveLength(0);
+  });
+
+  it("fills an 8th chip from the Add-from-CSV pool when the pack stops at 7", () => {
+    const headers = [
+      "Campaign name",
+      "Amount spent",
+      "Reach",
+      "Impressions",
+      "Website Leads",
+      "Cost per result",
+      "Results",
+      "CTR (All)",
+      "Link clicks",
+      "CPC (all)",
+    ];
+    const preview = defaultMetaSelection("WEBSITE LEADS", "COST PER LEAD", headers);
+    expect(preview).toHaveLength(8);
+    expect(filterAddableMetrics(listSelectableMetrics(headers, "META"), preview)).toHaveLength(0);
   });
 
   it("Instant Form with Link clicks in the export still pre-selects the locked pack 8", () => {

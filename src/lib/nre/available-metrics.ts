@@ -543,6 +543,20 @@ export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: s
     used.add(key);
   }
 
+  // When the pack wishlist + pack backfill stop at 7 but the CSV still has
+  // honest metrics in the wizard "Add from your CSV" pool, pre-select an
+  // 8th so the weekly slide fills all 8 slots without manual + clicks.
+  if (kept.length < MAX_METRICS_PER_SLIDE) {
+    const addable = filterAddableMetrics(listSelectableMetrics(headers, "META"), kept);
+    for (const candidate of addable) {
+      if (kept.length >= MAX_METRICS_PER_SLIDE) break;
+      if (used.has(candidate.key)) continue;
+      if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
+      kept.push(candidate);
+      used.add(candidate.key);
+    }
+  }
+
   return kept;
 }
 
