@@ -1,5 +1,5 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
-import { isoToCsvDay } from "../rows-to-csv";
+import { formatCtrForManualCsv, normalizeDateFormat } from "./api-csv-normalize";
 import {
   manualExportPrimaryResult,
   pickManualExportResult,
@@ -19,7 +19,7 @@ export const META_CSV_HEADERS = [
   "Reach",
   "Impressions",
   "CTR (all)",
-  "CPC (cost per link click)",
+  "CPC (all)",
   "Link clicks",
   "Frequency",
   "Landing page views",
@@ -33,14 +33,6 @@ export const META_CSV_HEADERS = [
 
 function formatCount(value: number): string {
   return value > 0 ? String(value) : "";
-}
-
-function formatPercent(raw: string | undefined): string {
-  if (!raw) return "";
-  const n = parseFloat(raw);
-  if (!Number.isFinite(n)) return raw;
-  const pct = n <= 1 && n > 0 ? n * 100 : n;
-  return `${pct.toFixed(2)}%`;
 }
 
 function formatMoney(raw: string | undefined): string {
@@ -102,14 +94,14 @@ export function insightToManualCsvRow(row: MetaInsightRow): string[] {
   return [
     row.campaign_name ?? "",
     row.adset_name ?? "",
-    row.date_start ? isoToCsvDay(row.date_start) : "",
+    row.date_start ? normalizeDateFormat(row.date_start) : "",
     primary?.csvResultType ?? "",
     primary?.value ?? "",
     formatMoney(row.spend),
     cpr,
     row.reach ?? "",
     row.impressions ?? "",
-    formatPercent(row.ctr),
+    formatCtrForManualCsv(row.ctr),
     formatMoney(row.cpc),
     row.inline_link_clicks ?? "",
     row.frequency ?? "",
