@@ -61,7 +61,23 @@ describe("buildVisualChartSlideModel", () => {
       percentage: 28.5,
       spendLabel: "$602",
     });
-    expect(line).toBe("Alpha · 28.5% · $602");
+    expect(line).toBe("Alpha · 29% · $602");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 25.2,
+        spendLabel: "$303.13",
+      }),
+    ).toBe("Website Leads · 25% · $303");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 24.7,
+        spendLabel: "$303.51",
+      }),
+    ).toBe("Website Leads · 25% · $304");
   });
 
   it("uses spend donut + results bars when two or more campaigns report", () => {

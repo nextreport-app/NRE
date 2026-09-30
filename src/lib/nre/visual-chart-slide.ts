@@ -10,7 +10,7 @@ import {
   isMetaFormLeadsCampaignHaystack,
   isReachCampaignHaystack,
 } from "./campaign-name-heuristics";
-import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive, parseCellNum } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import { formatCampaignDisplayName } from "./chart-campaign-labels";
@@ -330,10 +330,16 @@ function buildSummaryFromCampaigns(campaigns: ChartCampaignData[], totalSpend: n
   return [`Total Spend: ${fmtCurrency(totalSpend, currencySymbol)}`, ...chunks].join("  |  ");
 }
 
+/** Donut legend — whole-number % and spend rounded to nearest currency unit. */
 export function formatGroupedDonutLegendEntry(
   segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
-  return `${segment.name} · ${segment.percentage}% · ${segment.spendLabel}`;
+  const pct = Math.round(segment.percentage);
+  const spendRounded = Math.round(parseCellNum(segment.spendLabel));
+  const symbolMatch = segment.spendLabel.match(/^[^\d\s-]+/);
+  const symbol = symbolMatch?.[0] ?? "$";
+  const spendText = fmtCurrency(spendRounded, symbol);
+  return `${segment.name} · ${pct}% · ${spendText}`;
 }
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {

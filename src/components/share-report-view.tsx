@@ -9,7 +9,7 @@ import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
-import { visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
+import { formatGroupedDonutLegendEntry, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -316,7 +316,7 @@ function VisualSpendDonut({
           {centerLabel}
         </div>
       </div>
-      <ul className="mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]">
+      <ul className="mt-4 w-full space-y-2 text-[15px] text-[#94a3b8]">
         {segments.map((seg, i) => (
           <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex min-w-0 items-start gap-2">
             <span
@@ -324,7 +324,7 @@ function VisualSpendDonut({
               style={{ backgroundColor: `#${seg.color}` }}
               aria-hidden="true"
             />
-            <span className="min-w-0 truncate">{seg.name} · {seg.percentage}% · {seg.spendLabel}</span>
+            <span className="min-w-0 truncate">{formatGroupedDonutLegendEntry(seg)}</span>
           </li>
         ))}
       </ul>
@@ -374,7 +374,7 @@ function VisualResultBar({
           style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
         />
       </div>
-      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[11px]" : "text-[12px]"}`}>{statLine}</p>
+      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[12px]" : "text-[14px]"}`}>{statLine}</p>
     </div>
   );
 }
