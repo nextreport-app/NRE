@@ -1,6 +1,7 @@
 import { fetchMetaAdAccountInsights } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
 import { rowsToCsv } from "../rows-to-csv";
+import { logIngestionNormalizationSample } from "./api-csv-normalize";
 import {
   META_CSV_HEADERS,
   dedupeInsightsByAdSetDay,
@@ -44,9 +45,11 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     level: "adset",
   });
 
-  const dataRows = dedupeInsightsByAdSetDay(insights)
-    .filter((r) => r.campaign_name && r.date_start)
-    .map(insightToManualCsvRow);
+  const deduped = dedupeInsightsByAdSetDay(insights).filter(
+    (r) => r.campaign_name && r.date_start,
+  );
+  logIngestionNormalizationSample(deduped);
+  const dataRows = deduped.map(insightToManualCsvRow);
 
   let csvText = rowsToCsv([...META_CSV_HEADERS], dataRows);
 
