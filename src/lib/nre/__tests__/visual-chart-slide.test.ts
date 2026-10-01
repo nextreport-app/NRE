@@ -56,12 +56,13 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 
 describe("buildVisualChartSlideModel", () => {
   it("formats grouped donut legend helper for legacy segments", () => {
-    const line = formatGroupedDonutLegendEntry({
-      name: "Alpha",
-      percentage: 28.5,
-      spendLabel: "$602",
-    });
-    expect(line).toBe("Alpha · 29% · $602");
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Alpha",
+        percentage: 28.5,
+        spendLabel: "$602",
+      }),
+    ).toBe("Alpha · 29% · $602");
 
     expect(
       formatGroupedDonutLegendEntry({
@@ -78,6 +79,14 @@ describe("buildVisualChartSlideModel", () => {
         spendLabel: "$303.51",
       }),
     ).toBe("Website Leads · 25% · $304");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 100,
+        spendLabel: "C$1,164",
+      }),
+    ).toBe("Website Leads · 100% · C$1,164");
   });
 
   it("uses spend donut + results bars when two or more campaigns report", () => {
@@ -341,11 +350,11 @@ describe("buildVisualChartSlideModel", () => {
     );
 
     expect(model.resultBars.map((b) => b.name)).toEqual([
-      "Tractor - DC - Traffic Campaign",
+      "Tractor - DC - Traffic…",
       "Traffic - Tractor",
       "Traffic - UTV",
       "Traffic - CFMOTO",
-      "Tractor_Traffic_September",
+      "Tractor_Traffic_Septemb…",
     ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);

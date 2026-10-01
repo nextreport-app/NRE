@@ -728,9 +728,7 @@ describe("splitMetricsForSlides — Part 4", () => {
   });
 
   it("additionalMetricsHeading names the continuation", () => {
-    expect(additionalMetricsHeading("Shoes - Search")).toBe(
-      "Shoes - Search — Additional Metrics (continued from previous slide)",
-    );
+    expect(additionalMetricsHeading("Shoes - Search")).toBe("Shoes - Search — Additional Metrics");
   });
 
   it("caps at MAX_TOTAL_METRICS, dropping anything beyond it", () => {

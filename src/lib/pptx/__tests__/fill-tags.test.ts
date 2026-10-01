@@ -714,7 +714,7 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
       additionalMetricsSlide: [{ key: "frequency", label: "FREQUENCY", format: "ratio" as const, value: "2.3" }],
     };
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, undefined, "WEEKLY", "META", true);
-    expect(xml).toContain("Shoes - Search — Additional Metrics (continued from previous slide)");
+    expect(xml).toContain("Shoes - Search — Additional Metrics");
     expect(xml).not.toContain("(Campaign)");
     expect(xml).toContain("FREQUENCY");
     expect(xml).toContain("2.3");
@@ -728,7 +728,7 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
     expect(xml).toContain("Jul 13 - Jul 19");
   });
 
-  it("removes unused card chrome on a sparse continuation slide instead of leaving blank icon chips", () => {
+  it("shows em dashes on unused continuation metric slots instead of blank cards", () => {
     const slide = {
       ...makeCampaignSlide("Shoes - Search"),
       dynamicMetrics: eightSlotMetrics(),

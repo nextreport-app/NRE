@@ -71,6 +71,8 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   const cols = resultBarColumns(splitPanel);
   const barLayout = resultBarLayout(model.resultBars.length, hasSubheading);
+  const rightLabelW = 96;
+  const nameColW = Math.max(120, cols.trackW - rightLabelW);
   let rowY = barLayout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
@@ -81,7 +83,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     const rightLabel = visualResultBarRightLabel(bar);
     parts.push(
       `<text x="${cols.barX}" y="${nameY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(`${bar.rank}. ${bar.name}`)}</text>`,
-      `<text x="${cols.barX + cols.trackW}" y="${nameY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
+      `<text x="${cols.barX + nameColW + rightLabelW}" y="${nameY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
       `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${barLayout.barH}" rx="${barRx}" fill="${TRACK}"/>`,
     );
     if (fillW > 0) {
