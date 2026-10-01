@@ -370,9 +370,16 @@ function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
 }
 
+/** Non-lead costed objective rows (traffic, etc.) — manual export does not use results[] website instead. */
+function objectiveBlocksResultsWebsitePick(objectiveCosted: CostedAdsManagerResult[]): boolean {
+  return objectiveCosted.some(
+    (c) => c.actionType !== "lead" && !isWebsiteLeadAction(c.actionType),
+  );
+}
+
 /**
  * Manual export uses objective_results + cost_per_objective_result when Meta sends them.
- * Costed website pixel in results[] alone often over-counts vs Ads Manager (Credit Firm blank days).
+ * Costed website pixel in results[] alone (no objective lead) often over-counts on blank days.
  */
 function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const objectiveCosted = costedObjectiveResults(row);
@@ -380,20 +387,37 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
   if (objectiveWebsite) {
     return null;
   }
-  if (objectiveCosted.length > 0) {
+  if (objectiveBlocksResultsWebsitePick(objectiveCosted)) {
     return null;
   }
+
+  const objectiveLead = objectiveCosted.find((c) => c.actionType === "lead");
 
   const resultsCosted = costedAdsManagerResults(row);
   const websiteCosted = resultsCosted.filter((c) => isWebsiteLeadAction(c.actionType));
   if (websiteCosted.length === 0) {
     return null;
   }
-  if (websiteCosted.length === 1 && resultsCosted.length === 1) {
+
+  const webPick = pickCostedWebsiteLeadFromCostedList(row, resultsCosted);
+  if (!webPick) return null;
+
+  const webCount = parseFloat(webPick.value);
+  if (objectiveLead && webCount !== objectiveLead.count) {
     return null;
   }
 
-  return pickCostedWebsiteLeadFromCostedList(row, resultsCosted);
+  const soleCostedWebsiteInResults =
+    websiteCosted.length === 1 &&
+    resultsCosted.length === 1 &&
+    isWebsiteLeadAction(resultsCosted[0].actionType);
+
+  if (soleCostedWebsiteInResults && !objectiveLead) {
+    return null;
+  }
+
+  if (isLikelyLinkClickMisattribution(row, webCount)) return null;
+  return webPick;
 }
 
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
