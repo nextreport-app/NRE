@@ -91,6 +91,14 @@ describe("analyzeCsvDateGuidance", () => {
     expect(guidance.mtdRange).toEqual({ startIso: "2026-09-01", endIso: "2026-09-23" });
   });
 
+  it("Oct 1 + Previous Month CSV from Sep 16 (mid-month launch) does not warn about missing Sep 1", () => {
+    const rows = daysInclusive("2026-09-16", "2026-09-30");
+    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-10-01T12:00:00Z"), "UTC");
+
+    expect(guidance.mtdRange).toEqual({ startIso: "2026-09-01", endIso: "2026-09-30" });
+    expect(guidance.warnings).toHaveLength(0);
+  });
+
   it("Sep 24 + CSV from Sep 22 warns when default weekly spans pre-launch days", () => {
     const rows = daysInclusive("2026-09-22", "2026-09-23");
     const guidance = analyzeCsvDateGuidance(rows, new Date("2026-09-24T12:00:00Z"), "UTC");
