@@ -42,6 +42,15 @@ describe("getMetaCsvDownloadTip — two rules", () => {
     expect(getMetaCsvDownloadTip(instant, "America/New_York")).toBe("Export Last 30 Days with Day breakdown.");
     expect(getMetaCsvDownloadTip(instant, "Asia/Kolkata")).toContain("1st");
   });
+
+  it("same UTC instant: Oct 1 in India vs still Sep 30 in US Pacific", () => {
+    // 2026-10-01 00:30 IST = 2026-09-30 19:00 UTC
+    const instant = new Date("2026-09-30T19:00:00Z");
+    expect(getMetaCsvDownloadTip(instant, "Asia/Kolkata")).toContain("1st");
+    expect(getMetaCsvDownloadTip(instant, "America/Los_Angeles")).toBe(
+      "Export Last 30 Days with Day breakdown.",
+    );
+  });
 });
 
 describe("analyzeCsvDateGuidance", () => {
