@@ -187,7 +187,7 @@ export function evaluateAddMetric(selectedCount: number, _addableRemaining = 0):
 }
 
 export function additionalMetricsHeading(name: string): string {
-  return `${name} — Additional Metrics (continued from previous slide)`;
+  return `${name} — Additional Metrics`;
 }
 
 /** Pad the continuation when the user added this many extras or fewer (1–3). Four extras already fill the slide honestly. */
