@@ -67,6 +67,22 @@ describe("buildVisualChartSlideModel", () => {
     expect(
       formatGroupedDonutLegendEntry({
         name: "Website Leads",
+        percentage: 25.2,
+        spendLabel: "$303.13",
+      }),
+    ).toBe("Website Leads · 25% · $303");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 24.7,
+        spendLabel: "$303.51",
+      }),
+    ).toBe("Website Leads · 25% · $304");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
         percentage: 100,
         spendLabel: "C$1,164",
       }),
