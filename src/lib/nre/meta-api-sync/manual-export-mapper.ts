@@ -370,12 +370,38 @@ function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
 }
 
-function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  const fromResults = pickCostedWebsiteLeadFromCostedList(row, costedAdsManagerResults(row));
-  if (fromResults) return fromResults;
+/**
+ * Manual export uses objective_results + cost_per_objective_result when Meta sends them.
+ * Costed website pixel in results[] alone often over-counts vs Ads Manager (Credit Firm blank days).
+ */
+function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const objectiveCosted = costedObjectiveResults(row);
+  const objectiveWebsite = objectiveCosted.find((c) => isWebsiteLeadAction(c.actionType));
+  if (objectiveWebsite) {
+    return null;
+  }
+  if (objectiveCosted.length > 0) {
+    return null;
+  }
 
+  const resultsCosted = costedAdsManagerResults(row);
+  const websiteCosted = resultsCosted.filter((c) => isWebsiteLeadAction(c.actionType));
+  if (websiteCosted.length === 0) {
+    return null;
+  }
+  if (websiteCosted.length === 1 && resultsCosted.length === 1) {
+    return null;
+  }
+
+  return pickCostedWebsiteLeadFromCostedList(row, resultsCosted);
+}
+
+function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
   if (fromObjective) return fromObjective;
+
+  const fromResults = pickCostedWebsiteFromResultsChannel(row);
+  if (fromResults) return fromResults;
 
   const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
   if (fromLeadMatch) return fromLeadMatch;
@@ -408,9 +434,7 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
     return null;
   }
 
-  const pixel = costedWebsiteLeadFromActions(row);
-  if (pixel && isLikelyLinkClickMisattribution(row, parseFloat(pixel.value))) return null;
-  return pixel;
+  return null;
 }
 
 function pickQuoteManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
