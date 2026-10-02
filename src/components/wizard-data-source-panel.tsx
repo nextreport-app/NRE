@@ -111,6 +111,8 @@ export function WizardDataSourcePanel({
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  /** Meta only — Ads Manager export used for Result type / Results (API fills delivery metrics). */
+  const [metaReferenceCsvFile, setMetaReferenceCsvFile] = useState<File | null>(null);
 
   const loadAccounts = useCallback(async () => {
     if (!connected) return;
@@ -153,9 +155,24 @@ export function WizardDataSourcePanel({
   async function handleSync() {
     onSyncStart();
     try {
+      let referenceManualCsvText: string | undefined;
+      if (platform === "META") {
+        if (!metaReferenceCsvFile) {
+          onSyncError(
+            "Attach your Ads Manager CSV (Last 30 days or Previous month, Day breakdown). Meta’s API does not match manual Results for website-lead campaigns — we merge Results from your file.",
+          );
+          return;
+        }
+        referenceManualCsvText = await metaReferenceCsvFile.text();
+      }
+
       const body =
         platform === "META"
-          ? { platform: "META" as const, metaAdAccountId: selectedMetaAccount }
+          ? {
+              platform: "META" as const,
+              metaAdAccountId: selectedMetaAccount,
+              referenceManualCsvText,
+            }
           : platform === "GOOGLE"
             ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
             : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
@@ -217,7 +234,11 @@ export function WizardDataSourcePanel({
     connected &&
     configured &&
     !isSyncing &&
-    (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
+    (showMeta
+      ? !!selectedMetaAccount && !!metaReferenceCsvFile
+      : showGoogle
+        ? !!selectedGoogleCustomer
+        : !!selectedTikTokAdvertiser);
 
   return (
     <div className="space-y-4">
@@ -226,6 +247,18 @@ export function WizardDataSourcePanel({
           Last 30 days through yesterday — Previous month loads automatically.
         </p>
       </div>
+
+      {showMeta ? (
+        <div className="rounded-lg border border-[#f6ad55]/35 bg-[#1e293b]/80 px-4 py-3">
+          <p className="text-[14px] font-medium text-[#fbd38d]">Results come from your Ads Manager CSV</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">
+            Meta&apos;s Insights API does not reliably match manual{" "}
+            <span className="text-dash-ink">Result type / Results</span> for website-lead accounts (including Credit
+            Firm). Attach the same daily export you would upload manually; sync pulls fresh spend, reach, impressions,
+            and clicks from the API and merges your Result columns.
+          </p>
+        </div>
+      ) : null}
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -290,6 +323,22 @@ export function WizardDataSourcePanel({
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
               </Link>
+              <div className="pt-2">
+                <label className="block text-[12px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                  Ads Manager CSV (required)
+                </label>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="mt-2 block w-full text-[13px] text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[13px] file:font-semibold file:text-dash-ink"
+                  onChange={(e) => setMetaReferenceCsvFile(e.target.files?.[0] ?? null)}
+                />
+                {metaReferenceCsvFile ? (
+                  <p className="mt-2 text-[12px] text-emerald-300">{metaReferenceCsvFile.name}</p>
+                ) : (
+                  <p className="mt-2 text-[12px] text-amber-200/90">Same date range as API sync · Day breakdown</p>
+                )}
+              </div>
             </div>
           )}
         </div>
