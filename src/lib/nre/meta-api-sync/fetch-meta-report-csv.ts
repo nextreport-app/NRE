@@ -7,6 +7,7 @@ import {
   dedupeInsightsByAdSetDay,
   insightToManualCsvRow,
 } from "./insight-engine";
+import { sumResultsInMetaSyncCsv } from "./count-meta-sync-results";
 import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
 
 export interface FetchMetaReportCsvInput {
@@ -31,6 +32,9 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   rowCount: number;
   sinceIso: string;
   untilIso: string;
+  /** Results total from API mapper only (before optional manual merge). */
+  inferredResultsTotal: number;
+  mergedWithManualReference: boolean;
 }> {
   const { sinceIso, untilIso } =
     input.sinceIso && input.untilIso
@@ -52,12 +56,14 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   const dataRows = deduped.map(insightToManualCsvRow);
 
   let csvText = rowsToCsv([...META_CSV_HEADERS], dataRows);
+  const inferredResultsTotal = sumResultsInMetaSyncCsv(csvText);
+  const mergedWithManualReference = Boolean(input.referenceManualCsvText?.trim());
 
-  if (input.referenceManualCsvText?.trim()) {
-    csvText = mergeApiCsvWithManualReference(csvText, input.referenceManualCsvText);
+  if (mergedWithManualReference) {
+    csvText = mergeApiCsvWithManualReference(csvText, input.referenceManualCsvText!);
   }
 
   const rowCount = Math.max(0, csvText.split("\n").filter(Boolean).length - 1);
 
-  return { csvText, rowCount, sinceIso, untilIso };
+  return { csvText, rowCount, sinceIso, untilIso, inferredResultsTotal, mergedWithManualReference };
 }

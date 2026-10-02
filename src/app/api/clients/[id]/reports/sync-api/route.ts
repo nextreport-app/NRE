@@ -145,6 +145,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         referenceManualCsvText,
       });
 
+      if (
+        !referenceManualCsvText?.trim() &&
+        result.rowCount > 0 &&
+        result.inferredResultsTotal === 0
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Meta’s API did not return usable Result counts for this account (website leads often show as 0). " +
+              "Attach your Ads Manager daily export — same last-30-days window with Day breakdown — on the import step and sync again. " +
+              "We copy Result type and Results from that file and refresh spend, reach, and clicks from the API.",
+            code: "META_RESULTS_NEED_MANUAL_REFERENCE",
+          },
+          { status: 422 },
+        );
+      }
+
       const previousMonth = await previousMonthPayloadFromClient(client);
       // Previous-month sync is a second Meta fetch — run in the background so the wizard can analyze MTD data immediately.
       void maybeSyncPreviousMonthDataFromMetaApi({
