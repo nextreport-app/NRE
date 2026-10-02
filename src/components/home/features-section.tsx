@@ -1,17 +1,17 @@
 const FEATURES = [
   {
-    icon: "✅",
-    title: "Meta Marketing API",
-    description:
-      "Connect your Meta ad account and skip manual CSV exports — sync campaign data straight into the report wizard.",
-    live: true,
-  },
-  {
     icon: "📊",
     title: "CSV upload",
     description:
-      "Prefer a manual export? Standard Meta Ads Manager CSVs work when the recommended day-level columns are included.",
+      "Export Last 30 days or Previous month with Day breakdown from Ads Manager — the supported way to build Meta reports today.",
     live: true,
+  },
+  {
+    icon: "🔌",
+    title: "Meta Marketing API",
+    description:
+      "App approved and connected for future automation. Wizard API import stays off until Results match manual export reliably.",
+    live: false,
   },
   {
     icon: "🎯",
