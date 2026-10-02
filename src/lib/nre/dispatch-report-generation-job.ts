@@ -5,10 +5,11 @@
  * On Vercel, an un-awaited fetch is not guaranteed to run once the route
  * returns — scheduleReportGenerationJob uses Next.js after() so the worker
  * request is kept alive until it is dispatched.
+ *
+ * This module must not statically import PPTX render code (Function Storage).
  */
 
 import { after } from "next/server";
-import { processReportGeneration } from "@/lib/nre/report-generation-job";
 
 function internalBaseUrl(): string {
   const vercel = process.env.VERCEL_URL?.trim();
@@ -21,6 +22,7 @@ function internalBaseUrl(): string {
 async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
+    const { processReportGeneration } = await import("@/lib/nre/report-generation-job");
     await processReportGeneration(reportId);
     return;
   }
@@ -38,7 +40,7 @@ async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error("[report-generation] worker HTTP", res.status, body);
-    // Fallback so a misconfigured worker does not leave reports stuck in GENERATING.
+    const { processReportGeneration } = await import("@/lib/nre/report-generation-job");
     await processReportGeneration(reportId);
   }
 }
@@ -51,6 +53,7 @@ export function scheduleReportGenerationJob(reportId: string): void {
     } catch (err) {
       console.error("[scheduleReportGenerationJob] failed:", err);
       try {
+        const { processReportGeneration } = await import("@/lib/nre/report-generation-job");
         await processReportGeneration(reportId);
       } catch (fallbackErr) {
         console.error("[scheduleReportGenerationJob] inline fallback failed:", fallbackErr);

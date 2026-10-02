@@ -12,7 +12,7 @@ import {
   type HistoricalReportJobPayload,
   type PreviousMonthSummaryJobPayload,
   type StandardReportJobPayload,
-} from "@/lib/nre/report-generation-job";
+} from "@/lib/nre/report-generation-job-payload";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import { generateShareToken } from "@/lib/share-token";
