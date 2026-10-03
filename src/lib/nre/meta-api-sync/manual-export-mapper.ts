@@ -133,6 +133,28 @@ function costedAdsManagerResults(row: MetaInsightRow): CostedAdsManagerResult[] 
   return costedAdsManagerResultsFrom(row.results, row.cost_per_result);
 }
 
+function hasCostedCustomWebsiteInResults(row: MetaInsightRow): boolean {
+  return costedAdsManagerResults(row).some((c) => CUSTOM_CONVERSION.test(c.actionType));
+}
+
+/** Live Credit Firm: custom.* in actions[] without paired costed custom in results[] → Ads Manager blank. */
+function hasCustomConversionInActions(row: MetaInsightRow): boolean {
+  for (const actionType of actionValueMap(row.actions).keys()) {
+    if (CUSTOM_CONVERSION.test(actionType)) return true;
+  }
+  return false;
+}
+
+function rejectWebsiteLeadWhenCustomActionWithoutCostedCustomResult(
+  row: MetaInsightRow,
+  result: ManualExportPrimaryResult | null,
+): ManualExportPrimaryResult | null {
+  if (!result || !isWebsiteLeadCampaign(row)) return result;
+  if (hasCostedCustomWebsiteInResults(row)) return result;
+  if (hasCustomConversionInActions(row)) return null;
+  return result;
+}
+
 function costedObjectiveResults(row: MetaInsightRow): CostedAdsManagerResult[] {
   return costedAdsManagerResultsFrom(row.objective_results, row.cost_per_objective_result);
 }
@@ -351,6 +373,9 @@ function shouldRejectUncostedOnsiteCount(
 function websiteLeadFromCostedActionSpendParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
   if (!isWebsiteLeadCampaign(row)) return null;
   if (hasMeaningfulWebsiteConversionFields(row)) return null;
+  // Ad-set insights often omit results[] after campaign merge is blocked — CPA on fb_pixel_custom over-counts.
+  if ((row.results?.length ?? 0) === 0) return null;
+  if (hasCustomConversionInActions(row) && !hasCostedCustomWebsiteInResults(row)) return null;
   // Daily uncosted actions:lead on 30/30 — CPA parity here caused false positives (Sep 10/14/24/29).
   if (uncostedMetricCount(row.results, "lead") > 0) return null;
   if (
@@ -685,10 +710,10 @@ function costedWebsiteResultCorroboratedInActions(
 
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
-  if (fromObjective) return fromObjective;
+  if (fromObjective) return finalizeWebsiteLeadManualExport(row, fromObjective);
 
   const fromResults = pickCostedWebsiteFromResultsChannel(row);
-  if (fromResults) return fromResults;
+  if (fromResults) return finalizeWebsiteLeadManualExport(row, fromResults);
 
   const costedLeadOnly = costedAdsManagerResults(row).find((c) => c.actionType === "lead");
   if (
@@ -697,25 +722,30 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
     !costedAdsManagerResults(row).some((c) => isWebsiteLeadAction(c.actionType)) &&
     !isLikelyLinkClickMisattribution(row, costedLeadOnly.count)
   ) {
-    return pack("lead", costedLeadOnly.count, costedLeadOnly.cost, row, true);
+    return finalizeWebsiteLeadManualExport(
+      row,
+      pack("lead", costedLeadOnly.count, costedLeadOnly.cost, row, true),
+    );
   }
 
   const fromCostedActionParity = websiteLeadFromCostedActionSpendParity(row);
-  if (fromCostedActionParity) return fromCostedActionParity;
+  if (fromCostedActionParity) return finalizeWebsiteLeadManualExport(row, fromCostedActionParity);
 
   const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
-  if (fromLeadMatch) return fromLeadMatch;
+  if (fromLeadMatch) return finalizeWebsiteLeadManualExport(row, fromLeadMatch);
 
   const fromUncostedResultsPixel = websiteLeadFromUncostedResultsPixel(row);
-  if (fromUncostedResultsPixel) return fromUncostedResultsPixel;
+  if (fromUncostedResultsPixel) return finalizeWebsiteLeadManualExport(row, fromUncostedResultsPixel);
 
   const fromUncostedWebsiteInResults = websiteLeadFromUncostedWebsiteInResults(row);
-  if (fromUncostedWebsiteInResults) return fromUncostedWebsiteInResults;
+  if (fromUncostedWebsiteInResults) {
+    return finalizeWebsiteLeadManualExport(row, fromUncostedWebsiteInResults);
+  }
 
   const hasResultMetrics = (row.results?.length ?? 0) > 0;
 
   if (!hasResultMetrics) {
-    return websiteLeadFromActionsWhenNoResultsArray(row);
+    return finalizeWebsiteLeadManualExport(row, websiteLeadFromActionsWhenNoResultsArray(row));
   }
 
   // Costed combined lead in results[] matching costed pixel — real lead day with full CPR payloads.
@@ -728,7 +758,7 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
       leadInResults.count === parseFloat(pixelFromActions.value) &&
       !isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))
     ) {
-      return pixelFromActions;
+      return finalizeWebsiteLeadManualExport(row, pixelFromActions);
     }
     // Live OUTCOME_LEADS website campaigns often expose only costed actions:lead in results[]
     // (no fb_pixel_lead breakdown). Ads Manager still labels these "website submission".
@@ -737,7 +767,10 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
       !costed.some((c) => isWebsiteLeadAction(c.actionType)) &&
       !isLikelyLinkClickMisattribution(row, leadInResults.count)
     ) {
-      return pack("lead", leadInResults.count, leadInResults.cost, row, true);
+      return finalizeWebsiteLeadManualExport(
+        row,
+        pack("lead", leadInResults.count, leadInResults.cost, row, true),
+      );
     }
     return null;
   }
@@ -747,6 +780,13 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   }
 
   return null;
+}
+
+function finalizeWebsiteLeadManualExport(
+  row: MetaInsightRow,
+  result: ManualExportPrimaryResult | null,
+): ManualExportPrimaryResult | null {
+  return rejectWebsiteLeadWhenCustomActionWithoutCostedCustomResult(row, result);
 }
 
 function pickQuoteManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
