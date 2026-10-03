@@ -12,9 +12,12 @@ describe("buildMetaSyncDiagnostics", () => {
         optimization_goal: "OUTCOME_LEADS",
         spend: "22.93",
         results: [
-          { indicator: "offsite_conversion.fb_pixel_lead", values: [{ value: "3" }] },
+          { indicator: "actions:offsite_conversion.fb_pixel_lead", values: [{ value: "3" }] },
         ],
-        actions: [{ action_type: "link_click", value: "12" }],
+        actions: [
+          { action_type: "link_click", value: "12" },
+          { action_type: "offsite_conversion.fb_pixel_lead", value: "3" },
+        ],
       },
     ];
     const d = buildMetaSyncDiagnostics(rows);
