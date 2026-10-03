@@ -26,6 +26,10 @@ describe("costed offsite_conversion.custom in results[]", () => {
         { action_type: "link_click", value: "12" },
         { action_type: "landing_page_view", value: "10" },
         { action_type: "offsite_conversion.fb_pixel_custom", value: "1" },
+        {
+          action_type: "offsite_conversion.custom.446052571654985",
+          value: "3",
+        },
       ],
     };
     const primary = manualExportPrimaryResult(row);

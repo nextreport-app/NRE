@@ -639,7 +639,8 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
   const soleCostedWebsiteInResults =
     websiteCosted.length === 1 &&
     resultsCosted.length === 1 &&
-    isWebsiteLeadAction(resultsCosted[0].actionType);
+    (isWebsiteLeadAction(resultsCosted[0].actionType) ||
+      CUSTOM_CONVERSION.test(resultsCosted[0].actionType));
 
   // Reject impossible website counts vs LPV (Sep 2 bad API: costed pixel 4, LPV 3, manual blank).
   if (soleCostedWebsiteInResults && !objectiveLead) {
@@ -650,7 +651,36 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
   }
 
   if (isLikelyLinkClickMisattribution(row, webCount)) return null;
+
+  if (
+    !costedWebsiteResultCorroboratedInActions(row, webPick.action_type, webCount)
+  ) {
+    return null;
+  }
+
   return webPick;
+}
+
+/** Costed custom.* in results[] without the same type in actions[] → +4 false lead days (Credit Firm). */
+function costedWebsiteResultCorroboratedInActions(
+  row: MetaInsightRow,
+  actionType: string,
+  count: number,
+): boolean {
+  if (!CUSTOM_CONVERSION.test(actionType)) {
+    return true;
+  }
+
+  const map = actionValueMap(row.actions);
+  const exact = map.get(actionType) ?? 0;
+  if (exact >= count) return true;
+
+  if (count >= 2) {
+    const onsite = map.get("onsite_web_lead") ?? 0;
+    if (onsite >= count) return true;
+  }
+
+  return false;
 }
 
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
