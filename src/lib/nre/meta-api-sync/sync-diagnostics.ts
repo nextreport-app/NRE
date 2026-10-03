@@ -2,6 +2,7 @@ import type { MetaInsightRow } from "@/lib/meta-api";
 import {
   hasMeaningfulConversionFields,
   hasMeaningfulWebsiteConversionFields,
+  sampleCostedResultIndicators,
 } from "./conversion-field-signals";
 import { manualExportPrimaryResult } from "./manual-export-mapper";
 
@@ -30,6 +31,7 @@ export type MetaSyncDiagnostics = {
   rowsWithMappedResults: number;
   /** action_type values on the first spend row (confirms delivery-only vs conversion payload). */
   sampleActionTypes: string[];
+  sampleCostedResultIndicators: string[];
   usedCampaignLevelConversionFallback: boolean;
   /** First rows where Meta sent conversion fields but mapper output blank. */
   blankMapperSamples: Array<{
@@ -78,6 +80,10 @@ export function buildMetaSyncDiagnostics(
   const blankMapperSamples: MetaSyncDiagnostics["blankMapperSamples"] = [];
   const sampleRow = rows.find((r) => parseFloat(r.spend ?? "0") > 0);
   const sampleActionTypes = (sampleRow?.actions ?? []).map((a) => a.action_type).slice(0, 12);
+  const sampleMeaningfulRow = rows.find((r) => hasMeaningfulConversionFields(r));
+  const sampleCostedResultIndicatorsList = sampleMeaningfulRow
+    ? sampleCostedResultIndicators(sampleMeaningfulRow)
+    : [];
 
   for (const row of rows) {
     if ((row.results?.length ?? 0) > 0) rowsWithResultsField++;
@@ -136,6 +142,7 @@ export function buildMetaSyncDiagnostics(
     rowsWithCostedWebsiteOrLeadInResults,
     rowsWithMappedResults,
     sampleActionTypes,
+    sampleCostedResultIndicators: sampleCostedResultIndicatorsList,
     usedCampaignLevelConversionFallback: options?.usedCampaignLevelConversionFallback ?? false,
     blankMapperSamples,
     deployCommit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,

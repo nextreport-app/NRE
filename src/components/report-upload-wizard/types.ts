@@ -50,6 +50,7 @@ export type MetaSyncDiagnosticsSummary = {
   rowsWithCostedWebsiteOrLeadInResults?: number;
   rowsWithCostedLeadInResults?: number;
   sampleActionTypes?: string[];
+  sampleCostedResultIndicators?: string[];
   usedCampaignLevelConversionFallback?: boolean;
   deployCommit: string | null;
 };

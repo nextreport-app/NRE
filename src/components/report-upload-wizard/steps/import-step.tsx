@@ -252,6 +252,12 @@ export function WizardImportStep() {
                     Sample actions[]: {metaSyncDiagnostics.sampleActionTypes.join(", ")}
                   </li>
                 ) : null}
+                {metaSyncDiagnostics.sampleCostedResultIndicators?.length ? (
+                  <li className="font-mono text-[12px] text-dash-ink-muted">
+                    Sample costed results[]:{" "}
+                    {metaSyncDiagnostics.sampleCostedResultIndicators.join(", ")}
+                  </li>
+                ) : null}
                 {metaSyncDiagnostics.deployCommit ? (
                   <li>
                     Deploy commit:{" "}

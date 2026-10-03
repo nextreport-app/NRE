@@ -27,6 +27,31 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
     expect(out.cost_per_result?.length).toBe(1);
   });
 
+  it("merges campaign website results when ad set only has costed LPV", () => {
+    const adset: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      adset_name: "Homebuyers - Broad Targeting",
+      date_start: "2026-09-27",
+      spend: "22.93",
+      results: [{ indicator: "actions:landing_page_view", values: [{ value: "10" }] }],
+      cost_per_result: [{ indicator: "actions:landing_page_view", values: [{ value: "2.29" }] }],
+    };
+    const campaign: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      date_start: "2026-09-27",
+      spend: "22.93",
+      results: [
+        { indicator: "actions:offsite_conversion.fb_pixel_lead", values: [{ value: "3" }] },
+      ],
+      cost_per_result: [
+        { indicator: "actions:offsite_conversion.fb_pixel_lead", values: [{ value: "7.64" }] },
+      ],
+    };
+    const [out] = enrichAdSetInsightsFromCampaignLevel([adset], [campaign]);
+    expect(out.results?.[0]?.indicator).toContain("fb_pixel_lead");
+    expect(out.results?.[0]?.values?.[0]?.value).toBe("3");
+  });
+
   it("replaces ad-set uncosted results[] noise when campaign has costed lead", () => {
     const adset: MetaInsightRow = {
       campaign_name: "DC Leads Campaign Main",
@@ -46,6 +71,26 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
     const [out] = enrichAdSetInsightsFromCampaignLevel([adset], [campaign]);
     expect(out.results?.[0]?.values?.[0]?.value).toBe("3");
     expect(out.cost_per_result?.[0]?.values?.[0]?.value).toBe("7.64");
+  });
+
+  it("does not merge campaign costed LPV onto website-lead ad set rows", () => {
+    const adset: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      adset_name: "Homebuyers - Broad Targeting",
+      date_start: "2026-09-10",
+      spend: "14.12",
+      results: [{ indicator: "actions:lead", values: [{ value: "1" }] }],
+    };
+    const campaign: MetaInsightRow = {
+      campaign_name: "DC Leads Campaign Main",
+      date_start: "2026-09-10",
+      spend: "14.12",
+      results: [{ indicator: "actions:landing_page_view", values: [{ value: "3" }] }],
+      cost_per_result: [{ indicator: "actions:landing_page_view", values: [{ value: "4.71" }] }],
+    };
+    const [out] = enrichAdSetInsightsFromCampaignLevel([adset], [campaign]);
+    expect(out.results?.[0]?.indicator).toBe("actions:lead");
+    expect(out.cost_per_result).toBeUndefined();
   });
 
   it("does not copy when two ad sets share campaign+day", () => {

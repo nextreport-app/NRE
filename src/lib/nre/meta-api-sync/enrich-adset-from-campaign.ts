@@ -88,6 +88,10 @@ export function enrichAdSetInsightsFromCampaignLevel(
 
     const campaign = campaignByDay.get(campKey);
     if (!campaign) return row;
+    // Campaign often sends costed LPV/link_click only — do not overwrite website ad-set rows.
+    if (isWebsiteLeadRow(row) && !hasMeaningfulWebsiteConversionFields(campaign)) {
+      return row;
+    }
     return mergeConversionFromCampaign(row, campaign);
   });
 }
