@@ -55,14 +55,20 @@ function manualRowToInsight(row: ReturnType<typeof parseCsvText>["rows"][number]
   };
 }
 
-async function apiRowsFromManual(manualRows: ReturnType<typeof parseCsvText>["rows"]) {
+function stubMetaInsightsFetch(data: MetaInsightRow[]) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ data: manualRows.map(manualRowToInsight) }),
-    })),
+    vi.fn(async (url: string) => {
+      if (String(url).includes("level=campaign")) {
+        return { ok: true, json: async () => ({ data: [] }) };
+      }
+      return { ok: true, json: async () => ({ data }) };
+    }),
   );
+}
+
+async function apiRowsFromManual(manualRows: ReturnType<typeof parseCsvText>["rows"]) {
+  stubMetaInsightsFetch(manualRows.map(manualRowToInsight));
   const apiCsv = await fetchMetaReportCsv({
     accessToken: "token",
     adAccountId: "act_123",
@@ -152,10 +158,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       return insight;
     });
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => ({ data: noisyInsights }) })),
-    );
+    stubMetaInsightsFetch(noisyInsights);
     const apiCsv = await fetchMetaReportCsv({
       accessToken: "token",
       adAccountId: "act_123",
@@ -197,10 +200,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       return insight;
     });
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => ({ data: insights }) })),
-    );
+    stubMetaInsightsFetch(insights);
     const apiCsv = await fetchMetaReportCsv({
       accessToken: "token",
       adAccountId: "act_123",
@@ -233,15 +233,15 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       const insight = manualRowToInsight(row);
       const results = Number(row.results) || 0;
       const spend = Number(row.spend) || 0;
-      insight.results = [
-        { indicator: "actions:lead", values: [{ value: results > 0 ? String(results) : "2" }] },
-      ];
-      insight.cost_per_result = [
-        {
-          indicator: "actions:lead",
-          values: [{ value: results > 0 ? String(spend / results) : "3.00" }],
-        },
-      ];
+      if (results > 0) {
+        insight.results = [{ indicator: "actions:lead", values: [{ value: String(results) }] }];
+        insight.cost_per_result = [
+          { indicator: "actions:lead", values: [{ value: String(spend / results) }] },
+        ];
+      } else {
+        insight.results = [{ indicator: "actions:lead", values: [{ value: "2" }] }];
+        insight.cost_per_result = [];
+      }
       if (results > 0) {
         insight.results!.unshift({
           indicator: "actions:offsite_conversion.fb_pixel_lead",
@@ -264,10 +264,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
       return insight;
     });
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => ({ data: insights }) })),
-    );
+    stubMetaInsightsFetch(insights);
     const apiCsv = await fetchMetaReportCsv({
       accessToken: "token",
       adAccountId: "act_123",

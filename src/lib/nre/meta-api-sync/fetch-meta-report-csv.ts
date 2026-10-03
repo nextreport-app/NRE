@@ -1,13 +1,17 @@
-import { fetchMetaAdAccountInsights } from "@/lib/meta-api";
+import { fetchMetaAdAccountInsights, type MetaInsightRow } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
 import { rowsToCsv } from "../rows-to-csv";
 import { logIngestionNormalizationSample } from "./api-csv-normalize";
-import { enrichAdSetInsightsFromCampaignLevel } from "./enrich-adset-from-campaign";
+import {
+  countRowsWithConversionFields,
+  enrichAdSetInsightsFromCampaignLevel,
+} from "./enrich-adset-from-campaign";
 import {
   META_CSV_HEADERS,
   dedupeInsightsByAdSetDay,
   insightToManualCsvRow,
 } from "./insight-engine";
+import { resolveMetaInsightRowsForCsvExport } from "./resolve-rows-for-csv-export";
 import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
 import { normalizeMetaInsightRow } from "./normalize-insight-row";
 import { buildMetaSyncDiagnostics, type MetaSyncDiagnostics } from "./sync-diagnostics";
@@ -55,8 +59,11 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     (r) => r.campaign_name && r.date_start,
   );
 
+  const adsetRows = deduped;
   let usedCampaignLevelConversionFallback = false;
-  if (deduped.length > 0) {
+  let enrichedRows: MetaInsightRow[] | null = null;
+  const adsetWithConversion = countRowsWithConversionFields(adsetRows);
+  if (adsetRows.length > 0 && adsetWithConversion < Math.max(1, Math.floor(adsetRows.length * 0.2))) {
     const campaignInsights = (
       await fetchMetaAdAccountInsights({
         accessToken: input.accessToken,
@@ -66,9 +73,18 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
         level: "campaign",
       })
     ).map(normalizeMetaInsightRow);
-    deduped = enrichAdSetInsightsFromCampaignLevel(deduped, campaignInsights);
-    usedCampaignLevelConversionFallback = true;
+    enrichedRows = enrichAdSetInsightsFromCampaignLevel(adsetRows, campaignInsights);
+    if (countRowsWithConversionFields(enrichedRows) > adsetWithConversion) {
+      usedCampaignLevelConversionFallback = true;
+    }
   }
+
+  deduped = resolveMetaInsightRowsForCsvExport(
+    adsetRows,
+    enrichedRows,
+    usedCampaignLevelConversionFallback,
+  );
+
   logIngestionNormalizationSample(deduped);
   const dataRows = deduped.map(insightToManualCsvRow);
 
