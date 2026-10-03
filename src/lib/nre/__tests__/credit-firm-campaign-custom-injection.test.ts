@@ -27,7 +27,7 @@ function liveAdsetShape(row: ReturnType<typeof parseCsvText>["rows"][number]) {
   insight.objective_results = [];
   insight.cost_per_objective_result = [];
   insight.cost_per_action_type = [];
-  insight.results = [{ indicator: "actions:lead", values: [{ value: "1" }] }];
+  insight.results = [];
   insight.cost_per_result = [];
   insight.actions = [
     { action_type: "link_click", value: String(linkClicks || 1) },
