@@ -29,7 +29,13 @@ function productionDiagnosticsF947Shape(row: ReturnType<typeof parseCsvText>["ro
   insight.cost_per_objective_result = [];
 
   insight.results = [{ indicator: "actions:lead", values: [{ value: "1" }] }];
-  if (manualResults > 0) {
+  const offsiteA = 1;
+  if (manualResults === 1) {
+    insight.results.push({
+      indicator: "actions:offsite_conversion.fb_pixel_lead",
+      values: [{ value: "1" }],
+    });
+  } else if (manualResults > 1) {
     insight.results.push({
       indicator: "actions:onsite_web_lead",
       values: [{ value: String(manualResults) }],
@@ -40,11 +46,12 @@ function productionDiagnosticsF947Shape(row: ReturnType<typeof parseCsvText>["ro
     { action_type: "link_click", value: String(linkClicks || 1) },
     { action_type: "landing_page_view", value: String(lpv || 1) },
     { action_type: "offsite_conversion.fb_pixel_custom", value: "1" },
+    { action_type: "offsite_conversion.fb_pixel_lead", value: String(offsiteA) },
   ];
-  if (manualResults > 0) {
+  if (manualResults > 1) {
     actions.push({ action_type: "onsite_web_lead", value: String(manualResults) });
-    actions.push({ action_type: "offsite_conversion.fb_pixel_lead", value: "1" });
-  } else if (linkClicks > 0) {
+  }
+  if (linkClicks > 0 && manualResults === 0) {
     actions.push({ action_type: "offsite_conversion.fb_pixel_lead", value: "1" });
   }
   insight.actions = actions;
