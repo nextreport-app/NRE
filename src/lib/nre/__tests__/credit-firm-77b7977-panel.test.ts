@@ -25,15 +25,18 @@ function panel77b7977Adset(row: ReturnType<typeof parseCsvText>["rows"][number])
   insight.results = [{ indicator: "actions:lead", values: [{ value: "1" }] }];
   insight.cost_per_action_type = [];
   if (manualResults > 0) {
-    insight.cost_per_action_type.push({
-      action_type: "offsite_conversion.fb_pixel_custom",
-      value: String(spend / manualResults),
-    });
-  } else {
-    insight.cost_per_action_type.push({
-      action_type: "offsite_conversion.fb_pixel_custom",
-      value: String(spend * 0.35),
-    });
+    insight.results = [
+      {
+        indicator: "actions:offsite_conversion.custom.446052571654985",
+        values: [{ value: String(manualResults) }],
+      },
+    ];
+    insight.cost_per_result = [
+      {
+        indicator: "actions:offsite_conversion.custom.446052571654985",
+        values: [{ value: String(spend / manualResults) }],
+      },
+    ];
   }
 
   insight.actions = [
