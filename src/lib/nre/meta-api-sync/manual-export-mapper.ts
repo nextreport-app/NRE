@@ -298,14 +298,15 @@ function shouldRejectUncostedOnsiteCount(
   offsiteA: number,
   lpv: number,
 ): boolean {
-  if (count <= 1) return true;
+  if (count < 1) return true;
   if (offsiteA > 1) return true;
   if (isLikelyLinkClickMisattribution(row, count)) return true;
   if (lpv > 0 && count >= lpv) return true;
-  const linkClicks = linkClickCount(row);
-  if (linkClicks <= count * 2 + 4) return true;
   const spend = parseFloat(row.spend ?? "0");
   if (spend > 0 && spend / count < 7) return true;
+  if (count === 1) return false;
+  const linkClicks = linkClickCount(row);
+  if (linkClicks <= count * 2 + 4) return true;
   return false;
 }
 
@@ -368,7 +369,7 @@ function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualE
   }
 
   // Website count only in actions[]; results[] is actions:lead noise (panel: results on 30/30).
-  if (!resultsHaveUncostedWebsiteMetric(row) && onsiteA >= 2 && offsiteA <= 1) {
+  if (!resultsHaveUncostedWebsiteMetric(row) && onsiteA >= 1 && offsiteA <= 1) {
     if (!shouldRejectUncostedOnsiteCount(row, onsiteA, offsiteA, lpv)) {
       return pack("onsite_web_lead", onsiteA, spend / onsiteA, row, true);
     }
