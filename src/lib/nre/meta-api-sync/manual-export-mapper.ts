@@ -208,11 +208,26 @@ function pickCostedWebsiteLeadFromCostedList(
 
 function websitePixelCountFromActions(row: MetaInsightRow): { actionType: string; count: number } | null {
   const map = actionValueMap(row.actions);
+  let best: { actionType: string; count: number } | null = null;
   for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
     const count = map.get(actionType);
-    if (count != null && count > 0) return { actionType, count };
+    if (count == null || count <= 0) continue;
+    if (!best || count > best.count) {
+      best = { actionType, count };
+    }
   }
-  return null;
+  return best;
+}
+
+function hasUncostedWebsiteMetricInResults(row: MetaInsightRow): boolean {
+  if (costedAdsManagerResults(row).length > 0) return false;
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const count = uncostedMetricCount(row.results, actionType);
+    if (count <= 0) continue;
+    if (costForIndicator(row, `actions:${actionType}`) > 0) continue;
+    return true;
+  }
+  return false;
 }
 
 function uncostedMetricCount(
@@ -262,12 +277,13 @@ function websiteLeadFromLeadResultsMatchingPixel(row: MetaInsightRow): ManualExp
 }
 
 /**
- * Uncosted website pixel count in results[] when actions[] is empty (common live API shape).
- * Ads Manager still shows Results with spend-derived CPR.
+ * Uncosted website lead metrics in results[] (no paired cost_per_result).
+ * Live Credit Firm (Oct 2026): results[] on every row + onsite_web_lead / pixel in actions[],
+ * but costed lead in results[] = 0 — old code skipped this when actions had incidental pixel.
  */
-function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualExportPrimaryResult | null {
+function websiteLeadFromUncostedWebsiteInResults(row: MetaInsightRow): ManualExportPrimaryResult | null {
   if (!isWebsiteLeadCampaign(row)) return null;
-  if (websitePixelCountFromActions(row)) return null;
+  if (costedAdsManagerResults(row).length > 0) return null;
 
   const objectiveCosted = costedObjectiveResults(row);
   const objLead = objectiveCosted.find((c) => c.actionType === "lead");
@@ -276,7 +292,6 @@ function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualE
     const count = uncostedMetricCount(row.results, actionType);
     if (count <= 0) continue;
     if (costForIndicator(row, `actions:${actionType}`) > 0) continue;
-    if (costedAdsManagerResults(row).some((c) => c.actionType === actionType)) continue;
     if (isLikelyLinkClickMisattribution(row, count)) continue;
     if (count === 1 && objLead?.count === 1) continue;
 
@@ -285,6 +300,32 @@ function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualE
     return pack(actionType, count, spend / count, row, true);
   }
   return null;
+}
+
+/** @deprecated alias — use websiteLeadFromUncostedWebsiteInResults */
+function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  return websiteLeadFromUncostedWebsiteInResults(row);
+}
+
+/**
+ * results[] present but only uncosted noise (e.g. actions:lead=1); real count only in actions[].
+ * Use when count &gt; 1 to avoid incidental fb_pixel_lead=1 on manual blank days.
+ */
+function websiteLeadFromActionsWhenAllResultsUncosted(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (costedAdsManagerResults(row).length > 0) return null;
+  if (hasUncostedWebsiteMetricInResults(row)) return null;
+
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel || pixel.count <= 1) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const lpv = actionValueMap(row.actions).get("landing_page_view") ?? 0;
+  if (lpv > 0 && pixel.count > lpv) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+  return pack(pixel.actionType, pixel.count, spend / pixel.count, row, true);
 }
 
 /** Uncosted website pixel in results[] when count matches actions (objective channel missing). */
@@ -482,8 +523,8 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   const fromUncostedResultsPixel = websiteLeadFromUncostedResultsPixel(row);
   if (fromUncostedResultsPixel) return fromUncostedResultsPixel;
 
-  const fromUncostedResultsOnly = websiteLeadFromUncostedResultsMetricsOnly(row);
-  if (fromUncostedResultsOnly) return fromUncostedResultsOnly;
+  const fromUncostedWebsiteInResults = websiteLeadFromUncostedWebsiteInResults(row);
+  if (fromUncostedWebsiteInResults) return fromUncostedWebsiteInResults;
 
   const hasResultMetrics = (row.results?.length ?? 0) > 0;
 
@@ -518,6 +559,9 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   if (isInflatedUncostedLeadWithCostedPixelOnly(row)) {
     return null;
   }
+
+  const fromActionsUncosted = websiteLeadFromActionsWhenAllResultsUncosted(row);
+  if (fromActionsUncosted) return fromActionsUncosted;
 
   return null;
 }

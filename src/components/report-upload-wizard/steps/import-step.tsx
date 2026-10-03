@@ -234,9 +234,10 @@ export function WizardImportStep() {
               </ul>
               {metaSyncDiagnostics.mappedResultsSum === 0 ? (
                 <p className="mt-2 text-[13px] text-amber-200">
-                  If all three Meta conversion counts above are 0, the API is not returning conversion fields for this
-                  token/account — mapper changes cannot invent Results. If they are &gt; 0 but total is still 0, open a
-                  support ticket with this screen.
+                  If <span className="text-dash-ink">results[]</span> is 0 on all rows, Meta did not send conversion
+                  fields. If <span className="text-dash-ink">results[]</span> is populated but costed lead is 0, Meta
+                  is likely sending uncosted counts (common) — ensure deploy is after the latest mapper fix. If counts
+                  look populated but total is still 0, share this panel in support.
                 </p>
               ) : null}
             </div>
