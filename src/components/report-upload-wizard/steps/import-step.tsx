@@ -207,7 +207,24 @@ export function WizardImportStep() {
                   <span className="text-dash-ink">objective_results[]</span> on{" "}
                   {metaSyncDiagnostics.rowsWithObjectiveResultsField} · pixel in{" "}
                   <span className="text-dash-ink">actions[]</span> on {metaSyncDiagnostics.rowsWithPixelInActions}
+                  {typeof metaSyncDiagnostics.rowsWithCostedLeadInResults === "number" ? (
+                    <>
+                      {" "}
+                      · costed <span className="text-dash-ink">lead</span> in results[] on{" "}
+                      {metaSyncDiagnostics.rowsWithCostedLeadInResults}
+                    </>
+                  ) : null}
                 </li>
+                {metaSyncDiagnostics.usedCampaignLevelConversionFallback ? (
+                  <li className="text-emerald-200">
+                    Used campaign-level conversion fields (ad-set rows omitted results[]).
+                  </li>
+                ) : null}
+                {metaSyncDiagnostics.sampleActionTypes?.length ? (
+                  <li className="font-mono text-[12px] text-dash-ink-muted">
+                    Sample actions[]: {metaSyncDiagnostics.sampleActionTypes.join(", ")}
+                  </li>
+                ) : null}
                 {metaSyncDiagnostics.deployCommit ? (
                   <li>
                     Deploy commit:{" "}

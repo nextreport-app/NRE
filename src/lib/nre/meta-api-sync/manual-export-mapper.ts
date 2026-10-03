@@ -163,7 +163,9 @@ function csvResultTypeForAction(
   websiteLeadPrimary: boolean,
 ): string {
   if (CUSTOM_CONVERSION.test(actionType)) return "Quote Request Submitted";
-  if (websiteLeadPrimary && isWebsiteLeadAction(actionType)) return "website submission";
+  if (websiteLeadPrimary && (isWebsiteLeadAction(actionType) || actionType === "lead")) {
+    return "website submission";
+  }
   return metaApiActionToCsvResultType(actionType);
 }
 
@@ -500,6 +502,15 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
       !isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))
     ) {
       return pixelFromActions;
+    }
+    // Live OUTCOME_LEADS website campaigns often expose only costed actions:lead in results[]
+    // (no fb_pixel_lead breakdown). Ads Manager still labels these "website submission".
+    if (
+      isWebsiteLeadCampaign(row) &&
+      !costed.some((c) => isWebsiteLeadAction(c.actionType)) &&
+      !isLikelyLinkClickMisattribution(row, leadInResults.count)
+    ) {
+      return pack("lead", leadInResults.count, leadInResults.cost, row, true);
     }
     return null;
   }
