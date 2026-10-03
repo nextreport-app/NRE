@@ -168,7 +168,14 @@ function csvResultTypeForAction(
   row: MetaInsightRow,
   websiteLeadPrimary: boolean,
 ): string {
-  if (CUSTOM_CONVERSION.test(actionType)) return "Quote Request Submitted";
+  if (CUSTOM_CONVERSION.test(actionType)) {
+    return websiteLeadPrimary && isWebsiteLeadCampaign(row)
+      ? "website submission"
+      : "Quote Request Submitted";
+  }
+  if (/offsite_conversion\.fb_pixel_custom/i.test(actionType) && websiteLeadPrimary) {
+    return "website submission";
+  }
   if (websiteLeadPrimary && (isWebsiteLeadAction(actionType) || actionType === "lead")) {
     return "website submission";
   }
@@ -202,14 +209,31 @@ function costedWebsiteLeadFromActions(row: MetaInsightRow): ManualExportPrimaryR
   return null;
 }
 
+function costedWebsiteSubmissionPriority(actionType: string): number {
+  if (CUSTOM_CONVERSION.test(actionType)) return 0;
+  if (/offsite_conversion\.fb_pixel_custom/i.test(actionType)) return 1;
+  if (isWebsiteLeadAction(actionType)) return 2;
+  if (actionType === "lead") return 3;
+  return 9;
+}
+
 function pickCostedWebsiteLeadFromCostedList(
   row: MetaInsightRow,
   costed: CostedAdsManagerResult[],
+  options?: { includeGenericLead?: boolean },
 ): ManualExportPrimaryResult | null {
-  const fromWebIndicator = costed.find((c) => isWebsiteLeadAction(c.actionType));
-  if (!fromWebIndicator) return null;
-  if (isLikelyLinkClickMisattribution(row, fromWebIndicator.count)) return null;
-  return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
+  const includeGenericLead = options?.includeGenericLead ?? false;
+  const candidates = costed.filter((c) => {
+    if (c.actionType === "lead") return includeGenericLead;
+    return isWebsiteSubmissionResultsAction(c.actionType);
+  });
+  if (candidates.length === 0) return null;
+  candidates.sort(
+    (a, b) => costedWebsiteSubmissionPriority(a.actionType) - costedWebsiteSubmissionPriority(b.actionType),
+  );
+  const pick = candidates[0];
+  if (isLikelyLinkClickMisattribution(row, pick.count)) return null;
+  return pack(pick.actionType, pick.count, pick.cost, row, true);
 }
 
 function websitePixelCountFromActions(row: MetaInsightRow): { actionType: string; count: number } | null {
@@ -327,6 +351,13 @@ function shouldRejectUncostedOnsiteCount(
 function websiteLeadFromCostedActionSpendParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
   if (!isWebsiteLeadCampaign(row)) return null;
   if (hasMeaningfulWebsiteConversionFields(row)) return null;
+  // Daily uncosted actions:lead on 30/30 — CPA parity here caused false positives (Sep 10/14/24/29).
+  if (uncostedMetricCount(row.results, "lead") > 0) return null;
+  if (
+    costedAdsManagerResults(row).some((c) => isWebsiteSubmissionResultsAction(c.actionType))
+  ) {
+    return null;
+  }
 
   const spend = parseFloat(row.spend ?? "0");
   if (spend <= 0) return null;
@@ -590,7 +621,9 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
     return null;
   }
 
-  const webPick = pickCostedWebsiteLeadFromCostedList(row, resultsCosted);
+  const webPick = pickCostedWebsiteLeadFromCostedList(row, resultsCosted, {
+    includeGenericLead: true,
+  });
   if (!webPick) return null;
 
   const webCount = parseFloat(webPick.value);
