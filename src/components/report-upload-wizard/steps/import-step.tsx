@@ -207,6 +207,19 @@ export function WizardImportStep() {
                   <span className="text-dash-ink">objective_results[]</span> on{" "}
                   {metaSyncDiagnostics.rowsWithObjectiveResultsField} · pixel in{" "}
                   <span className="text-dash-ink">actions[]</span> on {metaSyncDiagnostics.rowsWithPixelInActions}
+                  {typeof metaSyncDiagnostics.rowsWithOnsiteWebLeadInActions === "number" ? (
+                    <>
+                      {" "}
+                      · <span className="text-dash-ink">onsite_web_lead</span> in actions[] on{" "}
+                      {metaSyncDiagnostics.rowsWithOnsiteWebLeadInActions}
+                    </>
+                  ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithUncostedOffsiteInResults === "number" ? (
+                    <>
+                      {" "}
+                      · uncosted offsite in results[] on {metaSyncDiagnostics.rowsWithUncostedOffsiteInResults}
+                    </>
+                  ) : null}
                   {typeof metaSyncDiagnostics.rowsWithCostedLeadInResults === "number" ? (
                     <>
                       {" "}
