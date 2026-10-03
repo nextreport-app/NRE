@@ -220,6 +220,13 @@ export function WizardImportStep() {
                       · uncosted offsite in results[] on {metaSyncDiagnostics.rowsWithUncostedOffsiteInResults}
                     </>
                   ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithMeaningfulConversionFields === "number" ? (
+                    <>
+                      {" "}
+                      · meaningful conversion fields on{" "}
+                      {metaSyncDiagnostics.rowsWithMeaningfulConversionFields}
+                    </>
+                  ) : null}
                   {typeof metaSyncDiagnostics.rowsWithCostedLeadInResults === "number" ? (
                     <>
                       {" "}
@@ -249,8 +256,10 @@ export function WizardImportStep() {
                 <p className="mt-2 text-[13px] text-amber-200">
                   If <span className="text-dash-ink">results[]</span> is 0 on all rows, Meta did not send conversion
                   fields. If <span className="text-dash-ink">results[]</span> is populated but costed lead is 0, Meta
-                  is likely sending uncosted counts (common) — ensure deploy is after the latest mapper fix. If counts
-                  look populated but total is still 0, share this panel in support.
+                  is likely sending uncosted counts (common) — ensure deploy is after the latest mapper fix. If{" "}
+                  <span className="text-dash-ink">meaningful conversion fields</span> stay near 0 while{" "}
+                  <span className="text-dash-ink">results[]</span> is 30/30, the sync should merge campaign-level
+                  costed results (post-fix). Share this panel in support if totals are still wrong.
                 </p>
               ) : null}
             </div>

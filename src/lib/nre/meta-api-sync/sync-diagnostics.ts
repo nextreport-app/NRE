@@ -1,4 +1,5 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
+import { hasMeaningfulConversionFields } from "./conversion-field-signals";
 import { manualExportPrimaryResult } from "./manual-export-mapper";
 
 function actionSum(row: MetaInsightRow, actionType: string): number {
@@ -21,6 +22,7 @@ export type MetaSyncDiagnostics = {
   rowsWithOnsiteWebLeadInActions: number;
   rowsWithUncostedOffsiteInResults: number;
   rowsWithCostedLeadInResults: number;
+  rowsWithMeaningfulConversionFields: number;
   rowsWithMappedResults: number;
   /** action_type values on the first spend row (confirms delivery-only vs conversion payload). */
   sampleActionTypes: string[];
@@ -66,6 +68,7 @@ export function buildMetaSyncDiagnostics(
   let rowsWithOnsiteWebLeadInActions = 0;
   let rowsWithUncostedOffsiteInResults = 0;
   let rowsWithCostedLeadInResults = 0;
+  let rowsWithMeaningfulConversionFields = 0;
   let rowsWithMappedResults = 0;
   const blankMapperSamples: MetaSyncDiagnostics["blankMapperSamples"] = [];
   const sampleRow = rows.find((r) => parseFloat(r.spend ?? "0") > 0);
@@ -89,6 +92,7 @@ export function buildMetaSyncDiagnostics(
       }
     }
     if (rowHasCostedLeadInResults(row)) rowsWithCostedLeadInResults++;
+    if (hasMeaningfulConversionFields(row)) rowsWithMeaningfulConversionFields++;
 
     const primary = manualExportPrimaryResult(row);
     const mapped = primary ? parseFloat(primary.value) : 0;
@@ -122,6 +126,7 @@ export function buildMetaSyncDiagnostics(
     rowsWithOnsiteWebLeadInActions,
     rowsWithUncostedOffsiteInResults,
     rowsWithCostedLeadInResults,
+    rowsWithMeaningfulConversionFields,
     rowsWithMappedResults,
     sampleActionTypes,
     usedCampaignLevelConversionFallback: options?.usedCampaignLevelConversionFallback ?? false,

@@ -368,13 +368,6 @@ function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualE
     return pack(actionType, r, spend / r, row, true);
   }
 
-  // Website count only in actions[]; results[] is actions:lead noise (panel: results on 30/30).
-  if (!resultsHaveUncostedWebsiteMetric(row) && onsiteA >= 1 && offsiteA <= 1) {
-    if (!shouldRejectUncostedOnsiteCount(row, onsiteA, offsiteA, lpv)) {
-      return pack("onsite_web_lead", onsiteA, spend / onsiteA, row, true);
-    }
-  }
-
   return null;
 }
 
@@ -575,6 +568,16 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
 
   const fromResults = pickCostedWebsiteFromResultsChannel(row);
   if (fromResults) return fromResults;
+
+  const costedLeadOnly = costedAdsManagerResults(row).find((c) => c.actionType === "lead");
+  if (
+    costedLeadOnly &&
+    isWebsiteLeadCampaign(row) &&
+    !costedAdsManagerResults(row).some((c) => isWebsiteLeadAction(c.actionType)) &&
+    !isLikelyLinkClickMisattribution(row, costedLeadOnly.count)
+  ) {
+    return pack("lead", costedLeadOnly.count, costedLeadOnly.cost, row, true);
+  }
 
   const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
   if (fromLeadMatch) return fromLeadMatch;

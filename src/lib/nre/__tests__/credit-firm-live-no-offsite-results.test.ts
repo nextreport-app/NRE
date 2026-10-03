@@ -32,6 +32,16 @@ function liveShapeNoOffsiteInResults(row: ReturnType<typeof parseCsvText>["rows"
   }
   if (manualResults > 0) {
     actions.push({ action_type: "onsite_web_lead", value: String(manualResults) });
+    const spend = Number(row.spend) || 0;
+    insight.results = [
+      { indicator: "actions:lead", values: [{ value: String(manualResults) }] },
+    ];
+    insight.cost_per_result = [
+      {
+        indicator: "actions:lead",
+        values: [{ value: String(spend / manualResults) }],
+      },
+    ];
   }
   insight.actions = actions;
   return insight;

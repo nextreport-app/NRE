@@ -1,4 +1,5 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
+import { hasMeaningfulConversionFields } from "./conversion-field-signals";
 
 function campaignDayKey(row: MetaInsightRow): string | null {
   if (!row.campaign_name?.trim() || !row.date_start?.trim()) return null;
@@ -12,12 +13,7 @@ function adsetDayKey(row: MetaInsightRow): string | null {
 }
 
 function rowHasConversionFields(row: MetaInsightRow): boolean {
-  return (
-    (row.results?.length ?? 0) > 0 ||
-    (row.objective_results?.length ?? 0) > 0 ||
-    (row.cost_per_result?.length ?? 0) > 0 ||
-    (row.cost_per_objective_result?.length ?? 0) > 0
-  );
+  return hasMeaningfulConversionFields(row);
 }
 
 /**
@@ -39,13 +35,13 @@ export function enrichAdSetInsightsFromCampaignLevel(
   const campaignByDay = new Map<string, MetaInsightRow>();
   for (const row of campaignRows) {
     const key = campaignDayKey(row);
-    if (key && rowHasConversionFields(row)) {
+    if (key && hasMeaningfulConversionFields(row)) {
       campaignByDay.set(key, row);
     }
   }
 
   return adsetRows.map((row) => {
-    if (rowHasConversionFields(row)) return row;
+    if (hasMeaningfulConversionFields(row)) return row;
     const campKey = campaignDayKey(row);
     if (!campKey || (adsetsPerCampaignDay.get(campKey) ?? 0) !== 1) return row;
     const campaign = campaignByDay.get(campKey);
@@ -61,7 +57,7 @@ export function enrichAdSetInsightsFromCampaignLevel(
 }
 
 export function countRowsWithConversionFields(rows: MetaInsightRow[]): number {
-  return rows.filter((r) => rowHasConversionFields(r)).length;
+  return rows.filter((r) => hasMeaningfulConversionFields(r)).length;
 }
 
 export { adsetDayKey, campaignDayKey };

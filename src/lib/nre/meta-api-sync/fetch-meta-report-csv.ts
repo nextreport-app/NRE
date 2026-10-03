@@ -2,10 +2,8 @@ import { fetchMetaAdAccountInsights } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
 import { rowsToCsv } from "../rows-to-csv";
 import { logIngestionNormalizationSample } from "./api-csv-normalize";
-import {
-  countRowsWithConversionFields,
-  enrichAdSetInsightsFromCampaignLevel,
-} from "./enrich-adset-from-campaign";
+import { enrichAdSetInsightsFromCampaignLevel } from "./enrich-adset-from-campaign";
+import { countRowsWithMeaningfulConversionFields } from "./conversion-field-signals";
 import {
   META_CSV_HEADERS,
   dedupeInsightsByAdSetDay,
@@ -59,7 +57,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   );
 
   let usedCampaignLevelConversionFallback = false;
-  const adsetWithConversion = countRowsWithConversionFields(deduped);
+  const adsetWithConversion = countRowsWithMeaningfulConversionFields(deduped);
   if (deduped.length > 0 && adsetWithConversion < Math.max(1, Math.floor(deduped.length * 0.2))) {
     const campaignInsights = (
       await fetchMetaAdAccountInsights({
@@ -71,7 +69,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
       })
     ).map(normalizeMetaInsightRow);
     const enriched = enrichAdSetInsightsFromCampaignLevel(deduped, campaignInsights);
-    if (countRowsWithConversionFields(enriched) > adsetWithConversion) {
+    if (countRowsWithMeaningfulConversionFields(enriched) > adsetWithConversion) {
       usedCampaignLevelConversionFallback = true;
       deduped = enriched;
     }
