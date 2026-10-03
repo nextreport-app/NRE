@@ -1,5 +1,12 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
-import { hasMeaningfulConversionFields } from "./conversion-field-signals";
+import {
+  campaignNameHaystack,
+  isWebsiteLeadsCampaignHaystack,
+} from "../campaign-name-heuristics";
+import {
+  hasMeaningfulConversionFields,
+  hasMeaningfulWebsiteConversionFields,
+} from "./conversion-field-signals";
 
 function campaignDayKey(row: MetaInsightRow): string | null {
   if (!row.campaign_name?.trim() || !row.date_start?.trim()) return null;
@@ -33,19 +40,28 @@ export function enrichAdSetInsightsFromCampaignLevel(
   }
 
   const campaignByDay = new Map<string, MetaInsightRow>();
+  const campaignWebsiteByDay = new Map<string, MetaInsightRow>();
   for (const row of campaignRows) {
     const key = campaignDayKey(row);
-    if (key && hasMeaningfulConversionFields(row)) {
+    if (!key) continue;
+    if (hasMeaningfulConversionFields(row)) {
       campaignByDay.set(key, row);
+    }
+    if (hasMeaningfulWebsiteConversionFields(row)) {
+      campaignWebsiteByDay.set(key, row);
     }
   }
 
-  return adsetRows.map((row) => {
-    if (hasMeaningfulConversionFields(row)) return row;
-    const campKey = campaignDayKey(row);
-    if (!campKey || (adsetsPerCampaignDay.get(campKey) ?? 0) !== 1) return row;
-    const campaign = campaignByDay.get(campKey);
-    if (!campaign) return row;
+  function isWebsiteLeadRow(row: MetaInsightRow): boolean {
+    return isWebsiteLeadsCampaignHaystack(
+      campaignNameHaystack(row.campaign_name, row.adset_name),
+    );
+  }
+
+  function mergeConversionFromCampaign(
+    row: MetaInsightRow,
+    campaign: MetaInsightRow,
+  ): MetaInsightRow {
     return {
       ...row,
       results: campaign.results,
@@ -53,6 +69,26 @@ export function enrichAdSetInsightsFromCampaignLevel(
       objective_results: campaign.objective_results,
       cost_per_objective_result: campaign.cost_per_objective_result,
     };
+  }
+
+  return adsetRows.map((row) => {
+    const campKey = campaignDayKey(row);
+    if (!campKey || (adsetsPerCampaignDay.get(campKey) ?? 0) !== 1) return row;
+
+    const campaignWebsite = campaignWebsiteByDay.get(campKey);
+    if (
+      isWebsiteLeadRow(row) &&
+      campaignWebsite &&
+      !hasMeaningfulWebsiteConversionFields(row)
+    ) {
+      return mergeConversionFromCampaign(row, campaignWebsite);
+    }
+
+    if (hasMeaningfulConversionFields(row)) return row;
+
+    const campaign = campaignByDay.get(campKey);
+    if (!campaign) return row;
+    return mergeConversionFromCampaign(row, campaign);
   });
 }
 

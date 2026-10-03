@@ -544,14 +544,8 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
     resultsCosted.length === 1 &&
     isWebsiteLeadAction(resultsCosted[0].actionType);
 
-  // Meta sometimes sends a lone costed website pixel in results[] with no objective_results
-  // (Credit Firm live shape). An older guard blanked every lead day. Still reject when results[]
-  // is the only signal and actions[] does not corroborate the same pixel count (blank-day noise).
+  // Reject impossible website counts vs LPV (Sep 2 bad API: costed pixel 4, LPV 3, manual blank).
   if (soleCostedWebsiteInResults && !objectiveLead) {
-    const pixelInActions = websitePixelCountFromActions(row);
-    if (!pixelInActions || pixelInActions.count !== webCount) {
-      return null;
-    }
     const lpv = actionValueMap(row.actions).get("landing_page_view") ?? 0;
     if (lpv > 0 && webCount > lpv) {
       return null;
