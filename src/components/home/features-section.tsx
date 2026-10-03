@@ -10,7 +10,7 @@ const FEATURES = [
     icon: "🔌",
     title: "Meta Marketing API",
     description:
-      "Hybrid sync: API delivery metrics plus your Ads Manager CSV for accurate lead Results — no guesswork from Insights alone.",
+      "Connect Meta in the wizard and sync the last 30 days directly — compare API output with your Ads Manager CSV export.",
     live: true,
   },
   {
