@@ -850,6 +850,22 @@ export function ShareReportView({
         )}
       </main>
 
+      {!isPrint && visibleData.dataImportNote ? (
+        <p
+          style={{
+            textAlign: "center",
+            padding: "0 24px 24px",
+            color: "#64748b",
+            fontSize: "12px",
+            lineHeight: 1.5,
+            maxWidth: "640px",
+            margin: "0 auto",
+          }}
+        >
+          {visibleData.dataImportNote}
+        </p>
+      ) : null}
+
       {!isPrint && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
         {brandingDisplay.footerPrimary ? (

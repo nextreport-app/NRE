@@ -203,6 +203,8 @@ export function useReportUploadWizard({
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
+  /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
+  const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -851,6 +853,7 @@ export function useReportUploadWizard({
   }
 
   type ApiSyncMeta = {
+    mergedWithManualReference?: boolean;
     previousMonthSynced?: boolean;
     hasPreviousMonthData?: boolean;
     previousMonthCampaigns?: string[];
@@ -932,6 +935,7 @@ export function useReportUploadWizard({
       setAnalyzeMessage(null);
       setApiSyncStatus("idle");
       setApiSyncError(null);
+      setApiSyncHybridImport(false);
     }
     setDataSourceMode(mode);
   }
@@ -941,6 +945,7 @@ export function useReportUploadWizard({
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
+    setApiSyncHybridImport(!!meta?.mergedWithManualReference);
     setMtdFile(file);
     downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
@@ -1660,6 +1665,7 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          metaHybridApiImport: apiSyncHybridImport && platform === "META",
         },
         uploadSessionId,
       ),
@@ -1854,6 +1860,10 @@ export function useReportUploadWizard({
     setMismatchWarning(false);
     setDetectedPlatform(null);
     setPlatform("META");
+    setDataSourceMode("csv");
+    setApiSyncStatus("idle");
+    setApiSyncError(null);
+    setApiSyncHybridImport(false);
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
@@ -2082,6 +2092,7 @@ export function useReportUploadWizard({
     setApiSyncStatus,
     apiSyncError,
     setApiSyncError,
+    apiSyncHybridImport,
     analyzeStatus,
     analyzeErrors,
     analyzeMessage,

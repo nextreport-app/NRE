@@ -7,6 +7,7 @@ import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import { refreshGoogleAdsAccessToken } from "@/lib/google-ads-api";
 import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
 import { fetchMetaReportCsv } from "@/lib/nre/meta-api-sync";
+import { sumResultsColumnInCsv } from "@/lib/nre/meta-api-sync/csv-results-sum";
 import {
   maybeSyncPreviousMonthDataFromGoogleApi,
   maybeSyncPreviousMonthDataFromMetaApi,
@@ -126,6 +127,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: "Meta Ads is not connected" }, { status: 400 });
       }
 
+      const manualReference = referenceManualCsvText?.trim() ?? "";
+      if (!manualReference) {
+        return NextResponse.json(
+          {
+            error:
+              "Ads Manager CSV is required for Meta API sync. Upload your manual export so we can merge accurate Results with API delivery metrics.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const manualResultsSum = sumResultsColumnInCsv(manualReference);
+
       const fresh = await ensureFreshMetaAccessToken({
         accessToken: user.metaAccessToken,
         tokenExpiresAt: user.metaTokenExpiresAt,
@@ -142,8 +156,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         accessToken: fresh.accessToken,
         adAccountId: metaAdAccountId,
         timezone: client.timezone,
-        referenceManualCsvText,
+        referenceManualCsvText: manualReference,
       });
+
+      const mergedResultsSum = sumResultsColumnInCsv(result.csvText);
+      if (manualResultsSum > 0 && mergedResultsSum === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Merge failed — Results column could not be populated from manual CSV. Please check that your manual CSV matches the API sync date range and campaign.",
+          },
+          { status: 422 },
+        );
+      }
 
       const previousMonth = await previousMonthPayloadFromClient(client);
       // Previous-month sync is a second Meta fetch — run in the background so the wizard can analyze MTD data immediately.
@@ -168,7 +193,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
-        mergedWithManualReference: Boolean(referenceManualCsvText?.trim()),
+        mergedWithManualReference: true,
         ...previousMonth,
       });
     }

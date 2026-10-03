@@ -39,6 +39,7 @@ export interface DateSelection {
 }
 
 export type ApiSyncMeta = {
+  mergedWithManualReference?: boolean;
   previousMonthSynced?: boolean;
   hasPreviousMonthData?: boolean;
   previousMonthCampaigns?: string[];
