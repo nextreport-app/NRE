@@ -261,21 +261,71 @@ function websiteLeadFromLeadResultsMatchingPixel(row: MetaInsightRow): ManualExp
   return pack(pixel.actionType, pixel.count, cost, row, true);
 }
 
+function uncostedWebsiteMetricCountInResults(row: MetaInsightRow, actionType: string): number {
+  if (costForIndicator(row, `actions:${actionType}`) > 0) return 0;
+  return uncostedMetricCount(row.results, actionType);
+}
+
+function resultsHaveUncostedWebsiteMetric(row: MetaInsightRow): boolean {
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    if (uncostedWebsiteMetricCountInResults(row, actionType) > 0) return true;
+  }
+  return false;
+}
+
+/** Single website submission when uncosted offsite=1 in results[] matches actions (not CPA-only noise). */
+function websiteLeadFromOffsiteCostPerAction(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (costedAdsManagerResults(row).length > 0) return null;
+
+  const map = actionValueMap(row.actions);
+  const count = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
+  if (count !== 1) return null;
+  if (isLikelyLinkClickMisattribution(row, count)) return null;
+
+  const offsiteR = uncostedWebsiteMetricCountInResults(row, "offsite_conversion.fb_pixel_lead");
+  if (offsiteR !== 1) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+  const cost = costPerAction(row, "offsite_conversion.fb_pixel_lead");
+  return pack("offsite_conversion.fb_pixel_lead", 1, cost > 0 ? cost : spend, row, true);
+}
+
+function shouldRejectUncostedOnsiteCount(
+  row: MetaInsightRow,
+  count: number,
+  offsiteA: number,
+  lpv: number,
+): boolean {
+  if (count <= 1) return true;
+  if (offsiteA > 1) return true;
+  if (isLikelyLinkClickMisattribution(row, count)) return true;
+  if (lpv > 0 && count >= lpv) return true;
+  const linkClicks = linkClickCount(row);
+  if (linkClicks <= count * 2 + 4) return true;
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend > 0 && spend / count < 7) return true;
+  return false;
+}
+
 /**
- * Uncosted results[] (no cost_per_result pairs) — manual export parity for Credit Firm live API.
- * Prefer offsite pixel when results[] and actions[] agree; onsite_web_lead only when it agrees
- * and offsite is absent from results (onsite alone on blank days is LPV-style noise).
+ * Uncosted results[] (no cost_per_result pairs) — Credit Firm live API (deploy 036ab1c panel).
+ * Strict exact match when results[] carries website counts; otherwise CPA offsite=1 or guarded onsite in actions.
  */
 function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
   if (!isWebsiteLeadCampaign(row)) return null;
   if (costedAdsManagerResults(row).length > 0) return null;
 
+  const fromCpa = websiteLeadFromOffsiteCostPerAction(row);
+  if (fromCpa) return fromCpa;
+
   const map = actionValueMap(row.actions);
   const lpv = map.get("landing_page_view") ?? 0;
   const offsiteA = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
   const onsiteA = map.get("onsite_web_lead") ?? 0;
-  const offsiteR = uncostedMetricCount(row.results, "offsite_conversion.fb_pixel_lead");
-  const onsiteR = uncostedMetricCount(row.results, "onsite_web_lead");
+  const offsiteR = uncostedWebsiteMetricCountInResults(row, "offsite_conversion.fb_pixel_lead");
+  const onsiteR = uncostedWebsiteMetricCountInResults(row, "onsite_web_lead");
 
   const spend = parseFloat(row.spend ?? "0");
   if (spend <= 0) return null;
@@ -293,15 +343,35 @@ function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualE
     onsiteR === onsiteA &&
     offsiteR === 0 &&
     offsiteA <= 1 &&
-    onsiteR <= 3 &&
-    (lpv <= 0 || onsiteR < lpv) &&
-    !isLikelyLinkClickMisattribution(row, onsiteR)
+    !shouldRejectUncostedOnsiteCount(row, onsiteR, offsiteA, lpv)
   ) {
-    const linkClicks = linkClickCount(row);
-    if (onsiteR >= 2 && linkClicks <= onsiteR * 2 + 4) {
-      return null;
-    }
     return pack("onsite_web_lead", onsiteR, spend / onsiteR, row, true);
+  }
+
+  // results[] has website counts corroborated by actions (actions may round higher).
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const r = uncostedWebsiteMetricCountInResults(row, actionType);
+    if (r <= 0) continue;
+    const a = map.get(actionType) ?? 0;
+    if (a < r) continue;
+    if (isLikelyLinkClickMisattribution(row, r)) continue;
+
+    if (actionType === "offsite_conversion.fb_pixel_lead" && r === 1 && costPerAction(row, actionType) <= 0) {
+      continue;
+    }
+    if (actionType === "onsite_web_lead") {
+      if (shouldRejectUncostedOnsiteCount(row, r, offsiteA, lpv)) continue;
+      if (offsiteR > 0) continue;
+    }
+
+    return pack(actionType, r, spend / r, row, true);
+  }
+
+  // Website count only in actions[]; results[] is actions:lead noise (panel: results on 30/30).
+  if (!resultsHaveUncostedWebsiteMetric(row) && onsiteA >= 2 && offsiteA <= 1) {
+    if (!shouldRejectUncostedOnsiteCount(row, onsiteA, offsiteA, lpv)) {
+      return pack("onsite_web_lead", onsiteA, spend / onsiteA, row, true);
+    }
   }
 
   return null;
