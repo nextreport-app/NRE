@@ -404,7 +404,12 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
 
   const webCount = parseFloat(webPick.value);
   if (objectiveLead && webCount !== objectiveLead.count) {
-    return null;
+    // Ads Manager "website submission" follows costed pixel in results[]; objective
+    // actions:lead is a combined metric and often differs (e.g. 1 vs 3 leads).
+    const objectiveIsGenericLead = objectiveLead.actionType === "lead";
+    if (!(isWebsiteLeadCampaign(row) && objectiveIsGenericLead)) {
+      return null;
+    }
   }
 
   const soleCostedWebsiteInResults =
