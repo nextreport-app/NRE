@@ -19,6 +19,14 @@ interface WizardDataSourcePanelProps {
   onSynced: (
     file: File,
     meta?: {
+      metaSyncDiagnostics?: {
+        mappedResultsSum: number;
+        rowCount: number;
+        rowsWithResultsField: number;
+        rowsWithObjectiveResultsField: number;
+        rowsWithPixelInActions: number;
+        deployCommit: string | null;
+      };
       mergedWithManualReference?: boolean;
       previousMonthSynced?: boolean;
       hasPreviousMonthData?: boolean;
@@ -199,6 +207,7 @@ export function WizardDataSourcePanel({
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
       onSynced(file, {
+        metaSyncDiagnostics: data.metaSyncDiagnostics,
         mergedWithManualReference: !!data.mergedWithManualReference,
         previousMonthSynced: !!data.previousMonthSynced,
         hasPreviousMonthData: !!data.hasPreviousMonthData,

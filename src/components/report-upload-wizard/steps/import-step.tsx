@@ -54,6 +54,7 @@ export function WizardImportStep() {
     metaConfigured,
     metaConnected,
     metaConnectedName,
+    metaSyncDiagnostics,
     mismatchWarning,
     mtdFile,
     platformPickerExpanded,
@@ -178,6 +179,50 @@ export function WizardImportStep() {
               }}
               importComplete={false}
             />
+          ) : null}
+
+          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (
+            <div
+              className={`rounded-lg border px-4 py-3 ${
+                metaSyncDiagnostics.mappedResultsSum > 0
+                  ? "border-emerald-500/35 bg-[#0d1b2e]/80"
+                  : "border-amber-500/40 bg-amber-950/20"
+              }`}
+            >
+              <p className="text-[14px] font-medium text-white">API sync diagnostics</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
+                This is the same file as the auto-download and &quot;Download API sync CSV&quot; — name like{" "}
+                <span className="font-mono text-dash-ink">meta-api-sync-YYYY-MM-DD.csv</span> (CSV, not Excel). Check
+                columns <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>
+                , <span className="text-dash-ink">Website leads</span> — not spend/reach only.
+              </p>
+              <ul className="mt-2 space-y-1 text-[13px] text-dash-ink-secondary">
+                <li>
+                  Mapped Results total:{" "}
+                  <span className="font-semibold text-white">{metaSyncDiagnostics.mappedResultsSum}</span>
+                </li>
+                <li>
+                  Rows: {metaSyncDiagnostics.rowCount} · Meta sent{" "}
+                  <span className="text-dash-ink">results[]</span> on {metaSyncDiagnostics.rowsWithResultsField} ·{" "}
+                  <span className="text-dash-ink">objective_results[]</span> on{" "}
+                  {metaSyncDiagnostics.rowsWithObjectiveResultsField} · pixel in{" "}
+                  <span className="text-dash-ink">actions[]</span> on {metaSyncDiagnostics.rowsWithPixelInActions}
+                </li>
+                {metaSyncDiagnostics.deployCommit ? (
+                  <li>
+                    Deploy commit:{" "}
+                    <span className="font-mono text-dash-ink">{metaSyncDiagnostics.deployCommit}</span>
+                  </li>
+                ) : null}
+              </ul>
+              {metaSyncDiagnostics.mappedResultsSum === 0 ? (
+                <p className="mt-2 text-[13px] text-amber-200">
+                  If all three Meta conversion counts above are 0, the API is not returning conversion fields for this
+                  token/account — mapper changes cannot invent Results. If they are &gt; 0 but total is still 0, open a
+                  support ticket with this screen.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (

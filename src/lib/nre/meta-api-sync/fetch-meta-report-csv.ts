@@ -8,6 +8,7 @@ import {
   insightToManualCsvRow,
 } from "./insight-engine";
 import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
+import { buildMetaSyncDiagnostics, type MetaSyncDiagnostics } from "./sync-diagnostics";
 
 export interface FetchMetaReportCsvInput {
   accessToken: string;
@@ -31,6 +32,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   rowCount: number;
   sinceIso: string;
   untilIso: string;
+  diagnostics: MetaSyncDiagnostics;
 }> {
   const { sinceIso, untilIso } =
     input.sinceIso && input.untilIso
@@ -58,6 +60,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   }
 
   const rowCount = Math.max(0, csvText.split("\n").filter(Boolean).length - 1);
+  const diagnostics = buildMetaSyncDiagnostics(deduped);
 
-  return { csvText, rowCount, sinceIso, untilIso };
+  return { csvText, rowCount, sinceIso, untilIso, diagnostics };
 }

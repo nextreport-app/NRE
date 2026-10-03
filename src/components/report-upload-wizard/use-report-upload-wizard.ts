@@ -205,6 +205,9 @@ export function useReportUploadWizard({
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
   const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
+  const [metaSyncDiagnostics, setMetaSyncDiagnostics] = useState<
+    import("./types").MetaSyncDiagnosticsSummary | null
+  >(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -853,6 +856,7 @@ export function useReportUploadWizard({
   }
 
   type ApiSyncMeta = {
+    metaSyncDiagnostics?: import("./types").MetaSyncDiagnosticsSummary;
     mergedWithManualReference?: boolean;
     previousMonthSynced?: boolean;
     hasPreviousMonthData?: boolean;
@@ -936,6 +940,7 @@ export function useReportUploadWizard({
       setApiSyncStatus("idle");
       setApiSyncError(null);
       setApiSyncHybridImport(false);
+      setMetaSyncDiagnostics(null);
     }
     setDataSourceMode(mode);
   }
@@ -946,6 +951,7 @@ export function useReportUploadWizard({
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
+    setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
     setMtdFile(file);
     downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
@@ -2093,6 +2099,7 @@ export function useReportUploadWizard({
     apiSyncError,
     setApiSyncError,
     apiSyncHybridImport,
+    metaSyncDiagnostics,
     analyzeStatus,
     analyzeErrors,
     analyzeMessage,

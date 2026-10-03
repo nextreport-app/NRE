@@ -38,7 +38,17 @@ export interface DateSelection {
   customEnd?: string;
 }
 
+export type MetaSyncDiagnosticsSummary = {
+  mappedResultsSum: number;
+  rowCount: number;
+  rowsWithResultsField: number;
+  rowsWithObjectiveResultsField: number;
+  rowsWithPixelInActions: number;
+  deployCommit: string | null;
+};
+
 export type ApiSyncMeta = {
+  metaSyncDiagnostics?: MetaSyncDiagnosticsSummary;
   mergedWithManualReference?: boolean;
   previousMonthSynced?: boolean;
   hasPreviousMonthData?: boolean;

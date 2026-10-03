@@ -65,8 +65,11 @@ function formatMoney(n: number): string {
 
 function parseIndicator(indicator: string): string | null {
   const trimmed = indicator.trim();
+  if (!trimmed) return null;
   if (trimmed.startsWith("actions:")) return trimmed.slice("actions:".length);
   if (trimmed.includes(".")) return trimmed;
+  // Graph API sometimes sends bare types (e.g. "lead") without an "actions:" prefix.
+  if (/^[a-z][a-z0-9_]*$/i.test(trimmed)) return trimmed;
   return null;
 }
 
@@ -88,8 +91,11 @@ function costForIndicatorOnList(
   entries: MetaInsightRow["cost_per_result"] | undefined,
   indicator: string,
 ): number {
+  const want = indicator.trim();
+  const wantAction = parseIndicator(want);
   for (const entry of entries ?? []) {
-    if ((entry.indicator ?? "").trim() !== indicator.trim()) continue;
+    const ind = (entry.indicator ?? "").trim();
+    if (ind !== want && !(wantAction && parseIndicator(ind) === wantAction)) continue;
     const n = metricValue(entry);
     if (n > 0) return n;
   }
@@ -251,6 +257,32 @@ function websiteLeadFromLeadResultsMatchingPixel(row: MetaInsightRow): ManualExp
   }
 
   return pack(pixel.actionType, pixel.count, cost, row, true);
+}
+
+/**
+ * Uncosted website pixel count in results[] when actions[] is empty (common live API shape).
+ * Ads Manager still shows Results with spend-derived CPR.
+ */
+function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (websitePixelCountFromActions(row)) return null;
+
+  const objectiveCosted = costedObjectiveResults(row);
+  const objLead = objectiveCosted.find((c) => c.actionType === "lead");
+
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const count = uncostedMetricCount(row.results, actionType);
+    if (count <= 0) continue;
+    if (costForIndicator(row, `actions:${actionType}`) > 0) continue;
+    if (costedAdsManagerResults(row).some((c) => c.actionType === actionType)) continue;
+    if (isLikelyLinkClickMisattribution(row, count)) continue;
+    if (count === 1 && objLead?.count === 1) continue;
+
+    const spend = parseFloat(row.spend ?? "0");
+    if (spend <= 0) continue;
+    return pack(actionType, count, spend / count, row, true);
+  }
+  return null;
 }
 
 /** Uncosted website pixel in results[] when count matches actions (objective channel missing). */
@@ -437,6 +469,9 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
 
   const fromUncostedResultsPixel = websiteLeadFromUncostedResultsPixel(row);
   if (fromUncostedResultsPixel) return fromUncostedResultsPixel;
+
+  const fromUncostedResultsOnly = websiteLeadFromUncostedResultsMetricsOnly(row);
+  if (fromUncostedResultsOnly) return fromUncostedResultsOnly;
 
   const hasResultMetrics = (row.results?.length ?? 0) > 0;
 
