@@ -1,9 +1,9 @@
 /**
  * Meta / Google / TikTok wizard "Sync from API" import.
  *
- * On by default. Set AD_PLATFORM_API_SYNC_ENABLED=false in Vercel/env to hide API
- * import everywhere (wizard, settings, sync-api route). Optional Ads Manager reference
- * CSV on Meta sync forces Result columns to match manual export when needed.
+ * Off by default (hidden wizard toggle, settings connect CTAs, /sync-api route).
+ * Set AD_PLATFORM_API_SYNC_ENABLED=true in env to re-enable for internal testing.
+ * Optional Ads Manager reference CSV on Meta sync remains in code when enabled.
  */
 export const AD_PLATFORM_API_SYNC_ENABLED =
-  process.env.AD_PLATFORM_API_SYNC_ENABLED !== "false";
+  process.env.AD_PLATFORM_API_SYNC_ENABLED === "true";

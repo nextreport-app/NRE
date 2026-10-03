@@ -7,10 +7,10 @@ const FEATURES = [
     live: true,
   },
   {
-    icon: "🔌",
-    title: "Meta Marketing API",
+    icon: "📅",
+    title: "Previous month comparison",
     description:
-      "Connect Meta in the wizard and sync the last 30 days directly — compare API output with your Ads Manager CSV export.",
+      "Upload a prior-month CSV so Combined Total can show last month vs this period — optional panel on Step 1.",
     live: true,
   },
   {
