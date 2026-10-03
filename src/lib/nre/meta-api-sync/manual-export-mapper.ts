@@ -19,6 +19,8 @@ import {
 } from "../campaign-name-heuristics";
 import { metaApiActionToCsvResultType } from "../meta-objective-dictionary";
 import { resolveObjectiveFromResultType } from "../result-type-map";
+import { hasMeaningfulWebsiteConversionFields } from "./conversion-field-signals";
+import { isWebsiteSubmissionResultAction } from "./website-submission-actions";
 
 const WEBSITE_LEAD_ACTION_TYPES = [
   "offsite_conversion.fb_pixel_lead",
@@ -155,6 +157,10 @@ function costPerAction(row: MetaInsightRow, actionType: string): number {
 
 function isWebsiteLeadAction(actionType: string): boolean {
   return (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
+}
+
+function isWebsiteSubmissionResultsAction(actionType: string): boolean {
+  return isWebsiteSubmissionResultAction(actionType);
 }
 
 function csvResultTypeForAction(
@@ -314,6 +320,64 @@ function shouldRejectUncostedOnsiteCount(
  * Uncosted results[] (no cost_per_result pairs) — Credit Firm live API (deploy 036ab1c panel).
  * Strict exact match when results[] carries website counts; otherwise CPA offsite=1 or guarded onsite in actions.
  */
+/**
+ * Live Credit Firm (77b7977): no costed website in results[] — only cost_per_action_type
+ * with spend ≈ CPA × count (often fb_pixel_custom).
+ */
+function websiteLeadFromCostedActionSpendParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (hasMeaningfulWebsiteConversionFields(row)) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  const map = actionValueMap(row.actions);
+  const lpv = map.get("landing_page_view") ?? 0;
+  const offsiteA = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
+
+  const priority = [
+    "offsite_conversion.fb_pixel_custom",
+    "offsite_conversion.fb_pixel_lead",
+    "onsite_web_lead",
+  ] as const;
+
+  for (const actionType of priority) {
+    const count = map.get(actionType) ?? 0;
+    if (count <= 0) continue;
+    if (isLikelyLinkClickMisattribution(row, count)) continue;
+    const cpa = costPerAction(row, actionType);
+    if (cpa <= 0) continue;
+    const relErr = Math.abs(spend - cpa * count) / spend;
+    if (relErr > 0.07) continue;
+
+    if (
+      actionType === "offsite_conversion.fb_pixel_lead" &&
+      isInflatedUncostedLeadWithCostedPixelOnly(row)
+    ) {
+      continue;
+    }
+    if (
+      actionType === "onsite_web_lead" &&
+      shouldRejectUncostedOnsiteCount(row, count, offsiteA, lpv)
+    ) {
+      continue;
+    }
+
+    return pack(actionType, count, cpa, row, true);
+  }
+
+  const onsite = map.get("onsite_web_lead") ?? 0;
+  if (
+    onsite >= 2 &&
+    offsiteA <= 1 &&
+    !shouldRejectUncostedOnsiteCount(row, onsite, offsiteA, lpv)
+  ) {
+    return pack("onsite_web_lead", onsite, spend / onsite, row, true);
+  }
+
+  return null;
+}
+
 function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
   if (!isWebsiteLeadCampaign(row)) return null;
   if (costedAdsManagerResults(row).length > 0) return null;
@@ -521,7 +585,7 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
   const objectiveLead = objectiveCosted.find((c) => c.actionType === "lead");
 
   const resultsCosted = costedAdsManagerResults(row);
-  const websiteCosted = resultsCosted.filter((c) => isWebsiteLeadAction(c.actionType));
+  const websiteCosted = resultsCosted.filter((c) => isWebsiteSubmissionResultsAction(c.actionType));
   if (websiteCosted.length === 0) {
     return null;
   }
@@ -572,6 +636,9 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   ) {
     return pack("lead", costedLeadOnly.count, costedLeadOnly.cost, row, true);
   }
+
+  const fromCostedActionParity = websiteLeadFromCostedActionSpendParity(row);
+  if (fromCostedActionParity) return fromCostedActionParity;
 
   const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
   if (fromLeadMatch) return fromLeadMatch;

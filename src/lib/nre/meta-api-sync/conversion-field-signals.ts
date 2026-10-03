@@ -1,4 +1,5 @@
 import type { MetaInsightResultMetric, MetaInsightRow } from "@/lib/meta-api";
+import { isWebsiteSubmissionResultAction } from "./website-submission-actions";
 
 function metricValue(entry: { values?: Array<{ value?: string }>; value?: string }): number {
   const nested = entry.values?.[0]?.value;
@@ -68,18 +69,11 @@ export function countRowsWithMeaningfulConversionFields(rows: MetaInsightRow[]):
   return rows.filter((r) => hasMeaningfulConversionFields(r)).length;
 }
 
-const WEBSITE_OR_LEAD_ACTIONS = new Set([
-  "offsite_conversion.fb_pixel_lead",
-  "website_lead",
-  "onsite_web_lead",
-  "lead",
-]);
-
 /** Costed results[] pairs that Ads Manager would show as website submission / lead. */
 export function hasMeaningfulWebsiteConversionFields(row: MetaInsightRow): boolean {
   for (const entry of row.results ?? []) {
     const actionType = parseIndicator(entry.indicator ?? "");
-    if (!actionType || !WEBSITE_OR_LEAD_ACTIONS.has(actionType)) continue;
+    if (!actionType || !isWebsiteSubmissionResultAction(actionType)) continue;
     const count = metricValue(entry);
     if (count <= 0) continue;
     const cost = costForIndicatorOnList(row.cost_per_result, entry.indicator ?? "");
@@ -87,7 +81,7 @@ export function hasMeaningfulWebsiteConversionFields(row: MetaInsightRow): boole
   }
   for (const entry of row.objective_results ?? []) {
     const actionType = parseIndicator(entry.indicator ?? "");
-    if (!actionType || !WEBSITE_OR_LEAD_ACTIONS.has(actionType)) continue;
+    if (!actionType || !isWebsiteSubmissionResultAction(actionType)) continue;
     const count = metricValue(entry);
     if (count <= 0) continue;
     const cost = costForIndicatorOnList(row.cost_per_objective_result, entry.indicator ?? "");
@@ -98,4 +92,18 @@ export function hasMeaningfulWebsiteConversionFields(row: MetaInsightRow): boole
 
 export function countRowsWithCostedWebsiteOrLeadInResults(rows: MetaInsightRow[]): number {
   return rows.filter((r) => hasMeaningfulWebsiteConversionFields(r)).length;
+}
+
+/** First costed result indicators on a row (for live API diagnostics). */
+export function sampleCostedResultIndicators(row: MetaInsightRow, limit = 4): string[] {
+  const out: string[] = [];
+  for (const entry of row.results ?? []) {
+    const count = metricValue(entry);
+    if (count <= 0) continue;
+    const cost = costForIndicatorOnList(row.cost_per_result, entry.indicator ?? "");
+    if (cost <= 0) continue;
+    out.push((entry.indicator ?? "").trim() || "?");
+    if (out.length >= limit) break;
+  }
+  return out;
 }
