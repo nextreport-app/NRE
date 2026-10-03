@@ -42,7 +42,9 @@ import {
   selectedMetricsSchema,
   uploadSessionIdSchema,
   resolveIncludePreviousMonthComparison,
+  parseBooleanFormField,
 } from "@/lib/validators/report-wizard";
+import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 
 function enqueueResponse(reportId: string, shareToken?: string | null) {
   return NextResponse.json({
@@ -413,6 +415,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let report;
   try {
+    const metaHybridApiImport = parseBooleanFormField(formData, "metaHybridApiImport") === true;
     const jobPayload: StandardReportJobPayload = {
       version: 1,
       kind: "STANDARD",
@@ -422,6 +425,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
       reportTitle,
       reportData: data,
+      ...(metaHybridApiImport && platform === "META"
+        ? { dataImportNote: META_HYBRID_API_CSV_IMPORT_NOTE }
+        : {}),
     };
 
     report = await prisma.report.create({

@@ -49,6 +49,8 @@ export interface StandardReportJobPayload extends BaseJobPayload {
   platform: Platform;
   reportTitle?: string;
   reportData: ReportData;
+  /** When set, stored on share JSON (Meta hybrid API + manual CSV import). */
+  dataImportNote?: string;
 }
 
 export interface ComparisonReportJobPayload extends BaseJobPayload {
@@ -408,7 +410,10 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       reportData,
       aiCopyBySlideKey,
       new Date(),
-      shareReportExtrasFromUser(user, currencySymbol),
+      {
+        ...shareReportExtrasFromUser(user, currencySymbol),
+        ...(job.dataImportNote ? { dataImportNote: job.dataImportNote } : {}),
+      },
     );
     const shareWithArchive = {
       ...shareData,

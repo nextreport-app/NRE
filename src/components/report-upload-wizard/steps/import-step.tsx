@@ -181,14 +181,18 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
-            <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3">
-              <p className="text-[14px] font-medium text-white">Download API data to compare with your manual CSV</p>
+            <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3 space-y-3">
+              <p className="text-[14px] font-medium text-white">Hybrid sync ready</p>
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                Delivery metrics from the API are merged with Results from your Ads Manager CSV. Continue through the
+                wizard to analyze and generate.
+              </p>
               <button
                 type="button"
                 onClick={() => downloadWizardCsvFile(mtdFile)}
-                className="mt-3 inline-flex h-10 items-center rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-[14px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                className="inline-flex h-10 items-center rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-[14px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
               >
-                Download API sync CSV again
+                Download merged CSV
               </button>
             </div>
           ) : null}

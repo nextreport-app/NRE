@@ -10,8 +10,8 @@ const FEATURES = [
     icon: "🔌",
     title: "Meta Marketing API",
     description:
-      "App approved and connected for future automation. Wizard API import stays off until Results match manual export reliably.",
-    live: false,
+      "Hybrid sync: API delivery metrics plus your Ads Manager CSV for accurate lead Results — no guesswork from Insights alone.",
+    live: true,
   },
   {
     icon: "🎯",

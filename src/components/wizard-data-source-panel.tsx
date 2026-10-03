@@ -19,6 +19,7 @@ interface WizardDataSourcePanelProps {
   onSynced: (
     file: File,
     meta?: {
+      mergedWithManualReference?: boolean;
       previousMonthSynced?: boolean;
       hasPreviousMonthData?: boolean;
       previousMonthCampaigns?: string[];
@@ -111,6 +112,7 @@ export function WizardDataSourcePanel({
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [manualReferenceFile, setManualReferenceFile] = useState<File | null>(null);
 
   const loadAccounts = useCallback(async () => {
     if (!connected) return;
@@ -173,10 +175,32 @@ export function WizardDataSourcePanel({
         return;
       }
 
+      let referenceManualCsvText: string | undefined;
+      if (platform === "META") {
+        if (!manualReferenceFile) {
+          onSyncError(
+            "Please upload your Ads Manager CSV export to ensure accurate lead counts. The API alone cannot reliably determine your campaign results.",
+          );
+          return;
+        }
+        try {
+          referenceManualCsvText = await manualReferenceFile.text();
+        } catch {
+          onSyncError("Could not read the Ads Manager CSV file. Try uploading it again.");
+          return;
+        }
+        if (!referenceManualCsvText.trim()) {
+          onSyncError("The Ads Manager CSV file appears empty.");
+          return;
+        }
+      }
+
       const res = await fetch(`/api/clients/${clientId}/reports/sync-api`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(
+          referenceManualCsvText ? { ...body, referenceManualCsvText } : body,
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -199,6 +223,7 @@ export function WizardDataSourcePanel({
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
       onSynced(file, {
+        mergedWithManualReference: !!data.mergedWithManualReference,
         previousMonthSynced: !!data.previousMonthSynced,
         hasPreviousMonthData: !!data.hasPreviousMonthData,
         previousMonthCampaigns: Array.isArray(data.previousMonthCampaigns) ? data.previousMonthCampaigns : [],
@@ -217,7 +242,7 @@ export function WizardDataSourcePanel({
     connected &&
     configured &&
     !isSyncing &&
-    (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
+    (showMeta ? !!selectedMetaAccount && !!manualReferenceFile : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   return (
     <div className="space-y-4">
@@ -290,6 +315,28 @@ export function WizardDataSourcePanel({
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
               </Link>
+              <div className="rounded-lg border border-[#f6ad55]/35 bg-[#1e293b]/80 px-3 py-3">
+                <label className="block text-[12px] font-medium uppercase tracking-wide text-dash-ink-secondary">
+                  Upload Ads Manager CSV (required for accurate results)
+                </label>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-dash-ink-secondary">
+                  Why is this needed? Meta&apos;s API does not expose the same Results numbers as Ads Manager for lead
+                  campaigns. Upload your manual export to ensure accurate lead counts.
+                </p>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="mt-3 block w-full text-[13px] text-dash-ink file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-2 file:text-[13px] file:font-semibold file:text-dash-ink"
+                  onChange={(e) => {
+                    setManualReferenceFile(e.target.files?.[0] ?? null);
+                  }}
+                />
+                {manualReferenceFile ? (
+                  <p className="mt-2 text-[12px] text-emerald-300">
+                    Reference file: <span className="text-dash-ink">{manualReferenceFile.name}</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
@@ -491,9 +538,9 @@ export function WizardDataSourceToggle({
           >
             <DataSourceBadge label="API" />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">Connect your data via API</span>
+              <span className="block text-[13px] font-semibold">API sync + Ads Manager CSV</span>
               <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-                Your data connects automatically
+                API delivery metrics + manual Results for lead campaigns
               </span>
             </span>
           </button>

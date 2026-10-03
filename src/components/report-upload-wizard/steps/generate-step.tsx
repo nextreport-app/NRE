@@ -19,6 +19,7 @@ import {
   LAUNCH_PRIMARY_REPORT_TYPES,
   LAUNCH_SECONDARY_REPORT_TYPES,
 } from "@/lib/meta-launch-scope";
+import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 
 const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
 const LAUNCH_REPORT_TYPES = new Set<string>([
@@ -71,6 +72,7 @@ export function WizardGenerateStep() {
     formatIso,
     formatIsoRange,
     formatSummaryRange,
+    apiSyncHybridImport,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -570,6 +572,11 @@ export function WizardGenerateStep() {
                   <>
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
+                  {apiSyncHybridImport ? (
+                    <p className="rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
+                      {META_HYBRID_API_CSV_IMPORT_NOTE}
+                    </p>
+                  ) : null}
                   <p className="text-[14px] text-[#94a3b8]">
                     Report type: <span className="text-[14px] text-white">{reportTypeLabel()}</span>
                   </p>
