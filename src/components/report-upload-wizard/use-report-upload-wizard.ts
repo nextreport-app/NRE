@@ -205,6 +205,9 @@ export function useReportUploadWizard({
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
   const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
+  /** Optional Ads Manager CSV for Meta API hybrid merge (Result columns from manual export). */
+  const [metaManualReferenceCsvFile, setMetaManualReferenceCsvFile] = useState<File | null>(null);
+  const [metaManualReferenceCsvText, setMetaManualReferenceCsvText] = useState<string | null>(null);
   const [metaSyncDiagnostics, setMetaSyncDiagnostics] = useState<
     import("./types").MetaSyncDiagnosticsSummary | null
   >(null);
@@ -930,6 +933,18 @@ export function useReportUploadWizard({
     setMtdFile(file);
   }
 
+  function handleMetaManualReferenceCsvSelected(file: File | null) {
+    setMetaManualReferenceCsvFile(file);
+    if (!file) {
+      setMetaManualReferenceCsvText(null);
+      return;
+    }
+    void file.text().then(
+      (text) => setMetaManualReferenceCsvText(text),
+      () => setMetaManualReferenceCsvText(null),
+    );
+  }
+
   function handleDataSourceModeChange(mode: WizardDataSource) {
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
       setMtdFile(null);
@@ -941,6 +956,10 @@ export function useReportUploadWizard({
       setApiSyncError(null);
       setApiSyncHybridImport(false);
       setMetaSyncDiagnostics(null);
+    }
+    if (mode === "csv") {
+      setMetaManualReferenceCsvFile(null);
+      setMetaManualReferenceCsvText(null);
     }
     setDataSourceMode(mode);
   }
@@ -2093,6 +2112,9 @@ export function useReportUploadWizard({
     handleDataSourceModeChange,
     mtdFile,
     handleMtdFileSelected,
+    metaManualReferenceCsvFile,
+    handleMetaManualReferenceCsvSelected,
+    metaManualReferenceCsvText,
     uploadSessionId,
     apiSyncStatus,
     setApiSyncStatus,

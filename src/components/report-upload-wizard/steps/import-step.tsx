@@ -55,6 +55,9 @@ export function WizardImportStep() {
     metaConnected,
     metaConnectedName,
     metaSyncDiagnostics,
+    metaManualReferenceCsvFile,
+    handleMetaManualReferenceCsvSelected,
+    metaManualReferenceCsvText,
     mismatchWarning,
     mtdFile,
     platformPickerExpanded,
@@ -178,7 +181,23 @@ export function WizardImportStep() {
                 setApiSyncError(message);
               }}
               importComplete={false}
+              referenceManualCsvText={metaManualReferenceCsvText}
             />
+          ) : null}
+
+          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+            <div className="space-y-2 rounded-lg border border-dash-border bg-[#0d1b2e]/60 px-4 py-3">
+              <p className="text-[14px] font-medium text-white">Optional: Ads Manager reference CSV</p>
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                Upload the manual export if API Result columns look off — we merge{" "}
+                <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>, and{" "}
+                <span className="text-dash-ink">Website leads</span> from your file over API delivery.
+              </p>
+              <UploadDropzone
+                file={metaManualReferenceCsvFile}
+                onFileSelected={handleMetaManualReferenceCsvSelected}
+              />
+            </div>
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (

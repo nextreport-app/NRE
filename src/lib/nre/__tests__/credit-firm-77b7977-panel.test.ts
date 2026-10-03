@@ -46,6 +46,12 @@ function panel77b7977Adset(row: ReturnType<typeof parseCsvText>["rows"][number])
     { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
     { action_type: "onsite_web_lead", value: String(manualResults > 0 ? manualResults : 1) },
   ];
+  if (manualResults > 0) {
+    insight.actions.push({
+      action_type: "offsite_conversion.custom.446052571654985",
+      value: String(manualResults),
+    });
+  }
   return insight;
 }
 

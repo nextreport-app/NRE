@@ -41,6 +41,8 @@ interface WizardDataSourcePanelProps {
   onSyncError: (message: string) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
+  /** Optional Ads Manager CSV — server merges Result type / Results / Website leads over API delivery. */
+  referenceManualCsvText?: string | null;
 }
 
 interface MetaAccountOption {
@@ -105,6 +107,7 @@ export function WizardDataSourcePanel({
   onSyncStart,
   onSyncError,
   importComplete = false,
+  referenceManualCsvText = null,
 }: WizardDataSourcePanelProps) {
   const showMeta = platform === "META";
   const showGoogle = platform === "GOOGLE";
@@ -161,9 +164,14 @@ export function WizardDataSourcePanel({
   async function handleSync() {
     onSyncStart();
     try {
+      const refText = referenceManualCsvText?.trim() || undefined;
       const body =
         platform === "META"
-          ? { platform: "META" as const, metaAdAccountId: selectedMetaAccount }
+          ? {
+              platform: "META" as const,
+              metaAdAccountId: selectedMetaAccount,
+              ...(refText ? { referenceManualCsvText: refText } : {}),
+            }
           : platform === "GOOGLE"
             ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
             : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
