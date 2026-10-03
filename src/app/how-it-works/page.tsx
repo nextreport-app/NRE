@@ -13,12 +13,12 @@ import {
   pageMetadata,
   PRODUCT_FAQ_SCHEMA,
 } from "@/lib/seo";
-import { PLATFORM_LIST_API, PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
+import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — 5-Step Report Wizard",
   description:
-    "Set up a client, connect Meta via API or CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes. Google, TikTok & GA4 launching soon.",
+    "Set up a client, upload a Meta Ads Manager CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes. Google, TikTok & GA4 launching soon.",
   path: "/how-it-works",
 });
 
@@ -38,7 +38,7 @@ const SETUP_STEPS = [
   },
   {
     title: "Connect ad accounts (optional)",
-    body: "In Account Settings, connect Meta once (Google, TikTok, and GA4 connections are optional and launching soon). After that, choose Sync from API in the wizard instead of uploading CSVs.",
+    body: "Optional: connect GA4 in Account Settings for website reports. Meta, Google, and TikTok ad reports use a CSV export from each ads manager on Step 1 of the wizard.",
   },
 ];
 
@@ -63,7 +63,7 @@ interface Step {
 const WIZARD_STEPS: Step[] = [
   {
     title: "Add your ad data",
-    body: "Open New Report on a client. Meta is live today — choose Sync from API or upload a CSV export. You can also attach an optional Previous Month CSV for the monthly overview row.",
+    body: "Open New Report on a client and upload your Meta Ads Manager CSV (Last 30 days, Day breakdown). You can also attach an optional Previous Month CSV for the monthly overview row.",
     detail: "Step label in the app: Upload",
   },
   {
@@ -253,9 +253,9 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              NextReport syncs with {PLATFORM_LIST_API}. Connect once in Account Settings, then choose{" "}
-              <span className="text-white">Sync from API</span> in step 1 of the wizard — no CSV needed. Prefer a manual
-              export? CSV upload follows the same 5-step wizard.
+              Meta, Google, and TikTok ad reports use a CSV export from each platform&apos;s ads manager on Step 1 of the
+              wizard. GA4 website reports can use the GA4 Data API after you connect in Account Settings. Automatic ad
+              platform API import in the wizard is turned off.
             </p>
           </section>
 
