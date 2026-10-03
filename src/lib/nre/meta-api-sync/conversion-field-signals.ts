@@ -94,6 +94,33 @@ export function countRowsWithCostedWebsiteOrLeadInResults(rows: MetaInsightRow[]
   return rows.filter((r) => hasMeaningfulWebsiteConversionFields(r)).length;
 }
 
+const CUSTOM_CONVERSION = /offsite_conversion\.custom\./i;
+
+/** Costed website rows Ads Manager ad-set export trusts (excludes generic actions:lead noise). */
+export function hasCostedAdsetWebsiteResult(row: MetaInsightRow): boolean {
+  for (const entry of row.results ?? []) {
+    const actionType = parseIndicator(entry.indicator ?? "");
+    if (!actionType || actionType === "lead") continue;
+    if (
+      !CUSTOM_CONVERSION.test(actionType) &&
+      actionType !== "offsite_conversion.fb_pixel_lead" &&
+      actionType !== "onsite_web_lead" &&
+      actionType !== "website_lead"
+    ) {
+      continue;
+    }
+    const count = metricValue(entry);
+    if (count <= 0) continue;
+    const cost = costForIndicatorOnList(row.cost_per_result, entry.indicator ?? "");
+    if (cost > 0) return true;
+  }
+  return false;
+}
+
+export function countRowsWithCostedAdsetWebsiteResult(rows: MetaInsightRow[]): number {
+  return rows.filter((r) => hasCostedAdsetWebsiteResult(r)).length;
+}
+
 /** First costed result indicators on a row (for live API diagnostics). */
 export function sampleCostedResultIndicators(row: MetaInsightRow, limit = 4): string[] {
   const out: string[] = [];
