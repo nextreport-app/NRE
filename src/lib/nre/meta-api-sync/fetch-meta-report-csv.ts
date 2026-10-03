@@ -3,7 +3,6 @@ import { computeLastNDaysIsoRange } from "../api-date-range";
 import { rowsToCsv } from "../rows-to-csv";
 import { logIngestionNormalizationSample } from "./api-csv-normalize";
 import { enrichAdSetInsightsFromCampaignLevel } from "./enrich-adset-from-campaign";
-import { countRowsWithMeaningfulConversionFields } from "./conversion-field-signals";
 import {
   META_CSV_HEADERS,
   dedupeInsightsByAdSetDay,
@@ -57,8 +56,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   );
 
   let usedCampaignLevelConversionFallback = false;
-  const adsetWithConversion = countRowsWithMeaningfulConversionFields(deduped);
-  if (deduped.length > 0 && adsetWithConversion < Math.max(1, Math.floor(deduped.length * 0.2))) {
+  if (deduped.length > 0) {
     const campaignInsights = (
       await fetchMetaAdAccountInsights({
         accessToken: input.accessToken,
@@ -68,11 +66,8 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
         level: "campaign",
       })
     ).map(normalizeMetaInsightRow);
-    const enriched = enrichAdSetInsightsFromCampaignLevel(deduped, campaignInsights);
-    if (countRowsWithMeaningfulConversionFields(enriched) > adsetWithConversion) {
-      usedCampaignLevelConversionFallback = true;
-      deduped = enriched;
-    }
+    deduped = enrichAdSetInsightsFromCampaignLevel(deduped, campaignInsights);
+    usedCampaignLevelConversionFallback = true;
   }
   logIngestionNormalizationSample(deduped);
   const dataRows = deduped.map(insightToManualCsvRow);

@@ -227,6 +227,13 @@ export function WizardImportStep() {
                       {metaSyncDiagnostics.rowsWithMeaningfulConversionFields}
                     </>
                   ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithCostedWebsiteOrLeadInResults === "number" ? (
+                    <>
+                      {" "}
+                      · costed website/lead in results[] on{" "}
+                      {metaSyncDiagnostics.rowsWithCostedWebsiteOrLeadInResults}
+                    </>
+                  ) : null}
                   {typeof metaSyncDiagnostics.rowsWithCostedLeadInResults === "number" ? (
                     <>
                       {" "}

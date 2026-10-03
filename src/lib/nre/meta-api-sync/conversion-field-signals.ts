@@ -67,3 +67,35 @@ export function hasMeaningfulConversionFields(row: MetaInsightRow): boolean {
 export function countRowsWithMeaningfulConversionFields(rows: MetaInsightRow[]): number {
   return rows.filter((r) => hasMeaningfulConversionFields(r)).length;
 }
+
+const WEBSITE_OR_LEAD_ACTIONS = new Set([
+  "offsite_conversion.fb_pixel_lead",
+  "website_lead",
+  "onsite_web_lead",
+  "lead",
+]);
+
+/** Costed results[] pairs that Ads Manager would show as website submission / lead. */
+export function hasMeaningfulWebsiteConversionFields(row: MetaInsightRow): boolean {
+  for (const entry of row.results ?? []) {
+    const actionType = parseIndicator(entry.indicator ?? "");
+    if (!actionType || !WEBSITE_OR_LEAD_ACTIONS.has(actionType)) continue;
+    const count = metricValue(entry);
+    if (count <= 0) continue;
+    const cost = costForIndicatorOnList(row.cost_per_result, entry.indicator ?? "");
+    if (cost > 0) return true;
+  }
+  for (const entry of row.objective_results ?? []) {
+    const actionType = parseIndicator(entry.indicator ?? "");
+    if (!actionType || !WEBSITE_OR_LEAD_ACTIONS.has(actionType)) continue;
+    const count = metricValue(entry);
+    if (count <= 0) continue;
+    const cost = costForIndicatorOnList(row.cost_per_objective_result, entry.indicator ?? "");
+    if (cost > 0) return true;
+  }
+  return false;
+}
+
+export function countRowsWithCostedWebsiteOrLeadInResults(rows: MetaInsightRow[]): number {
+  return rows.filter((r) => hasMeaningfulWebsiteConversionFields(r)).length;
+}
