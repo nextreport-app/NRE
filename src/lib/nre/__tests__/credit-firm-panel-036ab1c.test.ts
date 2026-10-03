@@ -24,13 +24,12 @@ function panel036ab1cShape(row: ReturnType<typeof parseCsvText>["rows"][number])
   insight.cost_per_action_type = [];
   insight.results = [{ indicator: "actions:lead", values: [{ value: "1" }] }];
 
-  if (manualResults === 1) {
-    insight.results.push({
-      indicator: "actions:offsite_conversion.fb_pixel_lead",
-      values: [{ value: "1" }],
-    });
-    insight.cost_per_action_type = [
-      { action_type: "offsite_conversion.fb_pixel_lead", value: String(spend) },
+  if (manualResults > 0) {
+    insight.results = [
+      { indicator: "actions:lead", values: [{ value: String(manualResults) }] },
+    ];
+    insight.cost_per_result = [
+      { indicator: "actions:lead", values: [{ value: String(spend / manualResults) }] },
     ];
   }
 

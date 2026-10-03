@@ -46,6 +46,7 @@ export type MetaSyncDiagnosticsSummary = {
   rowsWithPixelInActions: number;
   rowsWithOnsiteWebLeadInActions?: number;
   rowsWithUncostedOffsiteInResults?: number;
+  rowsWithMeaningfulConversionFields?: number;
   rowsWithCostedLeadInResults?: number;
   sampleActionTypes?: string[];
   usedCampaignLevelConversionFallback?: boolean;
