@@ -18,6 +18,7 @@ export type MetaSyncDiagnostics = {
   rowsWithResultsField: number;
   rowsWithObjectiveResultsField: number;
   rowsWithPixelInActions: number;
+  rowsWithOnsiteWebLeadInActions: number;
   rowsWithCostedLeadInResults: number;
   rowsWithMappedResults: number;
   /** action_type values on the first spend row (confirms delivery-only vs conversion payload). */
@@ -61,6 +62,7 @@ export function buildMetaSyncDiagnostics(
   let rowsWithResultsField = 0;
   let rowsWithObjectiveResultsField = 0;
   let rowsWithPixelInActions = 0;
+  let rowsWithOnsiteWebLeadInActions = 0;
   let rowsWithCostedLeadInResults = 0;
   let rowsWithMappedResults = 0;
   const blankMapperSamples: MetaSyncDiagnostics["blankMapperSamples"] = [];
@@ -72,6 +74,7 @@ export function buildMetaSyncDiagnostics(
     if ((row.objective_results?.length ?? 0) > 0) rowsWithObjectiveResultsField++;
     const pixel = actionSum(row, "offsite_conversion.fb_pixel_lead");
     if (pixel > 0) rowsWithPixelInActions++;
+    if (actionSum(row, "onsite_web_lead") > 0) rowsWithOnsiteWebLeadInActions++;
     if (rowHasCostedLeadInResults(row)) rowsWithCostedLeadInResults++;
 
     const primary = manualExportPrimaryResult(row);
@@ -103,6 +106,7 @@ export function buildMetaSyncDiagnostics(
     rowsWithResultsField,
     rowsWithObjectiveResultsField,
     rowsWithPixelInActions,
+    rowsWithOnsiteWebLeadInActions,
     rowsWithCostedLeadInResults,
     rowsWithMappedResults,
     sampleActionTypes,
