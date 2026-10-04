@@ -1,6 +1,6 @@
 # Launch social copy (LinkedIn, X, Meta groups)
 
-Use as-is or trim. Link: https://nextreport.in · Trial: https://nextreport.in/signup · Design partners: https://nextreport.in/design-partners
+Use as-is or trim. Link: https://nextreport.in · Trial: https://nextreport.in/signup
 
 ---
 
@@ -28,8 +28,6 @@ What it is not:
 
 **Free 7-day trial** (no card): https://nextreport.in/signup
 
-We're also looking for **5 design partners** — run one real account per week, compare Ads Manager vs our deck when something looks off, get **3 months at 50% off (or free while active)**. Details: https://nextreport.in/design-partners
-
 If you manage Meta for clients and still rebuild the same PPT every Friday — I'd love your honest feedback.
 
 #MetaAds #DigitalAgency #PPC #MarketingAutomation #AdTech
@@ -44,7 +42,7 @@ NextReport: Ads Manager CSV → branded PPT / live link / Slides + AI insights i
 
 Built by a media buyer who was spending 2–3 hrs/day on manual reporting.
 
-Trial: https://nextreport.in/signup · Design partners: https://nextreport.in/design-partners
+Trial: https://nextreport.in/signup
 
 ---
 
@@ -56,7 +54,7 @@ Trial: https://nextreport.in/signup · Design partners: https://nextreport.in/de
 
 3/ Upload your Ads Manager CSV → branded PowerPoint / browser link / Slides + AI summary. Often under 2 min. Meta live now. From ₹699 / $8/mo.
 
-4/ Free trial: https://nextreport.in/signup — Looking for 5 agencies to compare decks vs Ads Manager (design partner perks): https://nextreport.in/design-partners
+4/ Free trial: https://nextreport.in/signup
 
 ---
 
@@ -72,16 +70,4 @@ Meta CSV reporting is **live**. Google/TikTok/GA4 coming soon.
 
 **7-day free trial:** https://nextreport.in/signup
 
-If you run 5+ Meta clients and want to **test free for 3 months** as a design partner (share screenshots when numbers differ), DM or WhatsApp us from the site.
-
-Happy to show a 5-min demo on a call.
-
----
-
-## Design partner DM template
-
-Hi [Name] — we're opening **5 design partner slots** for NextReport (Meta CSV → client PPT in ~2 min).
-
-In exchange for running **1 real account/week** and sending **Ads Manager vs deck screenshots** when something's off, you get **3 months at 50% off or free while active**.
-
-Interested? https://nextreport.in/design-partners or reply here.
+Happy to show a 5-min demo on a call — WhatsApp us from the site.

@@ -21,24 +21,6 @@ export const META_V1_PROMISE_BULLETS = [
   "Numbers come straight from your CSV rows; totals should match Ads Manager for the same dates and export level.",
 ] as const;
 
-export const META_V1_PROMISE_WIZARD_HINT =
-  "Weekly & monthly Meta reports from Ads Manager CSV — Last 30 days (day breakdown) or Previous Month. See the CSV Export Guide for exact columns.";
-
-export const DESIGN_PARTNER_PROGRAM = {
-  headline: "Design partner program",
-  subhead:
-    "Help us validate decks against real Ads Manager accounts. In exchange, get 3 months at 50% off — or free while you’re actively participating.",
-  commitments: [
-    "Run at least one real client account through NextReport each week.",
-    "When something looks off: screenshot Ads Manager vs the deck (same dates) and send it to us.",
-    "Optional 15-minute call or Loom when we need to reproduce a mismatch.",
-  ],
-  successNote:
-    "We’re looking for agencies who would honestly pay ₹699 / $8 per month if the numbers and format keep matching their workflow.",
-  ctaLabel: "Apply as a design partner",
-  mailSubject: "Design partner program application",
-} as const;
-
 export const REFERRAL_PROGRAM_LINE =
   "Refer another agency: when they subscribe, you both get one free month on your next renewal.";
 

@@ -21,7 +21,6 @@ import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platfo
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { isPlatformBeta } from "@/lib/platform-beta";
 import { UploadDropzone } from "../ui/upload-dropzone";
-import { MetaV1PromisePanel } from "@/components/meta-v1-promise-panel";
 
 export function WizardImportStep() {
   const w = useWizardContext();
@@ -146,8 +145,6 @@ export function WizardImportStep() {
       {selectedPlatformCard && isPlatformBeta(selectedPlatformCard) ? (
         <PlatformBetaNotice platform={selectedPlatformCard} />
       ) : null}
-
-      {selectedPlatformCard === "META" ? <MetaV1PromisePanel variant="wizard" /> : null}
 
       {selectedPlatformCard && (
         <div className="space-y-3">

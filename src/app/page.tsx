@@ -14,8 +14,8 @@ import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { V1PromiseSection } from "@/components/home/v1-promise-section";
-import { DesignPartnerSection } from "@/components/home/design-partner-section";
 import { CommunityReferralSection } from "@/components/home/community-referral-section";
+import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
 
 export const metadata = pageMetadata({
   title: "Meta Ads Weekly Report Automation for Agencies",
@@ -41,6 +41,7 @@ export default async function Home() {
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <HeroSection loggedIn={loggedIn} />
+        <SpecialistTimeSavingsSection />
         <HowItWorksSection />
         {/* Homepage copy/structure overhaul — the time-comparison section
             (the best copy on the page) moved up to position 3, right after
@@ -53,7 +54,6 @@ export default async function Home() {
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
-        <DesignPartnerSection />
         <CommunityReferralSection />
         <LeadCaptureSection />
         <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
