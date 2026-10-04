@@ -17,9 +17,9 @@ const FRAMES: ExplainerFrame[] = [
   {
     step: "1 / 5",
     title: "Add your ad data",
-    caption: "Connect Meta via official API — or upload a CSV export.",
+    caption: "Upload a CSV export from Meta Ads Manager.",
     voiceoverScript:
-      "Start by connecting your Meta ad account through the official API, or upload a CSV export. Google, TikTok, and GA4 are launching soon.",
+      "Start by uploading a CSV export from Meta Ads Manager. Google, TikTok, and GA4 are launching soon.",
   },
   {
     step: "2 / 5",

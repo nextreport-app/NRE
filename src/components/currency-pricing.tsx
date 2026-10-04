@@ -59,7 +59,7 @@ const PLANS: Plan[] = [
     features: [
       PROFESSIONAL_CLIENT_LIMIT_FEATURE,
       "Everything in Agency",
-      "Meta for every client today — more platforms as we launch them",
+      "Meta CSV reporting for every client; more platforms as we launch",
       "Quarterly, YTD & creative reports — launching soon",
       "Priority email support",
       "Early access to new features",
@@ -142,11 +142,11 @@ function PlanCard({
         {currency === "INR" ? "Excl. 18% GST" : "Excl. tax"}
       </p>
 
-      <ul className="mt-8 space-y-3 text-sm text-ink-secondary">
+      <ul className="mt-8 space-y-3 text-left text-sm text-ink-secondary">
         {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
+          <li key={feature} className="flex items-start gap-2 text-left">
             <CheckIcon />
-            <span>{feature}</span>
+            <span className="min-w-0 flex-1 text-left leading-snug">{feature}</span>
           </li>
         ))}
       </ul>
