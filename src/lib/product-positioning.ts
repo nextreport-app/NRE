@@ -5,7 +5,7 @@
 
 /** Hero / homepage — time → money (no geo-specific rates). */
 export const SPECIALIST_TIME_SAVINGS_LINE =
-  "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — in INR or USD — not just a shorter Friday.";
+  "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — not just a shorter Friday.";
 
 export const PRODUCT_DIFFERENTIATOR_LINE =
   "Upload the same export you already pull from Ads Manager; get the deck you would have built by hand — with AI summary — in minutes.";
