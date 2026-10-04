@@ -51,6 +51,7 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/help/download", changeFrequency: "monthly", priority: 0.85 },
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/design-partners", changeFrequency: "monthly", priority: 0.65 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
   { path: "/book-demo", changeFrequency: "monthly", priority: 0.75 },
   { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
@@ -342,7 +343,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "How long does it take to generate a report?",
     answer:
-      "Most reports generate in under 2 minutes from CSV upload upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
+      "Most reports generate in under 2 minutes from CSV upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
   },
   {
     question: "Is there a free trial?",

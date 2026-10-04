@@ -24,8 +24,9 @@ export default async function ReferPage() {
         </Link>
         <h1 className="mt-6 text-3xl font-semibold text-white">Refer an agency</h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
-          Know another agency or freelancer drowning in manual reporting? Refer them to NextReport. When they subscribe,
-          both of you get <span className="text-white">one month free</span> on your next renewal.
+          Know another agency or freelancer drowning in manual Meta reporting? Refer them to NextReport. When they
+          complete their first paid month, both of you get <span className="text-white">one free month</span> on your
+          next renewal — one free month per referred agency.
         </p>
 
         <div className="mt-8 space-y-4 rounded-xl border border-navy-border bg-navy-panel p-6 text-sm text-ink-secondary">
