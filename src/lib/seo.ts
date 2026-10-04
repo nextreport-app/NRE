@@ -258,7 +258,7 @@ export const HOME_JSON_LD = {
         },
       ],
       description:
-        "Connect Meta Ads via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
         "Meta Ads CSV import",
         "Meta Ads CSV upload",
@@ -332,7 +332,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via official API or CSV upload. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
+      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
   },
   {
     question: "What file formats can I upload?",
@@ -364,7 +364,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
     name: "Add your ad data",
-    text: "Connect Meta via official API in Account Settings, or upload a Meta CSV export in the report wizard.",
+    text: "Upload a Meta CSV export from Ads Manager in the report wizard.",
   },
   {
     name: "Select campaigns and ad sets",
