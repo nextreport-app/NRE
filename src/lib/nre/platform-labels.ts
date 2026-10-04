@@ -1,4 +1,5 @@
 import type { Platform } from "./google-columns";
+import { META_V1_PROMISE_WIZARD_HINT } from "@/lib/product-positioning";
 
 /** Human-readable platform name for UI copy. */
 export function getPlatformLabel(platform: Platform): string {
@@ -60,9 +61,11 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
 }
 
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
-export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform): string {
+export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, platform: Platform): string {
   if (step === 4) return "Pick a report type, review the summary, then generate.";
   if (step === 3) return "Metrics are pre-selected — customize only if needed.";
   if (step === 2) return "Pick campaigns first; objectives load automatically.";
+  if (step === 1 && platform === "META") return META_V1_PROMISE_WIZARD_HINT;
+  if (step === 1) return "Upload a CSV export from your ad platform.";
   return "";
 }

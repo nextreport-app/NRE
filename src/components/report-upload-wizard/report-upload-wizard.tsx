@@ -14,6 +14,7 @@ import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
 import { WizardGenerateStep } from "./steps/generate-step";
+import { ReportLooksWrongHelp } from "./ui/report-looks-wrong-help";
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
   return (
@@ -113,12 +114,15 @@ function ReportUploadWizardBody() {
       ) : null}
 
       {w.step === 4 && (
-        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-          Have a question or an issue with this report?{" "}
-          <SupportTicketLink clientId={w.clientId} openInNewTab /> or{" "}
-          <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-          .
-        </p>
+        <>
+          <ReportLooksWrongHelp clientId={w.clientId} />
+          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
+            Other questions?{" "}
+            <SupportTicketLink clientId={w.clientId} openInNewTab /> or{" "}
+            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+            .
+          </p>
+        </>
       )}
 
       <WizardImportStep />
