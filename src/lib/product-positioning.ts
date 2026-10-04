@@ -21,9 +21,6 @@ export const META_V1_PROMISE_BULLETS = [
   "Numbers come straight from your CSV rows; totals should match Ads Manager for the same dates and export level.",
 ] as const;
 
-export const META_V1_PROMISE_WIZARD_HINT =
-  "Weekly & monthly Meta reports from Ads Manager CSV — Last 30 days (day breakdown) or Previous Month. See the CSV Export Guide for exact columns.";
-
 export const REFERRAL_PROGRAM_LINE =
   "Refer another agency: when they subscribe, you both get one free month on your next renewal.";
 
