@@ -7,6 +7,9 @@
 export const SPECIALIST_TIME_SAVINGS_LINE =
   "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — not just a shorter Friday.";
 
+export const PRODUCT_ELEVATOR_PITCH =
+  "NextReport turns your Meta Ads Manager CSV into the branded weekly deck you’d normally build in PowerPoint — with AI summaries — in about two minutes. Built for agencies, not client dashboards.";
+
 export const PRODUCT_DIFFERENTIATOR_LINE =
   "Upload the same export you already pull from Ads Manager; get the deck you would have built by hand — with AI summary — in minutes.";
 
