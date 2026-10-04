@@ -8,7 +8,6 @@ export const CONTACT_SUBJECTS = [
   "Feature Request",
   "Report an Issue",
   "Partnership",
-  "Design Partner Program",
   "Other",
 ] as const;
 

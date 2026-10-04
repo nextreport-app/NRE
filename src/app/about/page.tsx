@@ -37,7 +37,7 @@ const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
     heading: "Built in public",
     paragraphs: [
       "We have not shouted from rooftops yet — most energy went into making the numbers trustworthy and the slides match real agency templates. That meant hundreds of small fixes, regression tests on real anonymized accounts, and learning where Meta exports are ambiguous.",
-      "Now we are opening the doors: free trial, design partners who compare decks to Ads Manager, and founder-led support on email and WhatsApp.",
+      "Now we are opening the doors: free trial and founder-led support on email and WhatsApp.",
       "If you manage Meta for clients in India, the US, Europe, or anywhere else — and you still rebuild the same deck every week — this was built for you.",
     ],
   },
@@ -123,11 +123,11 @@ export default async function AboutPage() {
         <section className="bg-navy-panel px-6 py-16 text-center">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Ready to save time on reporting?</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-ink-muted">
-            Start a free trial, or join the{" "}
-            <Link href="/design-partners" className="text-accent hover:underline">
-              design partner program
+            Questions?{" "}
+            <Link href="/contact" className="text-accent hover:underline">
+              Contact us
             </Link>{" "}
-            if you want to shape v1 with us. Questions?{" "}
+            or{" "}
             <WhatsAppChatLink className="text-accent underline hover:no-underline" />.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">

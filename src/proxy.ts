@@ -17,7 +17,6 @@ const PUBLIC_PATHS = [
   "/how-it-works",
   "/case-studies",
   "/refer",
-  "/design-partners",
   "/sitemap.xml",
   "/robots.txt",
   // Internal design preview, not linked from anywhere — accessible directly
