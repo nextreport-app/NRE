@@ -29,14 +29,24 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
 
   const ok = verification.status === "ok";
   const mismatches = verification.checks.filter((c) => c.status === "mismatch");
-  const byScope = groupByScope(verification.checks);
+  const byScope = groupByScope(mismatches);
+
+  if (ok) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-emerald-800/35 bg-emerald-950/15 px-4 py-3">
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
+          aria-hidden
+        >
+          ✓
+        </span>
+        <span className="text-[14px] font-medium text-emerald-100">Verified against your CSV</span>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`rounded-lg border px-4 py-3.5 ${
-        ok ? "border-emerald-800/35 bg-emerald-950/15" : "border-amber-800/35 bg-amber-950/10"
-      }`}
-    >
+    <div className="rounded-lg border border-amber-800/35 bg-amber-950/10 px-4 py-3.5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -44,22 +54,20 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
         aria-expanded={open}
       >
         <span
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] ${
-            ok ? "bg-emerald-900/50 text-emerald-200" : "bg-amber-900/40 text-amber-100"
-          }`}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-900/40 text-[13px] text-amber-100"
           aria-hidden
         >
-          {ok ? "✓" : "!"}
+          !
         </span>
-        <span className="min-w-0 flex-1">
-          <span className={`block text-[14px] font-medium ${ok ? "text-emerald-100" : "text-amber-50"}`}>
-            {ok ? "Verified against your CSV" : `${mismatches.length} mismatch${mismatches.length === 1 ? "" : "es"} vs your CSV`}
-          </span>
-          <span className="mt-0.5 block text-[12px] text-dash-ink-muted">
-            Amount spent, results, and cost per result only · does not block generate
-          </span>
+        <span className="min-w-0 flex-1 text-[14px] font-medium text-amber-50">
+          {mismatches.length} mismatch{mismatches.length === 1 ? "" : "es"} vs your CSV
         </span>
-        <span className="shrink-0 text-[12px] text-dash-ink-secondary">{open ? "Hide" : "Details"}</span>
+        <span
+          className={`shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${open ? " rotate-180" : ""}`}
+          aria-hidden
+        >
+          ▾
+        </span>
       </button>
 
       {verification.alignedWithCsvExport ? (
@@ -77,20 +85,19 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
                 {scopeChecks.map((c) => (
                   <div
                     key={`${scope}-${c.metric}`}
-                    className={`grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px] ${
-                      c.status === "mismatch" ? "text-amber-50" : "text-dash-ink-secondary"
-                    }`}
+                    className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px] text-amber-50"
                   >
                     <dt className="text-dash-ink-secondary">{c.metric}</dt>
                     <dd className="text-right text-white tabular-nums">{c.reportDisplay}</dd>
-                    <dd className="text-right tabular-nums text-dash-ink-muted">
-                      CSV {c.csvDisplay}
-                    </dd>
+                    <dd className="text-right tabular-nums text-dash-ink-muted">CSV {c.csvDisplay}</dd>
                   </div>
                 ))}
               </dl>
             </div>
           ))}
+          <p className="text-[12px] leading-relaxed text-dash-ink-muted">
+            You can still generate — this is a sanity check, not a block.
+          </p>
         </div>
       ) : null}
     </div>
