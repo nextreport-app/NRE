@@ -8,71 +8,90 @@ type Props = {
   refreshing?: boolean;
 };
 
+function groupByScope(checks: CsvVerificationResult["checks"]) {
+  const map = new Map<string, typeof checks>();
+  for (const c of checks) {
+    const list = map.get(c.scope) ?? [];
+    list.push(c);
+    map.set(c.scope, list);
+  }
+  return map;
+}
+
 export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const [open, setOpen] = useState(false);
 
   if (!verification || verification.status === "skipped") return null;
 
-  const mismatches = verification.checks.filter((c) => c.status === "mismatch");
-  const ok = verification.status === "ok";
-
-  if (refreshing && !verification.checks.length) {
-    return (
-      <p className="text-[13px] text-dash-ink-secondary">Checking totals against your CSV…</p>
-    );
+  if (refreshing && verification.checks.length === 0) {
+    return <p className="text-[13px] text-dash-ink-secondary">Checking spend and results against your CSV…</p>;
   }
+
+  const ok = verification.status === "ok";
+  const mismatches = verification.checks.filter((c) => c.status === "mismatch");
+  const byScope = groupByScope(verification.checks);
 
   return (
     <div
-      className={`rounded-lg border px-4 py-3 ${
-        ok ? "border-emerald-900/40 bg-emerald-950/20" : "border-amber-900/40 bg-amber-950/15"
+      className={`rounded-lg border px-4 py-3.5 ${
+        ok ? "border-emerald-800/35 bg-emerald-950/15" : "border-amber-800/35 bg-amber-950/10"
       }`}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 text-left"
+        className="flex w-full items-center gap-3 text-left"
         aria-expanded={open}
       >
-        <span className={`text-[14px] font-medium ${ok ? "text-emerald-200" : "text-amber-100"}`}>
-          {ok
-            ? "Verified against your CSV"
-            : `${mismatches.length} ${mismatches.length === 1 ? "difference" : "differences"} vs your CSV`}
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] ${
+            ok ? "bg-emerald-900/50 text-emerald-200" : "bg-amber-900/40 text-amber-100"
+          }`}
+          aria-hidden
+        >
+          {ok ? "✓" : "!"}
         </span>
-        <span className="text-[13px] text-dash-ink-secondary">{open ? "▴" : "▾"}</span>
+        <span className="min-w-0 flex-1">
+          <span className={`block text-[14px] font-medium ${ok ? "text-emerald-100" : "text-amber-50"}`}>
+            {ok ? "Verified against your CSV" : `${mismatches.length} mismatch${mismatches.length === 1 ? "" : "es"} vs your CSV`}
+          </span>
+          <span className="mt-0.5 block text-[12px] text-dash-ink-muted">
+            Amount spent, results, and cost per result only · does not block generate
+          </span>
+        </span>
+        <span className="shrink-0 text-[12px] text-dash-ink-secondary">{open ? "Hide" : "Details"}</span>
       </button>
 
-      {verification.alignedWithCsvExport && !ok ? (
-        <p className="mt-2 text-[13px] leading-relaxed text-amber-200/90">
-          We adjusted result counting to follow your export columns. If anything still looks off, contact support with
-          this report&apos;s settings.
+      {verification.alignedWithCsvExport ? (
+        <p className="mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed text-amber-100/90">
+          Totals were adjusted once to match your export columns. Generate uses the same counting.
         </p>
       ) : null}
 
       {open ? (
-        <ul className="mt-3 space-y-2 border-t border-dash-border/40 pt-3">
-          {(ok ? verification.checks.slice(0, 4) : mismatches).map((c) => (
-            <li key={`${c.scope}-${c.metric}`} className="text-[13px] leading-snug text-dash-ink-secondary">
-              <span className="text-white">{c.metric}</span>
-              <span className="text-dash-ink-muted"> · {c.scope}</span>
-              <div className="mt-0.5">
-                Report <span className="text-white">{c.reportDisplay}</span>
-                {" · "}
-                CSV <span className="text-white">{c.csvDisplay}</span>
-              </div>
-              {c.note ? <p className="mt-1 text-[12px] text-dash-ink-muted">{c.note}</p> : null}
-            </li>
+        <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
+          {[...byScope.entries()].map(([scope, scopeChecks]) => (
+            <div key={scope}>
+              <p className="text-[12px] font-medium uppercase tracking-wide text-dash-ink-muted">{scope}</p>
+              <dl className="mt-2 space-y-2">
+                {scopeChecks.map((c) => (
+                  <div
+                    key={`${scope}-${c.metric}`}
+                    className={`grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px] ${
+                      c.status === "mismatch" ? "text-amber-50" : "text-dash-ink-secondary"
+                    }`}
+                  >
+                    <dt className="text-dash-ink-secondary">{c.metric}</dt>
+                    <dd className="text-right text-white tabular-nums">{c.reportDisplay}</dd>
+                    <dd className="text-right tabular-nums text-dash-ink-muted">
+                      CSV {c.csvDisplay}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           ))}
-          {ok && verification.checks.length > 4 ? (
-            <li className="text-[12px] text-dash-ink-muted">+ {verification.checks.length - 4} more metrics match</li>
-          ) : null}
-          {!ok ? (
-            <li className="pt-1 text-[12px] leading-relaxed text-dash-ink-muted">
-              You can still generate — this is a sanity check, not a block. Re-uploading the same CSV usually reproduces
-              the same numbers unless we auto-adjust (above).
-            </li>
-          ) : null}
-        </ul>
+        </div>
       ) : null}
     </div>
   );
