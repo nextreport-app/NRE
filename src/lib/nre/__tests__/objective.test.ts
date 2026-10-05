@@ -18,6 +18,7 @@ import {
   resolveCampaignObjective,
   resolveCampaignObjectiveWithConfidence,
   resolveObjective,
+  resultValueForObjective,
   type ResultLabels,
 } from "../objective";
 import { parseCsvText } from "../parse-csv";
@@ -1695,6 +1696,27 @@ describe("getGroupedResultDisplay", () => {
     expect(display.resultLabel).toBe("WEBSITE LEADS");
     expect(display.cprValue).toBe("—");
     expect(display.resultValue).toBe("0");
+  });
+});
+
+describe("resultValueForObjective — WEBSITE LEADS", () => {
+  it("uses Results when present and ignores orphan website_leads without Result type", () => {
+    expect(
+      resultValueForObjective(
+        row({ result_type: "Website applications submitted", results: 2, website_leads: 2 }),
+        "WEBSITE LEADS",
+      ),
+    ).toBe(2);
+    expect(resultValueForObjective(row({ result_type: "", results: 0, website_leads: 1 }), "WEBSITE LEADS")).toBe(0);
+  });
+
+  it("falls back to website_leads when Result type is website-lead but Results cell is blank", () => {
+    expect(
+      resultValueForObjective(
+        row({ result_type: "Website applications submitted", results: 0, website_leads: 1 }),
+        "WEBSITE LEADS",
+      ),
+    ).toBe(1);
   });
 });
 
