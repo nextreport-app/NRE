@@ -28,6 +28,7 @@ import {
   isMetaApiConfigured,
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
+import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
 
 const RECENT_REPORTS_LIMIT = 5;
 
@@ -182,20 +183,19 @@ export default async function ClientDetailPage({
           />
         </Card>
 
-        <Card id="website-analytics">
-          <CardHeading hint="Pick one GA4 property now — Website Traffic reports open after Meta v1 launch.">
-            Google Analytics property
-            <span className="ml-2 rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
-              Launching soon
-            </span>
-          </CardHeading>
-          <Ga4PropertyPicker
-            clientId={client.id}
-            initialPropertyId={client.ga4PropertyId}
-            initialPropertyName={client.ga4PropertyName}
-            ga4Connected={ga4Connected}
-          />
-        </Card>
+        {isClientPlatformConnectionVisible("ga4") ? (
+          <Card id="website-analytics">
+            <CardHeading hint="Pick one GA4 property for Website Traffic reports.">
+              Google Analytics property
+            </CardHeading>
+            <Ga4PropertyPicker
+              clientId={client.id}
+              initialPropertyId={client.ga4PropertyId}
+              initialPropertyName={client.ga4PropertyName}
+              ga4Connected={ga4Connected}
+            />
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeading>Client settings</CardHeading>
