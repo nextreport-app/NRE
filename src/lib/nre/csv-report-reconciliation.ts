@@ -59,7 +59,10 @@ export interface ReconcileStandardReportInput {
   campaignObjectives?: Record<string, ResultLabels> | null;
 }
 
-const SPEND_TOLERANCE = 0.5;
+/** Ignore ±$1 spend drift from CSV rounding, per-slide display, and export cents. */
+const SPEND_AMOUNT_TOLERANCE = 1;
+/** Cost-per-result can differ slightly when spend is within the band above. */
+const CPR_TOLERANCE = 0.5;
 
 function closeEnough(a: number, b: number, tol: number): boolean {
   return Math.abs(a - b) <= tol;
@@ -227,7 +230,7 @@ function scopedChecks(params: {
     scope,
     reportDisplay: reportSpendDisplay,
     csvDisplay: fmtCurrency(csvSpend, currencySymbol),
-    status: closeEnough(reportSpend, csvSpend, SPEND_TOLERANCE) ? "ok" : "mismatch",
+    status: closeEnough(reportSpend, csvSpend, SPEND_AMOUNT_TOLERANCE) ? "ok" : "mismatch",
   });
 
   checks.push({
@@ -248,7 +251,7 @@ function scopedChecks(params: {
       scope,
       reportDisplay: reportCprDisplay,
       csvDisplay: csvCpr > 0 ? fmtCurrency(csvCpr, currencySymbol) : "—",
-      status: closeEnough(reportCpr, csvCpr, SPEND_TOLERANCE) ? "ok" : "mismatch",
+      status: closeEnough(reportCpr, csvCpr, CPR_TOLERANCE) ? "ok" : "mismatch",
     });
   }
 
