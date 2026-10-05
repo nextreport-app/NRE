@@ -1378,10 +1378,17 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
     }
     if (label === "WEBSITE LEADS") {
       // Results = Meta's attributed result for the row's Result type (e.g.
-      // "Website applications submitted"). Website leads column can differ on
-      // the same day — prefer Results; fall back to website_leads when Results
-      // is blank (API-sync rows or sparse exports).
-      return parseCellNum(row.results) || parseCellNum(row.website_leads);
+      // "Website applications submitted"). Website leads column can show +1 on
+      // days with blank Result type/Results (attribution lag) — Ads Manager
+      // period totals use Results; do not add orphan website_leads counts.
+      const results = parseCellNum(row.results);
+      if (results > 0) return results;
+      const wl = parseCellNum(row.website_leads);
+      if (wl <= 0) return 0;
+      const rt = (row.result_type || "").trim();
+      if (!rt) return 0;
+      if (getResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+      return 0;
     }
     if (label === "META FORM LEADS") {
       return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
