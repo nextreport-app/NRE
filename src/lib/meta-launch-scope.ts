@@ -51,24 +51,6 @@ export function isLaunchPlatformEnabled(platform: string): platform is LaunchEna
   return (LAUNCH_ENABLED_PLATFORMS as readonly string[]).includes(platform);
 }
 
-/** Client manage page + account connection summary — hide deferred platforms until live. */
-export type ClientPlatformConnectionKey = "meta" | "googleAds" | "tiktok" | "ga4";
-
-export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
-  switch (key) {
-    case "meta":
-      return isLaunchPlatformEnabled("META");
-    case "googleAds":
-      return isLaunchPlatformEnabled("GOOGLE");
-    case "tiktok":
-      return isLaunchPlatformEnabled("TIKTOK");
-    case "ga4":
-      return isLaunchPlatformEnabled("GA4");
-    default:
-      return false;
-  }
-}
-
 export function isLaunchReportTypeEnabled(reportType: string): reportType is LaunchEnabledReportType {
   return (LAUNCH_ENABLED_REPORT_TYPES as readonly string[]).includes(reportType);
 }

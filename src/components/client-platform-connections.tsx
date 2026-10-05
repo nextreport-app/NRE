@@ -5,7 +5,6 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
 
 export interface PlatformConnectionRow {
   connected: boolean;
@@ -67,7 +66,7 @@ export function ClientPlatformConnections(props: ClientPlatformConnectionsProps)
         wizard.
       </p>
       <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-        {PLATFORMS.filter(({ key }) => isClientPlatformConnectionVisible(key)).map(({ key, name, hash, Icon }) => {
+        {PLATFORMS.map(({ key, name, hash, Icon }) => {
           const row = props[key];
           const actionLabel = !row.configured
             ? "Unavailable"
