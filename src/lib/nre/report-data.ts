@@ -974,6 +974,8 @@ function buildLast30DaysChartSlide(params: {
   reportType: ReportType;
   mtdRow: TableRowData;
   slideCampaignNames?: string[];
+  /** Wizard-confirmed objectives — chart-window detection must not override these. */
+  pinnedCampaignObjectiveKeys?: Set<string>;
 }): ChartSlideData | null {
   const chartRange = capRangeToData(
     params.chartRange,
@@ -983,6 +985,12 @@ function buildLast30DaysChartSlide(params: {
   );
   const chartRawRows = filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso);
   const chartRows: AggRow[] = aggregateRows(chartRawRows);
+  const chartObjectiveMap = new Map(params.campaignObjectiveMap);
+  const pinned = params.pinnedCampaignObjectiveKeys ?? new Set<string>();
+  buildCampaignObjectiveMap(chartRows).forEach((labels, name) => {
+    if (!pinned.has(name)) chartObjectiveMap.set(name, labels);
+    else if (!chartObjectiveMap.has(name)) chartObjectiveMap.set(name, labels);
+  });
   const chartGroups: Record<string, AggRow[]> = {};
   chartRows.forEach((row) => {
     const name = String(row.campaign_name || "").trim();
@@ -994,12 +1002,12 @@ function buildLast30DaysChartSlide(params: {
   ).sort();
 
   let totalAllSpend = 0;
-  const chartCampaigns: ChartCampaignData[] = chartCampaignNames.map((name) => {
+  const chartCampaignsAll: ChartCampaignData[] = chartCampaignNames.map((name) => {
     const rows = chartGroups[name] || [];
     const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
     const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
     const avgCtr = average(ctrs);
-    const chartObjective = params.campaignObjectiveMap.get(normalizeCampaignName(name)) ?? {
+    const chartObjective = chartObjectiveMap.get(normalizeCampaignName(name)) ?? {
       resultLabel: "RESULTS",
       costLabel: "COST PER RESULT",
     };
@@ -1024,6 +1032,10 @@ function buildLast30DaysChartSlide(params: {
 
     return { name, spend, results, cpr, avgCtr, resLabel, cprLabel, isActive, statusIndicator };
   });
+  // Drop selected campaigns with no spend and no results in this window —
+  // avoids "0 results" bars for campaigns that did not run in the last 30 days.
+  const chartCampaigns = chartCampaignsAll.filter((c) => c.spend > 0 || c.results > 0);
+  totalAllSpend = chartCampaigns.reduce((s, c) => s + c.spend, 0);
 
   if (chartCampaigns.length === 0 || totalAllSpend <= 0) return null;
 
@@ -1046,12 +1058,12 @@ function buildLast30DaysChartSlide(params: {
   chartCampaigns.forEach((c) => {
     campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
   });
-  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, params.campaignObjectiveMap);
+  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, chartObjectiveMap);
   const chartSnapshotRow = computeTableRow(
     chartRows as MetricRow[],
     params.currencySymbol,
     false,
-    params.campaignObjectiveMap,
+    chartObjectiveMap,
     params.now,
     undefined,
     params.timezone,
@@ -1256,6 +1268,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignObjectiveMap.set(normalizeCampaignName(name), objective);
     }
   }
+  const pinnedCampaignObjectiveKeys = new Set(
+    Object.keys(campaignObjectives ?? {}).map((name) => normalizeCampaignName(name)),
+  );
   // Step 4's Per Campaign Customisation — see BuildReportDataInput's
   // campaignMetricOverrides doc comment for the hard-replacement semantics.
   // Normalized the same way as campaignObjectiveMap above so lookups inside
@@ -1482,6 +1497,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       reportType,
       mtdRow,
       slideCampaignNames: selectedCampaigns ?? [],
+      pinnedCampaignObjectiveKeys,
     });
 
     return {
@@ -1981,6 +1997,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     reportType,
     mtdRow,
     slideCampaignNames: campaignNames,
+    pinnedCampaignObjectiveKeys,
   });
 
   return {
