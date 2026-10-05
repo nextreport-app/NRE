@@ -268,6 +268,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     weeklyRange,
     reportType,
     timezone: client.timezone,
+    currencySymbol: CURRENCY_SYMBOLS[client.currency],
     resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
   });
 
