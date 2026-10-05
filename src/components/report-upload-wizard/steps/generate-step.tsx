@@ -499,21 +499,12 @@ export function WizardGenerateStep() {
 
 
           {showStandardCoverBudget && (
-            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <h4 className="text-[15px] font-semibold text-white">Cover slide budget</h4>
+            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+              <h4 className="text-[16px] font-semibold text-white">Cover slide budget</h4>
               {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
-                <div className="mt-3 space-y-3">
-                  {coverBudgetPreviewLine ? (
-                    <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
-                      {coverBudgetPreviewLine}
-                    </p>
-                  ) : (
-                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-3 py-2.5 text-[14px] text-dash-ink-secondary">
-                      Calculating spend vs budget…
-                    </p>
-                  )}
+                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
                   <label
-                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait opacity-70" : "cursor-pointer"}`}
+                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait" : "cursor-pointer"}`}
                   >
                     <input
                       type="checkbox"
@@ -522,18 +513,39 @@ export function WizardGenerateStep() {
                       onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
-                    <span className="text-[14px] text-dash-ink-secondary">
+                    <span className="text-[14px] leading-snug text-dash-ink-secondary">
                       Show monthly budget used on cover slide
                     </span>
                   </label>
-                  {coverBudgetPacingWarning && (
-                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-                      {coverBudgetPacingWarning}
-                    </p>
-                  )}
+
+                  <div
+                    className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+                      showBudgetOnCover ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    }`}
+                    aria-hidden={!showBudgetOnCover}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="space-y-3 pt-1">
+                        {coverBudgetPreviewLine ? (
+                          <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-white">
+                            {coverBudgetPreviewLine}
+                          </p>
+                        ) : (
+                          <p className="rounded-md border border-dash-border bg-dash-bg/60 px-4 py-3 text-[14px] text-dash-ink-secondary">
+                            Calculating spend vs budget…
+                          </p>
+                        )}
+                        {coverBudgetPacingWarning ? (
+                          <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-[14px] leading-relaxed text-amber-200">
+                            {coverBudgetPacingWarning}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
+                <p className="mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
                   No monthly budget set for this client.{" "}
                   <Link
                     href={`/clients/${clientId}`}
@@ -545,7 +557,7 @@ export function WizardGenerateStep() {
                   </Link>
                 </p>
               )}
-            </div>
+            </section>
           )}
 
             <div className="space-y-4">
