@@ -20,6 +20,7 @@ import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platform-picker";
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { isPlatformBeta } from "@/lib/platform-beta";
+import { isWizardPlatformSwitchEnabled } from "@/lib/meta-launch-scope";
 import { UploadDropzone } from "../ui/upload-dropzone";
 
 export function WizardImportStep() {
@@ -92,6 +93,7 @@ export function WizardImportStep() {
   );
   const showCompactPreviousMonth =
     previousMonthInfo.status === "current" && !includePreviousMonthComparison;
+  const platformSwitchEnabled = isWizardPlatformSwitchEnabled();
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
@@ -117,8 +119,9 @@ export function WizardImportStep() {
             description={wizardPlatformImportDescription(selectedPlatformCard)}
             expanded={platformPickerExpanded}
             onToggle={() => setPlatformPickerExpanded((open) => !open)}
+            allowPlatformChange={platformSwitchEnabled}
           />
-          {platformPickerExpanded ? (
+          {platformSwitchEnabled && platformPickerExpanded ? (
             <div className="space-y-3 border-t border-dash-border pt-4">
               <p className="text-[13px] text-dash-ink-secondary">Switch to a different platform</p>
               <WizardPlatformPickerGrid

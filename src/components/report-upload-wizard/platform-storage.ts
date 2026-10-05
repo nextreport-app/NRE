@@ -1,4 +1,4 @@
-import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
+import { isLaunchPlatformEnabled, isWizardPlatformSwitchEnabled } from "@/lib/meta-launch-scope";
 import type { WizardPlatformChoice } from "./types";
 import { LAST_PLATFORM_STORAGE_KEY } from "./constants";
 
@@ -27,6 +27,16 @@ export function readInitialPlatformPickerState(_showTikTokOption: boolean): {
   hasSavedPlatformPreference: boolean;
 } {
   const stored = typeof window === "undefined" ? null : readStoredWizardPlatform();
+
+  if (!isWizardPlatformSwitchEnabled()) {
+    return {
+      wizardKind: "ads",
+      selectedPlatformCard: "META",
+      platformPickerExpanded: false,
+      hasSavedPlatformPreference: true,
+    };
+  }
+
   // GA4 website wizard + deferred ad platforms (Google, TikTok) → Meta during meta-v1.
   if (stored === "GA4" || (stored && !isLaunchPlatformEnabled(stored))) {
     return {
