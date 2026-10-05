@@ -39,6 +39,10 @@ export function WizardCampaignsStep() {
     w.touchedObjectiveCampaigns,
   ]);
 
+  useEffect(() => {
+    setAutoRevealStarted(false);
+  }, [w.clientId]);
+
   /** First report for this client: show objectives expanded; later visits stay collapsed until the user expands. */
   useEffect(() => {
     if (!stepActive) return;
