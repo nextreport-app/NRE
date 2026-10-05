@@ -14,7 +14,7 @@ import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
-import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
@@ -253,13 +253,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const csvAlign = resolveCsvAlignResults(formData);
   const reportType = built.data.reportType;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const previewNow = new Date();
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   if (reportType === "DAILY") {
-    weeklyRange = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone) ?? undefined;
+    weeklyRange = computeDailyRangeIso(mtdParsed.rows, previewNow, client.timezone) ?? undefined;
   } else if (reportType === "WEEKLY") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, previewNow, client.timezone);
     weeklyRange = dateResolution.ok ? dateResolution.weeklyRange : undefined;
   }
+
+  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+  const periodRowsForVerify = includePreviousMonthComparison
+    ? await loadPreviousMonthDataRows(client)
+    : undefined;
 
   const csvVerification = reconcileStandardReportWithCsv({
     report: built.data,
@@ -269,7 +275,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reportType,
     timezone: client.timezone,
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    now: previewNow,
     resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+    periodRows: periodRowsForVerify,
+    campaignObjectives: campaignObjectives ?? null,
   });
 
   return NextResponse.json({
