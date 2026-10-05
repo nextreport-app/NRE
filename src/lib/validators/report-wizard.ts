@@ -169,6 +169,11 @@ export function resolveIncludePreviousMonthComparison(formData: FormData | null)
   return parseBooleanFormField(formData, "includePreviousMonthComparison") ?? false;
 }
 
+/** When true, result totals use Meta export column rules (CSV verification align). */
+export function resolveCsvAlignResults(formData: FormData | null): boolean {
+  return parseBooleanFormField(formData, "csvAlignResults") ?? false;
+}
+
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
 export function parseJsonFormField<T>(formData: FormData, field: string, schema: z.ZodType<T>): T | undefined {
   const raw = formData.get(field);

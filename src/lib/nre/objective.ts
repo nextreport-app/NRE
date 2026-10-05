@@ -7,6 +7,7 @@
  */
 
 import { hasRealRowDate } from "./columns";
+import { metaCsvExportResultValue, type ResultCountingMode } from "./meta-csv-export-counting";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
 import type { MetricRow } from "./types";
@@ -1366,7 +1367,11 @@ function rowAddToCart(row: MetricRow): number {
  * Comparison Report campaign totals being the other one, as of this fix —
  * gets the same mismatched-row correction instead of reimplementing it.
  */
-export function resultValueForObjective(row: MetricRow, label: string): number {
+export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
+  if (mode === "meta-csv-export") {
+    return metaCsvExportResultValue(row, label);
+  }
+
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
 
   if (ownLabel === label) {
@@ -1508,6 +1513,7 @@ export function groupResultsByCampaignObjective(
   rows: MetricRow[],
   objectiveMap: Map<string, ResultLabels>,
   debugLabel?: string,
+  resultCountingMode: ResultCountingMode = "standard",
 ): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
@@ -1517,7 +1523,7 @@ export function groupResultsByCampaignObjective(
     let campaignValueSum = 0;
     let campaignReachAdded = false;
     campRows.forEach((row) => {
-      const value = resultValueForObjective(row, label);
+      const value = resultValueForObjective(row, label, resultCountingMode);
       groups[label].count += value;
       if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
         groups[label].totalSpend += parseCellNum(row.spend);
@@ -1593,6 +1599,7 @@ export function getGroupedResultDisplayForObjective(
   campRows: MetricRow[],
   objective: ResultLabels,
   currencySymbol: string,
+  resultCountingMode: ResultCountingMode = "standard",
 ): ResultDisplay {
   // MTD-row bug fix, extended to campaign slides — see
   // groupResultsByCampaignObjective's own doc comment and
@@ -1607,7 +1614,7 @@ export function getGroupedResultDisplayForObjective(
   let totalReach = 0;
   let campaignReachAdded = false;
   campRows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel);
+    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
       totalSpend += parseCellNum(row.spend);

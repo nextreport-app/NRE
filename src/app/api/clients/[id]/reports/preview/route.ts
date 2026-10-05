@@ -5,9 +5,12 @@ import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { reconcileStandardReportWithCsv } from "@/lib/nre/csv-report-reconciliation";
+import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { computeDailyRangeIso } from "@/lib/nre/date-range";
 import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-data";
-import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -247,5 +250,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data: built.data });
+  const csvAlign = resolveCsvAlignResults(formData);
+  const reportType = built.data.reportType;
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  let weeklyRange: { startIso: string; endIso: string } | undefined;
+  if (reportType === "DAILY") {
+    weeklyRange = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone) ?? undefined;
+  } else if (reportType === "WEEKLY") {
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
+    weeklyRange = dateResolution.ok ? dateResolution.weeklyRange : undefined;
+  }
+
+  const csvVerification = reconcileStandardReportWithCsv({
+    report: built.data,
+    mtdDailyRows: mtdParsed.rows,
+    selectedCampaigns: selectedCampaigns ?? null,
+    weeklyRange,
+    reportType,
+    timezone: client.timezone,
+    resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+  });
+
+  return NextResponse.json({
+    valid: true,
+    errors: [],
+    warnings: validation.warnings,
+    data: built.data,
+    csvVerification,
+    suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+  });
 }

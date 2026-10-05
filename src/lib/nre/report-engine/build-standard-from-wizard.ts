@@ -24,6 +24,7 @@ import {
   selectedMetricsSchema,
   resolveIncludePreviousMonthComparison,
   resolveShowBudgetPacingOnCover,
+  resolveCsvAlignResults,
 } from "@/lib/validators/report-wizard";
 import { createReportEngine } from "./report-engine-impl";
 
@@ -89,6 +90,7 @@ export async function buildStandardReportForWizard(
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
     showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
+    alignResultsWithCsvExport: resolveCsvAlignResults(formData),
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,

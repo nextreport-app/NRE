@@ -28,6 +28,7 @@ import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
 import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
+import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import {
@@ -123,6 +124,9 @@ export function useReportUploadWizard({
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
   const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
+  const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
+  const [csvAlignResults, setCsvAlignResults] = useState(false);
+  const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
 
@@ -791,6 +795,11 @@ export function useReportUploadWizard({
       setComparisonData(null);
       setHistoricalData(null);
       setDayBreakdownData(null);
+    }
+    setCsvVerification(json.csvVerification ?? null);
+    if (json.suggestCsvAlign && !csvAlignResults && !csvAlignAttemptedRef.current) {
+      csvAlignAttemptedRef.current = true;
+      setCsvAlignResults(true);
     }
     setPreviewStatus("idle");
     if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done") {
@@ -1573,6 +1582,7 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
         },
         uploadSessionId,
       ),
@@ -1613,6 +1623,12 @@ export function useReportUploadWizard({
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
   useEffect(() => {
+    csvAlignAttemptedRef.current = false;
+    setCsvAlignResults(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType, dateMode, customStart, customEnd, Array.from(selectedCampaigns).join("\0")]);
+
+  useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
@@ -1647,6 +1663,7 @@ export function useReportUploadWizard({
     historicalMonthCount,
     showBudgetOnCover,
     includePreviousMonthComparison,
+    csvAlignResults,
     generateStatus,
   ]);
 
@@ -1690,6 +1707,7 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
           metaHybridApiImport: apiSyncHybridImport && platform === "META",
         },
         uploadSessionId,
@@ -2306,5 +2324,6 @@ export function useReportUploadWizard({
     previewRefreshing,
     generateStepPreviewReady,
     importPipelineLabel,
+    csvVerification,
   };
 }

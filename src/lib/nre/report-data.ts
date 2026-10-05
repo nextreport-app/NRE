@@ -58,6 +58,7 @@ import {
   resultValueForObjective,
   type ResultLabels,
 } from "./objective";
+import type { ResultCountingMode } from "./meta-csv-export-counting";
 import type { MetricRow } from "./types";
 import type { DynamicMetricValue } from "./dynamic-metrics";
 import { buildGoogleCampaignTypeMap, detectGoogleObjectiveKey, type GoogleObjectiveKey } from "./detect-objective";
@@ -474,6 +475,8 @@ export interface BuildReportDataInput {
    * override.
    */
   campaignMetricOverrides?: Record<string, string[]>;
+  /** Sum results using Meta export column rules when engine and CSV export disagree. */
+  alignResultsWithCsvExport?: boolean;
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -492,7 +495,7 @@ function average(values: number[]): number {
  * own CTR formula, so this recovers the exact click count) preferred, spend
  * ÷ CPC as a fallback when a row has CPC but no CTR.
  */
-function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
+export function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
   const ctr = parseCellNum(row.ctr);
   if (impressions > 0 && ctr > 0) return (ctr / 100) * impressions;
   const cpc = parseCellNum(row.cpc);
@@ -576,6 +579,7 @@ function computeTableRow(
   now: Date = new Date(),
   mtdCalendarRange?: DateRangeIso,
   timezone = "UTC",
+  resultCountingMode: ResultCountingMode = "standard",
 ): TableRowData {
   if (!rows || rows.length === 0) {
     // Fix 5 — a zero-spend current month (no MTD Daily CSV rows fell within
@@ -690,7 +694,12 @@ function computeTableRow(
   // itself (see objective.ts's own doc comment on that function/
   // resultValueForObjective for the root cause and fix). Labeled "MTD" vs
   // "Previous Month" so both rows' console output is easy to tell apart.
-  const allGroupsRaw = groupResultsByCampaignObjective(rows, objectiveMap, isMtdRow ? "MTD" : "Previous Month");
+  const allGroupsRaw = groupResultsByCampaignObjective(
+    rows,
+    objectiveMap,
+    isMtdRow ? "MTD" : "Previous Month",
+    resultCountingMode,
+  );
   // "RESULTS" is getResultLabels' own generic fallback bucket for a blank
   // or unrecognized result_type (not a real, nameable objective) — it must
   // never earn a zero-count-but-spend column the way a genuine objective
@@ -974,7 +983,9 @@ function buildLast30DaysChartSlide(params: {
   reportType: ReportType;
   mtdRow: TableRowData;
   slideCampaignNames?: string[];
+  resultCountingMode?: ResultCountingMode;
 }): ChartSlideData | null {
+  const resultCountingMode = params.resultCountingMode ?? "standard";
   const chartRange = capRangeToData(
     params.chartRange,
     params.filteredMtdDailyRows,
@@ -1005,7 +1016,7 @@ function buildLast30DaysChartSlide(params: {
     };
     const resLabel = chartObjective.resultLabel;
     const cprLabel = chartObjective.costLabel;
-    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective);
+    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective, resultCountingMode);
     if (resLabel === "REACH" && rows.length > 0) {
       const periodReach = aggregateReach(rows);
       if (periodReach > 0) {
@@ -1046,7 +1057,12 @@ function buildLast30DaysChartSlide(params: {
   chartCampaigns.forEach((c) => {
     campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
   });
-  const chartObjectiveGroups = groupResultsByCampaignObjective(chartRows, params.campaignObjectiveMap);
+  const chartObjectiveGroups = groupResultsByCampaignObjective(
+    chartRows,
+    params.campaignObjectiveMap,
+    undefined,
+    resultCountingMode,
+  );
   const chartSnapshotRow = computeTableRow(
     chartRows as MetricRow[],
     params.currencySymbol,
@@ -1055,6 +1071,7 @@ function buildLast30DaysChartSlide(params: {
     params.now,
     undefined,
     params.timezone,
+    resultCountingMode,
   );
   const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
 
@@ -1101,8 +1118,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     adNameColumn: adNameColumnInput,
     creativeOnly = false,
     platform: platformInput,
+    alignResultsWithCsvExport = false,
   } = input;
   const platform = platformInput ?? "META";
+  const resultCountingMode: ResultCountingMode = alignResultsWithCsvExport ? "meta-csv-export" : "standard";
   const isMonthlyReport = reportType === "MONTHLY";
   const isQuarterReport = reportType === "QUARTER";
   const isYtdReport = reportType === "YTD";
@@ -1391,7 +1410,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // paused CURRENT month can still show real PREVIOUS month data if a Period
   // CSV was uploaded (mtdRow will naturally come back empty since mtdRows is
   // [] when paused).
-  let periodRow = computeTableRow(filteredPeriodRows as MetricRow[], currencySymbol, false, previousMonthObjectiveMap, now, undefined, timezone);
+  let periodRow = computeTableRow(
+    filteredPeriodRows as MetricRow[],
+    currencySymbol,
+    false,
+    previousMonthObjectiveMap,
+    now,
+    undefined,
+    timezone,
+    resultCountingMode,
+  );
   // Combined Total "current period" row — same window as campaign slides for
   // DAILY (yesterday only); full MTD for WEEKLY; calendar span for MONTHLY+.
   const combinedTotalCurrentRows = isDailyReport ? primaryRows : mtdRows;
@@ -1406,6 +1434,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     now,
     combinedTotalCurrentRange,
     timezone,
+    resultCountingMode,
   );
   const combinedTotalRawInRange = filterNreRowsByDateRange(filteredMtdDailyRows, combinedTotalCurrentRange);
   const actualCombinedTotalLabelRange = computeActualDataRangeInWindow(
@@ -1482,6 +1511,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       reportType,
       mtdRow,
       slideCampaignNames: selectedCampaigns ?? [],
+      resultCountingMode,
     });
 
     return {
@@ -1981,6 +2011,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     reportType,
     mtdRow,
     slideCampaignNames: campaignNames,
+    resultCountingMode,
   });
 
   return {
@@ -2218,13 +2249,17 @@ function groupRawRowsByCampaign(rows: NreRow[]): Record<string, NreRow[]> {
  * at all in this period) — count/cpr are both simply 0 in that case, same
  * as pickPrimaryGroup's own null-for-empty behavior once formatted.
  */
-function comparisonObjectiveTotals(rows: MetricRow[], objective: ResultLabels): { count: number; cpr: number } {
+function comparisonObjectiveTotals(
+  rows: MetricRow[],
+  objective: ResultLabels,
+  resultCountingMode: ResultCountingMode = "standard",
+): { count: number; cpr: number } {
   let count = 0;
   let totalSpend = 0;
   let totalReach = 0;
   let campaignReachAdded = false;
   rows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel);
+    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, rows)) {
       totalSpend += parseCellNum(row.spend);

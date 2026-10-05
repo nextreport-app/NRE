@@ -20,6 +20,7 @@ import {
   LAUNCH_SECONDARY_REPORT_TYPES,
 } from "@/lib/meta-launch-scope";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 
 const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
 const LAUNCH_REPORT_TYPES = new Set<string>([
@@ -108,6 +109,7 @@ export function WizardGenerateStep() {
     previewStatus,
     previewRefreshing,
     generateStepPreviewReady,
+    csvVerification,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
@@ -561,6 +563,10 @@ export function WizardGenerateStep() {
           )}
 
             <div className="space-y-4">
+              {previewKind === "normal" && generateStepPreviewReady && generateStatus === "idle" ? (
+                <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
+              ) : null}
+
               {/* Section 1 — Report summary card, amber left border. Merges
                   what used to be two separate cards (Reporting Period +
                   Ready to generate) into the one card the merged Step 3
