@@ -505,6 +505,15 @@ export function WizardGenerateStep() {
               <h4 className="text-[16px] font-semibold text-white">Cover slide budget</h4>
               {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
                 <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                  {coverBudgetPreviewLine ? (
+                    <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-white">
+                      {coverBudgetPreviewLine}
+                    </p>
+                  ) : (
+                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-4 py-3 text-[14px] text-dash-ink-secondary">
+                      Calculating spend vs budget…
+                    </p>
+                  )}
                   <label
                     className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait" : "cursor-pointer"}`}
                   >
@@ -519,32 +528,11 @@ export function WizardGenerateStep() {
                       Show monthly budget used on cover slide
                     </span>
                   </label>
-
-                  <div
-                    className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
-                      showBudgetOnCover ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                    }`}
-                    aria-hidden={!showBudgetOnCover}
-                  >
-                    <div className="min-h-0 overflow-hidden">
-                      <div className="space-y-3 pt-1">
-                        {coverBudgetPreviewLine ? (
-                          <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-white">
-                            {coverBudgetPreviewLine}
-                          </p>
-                        ) : (
-                          <p className="rounded-md border border-dash-border bg-dash-bg/60 px-4 py-3 text-[14px] text-dash-ink-secondary">
-                            Calculating spend vs budget…
-                          </p>
-                        )}
-                        {coverBudgetPacingWarning ? (
-                          <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-[14px] leading-relaxed text-amber-200">
-                            {coverBudgetPacingWarning}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
+                  {showBudgetOnCover && coverBudgetPacingWarning ? (
+                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-[14px] leading-relaxed text-amber-200">
+                      {coverBudgetPacingWarning}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <p className="mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
