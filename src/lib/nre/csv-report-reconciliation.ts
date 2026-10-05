@@ -435,8 +435,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       calendarRange: mtdCalendarRange,
     });
     const capped = capRangeToData(chartRange, filtered, now, timezone);
-    const chartRaw = filterRawRowsToRange(filtered, capped.startIso, capped.endIso) as MetricRow[];
-    const chartRows = aggregateRows(chartRaw) as MetricRow[];
+    const chartRaw = filterRawRowsToRange(filtered, capped.startIso, capped.endIso);
+    const chartRows: MetricRow[] = aggregateRows(chartRaw);
     const chartObjectiveMap = buildChartWindowObjectiveMap(reportObjectiveMap, chartRows, pinned);
 
     const csvChartSpend = sumSpend(chartRows);
