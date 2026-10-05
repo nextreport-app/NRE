@@ -82,12 +82,15 @@ export function WizardPlatformCompactBar({
   description,
   expanded,
   onToggle,
+  allowPlatformChange = true,
 }: {
   icon: ReactNode;
   heading: string;
   description: string;
   expanded: boolean;
   onToggle: () => void;
+  /** False during Meta-only launch — compact bar without “Change platform”. */
+  allowPlatformChange?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/70 px-4 py-3.5">
@@ -103,17 +106,19 @@ export function WizardPlatformCompactBar({
           <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-secondary">{description}</p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
-        aria-expanded={expanded}
-      >
-        Change platform
-        <ChevronDownIcon
-          className={`h-3.5 w-3.5 opacity-80 transition-transform ${expanded ? "rotate-180" : ""}`}
-        />
-      </button>
+      {allowPlatformChange ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
+          aria-expanded={expanded}
+        >
+          Change platform
+          <ChevronDownIcon
+            className={`h-3.5 w-3.5 opacity-80 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -54,6 +54,11 @@ export function isLaunchPlatformEnabled(platform: string): platform is LaunchEna
 /** Client manage page + account connection summary — hide deferred platforms until live. */
 export type ClientPlatformConnectionKey = "meta" | "googleAds" | "tiktok" | "ga4";
 
+/** Wizard import — hide “Change platform” until more than one ad platform is live. */
+export function isWizardPlatformSwitchEnabled(): boolean {
+  return LAUNCH_ENABLED_PLATFORMS.length > 1;
+}
+
 export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
   switch (key) {
     case "meta":
