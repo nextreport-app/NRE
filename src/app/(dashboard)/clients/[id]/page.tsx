@@ -253,7 +253,7 @@ export default async function ClientDetailPage({
           </CardHeading>
           <Link
             href={`/clients/${client.id}/reports/new`}
-            className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
           >
             Generate Report
           </Link>
