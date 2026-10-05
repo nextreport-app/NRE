@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CURRENCIES,
@@ -27,6 +27,29 @@ const CURRENCY_SYMBOL = CURRENCY_SYMBOLS;
 const ACCEPTED_LOGO_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 const NOTES_MAX_LENGTH = 1000;
+
+function defaultFormValues(initial?: Partial<ClientFormValues>): ClientFormValues {
+  return {
+    accountName: initial?.accountName ?? "",
+    currency: initial?.currency ?? "INR",
+    timezone: initial?.timezone ?? "Asia/Kolkata",
+    monthlyBudget: initial?.monthlyBudget ?? "",
+    template: initial?.template ?? "DARK",
+    notes: initial?.notes ?? "",
+  };
+}
+
+function normalizeBudgetField(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const n = Number(trimmed);
+  if (Number.isNaN(n) || n <= 0) return "";
+  return String(n);
+}
+
+function formSnapshot(v: ClientFormValues): ClientFormValues {
+  return { ...v, monthlyBudget: normalizeBudgetField(v.monthlyBudget) };
+}
 
 export function ClientForm({
   clientId,
@@ -60,14 +83,8 @@ export function ClientForm({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [values, setValues] = useState<ClientFormValues>({
-    accountName: initial?.accountName ?? "",
-    currency: initial?.currency ?? "INR",
-    timezone: initial?.timezone ?? "Asia/Kolkata",
-    monthlyBudget: initial?.monthlyBudget ?? "",
-    template: initial?.template ?? "DARK",
-    notes: initial?.notes ?? "",
-  });
+  const [baseline, setBaseline] = useState(() => formSnapshot(defaultFormValues(initial)));
+  const [values, setValues] = useState<ClientFormValues>(() => defaultFormValues(initial));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // Read-only card by default whenever there's already saved content to
@@ -90,6 +107,13 @@ export function ClientForm({
   // storage here is private, see /api/clients/[id]/logo's GET handler).
   // Neither present (new client, no file chosen yet) — no preview at all.
   const logoPreviewSrc = logoPreviewUrl ?? (hasLogo && !removeLogo && clientId ? `/api/clients/${clientId}/logo` : null);
+
+  const saveMutedUntilDirty = inline && !!clientId;
+  const isDirty = useMemo(() => {
+    if (!saveMutedUntilDirty) return true;
+    if (logoFile !== null || removeLogo) return true;
+    return JSON.stringify(formSnapshot(values)) !== JSON.stringify(baseline);
+  }, [saveMutedUntilDirty, values, baseline, logoFile, removeLogo]);
 
   function set<K extends keyof ClientFormValues>(key: K, value: ClientFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -175,6 +199,9 @@ export function ClientForm({
     setLoading(false);
     showToast(savedMessage ?? (clientId ? "Client updated." : "Client created."));
     if (values.notes) setNotesEditing(false);
+    setBaseline(formSnapshot(values));
+    setLogoFile(null);
+    setRemoveLogo(false);
 
     if (inline) {
       router.refresh();
@@ -345,10 +372,22 @@ export function ClientForm({
 
       {error && <p className="text-sm text-dash-error">{error}</p>}
 
+      {saveMutedUntilDirty && !isDirty && !loading ? (
+        <p className="text-[13px] text-dash-ink-secondary">Change a field above to enable Save.</p>
+      ) : null}
+
       <button
         type="submit"
-        disabled={loading}
-        className={`rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`}
+        disabled={loading || (saveMutedUntilDirty && !isDirty)}
+        className={
+          saveMutedUntilDirty
+            ? `rounded-md px-5 py-2.5 text-[14px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${submitFullWidth ? "w-full" : ""} ${
+                isDirty
+                  ? "border border-dash-accent bg-dash-accent/15 text-dash-ink hover:bg-dash-accent/25"
+                  : "border border-dash-border bg-dash-card text-dash-ink-secondary"
+              }`
+            : `rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`
+        }
       >
         {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
       </button>
