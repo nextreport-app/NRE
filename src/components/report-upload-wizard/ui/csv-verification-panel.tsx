@@ -40,7 +40,12 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
         >
           ✓
         </span>
-        <span className="text-[14px] font-medium text-emerald-100">Verified against your CSV</span>
+        <span className="text-[14px] font-medium text-emerald-100">
+          Verified against your CSV
+          <span className="ml-1.5 font-normal text-emerald-100/75">
+            (MTD, weekly, and last-30 chart totals)
+          </span>
+        </span>
       </div>
     );
   }

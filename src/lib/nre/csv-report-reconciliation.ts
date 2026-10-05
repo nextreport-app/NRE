@@ -1,17 +1,28 @@
 /**
  * Cross-check generated report totals against independent sums from the uploaded CSV.
- * Uses the same date windows as splitMtdDaily / campaign slides (not ad-hoc ranges).
+ * Mirrors the same date windows and objective maps as buildReportData / chart slide.
  */
 
 import type { NreRow } from "./columns";
 import type { MetricRow } from "./types";
 import type { ReportData, ReportType } from "./report-data";
 import { filterRowsByCampaigns } from "./campaigns";
-import { splitMtdDaily } from "./aggregate";
+import { splitMtdDaily, aggregateRows } from "./aggregate";
 import { parseCellNum, fmtCurrency, fmtNumber } from "./format";
-import { buildCampaignObjectiveMap, groupResultsByCampaignObjective } from "./objective";
+import {
+  buildCampaignObjectiveMap,
+  groupResultsByCampaignObjective,
+  normalizeCampaignName,
+  type ResultLabels,
+} from "./objective";
 import type { ResultCountingMode } from "./meta-csv-export-counting";
-import type { DateRangeIso } from "./date-range";
+import {
+  capRangeToData,
+  computeMtdRangeIso,
+  resolveStandardChartRange,
+  type DateRangeIso,
+} from "./date-range";
+import { filterRawRowsToRange } from "./creative-report-data";
 
 export type CsvVerificationStatus = "ok" | "mismatch" | "skipped";
 
@@ -42,6 +53,10 @@ export interface ReconcileStandardReportInput {
   currencySymbol: string;
   now?: Date;
   resultCountingMode?: ResultCountingMode;
+  /** Previous Month Data upload rows — required to verify the Period row when included. */
+  periodRows?: NreRow[] | null;
+  /** Wizard-confirmed objectives — same overrides as buildReportData. */
+  campaignObjectives?: Record<string, ResultLabels> | null;
 }
 
 const SPEND_TOLERANCE = 0.5;
@@ -54,22 +69,71 @@ function sumSpend(rows: MetricRow[]): number {
   return rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
 }
 
-function sumExportResultsForLabel(
-  rows: MetricRow[],
-  objectiveMap: Map<string, import("./objective").ResultLabels>,
-  label: string,
-): number {
-  const groups = groupResultsByCampaignObjective(rows, objectiveMap, undefined, "meta-csv-export");
-  return groups.find((x) => x.label === label)?.count ?? 0;
+function applyCampaignObjectiveOverrides(
+  map: Map<string, ResultLabels>,
+  campaignObjectives?: Record<string, ResultLabels> | null,
+): Map<string, ResultLabels> {
+  if (!campaignObjectives) return map;
+  const out = new Map(map);
+  for (const [name, objective] of Object.entries(campaignObjectives)) {
+    out.set(normalizeCampaignName(name), objective);
+  }
+  return out;
 }
 
-function sumStandardResultsForLabel(
+function pinnedCampaignKeys(campaignObjectives?: Record<string, ResultLabels> | null): Set<string> {
+  return new Set(Object.keys(campaignObjectives ?? {}).map((name) => normalizeCampaignName(name)));
+}
+
+/** Same campaign-level map as buildReportData Step 0 (MTD + primary period aggregated rows). */
+function buildReportScopeObjectiveMap(
+  split: NonNullable<ReturnType<typeof splitMtdDaily>>,
+  reportType: ReportType,
+  campaignObjectives?: Record<string, ResultLabels> | null,
+): Map<string, ResultLabels> {
+  const mtdRows = split.mtdRows ?? [];
+  const weeklyRows = split.weeklyRows ?? [];
+  const primaryRows =
+    reportType === "WEEKLY" || reportType === "DAILY" ? weeklyRows : mtdRows;
+  const map = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
+  return applyCampaignObjectiveOverrides(map, campaignObjectives);
+}
+
+/** Chart slide map: report map + last-30-window detection (see buildLast30DaysChartSlide). */
+function buildChartWindowObjectiveMap(
+  baseMap: Map<string, ResultLabels>,
+  chartAggRows: MetricRow[],
+  pinned: Set<string>,
+): Map<string, ResultLabels> {
+  const chartMap = new Map(baseMap);
+  buildCampaignObjectiveMap(chartAggRows).forEach((labels, name) => {
+    if (!pinned.has(name)) chartMap.set(name, labels);
+    else if (!chartMap.has(name)) chartMap.set(name, labels);
+  });
+  return chartMap;
+}
+
+function resultsAndSpendForLabel(
   rows: MetricRow[],
-  objectiveMap: Map<string, import("./objective").ResultLabels>,
+  objectiveMap: Map<string, ResultLabels>,
   label: string,
+  mode: ResultCountingMode,
+): { results: number; attributedSpend: number } {
+  const groups = groupResultsByCampaignObjective(rows, objectiveMap, undefined, mode);
+  const group = groups.find((g) => g.label === label);
+  return {
+    results: group?.count ?? 0,
+    attributedSpend: group?.totalSpend ?? sumSpend(rows),
+  };
+}
+
+function sumResultsForLabel(
+  rows: MetricRow[],
+  objectiveMap: Map<string, ResultLabels>,
+  label: string,
+  mode: ResultCountingMode,
 ): number {
-  const groups = groupResultsByCampaignObjective(rows, objectiveMap, undefined, "standard");
-  return groups.find((x) => x.label === label)?.count ?? 0;
+  return resultsAndSpendForLabel(rows, objectiveMap, label, mode).results;
 }
 
 function primaryResultColumn(report: ReportData): { label: string; costLabel: string; value: string; cprValue: string } | null {
@@ -77,6 +141,17 @@ function primaryResultColumn(report: ReportData): { label: string; costLabel: st
   if (cols.length === 0) return null;
   const sorted = [...cols].sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value));
   return sorted[0] ?? null;
+}
+
+function periodResultColumn(
+  report: ReportData,
+  resultLabel: string,
+): { label: string; costLabel: string; value: string; cprValue: string } | null {
+  const col = report.periodRow.resultColumns.find((c) => c.label === resultLabel);
+  if (col) return col;
+  const cols = report.periodRow.resultColumns.filter((c) => c.label !== "RESULTS");
+  if (cols.length === 0) return null;
+  return cols.sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value))[0] ?? null;
 }
 
 function reportPeriodSpendFromSlides(report: ReportData): number {
@@ -87,6 +162,23 @@ function reportPeriodResultsFromSlides(report: ReportData, resultLabel: string):
   return report.campaignSlides
     .filter((slide) => slide.resultLabel === resultLabel)
     .reduce((s, slide) => s + parseCellNum(slide.metrics.results), 0);
+}
+
+/** Results-weighted average CPR across weekly campaign slides (what clients read per slide). */
+function blendedCprFromSlides(report: ReportData, resultLabel: string): number {
+  let totalResults = 0;
+  let weighted = 0;
+  report.campaignSlides
+    .filter((slide) => slide.resultLabel === resultLabel)
+    .forEach((slide) => {
+      const results = parseCellNum(slide.metrics.results);
+      const cpr = parseCellNum(slide.metrics.cpr);
+      if (results > 0 && cpr > 0) {
+        totalResults += results;
+        weighted += cpr * results;
+      }
+    });
+  return totalResults > 0 ? weighted / totalResults : 0;
 }
 
 function scopedChecks(params: {
@@ -106,6 +198,7 @@ function scopedChecks(params: {
   canAlignRef: { value: boolean };
   csvStandardResults: number;
   csvExportResults: number;
+  countingMode: ResultCountingMode;
 }): CsvVerificationCheck[] {
   const {
     scope,
@@ -124,6 +217,7 @@ function scopedChecks(params: {
     canAlignRef,
     csvStandardResults,
     csvExportResults,
+    countingMode,
   } = params;
 
   const checks: CsvVerificationCheck[] = [];
@@ -145,7 +239,7 @@ function scopedChecks(params: {
     note:
       closeEnough(reportResults, csvResults, 0.01)
         ? undefined
-        : "Summed from your CSV Results column for this date range and campaigns.",
+        : "Summed from your CSV for this date range and selected campaigns (same rules as the report).",
   });
 
   if (reportResults > 0 || csvResults > 0) {
@@ -158,7 +252,11 @@ function scopedChecks(params: {
     });
   }
 
-  if (checks.some((c) => c.status === "mismatch" && c.metric === resultLabel) && csvStandardResults !== csvExportResults) {
+  if (
+    countingMode === "standard" &&
+    checks.some((c) => c.status === "mismatch" && c.metric === resultLabel) &&
+    csvStandardResults !== csvExportResults
+  ) {
     canAlignRef.value = true;
   }
 
@@ -166,8 +264,16 @@ function scopedChecks(params: {
 }
 
 export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInput): CsvVerificationResult {
-  const { report, mtdDailyRows, selectedCampaigns, reportType, timezone, currencySymbol } = input;
-  if (report.isPaused || report.creativeOnly || reportType === "CREATIVE") {
+  const {
+    report,
+    mtdDailyRows,
+    selectedCampaigns,
+    reportType,
+    timezone,
+    currencySymbol,
+    campaignObjectives,
+  } = input;
+  if (report.creativeOnly || reportType === "CREATIVE") {
     return { status: "skipped", checks: [] };
   }
 
@@ -177,6 +283,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   }
 
   const now = input.now ?? new Date();
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
   const split = splitMtdDaily(filtered, now, {
     ...(input.weeklyRange ? { weeklyRange: input.weeklyRange } : {}),
     timezone,
@@ -194,24 +301,22 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   const costLabel = primaryCol.costLabel;
   const canAlignRef = { value: false };
   const checks: CsvVerificationCheck[] = [];
+  const reportObjectiveMap = buildReportScopeObjectiveMap(split, reportType, campaignObjectives);
+  const pinned = pinnedCampaignKeys(campaignObjectives);
 
-  // ── Month-to-date (combined total MTD row) ─────────────────────────────
-  const mtdRaw = split.mtdRawRows as MetricRow[];
-  if (mtdRaw.length > 0 && report.mtdRow.hasData) {
-    const mtdObjectiveMap = buildCampaignObjectiveMap(mtdRaw);
-    const csvMtdSpend = sumSpend(mtdRaw);
-    const csvMtdResults = sumExportResultsForLabel(mtdRaw, mtdObjectiveMap, resultLabel);
-    const csvStdMtdResults = sumStandardResultsForLabel(mtdRaw, mtdObjectiveMap, resultLabel);
-    const mtdGroups = groupResultsByCampaignObjective(
-      mtdRaw,
-      mtdObjectiveMap,
-      undefined,
-      input.resultCountingMode ?? "standard",
-    );
-    const mtdObjSpend = mtdGroups.find((g) => g.label === resultLabel)?.totalSpend ?? csvMtdSpend;
+  // ── Month-to-date (Combined Total MTD row) ─────────────────────────────
+  // buildReportData feeds computeTableRow aggregated mtdRows — not mtdRawRows.
+  const mtdRows = (split.mtdRows ?? []) as MetricRow[];
+  if (mtdRows.length > 0 && report.mtdRow.hasData) {
+    const csvMtdSpend = sumSpend(mtdRows);
+    const csvStdMtdResults = sumResultsForLabel(mtdRows, reportObjectiveMap, resultLabel, "standard");
+    const csvMtdResults = sumResultsForLabel(mtdRows, reportObjectiveMap, resultLabel, countingMode);
+    const csvExportMtdResults = sumResultsForLabel(mtdRows, reportObjectiveMap, resultLabel, "meta-csv-export");
+    const mtdGroups = groupResultsByCampaignObjective(mtdRows, reportObjectiveMap, undefined, countingMode);
+    const mtdGroup = mtdGroups.find((g) => g.label === resultLabel);
     const reportMtdResults = parseCellNum(primaryCol.value);
     const reportMtdCpr = parseCellNum(primaryCol.cprValue);
-    const csvMtdCpr = csvMtdResults > 0 ? mtdObjSpend / csvMtdResults : 0;
+    const csvMtdCpr = mtdGroup?.avgCpr ?? 0;
 
     checks.push(
       ...scopedChecks({
@@ -230,34 +335,74 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCprDisplay: primaryCol.cprValue,
         canAlignRef,
         csvStandardResults: csvStdMtdResults,
-        csvExportResults: csvMtdResults,
+        csvExportResults: csvExportMtdResults,
+        countingMode,
       }),
     );
   }
 
-  // ── Report period (campaign slides / weekly window) ────────────────────
-  const weeklyRaw = split.weeklyRawRows as MetricRow[];
-  if (weeklyRaw.length > 0 && report.campaignSlides.length > 0 && reportType === "WEEKLY") {
-    const weeklyObjectiveMap = buildCampaignObjectiveMap(weeklyRaw);
-    const csvWeeklySpend = sumSpend(weeklyRaw);
-    const csvWeeklyResults = sumExportResultsForLabel(weeklyRaw, weeklyObjectiveMap, resultLabel);
-    const csvStdWeeklyResults = sumStandardResultsForLabel(weeklyRaw, weeklyObjectiveMap, resultLabel);
-    const weeklyGroups = groupResultsByCampaignObjective(
-      weeklyRaw,
-      weeklyObjectiveMap,
-      undefined,
-      input.resultCountingMode ?? "standard",
+  // ── Previous month (Combined Total Period row, when included) ───────────
+  const filteredPeriodRows = filterRowsByCampaigns(input.periodRows ?? [], selectedCampaigns ?? null);
+  if (report.periodRow.hasData && filteredPeriodRows.length > 0) {
+    const pmCol = periodResultColumn(report, resultLabel) ?? primaryCol;
+    const pmObjectiveMap = applyCampaignObjectiveOverrides(
+      buildCampaignObjectiveMap(filteredPeriodRows as MetricRow[]),
+      campaignObjectives,
     );
-    const weeklyObjSpend = weeklyGroups.find((g) => g.label === resultLabel)?.totalSpend ?? csvWeeklySpend;
-    const reportWeeklySpend = reportPeriodSpendFromSlides(report);
-    const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
-    const slideCpr = report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—";
-    const reportWeeklyCpr = parseCellNum(slideCpr);
-    const csvWeeklyCpr = csvWeeklyResults > 0 ? weeklyObjSpend / csvWeeklyResults : 0;
+    const pmRaw = filteredPeriodRows as MetricRow[];
+    const csvPmSpend = sumSpend(pmRaw);
+    const csvStdPmResults = sumResultsForLabel(pmRaw, pmObjectiveMap, pmCol.label, "standard");
+    const csvPmResults = sumResultsForLabel(pmRaw, pmObjectiveMap, pmCol.label, countingMode);
+    const csvExportPmResults = sumResultsForLabel(pmRaw, pmObjectiveMap, pmCol.label, "meta-csv-export");
+    const pmGroups = groupResultsByCampaignObjective(pmRaw, pmObjectiveMap, undefined, countingMode);
+    const pmGroup = pmGroups.find((g) => g.label === pmCol.label);
+    const reportPmResults = parseCellNum(pmCol.value);
+    const reportPmCpr = parseCellNum(pmCol.cprValue);
+    const csvPmCpr = pmGroup?.avgCpr ?? 0;
 
     checks.push(
       ...scopedChecks({
-        scope: "Report period",
+        scope: "Previous month",
+        currencySymbol,
+        reportSpend: parseCellNum(report.periodRow.spend),
+        csvSpend: csvPmSpend,
+        reportSpendDisplay: report.periodRow.spend,
+        resultLabel: pmCol.label,
+        costLabel: pmCol.costLabel,
+        reportResults: reportPmResults,
+        csvResults: csvPmResults,
+        reportResultsDisplay: pmCol.value,
+        reportCpr: reportPmCpr,
+        csvCpr: csvPmCpr,
+        reportCprDisplay: pmCol.cprValue,
+        canAlignRef,
+        csvStandardResults: csvStdPmResults,
+        csvExportResults: csvExportPmResults,
+        countingMode,
+      }),
+    );
+  }
+
+  // ── Weekly / report period (campaign summary slides) ───────────────────
+  const weeklyRows = (split.weeklyRows ?? []) as MetricRow[];
+  if (weeklyRows.length > 0 && report.campaignSlides.length > 0 && (reportType === "WEEKLY" || reportType === "DAILY")) {
+    const csvWeeklySpend = sumSpend(weeklyRows);
+    const csvStdWeeklyResults = sumResultsForLabel(weeklyRows, reportObjectiveMap, resultLabel, "standard");
+    const csvWeeklyResults = sumResultsForLabel(weeklyRows, reportObjectiveMap, resultLabel, countingMode);
+    const csvExportWeeklyResults = sumResultsForLabel(weeklyRows, reportObjectiveMap, resultLabel, "meta-csv-export");
+    const weeklyGroups = groupResultsByCampaignObjective(weeklyRows, reportObjectiveMap, undefined, countingMode);
+    const weeklyGroup = weeklyGroups.find((g) => g.label === resultLabel);
+    const reportWeeklySpend = reportPeriodSpendFromSlides(report);
+    const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
+    const reportWeeklyCpr = blendedCprFromSlides(report, resultLabel);
+    const slideCpr =
+      report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—";
+    const csvWeeklyCpr = weeklyGroup?.avgCpr ?? 0;
+    const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";
+
+    checks.push(
+      ...scopedChecks({
+        scope: weeklyScope,
         currencySymbol,
         reportSpend: reportWeeklySpend,
         csvSpend: csvWeeklySpend,
@@ -272,7 +417,59 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCprDisplay: slideCpr,
         canAlignRef,
         csvStandardResults: csvStdWeeklyResults,
-        csvExportResults: csvWeeklyResults,
+        csvExportResults: csvExportWeeklyResults,
+        countingMode,
+      }),
+    );
+  }
+
+  // ── Last 30 days (visual chart slide) ───────────────────────────────────
+  if (report.chart && report.chart.totalAllSpend > 0) {
+    const mtdCalendarRange = computeMtdRangeIso(filtered, now, timezone);
+    const chartRange = resolveStandardChartRange({
+      reportType,
+      rows: filtered,
+      now,
+      timezone,
+      primaryRange: input.weeklyRange ?? null,
+      calendarRange: mtdCalendarRange,
+    });
+    const capped = capRangeToData(chartRange, filtered, now, timezone);
+    const chartRaw = filterRawRowsToRange(filtered, capped.startIso, capped.endIso) as MetricRow[];
+    const chartRows = aggregateRows(chartRaw) as MetricRow[];
+    const chartObjectiveMap = buildChartWindowObjectiveMap(reportObjectiveMap, chartRows, pinned);
+
+    const csvChartSpend = sumSpend(chartRows);
+    const csvStdChartResults = sumResultsForLabel(chartRows, chartObjectiveMap, resultLabel, "standard");
+    const csvChartResults = sumResultsForLabel(chartRows, chartObjectiveMap, resultLabel, countingMode);
+    const csvExportChartResults = sumResultsForLabel(chartRows, chartObjectiveMap, resultLabel, "meta-csv-export");
+    const chartGroups = groupResultsByCampaignObjective(chartRows, chartObjectiveMap, undefined, countingMode);
+    const chartGroup = chartGroups.find((g) => g.label === resultLabel);
+
+    const chartObjectiveEntry = report.chart.snapshot.objectives.find((o) => o.label === resultLabel);
+    const reportChartResults = chartObjectiveEntry ? parseCellNum(chartObjectiveEntry.resultsValue) : 0;
+    const reportChartCpr = chartObjectiveEntry ? parseCellNum(chartObjectiveEntry.cprValue) : 0;
+    const csvChartCpr = chartGroup?.avgCpr ?? 0;
+
+    checks.push(
+      ...scopedChecks({
+        scope: "Last 30 days (chart)",
+        currencySymbol,
+        reportSpend: report.chart.totalAllSpend,
+        csvSpend: csvChartSpend,
+        reportSpendDisplay: fmtCurrency(report.chart.totalAllSpend, currencySymbol),
+        resultLabel,
+        costLabel,
+        reportResults: reportChartResults,
+        csvResults: csvChartResults,
+        reportResultsDisplay: chartObjectiveEntry?.resultsValue ?? fmtNumber(reportChartResults),
+        reportCpr: reportChartCpr,
+        csvCpr: csvChartCpr,
+        reportCprDisplay: chartObjectiveEntry?.cprValue ?? "—",
+        canAlignRef,
+        csvStandardResults: csvStdChartResults,
+        csvExportResults: csvExportChartResults,
+        countingMode,
       }),
     );
   }
@@ -287,6 +484,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     checks,
     primaryResultLabel: resultLabel,
     canAlignWithCsvExport: hasMismatch && canAlignRef.value,
-    alignedWithCsvExport: input.resultCountingMode === "meta-csv-export",
+    alignedWithCsvExport: countingMode === "meta-csv-export",
   };
 }
