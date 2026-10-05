@@ -8,12 +8,17 @@ import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
+import {
+  hasSeenCampaignObjectivesUi,
+  markCampaignObjectivesUiSeen,
+} from "../campaign-objectives-storage";
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
   const [objectivesRevealed, setObjectivesRevealed] = useState(false);
   const [revealingObjectives, setRevealingObjectives] = useState(false);
+  const [autoRevealStarted, setAutoRevealStarted] = useState(false);
 
   const stepActive = w.step === 2;
   const selectionKeyForEffect = stepActive ? w.selectedCampaignsKey() : "";
@@ -32,6 +37,31 @@ export function WizardCampaignsStep() {
     w.hasBlockingObjectives,
     w.selectedCampaigns,
     w.touchedObjectiveCampaigns,
+  ]);
+
+  /** First report for this client: show objectives expanded; later visits stay collapsed until the user expands. */
+  useEffect(() => {
+    if (!stepActive) return;
+    if (hasSeenCampaignObjectivesUi(w.clientId)) return;
+    if (w.selectedCampaigns.size === 0) return;
+    if (autoRevealStarted) return;
+    setAutoRevealStarted(true);
+    setObjectivesRevealed(true);
+    setObjectivesExpanded(true);
+    if (objectivesReadyForEffect) return;
+    void (async () => {
+      setRevealingObjectives(true);
+      await w.ensureObjectivesForSelection(selectionKeyForEffect);
+      setRevealingObjectives(false);
+    })();
+  }, [
+    stepActive,
+    w.clientId,
+    w.selectedCampaigns.size,
+    selectionKeyForEffect,
+    objectivesReadyForEffect,
+    autoRevealStarted,
+    w.ensureObjectivesForSelection,
   ]);
 
   if (!stepActive) return null;
@@ -88,6 +118,11 @@ export function WizardCampaignsStep() {
     setRevealingObjectives(false);
     setObjectivesRevealed(true);
     setObjectivesExpanded(true);
+  }
+
+  async function handleContinueToMetrics() {
+    await handleCampaignsContinue();
+    markCampaignObjectivesUiSeen(w.clientId);
   }
 
   return (
@@ -445,7 +480,7 @@ export function WizardCampaignsStep() {
               Back
             </button>
             <button
-              onClick={handleCampaignsContinue}
+              onClick={() => void handleContinueToMetrics()}
               disabled={selectedCampaigns.size === 0 || metricsStatus === "loading" || hasBlockingObjectives()}
               className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
             >
@@ -457,7 +492,7 @@ export function WizardCampaignsStep() {
             stepLabel="Step 2 of 4 · Campaign Data"
             onBack={() => setStep(1)}
             primaryLabel={metricsStatus === "loading" ? "Loading objectives…" : "Continue to metrics"}
-            onPrimary={handleCampaignsContinue}
+            onPrimary={() => void handleContinueToMetrics()}
             primaryDisabled={
               selectedCampaigns.size === 0 ||
               metricsStatus === "loading" ||
