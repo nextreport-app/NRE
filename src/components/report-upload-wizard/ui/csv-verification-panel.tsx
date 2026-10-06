@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
+import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
+  clientId?: string;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -18,7 +21,13 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
   return map;
 }
 
-export function CsvVerificationPanel({ verification, refreshing }: Props) {
+function verifiedScopesLabel(scopes: string[] | undefined): string {
+  if (!scopes?.length) return "key totals in this report";
+  if (scopes.length <= 3) return scopes.join(" · ");
+  return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
+}
+
+export function CsvVerificationPanel({ verification, refreshing, clientId }: Props) {
   const [open, setOpen] = useState(false);
 
   if (!verification || verification.status === "skipped") return null;
@@ -42,13 +51,19 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
         </span>
         <span className="text-[14px] font-medium text-emerald-100">
           Verified against your CSV
-          <span className="ml-1.5 font-normal text-emerald-100/75">
-            (MTD, weekly, and last-30 chart totals)
+          <span className="mt-0.5 block text-[13px] font-normal leading-snug text-emerald-100/75">
+            Spend, results, and cost per result match for {verifiedScopesLabel(verification.scopesVerified)}.
+            Small spend rounding (about $2 either way) is ignored.
           </span>
         </span>
       </div>
     );
   }
+
+  const whatsappHint = mismatches
+    .slice(0, 3)
+    .map((c) => `${c.scope}: ${c.metric} — report ${c.reportDisplay} vs CSV ${c.csvDisplay}`)
+    .join("; ");
 
   return (
     <div className="rounded-lg border border-amber-800/35 bg-amber-950/10 px-4 py-3.5">
@@ -65,7 +80,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
           !
         </span>
         <span className="min-w-0 flex-1 text-[14px] font-medium text-amber-50">
-          {mismatches.length} mismatch{mismatches.length === 1 ? "" : "es"} vs your CSV
+          {mismatches.length} meaningful mismatch{mismatches.length === 1 ? "" : "es"} vs your CSV
         </span>
         <span
           className={`shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${open ? " rotate-180" : ""}`}
@@ -75,9 +90,16 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
         </span>
       </button>
 
+      {verification.canAlignWithCsvExport && !verification.alignedWithCsvExport ? (
+        <p className="mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed text-amber-100/90">
+          Results may match your export if you use CSV export counting — we turned that on automatically for this
+          preview. Generate again if totals still look off.
+        </p>
+      ) : null}
+
       {verification.alignedWithCsvExport ? (
         <p className="mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed text-amber-100/90">
-          Totals were adjusted once to match your export columns. Generate uses the same counting.
+          Totals use CSV export counting. Generate uses the same rules.
         </p>
       ) : null}
 
@@ -95,14 +117,28 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
                     <dt className="text-dash-ink-secondary">{c.metric}</dt>
                     <dd className="text-right text-white tabular-nums">{c.reportDisplay}</dd>
                     <dd className="text-right tabular-nums text-dash-ink-muted">CSV {c.csvDisplay}</dd>
+                    {c.note ? (
+                      <dd className="col-span-3 text-[12px] leading-snug text-amber-100/80">{c.note}</dd>
+                    ) : null}
                   </div>
                 ))}
               </dl>
             </div>
           ))}
           <p className="text-[12px] leading-relaxed text-dash-ink-muted">
-            You can still generate — this is a sanity check, not a block.
+            You can still generate — this is a sanity check, not a block. Only real gaps are shown (results must match
+            exactly; spend may differ by up to $2 from rounding).
           </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+            <SupportTicketLink clientId={clientId} openInNewTab className="text-amber-100" />
+            <span className="text-dash-ink-muted">·</span>
+            <WhatsAppChatLink
+              className="font-medium text-amber-100 underline hover:no-underline"
+              message={`Hi — CSV verification mismatch on my report. ${whatsappHint}`}
+            >
+              Chat on WhatsApp
+            </WhatsAppChatLink>
+          </div>
         </div>
       ) : null}
     </div>

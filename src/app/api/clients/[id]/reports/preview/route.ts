@@ -5,7 +5,10 @@ import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
-import { reconcileStandardReportWithCsv } from "@/lib/nre/csv-report-reconciliation";
+import {
+  reconcileComparisonReportWithCsv,
+  reconcileStandardReportWithCsv,
+} from "@/lib/nre/csv-report-reconciliation";
 import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { computeDailyRangeIso } from "@/lib/nre/date-range";
@@ -128,7 +131,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       csvHeaders: mtdParsed.headers,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: comparisonWarnings, isComparison: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileComparisonReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      periodBSupplementalRows: supplementalRows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
+      periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: comparisonWarnings,
+      isComparison: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "HISTORICAL") {

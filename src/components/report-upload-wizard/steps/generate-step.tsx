@@ -551,8 +551,14 @@ export function WizardGenerateStep() {
           )}
 
             <div className="space-y-4">
-              {previewKind === "normal" && generateStepPreviewReady && generateStatus === "idle" ? (
-                <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
+              {(previewKind === "normal" || previewKind === "comparison") &&
+              generateStepPreviewReady &&
+              generateStatus === "idle" ? (
+                <CsvVerificationPanel
+                  verification={csvVerification}
+                  refreshing={previewRefreshing}
+                  clientId={clientId}
+                />
               ) : null}
 
               {/* Section 1 — Report summary card, amber left border. Merges
