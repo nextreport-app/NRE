@@ -5,9 +5,11 @@
 
 import type { NreRow } from "./columns";
 import type { MetricRow } from "./types";
-import type { ReportData, ReportType } from "./report-data";
+import type { ComparisonReportData, Platform, ReportData, ReportType } from "./report-data";
 import { filterRowsByCampaigns } from "./campaigns";
-import { splitMtdDaily, aggregateRows } from "./aggregate";
+import { mergeComparisonPeriodRows } from "./comparison-coverage";
+import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
+import { filterNreRowsByDateRange } from "./date-range";
 import { parseCellNum, fmtCurrency, fmtNumber } from "./format";
 import {
   buildCampaignObjectiveMap,
@@ -41,6 +43,8 @@ export interface CsvVerificationResult {
   primaryResultLabel?: string;
   canAlignWithCsvExport?: boolean;
   alignedWithCsvExport?: boolean;
+  /** Human-readable windows that were checked (for green-state copy). */
+  scopesVerified?: string[];
 }
 
 export interface ReconcileStandardReportInput {
@@ -59,13 +63,18 @@ export interface ReconcileStandardReportInput {
   campaignObjectives?: Record<string, ResultLabels> | null;
 }
 
-/** Ignore ±$1 spend drift from CSV rounding, per-slide display, and export cents. */
-const SPEND_AMOUNT_TOLERANCE = 1;
-/** Cost-per-result can differ slightly when spend is within the band above. */
-const CPR_TOLERANCE = 0.5;
+/** Minor spend drift from rounding / display — not flagged (user: ~$1–2 is OK). */
+const SPEND_AMOUNT_TOLERANCE = 2;
+/** Cost per result may differ slightly when spend is in the band above. */
+const CPR_TOLERANCE = 1;
 
 function closeEnough(a: number, b: number, tol: number): boolean {
   return Math.abs(a - b) <= tol;
+}
+
+/** Results must match the CSV exactly (whole numbers — no 25 vs 26). */
+function resultsMatch(reportResults: number, csvResults: number): boolean {
+  return Math.round(reportResults) === Math.round(csvResults);
 }
 
 function sumSpend(rows: MetricRow[]): number {
@@ -238,11 +247,10 @@ function scopedChecks(params: {
     scope,
     reportDisplay: reportResultsDisplay,
     csvDisplay: fmtNumber(csvResults),
-    status: closeEnough(reportResults, csvResults, 0.01) ? "ok" : "mismatch",
-    note:
-      closeEnough(reportResults, csvResults, 0.01)
-        ? undefined
-        : "Summed from your CSV for this date range and selected campaigns (same rules as the report).",
+    status: resultsMatch(reportResults, csvResults) ? "ok" : "mismatch",
+    note: resultsMatch(reportResults, csvResults)
+      ? undefined
+      : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
   });
 
   if (reportResults > 0 || csvResults > 0) {
@@ -482,11 +490,155 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   }
 
   const hasMismatch = checks.some((c) => c.status === "mismatch");
-  return {
-    status: hasMismatch ? "mismatch" : "ok",
+  return finalizeVerificationResult({
     checks,
     primaryResultLabel: resultLabel,
-    canAlignWithCsvExport: hasMismatch && canAlignRef.value,
-    alignedWithCsvExport: countingMode === "meta-csv-export",
+    canAlignRef,
+    countingMode,
+  });
+}
+
+function finalizeVerificationResult(params: {
+  checks: CsvVerificationCheck[];
+  primaryResultLabel?: string;
+  canAlignRef: { value: boolean };
+  countingMode: ResultCountingMode;
+}): CsvVerificationResult {
+  const hasMismatch = params.checks.some((c) => c.status === "mismatch");
+  const scopesVerified = [...new Set(params.checks.map((c) => c.scope))];
+  return {
+    status: hasMismatch ? "mismatch" : "ok",
+    checks: params.checks,
+    primaryResultLabel: params.primaryResultLabel,
+    scopesVerified,
+    canAlignWithCsvExport: hasMismatch && params.canAlignRef.value,
+    alignedWithCsvExport: params.countingMode === "meta-csv-export",
   };
+}
+
+function groupAggRowsByCampaign(rows: NreRow[]): Record<string, AggRow[]> {
+  const agg = aggregateRows(rows);
+  const byCampaign: Record<string, AggRow[]> = {};
+  agg.forEach((row) => {
+    const name = (row.campaign_name || "Unknown Campaign").trim();
+    (byCampaign[name] ??= []).push(row);
+  });
+  return byCampaign;
+}
+
+function sumComparisonPeriodFromCsv(
+  byCampaign: Record<string, AggRow[]>,
+  objectiveMap: Map<string, ResultLabels>,
+  mode: ResultCountingMode,
+): { spend: number; results: number; cpr: number } {
+  let spend = 0;
+  let results = 0;
+  for (const [name, rows] of Object.entries(byCampaign)) {
+    spend += sumSpend(rows);
+    const obj = objectiveMap.get(normalizeCampaignName(name)) ?? {
+      resultLabel: "RESULTS",
+      costLabel: "COST PER RESULT",
+    };
+    results += sumResultsForLabel(rows, objectiveMap, obj.resultLabel, mode);
+  }
+  const cpr = results > 0 ? spend / results : 0;
+  return { spend, results, cpr };
+}
+
+export interface ReconcileComparisonReportInput {
+  report: ComparisonReportData;
+  mtdDailyRows: NreRow[];
+  periodBSupplementalRows?: NreRow[] | null;
+  selectedCampaigns: string[] | null | undefined;
+  periodA: DateRangeIso;
+  periodB: DateRangeIso;
+  currencySymbol: string;
+  resultCountingMode?: ResultCountingMode;
+  campaignObjectives?: Record<string, ResultLabels> | null;
+  platform?: Platform;
+}
+
+/** Comparison report — Period A and Period B totals vs CSV (same windows as buildComparisonReportData). */
+export function reconcileComparisonReportWithCsv(input: ReconcileComparisonReportInput): CsvVerificationResult {
+  if (input.platform && input.platform !== "META") {
+    return { status: "skipped", checks: [] };
+  }
+
+  const filtered = filterRowsByCampaigns(input.mtdDailyRows, input.selectedCampaigns ?? null);
+  const supplemental = input.periodBSupplementalRows?.length
+    ? filterRowsByCampaigns(input.periodBSupplementalRows, input.selectedCampaigns ?? null)
+    : undefined;
+
+  const rowsA = filterNreRowsByDateRange(filtered, input.periodA);
+  const rowsB = mergeComparisonPeriodRows(filtered, supplemental, input.periodB);
+  if (rowsA.length === 0 && rowsB.length === 0) {
+    return { status: "skipped", checks: [] };
+  }
+
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const canAlignRef = { value: false };
+  const checks: CsvVerificationCheck[] = [];
+  const objectiveMap = applyCampaignObjectiveOverrides(
+    buildCampaignObjectiveMap(aggregateRows([...rowsA, ...rowsB])),
+    input.campaignObjectives,
+  );
+
+  const byA = groupAggRowsByCampaign(rowsA);
+  const byB = groupAggRowsByCampaign(rowsB);
+  const csvA = sumComparisonPeriodFromCsv(byA, objectiveMap, countingMode);
+  const csvB = sumComparisonPeriodFromCsv(byB, objectiveMap, countingMode);
+  const csvStdA = sumComparisonPeriodFromCsv(byA, objectiveMap, "standard");
+  const csvStdB = sumComparisonPeriodFromCsv(byB, objectiveMap, "standard");
+  const csvExportA = sumComparisonPeriodFromCsv(byA, objectiveMap, "meta-csv-export");
+  const csvExportB = sumComparisonPeriodFromCsv(byB, objectiveMap, "meta-csv-export");
+
+  const resultMetric = "Results (all campaigns)";
+  const costLabel = "COST PER RESULT";
+
+  const periodScopes: { scope: string; report: ComparisonReportData["totals"]["metricsA"]; csv: typeof csvA; csvStd: number; csvExport: number }[] = [
+    {
+      scope: input.report.periodALabel,
+      report: input.report.totals.metricsA,
+      csv: csvA,
+      csvStd: csvStdA.results,
+      csvExport: csvExportA.results,
+    },
+    {
+      scope: input.report.periodBLabel,
+      report: input.report.totals.metricsB,
+      csv: csvB,
+      csvStd: csvStdB.results,
+      csvExport: csvExportB.results,
+    },
+  ];
+
+  for (const period of periodScopes) {
+    checks.push(
+      ...scopedChecks({
+        scope: period.scope,
+        currencySymbol: input.currencySymbol,
+        reportSpend: period.report.spend.value,
+        csvSpend: period.csv.spend,
+        reportSpendDisplay: period.report.spend.formatted,
+        resultLabel: resultMetric,
+        costLabel,
+        reportResults: period.report.results.value,
+        csvResults: period.csv.results,
+        reportResultsDisplay: period.report.results.formatted,
+        reportCpr: period.report.cpr.value,
+        csvCpr: period.csv.cpr,
+        reportCprDisplay: period.report.cpr.formatted,
+        canAlignRef,
+        csvStandardResults: period.csvStd,
+        csvExportResults: period.csvExport,
+        countingMode,
+      }),
+    );
+  }
+
+  if (checks.length === 0) {
+    return { status: "skipped", checks: [] };
+  }
+
+  return finalizeVerificationResult({ checks, primaryResultLabel: resultMetric, canAlignRef, countingMode });
 }
