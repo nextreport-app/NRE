@@ -5,7 +5,7 @@
 
 import type { NreRow } from "./columns";
 import type { MetricRow } from "./types";
-import type { ComparisonReportData, ReportData, ReportType } from "./report-data";
+import type { ComparisonReportData, Platform, ReportData, ReportType } from "./report-data";
 import { filterRowsByCampaigns } from "./campaigns";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
@@ -555,12 +555,12 @@ export interface ReconcileComparisonReportInput {
   currencySymbol: string;
   resultCountingMode?: ResultCountingMode;
   campaignObjectives?: Record<string, ResultLabels> | null;
-  platform?: "META" | "GOOGLE";
+  platform?: Platform;
 }
 
 /** Comparison report — Period A and Period B totals vs CSV (same windows as buildComparisonReportData). */
 export function reconcileComparisonReportWithCsv(input: ReconcileComparisonReportInput): CsvVerificationResult {
-  if (input.platform === "GOOGLE") {
+  if (input.platform && input.platform !== "META") {
     return { status: "skipped", checks: [] };
   }
 
