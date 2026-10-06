@@ -30,7 +30,22 @@ function verifiedScopesLabel(scopes: string[] | undefined): string {
 export function CsvVerificationPanel({ verification, refreshing, clientId }: Props) {
   const [open, setOpen] = useState(false);
 
-  if (!verification || verification.status === "skipped") return null;
+  if (!verification) return null;
+
+  if (verification.status === "skipped") {
+    if (!verification.skipReason) return null;
+    return (
+      <div className="flex items-start gap-3 rounded-lg border border-dash-border bg-dash-bg/50 px-4 py-3">
+        <span className="mt-0.5 text-[13px] text-dash-ink-muted" aria-hidden>
+          ○
+        </span>
+        <div>
+          <p className="text-[14px] font-medium text-dash-ink-secondary">CSV verification not run</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-muted">{verification.skipReason}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (refreshing && verification.checks.length === 0) {
     return <p className="text-[13px] text-dash-ink-secondary">Checking spend and results against your CSV…</p>;

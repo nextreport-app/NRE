@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
+import { WizardStepHelp } from "../ui/wizard-step-help";
 import Link from "next/link";
 import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
@@ -25,6 +27,7 @@ import { UploadDropzone } from "../ui/upload-dropzone";
 
 export function WizardImportStep() {
   const w = useWizardContext();
+  const [apiDiagnosticsOpen, setApiDiagnosticsOpen] = useState(false);
   if (w.step !== 1) return null;
   const {
     analyzeErrors,
@@ -204,19 +207,36 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (
+            <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/40 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setApiDiagnosticsOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-2 text-left"
+                aria-expanded={apiDiagnosticsOpen}
+              >
+                <span className="text-[13px] font-medium text-dash-ink-secondary">
+                  Advanced: API sync diagnostics
+                  {metaSyncDiagnostics.mappedResultsSum === 0 ? (
+                    <span className="ml-2 text-amber-300">· mapped results 0</span>
+                  ) : (
+                    <span className="ml-2 text-emerald-300">· mapped results {metaSyncDiagnostics.mappedResultsSum}</span>
+                  )}
+                </span>
+                <span className="text-dash-ink-muted">{apiDiagnosticsOpen ? "▲" : "▼"}</span>
+              </button>
+              {apiDiagnosticsOpen ? (
             <div
-              className={`rounded-lg border px-4 py-3 ${
+              className={`mt-3 rounded-md border px-3 py-3 ${
                 metaSyncDiagnostics.mappedResultsSum > 0
                   ? "border-emerald-500/35 bg-[#0d1b2e]/80"
                   : "border-amber-500/40 bg-amber-950/20"
               }`}
             >
-              <p className="text-[14px] font-medium text-white">API sync diagnostics</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-                This is the same file as the auto-download and &quot;Download API sync CSV&quot; — name like{" "}
-                <span className="font-mono text-dash-ink">meta-api-sync-YYYY-MM-DD.csv</span> (CSV, not Excel). Check
-                columns <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>
-                , <span className="text-dash-ink">Website leads</span> — not spend/reach only.
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                For support only — same file as &quot;Download API sync CSV&quot; (
+                <span className="font-mono text-dash-ink">meta-api-sync-YYYY-MM-DD.csv</span>). Check{" "}
+                <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>,{" "}
+                <span className="text-dash-ink">Website leads</span>.
               </p>
               <ul className="mt-2 space-y-1 text-[13px] text-dash-ink-secondary">
                 <li>
@@ -296,6 +316,8 @@ export function WizardImportStep() {
                   <span className="text-dash-ink">results[]</span> is 30/30, the sync should merge campaign-level
                   costed results (post-fix). Share this panel in support if totals are still wrong.
                 </p>
+              ) : null}
+            </div>
               ) : null}
             </div>
           ) : null}
@@ -480,6 +502,8 @@ export function WizardImportStep() {
       {analyzeStatus === "error" && analyzeMessage && (
         <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">{analyzeMessage}</div>
       )}
+
+      <WizardStepHelp step={1} platform={w.platform} clientTimezone={clientTimezone} />
     </div>
   );
 }

@@ -83,6 +83,7 @@ import {
   readStoredWizardPlatform,
   saveWizardPlatformChoice,
 } from "./platform-storage";
+import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 
 export function useReportUploadWizard({
   clientId,
@@ -351,6 +352,7 @@ export function useReportUploadWizard({
   // card, showing its own Period A/B preset picker instead — see
   // fetchPreview/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
+  const clientPrefsHydratedRef = useRef(false);
 
   // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
   // weeklyOptions (This week vs Last week, the default preset) as soon as
@@ -433,6 +435,38 @@ export function useReportUploadWizard({
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
   }
+
+  useEffect(() => {
+    clientPrefsHydratedRef.current = false;
+    const prefs = readClientWizardPreferences(clientId);
+    if (prefs) {
+      if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
+        const coerced = coerceLaunchReportType(prefs.reportType);
+        setReportType(coerced);
+        setReportTitle(defaultReportTitleFor(coerced));
+      }
+      if (prefs.dateMode) setDateMode(prefs.dateMode);
+      if (typeof prefs.includePreviousMonthComparison === "boolean") {
+        setIncludePreviousMonthComparison(prefs.includePreviousMonthComparison);
+      }
+      if (typeof prefs.showBudgetOnCover === "boolean") {
+        setShowBudgetOnCover(prefs.showBudgetOnCover);
+      }
+      if (prefs.dataSourceMode) setDataSourceMode(prefs.dataSourceMode);
+    }
+    clientPrefsHydratedRef.current = true;
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientPrefsHydratedRef.current) return;
+    saveClientWizardPreferences(clientId, {
+      reportType,
+      dateMode,
+      includePreviousMonthComparison,
+      showBudgetOnCover,
+      dataSourceMode,
+    });
+  }, [clientId, reportType, dateMode, includePreviousMonthComparison, showBudgetOnCover, dataSourceMode]);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
