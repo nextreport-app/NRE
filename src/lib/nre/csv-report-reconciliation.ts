@@ -5,7 +5,9 @@
 
 import type { NreRow } from "./columns";
 import type { MetricRow } from "./types";
-import type { ComparisonReportData, Platform, ReportData, ReportType } from "./report-data";
+import type { ComparisonReportData, Platform, ReportData, ReportType, TableRowData } from "./report-data";
+import type { HistoricalReportData } from "./historical-report-data";
+import type { DayBreakdownReportData } from "./day-breakdown-report-data";
 import { filterRowsByCampaigns } from "./campaigns";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
@@ -45,6 +47,8 @@ export interface CsvVerificationResult {
   alignedWithCsvExport?: boolean;
   /** Human-readable windows that were checked (for green-state copy). */
   scopesVerified?: string[];
+  /** When status is skipped — shown in the wizard instead of hiding the row. */
+  skipReason?: string;
 }
 
 export interface ReconcileStandardReportInput {
@@ -61,7 +65,11 @@ export interface ReconcileStandardReportInput {
   periodRows?: NreRow[] | null;
   /** Wizard-confirmed objectives — same overrides as buildReportData. */
   campaignObjectives?: Record<string, ResultLabels> | null;
+  platform?: Platform;
 }
+
+const NON_META_SKIP_REASON =
+  "CSV cross-check is enabled for Meta first. Google and TikTok use the same engine but are not auto-verified yet.";
 
 /** Minor spend drift from rounding / display — not flagged (user: ~$1–2 is OK). */
 const SPEND_AMOUNT_TOLERANCE = 2;
@@ -150,6 +158,13 @@ function sumResultsForLabel(
 
 function primaryResultColumn(report: ReportData): { label: string; costLabel: string; value: string; cprValue: string } | null {
   const cols = report.mtdRow.resultColumns.filter((c) => c.label !== "RESULTS");
+  if (cols.length === 0) return null;
+  const sorted = [...cols].sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value));
+  return sorted[0] ?? null;
+}
+
+function primaryResultColumnFromTableRow(row: TableRowData): { label: string; costLabel: string; value: string; cprValue: string } | null {
+  const cols = row.resultColumns.filter((c) => c.label !== "RESULTS");
   if (cols.length === 0) return null;
   const sorted = [...cols].sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value));
   return sorted[0] ?? null;
@@ -283,7 +298,11 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     timezone,
     currencySymbol,
     campaignObjectives,
+    platform,
   } = input;
+  if (platform && platform !== "META") {
+    return { status: "skipped", checks: [], skipReason: NON_META_SKIP_REASON };
+  }
   if (report.creativeOnly || reportType === "CREATIVE") {
     return { status: "skipped", checks: [] };
   }
@@ -561,7 +580,7 @@ export interface ReconcileComparisonReportInput {
 /** Comparison report — Period A and Period B totals vs CSV (same windows as buildComparisonReportData). */
 export function reconcileComparisonReportWithCsv(input: ReconcileComparisonReportInput): CsvVerificationResult {
   if (input.platform && input.platform !== "META") {
-    return { status: "skipped", checks: [] };
+    return { status: "skipped", checks: [], skipReason: NON_META_SKIP_REASON };
   }
 
   const filtered = filterRowsByCampaigns(input.mtdDailyRows, input.selectedCampaigns ?? null);
@@ -641,4 +660,165 @@ export function reconcileComparisonReportWithCsv(input: ReconcileComparisonRepor
   }
 
   return finalizeVerificationResult({ checks, primaryResultLabel: resultMetric, canAlignRef, countingMode });
+}
+
+export interface ReconcileHistoricalReportInput {
+  report: HistoricalReportData;
+  mtdDailyRows: NreRow[];
+  selectedCampaigns: string[] | null | undefined;
+  currencySymbol: string;
+  resultCountingMode?: ResultCountingMode;
+  campaignObjectives?: Record<string, ResultLabels> | null;
+  platform?: Platform;
+}
+
+/** Multi-month report — each month total row vs CSV for that calendar month. */
+export function reconcileHistoricalReportWithCsv(input: ReconcileHistoricalReportInput): CsvVerificationResult {
+  if (input.platform && input.platform !== "META") {
+    return { status: "skipped", checks: [], skipReason: NON_META_SKIP_REASON };
+  }
+
+  const filtered = filterRowsByCampaigns(input.mtdDailyRows, input.selectedCampaigns ?? null);
+  if (filtered.length === 0 || input.report.comparisonRows.length === 0) {
+    return { status: "skipped", checks: [] };
+  }
+
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const canAlignRef = { value: false };
+  const checks: CsvVerificationCheck[] = [];
+  let primaryLabel: string | undefined;
+
+  for (const tableRow of input.report.comparisonRows) {
+    if (!tableRow.hasData) continue;
+    const monthRange = input.report.monthRanges.find((m) => m.fullMonthLabel === tableRow.monthLabel);
+    if (!monthRange) continue;
+
+    const monthRows = filterNreRowsByDateRange(filtered, monthRange);
+    if (monthRows.length === 0) continue;
+
+    const agg = aggregateRows(monthRows) as MetricRow[];
+    const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(agg), input.campaignObjectives);
+    const col = primaryResultColumnFromTableRow(tableRow);
+    if (!col) continue;
+    primaryLabel = col.label;
+
+    const csvSpend = sumSpend(agg);
+    const csvStdResults = sumResultsForLabel(agg, objectiveMap, col.label, "standard");
+    const csvResults = sumResultsForLabel(agg, objectiveMap, col.label, countingMode);
+    const csvExportResults = sumResultsForLabel(agg, objectiveMap, col.label, "meta-csv-export");
+    const groups = groupResultsByCampaignObjective(agg, objectiveMap, undefined, countingMode);
+    const group = groups.find((g) => g.label === col.label);
+    const csvCpr = group?.avgCpr ?? 0;
+
+    checks.push(
+      ...scopedChecks({
+        scope: tableRow.monthLabel,
+        currencySymbol: input.currencySymbol,
+        reportSpend: parseCellNum(tableRow.spend),
+        csvSpend,
+        reportSpendDisplay: tableRow.spend,
+        resultLabel: col.label,
+        costLabel: col.costLabel,
+        reportResults: parseCellNum(col.value),
+        csvResults,
+        reportResultsDisplay: col.value,
+        reportCpr: parseCellNum(col.cprValue),
+        csvCpr,
+        reportCprDisplay: col.cprValue,
+        canAlignRef,
+        csvStandardResults: csvStdResults,
+        csvExportResults: csvExportResults,
+        countingMode,
+      }),
+    );
+  }
+
+  if (checks.length === 0) {
+    return { status: "skipped", checks: [] };
+  }
+
+  return finalizeVerificationResult({ checks, primaryResultLabel: primaryLabel, canAlignRef, countingMode });
+}
+
+export interface ReconcileDayBreakdownReportInput {
+  report: DayBreakdownReportData;
+  mtdDailyRows: NreRow[];
+  selectedCampaigns: string[] | null | undefined;
+  currencySymbol: string;
+  resultCountingMode?: ResultCountingMode;
+  campaignObjectives?: Record<string, ResultLabels> | null;
+  platform?: Platform;
+}
+
+/** Day-by-day table — range totals vs CSV for the selected window. */
+export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownReportInput): CsvVerificationResult {
+  if (input.platform && input.platform !== "META") {
+    return { status: "skipped", checks: [], skipReason: NON_META_SKIP_REASON };
+  }
+
+  const filtered = filterRowsByCampaigns(input.mtdDailyRows, input.selectedCampaigns ?? null);
+  const rowsInRange = filterNreRowsByDateRange(filtered, input.report.dateRange);
+  if (rowsInRange.length === 0 || input.report.dayRows.every((r) => !r.hasData)) {
+    return { status: "skipped", checks: [] };
+  }
+
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const canAlignRef = { value: false };
+  const agg = aggregateRows(rowsInRange) as MetricRow[];
+  const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(agg), input.campaignObjectives);
+
+  const sampleRow = input.report.dayRows.find((r) => r.hasData);
+  const col = sampleRow ? primaryResultColumnFromTableRow(sampleRow) : null;
+  if (!col) {
+    return { status: "skipped", checks: [] };
+  }
+
+  let reportSpend = 0;
+  let reportResults = 0;
+  let weightedCpr = 0;
+  let resultWeight = 0;
+  for (const day of input.report.dayRows) {
+    if (!day.hasData) continue;
+    const dayCol = day.resultColumns.find((c) => c.label === col.label) ?? primaryResultColumnFromTableRow(day);
+    if (!dayCol) continue;
+    reportSpend += parseCellNum(day.spend);
+    const r = parseCellNum(dayCol.value);
+    reportResults += r;
+    const cpr = parseCellNum(dayCol.cprValue);
+    if (r > 0 && cpr > 0) {
+      weightedCpr += cpr * r;
+      resultWeight += r;
+    }
+  }
+  const reportCpr = resultWeight > 0 ? weightedCpr / resultWeight : 0;
+
+  const csvSpend = sumSpend(agg);
+  const csvStdResults = sumResultsForLabel(agg, objectiveMap, col.label, "standard");
+  const csvResults = sumResultsForLabel(agg, objectiveMap, col.label, countingMode);
+  const csvExportResults = sumResultsForLabel(agg, objectiveMap, col.label, "meta-csv-export");
+  const groups = groupResultsByCampaignObjective(agg, objectiveMap, undefined, countingMode);
+  const group = groups.find((g) => g.label === col.label);
+  const csvCpr = group?.avgCpr ?? 0;
+
+  const checks = scopedChecks({
+    scope: "Selected date range",
+    currencySymbol: input.currencySymbol,
+    reportSpend,
+    csvSpend,
+    reportSpendDisplay: fmtCurrency(reportSpend, input.currencySymbol),
+    resultLabel: col.label,
+    costLabel: col.costLabel,
+    reportResults,
+    csvResults,
+    reportResultsDisplay: fmtNumber(reportResults),
+    reportCpr,
+    csvCpr,
+    reportCprDisplay: reportCpr > 0 ? fmtCurrency(reportCpr, input.currencySymbol) : "—",
+    canAlignRef,
+    csvStandardResults: csvStdResults,
+    csvExportResults: csvExportResults,
+    countingMode,
+  });
+
+  return finalizeVerificationResult({ checks, primaryResultLabel: col.label, canAlignRef, countingMode });
 }

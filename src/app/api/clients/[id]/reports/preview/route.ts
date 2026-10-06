@@ -7,6 +7,8 @@ import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import {
   reconcileComparisonReportWithCsv,
+  reconcileDayBreakdownReportWithCsv,
+  reconcileHistoricalReportWithCsv,
   reconcileStandardReportWithCsv,
 } from "@/lib/nre/csv-report-reconciliation";
 import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
@@ -188,7 +190,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isHistorical: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileHistoricalReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: validation.warnings,
+      isHistorical: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "DAY_BREAKDOWN") {
@@ -243,7 +264,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isDayBreakdown: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileDayBreakdownReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: validation.warnings,
+      isDayBreakdown: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
@@ -304,6 +344,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
     periodRows: periodRowsForVerify,
     campaignObjectives: campaignObjectives ?? null,
+    platform,
   });
 
   return NextResponse.json({

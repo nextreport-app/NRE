@@ -7,6 +7,7 @@ import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
+import { WizardStepHelp } from "../ui/wizard-step-help";
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
@@ -374,8 +375,10 @@ export function WizardCampaignsStep() {
         </button>
       </div>
 
+      <WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} />
+
       <WizardStickyFooter
-        stepLabel="Step 2 of 4 · Campaign Data"
+        stepLabel="Step 2 of 4 · Campaigns"
         onBack={() => setStep(1)}
         primaryLabel={objectivesLoading ? "Loading objectives…" : "Continue to metrics"}
         onPrimary={() => void handleCampaignsContinue()}

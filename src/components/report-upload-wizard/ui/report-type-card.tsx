@@ -15,6 +15,7 @@ export function ReportTypeCard({
   layout = "vertical",
   beta = false,
   comingSoon = false,
+  recommended = false,
 }: {
   icon: ReactNode;
   heading: string;
@@ -27,6 +28,8 @@ export function ReportTypeCard({
   layout?: "vertical" | "compact";
   beta?: boolean;
   comingSoon?: boolean;
+  /** Highlights the default choice (e.g. Weekly). */
+  recommended?: boolean;
 }) {
   const showSoonBadge =
     comingSoon && !/launching soon/i.test(description.trim());
@@ -49,8 +52,13 @@ export function ReportTypeCard({
         <span className="inline-flex shrink-0 text-[26px] leading-none" aria-hidden="true">
           {icon}
         </span>
-        <span className="mt-2 flex items-center justify-center gap-1.5">
+        <span className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           <span className="block text-[13px] font-semibold leading-snug text-white">{heading}</span>
+          {recommended ? (
+            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+              Recommended
+            </span>
+          ) : null}
           {showSoonBadge ? <ComingSoonBadge /> : null}
           {!showSoonBadge && beta ? <PlatformBetaBadge /> : null}
         </span>
