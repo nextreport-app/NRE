@@ -43,7 +43,7 @@ export function WizardGenerateStep() {
       ),
   );
 
-  if (w.step !== 4) return null;
+  const stepActive = w.step === 4;
 
   const {
     budgetToggleSaving,
@@ -163,6 +163,7 @@ export function WizardGenerateStep() {
   } = w;
 
   const objectivesBlockingCount = useMemo(() => {
+    if (!stepActive) return 0;
     return campaigns.filter((name) => {
       const normalized = normalizeCampaignName(name);
       return (
@@ -171,9 +172,10 @@ export function WizardGenerateStep() {
         !touchedObjectiveCampaigns.has(normalized)
       );
     }).length;
-  }, [campaigns, selectedCampaigns, campaignRequiresConfirmation, touchedObjectiveCampaigns]);
+  }, [stepActive, campaigns, selectedCampaigns, campaignRequiresConfirmation, touchedObjectiveCampaigns]);
 
   const periodSummaryLabel = useMemo(() => {
+    if (!stepActive) return undefined;
     if (previewKind === "comparison" && comparisonData) {
       return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     }
@@ -186,6 +188,7 @@ export function WizardGenerateStep() {
     if (mtdRange) return formatSummaryRange(mtdRange);
     return undefined;
   }, [
+    stepActive,
     previewKind,
     comparisonData,
     historicalData,
@@ -196,6 +199,8 @@ export function WizardGenerateStep() {
     mtdRange,
     formatSummaryRange,
   ]);
+
+  if (!stepActive) return null;
 
   const readinessItems = buildGenerateStepReadinessItems({
     campaignsSelected: summaryCampaignNames().length,
