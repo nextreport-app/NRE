@@ -231,6 +231,17 @@ describe("fetchMetaReportCsv", () => {
       vi.fn(async (url: string) => {
         if (String(url).includes("/insights")) {
           if (String(url).includes("level=campaign")) {
+            if (!String(url).includes("time_increment")) {
+              return {
+                ok: true,
+                json: async () => ({
+                  data: [
+                    { campaign_name: "Shoes Campaign", reach: "900" },
+                    { campaign_name: "Lead Gen Campaign", reach: "2500" },
+                  ],
+                }),
+              };
+            }
             return { ok: true, json: async () => ({ data: [] }) };
           }
           expect(String(url)).toContain("level=adset");

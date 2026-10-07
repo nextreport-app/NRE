@@ -12,7 +12,15 @@ import { computeCsvDateBounds, computeDailyRangeIso, computeMonthComparisonRange
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
+import {
+  campaignSelectionMemorySchema,
+  dateSelectionSchema,
+  metaAdAccountIdSchema,
+  metaCampaignPeriodReachMapsSchema,
+  parseJsonFormField,
+  platformSchema,
+  type DateSelection,
+} from "@/lib/validators/report-wizard";
 import { detectPlatform } from "@/lib/nre/google-columns";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
@@ -136,6 +144,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           )
         : null;
 
+    const metaCampaignPeriodReach = formData
+      ? parseJsonFormField(formData, "metaCampaignPeriodReach", metaCampaignPeriodReachMapsSchema)
+      : undefined;
+    const metaAdAccountId = formData ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema) : undefined;
+
     const uploadSessionId = await saveWizardUploadSession({
       userId: session.user.id,
       clientId: id,
@@ -144,6 +157,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       rows: mtdParsed.rows,
       headers: mtdParsed.headers,
       fileHash: hashUploadBuffer(mtdDailyBuffer),
+      metaCampaignPeriodReach,
+      metaAdAccountId,
     });
 
     return NextResponse.json({

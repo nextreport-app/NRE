@@ -27,12 +27,21 @@ import {
   resolveCsvAlignResults,
 } from "@/lib/validators/report-wizard";
 import { createReportEngine } from "./report-engine-impl";
+import { prisma } from "@/lib/prisma";
+import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
+import {
+  parseMetaAdAccountIdFromForm,
+  resolveMetaCampaignPeriodReachForWizard,
+} from "../resolve-meta-campaign-reach-for-wizard";
+import type { MetaCampaignPeriodReachMaps } from "../campaign-period-reach-maps";
 
 export interface BuildStandardReportWizardInput {
   client: Client;
   mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] };
   formData: FormData | null;
   platform: Platform;
+  metaCampaignPeriodReachFromSession?: MetaCampaignPeriodReachMaps;
+  metaAdAccountIdFromSession?: string;
 }
 
 export type BuildStandardReportWizardResult = { data: ReportData } | { error: string };
@@ -40,7 +49,8 @@ export type BuildStandardReportWizardResult = { data: ReportData } | { error: st
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
 ): Promise<BuildStandardReportWizardResult> {
-  const { client, mtdParsed, formData, platform } = input;
+  const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
+    input;
   const engine = createReportEngine(platform);
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -84,6 +94,32 @@ export async function buildStandardReportForWizard(
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
   const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
 
+  let metaAccessToken: string | null = null;
+  if (platform === "META") {
+    const user = await prisma.user.findUnique({
+      where: { id: client.userId },
+      select: { metaAccessToken: true, metaTokenExpiresAt: true, metaAdsEnabled: true },
+    });
+    if (user?.metaAdsEnabled && user.metaAccessToken) {
+      const fresh = await ensureFreshMetaAccessToken({
+        accessToken: user.metaAccessToken,
+        tokenExpiresAt: user.metaTokenExpiresAt,
+      });
+      metaAccessToken = fresh.accessToken;
+    }
+  }
+
+  const metaAdAccountId = parseMetaAdAccountIdFromForm(formData) ?? metaAdAccountIdFromSession;
+  const metaCampaignPeriodReach = await resolveMetaCampaignPeriodReachForWizard({
+    platform,
+    mtdDailyRows: mtdParsed.rows,
+    timezone: client.timezone,
+    dateSelection,
+    sessionMaps: metaCampaignPeriodReachFromSession,
+    metaAdAccountId,
+    metaAccessToken,
+  });
+
   const data = engine.buildStandard({
     accountName: client.accountName,
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
@@ -104,6 +140,7 @@ export async function buildStandardReportForWizard(
     adNameColumn,
     creativeOnly: reportType === "CREATIVE",
     platform,
+    metaCampaignPeriodReach,
   });
 
   return { data };

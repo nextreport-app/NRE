@@ -63,6 +63,8 @@ export type ApiSyncMeta = {
   previousMonthCampaigns?: string[];
   previousMonthSelectedCampaigns?: string[] | null;
   previousMonthUpdatedAt?: string | null;
+  campaignPeriodReachMaps?: { byRangeKey: Record<string, Record<string, number>> };
+  metaAdAccountId?: string;
 };
 
 export interface ReportUploadWizardProps {

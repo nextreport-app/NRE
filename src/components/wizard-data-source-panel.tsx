@@ -224,6 +224,8 @@ export function WizardDataSourcePanel({
           ? data.previousMonthSelectedCampaigns
           : null,
         previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+        campaignPeriodReachMaps: data.campaignPeriodReachMaps,
+        metaAdAccountId: platform === "META" ? selectedMetaAccount : undefined,
       });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");

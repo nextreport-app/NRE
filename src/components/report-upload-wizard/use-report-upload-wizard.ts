@@ -210,6 +210,7 @@ export function useReportUploadWizard({
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
   const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
+  const [metaAdAccountId, setMetaAdAccountId] = useState<string | null>(null);
   /** Optional Ads Manager CSV for Meta API hybrid merge (Result columns from manual export). */
   const [metaManualReferenceCsvFile, setMetaManualReferenceCsvFile] = useState<File | null>(null);
   const [metaManualReferenceCsvText, setMetaManualReferenceCsvText] = useState<string | null>(null);
@@ -920,16 +921,14 @@ export function useReportUploadWizard({
     setStep(2);
   }
 
-  type ApiSyncMeta = {
-    metaSyncDiagnostics?: import("./types").MetaSyncDiagnosticsSummary;
-    mergedWithManualReference?: boolean;
-    previousMonthSynced?: boolean;
-    hasPreviousMonthData?: boolean;
-    previousMonthCampaigns?: string[];
-    previousMonthSelectedCampaigns?: string[] | null;
-    previousMonthUpdatedAt?: string | null;
+  type ApiSyncMeta = import("./types").ApiSyncMeta & {
     previousMonthCampaignSpend?: Record<string, number>;
   };
+
+  function metaReachWizardFormExtra(): Record<string, unknown> {
+    if (!metaAdAccountId) return {};
+    return { metaAdAccountId };
+  }
 
   /** API-sync artifacts use a synthetic filename — discard when switching to manual CSV upload. */
   function isApiSyncArtifact(file: File | null): boolean {
@@ -1033,6 +1032,7 @@ export function useReportUploadWizard({
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
     setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
+    if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
     setMtdFile(file);
     downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
@@ -1042,7 +1042,11 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(file, { platform: selectedPlatformCard }),
+      body: buildUploadFormData(file, {
+        platform: selectedPlatformCard,
+        metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
+        metaAdAccountId: meta?.metaAdAccountId,
+      }),
     });
     const json = await res.json().catch(() => null);
 
@@ -1654,6 +1658,7 @@ export function useReportUploadWizard({
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
           csvAlignResults,
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),
@@ -1793,6 +1798,7 @@ export function useReportUploadWizard({
           includePreviousMonthComparison,
           csvAlignResults,
           metaHybridApiImport: apiSyncHybridImport && platform === "META",
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),

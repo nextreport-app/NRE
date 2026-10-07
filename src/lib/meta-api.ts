@@ -359,6 +359,54 @@ export async function fetchMetaAdAccountInsights(params: {
   return fetchMetaAdAccountInsightsForRangeResilient({ ...params, level });
 }
 
+const META_CAMPAIGN_PERIOD_REACH_FIELDS = ["campaign_name", "reach", "spend", "impressions"].join(",");
+
+/**
+ * One row per campaign for the full date range — reach matches Ads Manager
+ * campaign-level totals (not additive daily breakdown).
+ */
+export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+}): Promise<MetaInsightRow[]> {
+  const accountId = params.adAccountId.startsWith("act_")
+    ? params.adAccountId
+    : `act_${params.adAccountId.replace(/\D/g, "")}`;
+
+  const allRows: MetaInsightRow[] = [];
+  let nextUrl: string | null = null;
+
+  const buildUrl = () => {
+    const url = new URL(`${metaGraphBase()}/${accountId}/insights`);
+    url.searchParams.set("level", "campaign");
+    url.searchParams.set("fields", META_CAMPAIGN_PERIOD_REACH_FIELDS);
+    url.searchParams.set(
+      "time_range",
+      JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
+    );
+    url.searchParams.set(
+      "filtering",
+      JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: "0" }]),
+    );
+    url.searchParams.set("limit", "250");
+    url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("access_token", params.accessToken);
+    return url.toString();
+  };
+
+  nextUrl = buildUrl();
+
+  while (nextUrl) {
+    const data = await fetchMetaInsightsPageWithRetry(nextUrl);
+    allRows.push(...(data.data ?? []));
+    nextUrl = data.paging?.next ?? null;
+  }
+
+  return allRows;
+}
+
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */
 export async function ensureFreshMetaAccessToken(params: {
   accessToken: string;

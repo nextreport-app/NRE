@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aggregateReach, estimatePeriodReach, sainsburyPeriodReach } from "../reach-aggregation";
+import { metaCampaignPeriodReachMapsFromFlatWindow } from "../meta-api-sync/fetch-campaign-period-reach";
+import { normalizeCampaignName } from "../objective";
 import type { MetricRow } from "../types";
 
 function dailyRow(day: string, adSet: string, reach: number, campaign = "Reach Campaign"): MetricRow {
@@ -35,6 +37,25 @@ describe("reach-aggregation", () => {
     expect(estimated).toBeLessThan(42_500);
     // Plain sum would be 73,547 — must not regress to that.
     expect(estimated).toBeLessThan(50_000);
+  });
+
+  it("uses Meta campaign-level period reach when provided for multi ad-set campaigns", () => {
+    const adSet1 = [5227, 5699, 5693, 4589, 5230, 4577, 5220];
+    const adSet2 = [4965, 5610, 5330, 4568, 6598, 5051, 5190];
+    const rows: MetricRow[] = [
+      ...adSet1.map((reach, i) => dailyRow(`2026-09-${8 + i}`, "5xFreq", reach)),
+      ...adSet2.map((reach, i) => dailyRow(`2026-09-${8 + i}`, "10xFreq", reach)),
+    ];
+    const maps = metaCampaignPeriodReachMapsFromFlatWindow("2026-09-08", "2026-09-14", {
+      "Reach Campaign": 135_358,
+    });
+    const reach = aggregateReach(rows, {
+      metaCampaignPeriodReach: maps,
+      periodRange: { startIso: "2026-09-08", endIso: "2026-09-14" },
+      scope: "campaign",
+    });
+    expect(reach).toBe(135_358);
+    expect(normalizeCampaignName("Reach Campaign")).toBe("reach campaign");
   });
 
   it("yields Ads Manager–aligned cost per 1K reach for Southaven-style parallel ad sets", () => {

@@ -79,6 +79,10 @@ export const uploadSessionIdSchema = z.string().uuid();
 export const dataSourceSchema = z.enum(["csv", "api"]);
 
 export const metaAdAccountIdSchema = z.string().trim().min(1);
+
+export const metaCampaignPeriodReachMapsSchema = z.object({
+  byRangeKey: z.record(z.string(), z.record(z.string(), z.number())),
+});
 export const googleCustomerIdSchema = z.string().trim().min(1);
 export const tiktokAdvertiserIdSchema = z.string().trim().min(1);
 

@@ -9,7 +9,7 @@
 import { hasRealRowDate } from "./columns";
 import { metaCsvExportResultValue, type ResultCountingMode } from "./meta-csv-export-counting";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
-import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
+import { aggregateReach, aggregateReachAcrossCampaigns, type ReachAggregationOptions } from "./reach-aggregation";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
@@ -1514,6 +1514,7 @@ export function groupResultsByCampaignObjective(
   objectiveMap: Map<string, ResultLabels>,
   debugLabel?: string,
   resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
@@ -1528,7 +1529,7 @@ export function groupResultsByCampaignObjective(
       if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
         groups[label].totalSpend += parseCellNum(row.spend);
         if (!campaignReachAdded) {
-          groups[label].totalReach += aggregateReach(campRows);
+          groups[label].totalReach += aggregateReach(campRows, reachOpts);
           campaignReachAdded = true;
         }
       }
@@ -1600,6 +1601,7 @@ export function getGroupedResultDisplayForObjective(
   objective: ResultLabels,
   currencySymbol: string,
   resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultDisplay {
   // MTD-row bug fix, extended to campaign slides — see
   // groupResultsByCampaignObjective's own doc comment and
@@ -1619,7 +1621,7 @@ export function getGroupedResultDisplayForObjective(
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
-        totalReach = aggregateReach(campRows);
+        totalReach = aggregateReach(campRows, reachOpts);
         campaignReachAdded = true;
       }
     }
