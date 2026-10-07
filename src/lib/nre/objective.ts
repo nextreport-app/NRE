@@ -1367,6 +1367,22 @@ function rowAddToCart(row: MetricRow): number {
  * Comparison Report campaign totals being the other one, as of this fix —
  * gets the same mismatched-row correction instead of reimplementing it.
  */
+/**
+ * Per-day Meta export row — Ads Manager period totals sum the Results column
+ * for the campaign's result type. The Website leads column can show +1 on days
+ * with blank Result type (attribution lag); those must not inflate totals.
+ */
+export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | "website_leads" | "result_type">): number {
+  const results = parseCellNum(row.results);
+  if (results > 0) return results;
+  const wl = parseCellNum(row.website_leads);
+  if (wl <= 0) return 0;
+  const rt = (row.result_type || "").trim();
+  if (!rt) return 0;
+  if (getResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+  return 0;
+}
+
 export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
   if (mode === "meta-csv-export") {
     return metaCsvExportResultValue(row, label);
@@ -1382,18 +1398,7 @@ export function resultValueForObjective(row: MetricRow, label: string, mode: Res
       return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
     }
     if (label === "WEBSITE LEADS") {
-      // Results = Meta's attributed result for the row's Result type (e.g.
-      // "Website applications submitted"). Website leads column can show +1 on
-      // days with blank Result type/Results (attribution lag) — Ads Manager
-      // period totals use Results; do not add orphan website_leads counts.
-      const results = parseCellNum(row.results);
-      if (results > 0) return results;
-      const wl = parseCellNum(row.website_leads);
-      if (wl <= 0) return 0;
-      const rt = (row.result_type || "").trim();
-      if (!rt) return 0;
-      if (getResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
-      return 0;
+      return websiteLeadsCountFromExportRow(row);
     }
     if (label === "META FORM LEADS") {
       return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
@@ -1412,7 +1417,15 @@ export function resultValueForObjective(row: MetricRow, label: string, mode: Res
   const rowResultLabel = getResultLabels(row.result_type).resultLabel;
   if (rowResultLabel === label) {
     if (label === "REACH") return parseCellNum(row.reach) || parseCellNum(row.results);
+    if (label === "WEBSITE LEADS") return websiteLeadsCountFromExportRow(row);
     return parseCellNum(row.results);
+  }
+  // Campaign pinned to WEBSITE LEADS but Meta Result type is applications submitted.
+  if (
+    label === "WEBSITE LEADS" &&
+    (rowResultLabel === "WEBSITE SUBMIT APPLICATIONS" || rowResultLabel === "APPLICATIONS")
+  ) {
+    return websiteLeadsCountFromExportRow(row);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);

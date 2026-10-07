@@ -19,6 +19,7 @@ import {
   resolveCampaignObjectiveWithConfidence,
   resolveObjective,
   resultValueForObjective,
+  websiteLeadsCountFromExportRow,
   type ResultLabels,
 } from "../objective";
 import { parseCsvText } from "../parse-csv";
@@ -1702,21 +1703,29 @@ describe("getGroupedResultDisplay", () => {
 describe("resultValueForObjective — WEBSITE LEADS", () => {
   it("uses Results when present and ignores orphan website_leads without Result type", () => {
     expect(
-      resultValueForObjective(
-        row({ result_type: "Website applications submitted", results: 2, website_leads: 2 }),
-        "WEBSITE LEADS",
-      ),
+      websiteLeadsCountFromExportRow({
+        result_type: "Website applications submitted",
+        results: 2,
+        website_leads: 2,
+      }),
     ).toBe(2);
+    expect(websiteLeadsCountFromExportRow({ result_type: "", results: 0, website_leads: 1 })).toBe(0);
     expect(resultValueForObjective(row({ result_type: "", results: 0, website_leads: 1 }), "WEBSITE LEADS")).toBe(0);
   });
 
-  it("falls back to website_leads when Result type is website-lead but Results cell is blank", () => {
+  it("falls back to website_leads when Result type is Website lead but Results cell is blank", () => {
+    expect(
+      resultValueForObjective(row({ result_type: "Website lead", results: 0, website_leads: 1 }), "WEBSITE LEADS"),
+    ).toBe(1);
+  });
+
+  it("does not count website_leads when Result type is applications but Results is blank", () => {
     expect(
       resultValueForObjective(
         row({ result_type: "Website applications submitted", results: 0, website_leads: 1 }),
         "WEBSITE LEADS",
       ),
-    ).toBe(1);
+    ).toBe(0);
   });
 });
 
