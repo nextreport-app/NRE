@@ -208,12 +208,21 @@ function blendedCprFromSlides(report: ReportData, resultLabel: string): number {
   return totalResults > 0 ? weighted / totalResults : 0;
 }
 
+function isNonAdditiveReachStyleResult(resultLabel: string): boolean {
+  const result = resultLabel.toUpperCase();
+  return result === "REACH" || result.includes("IMPRESSION") || result.includes("RECALL");
+}
+
+/** Primary result count — skip Reach: daily CSV sums are not period deduplicated (report uses campaign-level reach). */
+function shouldVerifyPrimaryResults(resultLabel: string): boolean {
+  return !isNonAdditiveReachStyleResult(resultLabel);
+}
+
 /** CPR in CSV verify only when report and CSV use the same cost-per-result math (skip derived rates like cost per 1K reach). */
 function shouldVerifyCostPerResult(costLabel: string, resultLabel: string): boolean {
   const cost = costLabel.toUpperCase();
-  const result = resultLabel.toUpperCase();
   if (cost.includes("1K REACH") || cost.includes("CPM") || cost.includes("FREQUENCY")) return false;
-  if (result === "REACH" || result.includes("IMPRESSION") || result.includes("RECALL")) return false;
+  if (isNonAdditiveReachStyleResult(resultLabel)) return false;
   return true;
 }
 
@@ -266,16 +275,18 @@ function scopedChecks(params: {
     status: closeEnough(reportSpend, csvSpend, SPEND_AMOUNT_TOLERANCE) ? "ok" : "mismatch",
   });
 
-  checks.push({
-    metric: resultLabel,
-    scope,
-    reportDisplay: reportResultsDisplay,
-    csvDisplay: fmtNumber(csvResults),
-    status: resultsMatch(reportResults, csvResults) ? "ok" : "mismatch",
-    note: resultsMatch(reportResults, csvResults)
-      ? undefined
-      : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
-  });
+  if (shouldVerifyPrimaryResults(resultLabel)) {
+    checks.push({
+      metric: resultLabel,
+      scope,
+      reportDisplay: reportResultsDisplay,
+      csvDisplay: fmtNumber(csvResults),
+      status: resultsMatch(reportResults, csvResults) ? "ok" : "mismatch",
+      note: resultsMatch(reportResults, csvResults)
+        ? undefined
+        : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
+    });
+  }
 
   if (
     shouldVerifyCostPerResult(costLabel, resultLabel) &&
@@ -291,6 +302,7 @@ function scopedChecks(params: {
   }
 
   if (
+    shouldVerifyPrimaryResults(resultLabel) &&
     countingMode === "standard" &&
     checks.some((c) => c.status === "mismatch" && c.metric === resultLabel) &&
     csvStandardResults !== csvExportResults

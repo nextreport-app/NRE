@@ -37,5 +37,9 @@ describe("CSV reconciliation reach campaigns", () => {
 
     const cprChecks = verification.checks.filter((c) => c.metric.toUpperCase().includes("1K REACH"));
     expect(cprChecks).toHaveLength(0);
+
+    const reachResultChecks = verification.checks.filter((c) => c.metric.toUpperCase() === "REACH");
+    expect(reachResultChecks).toHaveLength(0);
+    expect(verification.checks.filter((c) => c.status === "mismatch")).toHaveLength(0);
   });
 });
