@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
 export type WizardDataSource = "csv" | "api";
 
@@ -16,25 +17,7 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (
-    file: File,
-    meta?: {
-      metaSyncDiagnostics?: {
-        mappedResultsSum: number;
-        rowCount: number;
-        rowsWithResultsField: number;
-        rowsWithObjectiveResultsField: number;
-        rowsWithPixelInActions: number;
-        deployCommit: string | null;
-      };
-      mergedWithManualReference?: boolean;
-      previousMonthSynced?: boolean;
-      hasPreviousMonthData?: boolean;
-      previousMonthCampaigns?: string[];
-      previousMonthSelectedCampaigns?: string[] | null;
-      previousMonthUpdatedAt?: string | null;
-    },
-  ) => void;
+  onSynced: (file: File, meta?: ApiSyncMeta) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
@@ -224,6 +207,8 @@ export function WizardDataSourcePanel({
           ? data.previousMonthSelectedCampaigns
           : null,
         previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+        campaignPeriodReachMaps: data.campaignPeriodReachMaps,
+        metaAdAccountId: platform === "META" ? selectedMetaAccount : undefined,
       });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");

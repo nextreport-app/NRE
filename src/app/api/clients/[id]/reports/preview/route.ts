@@ -67,7 +67,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed } = resolved.data;
+  const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId } = resolved.data;
   const platform = mtdParsed.platform;
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
@@ -303,7 +303,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const built = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
+  const built = await buildStandardReportForWizard({
+    client,
+    mtdParsed,
+    formData,
+    platform,
+    metaCampaignPeriodReachFromSession: metaCampaignPeriodReach,
+    metaAdAccountIdFromSession: metaAdAccountId,
+  });
   if ("error" in built) {
     const field =
       built.error.includes("date") || built.error.includes("yesterday")

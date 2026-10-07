@@ -15,6 +15,12 @@ import { resolveMetaInsightRowsForCsvExport } from "./resolve-rows-for-csv-expor
 import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
 import { normalizeMetaInsightRow } from "./normalize-insight-row";
 import { buildMetaSyncDiagnostics, type MetaSyncDiagnostics } from "./sync-diagnostics";
+import {
+  campaignPeriodReachMapFromInsights,
+  metaCampaignPeriodReachMapsFromFlatWindow,
+  type MetaCampaignPeriodReachMaps,
+} from "./fetch-campaign-period-reach";
+import { fetchMetaAdAccountCampaignPeriodInsights } from "@/lib/meta-api";
 
 export interface FetchMetaReportCsvInput {
   accessToken: string;
@@ -39,6 +45,9 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   sinceIso: string;
   untilIso: string;
   diagnostics: MetaSyncDiagnostics;
+  /** Campaign-level deduplicated reach for the sync window (Ads Manager campaign view). */
+  campaignPeriodReachByName: Record<string, number>;
+  campaignPeriodReachMaps: MetaCampaignPeriodReachMaps;
 }> {
   const { sinceIso, untilIso } =
     input.sinceIso && input.untilIso
@@ -99,5 +108,26 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     usedCampaignLevelConversionFallback,
   });
 
-  return { csvText, rowCount, sinceIso, untilIso, diagnostics };
+  const campaignPeriodRows = await fetchMetaAdAccountCampaignPeriodInsights({
+    accessToken: input.accessToken,
+    adAccountId: input.adAccountId,
+    sinceIso,
+    untilIso,
+  });
+  const campaignPeriodReachByName = campaignPeriodReachMapFromInsights(campaignPeriodRows);
+  const campaignPeriodReachMaps = metaCampaignPeriodReachMapsFromFlatWindow(
+    sinceIso,
+    untilIso,
+    campaignPeriodReachByName,
+  );
+
+  return {
+    csvText,
+    rowCount,
+    sinceIso,
+    untilIso,
+    diagnostics,
+    campaignPeriodReachByName,
+    campaignPeriodReachMaps,
+  };
 }

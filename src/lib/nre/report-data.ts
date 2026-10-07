@@ -24,7 +24,12 @@
 
 import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
-import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
+import {
+  aggregateReach,
+  aggregateReachAcrossCampaigns,
+  type ReachAggregationOptions,
+} from "./reach-aggregation";
+import type { MetaCampaignPeriodReachMaps } from "./campaign-period-reach-maps";
 import { adSetKey } from "./ad-sets";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { filterRowsByCampaigns } from "./campaigns";
@@ -477,6 +482,8 @@ export interface BuildReportDataInput {
   campaignMetricOverrides?: Record<string, string[]>;
   /** Sum results using Meta export column rules when engine and CSV export disagree. */
   alignResultsWithCsvExport?: boolean;
+  /** Meta campaign-level period reach (Ads Manager) keyed by report date windows. */
+  metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
 }
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
@@ -580,6 +587,7 @@ function computeTableRow(
   mtdCalendarRange?: DateRangeIso,
   timezone = "UTC",
   resultCountingMode: ResultCountingMode = "standard",
+  metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps,
 ): TableRowData {
   if (!rows || rows.length === 0) {
     // Fix 5 — a zero-spend current month (no MTD Daily CSV rows fell within
@@ -657,7 +665,12 @@ function computeTableRow(
   // bug). Both are instead recalculated from combined totals, the same way
   // Meta computes them in the first place: CTR (All) = total clicks / total
   // impressions × 100, CPC (All) = total spend / total clicks.
-  const totalReach = aggregateReachAcrossCampaigns(rows);
+  const reachPeriodRange = mtdCalendarRange;
+  const tableReachOpts: ReachAggregationOptions | undefined =
+    metaCampaignPeriodReach && reachPeriodRange
+      ? { metaCampaignPeriodReach, periodRange: reachPeriodRange, scope: "campaign" }
+      : undefined;
+  const totalReach = aggregateReachAcrossCampaigns(rows, tableReachOpts);
   const combinedCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
   const combinedCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
 
@@ -699,6 +712,7 @@ function computeTableRow(
     objectiveMap,
     isMtdRow ? "MTD" : "Previous Month",
     resultCountingMode,
+    tableReachOpts,
   );
   // "RESULTS" is getResultLabels' own generic fallback bucket for a blank
   // or unrecognized result_type (not a real, nameable objective) — it must
@@ -986,6 +1000,7 @@ function buildLast30DaysChartSlide(params: {
   resultCountingMode?: ResultCountingMode;
   /** Wizard-confirmed objectives — chart-window detection must not override these. */
   pinnedCampaignObjectiveKeys?: Set<string>;
+  metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
 }): ChartSlideData | null {
   const resultCountingMode = params.resultCountingMode ?? "standard";
   const chartRange = capRangeToData(
@@ -996,6 +1011,14 @@ function buildLast30DaysChartSlide(params: {
   );
   const chartRawRows = filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso);
   const chartRows: AggRow[] = aggregateRows(chartRawRows);
+  const actualChartRangeForReach = computeActualDataRangeInWindow(chartRawRows, chartRange) ?? chartRange;
+  const chartReachOpts: ReachAggregationOptions | undefined = params.metaCampaignPeriodReach
+    ? {
+        metaCampaignPeriodReach: params.metaCampaignPeriodReach,
+        periodRange: actualChartRangeForReach,
+        scope: "campaign",
+      }
+    : undefined;
   const chartObjectiveMap = new Map(params.campaignObjectiveMap);
   const pinned = params.pinnedCampaignObjectiveKeys ?? new Set<string>();
   buildCampaignObjectiveMap(chartRows).forEach((labels, name) => {
@@ -1024,9 +1047,12 @@ function buildLast30DaysChartSlide(params: {
     };
     const resLabel = chartObjective.resultLabel;
     const cprLabel = chartObjective.costLabel;
-    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective, resultCountingMode);
+    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective, resultCountingMode, {
+      ...chartReachOpts,
+      scope: "campaign",
+    });
     if (resLabel === "REACH" && rows.length > 0) {
-      const periodReach = aggregateReach(rows);
+      const periodReach = aggregateReach(rows, chartReachOpts);
       if (periodReach > 0) {
         results = periodReach;
         cpr = spend > 0 ? (spend * 1000) / periodReach : 0;
@@ -1074,6 +1100,7 @@ function buildLast30DaysChartSlide(params: {
     chartObjectiveMap,
     undefined,
     resultCountingMode,
+    chartReachOpts,
   );
   const chartSnapshotRow = computeTableRow(
     chartRows as MetricRow[],
@@ -1081,9 +1108,10 @@ function buildLast30DaysChartSlide(params: {
     false,
     chartObjectiveMap,
     params.now,
-    undefined,
+    actualChartRangeForReach,
     params.timezone,
     resultCountingMode,
+    params.metaCampaignPeriodReach,
   );
   const activeCampaignCount = chartCampaigns.filter((d) => d.isActive).length;
 
@@ -1131,6 +1159,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     creativeOnly = false,
     platform: platformInput,
     alignResultsWithCsvExport = false,
+    metaCampaignPeriodReach,
   } = input;
   const platform = platformInput ?? "META";
   const resultCountingMode: ResultCountingMode = alignResultsWithCsvExport ? "meta-csv-export" : "standard";
@@ -1434,6 +1463,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     undefined,
     timezone,
     resultCountingMode,
+    metaCampaignPeriodReach,
   );
   // Combined Total "current period" row — same window as campaign slides for
   // DAILY (yesterday only); full MTD for WEEKLY; calendar span for MONTHLY+.
@@ -1450,6 +1480,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     combinedTotalCurrentRange,
     timezone,
     resultCountingMode,
+    metaCampaignPeriodReach,
   );
   const combinedTotalRawInRange = filterNreRowsByDateRange(filteredMtdDailyRows, combinedTotalCurrentRange);
   const actualCombinedTotalLabelRange = computeActualDataRangeInWindow(
@@ -1528,6 +1559,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       slideCampaignNames: selectedCampaigns ?? [],
       resultCountingMode,
       pinnedCampaignObjectiveKeys,
+      metaCampaignPeriodReach,
     });
 
     return {
@@ -1765,6 +1797,12 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // comment for what "low confidence" means and why it's surfaced here.
   const objectiveWarnings: ObjectiveWarning[] = [];
 
+  const weeklyReachPeriod: DateRangeIso | undefined = displayWeeklyRange ?? resolvedWeeklyRange;
+  const weeklyReachOpts: ReachAggregationOptions | undefined =
+    metaCampaignPeriodReach && weeklyReachPeriod
+      ? { metaCampaignPeriodReach, periodRange: weeklyReachPeriod, scope: "campaign" }
+      : undefined;
+
   const campaignSlides: CampaignSlideData[] = campaignNames.map((campaignName) => {
     const campRows = campaignGroups[campaignName];
 
@@ -1783,13 +1821,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       if (cpc > 0) cpcs.push(cpc);
     });
     const campRaw = campaignRawGroups[campaignName] ?? [];
-    const totalReach = aggregateReach(campRaw);
+    const totalReach = aggregateReach(campRaw, weeklyReachOpts);
     const avgCtr = average(ctrs);
     const avgCpc = average(cpcs);
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const campaignRaw = campaignRawGroups[campaignName] ?? [];
-    const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.groupedResultDisplay(
+    let { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.groupedResultDisplay(
       campRows,
       campaignRaw,
       campaignName,
@@ -1798,6 +1836,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       currencySymbol,
       { spend: totalSpend, conversions: totalConversions },
     );
+    if (resultLabel === "REACH" && totalReach > 0) {
+      resultValue = fmtNumber(totalReach);
+      cprValue =
+        totalSpend > 0 ? fmtCurrency2dp((totalSpend * 1000) / totalReach, currencySymbol) : "—";
+    }
     if (platformAdapter.shouldEmitObjectiveWarnings(campRows)) {
       objectiveWarnings.push({ campaignName, detectedLabel: resultLabel });
     }
@@ -2029,6 +2072,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     slideCampaignNames: campaignNames,
     resultCountingMode,
     pinnedCampaignObjectiveKeys,
+    metaCampaignPeriodReach,
   });
 
   return {
@@ -2270,6 +2314,7 @@ function comparisonObjectiveTotals(
   rows: MetricRow[],
   objective: ResultLabels,
   resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): { count: number; cpr: number } {
   let count = 0;
   let totalSpend = 0;
@@ -2281,7 +2326,7 @@ function comparisonObjectiveTotals(
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, rows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
-        totalReach = aggregateReach(rows);
+        totalReach = aggregateReach(rows, reachOpts);
         campaignReachAdded = true;
       }
     }

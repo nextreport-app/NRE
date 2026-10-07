@@ -164,7 +164,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!resolved.ok) {
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed, uploadSessionId } = resolved.data;
+  const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId } = resolved.data;
   const platform = mtdParsed.platform;
 
   if (reportType === "COMPARISON") {
@@ -395,7 +395,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return enqueueResponse(dayBreakdownReport.id, shareToken);
   }
 
-  const result = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
+  const result = await buildStandardReportForWizard({
+    client,
+    mtdParsed,
+    formData,
+    platform,
+    metaCampaignPeriodReachFromSession: metaCampaignPeriodReach,
+    metaAdAccountIdFromSession: metaAdAccountId,
+  });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
