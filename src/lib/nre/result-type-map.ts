@@ -113,7 +113,12 @@ export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
   { key: "phone_calls", resultLabel: "PHONE CALLS", costLabel: "COST PER CALL", isReach: false },
   { key: "appointment_leads", resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING", isReach: false },
   { key: "registrations", resultLabel: "REGISTRATIONS", costLabel: "COST PER REGISTRATION", isReach: false },
-  { key: "applications", resultLabel: "APPLICATIONS", costLabel: "COST PER APPLICATION", isReach: false },
+  {
+    key: "applications",
+    resultLabel: "WEBSITE SUBMIT APPLICATIONS",
+    costLabel: "COST PER APPLICATION",
+    isReach: false,
+  },
   { key: "subscriptions", resultLabel: "SUBSCRIPTIONS", costLabel: "COST PER SUBSCRIPTION", isReach: false },
   { key: "quote_requests", resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE", isReach: false },
   { key: "qualified_leads", resultLabel: "QUALIFIED LEADS", costLabel: "COST PER QUALIFIED LEAD", isReach: false },

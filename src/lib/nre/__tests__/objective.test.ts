@@ -78,8 +78,8 @@ describe("getResultLabels", () => {
     ["Booking", "APPOINTMENT LEADS", "COST PER BOOKING"],
     ["Complete registration", "REGISTRATIONS", "COST PER REGISTRATION"],
     ["Registration", "REGISTRATIONS", "COST PER REGISTRATION"],
-    ["Submit application", "APPLICATIONS", "COST PER APPLICATION"],
-    ["Application", "APPLICATIONS", "COST PER APPLICATION"],
+    ["Submit application", "WEBSITE SUBMIT APPLICATIONS", "COST PER APPLICATION"],
+    ["Application", "WEBSITE SUBMIT APPLICATIONS", "COST PER APPLICATION"],
     ["Subscribe", "SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
     ["Subscription", "SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
     ["Custom conversion", "CONVERSIONS", "COST PER CONVERSION"],
@@ -138,7 +138,7 @@ describe("getResultLabels", () => {
   });
 
   it("keeps 'Submit application' distinct from any 'app'-prefixed bucket", () => {
-    expect(getResultLabels("Submit application").resultLabel).toBe("APPLICATIONS");
+    expect(getResultLabels("Submit application").resultLabel).toBe("WEBSITE SUBMIT APPLICATIONS");
     expect(getResultLabels("App install").resultLabel).toBe("APP INSTALLS");
   });
 
