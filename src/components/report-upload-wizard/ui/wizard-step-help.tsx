@@ -53,10 +53,10 @@ export function WizardStepHelp({
   return (
     <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">
       <p className="font-medium text-dash-ink">Metric chips</p>
-      <p className="mt-1">Defaults come from your CSV — remove chips or tap + to add more metrics.</p>
+      <p className="mt-1">Pre-filled from your CSV. Remove chips or tap + to adjust.</p>
       <p className="mt-2">
         <Link href="/help/metrics" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-          CSV columns & metrics guide
+          Metrics guide
         </Link>
       </p>
     </div>
