@@ -21,6 +21,8 @@ import {
 } from "@/lib/meta-launch-scope";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
+import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
 const LAUNCH_REPORT_TYPES = new Set<string>([
@@ -1117,6 +1119,13 @@ export function WizardGenerateStep() {
               )}
             </div>
           )}
+
+          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
+            Have a question or an issue with this report?{" "}
+            <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
+            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+            .
+          </p>
 
           {showGenerateFooter ? (
             <WizardStickyFooter
