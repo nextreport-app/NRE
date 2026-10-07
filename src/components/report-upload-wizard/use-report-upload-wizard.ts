@@ -1824,7 +1824,7 @@ export function useReportUploadWizard({
     if (json.status === "GENERATING") {
       setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
-        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180, intervalMs: 2000 });
+        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180 });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
         setGenerateStatus("error");

@@ -13,6 +13,7 @@ import {
   mergeMetaCampaignPeriodReachMaps,
   type MetaCampaignPeriodReachMaps,
 } from "./meta-api-sync/fetch-campaign-period-reach";
+import { metaCampaignPeriodReachRangeKey } from "./campaign-period-reach-maps";
 import { metaAdAccountIdSchema, parseJsonFormField } from "@/lib/validators/report-wizard";
 import type { DateSelection } from "@/lib/validators/report-wizard";
 
@@ -50,6 +51,19 @@ export function collectReportReachDateRanges(input: {
   return dedupeRanges(ranges);
 }
 
+/** Session snapshot from analyze/API sync already includes these windows — skip live Meta fetch. */
+export function sessionMapsCoverReachRanges(
+  sessionMaps: MetaCampaignPeriodReachMaps | undefined,
+  ranges: DateRangeIso[],
+): boolean {
+  if (!sessionMaps?.byRangeKey || ranges.length === 0) return false;
+  for (const range of ranges) {
+    const key = metaCampaignPeriodReachRangeKey(range.startIso, range.endIso);
+    if (!(key in sessionMaps.byRangeKey)) return false;
+  }
+  return true;
+}
+
 export async function resolveMetaCampaignPeriodReachForWizard(input: {
   platform: Platform;
   mtdDailyRows: NreRow[];
@@ -70,7 +84,8 @@ export async function resolveMetaCampaignPeriodReachForWizard(input: {
   });
 
   let fetched: MetaCampaignPeriodReachMaps | undefined;
-  if (input.metaAccessToken && input.metaAdAccountId) {
+  const skipLiveFetch = sessionMapsCoverReachRanges(input.sessionMaps, ranges);
+  if (input.metaAccessToken && input.metaAdAccountId && !skipLiveFetch) {
     try {
       fetched = await fetchMetaCampaignPeriodReachMaps({
         accessToken: input.metaAccessToken,

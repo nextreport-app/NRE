@@ -17,6 +17,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Faster early polls so the generate screen finishes sooner after the worker completes. */
+export function reportStatusPollIntervalMs(attempt: number, fixedIntervalMs?: number): number {
+  if (fixedIntervalMs != null && fixedIntervalMs > 0) return fixedIntervalMs;
+  if (attempt < 25) return 600;
+  if (attempt < 50) return 1200;
+  return 2500;
+}
+
 /** Poll GET /api/reports/:id/status until COMPLETE or FAILED. */
 export async function pollReportStatus(
   reportId: string,
@@ -26,7 +34,6 @@ export async function pollReportStatus(
     fetchFn?: typeof fetch;
   },
 ): Promise<{ shareToken: string | null }> {
-  const intervalMs = options?.intervalMs ?? 2500;
   const maxAttempts = options?.maxAttempts ?? 120;
   const fetchFn = options?.fetchFn ?? fetch;
 
@@ -47,7 +54,7 @@ export async function pollReportStatus(
     }
 
     if (attempt < maxAttempts - 1) {
-      await sleep(intervalMs);
+      await sleep(reportStatusPollIntervalMs(attempt, options?.intervalMs));
     }
   }
 

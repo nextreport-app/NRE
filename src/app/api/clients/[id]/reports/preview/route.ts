@@ -5,6 +5,8 @@ import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { computeWizardStandardReportFingerprint } from "@/lib/nre/wizard-report-config-fingerprint";
+import { saveWizardPreviewReportCache, scheduleWizardPreviewAiWarm } from "@/lib/nre/wizard-preview-cache";
 import {
   reconcileComparisonReportWithCsv,
   reconcileDayBreakdownReportWithCsv,
@@ -67,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId } = resolved.data;
+  const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId, uploadSessionId, fileHash } = resolved.data;
   const platform = mtdParsed.platform;
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
@@ -338,6 +340,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const periodRowsForVerify = includePreviousMonthComparison
     ? await loadPreviousMonthDataRows(client)
     : undefined;
+
+  if (uploadSessionId && fileHash) {
+    const fingerprint = computeWizardStandardReportFingerprint({
+      fileHash,
+      client,
+      platform,
+      formData,
+    });
+    await saveWizardPreviewReportCache({
+      userId: session.user.id,
+      clientId: id,
+      sessionId: uploadSessionId,
+      fingerprint,
+      reportData: built.data,
+    });
+    scheduleWizardPreviewAiWarm({
+      userId: session.user.id,
+      clientId: id,
+      sessionId: uploadSessionId,
+      fingerprint,
+      reportData: built.data,
+    });
+  }
 
   const csvVerification = reconcileStandardReportWithCsv({
     report: built.data,

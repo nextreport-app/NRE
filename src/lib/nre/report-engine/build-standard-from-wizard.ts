@@ -34,6 +34,9 @@ import {
   resolveMetaCampaignPeriodReachForWizard,
 } from "../resolve-meta-campaign-reach-for-wizard";
 import type { MetaCampaignPeriodReachMaps } from "../campaign-period-reach-maps";
+import type { AiCopy } from "@/lib/pptx/fill-tags";
+import { computeWizardStandardReportFingerprint } from "../wizard-report-config-fingerprint";
+import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
 
 export interface BuildStandardReportWizardInput {
   client: Client;
@@ -45,6 +48,46 @@ export interface BuildStandardReportWizardInput {
 }
 
 export type BuildStandardReportWizardResult = { data: ReportData } | { error: string };
+
+export type ResolveStandardReportForGenerateResult =
+  | { data: ReportData; fromPreviewCache: boolean; aiCopyPrecalc?: Record<string, AiCopy> }
+  | { error: string };
+
+/** Generate route — reuse preview-built report (and warmed AI) when config matches. */
+export async function resolveStandardReportForGenerate(
+  input: BuildStandardReportWizardInput & {
+    userId: string;
+    uploadSessionId?: string;
+    fileHash?: string;
+  },
+): Promise<ResolveStandardReportForGenerateResult> {
+  const fileHash = input.fileHash ?? "";
+  if (input.uploadSessionId && fileHash) {
+    const fingerprint = computeWizardStandardReportFingerprint({
+      fileHash,
+      client: input.client,
+      platform: input.platform,
+      formData: input.formData,
+    });
+    const cached = await loadWizardPreviewReportCache(
+      input.userId,
+      input.client.id,
+      input.uploadSessionId,
+      fingerprint,
+    );
+    if (cached) {
+      return {
+        data: cached.reportData,
+        fromPreviewCache: true,
+        aiCopyPrecalc: cached.aiCopy,
+      };
+    }
+  }
+
+  const built = await buildStandardReportForWizard(input);
+  if ("error" in built) return built;
+  return { data: built.data, fromPreviewCache: false };
+}
 
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
