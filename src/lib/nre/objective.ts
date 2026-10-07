@@ -7,7 +7,11 @@
  */
 
 import { hasRealRowDate } from "./columns";
-import { metaCsvExportResultValue, type ResultCountingMode } from "./meta-csv-export-counting";
+import {
+  metaCsvExportResultValue,
+  websiteLeadsFromMetaExportRow,
+  type ResultCountingMode,
+} from "./meta-csv-export-counting";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
 import { aggregateReach, aggregateReachAcrossCampaigns, type ReachAggregationOptions } from "./reach-aggregation";
 import type { MetricRow } from "./types";
@@ -1373,14 +1377,7 @@ function rowAddToCart(row: MetricRow): number {
  * with blank Result type (attribution lag); those must not inflate totals.
  */
 export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | "website_leads" | "result_type">): number {
-  const results = parseCellNum(row.results);
-  if (results > 0) return results;
-  const wl = parseCellNum(row.website_leads);
-  if (wl <= 0) return 0;
-  const rt = (row.result_type || "").trim();
-  if (!rt) return 0;
-  if (getResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
-  return 0;
+  return websiteLeadsFromMetaExportRow(row);
 }
 
 export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
