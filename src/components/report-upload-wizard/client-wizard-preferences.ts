@@ -3,6 +3,8 @@ import type { DateMode, ReportTypeValue } from "./types";
 export type ClientWizardPreferences = {
   reportType?: ReportTypeValue;
   dateMode?: DateMode;
+  customStart?: string;
+  customEnd?: string;
   includePreviousMonthComparison?: boolean;
   showBudgetOnCover?: boolean;
   dataSourceMode?: "csv" | "api";
