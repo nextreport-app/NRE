@@ -96,7 +96,7 @@ export function scheduleWizardPreviewAiWarm(input: {
 }): void {
   void (async () => {
     const keys = aiKeysFromEnv();
-    if (!keys.apiKey) return;
+    if (!keys.anthropicApiKey && !keys.groqApiKey && !keys.geminiApiKey) return;
 
     const copyMap = await generateInsights(input.reportData, keys);
     const payload = await readSessionPayload(input.userId, input.clientId, input.sessionId);
