@@ -183,15 +183,6 @@ function ClientCard({ client }: { client: ClientListItem }) {
           label={prevMonth.label}
           title={prevMonth.title}
         />
-        <StatusChip
-          tone={client.hasGa4Property ? "info" : "neutral"}
-          label={client.hasGa4Property ? "GA4 linked" : "GA4 not linked"}
-          title={
-            client.hasGa4Property
-              ? client.ga4PropertyName ?? "Google Analytics property linked on Manage."
-              : "Link Google Analytics on Manage for website reports."
-          }
-        />
       </div>
 
       <div className="mt-auto flex gap-3 border-t border-dash-border px-5 py-4">

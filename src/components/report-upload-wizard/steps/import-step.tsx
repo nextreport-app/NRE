@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { WizardStepHelp } from "../ui/wizard-step-help";
 import Link from "next/link";
-import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
@@ -338,26 +337,6 @@ export function WizardImportStep() {
           {(!AD_PLATFORM_API_SYNC_ENABLED || dataSourceMode === "csv") && (
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
-              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
-                <a
-                  href="https://nextreport.in/help/download"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
-                >
-                  How to download your CSV
-                </a>
-                {selectedPlatformCard === "META" ? (
-                  <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
-                ) : selectedPlatformCard === "TIKTOK" ? (
-                  <span className="block text-[#e2e8f0]">
-                    Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group, Cost,
-                    Impressions, Clicks, and Conversions.
-                  </span>
-                ) : (
-                  "Set date range to Last 30 days and segment by Day."
-                )}
-              </p>
 
               <button
                 type="button"
