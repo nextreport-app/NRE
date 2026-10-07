@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
-import { normalizeCampaignName } from "@/lib/nre/objective";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
@@ -22,11 +21,6 @@ import {
 } from "@/lib/meta-launch-scope";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
-import {
-  buildGenerateStepReadinessItems,
-  ReportReadinessPanel,
-} from "../ui/report-readiness-panel";
-import { buildMiniDeckSlides, MiniDeckPreview } from "../ui/mini-deck-preview";
 
 const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
 const LAUNCH_REPORT_TYPES = new Set<string>([
@@ -156,71 +150,9 @@ export function WizardGenerateStep() {
     weeklyOptions,
     weeklyPeriodSummaryLabel,
     weeklyRangeIso,
-    campaignRequiresConfirmation,
-    touchedObjectiveCampaigns,
-    campaigns,
-    selectedCampaigns,
   } = w;
 
-  const objectivesBlockingCount = useMemo(() => {
-    if (!stepActive) return 0;
-    return campaigns.filter((name) => {
-      const normalized = normalizeCampaignName(name);
-      return (
-        selectedCampaigns.has(name) &&
-        campaignRequiresConfirmation.get(normalized) === true &&
-        !touchedObjectiveCampaigns.has(normalized)
-      );
-    }).length;
-  }, [stepActive, campaigns, selectedCampaigns, campaignRequiresConfirmation, touchedObjectiveCampaigns]);
-
-  const periodSummaryLabel = useMemo(() => {
-    if (!stepActive) return undefined;
-    if (previewKind === "comparison" && comparisonData) {
-      return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
-    }
-    if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
-    if (previewKind === "dayBreakdown" && dayBreakdownData) return dayBreakdownData.rangeLabel;
-    if (reportType === "DAILY" && dailyRange) return formatSummaryRange(dailyRange);
-    if ((reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso) {
-      return formatSummaryRange(weeklyRangeIso);
-    }
-    if (mtdRange) return formatSummaryRange(mtdRange);
-    return undefined;
-  }, [
-    stepActive,
-    previewKind,
-    comparisonData,
-    historicalData,
-    dayBreakdownData,
-    reportType,
-    dailyRange,
-    weeklyRangeIso,
-    mtdRange,
-    formatSummaryRange,
-  ]);
-
   if (!stepActive) return null;
-
-  const readinessItems = buildGenerateStepReadinessItems({
-    campaignsSelected: summaryCampaignNames().length,
-    previewStatus,
-    generateStepPreviewReady,
-    csvVerification,
-    previewRefreshing,
-    reportTypeLabel: reportTypeLabel(),
-    periodLabel: periodSummaryLabel,
-    objectivesBlocking: objectivesBlockingCount,
-  });
-
-  const miniDeckSlides = buildMiniDeckSlides({
-    previewKind,
-    clientName,
-    reportTypeLabel: reportTypeLabel(),
-    campaignNames: summaryCampaignNames(),
-    estimatedSlides: estimatedSlideCount(),
-    periodHint: periodSummaryLabel,
-  });
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
   const generateCtaDisabled = previewStatus === "invalid" || !generateStepPreviewReady;
@@ -234,7 +166,11 @@ export function WizardGenerateStep() {
           : !generateStepPreviewReady
             ? previewStatus === "invalid"
               ? "Fix options above"
-              : "Generate Report"
+              : previewStatus === "error"
+                ? "Retry preview"
+                : previewStatus === "idle"
+                  ? "Choose dates above"
+                  : "Loading report options…"
             : "Generate Report";
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
@@ -243,13 +179,6 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              {generateStatus === "idle" ? (
-                <>
-                  <ReportReadinessPanel items={readinessItems} />
-                  {generateStepPreviewReady ? <MiniDeckPreview slides={miniDeckSlides} /> : null}
-                </>
-              ) : null}
-
               <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
             <h4 className="text-[15px] font-semibold text-white">Report type</h4>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">

@@ -21,10 +21,13 @@ export async function HelpDocShell({
   title,
   subtitle,
   children,
+  footer = "download-only",
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  /** Footer links under the article — metrics/objectives pages use `none`. */
+  footer?: "none" | "download-only";
 }) {
   const session = await auth();
   const loggedIn = !!session?.user;
@@ -42,15 +45,13 @@ export async function HelpDocShell({
         </section>
         <div className="mx-auto max-w-3xl space-y-8 px-6 py-12 text-[15px] leading-relaxed text-ink-secondary">
           {children}
-          <p className="border-t border-navy-border pt-8 text-sm text-ink-muted">
-            <Link href="/help/download" className="text-accent-orange hover:underline">
-              CSV export guide
-            </Link>
-            {" · "}
-            <Link href="/clients" className="text-accent-orange hover:underline">
-              Back to clients
-            </Link>
-          </p>
+          {footer === "download-only" ? (
+            <p className="border-t border-navy-border pt-8 text-sm text-ink-muted">
+              <Link href="/help/download" className="text-accent-orange hover:underline">
+                CSV export guide
+              </Link>
+            </p>
+          ) : null}
         </div>
       </main>
     </>

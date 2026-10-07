@@ -1,7 +1,7 @@
 import { HelpDocShell, helpDocMetadata } from "@/components/help/help-doc-shell";
 
 export const metadata = helpDocMetadata({
-  title: "Metric chips on slides",
+  title: "Metric chips",
   description:
     "How NextReport pre-selects metric chips from your CSV on Step 3 and how to add or remove columns.",
   path: "/help/metrics",
@@ -9,10 +9,7 @@ export const metadata = helpDocMetadata({
 
 export default function HelpMetricsPage() {
   return (
-    <HelpDocShell
-      title="CSV columns & metric chips"
-      subtitle="What Step 3 (Metrics) puts on each campaign slide"
-    >
+    <HelpDocShell title="Metric chips" subtitle="What Step 3 (Metrics) puts on each campaign slide" footer="none">
       <section className="space-y-4">
         <p>
           After objectives are set, we pre-fill metric chips from columns in your export — spend, results, reach,
