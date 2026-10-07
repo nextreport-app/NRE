@@ -190,7 +190,7 @@ export function WizardGenerateStep() {
               <ReportTypeCard
                 icon="📊"
                 heading="Weekly Performance Report"
-                description="One week with a daily chart."
+                description="Last week with MTD chart."
                 selected={reportType === "WEEKLY"}
                 onSelect={() => handleReportTypeChange("WEEKLY")}
                 layout="compact"
