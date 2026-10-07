@@ -56,21 +56,29 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
   const byScope = groupByScope(mismatches);
 
   if (ok) {
+    const detailText = `Spend, results, and cost per result match for ${verifiedScopesLabel(verification.scopesVerified)}. Small spend rounding (about $2 either way) is ignored.`;
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-emerald-800/35 bg-emerald-950/15 px-4 py-3">
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
-          aria-hidden
-        >
-          ✓
-        </span>
-        <span className="text-[14px] font-medium text-emerald-100">
-          Verified against your CSV
-          <span className="mt-0.5 block text-[13px] font-normal leading-snug text-emerald-100/75">
-            Spend, results, and cost per result match for {verifiedScopesLabel(verification.scopesVerified)}.
-            Small spend rounding (about $2 either way) is ignored.
-          </span>
-        </span>
+      <div className="rounded-lg border border-emerald-800/35 bg-emerald-950/15 px-4 py-3">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
+              aria-hidden
+            >
+              ✓
+            </span>
+            <span className="min-w-0 flex-1 text-[14px] font-medium text-emerald-100">Verified against your CSV</span>
+            <span
+              className="shrink-0 text-[15px] leading-none text-emerald-100/70 transition-transform group-open:rotate-180"
+              aria-hidden
+            >
+              ▾
+            </span>
+          </summary>
+          <p className="mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug text-emerald-100/75">
+            {detailText}
+          </p>
+        </details>
       </div>
     );
   }
