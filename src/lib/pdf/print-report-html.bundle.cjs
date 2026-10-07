@@ -257,17 +257,20 @@ var META_OBJECTIVE_SPECS = [
   },
   {
     key: "applications",
-    resultLabel: "APPLICATIONS",
+    resultLabel: "WEBSITE SUBMIT APPLICATIONS",
     costLabel: "COST PER APPLICATION",
     isReach: false,
-    canonicalText: "Application",
-    apiCsvLabel: "Submit application",
+    canonicalText: "Website submit application",
+    apiCsvLabel: "Website applications submitted",
     definitiveProof: true,
     aliases: [
       "submit application",
       "submit_application",
       "application",
       "applications",
+      "website applications submitted",
+      "website submit applications",
+      "website submit application",
       "offsite_conversion.fb_pixel_submit_application"
     ]
   },
