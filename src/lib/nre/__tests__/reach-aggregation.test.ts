@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseCellNum } from "../format";
 import { aggregateReach, estimatePeriodReach, sainsburyPeriodReach } from "../reach-aggregation";
 import { metaCampaignPeriodReachMapsFromFlatWindow } from "../meta-api-sync/fetch-campaign-period-reach";
 import { normalizeCampaignName } from "../objective";
@@ -73,7 +74,7 @@ describe("reach-aggregation", () => {
       })),
     ];
     const reach = estimatePeriodReach(rows);
-    const totalSpend = rows.reduce((s, r) => s + (r.spend ?? 0), 0);
+    const totalSpend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
     const costPer1k = (totalSpend * 1000) / reach;
     expect(reach).toBeGreaterThan(41_000);
     expect(reach).toBeLessThan(42_500);
