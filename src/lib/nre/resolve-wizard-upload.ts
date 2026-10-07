@@ -73,6 +73,7 @@ export async function resolveWizardMtdFromFormData(
         },
         uploadSessionId,
         fromCache: true,
+        fileHash: session.fileHash,
         metaCampaignPeriodReach: session.metaCampaignPeriodReach,
         metaAdAccountId: session.metaAdAccountId,
       },

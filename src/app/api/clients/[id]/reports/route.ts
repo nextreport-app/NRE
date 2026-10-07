@@ -14,7 +14,7 @@ import {
   type StandardReportJobPayload,
 } from "@/lib/nre/report-generation-job";
 import { createReportEngine } from "@/lib/nre/report-engine";
-import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { resolveStandardReportForGenerate } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
@@ -164,7 +164,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!resolved.ok) {
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId } = resolved.data;
+  const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId, fileHash } = resolved.data;
   const platform = mtdParsed.platform;
 
   if (reportType === "COMPARISON") {
@@ -395,18 +395,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return enqueueResponse(dayBreakdownReport.id, shareToken);
   }
 
-  const result = await buildStandardReportForWizard({
+  const result = await resolveStandardReportForGenerate({
     client,
     mtdParsed,
     formData,
     platform,
     metaCampaignPeriodReachFromSession: metaCampaignPeriodReach,
     metaAdAccountIdFromSession: metaAdAccountId,
+    userId: session.user.id,
+    uploadSessionId,
+    fileHash,
   });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  const { data } = result;
+  const { data, aiCopyPrecalc } = result;
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
@@ -432,6 +435,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
       reportTitle,
       reportData: data,
+      ...(aiCopyPrecalc && Object.keys(aiCopyPrecalc).length > 0 ? { aiCopyPrecalc } : {}),
       ...(metaHybridApiImport && platform === "META"
         ? { dataImportNote: META_HYBRID_API_CSV_IMPORT_NOTE }
         : {}),
