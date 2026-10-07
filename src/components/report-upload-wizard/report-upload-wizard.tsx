@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { getAdWizardFlow, getWizardStepHeading, getWizardStepSubtitle } from "@/lib/nre/platform-labels";
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
@@ -111,15 +109,6 @@ function ReportUploadWizardBody() {
           onStartOver={() => w.setStep(1)}
         />
       ) : null}
-
-      {w.step === 4 && (
-        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-          Have a question or an issue with this report?{" "}
-          <SupportTicketLink clientId={w.clientId} openInNewTab /> or{" "}
-          <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-          .
-        </p>
-      )}
 
       <WizardImportStep />
       <WizardCampaignsStep />
