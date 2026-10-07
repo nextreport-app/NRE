@@ -986,7 +986,7 @@ export function WizardGenerateStep() {
                       type="text"
                       value={driveFolderNameInput}
                       onChange={(e) => setDriveFolderNameInput(e.target.value)}
-                      placeholder="e.g. Reports or Alonzo Carr / Reports"
+                      placeholder="e.g. Reports"
                       className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                     />
                     <p className="mt-1 text-[14px] text-dash-ink-secondary">
