@@ -1816,17 +1816,20 @@ export function useReportUploadWizard({
 
     let finalShareToken: string | null = json.shareToken ?? null;
     if (json.status === "GENERATING") {
+      setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
-        const polled = await pollReportStatus(json.reportId);
+        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180, intervalMs: 2000 });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
         setGenerateStatus("error");
         setGenerateMessage(
           err instanceof ReportGenerationPollError
-            ? err.message
+            ? `${err.message} You can check Reports on the client page — the file may still finish in the background.`
             : "Report generation failed. Please try again.",
         );
         return;
+      } finally {
+        setGenerateMessage(null);
       }
     }
 

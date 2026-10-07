@@ -7,7 +7,6 @@
  * request is kept alive until it is dispatched.
  */
 
-import { after } from "next/server";
 import { processReportGeneration } from "@/lib/nre/report-generation-job";
 
 function internalBaseUrl(): string {
@@ -43,19 +42,20 @@ async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   }
 }
 
+async function runReportGenerationWithFallback(reportId: string): Promise<void> {
+  try {
+    await invokeReportGenerationWorker(reportId);
+  } catch (err) {
+    console.error("[scheduleReportGenerationJob] failed:", err);
+    await processReportGeneration(reportId);
+  }
+}
+
 /** Schedule generation after the wizard POST responds — use from route handlers. */
 export function scheduleReportGenerationJob(reportId: string): void {
-  after(async () => {
-    try {
-      await invokeReportGenerationWorker(reportId);
-    } catch (err) {
-      console.error("[scheduleReportGenerationJob] failed:", err);
-      try {
-        await processReportGeneration(reportId);
-      } catch (fallbackErr) {
-        console.error("[scheduleReportGenerationJob] inline fallback failed:", fallbackErr);
-      }
-    }
+  // Run immediately — relying only on `after()` left reports stuck in GENERATING on some hosts.
+  void runReportGenerationWithFallback(reportId).catch((err) => {
+    console.error("[scheduleReportGenerationJob] failed:", err);
   });
 }
 

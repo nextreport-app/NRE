@@ -208,6 +208,15 @@ function blendedCprFromSlides(report: ReportData, resultLabel: string): number {
   return totalResults > 0 ? weighted / totalResults : 0;
 }
 
+/** CPR in CSV verify only when report and CSV use the same cost-per-result math (skip derived rates like cost per 1K reach). */
+function shouldVerifyCostPerResult(costLabel: string, resultLabel: string): boolean {
+  const cost = costLabel.toUpperCase();
+  const result = resultLabel.toUpperCase();
+  if (cost.includes("1K REACH") || cost.includes("CPM") || cost.includes("FREQUENCY")) return false;
+  if (result === "REACH" || result.includes("IMPRESSION") || result.includes("RECALL")) return false;
+  return true;
+}
+
 function scopedChecks(params: {
   scope: string;
   currencySymbol: string;
@@ -268,7 +277,10 @@ function scopedChecks(params: {
       : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
   });
 
-  if (reportResults > 0 || csvResults > 0) {
+  if (
+    shouldVerifyCostPerResult(costLabel, resultLabel) &&
+    (reportResults > 0 || csvResults > 0)
+  ) {
     checks.push({
       metric: costLabel,
       scope,

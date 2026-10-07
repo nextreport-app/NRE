@@ -141,8 +141,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
             </div>
           ))}
           <p className="text-[12px] leading-relaxed text-dash-ink-muted">
-            You can still generate — this is a sanity check, not a block. Only real gaps are shown (results must match
-            exactly; spend may differ by up to $2 from rounding).
+            You can still generate — this is a sanity check, not a block.
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             <SupportTicketLink clientId={clientId} openInNewTab className="text-amber-100" />
