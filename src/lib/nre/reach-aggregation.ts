@@ -141,7 +141,7 @@ export function normalizeCampaignPeriodReachRecord(byCampaign: Record<string, nu
   const out: Record<string, number> = {};
   for (const [name, reach] of Object.entries(byCampaign)) {
     if (!Number.isFinite(reach) || reach <= 0) continue;
-    out[normalizeCampaignName(name)] = Math.round(reach);
+    out[String(name || "Unknown Campaign").trim().toLowerCase()] = Math.round(reach);
   }
   return out;
 }

@@ -5,8 +5,7 @@
 import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import type { Platform } from "./google-columns";
 import type { DateRangeIso } from "./date-range";
-import { computeMtdRangeIso } from "./date-range";
-import { resolveStandardChartRange } from "./date-range";
+import { computeCreativeRangeIso, computeMtdRangeIso } from "./date-range";
 import { resolveDateSelection } from "./resolve-date-selection";
 import type { NreRow } from "./columns";
 import {
@@ -46,12 +45,7 @@ export function collectReportReachDateRanges(input: {
     ranges.push(dateResolution.weeklyRange);
   }
 
-  const chartRange = resolveStandardChartRange({
-    filteredMtdDailyRows: input.mtdDailyRows,
-    now,
-    timezone: input.timezone,
-  });
-  ranges.push(chartRange);
+  ranges.push(computeCreativeRangeIso(input.mtdDailyRows, now, 30, input.timezone));
 
   return dedupeRanges(ranges);
 }
@@ -93,5 +87,5 @@ export async function resolveMetaCampaignPeriodReachForWizard(input: {
 
 export function parseMetaAdAccountIdFromForm(formData: FormData | null): string | undefined {
   if (!formData) return undefined;
-  return parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema.optional());
+  return parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema);
 }
