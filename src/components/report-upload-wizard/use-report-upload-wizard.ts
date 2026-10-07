@@ -445,7 +445,15 @@ export function useReportUploadWizard({
         setReportType(coerced);
         setReportTitle(defaultReportTitleFor(coerced));
       }
-      if (prefs.dateMode) setDateMode(prefs.dateMode);
+      if (prefs.dateMode) {
+        if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
+          setDateMode("custom");
+          setCustomStart(prefs.customStart);
+          setCustomEnd(prefs.customEnd);
+        } else if (prefs.dateMode !== "custom") {
+          setDateMode(prefs.dateMode);
+        }
+      }
       if (typeof prefs.includePreviousMonthComparison === "boolean") {
         setIncludePreviousMonthComparison(prefs.includePreviousMonthComparison);
       }
@@ -462,11 +470,22 @@ export function useReportUploadWizard({
     saveClientWizardPreferences(clientId, {
       reportType,
       dateMode,
+      customStart: dateMode === "custom" ? customStart : undefined,
+      customEnd: dateMode === "custom" ? customEnd : undefined,
       includePreviousMonthComparison,
       showBudgetOnCover,
       dataSourceMode,
     });
-  }, [clientId, reportType, dateMode, includePreviousMonthComparison, showBudgetOnCover, dataSourceMode]);
+  }, [
+    clientId,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    includePreviousMonthComparison,
+    showBudgetOnCover,
+    dataSourceMode,
+  ]);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
@@ -1534,19 +1553,37 @@ export function useReportUploadWizard({
    * same validation the old standalone Dates step's "Continue" button used
    * to gate on.
    */
+  function releasePreviewLoadingState(status: PreviewStatus = "idle") {
+    setPreviewRefreshing(false);
+    setPreviewStatus(status);
+  }
+
   async function fetchPreview() {
-    if (!mtdFile && !uploadSessionId) return;
+    if (!mtdFile && !uploadSessionId) {
+      setPreviewMessage("Go back to Import and upload your CSV again.");
+      releasePreviewLoadingState("error");
+      return;
+    }
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
     // sent (buildReportData then uses the full MTD data with no weekly
     // window — see report-data.ts's primaryRows). Comparison has its own
     // Period A/B requirement instead.
     if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
-      if (!validateCustomRange()) return;
+      if (dateMode === "custom" && (!customStart || !customEnd)) {
+        setCustomRangeError("Choose a start and end date.");
+        releasePreviewLoadingState("idle");
+        return;
+      }
+      if (!validateCustomRange()) {
+        releasePreviewLoadingState("idle");
+        return;
+      }
       if (reportType === "WEEKLY") {
         const spanDays = customSpanDays();
         if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
-          return; // the inline "Continue anyway?" prompt handles confirmation
+          releasePreviewLoadingState("idle");
+          return;
         }
       }
     }
@@ -1666,6 +1703,7 @@ export function useReportUploadWizard({
     if (step !== 4 || !usesFullAdWizard(platform)) return;
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
+    if (!mtdFile && !uploadSessionId) return;
 
     const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
     if (!hasExistingPreview && previewStatus !== "invalid" && previewStatus !== "error") {
@@ -1677,8 +1715,18 @@ export function useReportUploadWizard({
       void fetchPreview();
     }, 500);
 
+    const stuckTimer = window.setTimeout(() => {
+      setPreviewRefreshing(false);
+      setPreviewStatus((current) => {
+        if (current !== "loading") return current;
+        setPreviewMessage("Preview is taking too long. Check your dates above or go back to Import and re-upload.");
+        return "error";
+      });
+    }, 90_000);
+
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      window.clearTimeout(stuckTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1699,6 +1747,8 @@ export function useReportUploadWizard({
     includePreviousMonthComparison,
     csvAlignResults,
     generateStatus,
+    uploadSessionId,
+    mtdFile,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────

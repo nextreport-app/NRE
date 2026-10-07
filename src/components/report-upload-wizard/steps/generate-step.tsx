@@ -229,9 +229,13 @@ export function WizardGenerateStep() {
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
-        : !generateStepPreviewReady
+        : previewStatus === "loading" || previewRefreshing
           ? "Loading report options…"
-          : "Generate Report";
+          : !generateStepPreviewReady
+            ? previewStatus === "invalid"
+              ? "Fix options above"
+              : "Generate Report"
+            : "Generate Report";
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
