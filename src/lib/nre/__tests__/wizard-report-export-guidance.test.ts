@@ -10,7 +10,7 @@ describe("wizardExportGuidanceForReportType", () => {
       now: new Date("2026-10-08T12:00:00Z"),
     });
     expect(g.lines.some((b) => /Last 30 Days/i.test(b))).toBe(true);
-    expect(g.lines.some((b) => /Last-7-days-only/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /last 7-day period/i.test(b))).toBe(true);
   });
 
   it("comparison Meta mentions both periods in one file", () => {
