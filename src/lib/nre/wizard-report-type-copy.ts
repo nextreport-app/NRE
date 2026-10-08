@@ -3,7 +3,7 @@
  */
 
 import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
-import type { LaunchEnabledReportType } from "./meta-launch-scope";
+import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
 
 export interface WizardReportTypeCopy {
   /** Short name in pickers (“More report types · …”). */
