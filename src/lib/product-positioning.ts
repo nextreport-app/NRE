@@ -17,7 +17,7 @@ export const META_V1_PROMISE_HEADLINE = "What’s live today (Meta CSV v1)";
 
 export const META_V1_PROMISE_BULLETS = [
   "Report types: Weekly, Monthly, Yesterday (single day), Comparison, Multi-Month Historical, and Day-by-Day Table.",
-  "Export: Meta Ads Manager → Campaigns (or Ad Sets) → Export table data → CSV.",
+  "Export: Meta Ads Manager → Reports → Export table data → CSV (Day breakdown — not the Campaigns-screen export).",
   "Date range: Last 30 days with Day breakdown (recommended), or Previous Month for month-end reporting.",
   "Columns: Campaign name, Day, Result type, Results, Amount spent, Cost per result, Reach, Impressions, CTR, Link clicks — plus lead/traffic fields your objective needs (see CSV Export Guide).",
   "Objectives: Lead gen, traffic, sales, reach, engagement, and messaging — auto-detected; you confirm in the wizard.",
