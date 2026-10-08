@@ -90,10 +90,7 @@ export function WizardReportSetupPanel({
           className="flex w-full items-center justify-between rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
           aria-expanded={moreOpen}
         >
-          <span>
-            More report types
-            <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel}</span>
-          </span>
+          <span>More report types</span>
           <span className="text-dash-ink-secondary">{moreOpen ? "▲" : "▼"}</span>
         </button>
         {moreOpen ? (
