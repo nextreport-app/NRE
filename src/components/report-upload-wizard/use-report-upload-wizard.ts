@@ -2067,14 +2067,15 @@ export function useReportUploadWizard({
    * "Label: value" line, varying by report type.
    */
   function reportTypeLabel(): string {
-    if (previewKind === "comparison") return "Comparison Report";
-    if (previewKind === "historical") return "Multi-Month Report";
-    if (previewKind === "dayBreakdown") return "Daily Report";
+    if (previewKind === "comparison" || reportType === "COMPARISON") return "Comparison Report";
+    if (previewKind === "historical" || reportType === "HISTORICAL") return "Multi-Month Report";
+    if (previewKind === "dayBreakdown" || reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
     if (reportType === "MONTHLY") return "Monthly Report";
     if (reportType === "QUARTER") return "Quarterly Report";
     if (reportType === "YTD") return "Year-to-Date Report";
     if (reportType === "DAILY") return "Yesterday Report";
     if (reportType === "CREATIVE") return "Creative Report";
+    if (reportType === "WEEKLY") return "Weekly Report";
     return "Weekly Report";
   }
 

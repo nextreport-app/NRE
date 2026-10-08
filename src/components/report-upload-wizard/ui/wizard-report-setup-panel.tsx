@@ -4,10 +4,7 @@ import { useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
-import {
-  LAUNCH_PRIMARY_REPORT_TYPES,
-  LAUNCH_SECONDARY_REPORT_TYPES,
-} from "@/lib/meta-launch-scope";
+import { LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
 
 export function WizardReportSetupPanel({
   reportType,
@@ -20,7 +17,7 @@ export function WizardReportSetupPanel({
   platform: Platform;
   clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
-  /** full = step 1 with export callout; summary = step 4 one-liner */
+  /** full = step 1 report type picker; summary = step 4 one-liner */
   variant?: "full" | "summary";
 }) {
   const [moreOpen, setMoreOpen] = useState(() =>
