@@ -333,7 +333,7 @@ export function WizardGenerateStep() {
                 />
                 <WeeklyPeriodOption
                   selected={comparisonPreset === "custom"}
-                  label="Custom"
+                  label="Custom date range"
                   onSelect={() => handleComparisonPresetSelect("custom")}
                 />
               </div>
@@ -368,11 +368,6 @@ export function WizardGenerateStep() {
                   </div>
                 </div>
               )}
-
-              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
-                Tip: Both periods must fit your main CSV (or use Custom and export a longer range from{" "}
-                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes Period A and Period B).
-              </p>
             </section>
           )}
 
