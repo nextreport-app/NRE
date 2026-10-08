@@ -1,0 +1,74 @@
+/**
+ * Single source for wizard report-type names, card copy, and default deck titles.
+ */
+
+import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
+import type { LaunchEnabledReportType } from "./meta-launch-scope";
+
+export interface WizardReportTypeCopy {
+  /** Short name in pickers (“More report types · …”). */
+  pickerLabel: string;
+  cardHeading: string;
+  /** One line under the card — what the generated deck contains. */
+  cardYouGet: string;
+  defaultDeckTitle: string;
+}
+
+export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardReportTypeCopy> = {
+  WEEKLY: {
+    pickerLabel: "Weekly Performance Report",
+    cardHeading: "Weekly Performance Report",
+    cardYouGet: "7-day campaign slides, last-30-day chart, optional last-month total row.",
+    defaultDeckTitle: "Weekly Performance Report",
+  },
+  MONTHLY: {
+    pickerLabel: "Monthly Performance Report",
+    cardHeading: "Monthly Performance Report",
+    cardYouGet: "Month-to-date campaign slides and chart — one combined total row (no last-week slide).",
+    defaultDeckTitle: "Monthly Performance Report",
+  },
+  DAILY: {
+    pickerLabel: "Yesterday Performance Report",
+    cardHeading: "Yesterday Performance Report",
+    cardYouGet: "Full campaign deck for a single day only (yesterday) — not a day-by-day table.",
+    defaultDeckTitle: "Yesterday Performance Report",
+  },
+  COMPARISON: {
+    pickerLabel: "Comparison Report",
+    cardHeading: "Comparison Report",
+    cardYouGet: "Period A vs Period B per campaign + summary table — no chart or ad-set slides.",
+    defaultDeckTitle: "Comparison Performance Report",
+  },
+  HISTORICAL: {
+    pickerLabel: "Multi-Month Historical Report",
+    cardHeading: "Multi-Month Historical Report",
+    cardYouGet: "Past months: campaigns per month, month totals, then a multi-month overview table.",
+    defaultDeckTitle: "Multi-Month Performance Report",
+  },
+  DAY_BREAKDOWN: {
+    pickerLabel: "Day-by-Day Table Report",
+    cardHeading: "Day-by-Day Table Report",
+    cardYouGet: "Account totals only — one row per day in a table (no campaign or chart slides).",
+    defaultDeckTitle: "Day-by-Day Table Report",
+  },
+};
+
+export function wizardReportTypeCopy(reportType: ReportTypeValue): WizardReportTypeCopy | null {
+  if (reportType in WIZARD_REPORT_TYPE_COPY) {
+    return WIZARD_REPORT_TYPE_COPY[reportType as LaunchEnabledReportType];
+  }
+  return null;
+}
+
+export function wizardReportTypePickerLabel(reportType: ReportTypeValue): string {
+  return wizardReportTypeCopy(reportType)?.pickerLabel ?? "Report";
+}
+
+export function defaultDeckTitleForReportType(reportType: ReportTypeValue): string {
+  const copy = wizardReportTypeCopy(reportType);
+  if (copy) return copy.defaultDeckTitle;
+  if (reportType === "QUARTER") return "Quarterly Performance Report";
+  if (reportType === "YTD") return "Year-to-Date Performance Report";
+  if (reportType === "CREATIVE") return "Creative Performance Report";
+  return WIZARD_REPORT_TYPE_COPY.WEEKLY.defaultDeckTitle;
+}

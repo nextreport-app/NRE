@@ -45,13 +45,13 @@ const SETUP_STEPS = [
 const REPORT_TYPES: ReportType[] = [
   { name: "Weekly Performance Report", description: "Last 7 days vs month to date — the default for agency weekly check-ins." },
   { name: "Monthly Performance Report", description: "Full calendar month summary with MTD context where applicable." },
-  { name: "Yesterday Report", description: "Single-day snapshot for quick daily client updates." },
+  { name: "Yesterday Performance Report", description: "Full campaign deck for one day only — not a day-by-day table." },
   {
     name: "Comparison Report",
     description: "Compare any two periods side by side — this week vs last week, this month vs last month, or any custom range.",
   },
   { name: "Multi-Month Historical Report", description: "Several complete prior months in one deck." },
-  { name: "Daily Performance Report", description: "Day-by-day table for a custom date range." },
+  { name: "Day-by-Day Table Report", description: "Account totals in a table — one row per day, no campaign slides." },
 ];
 
 interface Step {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
+import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
 import { LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
@@ -17,12 +18,18 @@ export function WizardReportSetupPanel({
   platform: Platform;
   clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
-  /** full = step 1 report type picker; summary = step 4 one-liner */
   variant?: "full" | "summary";
 }) {
   const [moreOpen, setMoreOpen] = useState(() =>
     LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
+
+  const weekly = WIZARD_REPORT_TYPE_COPY.WEEKLY;
+  const monthly = WIZARD_REPORT_TYPE_COPY.MONTHLY;
+  const daily = WIZARD_REPORT_TYPE_COPY.DAILY;
+  const comparison = WIZARD_REPORT_TYPE_COPY.COMPARISON;
+  const historical = WIZARD_REPORT_TYPE_COPY.HISTORICAL;
+  const dayTable = WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
 
   if (variant === "summary") {
     return (
@@ -40,15 +47,15 @@ export function WizardReportSetupPanel({
       <div>
         <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Pick the deck type first. Download instructions appear above upload once you choose a platform.
+          Each type produces a different deck. Pick one, then follow Download instructions above upload.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <ReportTypeCard
           icon="📊"
-          heading="Weekly Performance Report"
-          description="Weekly with MTD chart."
+          heading={weekly.cardHeading}
+          description={weekly.cardYouGet}
           selected={reportType === "WEEKLY"}
           onSelect={() => onReportTypeChange("WEEKLY")}
           layout="compact"
@@ -56,16 +63,16 @@ export function WizardReportSetupPanel({
         />
         <ReportTypeCard
           icon="📅"
-          heading="Monthly Performance Report"
-          description="Full month with MTD chart."
+          heading={monthly.cardHeading}
+          description={monthly.cardYouGet}
           selected={reportType === "MONTHLY"}
           onSelect={() => onReportTypeChange("MONTHLY")}
           layout="compact"
         />
         <ReportTypeCard
           icon="☀️"
-          heading="Yesterday Performance Report"
-          description="Latest complete day"
+          heading={daily.cardHeading}
+          description={daily.cardYouGet}
           selected={reportType === "DAILY"}
           onSelect={() => onReportTypeChange("DAILY")}
           layout="compact"
@@ -89,24 +96,24 @@ export function WizardReportSetupPanel({
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <ReportTypeCard
               icon="🔀"
-              heading="Comparison Report"
-              description="Two periods side by side."
+              heading={comparison.cardHeading}
+              description={comparison.cardYouGet}
               selected={reportType === "COMPARISON"}
               onSelect={() => onReportTypeChange("COMPARISON")}
               layout="compact"
             />
             <ReportTypeCard
               icon="📆"
-              heading="Multi-Month Historical Report"
-              description="Several past months in one deck."
+              heading={historical.cardHeading}
+              description={historical.cardYouGet}
               selected={reportType === "HISTORICAL"}
               onSelect={() => onReportTypeChange("HISTORICAL")}
               layout="compact"
             />
             <ReportTypeCard
               icon="📋"
-              heading="Daily Performance Report"
-              description="Multiple days, one row per day"
+              heading={dayTable.cardHeading}
+              description={dayTable.cardYouGet}
               selected={reportType === "DAY_BREAKDOWN"}
               onSelect={() => onReportTypeChange("DAY_BREAKDOWN")}
               layout="compact"

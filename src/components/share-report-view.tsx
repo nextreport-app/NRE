@@ -28,7 +28,7 @@ import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons"
 
 export function reportTypeLabel(data: ShareReportData): string {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
-  if (data.reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Table Report";
   if (data.reportType === "DAILY") return "Yesterday Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";

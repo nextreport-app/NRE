@@ -185,7 +185,7 @@ const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
-const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Daily Performance Report";
+const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Table Report";
 const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
 const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";

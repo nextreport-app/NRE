@@ -34,8 +34,8 @@ export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 export const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 export const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 export const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
-/** Multi-day table — one account row per calendar day. */
-export const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Daily Performance Report";
+/** Multi-day table — one account row per calendar day (not the single-day Yesterday report). */
+export const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Table Report";
 /** Single-day snapshot — campaign card slides for the latest complete day. */
 export const DEFAULT_DAILY_REPORT_TITLE = "Yesterday Performance Report";
 export const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";

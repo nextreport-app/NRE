@@ -20,7 +20,7 @@ const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   CREATIVE: "Creative",
   WEBSITE: "Website Traffic",
   HISTORICAL: "Multi-Month",
-  DAY_BREAKDOWN: "Daily",
+  DAY_BREAKDOWN: "Day-by-Day Table",
 };
 
 const MONTHS = [
