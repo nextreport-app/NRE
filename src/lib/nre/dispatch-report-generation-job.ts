@@ -5,10 +5,11 @@
  * On Vercel, an un-awaited fetch is not guaranteed to run once the route
  * returns — scheduleReportGenerationJob uses Next.js after() so the worker
  * request is kept alive until it is dispatched.
+ *
+ * This module must not statically import PPTX render code (Function Storage).
  */
 
 import { after } from "next/server";
-import { processReportGeneration } from "@/lib/nre/report-generation-job";
 
 const WORKER_FETCH_TIMEOUT_MS = 90_000;
 
@@ -20,10 +21,15 @@ function internalBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+async function inlineProcessReportGeneration(reportId: string): Promise<void> {
+  const { processReportGeneration } = await import("@/lib/nre/report-generation-job");
+  await processReportGeneration(reportId);
+}
+
 async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
-    await processReportGeneration(reportId);
+    await inlineProcessReportGeneration(reportId);
     return;
   }
 
@@ -43,7 +49,7 @@ async function invokeReportGenerationWorker(reportId: string): Promise<void> {
     });
   } catch (err) {
     console.error("[report-generation] worker fetch failed:", err);
-    await processReportGeneration(reportId);
+    await inlineProcessReportGeneration(reportId);
     return;
   } finally {
     clearTimeout(timer);
@@ -52,7 +58,7 @@ async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error("[report-generation] worker HTTP", res.status, body);
-    await processReportGeneration(reportId);
+    await inlineProcessReportGeneration(reportId);
   }
 }
 
@@ -61,7 +67,7 @@ async function runReportGenerationWithFallback(reportId: string): Promise<void> 
     await invokeReportGenerationWorker(reportId);
   } catch (err) {
     console.error("[scheduleReportGenerationJob] failed:", err);
-    await processReportGeneration(reportId);
+    await inlineProcessReportGeneration(reportId);
   }
 }
 
