@@ -3,60 +3,16 @@
 import Link from "next/link";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
-import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
-import type { ReportTypeValue } from "../types";
-
-type WizardHelpStep = 1 | 2 | 3;
+type WizardHelpStep = 2 | 3;
 
 export function WizardStepHelp({
   step,
   platform,
-  clientTimezone,
-  reportType,
 }: {
   step: WizardHelpStep;
   platform: Platform;
   clientTimezone: string;
-  reportType?: ReportTypeValue;
 }) {
-  const platformLabel = getPlatformLabel(platform);
-
-  if (step === 1 && reportType) {
-    const guidance = wizardExportGuidanceForReportType({
-      reportType,
-      platform,
-      clientTimezone,
-    });
-    return (
-      <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">
-        <p className="font-medium text-dash-ink">{guidance.title}</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
-          {guidance.lines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-        <p className="mt-3">
-          <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-            How to download your {platformLabel} CSV
-          </Link>
-        </p>
-      </div>
-    );
-  }
-
-  if (step === 1) {
-    return (
-      <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">
-        <p className="font-medium text-dash-ink">Before you upload</p>
-        <p className="mt-2">
-          <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-            How to download your {platformLabel} CSV
-          </Link>
-        </p>
-      </div>
-    );
-  }
-
   if (step === 2) {
     return (
       <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">

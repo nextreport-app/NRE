@@ -11,6 +11,7 @@ describe("wizardExportGuidanceForReportType", () => {
     });
     expect(g.lines.some((b) => /Last 30 Days/i.test(b))).toBe(true);
     expect(g.lines.some((b) => /last 7-day period/i.test(b))).toBe(true);
+    expect(g.context).toMatch(/Weekly report/i);
   });
 
   it("comparison Meta mentions both periods in one file", () => {
@@ -19,6 +20,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.title).toMatch(/both periods/i);
+    expect(g.context).toMatch(/both periods/i);
   });
 });

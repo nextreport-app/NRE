@@ -1,14 +1,20 @@
 /**
- * User-facing export instructions for Import step help — tied to report type and platform.
+ * User-facing export instructions for Import download block — tied to report type and platform.
  */
 
 import type { Platform } from "./google-columns";
 import { getMetaCsvDownloadTip } from "./csv-date-guidance";
+import { getPlatformLabel } from "./platform-labels";
 import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
 
 export interface WizardExportGuidance {
-  title: string;
+  /** One-line subtitle under “Download instructions”. */
+  context: string;
   lines: string[];
+}
+
+function withPlatform(reportKind: string, platform: Platform): string {
+  return `${reportKind} · ${getPlatformLabel(platform)}`;
 }
 
 export function wizardExportGuidanceForReportType(input: {
@@ -25,7 +31,7 @@ export function wizardExportGuidanceForReportType(input: {
     switch (reportType) {
       case "WEEKLY":
         return {
-          title: "Ads Manager export (weekly report)",
+          context: withPlatform("Weekly report", platform),
           lines: [
             baseTip,
             "Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing.",
@@ -35,24 +41,24 @@ export function wizardExportGuidanceForReportType(input: {
       case "QUARTER":
       case "YTD":
         return {
-          title: "Ads Manager export (monthly-style report)",
+          context: withPlatform("Monthly-style report", platform),
           lines: [baseTip, "Day breakdown; through yesterday for MTD and the performance chart."],
         };
       case "DAILY":
         return {
-          title: "Ads Manager export (daily report)",
+          context: withPlatform("Yesterday report", platform),
           lines: [baseTip, "Include yesterday plus a few prior days (Day breakdown)."],
         };
       case "DAY_BREAKDOWN":
         return {
-          title: "Ads Manager export (day table)",
+          context: withPlatform("Daily performance table", platform),
           lines: [
             "Cover every day you want in the table — Last 30 days + Day breakdown is a safe default.",
           ],
         };
       case "COMPARISON":
         return {
-          title: "One CSV for both periods",
+          context: withPlatform("Comparison report (one CSV for both periods)", platform),
           lines: [
             baseTip,
             "Day breakdown; after upload you pick Period A and B inside this file.",
@@ -60,12 +66,12 @@ export function wizardExportGuidanceForReportType(input: {
         };
       case "HISTORICAL":
         return {
-          title: "Ads Manager export (multi-month)",
+          context: withPlatform("Multi-month historical report", platform),
           lines: ["Day breakdown across every month you want in the deck."],
         };
       case "CREATIVE":
         return {
-          title: "Ads Manager export (creative report)",
+          context: withPlatform("Creative report", platform),
           lines: [
             "Ads tab → day breakdown with Ad name.",
             "Same date idea as campaigns: Last 30 days (or Previous month on the 1st).",
@@ -73,7 +79,7 @@ export function wizardExportGuidanceForReportType(input: {
         };
       default:
         return {
-          title: "Ads Manager export",
+          context: withPlatform("Campaign export", platform),
           lines: [baseTip, "Day breakdown."],
         };
     }
@@ -81,7 +87,7 @@ export function wizardExportGuidanceForReportType(input: {
 
   if (platform === "GOOGLE") {
     return {
-      title: "Google Ads export",
+      context: withPlatform("Campaign export", platform),
       lines: [
         "Day-level report with campaigns, cost, and primary conversions.",
         reportType === "WEEKLY"
@@ -93,7 +99,7 @@ export function wizardExportGuidanceForReportType(input: {
 
   if (platform === "TIKTOK") {
     return {
-      title: "TikTok Ads export",
+      context: withPlatform("Campaign export", platform),
       lines: [
         "Day-level campaign export with spend and results.",
         ...(reportType === "WEEKLY" ? ["Include ~30 days of daily rows for weekly + chart slides."] : []),
@@ -102,7 +108,7 @@ export function wizardExportGuidanceForReportType(input: {
   }
 
   return {
-    title: "Export before upload",
+    context: "Export before upload",
     lines: ["Use a day-level export that matches your report period."],
   };
 }

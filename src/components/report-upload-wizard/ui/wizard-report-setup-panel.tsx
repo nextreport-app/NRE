@@ -40,7 +40,7 @@ export function WizardReportSetupPanel({
       <div>
         <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Pick the deck type first. CSV export tips are at the bottom of this step.
+          Pick the deck type first. Download instructions appear above upload once you choose a platform.
         </p>
       </div>
 
