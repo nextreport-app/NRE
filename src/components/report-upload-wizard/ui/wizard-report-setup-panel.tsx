@@ -81,11 +81,7 @@ export function WizardReportSetupPanel({
         >
           <span>
             More report types
-            {LAUNCH_SECONDARY_REPORT_TYPES.includes(
-              reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
-            ) ? (
-              <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel}</span>
-            ) : null}
+            <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel}</span>
           </span>
           <span className="text-dash-ink-secondary">{moreOpen ? "▲" : "▼"}</span>
         </button>
