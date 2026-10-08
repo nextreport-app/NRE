@@ -18,6 +18,7 @@ import { formatRelativeReportDate } from "@/lib/client-display";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 export function WizardGenerateStep() {
@@ -1052,6 +1053,8 @@ export function WizardGenerateStep() {
             <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
             .
           </p>
+
+          <WizardFeedbackLink />
 
           {showGenerateFooter ? (
             <WizardStickyFooter
