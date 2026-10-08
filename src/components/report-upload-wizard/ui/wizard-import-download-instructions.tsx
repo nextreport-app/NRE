@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
-import { WizardMetaCsvExportHelp } from "./wizard-meta-csv-export-help";
+import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
 import type { ReportTypeValue } from "../types";
 
 /** Shown on Import just above CSV upload / API sync — right before the user adds data. */
@@ -29,14 +29,13 @@ export function WizardImportDownloadInstructions({
       className="space-y-3 text-[13px] leading-relaxed text-dash-ink-secondary"
       aria-labelledby="wizard-download-instructions-heading"
     >
-      {platform === "META" ? <WizardMetaCsvExportHelp /> : null}
-
       <div
         className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/50 px-4 py-3"
         aria-labelledby="wizard-download-instructions-heading"
       >
-      <h4 id="wizard-download-instructions-heading" className="text-[14px] font-semibold text-white">
+      <h4 id="wizard-download-instructions-heading" className="flex flex-wrap items-center text-[14px] font-semibold text-white">
         Download instructions
+        {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
       </h4>
       <p className="mt-0.5 text-[12px] text-dash-ink-muted">{guidance.context}</p>
       <ul className="mt-2 list-inside list-disc space-y-1">
