@@ -64,6 +64,6 @@ export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform):
   if (step === 4) return "Confirm dates and preview, then generate your deck.";
   if (step === 3) return "Metric chips are pre-selected from your CSV — tweak only if needed.";
   if (step === 2) return "Choose campaigns and confirm each primary result objective.";
-  if (step === 1) return "Pick a report type, follow Download instructions for that type, then upload or sync.";
+  if (step === 1) return "Pick a report type, follow Download instructions for that type, then upload CSV.";
   return "";
 }

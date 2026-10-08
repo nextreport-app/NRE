@@ -107,10 +107,6 @@ export function ReportTypeCard({
           </span>
           {showInlineDescription ? (
             <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
-          ) : detailTooltip ? (
-            <span className="mt-1 hidden text-[11px] text-dash-ink-secondary [@media(hover:hover)]:inline">
-              Hover for details
-            </span>
           ) : null}
         </button>
       </div>

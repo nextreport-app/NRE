@@ -11,6 +11,21 @@ import {
   type MetaCsvObjectiveColumnGroup,
 } from "./meta-csv-export-from-dictionary";
 
+/** Import-step tooltip — day-wise CSV from Ads Reporting + common metrics. */
+export const META_CSV_IMPORT_TOOLTIP = {
+  body: 'Download the day-wise breakdown CSV from the Ads Reporting section. Include these common metrics when possible:',
+  metrics: [
+    "Amount spent",
+    "Reach",
+    "Impressions",
+    "Results",
+    "Cost per result",
+    "CTR (all)",
+    "CPC (all)",
+    "Link clicks",
+  ],
+} as const;
+
 export const META_CSV_EXPORT_PATH = {
   title: "Use the Reports export (required)",
   doThis:

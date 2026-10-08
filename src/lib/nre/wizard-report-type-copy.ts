@@ -18,7 +18,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
   WEEKLY: {
     pickerLabel: "Weekly Performance Report",
     cardHeading: "Weekly Performance Report",
-    cardYouGet: "7-day campaign slides, last-30-day chart, optional last-month total row.",
+    cardYouGet: "Last week (7-days), MTD (month till date), last 30-day chart, optional previous month row.",
     defaultDeckTitle: "Weekly Performance Report",
   },
   MONTHLY: {
@@ -36,7 +36,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
   COMPARISON: {
     pickerLabel: "Comparison Report",
     cardHeading: "Comparison Report",
-    cardYouGet: "Period A vs Period B per campaign + summary table — no chart or ad-set slides.",
+    cardYouGet: "Period A vs Period B per campaign + summary table.",
     defaultDeckTitle: "Comparison Performance Report",
   },
   HISTORICAL: {
@@ -48,7 +48,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
   DAY_BREAKDOWN: {
     pickerLabel: "Day-by-Day Table Report",
     cardHeading: "Day-by-Day Table Report",
-    cardYouGet: "Account totals only — one row per day in a table (no campaign or chart slides).",
+    cardYouGet: "Account totals only - one row per day in a table.",
     defaultDeckTitle: "Day-by-Day Table Report",
   },
 };

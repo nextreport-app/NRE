@@ -15,7 +15,7 @@ export const STEP_HEADINGS: Record<Step, string> = {
 };
 
 export const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Pick report type, export the matching CSV, then upload or sync.",
+  1: "Pick report type, export the matching CSV, then upload CSV.",
   2: "Pick campaigns and confirm each primary result objective.",
   3: "These chips become the PPT cards — customize only if needed.",
   4: "Weekly is recommended for most clients; review readiness, then generate.",
