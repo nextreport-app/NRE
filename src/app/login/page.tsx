@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { messageForAuthSignInError } from "@/lib/auth-sign-in-errors";
+import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
 
 function LoginForm() {
   const router = useRouter();
@@ -105,12 +106,15 @@ function LoginForm() {
         onClick={() => {
           setError(null);
           setGoogleLoading(true);
-          void signIn("google", { callbackUrl });
+          void signIn("google", { callbackUrl }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS);
         }}
         className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border disabled:opacity-60"
       >
         {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
       </button>
+      <p className="mt-2 text-center text-xs text-ink-muted">
+        Google&apos;s account chooser opens next so you can pick which Gmail to use.
+      </p>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
         Don&apos;t have an account?{" "}

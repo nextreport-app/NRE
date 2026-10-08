@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import authConfig from "@/lib/auth.config";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
+import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -18,6 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
       // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
       allowDangerousEmailAccountLinking: true,
+      authorization: { params: { ...GOOGLE_LOGIN_AUTHORIZATION_PARAMS } },
     }),
     Credentials({
       name: "Credentials",
