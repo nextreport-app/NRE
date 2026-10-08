@@ -16,6 +16,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: "Credentials",
