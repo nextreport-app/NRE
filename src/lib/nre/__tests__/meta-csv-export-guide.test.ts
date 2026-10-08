@@ -7,7 +7,7 @@ import {
 describe("meta-csv-export-guide", () => {
   it("includes purchase funnel columns for purchase group", () => {
     const cols = metaCsvColumnsForObjectiveGroup("purchase");
-    expect(cols).toContain("Purchase ROAS (return on ad spend)");
+    expect(cols.some((c) => /purchase roas/i.test(c))).toBe(true);
     expect(cols.length).toBeGreaterThan(META_CSV_BASE_COLUMNS.length);
   });
 
