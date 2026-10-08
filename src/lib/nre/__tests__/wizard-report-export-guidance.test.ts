@@ -9,8 +9,8 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-08T12:00:00Z"),
     });
-    expect(g.bullets.some((b) => /Last 30 Days/i.test(b))).toBe(true);
-    expect(g.footnote).toMatch(/Last 7 days only/i);
+    expect(g.lines.some((b) => /Last 30 Days/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /Last-7-days-only/i.test(b))).toBe(true);
   });
 
   it("comparison Meta mentions both periods in one file", () => {
@@ -19,6 +19,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.headline).toMatch(/both periods/i);
+    expect(g.title).toMatch(/both periods/i);
   });
 });

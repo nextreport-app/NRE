@@ -512,7 +512,12 @@ export function WizardImportStep() {
         <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">{analyzeMessage}</div>
       )}
 
-      <WizardStepHelp step={1} platform={w.platform} clientTimezone={clientTimezone} />
+      <WizardStepHelp
+        step={1}
+        platform={setupPlatform}
+        clientTimezone={clientTimezone}
+        reportType={reportType}
+      />
     </div>
   );
 }
