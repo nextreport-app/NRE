@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
-import { WizardStepHelp } from "../ui/wizard-step-help";
+import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
 import Link from "next/link";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
@@ -181,6 +181,12 @@ export function WizardImportStep() {
               {importPipelineLabel}
             </p>
           ) : null}
+
+          <WizardImportDownloadInstructions
+            reportType={reportType}
+            platform={selectedPlatformCard}
+            clientTimezone={clientTimezone}
+          />
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
@@ -511,13 +517,6 @@ export function WizardImportStep() {
       {analyzeStatus === "error" && analyzeMessage && (
         <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">{analyzeMessage}</div>
       )}
-
-      <WizardStepHelp
-        step={1}
-        platform={setupPlatform}
-        clientTimezone={clientTimezone}
-        reportType={reportType}
-      />
     </div>
   );
 }
