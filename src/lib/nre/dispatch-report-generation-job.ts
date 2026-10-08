@@ -7,7 +7,10 @@
  * request is kept alive until it is dispatched.
  */
 
+import { after } from "next/server";
 import { processReportGeneration } from "@/lib/nre/report-generation-job";
+
+const WORKER_FETCH_TIMEOUT_MS = 90_000;
 
 function internalBaseUrl(): string {
   const vercel = process.env.VERCEL_URL?.trim();
@@ -25,19 +28,30 @@ async function invokeReportGenerationWorker(reportId: string): Promise<void> {
   }
 
   const url = `${internalBaseUrl()}/api/jobs/generate-report`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ reportId }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WORKER_FETCH_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reportId }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    console.error("[report-generation] worker fetch failed:", err);
+    await processReportGeneration(reportId);
+    return;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error("[report-generation] worker HTTP", res.status, body);
-    // Fallback so a misconfigured worker does not leave reports stuck in GENERATING.
     await processReportGeneration(reportId);
   }
 }
@@ -53,9 +67,12 @@ async function runReportGenerationWithFallback(reportId: string): Promise<void> 
 
 /** Schedule generation after the wizard POST responds — use from route handlers. */
 export function scheduleReportGenerationJob(reportId: string): void {
-  // Run immediately — relying only on `after()` left reports stuck in GENERATING on some hosts.
-  void runReportGenerationWithFallback(reportId).catch((err) => {
-    console.error("[scheduleReportGenerationJob] failed:", err);
+  after(async () => {
+    try {
+      await runReportGenerationWithFallback(reportId);
+    } catch (err) {
+      console.error("[scheduleReportGenerationJob] failed:", err);
+    }
   });
 }
 
