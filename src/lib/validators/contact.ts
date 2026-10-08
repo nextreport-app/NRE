@@ -3,6 +3,7 @@ import { whatsappNumberSchema } from "@/lib/validators/whatsapp-number";
 
 export const CONTACT_SUBJECTS = [
   "General Enquiry",
+  "Product Feedback",
   "Technical Support",
   "Billing Question",
   "Feature Request",
