@@ -52,6 +52,7 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/feedback", changeFrequency: "monthly", priority: 0.55 },
   { path: "/book-demo", changeFrequency: "monthly", priority: 0.75 },
   { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
@@ -258,7 +259,7 @@ export const HOME_JSON_LD = {
         },
       ],
       description:
-        "Connect Meta Ads via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
       featureList: [
         "Meta Ads CSV import",
         "Meta Ads CSV upload",
@@ -332,7 +333,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via official API or CSV upload. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
+      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
   },
   {
     question: "What file formats can I upload?",
@@ -342,7 +343,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "How long does it take to generate a report?",
     answer:
-      "Most reports generate in under 2 minutes from CSV upload upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
+      "Most reports generate in under 2 minutes from CSV upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
   },
   {
     question: "Is there a free trial?",
@@ -364,7 +365,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
     name: "Add your ad data",
-    text: "Connect Meta via official API in Account Settings, or upload a Meta CSV export in the report wizard.",
+    text: "Upload a Meta CSV export from Ads Manager in the report wizard.",
   },
   {
     name: "Select campaigns and ad sets",

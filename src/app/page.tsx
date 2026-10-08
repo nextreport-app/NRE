@@ -13,12 +13,21 @@ import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
+import { V1PromiseSection } from "@/components/home/v1-promise-section";
+import { CommunityReferralSection } from "@/components/home/community-referral-section";
+import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
 
 export const metadata = pageMetadata({
-  title: "Automated Meta Ads Reports in 2 Minutes",
+  title: "Meta Ads Weekly Report Automation for Agencies",
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon. Free 7-day trial.",
+    "Meta ads weekly report template automation — upload Ads Manager CSV, get agency client reporting PowerPoint, live link, or Slides in minutes. Save specialist time. Free trial.",
   path: "/",
+  keywords: [
+    "meta ads weekly report template automation",
+    "agency client reporting powerpoint",
+    "meta ads csv to ppt",
+    "automated client reporting",
+  ],
 });
 
 export default async function Home() {
@@ -32,17 +41,20 @@ export default async function Home() {
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <HeroSection loggedIn={loggedIn} />
+        <SpecialistTimeSavingsSection />
         <HowItWorksSection />
         {/* Homepage copy/structure overhaul — the time-comparison section
             (the best copy on the page) moved up to position 3, right after
             the hero and the 3-step "how it works" — it used to sit near the
             bottom of the page, well past where most visitors scroll. */}
         <PainPointSection />
+        <V1PromiseSection />
         <FeaturesSection />
         <TrustStrip />
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
+        <CommunityReferralSection />
         <LeadCaptureSection />
         <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
       </main>

@@ -28,6 +28,7 @@ import {
   isMetaApiConfigured,
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
+import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
 
 const RECENT_REPORTS_LIMIT = 5;
 
@@ -182,20 +183,19 @@ export default async function ClientDetailPage({
           />
         </Card>
 
-        <Card id="website-analytics">
-          <CardHeading hint="Pick one GA4 property now — Website Traffic reports open after Meta v1 launch.">
-            Google Analytics property
-            <span className="ml-2 rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
-              Launching soon
-            </span>
-          </CardHeading>
-          <Ga4PropertyPicker
-            clientId={client.id}
-            initialPropertyId={client.ga4PropertyId}
-            initialPropertyName={client.ga4PropertyName}
-            ga4Connected={ga4Connected}
-          />
-        </Card>
+        {isClientPlatformConnectionVisible("ga4") ? (
+          <Card id="website-analytics">
+            <CardHeading hint="Pick one GA4 property for Website Traffic reports.">
+              Google Analytics property
+            </CardHeading>
+            <Ga4PropertyPicker
+              clientId={client.id}
+              initialPropertyId={client.ga4PropertyId}
+              initialPropertyName={client.ga4PropertyName}
+              ga4Connected={ga4Connected}
+            />
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeading>Client settings</CardHeading>
@@ -253,7 +253,7 @@ export default async function ClientDetailPage({
           </CardHeading>
           <Link
             href={`/clients/${client.id}/reports/new`}
-            className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
           >
             Generate Report
           </Link>

@@ -155,4 +155,5 @@ export const REPORT_BRANDING_MODE_LABELS: Record<
   },
 };
 
-export const WHITE_LABEL_FEATURE = "White-label client reports (hide or replace NextReport branding)";
+export const WHITE_LABEL_FEATURE =
+  "White-label reports — hide or replace NextReport branding";

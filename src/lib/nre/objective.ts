@@ -7,8 +7,13 @@
  */
 
 import { hasRealRowDate } from "./columns";
+import {
+  metaCsvExportResultValue,
+  websiteLeadsFromMetaExportRow,
+  type ResultCountingMode,
+} from "./meta-csv-export-counting";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
-import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
+import { aggregateReach, aggregateReachAcrossCampaigns, type ReachAggregationOptions } from "./reach-aggregation";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
@@ -1366,7 +1371,20 @@ function rowAddToCart(row: MetricRow): number {
  * Comparison Report campaign totals being the other one, as of this fix —
  * gets the same mismatched-row correction instead of reimplementing it.
  */
-export function resultValueForObjective(row: MetricRow, label: string): number {
+/**
+ * Per-day Meta export row — Ads Manager period totals sum the Results column
+ * for the campaign's result type. The Website leads column can show +1 on days
+ * with blank Result type (attribution lag); those must not inflate totals.
+ */
+export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | "website_leads" | "result_type">): number {
+  return websiteLeadsFromMetaExportRow(row);
+}
+
+export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
+  if (mode === "meta-csv-export") {
+    return metaCsvExportResultValue(row, label);
+  }
+
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
 
   if (ownLabel === label) {
@@ -1377,11 +1395,7 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
       return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
     }
     if (label === "WEBSITE LEADS") {
-      // Results = Meta's attributed result for the row's Result type (e.g.
-      // "Website applications submitted"). Website leads column can differ on
-      // the same day — prefer Results; fall back to website_leads when Results
-      // is blank (API-sync rows or sparse exports).
-      return parseCellNum(row.results) || parseCellNum(row.website_leads);
+      return websiteLeadsCountFromExportRow(row);
     }
     if (label === "META FORM LEADS") {
       return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
@@ -1400,7 +1414,15 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   const rowResultLabel = getResultLabels(row.result_type).resultLabel;
   if (rowResultLabel === label) {
     if (label === "REACH") return parseCellNum(row.reach) || parseCellNum(row.results);
+    if (label === "WEBSITE LEADS") return websiteLeadsCountFromExportRow(row);
     return parseCellNum(row.results);
+  }
+  // Campaign pinned to WEBSITE LEADS but Meta Result type is applications submitted.
+  if (
+    label === "WEBSITE LEADS" &&
+    (rowResultLabel === "WEBSITE SUBMIT APPLICATIONS" || rowResultLabel === "APPLICATIONS")
+  ) {
+    return websiteLeadsCountFromExportRow(row);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
@@ -1501,6 +1523,8 @@ export function groupResultsByCampaignObjective(
   rows: MetricRow[],
   objectiveMap: Map<string, ResultLabels>,
   debugLabel?: string,
+  resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
@@ -1510,12 +1534,12 @@ export function groupResultsByCampaignObjective(
     let campaignValueSum = 0;
     let campaignReachAdded = false;
     campRows.forEach((row) => {
-      const value = resultValueForObjective(row, label);
+      const value = resultValueForObjective(row, label, resultCountingMode);
       groups[label].count += value;
       if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
         groups[label].totalSpend += parseCellNum(row.spend);
         if (!campaignReachAdded) {
-          groups[label].totalReach += aggregateReach(campRows);
+          groups[label].totalReach += aggregateReach(campRows, reachOpts);
           campaignReachAdded = true;
         }
       }
@@ -1586,6 +1610,8 @@ export function getGroupedResultDisplayForObjective(
   campRows: MetricRow[],
   objective: ResultLabels,
   currencySymbol: string,
+  resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultDisplay {
   // MTD-row bug fix, extended to campaign slides — see
   // groupResultsByCampaignObjective's own doc comment and
@@ -1600,12 +1626,12 @@ export function getGroupedResultDisplayForObjective(
   let totalReach = 0;
   let campaignReachAdded = false;
   campRows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel);
+    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
-        totalReach = aggregateReach(campRows);
+        totalReach = aggregateReach(campRows, reachOpts);
         campaignReachAdded = true;
       }
     }

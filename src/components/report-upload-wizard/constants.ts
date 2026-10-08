@@ -2,23 +2,23 @@ import type { Step } from "./types";
 
 export const STEP_LABELS: Record<Step, string> = {
   1: "Import",
-  2: "Campaign Data",
-  3: "Campaign Metrics",
+  2: "Campaigns",
+  3: "Metrics",
   4: "Generate",
 };
 
 export const STEP_HEADINGS: Record<Step, string> = {
   1: "Add your ad data",
-  2: "Select Campaigns & Objectives",
-  3: "Review Metric Cards",
-  4: "Choose report type and generate",
+  2: "Campaigns & objectives",
+  3: "Review metrics",
+  4: "Generate report",
 };
 
 export const STEP_SUBTITLES: Record<Step, string> = {
-  1: "Connect via official API or upload a CSV — the tip below shows the correct date range for today.",
-  2: "Pick campaigns and ad sets, then set campaign objectives below.",
-  3: "These chips become the PPT cards. Remove or add; extras come only from this CSV.",
-  4: "Pick a report type, set dates if needed, review the summary, then generate.",
+  1: "Pick report type, export the matching CSV, then upload or sync.",
+  2: "Pick campaigns and confirm each primary result objective.",
+  3: "These chips become the PPT cards — customize only if needed.",
+  4: "Weekly is recommended for most clients; review readiness, then generate.",
 };
 
 export const LAST_PLATFORM_STORAGE_KEY = "nre.lastAdPlatform";
@@ -34,8 +34,8 @@ export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 export const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 export const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 export const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
-/** Multi-day table — one account row per calendar day. */
-export const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Daily Performance Report";
+/** Multi-day table — one account row per calendar day (not the single-day Yesterday report). */
+export const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Table Report";
 /** Single-day snapshot — campaign card slides for the latest complete day. */
 export const DEFAULT_DAILY_REPORT_TITLE = "Yesterday Performance Report";
 export const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";

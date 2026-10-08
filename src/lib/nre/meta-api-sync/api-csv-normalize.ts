@@ -72,6 +72,18 @@ export function logIngestionNormalizationSample(insights: MetaInsightRow[], limi
   if (slice.length === 0) return;
   console.info("[meta-api-sync] Expected format:   ", EXPECTED_FORMAT_HINT);
   for (const row of slice) {
-    console.info("[meta-api-sync] API row normalized:", normalizedIngestionSample(row));
+    const sample = normalizedIngestionSample(row);
+    console.info("[meta-api-sync] API row normalized:", sample);
+    if (sample.results === 0 && (row.results?.length || row.objective_results?.length)) {
+      console.info("[meta-api-sync] Mapper returned blank Results despite Meta result fields:", {
+        day: sample.day,
+        campaign: row.campaign_name,
+        adset: row.adset_name,
+        optimization_goal: row.optimization_goal,
+        resultsIndicators: (row.results ?? []).map((r) => r.indicator),
+        objectiveIndicators: (row.objective_results ?? []).map((r) => r.indicator),
+        actionTypes: (row.actions ?? []).slice(0, 8).map((a) => a.action_type),
+      });
+    }
   }
 }

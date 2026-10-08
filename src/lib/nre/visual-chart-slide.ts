@@ -10,10 +10,16 @@ import {
   isMetaFormLeadsCampaignHaystack,
   isReachCampaignHaystack,
 } from "./campaign-name-heuristics";
-import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive } from "./format";
+import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive, parseCellNum } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
-import { formatCampaignDisplayName } from "./chart-campaign-labels";
+import {
+  CHART_CAMPAIGN_DISPLAY_MAX,
+  CHART_CAMPAIGN_LABEL_MAX,
+  formatCampaignDisplayName,
+} from "./chart-campaign-labels";
+
+const SPLIT_PANEL_CAMPAIGN_NAME_MAX = CHART_CAMPAIGN_LABEL_MAX;
 
 /** Chart segment colors — vivid enough to read on navy slides, softer than legacy neon accents. */
 export const VISUAL_CHART_PALETTE = ["5eb0ef", "f2ab50", "5fd98d", "f48484", "b090ef"] as const;
@@ -223,8 +229,10 @@ function buildResultBars(
     singleCampaignBarCap?: boolean;
     /** Bar fill width reflects spend share (default) or results share. */
     barScale?: "spend" | "results";
+    campaignNameMax?: number;
   },
 ): VisualResultBar[] {
+  const nameMax = options.campaignNameMax ?? CHART_CAMPAIGN_DISPLAY_MAX;
   const barScale = options.barScale ?? "spend";
   const totalResults = rows.reduce((sum, row) => sum + row.results, 0);
   const maxSpend = Math.max(1, ...rows.map((r) => r.spend));
@@ -249,7 +257,7 @@ function buildResultBars(
       }
       return {
         rank: index + 1,
-        name: row.name,
+        name: formatCampaignDisplayName(row.name, nameMax),
         color: row.color,
         spendLabel,
         resultCount: row.results,
@@ -330,10 +338,25 @@ function buildSummaryFromCampaigns(campaigns: ChartCampaignData[], totalSpend: n
   return [`Total Spend: ${fmtCurrency(totalSpend, currencySymbol)}`, ...chunks].join("  |  ");
 }
 
+function parseLegendSpendAmount(spendLabel: string): number {
+  const match = spendLabel.match(/[\d,]+(?:\.\d+)?/);
+  if (!match) return parseCellNum(spendLabel);
+  return parseFloat(match[0].replace(/,/g, "")) || 0;
+}
+
+function legendCurrencySymbol(spendLabel: string): string {
+  const prefix = spendLabel.replace(/[\d,.\s].*$/, "").trim();
+  return prefix || "$";
+}
+
+/** Donut legend — whole-number % and spend rounded to nearest currency unit (handles C$, $, etc.). */
 export function formatGroupedDonutLegendEntry(
   segment: Pick<VisualChartSegment, "name" | "percentage" | "spendLabel">,
 ): string {
-  return `${segment.name} · ${segment.percentage}% · ${segment.spendLabel}`;
+  const pct = Math.round(segment.percentage);
+  const spendRounded = Math.round(parseLegendSpendAmount(segment.spendLabel));
+  const spendText = fmtCurrency(spendRounded, legendCurrencySymbol(segment.spendLabel));
+  return `${segment.name} · ${pct}% · ${spendText}`;
 }
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {
@@ -422,6 +445,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         includeSpend: false,
         includeResultsShare: false,
         barScale: barSort,
+        campaignNameMax: SPLIT_PANEL_CAMPAIGN_NAME_MAX,
       },
     );
 
@@ -516,8 +540,9 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     {
       includeSpend: false,
       includeResultsShare: false,
-      singleCampaignBarCap: false,
+      singleCampaignBarCap: useSplitPanel && reportingCampaigns.length === 1,
       barScale: "results",
+      campaignNameMax: useSplitPanel ? SPLIT_PANEL_CAMPAIGN_NAME_MAX : CHART_CAMPAIGN_DISPLAY_MAX,
     },
   );
 

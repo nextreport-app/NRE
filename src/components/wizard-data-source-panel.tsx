@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
 export type WizardDataSource = "csv" | "api";
 
@@ -16,22 +17,15 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (
-    file: File,
-    meta?: {
-      previousMonthSynced?: boolean;
-      hasPreviousMonthData?: boolean;
-      previousMonthCampaigns?: string[];
-      previousMonthSelectedCampaigns?: string[] | null;
-      previousMonthUpdatedAt?: string | null;
-    },
-  ) => void;
+  onSynced: (file: File, meta?: ApiSyncMeta) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
   onSyncError: (message: string) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
+  /** Optional Ads Manager CSV — server merges Result type / Results / Website leads over API delivery. */
+  referenceManualCsvText?: string | null;
 }
 
 interface MetaAccountOption {
@@ -96,6 +90,7 @@ export function WizardDataSourcePanel({
   onSyncStart,
   onSyncError,
   importComplete = false,
+  referenceManualCsvText = null,
 }: WizardDataSourcePanelProps) {
   const showMeta = platform === "META";
   const showGoogle = platform === "GOOGLE";
@@ -111,7 +106,6 @@ export function WizardDataSourcePanel({
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
-
   const loadAccounts = useCallback(async () => {
     if (!connected) return;
     setAccountsLoading(true);
@@ -153,9 +147,14 @@ export function WizardDataSourcePanel({
   async function handleSync() {
     onSyncStart();
     try {
+      const refText = referenceManualCsvText?.trim() || undefined;
       const body =
         platform === "META"
-          ? { platform: "META" as const, metaAdAccountId: selectedMetaAccount }
+          ? {
+              platform: "META" as const,
+              metaAdAccountId: selectedMetaAccount,
+              ...(refText ? { referenceManualCsvText: refText } : {}),
+            }
           : platform === "GOOGLE"
             ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
             : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
@@ -199,6 +198,8 @@ export function WizardDataSourcePanel({
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
       onSynced(file, {
+        metaSyncDiagnostics: data.metaSyncDiagnostics,
+        mergedWithManualReference: !!data.mergedWithManualReference,
         previousMonthSynced: !!data.previousMonthSynced,
         hasPreviousMonthData: !!data.hasPreviousMonthData,
         previousMonthCampaigns: Array.isArray(data.previousMonthCampaigns) ? data.previousMonthCampaigns : [],
@@ -206,6 +207,8 @@ export function WizardDataSourcePanel({
           ? data.previousMonthSelectedCampaigns
           : null,
         previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+        campaignPeriodReachMaps: data.campaignPeriodReachMaps,
+        metaAdAccountId: platform === "META" ? selectedMetaAccount : undefined,
       });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
@@ -493,7 +496,7 @@ export function WizardDataSourceToggle({
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">Connect your data via API</span>
               <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-                Your data connects automatically
+                Sync last 30 days from Meta, Google, or TikTok
               </span>
             </span>
           </button>

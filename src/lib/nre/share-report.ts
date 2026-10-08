@@ -178,6 +178,8 @@ export interface ShareReportData {
   visibility?: ShareVisibility;
   /** ISO timestamp when the agency last published edits from the pre-share editor. */
   publishedAt?: string | null;
+  /** Optional note when delivery metrics came from API and Results from a manual export. */
+  dataImportNote?: string;
 }
 
 export interface ShareVisibility {
@@ -221,6 +223,7 @@ export interface ShareReportExtras {
   currencySymbol?: string;
   agencyName?: string | null;
   reportBranding?: ReportBrandingSettings;
+  dataImportNote?: string;
 }
 
 const FALLBACK_AI_COPY: AiCopy = {
@@ -309,6 +312,7 @@ export function buildShareReportData(
     generatedAt: now.toISOString(),
     visibility: defaultShareVisibility({ campaigns, adSets }),
     publishedAt: null,
+    ...(extras.dataImportNote ? { dataImportNote: extras.dataImportNote } : {}),
   };
 }
 

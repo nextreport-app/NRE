@@ -230,6 +230,20 @@ describe("fetchMetaReportCsv", () => {
       "fetch",
       vi.fn(async (url: string) => {
         if (String(url).includes("/insights")) {
+          if (String(url).includes("level=campaign")) {
+            if (!String(url).includes("time_increment")) {
+              return {
+                ok: true,
+                json: async () => ({
+                  data: [
+                    { campaign_name: "Shoes Campaign", reach: "900" },
+                    { campaign_name: "Lead Gen Campaign", reach: "2500" },
+                  ],
+                }),
+              };
+            }
+            return { ok: true, json: async () => ({ data: [] }) };
+          }
           expect(String(url)).toContain("level=adset");
           return {
             ok: true,
@@ -331,7 +345,11 @@ describe("fetchMetaReportCsv", () => {
   it("does not double-count multiple website-lead action types in Website leads column", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
+      vi.fn(async (url: string) => {
+        if (String(url).includes("level=campaign")) {
+          return { ok: true, json: async () => ({ data: [] }) };
+        }
+        return {
         ok: true,
         json: async () => ({
           data: [
@@ -352,7 +370,8 @@ describe("fetchMetaReportCsv", () => {
             },
           ],
         }),
-      })),
+      };
+      }),
     );
 
     const result = await fetchMetaReportCsv({
@@ -413,10 +432,12 @@ describe("fetchMetaReportCsv", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ data }),
-      })),
+      vi.fn(async (url: string) => {
+        if (String(url).includes("level=campaign")) {
+          return { ok: true, json: async () => ({ data: [] }) };
+        }
+        return { ok: true, json: async () => ({ data }) };
+      }),
     );
 
     const result = await fetchMetaReportCsv({
@@ -449,7 +470,11 @@ describe("fetchMetaReportCsv", () => {
   it("uses reach as the result for reach campaigns when no conversion actions exist", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
+      vi.fn(async (url: string) => {
+        if (String(url).includes("level=campaign")) {
+          return { ok: true, json: async () => ({ data: [] }) };
+        }
+        return {
         ok: true,
         json: async () => ({
           data: [
@@ -466,7 +491,8 @@ describe("fetchMetaReportCsv", () => {
             },
           ],
         }),
-      })),
+      };
+      }),
     );
     const result = await fetchMetaReportCsv({
       accessToken: "token",

@@ -25,6 +25,19 @@ __export(print_report_html_exports, {
 module.exports = __toCommonJS(print_report_html_exports);
 var import_server = require("react-dom/server");
 
+// src/lib/nre/format.ts
+function parseCellNum(v) {
+  if (v === null || v === void 0 || v === "") return 0;
+  const s = String(v).trim();
+  if (s === "") return 0;
+  const cleaned = s.replace(/,/g, "").replace(/[^\d.-]/g, "");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+function fmtCurrency(v, symbol) {
+  return symbol + Math.round(parseCellNum(v)).toLocaleString("en-US");
+}
+
 // src/lib/nre/dates.ts
 var IST_OFFSET_MS = 5.5 * 60 * 60 * 1e3;
 
@@ -244,17 +257,20 @@ var META_OBJECTIVE_SPECS = [
   },
   {
     key: "applications",
-    resultLabel: "APPLICATIONS",
+    resultLabel: "WEBSITE SUBMIT APPLICATIONS",
     costLabel: "COST PER APPLICATION",
     isReach: false,
-    canonicalText: "Application",
-    apiCsvLabel: "Submit application",
+    canonicalText: "Website submit application",
+    apiCsvLabel: "Website applications submitted",
     definitiveProof: true,
     aliases: [
       "submit application",
       "submit_application",
       "application",
       "applications",
+      "website applications submitted",
+      "website submit applications",
+      "website submit application",
       "offsite_conversion.fb_pixel_submit_application"
     ]
   },
@@ -1266,13 +1282,28 @@ function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, options =
 }
 
 // src/lib/nre/visual-chart-slide.ts
-function visualResultBarRightLabel(bar) {
-  if (bar.resultsSharePct > 0) {
-    const label = Number.isInteger(bar.resultsSharePct) ? String(bar.resultsSharePct) : bar.resultsSharePct.toFixed(1);
-    return `${label}% of total`;
-  }
-  return `${Math.round(bar.barPct)}%`;
+var VISUAL_CHART_PALETTE = ["5eb0ef", "f2ab50", "5fd98d", "f48484", "b090ef"];
+function visualResultBarRightLabel(_bar) {
+  return "";
 }
+function parseLegendSpendAmount(spendLabel) {
+  const match = spendLabel.match(/[\d,]+(?:\.\d+)?/);
+  if (!match) return parseCellNum(spendLabel);
+  return parseFloat(match[0].replace(/,/g, "")) || 0;
+}
+function legendCurrencySymbol(spendLabel) {
+  const prefix = spendLabel.replace(/[\d,.\s].*$/, "").trim();
+  return prefix || "$";
+}
+function formatGroupedDonutLegendEntry(segment) {
+  const pct = Math.round(segment.percentage);
+  const spendRounded = Math.round(parseLegendSpendAmount(segment.spendLabel));
+  const spendText = fmtCurrency(spendRounded, legendCurrencySymbol(segment.spendLabel));
+  return `${segment.name} \xB7 ${pct}% \xB7 ${spendText}`;
+}
+
+// src/lib/pptx/chart-slide.ts
+var CAMPAIGN_COLOR_PALETTE = [...VISUAL_CHART_PALETTE, "7a8991", "958070"];
 
 // src/lib/nre/share-report.ts
 function defaultShareVisibility(data) {
@@ -1452,12 +1483,12 @@ var MTD_VISUAL = {
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
   barH: 7,
-  barNameH: 18,
-  barMetricsH: 14,
+  barNameH: 20,
+  barMetricsH: 16,
   barRowGap: 16,
-  groupedDonutLegendRowH: 22,
+  groupedDonutLegendRowH: 24,
   groupedDonutLegendRowGap: 8,
-  groupedDonutLegendSizePt: 16,
+  groupedDonutLegendSizePt: 18,
   barTrackMaxW: 824,
   labelColW: 0,
   panelHeadingH: 26,
@@ -1482,8 +1513,8 @@ function resultBarLayout(barCount, hasSubheading = true) {
   const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
   const nameBarGap = Math.max(2, Math.round(4 * scale));
   const barFooterGap = Math.max(2, Math.round(4 * scale));
-  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
-  const metricsSizePt = scale <= 0.72 ? 10 : scale <= 0.82 ? 11 : scale <= 0.92 ? 11 : 12;
+  const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
+  const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
   const blockH = barCount * rowH;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
   return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
@@ -1535,7 +1566,7 @@ function resolveMetricIconId(metric) {
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function reportTypeLabel(data) {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
-  if (data.reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Table Report";
   if (data.reportType === "DAILY") return "Yesterday Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";
@@ -1744,7 +1775,7 @@ function VisualSpendDonut({
         )
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]", children: segments.map((seg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("li", { className: "flex min-w-0 items-start gap-2", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "mt-4 w-full space-y-2 text-[15px] text-[#94a3b8]", children: segments.map((seg, i) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("li", { className: "flex min-w-0 items-start gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
         "span",
         {
@@ -1753,14 +1784,8 @@ function VisualSpendDonut({
           "aria-hidden": "true"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "min-w-0 truncate", children: [
-        seg.name,
-        " \xB7 ",
-        seg.percentage,
-        "% \xB7 ",
-        seg.spendLabel
-      ] })
-    ] }, seg.name)) })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "min-w-0 truncate", children: formatGroupedDonutLegendEntry(seg) })
+    ] }, `${i}-${seg.name}-${seg.spendLabel}`)) })
   ] });
 }
 function VisualResultBar({
@@ -1789,7 +1814,7 @@ function VisualResultBar({
           ]
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`, children: rightLabel })
+      rightLabel ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`, children: rightLabel }) : null
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
       "div",
@@ -1804,7 +1829,7 @@ function VisualResultBar({
         )
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[11px]" : "text-[12px]"}`, children: statLine })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: `mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[12px]" : "text-[14px]"}`, children: statLine })
   ] });
 }
 function ShareMtdOverviewSlide({ chart }) {
@@ -2096,6 +2121,21 @@ function ShareReportView({
           ] }) }),
           showMetricGuide && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("section", { className: slideClass, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MetricGuideSection, { metricGuide, platform: visibleData.platform }) })
         ] }),
+        !isPrint && visibleData.dataImportNote ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "p",
+          {
+            style: {
+              textAlign: "center",
+              padding: "0 24px 24px",
+              color: "#64748b",
+              fontSize: "12px",
+              lineHeight: 1.5,
+              maxWidth: "640px",
+              margin: "0 auto"
+            },
+            children: visibleData.dataImportNote
+          }
+        ) : null,
         !isPrint && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("footer", { style: { textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }, children: [
           brandingDisplay.footerPrimary ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "#94a3b8", fontSize: "13px" }, children: brandingDisplay.footerPrimary }) : null,
           brandingDisplay.showGeneratedDate ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { color: "#64748b", fontSize: "12px", marginTop: brandingDisplay.footerPrimary ? "4px" : 0 }, children: [

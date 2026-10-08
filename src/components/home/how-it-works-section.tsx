@@ -3,8 +3,8 @@ import Link from "next/link";
 const STEPS = [
   {
     number: "1",
-    title: "Connect or upload",
-    description: "Connect Meta via official API — or upload a CSV export from Ads Manager.",
+    title: "Upload CSV",
+    description: "Export from Meta Ads Manager and upload the CSV in the report wizard.",
   },
   {
     number: "2",

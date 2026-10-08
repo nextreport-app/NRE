@@ -39,8 +39,8 @@ export function getWizardStepLabel(step: 1 | 2 | 3 | 4, flow: AdWizardFlow): str
   }
   const labels: Record<1 | 2 | 3 | 4, string> = {
     1: "Import",
-    2: "Campaign Data",
-    3: "Campaign Metrics",
+    2: "Campaigns",
+    3: "Metrics",
     4: "Generate",
   };
   return labels[step];
@@ -53,16 +53,17 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
       platform === "TIKTOK" || platform === "GOOGLE"
         ? "Select campaigns, ad groups & objectives"
         : "Select campaigns & campaign objectives",
-    3: "Review metric cards",
-    4: "Choose report type and generate",
+    3: "Review metrics",
+    4: "Generate report",
   };
   return headings[step];
 }
 
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
 export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform): string {
-  if (step === 4) return "Pick a report type, review the summary, then generate.";
-  if (step === 3) return "Metrics are pre-selected — customize only if needed.";
-  if (step === 2) return "Pick campaigns first; objectives load automatically.";
+  if (step === 4) return "Confirm dates and preview, then generate your deck.";
+  if (step === 3) return "Metric chips are pre-selected from your CSV — tweak only if needed.";
+  if (step === 2) return "Choose campaigns and confirm each primary result objective.";
+  if (step === 1) return "Pick a report type, follow Download instructions for that type, then upload or sync.";
   return "";
 }

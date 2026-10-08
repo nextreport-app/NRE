@@ -169,6 +169,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
         mergedWithManualReference: Boolean(referenceManualCsvText?.trim()),
+        metaSyncDiagnostics: result.diagnostics,
+        campaignPeriodReachByName: result.campaignPeriodReachByName,
+        campaignPeriodReachMaps: result.campaignPeriodReachMaps,
         ...previousMonth,
       });
     }

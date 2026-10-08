@@ -5,13 +5,23 @@ import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { createReportEngine } from "@/lib/nre/report-engine";
 import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { computeWizardStandardReportFingerprint } from "@/lib/nre/wizard-report-config-fingerprint";
+import { saveWizardPreviewReportCache, scheduleWizardPreviewAiWarm } from "@/lib/nre/wizard-preview-cache";
+import {
+  reconcileComparisonReportWithCsv,
+  reconcileDayBreakdownReportWithCsv,
+  reconcileHistoricalReportWithCsv,
+  reconcileStandardReportWithCsv,
+} from "@/lib/nre/csv-report-reconciliation";
+import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
+import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
+import { computeDailyRangeIso } from "@/lib/nre/date-range";
 import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-data";
-import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
-import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
@@ -59,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed } = resolved.data;
+  const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId, uploadSessionId, fileHash } = resolved.data;
   const platform = mtdParsed.platform;
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
@@ -125,7 +135,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       csvHeaders: mtdParsed.headers,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: comparisonWarnings, isComparison: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileComparisonReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      periodBSupplementalRows: supplementalRows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
+      periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: comparisonWarnings,
+      isComparison: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "HISTORICAL") {
@@ -160,7 +192,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isHistorical: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileHistoricalReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: validation.warnings,
+      isHistorical: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "DAY_BREAKDOWN") {
@@ -215,7 +266,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, isDayBreakdown: true, data });
+    const csvAlign = resolveCsvAlignResults(formData);
+    const csvVerification = reconcileDayBreakdownReportWithCsv({
+      report: data,
+      mtdDailyRows: mtdParsed.rows,
+      selectedCampaigns: selectedCampaigns ?? null,
+      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+      campaignObjectives: campaignObjectives ?? null,
+      platform,
+    });
+
+    return NextResponse.json({
+      valid: true,
+      errors: [],
+      warnings: validation.warnings,
+      isDayBreakdown: true,
+      data,
+      csvVerification,
+      suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+    });
   }
 
   if (parsedReportType === "CREATIVE" && !hasAdLevelData(mtdParsed.headers)) {
@@ -235,7 +305,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const built = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
+  const built = await buildStandardReportForWizard({
+    client,
+    mtdParsed,
+    formData,
+    platform,
+    metaCampaignPeriodReachFromSession: metaCampaignPeriodReach,
+    metaAdAccountIdFromSession: metaAdAccountId,
+  });
   if ("error" in built) {
     const field =
       built.error.includes("date") || built.error.includes("yesterday")
@@ -247,5 +324,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  return NextResponse.json({ valid: true, errors: [], warnings: validation.warnings, data: built.data });
+  const csvAlign = resolveCsvAlignResults(formData);
+  const reportType = built.data.reportType;
+  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+  const previewNow = new Date();
+  let weeklyRange: { startIso: string; endIso: string } | undefined;
+  if (reportType === "DAILY") {
+    weeklyRange = computeDailyRangeIso(mtdParsed.rows, previewNow, client.timezone) ?? undefined;
+  } else if (reportType === "WEEKLY") {
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, previewNow, client.timezone);
+    weeklyRange = dateResolution.ok ? dateResolution.weeklyRange : undefined;
+  }
+
+  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+  const periodRowsForVerify = includePreviousMonthComparison
+    ? await loadPreviousMonthDataRows(client)
+    : undefined;
+
+  if (uploadSessionId && fileHash) {
+    const fingerprint = computeWizardStandardReportFingerprint({
+      fileHash,
+      client,
+      platform,
+      formData,
+    });
+    await saveWizardPreviewReportCache({
+      userId: session.user.id,
+      clientId: id,
+      sessionId: uploadSessionId,
+      fingerprint,
+      reportData: built.data,
+    });
+    scheduleWizardPreviewAiWarm({
+      userId: session.user.id,
+      clientId: id,
+      sessionId: uploadSessionId,
+      fingerprint,
+      reportData: built.data,
+    });
+  }
+
+  const csvVerification = reconcileStandardReportWithCsv({
+    report: built.data,
+    mtdDailyRows: mtdParsed.rows,
+    selectedCampaigns: selectedCampaigns ?? null,
+    weeklyRange,
+    reportType,
+    timezone: client.timezone,
+    currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    now: previewNow,
+    resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
+    periodRows: periodRowsForVerify,
+    campaignObjectives: campaignObjectives ?? null,
+    platform,
+  });
+
+  return NextResponse.json({
+    valid: true,
+    errors: [],
+    warnings: validation.warnings,
+    data: built.data,
+    csvVerification,
+    suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
+  });
 }

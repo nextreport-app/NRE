@@ -28,8 +28,10 @@ import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
 import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
+import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
+import { wizardReportTypePickerLabel } from "@/lib/nre/wizard-report-type-copy";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,
@@ -82,6 +84,7 @@ import {
   readStoredWizardPlatform,
   saveWizardPlatformChoice,
 } from "./platform-storage";
+import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 
 export function useReportUploadWizard({
   clientId,
@@ -123,6 +126,9 @@ export function useReportUploadWizard({
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
   const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
+  const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
+  const [csvAlignResults, setCsvAlignResults] = useState(false);
+  const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
 
@@ -203,6 +209,15 @@ export function useReportUploadWizard({
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
+  /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
+  const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
+  const [metaAdAccountId, setMetaAdAccountId] = useState<string | null>(null);
+  /** Optional Ads Manager CSV for Meta API hybrid merge (Result columns from manual export). */
+  const [metaManualReferenceCsvFile, setMetaManualReferenceCsvFile] = useState<File | null>(null);
+  const [metaManualReferenceCsvText, setMetaManualReferenceCsvText] = useState<string | null>(null);
+  const [metaSyncDiagnostics, setMetaSyncDiagnostics] = useState<
+    import("./types").MetaSyncDiagnosticsSummary | null
+  >(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -339,6 +354,7 @@ export function useReportUploadWizard({
   // card, showing its own Period A/B preset picker instead — see
   // fetchPreview/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
+  const clientPrefsHydratedRef = useRef(false);
 
   // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
   // weeklyOptions (This week vs Last week, the default preset) as soon as
@@ -422,6 +438,57 @@ export function useReportUploadWizard({
     clearWizardGenerateSnapshot(clientId);
   }
 
+  useEffect(() => {
+    clientPrefsHydratedRef.current = false;
+    const prefs = readClientWizardPreferences(clientId);
+    if (prefs) {
+      if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
+        const coerced = coerceLaunchReportType(prefs.reportType);
+        setReportType(coerced);
+        setReportTitle(defaultReportTitleFor(coerced));
+      }
+      if (prefs.dateMode) {
+        if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
+          setDateMode("custom");
+          setCustomStart(prefs.customStart);
+          setCustomEnd(prefs.customEnd);
+        } else if (prefs.dateMode !== "custom") {
+          setDateMode(prefs.dateMode);
+        }
+      }
+      if (typeof prefs.includePreviousMonthComparison === "boolean") {
+        setIncludePreviousMonthComparison(prefs.includePreviousMonthComparison);
+      }
+      if (typeof prefs.showBudgetOnCover === "boolean") {
+        setShowBudgetOnCover(prefs.showBudgetOnCover);
+      }
+      if (prefs.dataSourceMode) setDataSourceMode(prefs.dataSourceMode);
+    }
+    clientPrefsHydratedRef.current = true;
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientPrefsHydratedRef.current) return;
+    saveClientWizardPreferences(clientId, {
+      reportType,
+      dateMode,
+      customStart: dateMode === "custom" ? customStart : undefined,
+      customEnd: dateMode === "custom" ? customEnd : undefined,
+      includePreviousMonthComparison,
+      showBudgetOnCover,
+      dataSourceMode,
+    });
+  }, [
+    clientId,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    includePreviousMonthComparison,
+    showBudgetOnCover,
+    dataSourceMode,
+  ]);
+
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
     acknowledgePostGenerateEdit();
@@ -437,6 +504,7 @@ export function useReportUploadWizard({
         setCustomEnd(weeklyOptions.last7.endIso);
       }
     }
+    setCsvWarningDismissed(false);
   }
 
   function currentDateSelection(): DateSelection {
@@ -626,9 +694,16 @@ export function useReportUploadWizard({
     setWeeklyOptions(snapshot.weeklyOptions);
     setMtdRange(snapshot.mtdRange);
     setMonthComparisonOptions(snapshot.monthComparisonOptions);
-    setComparisonPreset(snapshot.comparisonPreset);
-    setComparisonPeriodA(snapshot.comparisonPeriodA);
-    setComparisonPeriodB(snapshot.comparisonPeriodB);
+    const preset =
+      snapshot.comparisonPreset === "thisMonth" ? "thisWeek" : snapshot.comparisonPreset;
+    setComparisonPreset(preset);
+    if (preset === "thisWeek" && snapshot.weeklyOptions) {
+      setComparisonPeriodA(snapshot.weeklyOptions.last7);
+      setComparisonPeriodB(snapshot.weeklyOptions.prev7);
+    } else {
+      setComparisonPeriodA(snapshot.comparisonPeriodA);
+      setComparisonPeriodB(snapshot.comparisonPeriodB);
+    }
     setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
     setPreviewKind(snapshot.previewKind);
     setPreviewStatus(snapshot.previewStatus);
@@ -784,6 +859,11 @@ export function useReportUploadWizard({
       setHistoricalData(null);
       setDayBreakdownData(null);
     }
+    setCsvVerification(json.csvVerification ?? null);
+    if (json.suggestCsvAlign && !csvAlignResults && !csvAlignAttemptedRef.current) {
+      csvAlignAttemptedRef.current = true;
+      setCsvAlignResults(true);
+    }
     setPreviewStatus("idle");
     if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done") {
       resetGenerateState();
@@ -850,14 +930,14 @@ export function useReportUploadWizard({
     setStep(2);
   }
 
-  type ApiSyncMeta = {
-    previousMonthSynced?: boolean;
-    hasPreviousMonthData?: boolean;
-    previousMonthCampaigns?: string[];
-    previousMonthSelectedCampaigns?: string[] | null;
-    previousMonthUpdatedAt?: string | null;
+  type ApiSyncMeta = import("./types").ApiSyncMeta & {
     previousMonthCampaignSpend?: Record<string, number>;
   };
+
+  function metaReachWizardFormExtra(): Record<string, unknown> {
+    if (!metaAdAccountId) return {};
+    return { metaAdAccountId };
+  }
 
   /** API-sync artifacts use a synthetic filename — discard when switching to manual CSV upload. */
   function isApiSyncArtifact(file: File | null): boolean {
@@ -923,6 +1003,18 @@ export function useReportUploadWizard({
     setMtdFile(file);
   }
 
+  function handleMetaManualReferenceCsvSelected(file: File | null) {
+    setMetaManualReferenceCsvFile(file);
+    if (!file) {
+      setMetaManualReferenceCsvText(null);
+      return;
+    }
+    void file.text().then(
+      (text) => setMetaManualReferenceCsvText(text),
+      () => setMetaManualReferenceCsvText(null),
+    );
+  }
+
   function handleDataSourceModeChange(mode: WizardDataSource) {
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
       setMtdFile(null);
@@ -932,6 +1024,12 @@ export function useReportUploadWizard({
       setAnalyzeMessage(null);
       setApiSyncStatus("idle");
       setApiSyncError(null);
+      setApiSyncHybridImport(false);
+      setMetaSyncDiagnostics(null);
+    }
+    if (mode === "csv") {
+      setMetaManualReferenceCsvFile(null);
+      setMetaManualReferenceCsvText(null);
     }
     setDataSourceMode(mode);
   }
@@ -941,6 +1039,9 @@ export function useReportUploadWizard({
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
+    setApiSyncHybridImport(!!meta?.mergedWithManualReference);
+    setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
+    if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
     setMtdFile(file);
     downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
@@ -950,7 +1051,11 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(file, { platform: selectedPlatformCard }),
+      body: buildUploadFormData(file, {
+        platform: selectedPlatformCard,
+        metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
+        metaAdAccountId: meta?.metaAdAccountId,
+      }),
     });
     const json = await res.json().catch(() => null);
 
@@ -1461,19 +1566,37 @@ export function useReportUploadWizard({
    * same validation the old standalone Dates step's "Continue" button used
    * to gate on.
    */
+  function releasePreviewLoadingState(status: PreviewStatus = "idle") {
+    setPreviewRefreshing(false);
+    setPreviewStatus(status);
+  }
+
   async function fetchPreview() {
-    if (!mtdFile && !uploadSessionId) return;
+    if (!mtdFile && !uploadSessionId) {
+      setPreviewMessage("Go back to Import and upload your CSV again.");
+      releasePreviewLoadingState("error");
+      return;
+    }
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
     // sent (buildReportData then uses the full MTD data with no weekly
     // window — see report-data.ts's primaryRows). Comparison has its own
     // Period A/B requirement instead.
     if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
-      if (!validateCustomRange()) return;
+      if (dateMode === "custom" && (!customStart || !customEnd)) {
+        setCustomRangeError("Choose a start and end date.");
+        releasePreviewLoadingState("idle");
+        return;
+      }
+      if (!validateCustomRange()) {
+        releasePreviewLoadingState("idle");
+        return;
+      }
       if (reportType === "WEEKLY") {
         const spanDays = customSpanDays();
         if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
-          return; // the inline "Continue anyway?" prompt handles confirmation
+          releasePreviewLoadingState("idle");
+          return;
         }
       }
     }
@@ -1543,6 +1666,8 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),
@@ -1583,9 +1708,16 @@ export function useReportUploadWizard({
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
   useEffect(() => {
+    csvAlignAttemptedRef.current = false;
+    setCsvAlignResults(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType, dateMode, customStart, customEnd, Array.from(selectedCampaigns).join("\0")]);
+
+  useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
+    if (!mtdFile && !uploadSessionId) return;
 
     const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
     if (!hasExistingPreview && previewStatus !== "invalid" && previewStatus !== "error") {
@@ -1597,8 +1729,18 @@ export function useReportUploadWizard({
       void fetchPreview();
     }, 500);
 
+    const stuckTimer = window.setTimeout(() => {
+      setPreviewRefreshing(false);
+      setPreviewStatus((current) => {
+        if (current !== "loading") return current;
+        setPreviewMessage("Preview is taking too long. Check your dates above or go back to Import and re-upload.");
+        return "error";
+      });
+    }, 90_000);
+
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      window.clearTimeout(stuckTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1617,7 +1759,10 @@ export function useReportUploadWizard({
     historicalMonthCount,
     showBudgetOnCover,
     includePreviousMonthComparison,
+    csvAlignResults,
     generateStatus,
+    uploadSessionId,
+    mtdFile,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -1660,6 +1805,9 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
+          metaHybridApiImport: apiSyncHybridImport && platform === "META",
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),
@@ -1683,17 +1831,20 @@ export function useReportUploadWizard({
 
     let finalShareToken: string | null = json.shareToken ?? null;
     if (json.status === "GENERATING") {
+      setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
-        const polled = await pollReportStatus(json.reportId);
+        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180 });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
         setGenerateStatus("error");
         setGenerateMessage(
           err instanceof ReportGenerationPollError
-            ? err.message
+            ? `${err.message} You can check Reports on the client page — the file may still finish in the background.`
             : "Report generation failed. Please try again.",
         );
         return;
+      } finally {
+        setGenerateMessage(null);
       }
     }
 
@@ -1854,6 +2005,10 @@ export function useReportUploadWizard({
     setMismatchWarning(false);
     setDetectedPlatform(null);
     setPlatform("META");
+    setDataSourceMode("csv");
+    setApiSyncStatus("idle");
+    setApiSyncError(null);
+    setApiSyncHybridImport(false);
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
@@ -1920,15 +2075,16 @@ export function useReportUploadWizard({
    * "Label: value" line, varying by report type.
    */
   function reportTypeLabel(): string {
-    if (previewKind === "comparison") return "Comparison Report";
-    if (previewKind === "historical") return "Multi-Month Report";
-    if (previewKind === "dayBreakdown") return "Daily Report";
-    if (reportType === "MONTHLY") return "Monthly Report";
-    if (reportType === "QUARTER") return "Quarterly Report";
-    if (reportType === "YTD") return "Year-to-Date Report";
-    if (reportType === "DAILY") return "Yesterday Report";
-    if (reportType === "CREATIVE") return "Creative Report";
-    return "Weekly Report";
+    if (previewKind === "comparison" || reportType === "COMPARISON") {
+      return wizardReportTypePickerLabel("COMPARISON");
+    }
+    if (previewKind === "historical" || reportType === "HISTORICAL") {
+      return wizardReportTypePickerLabel("HISTORICAL");
+    }
+    if (previewKind === "dayBreakdown" || reportType === "DAY_BREAKDOWN") {
+      return wizardReportTypePickerLabel("DAY_BREAKDOWN");
+    }
+    return wizardReportTypePickerLabel(reportType);
   }
 
   /** Summary card label for the weekly/custom date line — avoids calling a 10-day custom pick a "week". */
@@ -2077,11 +2233,16 @@ export function useReportUploadWizard({
     handleDataSourceModeChange,
     mtdFile,
     handleMtdFileSelected,
+    metaManualReferenceCsvFile,
+    handleMetaManualReferenceCsvSelected,
+    metaManualReferenceCsvText,
     uploadSessionId,
     apiSyncStatus,
     setApiSyncStatus,
     apiSyncError,
     setApiSyncError,
+    apiSyncHybridImport,
+    metaSyncDiagnostics,
     analyzeStatus,
     analyzeErrors,
     analyzeMessage,
@@ -2266,5 +2427,6 @@ export function useReportUploadWizard({
     previewRefreshing,
     generateStepPreviewReady,
     importPipelineLabel,
+    csvVerification,
   };
 }

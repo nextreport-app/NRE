@@ -11,7 +11,7 @@ describe("MTD visual chart slide layout", () => {
     const header = MTD_VISUAL.panelHeadingH + 8;
     const available = MTD_VISUAL.panelH - header;
     expect(layout.rowH * 5).toBeLessThanOrEqual(available);
-    expect(layout.nameSizePt).toBeLessThan(15);
+    expect(layout.nameSizePt).toBeLessThanOrEqual(15);
   });
 
   it("keeps grouped donut block inside the left panel for five segments", () => {

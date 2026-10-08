@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Can I connect Meta, Google Ads, TikTok, or GA4 directly instead of uploading a CSV?",
-    a: "Yes for Meta — NextReport syncs with Meta's Marketing API today. Connect once in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported. Google Ads, TikTok, and GA4 integrations are in place and launching soon.",
+    a: "Ad reports use CSV export from each ads manager today — upload on Step 1 of the wizard. GA4 website reports can connect via the Google Analytics API when you choose Google Analytics in the wizard. Direct Meta, Google Ads, and TikTok API import in the wizard is turned off while we improve parity with Ads Manager exports.",
   },
   {
     q: "What file formats can I upload?",

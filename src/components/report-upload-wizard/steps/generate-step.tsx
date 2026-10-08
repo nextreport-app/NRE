@@ -9,33 +9,22 @@ import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner"
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShareReportUrl, buildSlackShareUrl, buildTelegramShareUrl, buildWhatsAppShareUrl } from "../utils";
-import { ReportTypeCard } from "../ui/report-type-card";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
+import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { formatRelativeReportDate } from "@/lib/client-display";
-import {
-  LAUNCH_PRIMARY_REPORT_TYPES,
-  LAUNCH_SECONDARY_REPORT_TYPES,
-} from "@/lib/meta-launch-scope";
-
-const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
-const LAUNCH_REPORT_TYPES = new Set<string>([
-  ...LAUNCH_PRIMARY_REPORT_TYPES,
-  ...LAUNCH_SECONDARY_REPORT_TYPES,
-]);
+import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+import { CsvVerificationPanel } from "../ui/csv-verification-panel";
+import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
-  const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
-    () =>
-      LAUNCH_SECONDARY_REPORT_TYPES.includes(
-        w.reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
-      ),
-  );
 
-  if (w.step !== 4) return null;
+  const stepActive = w.step === 4;
 
   const {
     budgetToggleSaving,
@@ -71,6 +60,7 @@ export function WizardGenerateStep() {
     formatIso,
     formatIsoRange,
     formatSummaryRange,
+    apiSyncHybridImport,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -80,8 +70,8 @@ export function WizardGenerateStep() {
     handleGenerate,
     handleGenerateAnother,
     handleGeneratePreviousMonthSummary,
-    handleReportTypeChange,
     handleSaveButtonClick,
+    clientTimezone,
     handleSaveToFolderLink,
     handleShowBudgetOnCoverChange,
     hasAdLevelCsv,
@@ -91,8 +81,6 @@ export function WizardGenerateStep() {
     historicalMonthCount,
     historicalMonthLabels,
     includePreviousMonthComparison,
-    monthComparisonCoverage,
-    monthComparisonOptions,
     mtdRange,
     needsLongRangeConfirm,
     persistGenerateSnapshot,
@@ -106,6 +94,7 @@ export function WizardGenerateStep() {
     previewStatus,
     previewRefreshing,
     generateStepPreviewReady,
+    csvVerification,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
@@ -145,8 +134,10 @@ export function WizardGenerateStep() {
     updateComparisonPeriodB,
     weeklyOptions,
     weeklyPeriodSummaryLabel,
-    weeklyRangeIso
+    weeklyRangeIso,
   } = w;
+
+  if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
   const generateCtaDisabled = previewStatus === "invalid" || !generateStepPreviewReady;
@@ -155,9 +146,17 @@ export function WizardGenerateStep() {
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
-        : !generateStepPreviewReady
+        : previewStatus === "loading" || previewRefreshing
           ? "Loading report options…"
-          : "Generate Report";
+          : !generateStepPreviewReady
+            ? previewStatus === "invalid"
+              ? "Fix options above"
+              : previewStatus === "error"
+                ? "Retry preview"
+                : previewStatus === "idle"
+                  ? "Choose dates above"
+                  : "Loading report options…"
+            : "Generate Report";
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
@@ -165,114 +164,60 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
-            <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <ReportTypeCard
-                icon="📊"
-                heading="Weekly Performance Report"
-                description="One week with a daily chart."
-                selected={reportType === "WEEKLY"}
-                onSelect={() => handleReportTypeChange("WEEKLY")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="📅"
-                heading="Monthly Performance Report"
-                description="Full month with MTD chart."
-                selected={reportType === "MONTHLY"}
-                onSelect={() => handleReportTypeChange("MONTHLY")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="☀️"
-                heading="Yesterday Performance Report"
-                description="Latest complete day"
-                selected={reportType === "DAILY"}
-                onSelect={() => handleReportTypeChange("DAILY")}
-                layout="compact"
-              />
-            </div>
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setMoreReportTypesOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
-                aria-expanded={moreReportTypesOpen}
-              >
-                <span>
-                  More report types
-                  {LAUNCH_SECONDARY_REPORT_TYPES.includes(
-                    reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
-                  ) ? (
-                    <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel()}</span>
-                  ) : null}
-                </span>
-                <span className="text-dash-ink-secondary">{moreReportTypesOpen ? "▲" : "▼"}</span>
-              </button>
-              {moreReportTypesOpen ? (
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  <ReportTypeCard
-                    icon="🔀"
-                    heading="Comparison Report"
-                    description="Two periods side by side."
-                    selected={reportType === "COMPARISON"}
-                    onSelect={() => handleReportTypeChange("COMPARISON")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="📆"
-                    heading="Multi-Month Historical Report"
-                    description="Several past months in one deck."
-                    selected={reportType === "HISTORICAL"}
-                    onSelect={() => handleReportTypeChange("HISTORICAL")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="📋"
-                    heading="Daily Performance Report"
-                    description="Multiple days, one row per day"
-                    selected={reportType === "DAY_BREAKDOWN"}
-                    onSelect={() => handleReportTypeChange("DAY_BREAKDOWN")}
-                    layout="compact"
-                  />
-                </div>
-              ) : null}
-            </div>
-            {reportType === "HISTORICAL" && (
-              <div className="mt-4 space-y-3">
-                <label className="block text-[14px] text-dash-ink-secondary">
-                  How many complete prior months?
-                  <select
-                    value={historicalMonthCount}
-                    onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
-                    className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
-                  >
-                    {[2, 3, 4, 5, 6, 8, 12].map((n) => (
-                      <option key={n} value={n}>
-                        Last {n} months
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="text-[14px] text-dash-ink-secondary">
-                  Months: <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
-                </p>
-                {dateBounds && (
-                  <p className="text-[14px] text-dash-ink-muted">
-                    CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
-                  </p>
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <WizardReportSetupPanel
+                  variant="summary"
+                  reportType={reportType}
+                  reportTypeLabel={reportTypeLabel()}
+                  platform={platform}
+                  clientTimezone={clientTimezone}
+                  onReportTypeChange={() => {}}
+                />
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-[14px] font-medium text-dash-accent hover:underline"
+                >
+                  Change report type →
+                </button>
               </div>
+
+            {reportType === "HISTORICAL" && (
+              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+                <h4 className="text-[15px] font-semibold text-white">Historical months</h4>
+                <div className="mt-3 space-y-3">
+                  <label className="block text-[14px] text-dash-ink-secondary">
+                    How many complete prior months?
+                    <select
+                      value={historicalMonthCount}
+                      onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
+                      className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
+                    >
+                      {[2, 3, 4, 5, 6, 8, 12].map((n) => (
+                        <option key={n} value={n}>
+                          Last {n} months
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="text-[14px] text-dash-ink-secondary">
+                    Months: <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
+                  </p>
+                  {dateBounds && (
+                    <p className="text-[14px] text-dash-ink-muted">
+                      CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
+                    </p>
+                  )}
+                </div>
+              </section>
             )}
             {reportType === "DAILY" && dailyRange && (
-              <p className="mt-4 text-[14px] text-dash-ink-secondary">
+              <p className="text-[14px] text-dash-ink-secondary">
                 Reporting on <span className="text-white">{formatIsoRange(dailyRange)}</span>.
               </p>
             )}
-          </section>
 
-          {/* Section 2 — Date range (Weekly + Day-by-Day) */}
+          {/* Date range (Weekly + Day-by-Day) */}
           {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
               <h4 className="text-[16px] font-semibold text-white">
@@ -387,16 +332,6 @@ export function WizardGenerateStep() {
                   onSelect={() => handleComparisonPresetSelect("thisWeek")}
                 />
                 <WeeklyPeriodOption
-                  selected={comparisonPreset === "thisMonth"}
-                  label="Month-on-month (this month vs last)"
-                  sublabel={
-                    monthComparisonOptions
-                      ? `${formatIsoRange(monthComparisonOptions.periodA)} vs ${formatIsoRange(monthComparisonOptions.periodB)}`
-                      : undefined
-                  }
-                  onSelect={() => handleComparisonPresetSelect("thisMonth")}
-                />
-                <WeeklyPeriodOption
                   selected={comparisonPreset === "custom"}
                   label="Custom"
                   onSelect={() => handleComparisonPresetSelect("custom")}
@@ -434,22 +369,10 @@ export function WizardGenerateStep() {
                 </div>
               )}
 
-              {monthComparisonCoverage && !monthComparisonCoverage.valid ? (
-                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-                  {monthComparisonCoverage.error ??
-                    "Your CSV does not cover both comparison periods. Export a longer custom range or upload Previous Month Data on Manage."}
-                </p>
-              ) : monthComparisonCoverage?.periodBUsesSupplemental ? (
-                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
-                  Period B will use your stored Previous Month Data for dates before your main CSV starts.
-                </p>
-              ) : (
-                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
-                  Tip: Period A must fit your main CSV. For month-vs-month, upload Previous Month Data once on Manage — or
-                  export a custom range from{" "}
-                  {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes both periods.
-                </p>
-              )}
+              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
+                Tip: Both periods must fit your main CSV (or use Custom and export a longer range from{" "}
+                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes Period A and Period B).
+              </p>
             </section>
           )}
 
@@ -497,21 +420,21 @@ export function WizardGenerateStep() {
 
 
           {showStandardCoverBudget && (
-            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <h4 className="text-[15px] font-semibold text-white">Cover slide budget</h4>
+            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+              <h4 className="text-[16px] font-semibold text-white">Cover slide budget</h4>
               {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
-                <div className="mt-3 space-y-3">
+                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
                   {coverBudgetPreviewLine ? (
-                    <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
+                    <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-white">
                       {coverBudgetPreviewLine}
                     </p>
                   ) : (
-                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-3 py-2.5 text-[14px] text-dash-ink-secondary">
+                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-4 py-3 text-[14px] text-dash-ink-secondary">
                       Calculating spend vs budget…
                     </p>
                   )}
                   <label
-                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait opacity-70" : "cursor-pointer"}`}
+                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait" : "cursor-pointer"}`}
                   >
                     <input
                       type="checkbox"
@@ -520,18 +443,18 @@ export function WizardGenerateStep() {
                       onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
-                    <span className="text-[14px] text-dash-ink-secondary">
+                    <span className="text-[14px] leading-snug text-dash-ink-secondary">
                       Show monthly budget used on cover slide
                     </span>
                   </label>
-                  {coverBudgetPacingWarning && (
-                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
+                  {showBudgetOnCover && coverBudgetPacingWarning ? (
+                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-[14px] leading-relaxed text-amber-200">
                       {coverBudgetPacingWarning}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               ) : (
-                <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
+                <p className="mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
                   No monthly budget set for this client.{" "}
                   <Link
                     href={`/clients/${clientId}`}
@@ -543,10 +466,23 @@ export function WizardGenerateStep() {
                   </Link>
                 </p>
               )}
-            </div>
+            </section>
           )}
 
             <div className="space-y-4">
+              {(previewKind === "normal" ||
+                previewKind === "comparison" ||
+                previewKind === "historical" ||
+                previewKind === "dayBreakdown") &&
+              generateStepPreviewReady &&
+              generateStatus === "idle" ? (
+                <CsvVerificationPanel
+                  verification={csvVerification}
+                  refreshing={previewRefreshing}
+                  clientId={clientId}
+                />
+              ) : null}
+
               {/* Section 1 — Report summary card, amber left border. Merges
                   what used to be two separate cards (Reporting Period +
                   Ready to generate) into the one card the merged Step 3
@@ -570,6 +506,11 @@ export function WizardGenerateStep() {
                   <>
                 <hr className="my-3 border-t border-[#334155]" />
                 <div className="space-y-2">
+                  {apiSyncHybridImport ? (
+                    <p className="rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
+                      {META_HYBRID_API_CSV_IMPORT_NOTE}
+                    </p>
+                  ) : null}
                   <p className="text-[14px] text-[#94a3b8]">
                     Report type: <span className="text-[14px] text-white">{reportTypeLabel()}</span>
                   </p>
@@ -948,7 +889,7 @@ export function WizardGenerateStep() {
                       type="text"
                       value={driveFolderNameInput}
                       onChange={(e) => setDriveFolderNameInput(e.target.value)}
-                      placeholder="e.g. Reports or Alonzo Carr / Reports"
+                      placeholder="e.g. Reports"
                       className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                     />
                     <p className="mt-1 text-[14px] text-dash-ink-secondary">
@@ -1081,6 +1022,15 @@ export function WizardGenerateStep() {
               )}
             </div>
           )}
+
+          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
+            Have a question or an issue with this report?{" "}
+            <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
+            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+            .
+          </p>
+
+          <WizardFeedbackLink />
 
           {showGenerateFooter ? (
             <WizardStickyFooter

@@ -24,7 +24,6 @@ import {
   enforceMinFontSize,
   findCardIconRelId,
   forceRunStyle,
-  hideCardSlot,
   insertShapeBeforeSpTreeClose,
   ptToEmu,
   replaceCardIcon,
@@ -186,7 +185,7 @@ const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
 const DEFAULT_HISTORICAL_REPORT_TITLE = "Multi-Month Performance Report";
-const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Daily Performance Report";
+const DEFAULT_DAY_BREAKDOWN_REPORT_TITLE = "Day-by-Day Table Report";
 const DEFAULT_QUARTER_REPORT_TITLE = "Quarterly Performance Report";
 const DEFAULT_YTD_REPORT_TITLE = "Year-to-Date Performance Report";
 const DEFAULT_WEBSITE_REPORT_TITLE = "Website Traffic Report";
@@ -591,18 +590,6 @@ export function buildCampaignOrAdSetSlideXml(
         // still present in the xml to locate the value shape by (it gets
         // consumed by the replaceTagRun call right after).
         xml = ensureCardLabelValueGap(xml, tag, MIN_CARD_LABEL_VALUE_GAP_EMU);
-        // Continuation slides hide unused card chrome so 1–3 extras do not
-        // sit next to seven dashed empty slots. Primary slides still dash
-        // unused slots (the default 8-card pack layout).
-        if (useAdditionalMetricsSlide) {
-          xml = hideCardSlot(
-            xml,
-            tag,
-            CARD_SLOT_TAGS.filter((other) => other !== tag),
-          );
-          // Card XML is gone — do not dash leftover tags that no longer exist.
-          if (!xml.includes(tag)) return;
-        }
         // Unused physical slots must blank the leftover template label too
         // (slot 7 is static "CPC (All)"). A dash-only value used to leave
         // that CPC (All) title on client decks when the CSV had fewer than

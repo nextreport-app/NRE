@@ -38,12 +38,33 @@ export interface DateSelection {
   customEnd?: string;
 }
 
+export type MetaSyncDiagnosticsSummary = {
+  mappedResultsSum: number;
+  rowCount: number;
+  rowsWithResultsField: number;
+  rowsWithObjectiveResultsField: number;
+  rowsWithPixelInActions: number;
+  rowsWithOnsiteWebLeadInActions?: number;
+  rowsWithUncostedOffsiteInResults?: number;
+  rowsWithMeaningfulConversionFields?: number;
+  rowsWithCostedWebsiteOrLeadInResults?: number;
+  rowsWithCostedLeadInResults?: number;
+  sampleActionTypes?: string[];
+  sampleCostedResultIndicators?: string[];
+  usedCampaignLevelConversionFallback?: boolean;
+  deployCommit: string | null;
+};
+
 export type ApiSyncMeta = {
+  metaSyncDiagnostics?: MetaSyncDiagnosticsSummary;
+  mergedWithManualReference?: boolean;
   previousMonthSynced?: boolean;
   hasPreviousMonthData?: boolean;
   previousMonthCampaigns?: string[];
   previousMonthSelectedCampaigns?: string[] | null;
   previousMonthUpdatedAt?: string | null;
+  campaignPeriodReachMaps?: { byRangeKey: Record<string, Record<string, number>> };
+  metaAdAccountId?: string;
 };
 
 export interface ReportUploadWizardProps {

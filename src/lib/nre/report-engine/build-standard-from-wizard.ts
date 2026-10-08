@@ -24,22 +24,76 @@ import {
   selectedMetricsSchema,
   resolveIncludePreviousMonthComparison,
   resolveShowBudgetPacingOnCover,
+  resolveCsvAlignResults,
 } from "@/lib/validators/report-wizard";
 import { createReportEngine } from "./report-engine-impl";
+import { prisma } from "@/lib/prisma";
+import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
+import {
+  parseMetaAdAccountIdFromForm,
+  resolveMetaCampaignPeriodReachForWizard,
+} from "../resolve-meta-campaign-reach-for-wizard";
+import type { MetaCampaignPeriodReachMaps } from "../campaign-period-reach-maps";
+import type { AiCopy } from "@/lib/pptx/fill-tags";
+import { computeWizardStandardReportFingerprint } from "../wizard-report-config-fingerprint";
+import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
 
 export interface BuildStandardReportWizardInput {
   client: Client;
   mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] };
   formData: FormData | null;
   platform: Platform;
+  metaCampaignPeriodReachFromSession?: MetaCampaignPeriodReachMaps;
+  metaAdAccountIdFromSession?: string;
 }
 
 export type BuildStandardReportWizardResult = { data: ReportData } | { error: string };
 
+export type ResolveStandardReportForGenerateResult =
+  | { data: ReportData; fromPreviewCache: boolean; aiCopyPrecalc?: Record<string, AiCopy> }
+  | { error: string };
+
+/** Generate route — reuse preview-built report (and warmed AI) when config matches. */
+export async function resolveStandardReportForGenerate(
+  input: BuildStandardReportWizardInput & {
+    userId: string;
+    uploadSessionId?: string;
+    fileHash?: string;
+  },
+): Promise<ResolveStandardReportForGenerateResult> {
+  const fileHash = input.fileHash ?? "";
+  if (input.uploadSessionId && fileHash) {
+    const fingerprint = computeWizardStandardReportFingerprint({
+      fileHash,
+      client: input.client,
+      platform: input.platform,
+      formData: input.formData,
+    });
+    const cached = await loadWizardPreviewReportCache(
+      input.userId,
+      input.client.id,
+      input.uploadSessionId,
+      fingerprint,
+    );
+    if (cached) {
+      return {
+        data: cached.reportData,
+        fromPreviewCache: true,
+        aiCopyPrecalc: cached.aiCopy,
+      };
+    }
+  }
+
+  const built = await buildStandardReportForWizard(input);
+  if ("error" in built) return built;
+  return { data: built.data, fromPreviewCache: false };
+}
+
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
 ): Promise<BuildStandardReportWizardResult> {
-  const { client, mtdParsed, formData, platform } = input;
+  const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
+    input;
   const engine = createReportEngine(platform);
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -83,12 +137,39 @@ export async function buildStandardReportForWizard(
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
   const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
 
+  let metaAccessToken: string | null = null;
+  if (platform === "META") {
+    const user = await prisma.user.findUnique({
+      where: { id: client.userId },
+      select: { metaAccessToken: true, metaTokenExpiresAt: true, metaAdsEnabled: true },
+    });
+    if (user?.metaAdsEnabled && user.metaAccessToken) {
+      const fresh = await ensureFreshMetaAccessToken({
+        accessToken: user.metaAccessToken,
+        tokenExpiresAt: user.metaTokenExpiresAt,
+      });
+      metaAccessToken = fresh.accessToken;
+    }
+  }
+
+  const metaAdAccountId = parseMetaAdAccountIdFromForm(formData) ?? metaAdAccountIdFromSession;
+  const metaCampaignPeriodReach = await resolveMetaCampaignPeriodReachForWizard({
+    platform,
+    mtdDailyRows: mtdParsed.rows,
+    timezone: client.timezone,
+    dateSelection,
+    sessionMaps: metaCampaignPeriodReachFromSession,
+    metaAdAccountId,
+    metaAccessToken,
+  });
+
   const data = engine.buildStandard({
     accountName: client.accountName,
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,
     monthlyBudget: client.monthlyBudget,
     showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
+    alignResultsWithCsvExport: resolveCsvAlignResults(formData),
     mtdDailyRows: mtdParsed.rows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
@@ -102,6 +183,7 @@ export async function buildStandardReportForWizard(
     adNameColumn,
     creativeOnly: reportType === "CREATIVE",
     platform,
+    metaCampaignPeriodReach,
   });
 
   return { data };

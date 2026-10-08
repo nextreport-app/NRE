@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
+import { WizardStepHelp } from "../ui/wizard-step-help";
 
 export function WizardMetricsStep() {
   const w = useWizardContext();
@@ -212,8 +213,10 @@ export function WizardMetricsStep() {
         </button>
       </div>
 
+      <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
+
       <WizardStickyFooter
-        stepLabel="Step 3 of 4 · Campaign Metrics"
+        stepLabel="Step 3 of 4 · Metrics"
         onBack={() => setStep(2)}
         primaryLabel="Continue to generate"
         onPrimary={handleMetricsContinue}

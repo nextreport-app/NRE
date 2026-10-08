@@ -127,7 +127,7 @@ export function validateMtdDailyCsv(
     // which would otherwise silently produce a garbage or empty report.
     errors.push({
       field: "date_granularity",
-      message: `Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from ${manager} with daily (Day) breakdown before uploading.`,
+      message: `Your CSV appears to use weekly or monthly totals instead of daily data. Re-export from ${manager} → Reports → Export table data with Time breakdown: Day (the Campaigns-screen export cannot include daily rows).`,
     });
   }
   if (!colMap.results) {

@@ -79,6 +79,10 @@ export const uploadSessionIdSchema = z.string().uuid();
 export const dataSourceSchema = z.enum(["csv", "api"]);
 
 export const metaAdAccountIdSchema = z.string().trim().min(1);
+
+export const metaCampaignPeriodReachMapsSchema = z.object({
+  byRangeKey: z.record(z.string(), z.record(z.string(), z.number())),
+});
 export const googleCustomerIdSchema = z.string().trim().min(1);
 export const tiktokAdvertiserIdSchema = z.string().trim().min(1);
 
@@ -167,6 +171,11 @@ export function resolveShowBudgetPacingOnCover(formData: FormData | null, client
 /** When false, skip loading previous-month data for the Combined Total period row. Defaults to false. */
 export function resolveIncludePreviousMonthComparison(formData: FormData | null): boolean {
   return parseBooleanFormField(formData, "includePreviousMonthComparison") ?? false;
+}
+
+/** When true, result totals use Meta export column rules (CSV verification align). */
+export function resolveCsvAlignResults(formData: FormData | null): boolean {
+  return parseBooleanFormField(formData, "csvAlignResults") ?? false;
 }
 
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */

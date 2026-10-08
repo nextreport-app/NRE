@@ -24,6 +24,10 @@ export interface StandardReportJobPayload extends BaseJobPayload {
   platform: Platform;
   reportTitle?: string;
   reportData: ReportData;
+  /** Pre-warmed on the preview step when config unchanged — skips generateInsights. */
+  aiCopyPrecalc?: Record<string, import("@/lib/pptx/fill-tags").AiCopy>;
+  /** When set, stored on share JSON (Meta hybrid API + manual CSV import). */
+  dataImportNote?: string;
 }
 
 export interface ComparisonReportJobPayload extends BaseJobPayload {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
-import { META_LAUNCH_HERO_BADGE, META_LAUNCH_HERO_SUBHEAD } from "@/lib/meta-launch-scope";
+import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
+import { PRODUCT_DIFFERENTIATOR_LINE, PRODUCT_ELEVATOR_PITCH } from "@/lib/product-positioning";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -57,13 +58,19 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             {META_LAUNCH_HERO_BADGE}
           </span>
 
-          <h1 className="mt-5 text-[2.25rem] font-bold leading-tight text-white sm:text-[3rem]">
-            Send polished Meta Ads client reports in under 2 minutes.
+          <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-white sm:text-[3rem]">
+            Polished Meta client reports in under 2 minutes.
           </h1>
 
-          <p className="mt-5 text-lg text-ink-muted">{META_LAUNCH_HERO_SUBHEAD}</p>
-          <p className="mt-3 text-sm text-ink-secondary">
-            White-label every client report. Google Ads, TikTok, and GA4 are launching soon.
+          <p className="mt-5 text-lg leading-relaxed text-ink-muted">{PRODUCT_ELEVATOR_PITCH}</p>
+
+          <p className="mt-4 border-l-2 border-accent-orange/80 pl-4 text-left text-sm leading-relaxed text-ink-secondary">
+            {PRODUCT_DIFFERENTIATOR_LINE}
+          </p>
+
+          <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+            Live browser link and Google Slides too. White-label every deck. Google Ads, TikTok, and GA4 launching
+            soon.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">

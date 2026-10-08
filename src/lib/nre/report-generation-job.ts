@@ -328,11 +328,16 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     }
 
     // STANDARD — Meta / Google / TikTok weekly/monthly/etc.
-    const { reportData, platform, reportTitle } = job;
+    const { reportData, platform, reportTitle, aiCopyPrecalc } = job;
     const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
+    const precalcMap =
+      aiCopyPrecalc && Object.keys(aiCopyPrecalc).length > 0
+        ? new Map(Object.entries(aiCopyPrecalc))
+        : null;
+
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      generateInsights(reportData, aiKeysFromEnv()),
+      precalcMap ? Promise.resolve(precalcMap) : generateInsights(reportData, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
     ]);
@@ -354,7 +359,10 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       reportData,
       aiCopyBySlideKey,
       new Date(),
-      shareReportExtrasFromUser(user, currencySymbol),
+      {
+        ...shareReportExtrasFromUser(user, currencySymbol),
+        ...(job.dataImportNote ? { dataImportNote: job.dataImportNote } : {}),
+      },
     );
     const shareWithArchive = {
       ...shareData,

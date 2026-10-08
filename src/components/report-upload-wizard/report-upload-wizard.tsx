@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { getAdWizardFlow, getWizardStepHeading, getWizardStepSubtitle } from "@/lib/nre/platform-labels";
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
@@ -96,7 +94,9 @@ function ReportUploadWizardBody() {
     <div className="space-y-6">
       <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} />
-        <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(w.step, w.platform)}</h1>
+        <h1 className="mb-1 text-[20px] font-bold text-white">
+          {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : getWizardStepHeading(w.step, w.platform)}
+        </h1>
         {getWizardStepSubtitle(w.step, w.platform) ? (
           <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(w.step, w.platform)}</p>
         ) : null}
@@ -111,15 +111,6 @@ function ReportUploadWizardBody() {
           onStartOver={() => w.setStep(1)}
         />
       ) : null}
-
-      {w.step === 4 && (
-        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-          Have a question or an issue with this report?{" "}
-          <SupportTicketLink clientId={w.clientId} openInNewTab /> or{" "}
-          <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-          .
-        </p>
-      )}
 
       <WizardImportStep />
       <WizardCampaignsStep />

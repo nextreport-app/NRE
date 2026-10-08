@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
+import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
 import Link from "next/link";
-import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
@@ -20,10 +21,14 @@ import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { WizardPlatformCompactBar, WizardPlatformPickerGrid } from "../ui/platform-picker";
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { isPlatformBeta } from "@/lib/platform-beta";
+import { isWizardPlatformSwitchEnabled } from "@/lib/meta-launch-scope";
 import { UploadDropzone } from "../ui/upload-dropzone";
+import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
+import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 
 export function WizardImportStep() {
   const w = useWizardContext();
+  const [apiDiagnosticsOpen, setApiDiagnosticsOpen] = useState(false);
   if (w.step !== 1) return null;
   const {
     analyzeErrors,
@@ -54,6 +59,10 @@ export function WizardImportStep() {
     metaConfigured,
     metaConnected,
     metaConnectedName,
+    metaSyncDiagnostics,
+    metaManualReferenceCsvFile,
+    handleMetaManualReferenceCsvSelected,
+    metaManualReferenceCsvText,
     mismatchWarning,
     mtdFile,
     platformPickerExpanded,
@@ -79,6 +88,13 @@ export function WizardImportStep() {
     showTikTokOption,
     tiktokConfigured,
     tiktokConnected,
+    reportType,
+    handleReportTypeChange,
+    reportTypeLabel,
+    csvDateGuidance,
+    csvWarningDismissed,
+    setCsvWarningDismissed,
+    setCsvDateGuidance,
   } = w;
 
   const previousMonthInfo = getPreviousMonthComparisonInfo(
@@ -88,9 +104,20 @@ export function WizardImportStep() {
   );
   const showCompactPreviousMonth =
     previousMonthInfo.status === "current" && !includePreviousMonthComparison;
+  const platformSwitchEnabled = isWizardPlatformSwitchEnabled();
+
+  const setupPlatform = selectedPlatformCard ?? "META";
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+      <WizardReportSetupPanel
+        reportType={reportType}
+        reportTypeLabel={reportTypeLabel()}
+        platform={setupPlatform}
+        clientTimezone={clientTimezone}
+        onReportTypeChange={handleReportTypeChange}
+      />
+
       {hasSavedPlatformPreference && selectedPlatformCard ? (
         <>
           <WizardPlatformCompactBar
@@ -113,8 +140,9 @@ export function WizardImportStep() {
             description={wizardPlatformImportDescription(selectedPlatformCard)}
             expanded={platformPickerExpanded}
             onToggle={() => setPlatformPickerExpanded((open) => !open)}
+            allowPlatformChange={platformSwitchEnabled}
           />
-          {platformPickerExpanded ? (
+          {platformSwitchEnabled && platformPickerExpanded ? (
             <div className="space-y-3 border-t border-dash-border pt-4">
               <p className="text-[13px] text-dash-ink-secondary">Switch to a different platform</p>
               <WizardPlatformPickerGrid
@@ -154,6 +182,12 @@ export function WizardImportStep() {
             </p>
           ) : null}
 
+          <WizardImportDownloadInstructions
+            reportType={reportType}
+            platform={selectedPlatformCard}
+            clientTimezone={clientTimezone}
+          />
+
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
               clientId={clientId}
@@ -177,18 +211,150 @@ export function WizardImportStep() {
                 setApiSyncError(message);
               }}
               importComplete={false}
+              referenceManualCsvText={metaManualReferenceCsvText}
             />
+          ) : null}
+
+          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+            <div className="space-y-2 rounded-lg border border-dash-border bg-[#0d1b2e]/60 px-4 py-3">
+              <p className="text-[14px] font-medium text-white">Optional: Ads Manager reference CSV</p>
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                Upload the manual export if API Result columns look off — we merge{" "}
+                <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>, and{" "}
+                <span className="text-dash-ink">Website leads</span> from your file over API delivery.
+              </p>
+              <UploadDropzone
+                file={metaManualReferenceCsvFile}
+                onFileSelected={handleMetaManualReferenceCsvSelected}
+              />
+            </div>
+          ) : null}
+
+          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (
+            <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/40 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setApiDiagnosticsOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-2 text-left"
+                aria-expanded={apiDiagnosticsOpen}
+              >
+                <span className="text-[13px] font-medium text-dash-ink-secondary">
+                  Advanced: API sync diagnostics
+                  {metaSyncDiagnostics.mappedResultsSum === 0 ? (
+                    <span className="ml-2 text-amber-300">· mapped results 0</span>
+                  ) : (
+                    <span className="ml-2 text-emerald-300">· mapped results {metaSyncDiagnostics.mappedResultsSum}</span>
+                  )}
+                </span>
+                <span className="text-dash-ink-muted">{apiDiagnosticsOpen ? "▲" : "▼"}</span>
+              </button>
+              {apiDiagnosticsOpen ? (
+            <div
+              className={`mt-3 rounded-md border px-3 py-3 ${
+                metaSyncDiagnostics.mappedResultsSum > 0
+                  ? "border-emerald-500/35 bg-[#0d1b2e]/80"
+                  : "border-amber-500/40 bg-amber-950/20"
+              }`}
+            >
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                For support only — same file as &quot;Download API sync CSV&quot; (
+                <span className="font-mono text-dash-ink">meta-api-sync-YYYY-MM-DD.csv</span>). Check{" "}
+                <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>,{" "}
+                <span className="text-dash-ink">Website leads</span>.
+              </p>
+              <ul className="mt-2 space-y-1 text-[13px] text-dash-ink-secondary">
+                <li>
+                  Mapped Results total:{" "}
+                  <span className="font-semibold text-white">{metaSyncDiagnostics.mappedResultsSum}</span>
+                </li>
+                <li>
+                  Rows: {metaSyncDiagnostics.rowCount} · Meta sent{" "}
+                  <span className="text-dash-ink">results[]</span> on {metaSyncDiagnostics.rowsWithResultsField} ·{" "}
+                  <span className="text-dash-ink">objective_results[]</span> on{" "}
+                  {metaSyncDiagnostics.rowsWithObjectiveResultsField} · pixel in{" "}
+                  <span className="text-dash-ink">actions[]</span> on {metaSyncDiagnostics.rowsWithPixelInActions}
+                  {typeof metaSyncDiagnostics.rowsWithOnsiteWebLeadInActions === "number" ? (
+                    <>
+                      {" "}
+                      · <span className="text-dash-ink">onsite_web_lead</span> in actions[] on{" "}
+                      {metaSyncDiagnostics.rowsWithOnsiteWebLeadInActions}
+                    </>
+                  ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithUncostedOffsiteInResults === "number" ? (
+                    <>
+                      {" "}
+                      · uncosted offsite in results[] on {metaSyncDiagnostics.rowsWithUncostedOffsiteInResults}
+                    </>
+                  ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithMeaningfulConversionFields === "number" ? (
+                    <>
+                      {" "}
+                      · meaningful conversion fields on{" "}
+                      {metaSyncDiagnostics.rowsWithMeaningfulConversionFields}
+                    </>
+                  ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithCostedWebsiteOrLeadInResults === "number" ? (
+                    <>
+                      {" "}
+                      · costed website/lead in results[] on{" "}
+                      {metaSyncDiagnostics.rowsWithCostedWebsiteOrLeadInResults}
+                    </>
+                  ) : null}
+                  {typeof metaSyncDiagnostics.rowsWithCostedLeadInResults === "number" ? (
+                    <>
+                      {" "}
+                      · costed <span className="text-dash-ink">lead</span> in results[] on{" "}
+                      {metaSyncDiagnostics.rowsWithCostedLeadInResults}
+                    </>
+                  ) : null}
+                </li>
+                {metaSyncDiagnostics.usedCampaignLevelConversionFallback ? (
+                  <li className="text-emerald-200">
+                    Used campaign-level conversion fields (ad-set rows omitted results[]).
+                  </li>
+                ) : null}
+                {metaSyncDiagnostics.sampleActionTypes?.length ? (
+                  <li className="font-mono text-[12px] text-dash-ink-muted">
+                    Sample actions[]: {metaSyncDiagnostics.sampleActionTypes.join(", ")}
+                  </li>
+                ) : null}
+                {metaSyncDiagnostics.sampleCostedResultIndicators?.length ? (
+                  <li className="font-mono text-[12px] text-dash-ink-muted">
+                    Sample costed results[]:{" "}
+                    {metaSyncDiagnostics.sampleCostedResultIndicators.join(", ")}
+                  </li>
+                ) : null}
+                {metaSyncDiagnostics.deployCommit ? (
+                  <li>
+                    Deploy commit:{" "}
+                    <span className="font-mono text-dash-ink">{metaSyncDiagnostics.deployCommit}</span>
+                  </li>
+                ) : null}
+              </ul>
+              {metaSyncDiagnostics.mappedResultsSum === 0 ? (
+                <p className="mt-2 text-[13px] text-amber-200">
+                  If <span className="text-dash-ink">results[]</span> is 0 on all rows, Meta did not send conversion
+                  fields. If <span className="text-dash-ink">results[]</span> is populated but costed lead is 0, Meta
+                  is likely sending uncosted counts (common) — ensure deploy is after the latest mapper fix. If{" "}
+                  <span className="text-dash-ink">meaningful conversion fields</span> stay near 0 while{" "}
+                  <span className="text-dash-ink">results[]</span> is 30/30, the sync should merge campaign-level
+                  costed results (post-fix). Share this panel in support if totals are still wrong.
+                </p>
+              ) : null}
+            </div>
+              ) : null}
+            </div>
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
             <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3">
-              <p className="text-[14px] font-medium text-white">Download API data to compare with your manual CSV</p>
+              <p className="text-[14px] font-medium text-white">API sync complete</p>
               <button
                 type="button"
                 onClick={() => downloadWizardCsvFile(mtdFile)}
                 className="mt-3 inline-flex h-10 items-center rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-[14px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
               >
-                Download API sync CSV again
+                Download API sync CSV
               </button>
             </div>
           ) : null}
@@ -196,26 +362,17 @@ export function WizardImportStep() {
           {(!AD_PLATFORM_API_SYNC_ENABLED || dataSourceMode === "csv") && (
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
-              <p className="rounded-lg border border-[#f6ad55]/40 bg-[#1e293b] px-4 py-3.5 text-[14px] leading-relaxed text-dash-ink">
-                <a
-                  href="https://nextreport.in/help/download"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mb-1 block text-[15px] font-semibold text-[#f6ad55] underline decoration-[#f6ad55]/50 underline-offset-2 hover:text-[#fbd38d]"
-                >
-                  How to download your CSV
-                </a>
-                {selectedPlatformCard === "META" ? (
-                  <span className="block text-[#e2e8f0]">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</span>
-                ) : selectedPlatformCard === "TIKTOK" ? (
-                  <span className="block text-[#e2e8f0]">
-                    Export Last 30 days with Day breakdown from TikTok Ads Manager — include Campaign, Ad group, Cost,
-                    Impressions, Clicks, and Conversions.
-                  </span>
-                ) : (
-                  "Set date range to Last 30 days and segment by Day."
-                )}
-              </p>
+
+              {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
+                <CsvDateGuidanceBanner
+                  guidance={csvDateGuidance}
+                  onContinue={() => setCsvWarningDismissed(true)}
+                  onRedownload={() => {
+                    setCsvWarningDismissed(false);
+                    setCsvDateGuidance(null);
+                  }}
+                />
+              ) : null}
 
               <button
                 type="button"

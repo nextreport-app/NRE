@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/data-deletion",
   "/terms",
   "/contact",
+  "/feedback",
   "/book-demo",
   "/about",
   "/pricing",

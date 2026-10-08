@@ -187,7 +187,7 @@ export function evaluateAddMetric(selectedCount: number, _addableRemaining = 0):
 }
 
 export function additionalMetricsHeading(name: string): string {
-  return `${name} — Additional Metrics (continued from previous slide)`;
+  return `${name} — Additional Metrics`;
 }
 
 /** Pad the continuation when the user added this many extras or fewer (1–3). Four extras already fill the slide honestly. */
@@ -541,6 +541,20 @@ export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: s
     if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
     kept.push(candidate);
     used.add(key);
+  }
+
+  // When the pack wishlist + pack backfill stop at 7 but the CSV still has
+  // honest metrics in the wizard "Add from your CSV" pool, pre-select an
+  // 8th so the weekly slide fills all 8 slots without manual + clicks.
+  if (kept.length < MAX_METRICS_PER_SLIDE) {
+    const addable = filterAddableMetrics(listSelectableMetrics(headers, "META"), kept);
+    for (const candidate of addable) {
+      if (kept.length >= MAX_METRICS_PER_SLIDE) break;
+      if (used.has(candidate.key)) continue;
+      if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
+      kept.push(candidate);
+      used.add(candidate.key);
+    }
   }
 
   return kept;
