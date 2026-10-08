@@ -146,7 +146,7 @@ export function WizardReportSetupPanel({
         ) : null}
         <p className="mt-3 text-[13px]">
           <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-            Full {platformLabel} CSV export guide →
+            See {platformLabel} CSV export guide →
           </Link>
         </p>
       </div>
