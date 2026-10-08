@@ -47,8 +47,7 @@ export function WizardReportSetupPanel({
       <div>
         <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Each type produces a different deck. Hover a card (or tap{" "}
-          <span className="font-medium text-dash-ink">i</span> on mobile) to see what you get.
+          Each type produces a different deck. Hover a card to see what you get.
         </p>
       </div>
 
