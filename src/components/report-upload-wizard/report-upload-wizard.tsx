@@ -100,6 +100,11 @@ function ReportUploadWizardBody() {
         ) : null}
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+      {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ? (
+        <p className="text-[11px] text-dash-ink-muted" aria-hidden>
+          App build {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}
+        </p>
+      ) : null}
 
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner

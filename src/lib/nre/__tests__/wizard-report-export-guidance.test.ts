@@ -19,6 +19,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.bullets.some((b) => /both periods/i.test(b))).toBe(true);
+    expect(g.headline).toMatch(/both periods/i);
   });
 });

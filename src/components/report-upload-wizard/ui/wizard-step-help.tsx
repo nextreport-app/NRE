@@ -3,7 +3,6 @@
 import Link from "next/link";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
-import { getMetaCsvDownloadTip } from "@/lib/nre/csv-date-guidance";
 
 type WizardHelpStep = 1 | 2 | 3;
 
@@ -22,15 +21,16 @@ export function WizardStepHelp({
     return (
       <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">
         <p className="font-medium text-dash-ink">Need help with this step?</p>
+        <p className="mt-1">
+          Start with <span className="text-dash-ink">What report are you building?</span> at the top — export
+          instructions there match your report type before you upload or sync.
+        </p>
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>
             <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
               How to download your {platformLabel} CSV
             </Link>
           </li>
-          {platform === "META" ? (
-            <li className="text-dash-ink-muted">{getMetaCsvDownloadTip(new Date(), clientTimezone)}</li>
-          ) : null}
         </ul>
       </div>
     );
