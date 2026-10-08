@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { messageForAuthSignInError } from "@/lib/auth-sign-in-errors";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/clients";
+  const authErrorCode = params.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const fromUrl = messageForAuthSignInError(authErrorCode);
+    if (fromUrl) setError(fromUrl);
+  }, [authErrorCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -92,10 +100,16 @@ function LoginForm() {
       </div>
 
       <button
-        onClick={() => signIn("google", { callbackUrl })}
-        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border"
+        type="button"
+        disabled={googleLoading || loading}
+        onClick={() => {
+          setError(null);
+          setGoogleLoading(true);
+          void signIn("google", { callbackUrl });
+        }}
+        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border disabled:opacity-60"
       >
-        Continue with Google
+        {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
       </button>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
