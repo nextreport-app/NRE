@@ -15,7 +15,12 @@ describe("wizard report type copy", () => {
   it("each launch type has non-empty you-get line", () => {
     for (const copy of Object.values(WIZARD_REPORT_TYPE_COPY)) {
       expect(copy.cardYouGet.length).toBeGreaterThan(20);
+      expect(copy.cardOneLiner.length).toBeGreaterThan(3);
       expect(copy.pickerLabel).toBe(copy.cardHeading);
     }
+  });
+
+  it("weekly one-liner matches short card label", () => {
+    expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toBe("Last 7-day report.");
   });
 });
