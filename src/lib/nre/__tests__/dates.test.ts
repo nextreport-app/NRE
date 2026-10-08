@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatDateUS, getComparisonPeriodLabel, getDateRangeAbbrLabel, getDateRangeShortLabel, parseDate } from "../dates";
+import {
+  formatComparisonCoverDateLine,
+  formatDateUS,
+  getComparisonPeriodLabel,
+  getDateRangeAbbrLabel,
+  getDateRangeShortLabel,
+  parseDate,
+} from "../dates";
 
 describe("parseDate", () => {
   it("detects Indian DD-MM-YY when the first number > 12", () => {
@@ -66,6 +73,14 @@ describe("getDateRangeShortLabel", () => {
 
   it("returns N/A when start is unparseable", () => {
     expect(getDateRangeShortLabel("", "13-07-2026")).toBe("N/A");
+  });
+});
+
+describe("formatComparisonCoverDateLine — comparison cover single line", () => {
+  it("uses one year suffix when both periods share a calendar year", () => {
+    expect(formatComparisonCoverDateLine("2026-10-01", "2026-10-07", "2026-09-24", "2026-09-30")).toBe(
+      "Oct 1–7 vs Sep 24–30, 2026",
+    );
   });
 });
 

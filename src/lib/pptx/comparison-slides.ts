@@ -67,7 +67,7 @@ export function buildComparisonCoverSlideXml(
     template,
     {
       accountName: comparison.accountName,
-      reportDate: `${comparison.periodALabel}   vs   ${comparison.periodBLabel}`,
+      reportDate: comparison.coverPeriodLine,
       dateRange: "",
       healthBadge: "",
       healthScore: 0,

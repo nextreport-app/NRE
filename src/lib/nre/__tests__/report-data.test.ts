@@ -4339,6 +4339,7 @@ describe("buildComparisonReportData", () => {
     const result = buildComparisonReportData(baseInput());
     expect(result.periodALabel).toBe("Aug 1 - Aug 6, 2026");
     expect(result.periodBLabel).toBe("Jul 1 - Jul 6, 2026");
+    expect(result.coverPeriodLine).toBe("Aug 1–6 vs Jul 1–6, 2026");
   });
 
   it("respects selectedCampaigns filtering", () => {

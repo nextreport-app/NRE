@@ -137,6 +137,40 @@ export function getComparisonPeriodLabel(rawStart: unknown, rawEnd: unknown): st
   return `${sm} ${s.day} - ${em} ${e.day}, ${e.year}`;
 }
 
+function compactComparisonPeriodLabel(rawStart: unknown, rawEnd: unknown): string {
+  const s = parseDate(rawStart);
+  const e = parseDate(rawEnd);
+  if (!s) return "N/A";
+  const sm = MONTHS_ABBR[s.month - 1];
+  if (!e) return `${sm} ${s.day}, ${s.year}`;
+  const em = MONTHS_ABBR[e.month - 1];
+  if (s.day === e.day && s.month === e.month && s.year === e.year) return `${sm} ${s.day}, ${s.year}`;
+  if (s.month === e.month && s.year === e.year) return `${sm} ${s.day}–${e.day}`;
+  if (s.year === e.year) return `${sm} ${s.day} - ${em} ${e.day}`;
+  return `${sm} ${s.day}, ${s.year} - ${em} ${e.day}, ${e.year}`;
+}
+
+/**
+ * One-line comparison cover subtitle — shorter than two full period labels
+ * (single year suffix when both periods share a calendar year).
+ */
+export function formatComparisonCoverDateLine(
+  periodAStart: unknown,
+  periodAEnd: unknown,
+  periodBStart: unknown,
+  periodBEnd: unknown,
+): string {
+  const a = compactComparisonPeriodLabel(periodAStart, periodAEnd);
+  const b = compactComparisonPeriodLabel(periodBStart, periodBEnd);
+  const yearA = parseDate(periodAStart)?.year;
+  const yearB = parseDate(periodBStart)?.year;
+  const yearSuffix =
+    yearA && yearB && yearA === yearB && !a.includes(String(yearA)) && !b.includes(String(yearB))
+      ? `, ${yearA}`
+      : "";
+  return `${a} vs ${b}${yearSuffix}`;
+}
+
 /** "Jan" — abbreviated calendar month name. Null if unparseable. */
 export function getMonthAbbrName(rawValue: unknown): string | null {
   const d = parseDate(rawValue);

@@ -66,6 +66,7 @@ function comparisonData(overrides: Partial<ComparisonReportData> = {}): Comparis
     reportDate: "08-07-2026",
     periodALabel: "Aug 1 - Aug 6, 2026",
     periodBLabel: "Jul 1 - Jul 6, 2026",
+    coverPeriodLine: "Aug 1–6 vs Jul 1–6, 2026",
     campaigns,
     totals: {
       metricsA: metricSet(1234, 45231, 47, 26.26),
@@ -86,8 +87,8 @@ describe("buildComparisonCoverSlideXml", () => {
     const xml = buildComparisonCoverSlideXml(template.cover, comparisonData());
     expect(xml).toContain("COMPARISON PERFORMANCE REPORT");
     expect(xml).toContain("Acme Inc");
-    expect(xml).toContain("Aug 1 - Aug 6, 2026");
-    expect(xml).toContain("Jul 1 - Jul 6, 2026");
+    expect(xml).toContain("Aug 1–6 vs Jul 1–6, 2026");
+    expect(xml).toContain('wrap="none"');
     expect(xml).not.toContain("{{"); // no leftover unfilled tags
   });
 

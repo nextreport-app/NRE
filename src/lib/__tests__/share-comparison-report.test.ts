@@ -10,6 +10,7 @@ const baseComparison = {
   reportDate: "Sep 1, 2026",
   periodALabel: "Aug 1 - Aug 15, 2026",
   periodBLabel: "Aug 16 - Aug 31, 2026",
+  coverPeriodLine: "Aug 1–15 vs Aug 16–31, 2026",
   campaigns: [],
   totals: {
     metricsA: {

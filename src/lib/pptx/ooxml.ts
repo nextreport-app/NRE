@@ -237,6 +237,21 @@ export function setShapeOffsetY(xml: string, locatorText: string, y: number): st
  * mode untouched. No-op if the locator isn't found, or if that shape
  * doesn't currently use `<a:spAutoFit/>`.
  */
+/** Force word wrap on or off for the shape located by placeholder or filled text. */
+export function setShapeTextWrap(xml: string, locatorText: string, wrap: "none" | "square"): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  let sp = xml.slice(start, end);
+  if (/<a:bodyPr[^>]*wrap="/.test(sp)) {
+    sp = sp.replace(/wrap="(?:none|square)"/, `wrap="${wrap}"`);
+  } else {
+    sp = sp.replace("<a:bodyPr", `<a:bodyPr wrap="${wrap}"`);
+  }
+  return xml.slice(0, start) + sp + xml.slice(end);
+}
+
 export function setShapeNormAutofit(xml: string, locatorText: string): string {
   const idx = xml.indexOf(locatorText);
   if (idx === -1) return xml;

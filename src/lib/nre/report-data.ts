@@ -47,6 +47,7 @@ import {
   getCalendarDateInTimezone,
   getDateRangeShortLabel,
   getDateRangeAbbrLabel,
+  formatComparisonCoverDateLine,
   getComparisonPeriodLabel,
   formatDateUS,
   getMonthName,
@@ -2235,6 +2236,8 @@ export interface ComparisonReportData {
   /** e.g. "Aug 1 - Aug 6, 2026" — see dates.ts's getComparisonPeriodLabel. */
   periodALabel: string;
   periodBLabel: string;
+  /** Compact single-line cover date — dates.ts formatComparisonCoverDateLine. */
+  coverPeriodLine: string;
   campaigns: ComparisonCampaignData[];
   totals: {
     metricsA: ComparisonMetricSet;
@@ -2501,6 +2504,12 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     reportDate: formatCoverReportDate(campaignFilteredRows, now, timezone),
     periodALabel: getComparisonPeriodLabel(periodA.startIso, periodA.endIso),
     periodBLabel: getComparisonPeriodLabel(periodB.startIso, periodB.endIso),
+    coverPeriodLine: formatComparisonCoverDateLine(
+      periodA.startIso,
+      periodA.endIso,
+      periodB.startIso,
+      periodB.endIso,
+    ),
     campaigns,
     totals: {
       metricsA: comparisonMetricSet(totalSpendA, totalReachA, totalResultsA, totalCprA, currencySymbol),

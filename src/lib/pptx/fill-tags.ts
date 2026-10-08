@@ -33,6 +33,7 @@ import {
   replaceTagRunWithSuffixes,
   setShapeNormAutofit,
   setShapeOffsetY,
+  setShapeTextWrap,
   type StyleOverride,
 } from "./ooxml";
 import { textBox } from "./shapes";
@@ -52,6 +53,9 @@ const MIN_CARD_LABEL_VALUE_GAP_EMU = ptToEmu(4);
 // change in templates/dark.pptx.
 const ACCOUNT_NAME_MAX_WIDTH_PT = emuToPt(5300000);
 const ACCOUNT_NAME_CANDIDATE_SIZES_PT = [30, 28, 24, 20, 18];
+/** Comparison cover — long "Period A vs Period B" line; wider than default REPORT_DATE box. */
+const COMPARISON_COVER_DATE_MAX_WIDTH_PT = emuToPt(9600000);
+const COMPARISON_COVER_DATE_SIZE_CANDIDATES_PT = [15, 14, 13, 12, 11];
 
 // CAMPAIGN_NAME shape (ppt/slides/slide2.xml, campaign/ad-set template):
 // cx="11433300" lIns="91425" rIns="91425" — keep in sync with the template.
@@ -262,6 +266,9 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
   const agencyName = options.agencyName?.trim();
 
   let xml = template.xml;
+  if (options.reportType === "COMPARISON") {
+    xml = setShapeTextWrap(xml, "{{REPORT_DATE}}", "none");
+  }
   if (agencyName) {
     const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
     xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
@@ -270,6 +277,10 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
   }
 
   const reportTitle = resolveCoverReportTitle(options.reportTitle, options.reportType);
+  const reportDateSizePt =
+    options.reportType === "COMPARISON"
+      ? fitFontSizePt(cover.reportDate, COMPARISON_COVER_DATE_MAX_WIDTH_PT, COMPARISON_COVER_DATE_SIZE_CANDIDATES_PT)
+      : 15;
 
   return fillTags(
     xml,
@@ -292,7 +303,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       // Every other cover-slide line (REPORT_TITLE 20pt, PRESENTED_TO/
       // PREPARED_BY 12pt, ACCOUNT_NAME 16-28pt) is already at or above the
       // spec's stated 12pt floor and is left untouched.
-      REPORT_DATE: { sizePt: 15 },
+      REPORT_DATE: { sizePt: reportDateSizePt },
       ACCOUNT_HEALTH_BADGE: { sizePt: 15, bold: true },
       BUDGET_SUMMARY: { sizePt: 14 },
       // Round L — recolored to the same muted grey every other slide's own
