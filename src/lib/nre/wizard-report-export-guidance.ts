@@ -28,7 +28,7 @@ export function wizardExportGuidanceForReportType(input: {
           title: "Ads Manager export (weekly report)",
           lines: [
             baseTip,
-            "You choose the 7-day period later; the same file powers MTD, the last-30 chart, and pacing — not a Last-7-days-only export.",
+            "Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing.",
           ],
         };
       case "MONTHLY":
