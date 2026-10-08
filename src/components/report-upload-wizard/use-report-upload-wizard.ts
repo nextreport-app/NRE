@@ -27,7 +27,7 @@ import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/camp
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
-import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
+import { budgetPacingWarning, buildBudgetCoverPreview, buildBudgetSummary } from "@/lib/nre/budget-pacing";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
@@ -1683,7 +1683,13 @@ export function useReportUploadWizard({
 
     if (!res.ok || !json) {
       setPreviewStatus("error");
-      setPreviewMessage("Something went wrong building the preview. Please try again.");
+      const apiMsg =
+        typeof json?.error === "string"
+          ? json.error
+          : Array.isArray(json?.errors) && json.errors[0]?.message
+            ? String(json.errors[0].message)
+            : null;
+      setPreviewMessage(apiMsg ?? "Something went wrong building the preview. Please try again.");
       setPreviewRefreshing(false);
       return;
     }
@@ -1757,7 +1763,6 @@ export function useReportUploadWizard({
     comparisonPeriodB?.startIso,
     comparisonPeriodB?.endIso,
     historicalMonthCount,
-    showBudgetOnCover,
     includePreviousMonthComparison,
     csvAlignResults,
     generateStatus,
@@ -2144,6 +2149,19 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const previous = showBudgetOnCover;
     setShowBudgetOnCover(next);
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        cover: {
+          ...prev.cover,
+          budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+            showOnCover: next,
+            timezone: clientTimezone,
+          }),
+        },
+      };
+    });
     setBudgetToggleSaving(true);
     try {
       const res = await fetch(`/api/clients/${clientId}`, {
@@ -2153,14 +2171,55 @@ export function useReportUploadWizard({
       });
       if (!res.ok) {
         setShowBudgetOnCover(previous);
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            cover: {
+              ...prev.cover,
+              budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+                showOnCover: previous,
+                timezone: clientTimezone,
+              }),
+            },
+          };
+        });
         showToast("Couldn't save cover budget preference.", "error");
       }
     } catch {
       setShowBudgetOnCover(previous);
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cover: {
+            ...prev.cover,
+            budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+              showOnCover: previous,
+              timezone: clientTimezone,
+            }),
+          },
+        };
+      });
       showToast("Couldn't save cover budget preference.", "error");
     } finally {
       setBudgetToggleSaving(false);
     }
+  }
+
+  function retryPreview() {
+    setPreviewMessage(null);
+    setPreviewErrors([]);
+    setPreviewStatus("loading");
+    void fetchPreview();
+  }
+
+  function handleGenerateStepPrimary() {
+    if (previewStatus === "error") {
+      retryPreview();
+      return;
+    }
+    void handleGenerate();
   }
 
   function driveDateRangeLabel(): string {
@@ -2373,6 +2432,8 @@ export function useReportUploadWizard({
     generateStatus,
     generateMessage,
     handleGenerate,
+    handleGenerateStepPrimary,
+    retryPreview,
     reportId,
     downloadUrl,
     publishedAt,

@@ -68,6 +68,7 @@ export function WizardGenerateStep() {
     handleCopyLink,
     handleCopyShareLink,
     handleGenerate,
+    handleGenerateStepPrimary,
     handleGenerateAnother,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
@@ -140,7 +141,8 @@ export function WizardGenerateStep() {
   if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
-  const generateCtaDisabled = previewStatus === "invalid" || !generateStepPreviewReady;
+  const generateCtaDisabled =
+    previewStatus === "invalid" || (previewStatus !== "error" && !generateStepPreviewReady);
   const generateCtaLabel =
     generateStatus === "loading"
       ? "Generating…"
@@ -434,12 +436,12 @@ export function WizardGenerateStep() {
                     </p>
                   )}
                   <label
-                    className={`flex items-start gap-3 ${budgetToggleSaving || !generateStepPreviewReady ? "cursor-wait" : "cursor-pointer"}`}
+                    className={`flex items-start gap-3 ${budgetToggleSaving || !data ? "cursor-wait" : "cursor-pointer"}`}
                   >
                     <input
                       type="checkbox"
                       checked={showBudgetOnCover}
-                      disabled={budgetToggleSaving || !generateStepPreviewReady}
+                      disabled={budgetToggleSaving || !data}
                       onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
                     />
@@ -1044,9 +1046,12 @@ export function WizardGenerateStep() {
               onBack={() => setStep(3)}
               backLabel="Back to metrics"
               primaryLabel={generateCtaLabel}
-              onPrimary={handleGenerate}
+              onPrimary={handleGenerateStepPrimary}
               primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
-              primaryLoading={generateStatus === "loading" || (!generateStepPreviewReady && previewStatus === "loading")}
+              primaryLoading={
+                generateStatus === "loading" ||
+                (previewStatus === "loading" && generateStatus === "idle")
+              }
             />
           ) : null}
         </div>
