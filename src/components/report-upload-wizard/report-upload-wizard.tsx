@@ -12,6 +12,7 @@ import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
 import { WizardGenerateStep } from "./steps/generate-step";
+import { WizardFeedbackLink } from "./ui/wizard-feedback-link";
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
   return (
@@ -114,6 +115,7 @@ function ReportUploadWizardBody() {
       <WizardCampaignsStep />
       <WizardMetricsStep />
       <WizardGenerateStep />
+      <WizardFeedbackLink />
     </div>
   );
 }

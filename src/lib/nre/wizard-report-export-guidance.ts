@@ -1,11 +1,12 @@
 /**
- * User-facing export instructions for Import download block — tied to report type and platform.
+ * Import-step download instructions — aligned to how each report type uses the CSV.
  */
 
 import type { Platform } from "./google-columns";
 import { getMetaCsvDownloadTip } from "./csv-date-guidance";
-import { getPlatformLabel } from "./platform-labels";
+import { getCalendarDateInTimezone } from "./dates";
 import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
+import { getPlatformLabel } from "./platform-labels";
 
 export interface WizardExportGuidance {
   /** One-line subtitle under “Download instructions”. */
@@ -15,6 +16,76 @@ export interface WizardExportGuidance {
 
 function withPlatform(reportKind: string, platform: Platform): string {
   return `${reportKind} · ${getPlatformLabel(platform)}`;
+}
+
+function isFirstCalendarDay(now: Date, timezone: string): boolean {
+  return getCalendarDateInTimezone(now, timezone).day === 1;
+}
+
+/** Meta — weekly copy is fixed product wording; other types stay plain and short. */
+function metaExportLines(
+  reportType: ReportTypeValue,
+  now: Date,
+  timezone: string,
+): string[] {
+  const onFirst = isFirstCalendarDay(now, timezone);
+
+  switch (reportType) {
+    case "WEEKLY":
+      return [
+        getMetaCsvDownloadTip(now, timezone),
+        "Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing.",
+      ];
+
+    case "MONTHLY":
+    case "QUARTER":
+    case "YTD":
+      if (onFirst) {
+        return [
+          "Export Previous Month with Day breakdown — the full calendar month you are closing.",
+        ];
+      }
+      return [
+        "Export from the 1st of this month through yesterday, with Day breakdown.",
+        "Last 30 Days is OK only if your file still starts on the 1st of this month.",
+      ];
+
+    case "DAILY":
+      return [
+        "Export with Day breakdown and make sure yesterday is included (Last 7 Days is enough).",
+      ];
+
+    case "DAY_BREAKDOWN":
+      return [
+        "Export every day you want in the table, with Day breakdown.",
+        "Use the same date range in Ads Manager that you will pick after upload.",
+      ];
+
+    case "COMPARISON":
+      return [
+        "One CSV must cover both periods you will compare, with Day breakdown.",
+        onFirst
+          ? "If a period starts before this month, use a wider custom range — not only Previous Month."
+          : "Last 30 Days works if both periods fit inside it; otherwise choose a wider range.",
+      ];
+
+    case "HISTORICAL":
+      return [
+        "Export every month you want in the deck, with Day breakdown.",
+        "Use one continuous date range in Ads Manager and widen it until all months are included.",
+      ];
+
+    case "CREATIVE":
+      return [
+        "Ads tab → export with Day breakdown and an Ad name column.",
+        onFirst
+          ? "Date range: Previous Month or Last 30 Days."
+          : "Date range: Last 30 Days (or enough days for your creative window).",
+      ];
+
+    default:
+      return [getMetaCsvDownloadTip(now, timezone)];
+  }
 }
 
 export function wizardExportGuidanceForReportType(input: {
@@ -27,84 +98,56 @@ export function wizardExportGuidanceForReportType(input: {
   const now = input.now ?? new Date();
 
   if (platform === "META") {
-    const baseTip = getMetaCsvDownloadTip(now, clientTimezone);
-    switch (reportType) {
-      case "WEEKLY":
-        return {
-          context: withPlatform("Weekly report", platform),
-          lines: [
-            baseTip,
-            "Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing.",
-          ],
-        };
-      case "MONTHLY":
-      case "QUARTER":
-      case "YTD":
-        return {
-          context: withPlatform("Monthly-style report", platform),
-          lines: [baseTip, "Day breakdown; through yesterday for MTD and the performance chart."],
-        };
-      case "DAILY":
-        return {
-          context: withPlatform("Yesterday report", platform),
-          lines: [baseTip, "Include yesterday plus a few prior days (Day breakdown)."],
-        };
-      case "DAY_BREAKDOWN":
-        return {
-          context: withPlatform("Daily performance table", platform),
-          lines: [
-            "Cover every day you want in the table — Last 30 days + Day breakdown is a safe default.",
-          ],
-        };
-      case "COMPARISON":
-        return {
-          context: withPlatform("Comparison report (one CSV for both periods)", platform),
-          lines: [
-            baseTip,
-            "Day breakdown; after upload you pick Period A and B inside this file.",
-          ],
-        };
-      case "HISTORICAL":
-        return {
-          context: withPlatform("Multi-month historical report", platform),
-          lines: ["Day breakdown across every month you want in the deck."],
-        };
-      case "CREATIVE":
-        return {
-          context: withPlatform("Creative report", platform),
-          lines: [
-            "Ads tab → day breakdown with Ad name.",
-            "Same date idea as campaigns: Last 30 days (or Previous month on the 1st).",
-          ],
-        };
-      default:
-        return {
-          context: withPlatform("Campaign export", platform),
-          lines: [baseTip, "Day breakdown."],
-        };
-    }
+    const contextByType: Partial<Record<ReportTypeValue, string>> = {
+      WEEKLY: "Weekly report",
+      MONTHLY: "Monthly performance report",
+      QUARTER: "Quarterly report",
+      YTD: "Year-to-date report",
+      DAILY: "Yesterday report",
+      DAY_BREAKDOWN: "Daily performance table",
+      COMPARISON: "Comparison report",
+      HISTORICAL: "Multi-month historical report",
+      CREATIVE: "Creative report",
+    };
+    const kind = contextByType[reportType] ?? "Campaign report";
+    return {
+      context: withPlatform(kind, platform),
+      lines: metaExportLines(reportType, now, clientTimezone),
+    };
   }
 
   if (platform === "GOOGLE") {
-    return {
-      context: withPlatform("Campaign export", platform),
-      lines: [
-        "Day-level report with campaigns, cost, and primary conversions.",
-        reportType === "WEEKLY"
-          ? "Include ~30 days for weekly slides and charts."
-          : "Cover the full period in the deck.",
-      ],
-    };
+    const lines = ["Use a day-level (Segment: Day) campaign export with cost and conversions."];
+    switch (reportType) {
+      case "WEEKLY":
+        lines.push("Include about 30 days of data.");
+        break;
+      case "MONTHLY":
+      case "QUARTER":
+      case "YTD":
+        lines.push("Include from the 1st of the report month through yesterday.");
+        break;
+      case "DAILY":
+        lines.push("Include yesterday (about 7 days of data is enough).");
+        break;
+      default:
+        lines.push("Cover every date you will select in the wizard.");
+    }
+    return { context: withPlatform("Campaign export", platform), lines };
   }
 
   if (platform === "TIKTOK") {
-    return {
-      context: withPlatform("Campaign export", platform),
-      lines: [
-        "Day-level campaign export with spend and results.",
-        ...(reportType === "WEEKLY" ? ["Include ~30 days of daily rows for weekly + chart slides."] : []),
-      ],
-    };
+    const lines = ["Use a day-level campaign export with spend and results."];
+    if (reportType === "WEEKLY") {
+      lines.push("Include about 30 days of data.");
+    } else if (reportType === "DAILY") {
+      lines.push("Include yesterday (about 7 days is enough).");
+    } else if (reportType === "MONTHLY" || reportType === "QUARTER" || reportType === "YTD") {
+      lines.push("Include from the 1st of the report month through yesterday.");
+    } else {
+      lines.push("Cover every date you will select in the wizard.");
+    }
+    return { context: withPlatform("Campaign export", platform), lines };
   }
 
   return {

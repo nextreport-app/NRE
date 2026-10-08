@@ -52,6 +52,7 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/feedback", changeFrequency: "monthly", priority: 0.55 },
   { path: "/book-demo", changeFrequency: "monthly", priority: 0.75 },
   { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },

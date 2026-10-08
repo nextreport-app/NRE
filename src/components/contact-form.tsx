@@ -14,11 +14,17 @@ const inputClassName =
 // catch the common cases before a request is even sent.
 const ERROR_MESSAGE = "Something went wrong. Please email us directly at hello@nextreport.in";
 
-export function ContactForm() {
+export function ContactForm({
+  defaultSubject = CONTACT_SUBJECTS[0],
+  messagePlaceholder = "Tell us how we can help...",
+}: {
+  defaultSubject?: (typeof CONTACT_SUBJECTS)[number];
+  messagePlaceholder?: string;
+} = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [subject, setSubject] = useState<string>(CONTACT_SUBJECTS[0]);
+  const [subject, setSubject] = useState<string>(defaultSubject);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   // Captured at submit time, not read back from state after clearing the
@@ -45,7 +51,7 @@ export function ContactForm() {
       setName("");
       setEmail("");
       setWhatsapp("");
-      setSubject(CONTACT_SUBJECTS[0]);
+      setSubject(defaultSubject);
       setMessage("");
       setStatus("done");
     } catch {
@@ -142,7 +148,7 @@ export function ContactForm() {
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tell us how we can help..."
+          placeholder={messagePlaceholder}
           className={inputClassName}
         />
       </div>
