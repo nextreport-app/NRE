@@ -81,8 +81,6 @@ export function WizardGenerateStep() {
     historicalMonthCount,
     historicalMonthLabels,
     includePreviousMonthComparison,
-    monthComparisonCoverage,
-    monthComparisonOptions,
     mtdRange,
     needsLongRangeConfirm,
     persistGenerateSnapshot,
@@ -334,16 +332,6 @@ export function WizardGenerateStep() {
                   onSelect={() => handleComparisonPresetSelect("thisWeek")}
                 />
                 <WeeklyPeriodOption
-                  selected={comparisonPreset === "thisMonth"}
-                  label="Month-on-month (this month vs last)"
-                  sublabel={
-                    monthComparisonOptions
-                      ? `${formatIsoRange(monthComparisonOptions.periodA)} vs ${formatIsoRange(monthComparisonOptions.periodB)}`
-                      : undefined
-                  }
-                  onSelect={() => handleComparisonPresetSelect("thisMonth")}
-                />
-                <WeeklyPeriodOption
                   selected={comparisonPreset === "custom"}
                   label="Custom"
                   onSelect={() => handleComparisonPresetSelect("custom")}
@@ -381,22 +369,10 @@ export function WizardGenerateStep() {
                 </div>
               )}
 
-              {monthComparisonCoverage && !monthComparisonCoverage.valid ? (
-                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-                  {monthComparisonCoverage.error ??
-                    "Your CSV does not cover both comparison periods. Export a longer custom range or upload Previous Month Data on Manage."}
-                </p>
-              ) : monthComparisonCoverage?.periodBUsesSupplemental ? (
-                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
-                  Period B will use your stored Previous Month Data for dates before your main CSV starts.
-                </p>
-              ) : (
-                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
-                  Tip: Period A must fit your main CSV. For month-vs-month, upload Previous Month Data once on Manage — or
-                  export a custom range from{" "}
-                  {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes both periods.
-                </p>
-              )}
+              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
+                Tip: Both periods must fit your main CSV (or use Custom and export a longer range from{" "}
+                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes Period A and Period B).
+              </p>
             </section>
           )}
 
