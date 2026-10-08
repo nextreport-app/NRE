@@ -31,6 +31,7 @@ import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-p
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
+import { wizardReportTypePickerLabel } from "@/lib/nre/wizard-report-type-copy";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,
@@ -2067,16 +2068,16 @@ export function useReportUploadWizard({
    * "Label: value" line, varying by report type.
    */
   function reportTypeLabel(): string {
-    if (previewKind === "comparison" || reportType === "COMPARISON") return "Comparison Report";
-    if (previewKind === "historical" || reportType === "HISTORICAL") return "Multi-Month Report";
-    if (previewKind === "dayBreakdown" || reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
-    if (reportType === "MONTHLY") return "Monthly Report";
-    if (reportType === "QUARTER") return "Quarterly Report";
-    if (reportType === "YTD") return "Year-to-Date Report";
-    if (reportType === "DAILY") return "Yesterday Report";
-    if (reportType === "CREATIVE") return "Creative Report";
-    if (reportType === "WEEKLY") return "Weekly Report";
-    return "Weekly Report";
+    if (previewKind === "comparison" || reportType === "COMPARISON") {
+      return wizardReportTypePickerLabel("COMPARISON");
+    }
+    if (previewKind === "historical" || reportType === "HISTORICAL") {
+      return wizardReportTypePickerLabel("HISTORICAL");
+    }
+    if (previewKind === "dayBreakdown" || reportType === "DAY_BREAKDOWN") {
+      return wizardReportTypePickerLabel("DAY_BREAKDOWN");
+    }
+    return wizardReportTypePickerLabel(reportType);
   }
 
   /** Summary card label for the weekly/custom date line — avoids calling a 10-day custom pick a "week". */

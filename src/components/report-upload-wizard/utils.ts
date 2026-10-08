@@ -1,28 +1,10 @@
 import type { ValidationIssue } from "@/lib/nre/validate";
 import type { DateRangeIso, ReportTypeValue } from "./types";
-import {
-  DEFAULT_COMPARISON_REPORT_TITLE,
-  DEFAULT_CREATIVE_REPORT_TITLE,
-  DEFAULT_DAILY_REPORT_TITLE,
-  DEFAULT_DAY_BREAKDOWN_REPORT_TITLE,
-  DEFAULT_HISTORICAL_REPORT_TITLE,
-  DEFAULT_MONTHLY_REPORT_TITLE,
-  DEFAULT_QUARTER_REPORT_TITLE,
-  DEFAULT_REPORT_TITLE,
-  DEFAULT_YTD_REPORT_TITLE,
-  SPECIFIC_FIELD_ERRORS,
-} from "./constants";
+import { defaultDeckTitleForReportType } from "@/lib/nre/wizard-report-type-copy";
+import { SPECIFIC_FIELD_ERRORS } from "./constants";
 
 export function defaultReportTitleFor(reportType: ReportTypeValue): string {
-  if (reportType === "MONTHLY") return DEFAULT_MONTHLY_REPORT_TITLE;
-  if (reportType === "DAILY") return DEFAULT_DAILY_REPORT_TITLE;
-  if (reportType === "CREATIVE") return DEFAULT_CREATIVE_REPORT_TITLE;
-  if (reportType === "COMPARISON") return DEFAULT_COMPARISON_REPORT_TITLE;
-  if (reportType === "HISTORICAL") return DEFAULT_HISTORICAL_REPORT_TITLE;
-  if (reportType === "DAY_BREAKDOWN") return DEFAULT_DAY_BREAKDOWN_REPORT_TITLE;
-  if (reportType === "QUARTER") return DEFAULT_QUARTER_REPORT_TITLE;
-  if (reportType === "YTD") return DEFAULT_YTD_REPORT_TITLE;
-  return DEFAULT_REPORT_TITLE;
+  return defaultDeckTitleForReportType(reportType);
 }
 
 export function buildUploadFormData(

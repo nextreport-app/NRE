@@ -94,7 +94,9 @@ function ReportUploadWizardBody() {
     <div className="space-y-6">
       <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} />
-        <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(w.step, w.platform)}</h1>
+        <h1 className="mb-1 text-[20px] font-bold text-white">
+          {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : getWizardStepHeading(w.step, w.platform)}
+        </h1>
         {getWizardStepSubtitle(w.step, w.platform) ? (
           <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(w.step, w.platform)}</p>
         ) : null}
