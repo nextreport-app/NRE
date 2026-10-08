@@ -30,8 +30,7 @@ export function wizardExportGuidanceForReportType(input: {
           headline: "Before you upload — export this from Ads Manager",
           bullets: [
             baseTip,
-            "Time breakdown: Day (one row per day).",
-            "Weekly slides use the 7-day period you pick later; the same file also powers month-to-date, the last-30-days chart, and pacing.",
+            "Weekly slides use the last 7-day period; the same file also powers month-to-date, the last-30-days chart, and pacing.",
           ],
           footnote: "Last 7 days only is not enough — we need ~30 days of daily rows even for a weekly deck.",
         };
