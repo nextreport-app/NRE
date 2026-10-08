@@ -42,7 +42,8 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "generate-report",
       title: "Generate your first report",
-      description: "Open New Report on a client — upload your Ads Manager CSV, then download .pptx or share a link.",
+      description:
+        "Open New Report — choose Weekly (recommended), export Last 30 days with Day breakdown from Ads Manager, upload, then generate your deck.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },

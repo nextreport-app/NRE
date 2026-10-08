@@ -23,6 +23,8 @@ import { PlatformBetaNotice } from "@/components/platform-beta-badge";
 import { isPlatformBeta } from "@/lib/platform-beta";
 import { isWizardPlatformSwitchEnabled } from "@/lib/meta-launch-scope";
 import { UploadDropzone } from "../ui/upload-dropzone";
+import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
+import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 
 export function WizardImportStep() {
   const w = useWizardContext();
@@ -86,6 +88,13 @@ export function WizardImportStep() {
     showTikTokOption,
     tiktokConfigured,
     tiktokConnected,
+    reportType,
+    handleReportTypeChange,
+    reportTypeLabel,
+    csvDateGuidance,
+    csvWarningDismissed,
+    setCsvWarningDismissed,
+    setCsvDateGuidance,
   } = w;
 
   const previousMonthInfo = getPreviousMonthComparisonInfo(
@@ -97,8 +106,18 @@ export function WizardImportStep() {
     previousMonthInfo.status === "current" && !includePreviousMonthComparison;
   const platformSwitchEnabled = isWizardPlatformSwitchEnabled();
 
+  const setupPlatform = selectedPlatformCard ?? "META";
+
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+      <WizardReportSetupPanel
+        reportType={reportType}
+        reportTypeLabel={reportTypeLabel()}
+        platform={setupPlatform}
+        clientTimezone={clientTimezone}
+        onReportTypeChange={handleReportTypeChange}
+      />
+
       {hasSavedPlatformPreference && selectedPlatformCard ? (
         <>
           <WizardPlatformCompactBar
@@ -337,6 +356,17 @@ export function WizardImportStep() {
           {(!AD_PLATFORM_API_SYNC_ENABLED || dataSourceMode === "csv") && (
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
+
+              {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
+                <CsvDateGuidanceBanner
+                  guidance={csvDateGuidance}
+                  onContinue={() => setCsvWarningDismissed(true)}
+                  onRedownload={() => {
+                    setCsvWarningDismissed(false);
+                    setCsvDateGuidance(null);
+                  }}
+                />
+              ) : null}
 
               <button
                 type="button"

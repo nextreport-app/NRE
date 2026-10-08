@@ -61,9 +61,9 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
 
 /** Optional one-line hint under the step heading — kept minimal to reduce clutter. */
 export function getWizardStepSubtitle(step: 1 | 2 | 3 | 4, _platform: Platform): string {
-  if (step === 4) return "We recommend Weekly for client updates — adjust type and dates, then generate.";
+  if (step === 4) return "Confirm dates and preview, then generate your deck.";
   if (step === 3) return "Metric chips are pre-selected from your CSV — tweak only if needed.";
   if (step === 2) return "Choose campaigns and confirm each primary result objective.";
-  if (step === 1) return "Upload a CSV or sync from the ad platform — optional previous-month data for comparisons.";
+  if (step === 1) return "Choose report type and export range, then upload or sync your data.";
   return "";
 }
