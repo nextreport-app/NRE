@@ -4,7 +4,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
-import { scheduleReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
+import {
+  dispatchReportGenerationJob,
+  scheduleReportGenerationJob,
+} from "@/lib/nre/dispatch-report-generation-job";
 import {
   serializeReportGenerationJob,
   type ComparisonReportJobPayload,
@@ -45,6 +48,29 @@ import {
   parseBooleanFormField,
 } from "@/lib/validators/report-wizard";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+
+/** Comparison / day-table renders are fast (no AI) — finish in-request so the wizard is not stuck polling. */
+export const maxDuration = 300;
+
+async function respondAfterReportGeneration(reportId: string, shareToken?: string | null) {
+  await dispatchReportGenerationJob(reportId);
+  const row = await prisma.report.findUnique({
+    where: { id: reportId },
+    select: { status: true, shareToken: true, errorMessage: true },
+  });
+  if (row?.status === "FAILED") {
+    return NextResponse.json(
+      { ok: false, error: row.errorMessage ?? "Report generation failed." },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({
+    ok: true,
+    reportId,
+    shareToken: row?.shareToken ?? shareToken ?? undefined,
+    status: row?.status === "COMPLETE" ? ("COMPLETE" as const) : ("GENERATING" as const),
+  });
+}
 
 function enqueueResponse(reportId: string, shareToken?: string | null) {
   return NextResponse.json({
@@ -246,8 +272,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return apiErrorResponse(err, "reports:generate:create-comparison");
     }
 
-    scheduleReportGenerationJob(comparisonReport.id);
-    return enqueueResponse(comparisonReport.id);
+    return respondAfterReportGeneration(comparisonReport.id);
   }
 
   if (reportType === "HISTORICAL") {

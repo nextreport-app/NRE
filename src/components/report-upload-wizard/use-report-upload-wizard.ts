@@ -694,9 +694,16 @@ export function useReportUploadWizard({
     setWeeklyOptions(snapshot.weeklyOptions);
     setMtdRange(snapshot.mtdRange);
     setMonthComparisonOptions(snapshot.monthComparisonOptions);
-    setComparisonPreset(snapshot.comparisonPreset);
-    setComparisonPeriodA(snapshot.comparisonPeriodA);
-    setComparisonPeriodB(snapshot.comparisonPeriodB);
+    const preset =
+      snapshot.comparisonPreset === "thisMonth" ? "thisWeek" : snapshot.comparisonPreset;
+    setComparisonPreset(preset);
+    if (preset === "thisWeek" && snapshot.weeklyOptions) {
+      setComparisonPeriodA(snapshot.weeklyOptions.last7);
+      setComparisonPeriodB(snapshot.weeklyOptions.prev7);
+    } else {
+      setComparisonPeriodA(snapshot.comparisonPeriodA);
+      setComparisonPeriodB(snapshot.comparisonPeriodB);
+    }
     setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
     setPreviewKind(snapshot.previewKind);
     setPreviewStatus(snapshot.previewStatus);
