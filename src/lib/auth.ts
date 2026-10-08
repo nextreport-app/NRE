@@ -18,6 +18,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
       // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
       allowDangerousEmailAccountLinking: true,
+      // Always show Google's account chooser (same pattern as Google Ads / Drive connect in this app).
+      authorization: { params: { prompt: "select_account" } },
     }),
     Credentials({
       name: "Credentials",
