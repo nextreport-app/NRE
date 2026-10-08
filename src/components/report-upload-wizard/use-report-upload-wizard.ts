@@ -503,6 +503,7 @@ export function useReportUploadWizard({
         setCustomEnd(weeklyOptions.last7.endIso);
       }
     }
+    setCsvWarningDismissed(false);
   }
 
   function currentDateSelection(): DateSelection {
