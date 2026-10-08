@@ -45,7 +45,7 @@ export function ReportTypeCard({
 
   const tooltipId = useId();
   const [detailOpen, setDetailOpen] = useState(false);
-  const showInlineDescription = layout === "compact" ? !detailTooltip && description.trim().length > 0 : true;
+  const showInlineDescription = description.trim().length > 0;
 
   if (layout === "compact") {
     return (

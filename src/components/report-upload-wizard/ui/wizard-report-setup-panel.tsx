@@ -56,7 +56,7 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="📊"
           heading={weekly.cardHeading}
-          description=""
+          description={weekly.cardOneLiner}
           detailTooltip={weekly.cardYouGet}
           selected={reportType === "WEEKLY"}
           onSelect={() => onReportTypeChange("WEEKLY")}
@@ -66,7 +66,7 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="📅"
           heading={monthly.cardHeading}
-          description=""
+          description={monthly.cardOneLiner}
           detailTooltip={monthly.cardYouGet}
           selected={reportType === "MONTHLY"}
           onSelect={() => onReportTypeChange("MONTHLY")}
@@ -75,7 +75,7 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="☀️"
           heading={daily.cardHeading}
-          description=""
+          description={daily.cardOneLiner}
           detailTooltip={daily.cardYouGet}
           selected={reportType === "DAILY"}
           onSelect={() => onReportTypeChange("DAILY")}
@@ -101,7 +101,7 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="🔀"
               heading={comparison.cardHeading}
-              description=""
+              description={comparison.cardOneLiner}
               detailTooltip={comparison.cardYouGet}
               selected={reportType === "COMPARISON"}
               onSelect={() => onReportTypeChange("COMPARISON")}
@@ -110,7 +110,7 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="📆"
               heading={historical.cardHeading}
-              description=""
+              description={historical.cardOneLiner}
               detailTooltip={historical.cardYouGet}
               selected={reportType === "HISTORICAL"}
               onSelect={() => onReportTypeChange("HISTORICAL")}
@@ -119,7 +119,7 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="📋"
               heading={dayTable.cardHeading}
-              description=""
+              description={dayTable.cardOneLiner}
               detailTooltip={dayTable.cardYouGet}
               selected={reportType === "DAY_BREAKDOWN"}
               onSelect={() => onReportTypeChange("DAY_BREAKDOWN")}
