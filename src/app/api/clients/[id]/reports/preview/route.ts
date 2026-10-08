@@ -342,26 +342,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     : undefined;
 
   if (uploadSessionId && fileHash) {
-    const fingerprint = computeWizardStandardReportFingerprint({
-      fileHash,
-      client,
-      platform,
-      formData,
-    });
-    await saveWizardPreviewReportCache({
-      userId: session.user.id,
-      clientId: id,
-      sessionId: uploadSessionId,
-      fingerprint,
-      reportData: built.data,
-    });
-    scheduleWizardPreviewAiWarm({
-      userId: session.user.id,
-      clientId: id,
-      sessionId: uploadSessionId,
-      fingerprint,
-      reportData: built.data,
-    });
+    try {
+      const fingerprint = computeWizardStandardReportFingerprint({
+        fileHash,
+        client,
+        platform,
+        formData,
+      });
+      await saveWizardPreviewReportCache({
+        userId: session.user.id,
+        clientId: id,
+        sessionId: uploadSessionId,
+        fingerprint,
+        reportData: built.data,
+      });
+      scheduleWizardPreviewAiWarm({
+        userId: session.user.id,
+        clientId: id,
+        sessionId: uploadSessionId,
+        fingerprint,
+        reportData: built.data,
+      });
+    } catch (err) {
+      console.error("[reports:preview] preview cache save failed:", err);
+    }
   }
 
   const csvVerification = reconcileStandardReportWithCsv({

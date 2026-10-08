@@ -4,6 +4,7 @@ import {
   parseJsonFormField,
   reportTypeSchema,
   resolveIncludePreviousMonthComparison,
+  resolveShowBudgetPacingOnCover,
 } from "../report-wizard";
 
 describe("reportTypeSchema", () => {
@@ -67,5 +68,15 @@ describe("resolveIncludePreviousMonthComparison", () => {
     const formData = new FormData();
     formData.append("includePreviousMonthComparison", JSON.stringify(false));
     expect(resolveIncludePreviousMonthComparison(formData)).toBe(false);
+  });
+});
+
+describe("resolveShowBudgetPacingOnCover", () => {
+  it("reads JSON-encoded booleans from wizard FormData", () => {
+    const formData = new FormData();
+    formData.append("showBudgetPacingOnCover", JSON.stringify(true));
+    expect(resolveShowBudgetPacingOnCover(formData, false)).toBe(true);
+    formData.set("showBudgetPacingOnCover", JSON.stringify(false));
+    expect(resolveShowBudgetPacingOnCover(formData, true)).toBe(false);
   });
 });
