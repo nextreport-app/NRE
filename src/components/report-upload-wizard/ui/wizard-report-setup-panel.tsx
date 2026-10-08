@@ -47,7 +47,9 @@ export function WizardReportSetupPanel({
       <div>
         <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Each type produces a different deck. Pick one, then follow Download instructions above upload.
+          Each type produces a different deck. Hover a card (or tap{" "}
+          <span className="font-medium text-dash-ink">i</span> on mobile) to see what you get, then follow Download
+          instructions above upload.
         </p>
       </div>
 
@@ -55,7 +57,8 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="📊"
           heading={weekly.cardHeading}
-          description={weekly.cardYouGet}
+          description=""
+          detailTooltip={weekly.cardYouGet}
           selected={reportType === "WEEKLY"}
           onSelect={() => onReportTypeChange("WEEKLY")}
           layout="compact"
@@ -64,7 +67,8 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="📅"
           heading={monthly.cardHeading}
-          description={monthly.cardYouGet}
+          description=""
+          detailTooltip={monthly.cardYouGet}
           selected={reportType === "MONTHLY"}
           onSelect={() => onReportTypeChange("MONTHLY")}
           layout="compact"
@@ -72,7 +76,8 @@ export function WizardReportSetupPanel({
         <ReportTypeCard
           icon="☀️"
           heading={daily.cardHeading}
-          description={daily.cardYouGet}
+          description=""
+          detailTooltip={daily.cardYouGet}
           selected={reportType === "DAILY"}
           onSelect={() => onReportTypeChange("DAILY")}
           layout="compact"
@@ -97,7 +102,8 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="🔀"
               heading={comparison.cardHeading}
-              description={comparison.cardYouGet}
+              description=""
+              detailTooltip={comparison.cardYouGet}
               selected={reportType === "COMPARISON"}
               onSelect={() => onReportTypeChange("COMPARISON")}
               layout="compact"
@@ -105,7 +111,8 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="📆"
               heading={historical.cardHeading}
-              description={historical.cardYouGet}
+              description=""
+              detailTooltip={historical.cardYouGet}
               selected={reportType === "HISTORICAL"}
               onSelect={() => onReportTypeChange("HISTORICAL")}
               layout="compact"
@@ -113,7 +120,8 @@ export function WizardReportSetupPanel({
             <ReportTypeCard
               icon="📋"
               heading={dayTable.cardHeading}
-              description={dayTable.cardYouGet}
+              description=""
+              detailTooltip={dayTable.cardYouGet}
               selected={reportType === "DAY_BREAKDOWN"}
               onSelect={() => onReportTypeChange("DAY_BREAKDOWN")}
               layout="compact"
