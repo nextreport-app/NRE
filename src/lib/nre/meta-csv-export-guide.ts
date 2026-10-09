@@ -39,6 +39,16 @@ export const META_CSV_EXPORT_PATH = {
   dayBreakdownImportant: 'Important - Set Time breakdown to "Day-wise" — for all campaigns.',
   baseColumnsIntro:
     "Include base columns: Popular metric from meta you can always include.",
+  baseColumnsInExport: [
+    "Amount spent",
+    "Reach",
+    "Impressions",
+    "Results",
+    "Cost per result",
+    "CTR",
+    "CPC",
+    "Link clicks",
+  ] as const,
   baseColumnsOutro: "+ extras for your campaign objectives.",
   saveTip: "Save the report before downloading so next time you don't have to select again.",
 } as const;
