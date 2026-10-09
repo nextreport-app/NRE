@@ -17,7 +17,7 @@ export function WizardStepHelp({
     return (
       <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/50 px-4 py-3 text-[13px] leading-relaxed text-dash-ink-secondary">
         <p className="font-medium text-dash-ink">Campaigns & objectives</p>
-        <p className="mt-1">Pick campaigns for the deck and confirm each one&apos;s main result (leads, quotes, etc.).</p>
+        <p className="mt-1">Pick campaigns for the deck and confirm objectives.</p>
         <p className="mt-2">
           <Link href="/help/objectives" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
             How we pick objectives from your CSV
