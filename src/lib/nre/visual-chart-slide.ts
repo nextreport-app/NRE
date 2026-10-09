@@ -276,9 +276,10 @@ function buildResultBars(
               rank,
             )
           : defaultNameMax;
+      const displayName = formatCampaignDisplayName(row.name, nameMax);
       return {
         rank,
-        name: formatCampaignDisplayName(row.name, nameMax),
+        name: displayName,
         color: row.color,
         spendLabel,
         resultCount: row.results,
@@ -448,8 +449,10 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
     const rightHeading = mixedCampaignObjectives ? "Performance by Campaign" : `${resultLabel} by Campaign`;
 
+    const barCount = Math.min(MAX_ROWS, reportingCampaigns.length);
+    const splitNameLayout = splitPanelCampaignNameLayout(barCount, false);
     const resultBars = buildResultBars(
-      chart.campaigns.map((c) => {
+      reportingCampaigns.map((c) => {
         const display = chartCampaignDisplayFields(c);
         return {
           name: c.name,
@@ -466,10 +469,8 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         includeSpend: false,
         includeResultsShare: false,
         barScale: barSort,
-        ...(() => {
-          const { labelWidthPt, nameSizePt } = splitPanelCampaignNameLayout(reportingCampaigns.length, false);
-          return { campaignLabelWidthPt: labelWidthPt, campaignNameFontSizePt: nameSizePt };
-        })(),
+        campaignLabelWidthPt: splitNameLayout.labelWidthPt,
+        campaignNameFontSizePt: splitNameLayout.nameSizePt,
       },
     );
 
@@ -504,6 +505,8 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
 
   if (isMultiObjective) {
     const objectives = chart.snapshot.objectives.slice(0, MAX_ROWS);
+    const objectiveBarCount = Math.min(MAX_ROWS, objectives.length);
+    const fullPanelCols = resultBarColumns(false);
     const resultBars = buildResultBars(
       objectives.map((obj, i) => ({
         name: toTitleCaseChartLabel(obj.label),
@@ -518,7 +521,13 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         cprLabel: obj.cprLabel,
       })),
       currencySymbol,
-      { includeSpend: true, includeResultsShare: false, barScale: "spend" },
+      {
+        includeSpend: true,
+        includeResultsShare: false,
+        barScale: "spend",
+        campaignLabelWidthPt: fullPanelCols.trackW - RESULT_BAR_RIGHT_LABEL_W_PT,
+        campaignNameFontSizePt: resultBarLayout(objectiveBarCount, false).nameSizePt,
+      },
     );
 
     const panelHeading = "Results by Objective";
@@ -547,8 +556,11 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       })
     : null;
 
+  const barCount = Math.min(MAX_ROWS, reportingCampaigns.length || chart.campaigns.length);
+  const splitNameLayout = useSplitPanel ? splitPanelCampaignNameLayout(barCount, false) : null;
+  const barSource = reportingCampaigns.length > 0 ? reportingCampaigns : chart.campaigns;
   const resultBars = buildResultBars(
-    chart.campaigns.map((c) => {
+    barSource.map((c) => {
       const display = chartCampaignDisplayFields(c);
       return {
         name: c.name,
@@ -566,11 +578,11 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       includeResultsShare: false,
       singleCampaignBarCap: useSplitPanel && reportingCampaigns.length === 1,
       barScale: "results",
-      ...(useSplitPanel
-        ? (() => {
-            const { labelWidthPt, nameSizePt } = splitPanelCampaignNameLayout(reportingCampaigns.length, false);
-            return { campaignLabelWidthPt: labelWidthPt, campaignNameFontSizePt: nameSizePt };
-          })()
+      ...(splitNameLayout
+        ? {
+            campaignLabelWidthPt: splitNameLayout.labelWidthPt,
+            campaignNameFontSizePt: splitNameLayout.nameSizePt,
+          }
         : { campaignNameMax: CHART_CAMPAIGN_DISPLAY_MAX }),
     },
   );
