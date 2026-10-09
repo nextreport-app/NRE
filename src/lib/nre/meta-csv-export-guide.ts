@@ -48,3 +48,36 @@ export const META_CSV_OBJECTIVE_COLUMN_GROUPS: readonly MetaCsvObjectiveColumnGr
 export function metaCsvColumnsForObjectiveGroup(groupId: string): string[] {
   return columnsForGroup(groupId, META_CSV_BASE_COLUMNS, META_CSV_OBJECTIVE_COLUMN_GROUPS);
 }
+
+/** Curated lists for /help/download — simpler than full dictionary chips. */
+export const META_CSV_HELP_BASE = {
+  title: "Base columns (always)",
+  subtitle: "Popular metric from meta to always include.",
+  metrics: [
+    "Amount spent",
+    "Impressions",
+    "Reach",
+    "Results",
+    "Cost per result",
+    "Link clicks",
+    "CPC (cost per link click)",
+    "CTR (all)",
+  ],
+} as const;
+
+export const META_CSV_HELP_BY_OBJECTIVE = {
+  title: "Additionally, more relevant metrics based on your campaign objective:",
+  metrics: [
+    "CPM",
+    "Landing page views",
+    "Cost per landing page view",
+    "Leads",
+    "Cost per lead",
+    "Purchase ROAS (return on ad spend)",
+    "Purchases",
+    "Cost per purchase",
+    "Purchases conversion value",
+    "Add to Cart",
+    "Initiate Checkout",
+  ],
+} as const;

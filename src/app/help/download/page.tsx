@@ -5,15 +5,15 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 import {
-  META_CSV_BASE_COLUMNS,
   META_CSV_EXPORT_PATH,
-  META_CSV_OBJECTIVE_COLUMN_GROUPS,
+  META_CSV_HELP_BASE,
+  META_CSV_HELP_BY_OBJECTIVE,
 } from "@/lib/nre/meta-csv-export-guide";
 
 export const metadata: Metadata = pageMetadata({
   title: "CSV Export Guide",
   description:
-    "Quick Meta, Google, and TikTok CSV export steps for NextReport — Reports export with Day breakdown and columns by objective.",
+    "Quick Meta, Google, and TikTok CSV export steps for NextReport — Ad Reporting export with Day-wise breakdown and recommended columns.",
   path: "/help/download",
   keywords: [
     "meta ads csv export",
@@ -24,18 +24,50 @@ export const metadata: Metadata = pageMetadata({
   ],
 });
 
-function BulletList({ items }: { items: readonly string[] }) {
+function MetricChip({ label, variant }: { label: string; variant: "base" | "objective" }) {
+  const styles =
+    variant === "base"
+      ? "border-accent-orange/35 bg-accent-orange/10 text-ink-secondary"
+      : "border-navy-border bg-navy text-ink-secondary";
   return (
-    <ul className="mt-3 flex flex-wrap gap-2">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="rounded-full border border-navy-border bg-navy px-3 py-1 text-[13px] text-ink-secondary"
-        >
-          {item}
-        </li>
-      ))}
-    </ul>
+    <li
+      className={`rounded-md border px-3 py-2 text-[13px] leading-snug ${styles}`}
+    >
+      {label}
+    </li>
+  );
+}
+
+function MetricPanel({
+  title,
+  subtitle,
+  metrics,
+  variant,
+  id,
+}: {
+  title: string;
+  subtitle?: string;
+  metrics: readonly string[];
+  variant: "base" | "objective";
+  id?: string;
+}) {
+  return (
+    <div
+      id={id}
+      className={`scroll-mt-24 rounded-xl border p-5 ${
+        variant === "base"
+          ? "border-accent-orange/25 bg-gradient-to-br from-accent-orange/5 to-transparent"
+          : "border-navy-border bg-navy/50"
+      }`}
+    >
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      {subtitle ? <p className="mt-1.5 text-[14px] leading-relaxed text-ink-muted">{subtitle}</p> : null}
+      <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {metrics.map((metric) => (
+          <MetricChip key={metric} label={metric} variant={variant} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -68,20 +100,19 @@ export default async function DownloadGuidePage() {
               </ul>
             </div>
 
-            <div id="meta-metrics" className="mt-8 scroll-mt-24">
-              <h3 className="text-lg font-semibold text-white">Base columns (always)</h3>
-              <BulletList items={META_CSV_BASE_COLUMNS} />
-            </div>
-
-            <div className="mt-8 space-y-6">
-              <h3 className="text-lg font-semibold text-white">Add by campaign objective</h3>
-              {META_CSV_OBJECTIVE_COLUMN_GROUPS.map((group) => (
-                <div key={group.id}>
-                  <p className="font-medium text-white">{group.label}</p>
-                  {group.note ? <p className="mt-1 text-sm text-ink-muted">{group.note}</p> : null}
-                  <BulletList items={group.columns} />
-                </div>
-              ))}
+            <div id="meta-metrics" className="mt-8 space-y-5">
+              <MetricPanel
+                id="meta-metrics-base"
+                title={META_CSV_HELP_BASE.title}
+                subtitle={META_CSV_HELP_BASE.subtitle}
+                metrics={META_CSV_HELP_BASE.metrics}
+                variant="base"
+              />
+              <MetricPanel
+                title={META_CSV_HELP_BY_OBJECTIVE.title}
+                metrics={META_CSV_HELP_BY_OBJECTIVE.metrics}
+                variant="objective"
+              />
             </div>
 
             <details className="mt-8 rounded-lg border border-navy-border bg-navy/40 p-4">
