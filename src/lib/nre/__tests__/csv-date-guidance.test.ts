@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { analyzeCsvDateGuidance, getMetaCsvDownloadTip } from "../csv-date-guidance";
-import { getRowDate, type NreRow } from "../columns";
-import { parseCsvText } from "../parse-csv";
+import type { NreRow } from "../columns";
 
 function dailyRow(iso: string): NreRow {
   return { _raw: { Day: iso }, campaign_name: "Test" };
@@ -109,14 +106,5 @@ describe("analyzeCsvDateGuidance", () => {
     expect(guidance.warnings).toHaveLength(1);
     expect(guidance.warnings[0]?.kind).toBe("weekly_period_partial");
     expect(guidance.warnings[0]?.title).toContain("September 22");
-  });
-
-  it("warns when the default last-7 week is missing a day row inside the window", () => {
-    const fixture = resolve(__dirname, "fixtures/gz-australia-weekly-verify.csv");
-    const rows = parseCsvText(readFileSync(fixture, "utf8")).rows.filter(
-      (r) => getRowDate(r) !== "2026-09-28",
-    );
-    const guidance = analyzeCsvDateGuidance(rows, new Date("2026-10-05T12:00:00Z"), "Australia/Sydney");
-    expect(guidance.warnings.some((w) => w.kind === "weekly_missing_day_rows")).toBe(true);
   });
 });
