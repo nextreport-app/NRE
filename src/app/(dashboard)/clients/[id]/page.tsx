@@ -29,6 +29,7 @@ import {
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
 import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
+import { WizardReturnBanner } from "@/components/wizard-return-banner";
 
 const RECENT_REPORTS_LIMIT = 5;
 
@@ -57,10 +58,13 @@ function Card({ children, accent = false, id }: { children: React.ReactNode; acc
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
   const session = await auth();
   if (!session?.user) notFound();
 
@@ -138,6 +142,8 @@ export default async function ClientDetailPage({
         <h1 className="mt-2 truncate text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
         <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{client.currency}</p>
       </div>
+
+      <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
         <Card id="platform-connections">
