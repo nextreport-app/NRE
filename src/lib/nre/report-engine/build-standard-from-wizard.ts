@@ -37,7 +37,6 @@ import type { MetaCampaignPeriodReachMaps } from "../campaign-period-reach-maps"
 import type { AiCopy } from "@/lib/pptx/fill-tags";
 import { computeWizardStandardReportFingerprint } from "../wizard-report-config-fingerprint";
 import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
-import { validateWeeklyCsvDayRowsPresent } from "../weekly-csv-coverage";
 
 export interface BuildStandardReportWizardInput {
   client: Client;
@@ -133,17 +132,6 @@ export async function buildStandardReportForWizard(
       return { error: dateResolution.error || "Invalid date selection." };
     }
     weeklyRange = dateResolution.weeklyRange;
-  }
-
-  if (reportType === "WEEKLY" && weeklyRange) {
-    const weeklyCoverage = validateWeeklyCsvDayRowsPresent(
-      mtdParsed.rows,
-      weeklyRange,
-      selectedCampaigns ?? null,
-    );
-    if (!weeklyCoverage.ok && weeklyCoverage.error) {
-      return { error: weeklyCoverage.error };
-    }
   }
 
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
