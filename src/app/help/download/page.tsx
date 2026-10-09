@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
@@ -8,6 +9,7 @@ import {
   META_CSV_EXPORT_PATH,
   META_CSV_HELP_BASE,
   META_CSV_HELP_BY_OBJECTIVE,
+  META_CSV_HELP_PREVIOUS_MONTH,
 } from "@/lib/nre/meta-csv-export-guide";
 
 export const metadata: Metadata = pageMetadata({
@@ -24,49 +26,21 @@ export const metadata: Metadata = pageMetadata({
   ],
 });
 
-function MetricChip({ label, variant }: { label: string; variant: "base" | "objective" }) {
-  const styles =
-    variant === "base"
-      ? "border-accent-orange/35 bg-accent-orange/10 text-ink-secondary"
-      : "border-navy-border bg-navy text-ink-secondary";
+function VerticalMetricList({ metrics }: { metrics: readonly string[] }) {
   return (
-    <li
-      className={`rounded-md border px-3 py-2 text-[13px] leading-snug ${styles}`}
-    >
-      {label}
-    </li>
+    <ul className="mt-2 space-y-1.5 border-l-2 border-navy-border pl-4 text-[15px] leading-relaxed text-ink-secondary">
+      {metrics.map((metric) => (
+        <li key={metric}>{metric}</li>
+      ))}
+    </ul>
   );
 }
 
-function MetricPanel({
-  title,
-  subtitle,
-  metrics,
-  variant,
-  id,
-}: {
-  title: string;
-  subtitle?: string;
-  metrics: readonly string[];
-  variant: "base" | "objective";
-  id?: string;
-}) {
+function HelpBlock({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div
-      id={id}
-      className={`scroll-mt-24 rounded-xl border p-5 ${
-        variant === "base"
-          ? "border-accent-orange/25 bg-gradient-to-br from-accent-orange/5 to-transparent"
-          : "border-navy-border bg-navy/50"
-      }`}
-    >
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-      {subtitle ? <p className="mt-1.5 text-[14px] leading-relaxed text-ink-muted">{subtitle}</p> : null}
-      <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {metrics.map((metric) => (
-          <MetricChip key={metric} label={metric} variant={variant} />
-        ))}
-      </ul>
+    <div className="rounded-lg border border-navy-border bg-navy/30 px-4 py-4">
+      <h3 className="text-[16px] font-semibold text-white">{title}</h3>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
@@ -87,56 +61,42 @@ export default async function DownloadGuidePage() {
         </section>
 
         <div className="mx-auto max-w-3xl space-y-10 px-6 py-12">
-          <section id="meta-ads" className="rounded-lg border border-navy-border bg-navy-panel p-6">
+          <section id="meta-ads" className="space-y-6 rounded-lg border border-navy-border bg-navy-panel p-6">
             <h2 className="text-xl font-semibold text-accent-orange">Meta Ads</h2>
 
-            <div className="mt-4 rounded-lg border border-amber-500/40 border-l-4 border-l-amber-400 bg-amber-950/25 p-4">
-              <p className="font-semibold text-amber-100">{META_CSV_EXPORT_PATH.title}</p>
-              <ul className="mt-2 list-inside list-disc space-y-2 text-[15px] text-ink-secondary">
-                <li>{META_CSV_EXPORT_PATH.exportSteps}</li>
-                <li className="text-amber-100/90">{META_CSV_EXPORT_PATH.dayBreakdownImportant}</li>
-                <li>{META_CSV_EXPORT_PATH.baseColumnsNote}</li>
-                <li>{META_CSV_EXPORT_PATH.saveTip}</li>
-              </ul>
+            <div className="space-y-4 rounded-lg border border-amber-500/35 bg-amber-950/20 p-5">
+              <p className="text-[16px] font-semibold text-amber-100">{META_CSV_EXPORT_PATH.title}</p>
+
+              <div>
+                <p className="text-[14px] font-medium text-amber-100/90">Steps</p>
+                <VerticalMetricList metrics={META_CSV_EXPORT_PATH.exportSteps} />
+              </div>
+
+              <p className="text-[15px] leading-relaxed text-amber-100/90">{META_CSV_EXPORT_PATH.dayBreakdownImportant}</p>
+
+              <div>
+                <p className="text-[15px] font-medium text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsIntro}</p>
+                <VerticalMetricList metrics={META_CSV_EXPORT_PATH.baseColumnsInExport} />
+                <p className="mt-2 text-[15px] text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsOutro}</p>
+              </div>
+
+              <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_EXPORT_PATH.saveTip}</p>
             </div>
 
-            <div id="meta-metrics" className="mt-8 space-y-5">
-              <MetricPanel
-                id="meta-metrics-base"
-                title={META_CSV_HELP_BASE.title}
-                subtitle={META_CSV_HELP_BASE.subtitle}
-                metrics={META_CSV_HELP_BASE.metrics}
-                variant="base"
-              />
-              <MetricPanel
-                title={META_CSV_HELP_BY_OBJECTIVE.title}
-                metrics={META_CSV_HELP_BY_OBJECTIVE.metrics}
-                variant="objective"
-              />
+            <div id="meta-metrics" className="space-y-4">
+              <HelpBlock title={META_CSV_HELP_BASE.title}>
+                <p className="text-[14px] text-ink-muted">{META_CSV_HELP_BASE.subtitle}</p>
+                <VerticalMetricList metrics={META_CSV_HELP_BASE.metrics} />
+              </HelpBlock>
+
+              <HelpBlock title={META_CSV_HELP_BY_OBJECTIVE.title}>
+                <VerticalMetricList metrics={META_CSV_HELP_BY_OBJECTIVE.metrics} />
+              </HelpBlock>
             </div>
 
-            <details className="mt-8 rounded-lg border border-navy-border bg-navy/40 p-4">
-              <summary className="cursor-pointer font-medium text-white">1st of month · previous month file · historical</summary>
-              <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-ink-secondary">
-                <li>
-                  <span className="text-white">1st (client timezone):</span> main file = Previous Month + Day breakdown
-                  (no MTD yet).
-                </li>
-                <li>
-                  <span className="text-white">Other days:</span> Last 30 Days + Day for weekly, MTD, and charts.
-                </li>
-                <li>
-                  <span className="text-white">Previous month row:</span> optional second CSV — wizard panel on Import.
-                </li>
-                <li>
-                  <span className="text-white">Multi-month historical:</span> one daily CSV spanning every month you
-                  need.
-                </li>
-                <li>
-                  <span className="text-white">Creative reports:</span> Ads tab export with Ad name + Day breakdown.
-                </li>
-              </ul>
-            </details>
+            <HelpBlock title={META_CSV_HELP_PREVIOUS_MONTH.title}>
+              <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_HELP_PREVIOUS_MONTH.body}</p>
+            </HelpBlock>
           </section>
 
           <section id="google-ads" className="rounded-lg border border-navy-border bg-navy-panel p-6">
