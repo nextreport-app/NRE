@@ -112,9 +112,6 @@ function LoginForm() {
       >
         {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
       </button>
-      <p className="mt-2 text-center text-xs text-ink-muted">
-        Google&apos;s account chooser opens next so you can pick which Gmail to use.
-      </p>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
         Don&apos;t have an account?{" "}
