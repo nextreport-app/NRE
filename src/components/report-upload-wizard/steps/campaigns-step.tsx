@@ -279,7 +279,7 @@ export function WizardCampaignsStep() {
       </ul>
 
       {selectedCampaigns.size > 0 ? (
-        <div className="space-y-4 border-t border-dash-border pt-4">
+        <div className="mt-2 space-y-4 border-t-2 border-dash-border/70 pt-6">
           <div>
             <h3 className="text-[15px] font-semibold text-white">Campaign objectives</h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
