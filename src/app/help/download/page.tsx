@@ -73,9 +73,10 @@ export default async function DownloadGuidePage() {
 
               <p className="text-[15px] leading-relaxed text-amber-100/90">{META_CSV_EXPORT_PATH.dayBreakdownImportant}</p>
 
+              <hr className="border-amber-500/25" />
+
               <div>
-                <p className="text-[15px] font-medium text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsIntro}</p>
-                <VerticalMetricList metrics={META_CSV_EXPORT_PATH.baseColumnsInExport} />
+                <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsIntro}</p>
                 <p className="mt-2 text-[15px] text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsOutro}</p>
               </div>
 
@@ -89,7 +90,7 @@ export default async function DownloadGuidePage() {
             </div>
 
             <HelpBlock title={META_CSV_HELP_PREVIOUS_MONTH.title}>
-              <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_HELP_PREVIOUS_MONTH.body}</p>
+              <VerticalMetricList metrics={META_CSV_HELP_PREVIOUS_MONTH.bullets} />
             </HelpBlock>
           </section>
 

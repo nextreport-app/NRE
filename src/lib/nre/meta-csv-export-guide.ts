@@ -37,17 +37,8 @@ export const META_CSV_EXPORT_PATH = {
     "Save → Export table data → CSV",
   ] as const,
   dayBreakdownImportant: 'Important - Set Time breakdown to "Day-wise" — for all campaigns.',
-  baseColumnsIntro: "Include base columns:",
-  baseColumnsInExport: [
-    "Amount spent",
-    "Reach",
-    "Impressions",
-    "Results",
-    "Cost per result",
-    "CTR",
-    "CPC",
-    "Link clicks",
-  ] as const,
+  baseColumnsIntro:
+    "Include base columns: Popular metric from meta you can always include.",
   baseColumnsOutro: "+ extras for your campaign objectives.",
   saveTip: "Save the report before downloading so next time you don't have to select again.",
 } as const;
@@ -100,6 +91,11 @@ export const META_CSV_HELP_BY_OBJECTIVE = {
 
 export const META_CSV_HELP_PREVIOUS_MONTH = {
   title: "1st of month · previous month file · historical",
-  body:
-    'Go to Ads reporting section within Ads Manager, select the ad account, select time duration as whole "Previous month", breakdown day-wise, include metrics, export CSV — Upload the file in the previous month section. This will add a previous month data row along with the current month till date row in your Monthly campaign overview slide. This helps in comparison between current month campaign performance vs last month campaign performance.',
+  bullets: [
+    "Go to Ads reporting within Ads Manager and select the ad account.",
+    'Set time duration to "Previous month", breakdown day-wise, include metrics, and export CSV.',
+    "Upload the file in the Previous month section on Import.",
+    "Adds a previous-month row alongside current month-to-date on your Monthly campaign overview slide.",
+    "Use it to compare this month vs last month campaign performance.",
+  ] as const,
 } as const;
