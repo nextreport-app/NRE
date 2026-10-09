@@ -1,6 +1,6 @@
 /**
  * Meta Ads CSV export — wizard + /help/download share this copy.
- * NextReport requires Reports export with Day breakdown (not Campaigns-screen export).
+ * NextReport requires Ad Reporting export with Day-wise breakdown (not Campaigns-screen export).
  * Column lists are generated from meta-dictionary.ts (same as Step 3 metrics).
  */
 
@@ -20,19 +20,20 @@ export const META_CSV_IMPORT_TOOLTIP = {
     "Impressions",
     "Results",
     "Cost per result",
-    "CTR (all)",
-    "CPC (all)",
+    "CTR",
+    "CPC",
     "Link clicks",
   ],
 } as const;
 
 export const META_CSV_EXPORT_PATH = {
-  title: "Use the Reports export (required)",
-  doThis:
-    "Ads Manager → open Reports (or Reporting) → build a Campaign report → Export → Export table data → CSV.",
-  notThis:
-    "Campaigns (or Ad Sets) → Export on the main table does not include Day breakdown. That file will fail upload.",
-  dayBreakdown: "Set Time breakdown to Day — one row per campaign per day.",
+  title: "Always use the Ad Reporting section to export (required)",
+  exportSteps:
+    "Ads Manager → open Ad Reporting → build a Campaign report → Select last 30 days → Breakdown (Day-wise) always → Include metrics to go in the report → Save → Export table data → CSV.",
+  dayBreakdownImportant: 'Important - Set Time breakdown to "Day-wise" — for all campaigns.',
+  baseColumnsNote:
+    "Include base columns (Amount spent, Reach, Impressions, Results, Cost per result, CTR, CPC, Link clicks, Landing Page Views, Cost Per LPV) + extras for your campaign objectives.",
+  saveTip: "Save the report before downloading so next time you don't have to select again.",
 } as const;
 
 /** Columns every Meta campaign report CSV should include when possible (from dictionary). */
@@ -47,12 +48,3 @@ export const META_CSV_OBJECTIVE_COLUMN_GROUPS: readonly MetaCsvObjectiveColumnGr
 export function metaCsvColumnsForObjectiveGroup(groupId: string): string[] {
   return columnsForGroup(groupId, META_CSV_BASE_COLUMNS, META_CSV_OBJECTIVE_COLUMN_GROUPS);
 }
-
-/** Short numbered steps for help page — no paragraphs. */
-export const META_CSV_QUICK_STEPS: readonly { title: string; detail?: string }[] = [
-  { title: META_CSV_EXPORT_PATH.doThis },
-  { title: META_CSV_EXPORT_PATH.dayBreakdown },
-  { title: "Pick the date range for your report type (see wizard Download instructions)." },
-  { title: "Include base columns + extras for your campaign objectives (Metrics to include in wizard)." },
-  { title: "Export as CSV and upload on Import." },
-];
