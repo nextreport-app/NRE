@@ -8,6 +8,7 @@ import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
 import { StepIndicator } from "./ui/step-indicator";
 import { UploadSessionRecoveryBanner } from "./ui/upload-session-recovery-banner";
+import { WizardLeaveDialog } from "./ui/wizard-leave-dialog";
 import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
@@ -21,7 +22,13 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
   );
 }
 
-function WizardClientLine({ clientName }: { clientName: string }) {
+function WizardClientLine({
+  clientName,
+  onChangeClientClick,
+}: {
+  clientName: string;
+  onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-dash-card px-4 py-3.5 shadow-sm">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Reporting for</span>
@@ -30,6 +37,7 @@ function WizardClientLine({ clientName }: { clientName: string }) {
       </span>
       <Link
         href="/clients"
+        onClick={onChangeClientClick}
         className="shrink-0 text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
       >
         Change client →
@@ -49,24 +57,48 @@ function ReportUploadWizardBody() {
     }
   }, [w.step]);
 
-  const wizardLeaveGuard =
-    w.step > 1 && w.generateStatus !== "done" && w.generateStatus !== "loading";
+  useEffect(() => {
+    if (!w.wizardLeaveGuardActive) return;
+    const wizardPath = `/clients/${w.clientId}/reports/new`;
+    const onClickCapture = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      if (anchor.target === "_blank") return;
+      const pathOnly = href.split("?")[0]?.split("#")[0] ?? "";
+      if (pathOnly === wizardPath) return;
+      if (!href.startsWith("/")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      w.requestWizardLeave(href);
+    };
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [w.wizardLeaveGuardActive, w.clientId, w.requestWizardLeave]);
 
   useEffect(() => {
-    if (!wizardLeaveGuard) return;
+    if (!w.wizardLeaveGuardActive) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [wizardLeaveGuard]);
+  }, [w.wizardLeaveGuardActive]);
+
+  const guardedClientChange = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!w.wizardLeaveGuardActive) return;
+    event.preventDefault();
+    w.requestWizardLeave("/clients");
+  };
 
   if (w.resumeBootstrapping) {
     return (
       <div className="space-y-6">
         <div>
-          <WizardClientLine clientName={w.clientName} />
+          <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
           <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
           <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
@@ -78,7 +110,7 @@ function ReportUploadWizardBody() {
     return (
       <div className="space-y-6">
         <div>
-          <WizardClientLine clientName={w.clientName} />
+          <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
           <h1 className="mb-1 text-[20px] font-bold text-white">Google Analytics</h1>
           <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
@@ -108,7 +140,7 @@ function ReportUploadWizardBody() {
   return (
     <div className="space-y-6">
       <div ref={wizardTopRef}>
-        <WizardClientLine clientName={w.clientName} />
+        <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
         <h1 className="mb-1 text-[20px] font-bold text-white">
           {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : getWizardStepHeading(w.step, w.platform)}
         </h1>
@@ -121,7 +153,7 @@ function ReportUploadWizardBody() {
       {w.draftRestoredBanner ? (
         <div className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-4 py-3">
           <p className="text-[14px] leading-relaxed text-sky-100">
-            Restored your in-progress report setup from this browser session.{" "}
+            Restored your in-progress report setup (saved for this client on your account).{" "}
             <button
               type="button"
               className="font-semibold text-sky-300 underline hover:no-underline"
@@ -146,6 +178,12 @@ function ReportUploadWizardBody() {
       <WizardCampaignsStep />
       <WizardMetricsStep />
       <WizardGenerateStep />
+
+      <WizardLeaveDialog
+        open={!!w.pendingLeaveHref}
+        onStay={w.cancelWizardLeave}
+        onLeave={w.confirmWizardLeave}
+      />
     </div>
   );
 }

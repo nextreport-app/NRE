@@ -46,6 +46,7 @@ export function WizardImportStep() {
     googleAdsConfigured,
     googleAdsConnected,
     handleAnalyze,
+    handleRetryAnalyze,
     handleApiSynced,
     handleCancelPreviousMonthSummary,
     handleDataSourceModeChange,
@@ -515,7 +516,23 @@ export function WizardImportStep() {
         </div>
       )}
       {analyzeStatus === "error" && analyzeMessage && (
-        <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">{analyzeMessage}</div>
+        <div className="space-y-3 rounded-lg border border-red-900 bg-red-950/40 p-4">
+          <p className="text-[14px] text-red-300">{analyzeMessage}</p>
+          {mtdFile ? (
+            <>
+              <p className="text-[13px] text-red-200/90">
+                Your file is still selected — retry analyze without re-uploading.
+              </p>
+              <button
+                type="button"
+                onClick={handleRetryAnalyze}
+                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+              >
+                Retry analyze
+              </button>
+            </>
+          ) : null}
+        </div>
       )}
     </div>
   );

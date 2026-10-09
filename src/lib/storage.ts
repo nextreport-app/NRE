@@ -235,3 +235,35 @@ export async function deleteWizardUploadSessionBlob(
   const match = blobs.find((b) => b.pathname === pathname);
   if (match) await del(match.url).catch(() => {});
 }
+
+// ─────────────────────── Wizard in-progress drafts ───────────────────────
+// Cross-session wizard state (step, metrics, preview payload) keyed by user + client.
+
+function wizardDraftPathname(userId: string, clientId: string): string {
+  return `wizard-drafts/${userId}/${clientId}.json`;
+}
+
+export async function saveWizardDraftBlob(userId: string, clientId: string, json: string): Promise<void> {
+  await put(wizardDraftPathname(userId, clientId), json, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "application/json",
+  });
+}
+
+export async function readWizardDraftBlob(userId: string, clientId: string): Promise<string | null> {
+  const pathname = wizardDraftPathname(userId, clientId);
+  const { blobs } = await list({ prefix: pathname, limit: 1 });
+  const match = blobs.find((b) => b.pathname === pathname);
+  if (!match) return null;
+  const result = await get(match.url, { access: "private" });
+  if (!result || result.statusCode !== 200) return null;
+  return await new Response(result.stream).text();
+}
+
+export async function deleteWizardDraftBlob(userId: string, clientId: string): Promise<void> {
+  const pathname = wizardDraftPathname(userId, clientId);
+  const { blobs } = await list({ prefix: pathname, limit: 1 });
+  const match = blobs.find((b) => b.pathname === pathname);
+  if (match) await del(match.url).catch(() => {});
+}
