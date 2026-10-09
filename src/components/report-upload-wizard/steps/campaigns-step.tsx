@@ -92,6 +92,14 @@ export function WizardCampaignsStep() {
         />
       ) : null}
 
+      <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-3">
+        <h3
+          id="wizard-campaigns-section-heading"
+          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-ink-secondary"
+        >
+          Campaigns
+        </h3>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2.5">
           <input
@@ -277,11 +285,29 @@ export function WizardCampaignsStep() {
           });
         })()}
       </ul>
+      </section>
 
       {selectedCampaigns.size > 0 ? (
-        <div className="mt-2 space-y-4 border-t-2 border-dash-border/70 pt-6">
+        <>
+          <div className="relative my-2 py-2" role="separator" aria-label="Objectives section">
+            <div className="absolute inset-0 flex items-center px-1" aria-hidden>
+              <div className="w-full border-t border-dash-border" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-dash-card px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-dash-ink-secondary">
+                Objectives
+              </span>
+            </div>
+          </div>
+
+          <section
+            aria-labelledby="wizard-objectives-section-heading"
+            className="space-y-4 rounded-lg border border-dash-border bg-[#151f33] p-4 sm:p-5"
+          >
           <div>
-            <h3 className="text-[15px] font-semibold text-white">Campaign objectives</h3>
+            <h3 id="wizard-objectives-section-heading" className="text-[15px] font-semibold text-white">
+              Campaign objectives
+            </h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
               Detected from your CSV. Change a dropdown only if something looks wrong, then continue.
             </p>
@@ -356,7 +382,8 @@ export function WizardCampaignsStep() {
                 })}
             </ul>
           )}
-        </div>
+          </section>
+        </>
       ) : null}
 
       <div className="hidden gap-3 md:flex">
