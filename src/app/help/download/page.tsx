@@ -77,6 +77,7 @@ export default async function DownloadGuidePage() {
 
               <div>
                 <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsIntro}</p>
+                <VerticalMetricList metrics={META_CSV_EXPORT_PATH.baseColumnsInExport} />
                 <p className="mt-2 text-[15px] text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsOutro}</p>
               </div>
 
