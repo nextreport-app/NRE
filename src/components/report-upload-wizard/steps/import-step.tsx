@@ -526,8 +526,7 @@ export function WizardImportStep() {
               <button
                 type="button"
                 onClick={handleRetryAnalyze}
-                disabled={analyzeStatus === "loading"}
-                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
               >
                 Retry analyze
               </button>
