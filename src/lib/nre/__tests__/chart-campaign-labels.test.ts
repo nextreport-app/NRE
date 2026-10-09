@@ -47,8 +47,9 @@ describe("buildCampaignShortLabels", () => {
   });
 
   it("estimates single-line capacity from label width and font size", () => {
-    expect(maxCampaignNameCharsForSingleLine(356, 15, 5)).toBeGreaterThan(40);
-    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeGreaterThan(16);
+    expect(maxCampaignNameCharsForSingleLine(356, 15, 5)).toBeGreaterThan(35);
+    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeLessThan(24);
+    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeGreaterThan(10);
   });
 
   it("preserves the start of long campaign names when truncating for display", () => {

@@ -107,11 +107,22 @@ export function formatCampaignDisplayName(name: string, max = CHART_CAMPAIGN_DIS
 export function maxCampaignNameCharsForSingleLine(
   labelWidthPt: number,
   fontSizePt: number,
-  maxRank = 5,
+  rank = 1,
 ): number {
   if (labelWidthPt <= 0 || fontSizePt <= 0) return CHART_CAMPAIGN_LABEL_MAX;
-  const avgCharWidthPt = fontSizePt * 0.48;
-  const rankPrefixChars = String(maxRank).length + 2;
-  const capacity = Math.floor(labelWidthPt / avgCharWidthPt) - rankPrefixChars;
-  return Math.max(CHART_CAMPAIGN_LABEL_MAX, capacity);
+  const avgCharWidthPt = fontSizePt * 0.52;
+  const rankPrefixChars = String(rank).length + 2;
+  const capacity = Math.floor(labelWidthPt / avgCharWidthPt) - rankPrefixChars - 1;
+  return Math.max(8, Math.min(CHART_CAMPAIGN_DISPLAY_MAX, capacity));
+}
+
+/** Rank-prefixed bar title — one line in PPT/browser/SVG. */
+export function formatRankedCampaignBarLabel(
+  rank: number,
+  name: string,
+  labelWidthPt: number,
+  fontSizePt: number,
+): string {
+  const nameMax = maxCampaignNameCharsForSingleLine(labelWidthPt, fontSizePt, rank);
+  return `${rank}. ${formatCampaignDisplayName(name, nameMax)}`;
 }

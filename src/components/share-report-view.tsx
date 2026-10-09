@@ -355,7 +355,8 @@ function VisualResultBar({
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <p
-          className={`min-w-0 flex-1 truncate font-medium leading-snug text-white [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[14px]"}`}
+          className={`min-w-0 flex-1 truncate whitespace-nowrap font-medium leading-snug text-white ${compact ? "text-[13px]" : "text-[14px]"}`}
+          title={`${rank}. ${name}`}
         >
           <span className="mr-1 text-[#94a3b8]">{rank}.</span>
           {name}

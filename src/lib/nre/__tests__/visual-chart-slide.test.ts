@@ -89,18 +89,39 @@ describe("buildVisualChartSlideModel", () => {
     ).toBe("Website Leads · 100% · C$1,164");
   });
 
-  it("keeps a long campaign name on one split-panel bar line when it fits the label width", () => {
-    const longName = "GZ Australia | Lead Forms | Top Funnel | A3HD";
+  it("truncates split-panel bar names that would wrap to a second line", () => {
+    const longFourth =
+      "Brisbane North - Remarketing - website leads campaign";
     const model = buildVisualChartSlideModel(
       chart({
         campaigns: [
-          campaign(longName, {
-            spend: 933,
-            results: 20,
-            resLabel: "META FORM LEADS",
-            cprLabel: "COST PER META FORM LEAD",
-            cpr: 46.67,
-          }),
+          campaign("Website Retargeting Campaign-September", { spend: 657, results: 176, resLabel: "QUOTE REQUESTS" }),
+          campaign("Brisbane South - cold traffic - website leads", { spend: 122, results: 27, resLabel: "QUOTE REQUESTS" }),
+          campaign("Brisbane North - cold traffic - website leads", { spend: 121, results: 18, resLabel: "QUOTE REQUESTS" }),
+          campaign(longFourth, { spend: 93, results: 9, resLabel: "QUOTE REQUESTS" }),
+        ],
+        totalAllSpend: 993,
+        snapshot: {
+          mode: "single",
+          primaryResultsLabel: "QUOTE REQUESTS",
+          primaryCprLabel: "COST PER QUOTE REQUEST",
+          objectives: [],
+        },
+      }),
+      "A$",
+    );
+    const fourth = model.resultBars.find((b) => b.rank === 4);
+    expect(fourth).toBeTruthy();
+    expect(fourth!.name.length).toBeLessThan(longFourth.length);
+    expect(fourth!.name).toMatch(/…$/);
+  });
+
+  it("keeps a short campaign name untruncated on split-panel bars", () => {
+    const shortName = "Website Retargeting";
+    const model = buildVisualChartSlideModel(
+      chart({
+        campaigns: [
+          campaign(shortName, { spend: 933, results: 20 }),
           campaign("Secondary Campaign", { spend: 1, results: 0 }),
         ],
         totalAllSpend: 934,
@@ -108,8 +129,7 @@ describe("buildVisualChartSlideModel", () => {
       "A$",
     );
     expect(model.useSplitPanel).toBe(true);
-    expect(model.resultBars.some((b) => b.name === longName)).toBe(true);
-    expect(model.resultBars.find((b) => b.name === longName)?.name).not.toMatch(/…$/);
+    expect(model.resultBars.find((b) => b.name === shortName)?.name).toBe(shortName);
   });
 
   it("uses spend donut + results bars when two or more campaigns report", () => {
