@@ -20,6 +20,34 @@ import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
+import { clientMonthlyBudgetSettingsHref } from "@/lib/nre/client-settings-navigation";
+
+function CoverBudgetClientSettingsLink({
+  clientId,
+  hasBudget,
+}: {
+  clientId: string;
+  hasBudget: boolean;
+}) {
+  const href = clientMonthlyBudgetSettingsHref(clientId, { returnToWizard: true });
+  return (
+    <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+      <Link
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-dash-accent hover:underline"
+      >
+        {hasBudget ? "Edit monthly budget" : "Set monthly budget"} in Client Settings
+      </Link>
+      <span className="text-dash-ink-muted">
+        {" "}
+        (opens in a new tab — this report setup stays on this page). After saving, switch back here; the budget line
+        updates when you return to this tab.
+      </span>
+    </p>
+  );
+}
 
 export function WizardGenerateStep() {
   const w = useWizardContext();
@@ -441,19 +469,15 @@ export function WizardGenerateStep() {
                       {coverBudgetPacingWarning}
                     </p>
                   ) : null}
+                  <CoverBudgetClientSettingsLink clientId={clientId} hasBudget />
                 </div>
               ) : (
-                <p className="mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
-                  No monthly budget set for this client.{" "}
-                  <Link
-                    href={`/clients/${clientId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-dash-accent hover:underline"
-                  >
-                    Set budget in Client Settings
-                  </Link>
-                </p>
+                <div className="mt-4 space-y-2">
+                  <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
+                    No monthly budget set for this client.
+                  </p>
+                  <CoverBudgetClientSettingsLink clientId={clientId} hasBudget={false} />
+                </div>
               )}
             </section>
           )}

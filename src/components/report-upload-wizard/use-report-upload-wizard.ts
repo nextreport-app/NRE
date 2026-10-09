@@ -109,9 +109,10 @@ export function useReportUploadWizard({
   hasGa4Property = false,
   ga4Connected = false,
   showTikTokOption = true,
-  clientMonthlyBudget = null,
+  clientMonthlyBudget: initialClientMonthlyBudget = null,
   clientShowBudgetPacingOnCover = false,
 }: ReportUploadWizardProps) {
+  const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
   const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
@@ -426,6 +427,28 @@ export function useReportUploadWizard({
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
   }
+
+  useEffect(() => {
+    setClientMonthlyBudget(initialClientMonthlyBudget);
+  }, [clientId, initialClientMonthlyBudget]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refreshMonthlyBudget = () => {
+      void fetch(`/api/clients/${clientId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (!json?.client) return;
+          const next = json.client.monthlyBudget;
+          setClientMonthlyBudget(typeof next === "number" && next > 0 ? next : null);
+        })
+        .catch(() => {
+          /* offline */
+        });
+    };
+    window.addEventListener("focus", refreshMonthlyBudget);
+    return () => window.removeEventListener("focus", refreshMonthlyBudget);
+  }, [clientId]);
 
   useEffect(() => {
     clientPrefsHydratedRef.current = false;

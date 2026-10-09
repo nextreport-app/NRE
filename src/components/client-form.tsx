@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CLIENT_MONTHLY_BUDGET_HASH } from "@/lib/nre/client-settings-navigation";
 import { useRouter } from "next/navigation";
 import {
   CURRENCIES,
@@ -87,6 +88,13 @@ export function ClientForm({
   const [values, setValues] = useState<ClientFormValues>(() => defaultFormValues(initial));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!inline || typeof window === "undefined") return;
+    if (window.location.hash.replace(/^#/, "") !== CLIENT_MONTHLY_BUDGET_HASH) return;
+    document.getElementById(CLIENT_MONTHLY_BUDGET_HASH)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [inline]);
+
   // Read-only card by default whenever there's already saved content to
   // show at a glance (returning to an existing client's page); a blank
   // client (nothing to show yet, or a brand-new client being created) opens
@@ -259,7 +267,7 @@ export function ClientForm({
         </div>
       </div>
 
-      <div>
+      <div id={CLIENT_MONTHLY_BUDGET_HASH} className="scroll-mt-24">
         <label className="mb-1 block text-sm text-dash-ink-secondary">Monthly ad budget — optional</label>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dash-ink-secondary">
