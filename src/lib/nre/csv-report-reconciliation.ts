@@ -1,6 +1,10 @@
 /**
  * Cross-check generated report totals against independent sums from the uploaded CSV.
- * Mirrors the same date windows and objective maps as buildReportData / chart slide.
+ *
+ * Weekly spend compares campaign-slide totals to a fresh sum of raw daily rows in
+ * the labeled report window (not splitMtdDaily's cached slice). If the CSV is
+ * missing calendar days inside that window, verification fails even when report
+ * and partial CSV agree — otherwise under-counts vs Ads Manager show a green check.
  */
 
 import type { NreRow } from "./columns";
@@ -23,9 +27,11 @@ import type { ResultCountingMode } from "./meta-csv-export-counting";
 import {
   capRangeToData,
   computeMtdRangeIso,
+  computeWeeklyRangeOptions,
   resolveStandardChartRange,
   type DateRangeIso,
 } from "./date-range";
+import { validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
 import { filterRawRowsToRange } from "./creative-report-data";
 
 export type CsvVerificationStatus = "ok" | "mismatch" | "skipped";
@@ -269,6 +275,9 @@ function scopedChecks(params: {
   csvStandardResults: number;
   csvExportResults: number;
   countingMode: ResultCountingMode;
+  /** When false, spend/results/CPR cannot match Ads Manager — flag even if report matches partial CSV sum. */
+  calendarComplete?: boolean;
+  calendarIncompleteNote?: string;
 }): CsvVerificationCheck[] {
   const {
     scope,
@@ -288,16 +297,27 @@ function scopedChecks(params: {
     csvStandardResults,
     csvExportResults,
     countingMode,
+    calendarComplete = true,
+    calendarIncompleteNote,
   } = params;
 
   const checks: CsvVerificationCheck[] = [];
+  const spendMatches = closeEnough(reportSpend, csvSpend, SPEND_AMOUNT_TOLERANCE);
+  const resultsOk = resultsMatch(reportResults, csvResults);
+  const cprMatches = closeEnough(reportCpr, csvCpr, CPR_TOLERANCE);
 
   checks.push({
     metric: "Amount spent",
     scope,
     reportDisplay: reportSpendDisplay,
     csvDisplay: fmtCurrency(csvSpend, currencySymbol),
-    status: closeEnough(reportSpend, csvSpend, SPEND_AMOUNT_TOLERANCE) ? "ok" : "mismatch",
+    status: calendarComplete && spendMatches ? "ok" : "mismatch",
+    note: !calendarComplete
+      ? calendarIncompleteNote ??
+        "CSV is missing days in this report week — report totals may not match Ads Manager."
+      : spendMatches
+        ? undefined
+        : `Report shows ${reportSpendDisplay}; CSV sums to ${fmtCurrency(csvSpend, currencySymbol)} for this window.`,
   });
 
   if (shouldVerifyPrimaryResults(resultLabel)) {
@@ -306,10 +326,12 @@ function scopedChecks(params: {
       scope,
       reportDisplay: reportResultsDisplay,
       csvDisplay: fmtNumber(csvResults),
-      status: resultsMatch(reportResults, csvResults) ? "ok" : "mismatch",
-      note: resultsMatch(reportResults, csvResults)
-        ? undefined
-        : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
+      status: calendarComplete && resultsOk ? "ok" : "mismatch",
+      note: !calendarComplete
+        ? calendarIncompleteNote
+        : resultsOk
+          ? undefined
+          : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
     });
   }
 
@@ -322,7 +344,8 @@ function scopedChecks(params: {
       scope,
       reportDisplay: reportCprDisplay,
       csvDisplay: csvCpr > 0 ? fmtCurrency(csvCpr, currencySymbol) : "—",
-      status: closeEnough(reportCpr, csvCpr, CPR_TOLERANCE) ? "ok" : "mismatch",
+      status: calendarComplete && cprMatches ? "ok" : "mismatch",
+      note: !calendarComplete ? calendarIncompleteNote : undefined,
     });
   }
 
@@ -482,7 +505,27 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   }
 
   // ── Weekly / report period (campaign summary slides) ───────────────────
-  const weeklyRawRows = split.weeklyRawRows ?? [];
+  const resolvedWeeklyRange =
+    input.weeklyRange ??
+    (reportType === "WEEKLY" ? computeWeeklyRangeOptions(filtered, now, timezone)?.last7 : undefined);
+  const displayWeeklyRange =
+    reportType === "WEEKLY" && resolvedWeeklyRange
+      ? capRangeToData(resolvedWeeklyRange, filtered, now, timezone)
+      : resolvedWeeklyRange;
+
+  let weeklyCalendarComplete = true;
+  let weeklyCalendarNote: string | undefined;
+  if (displayWeeklyRange && reportType === "WEEKLY") {
+    const coverage = validateWeeklyCsvDayRowsPresent(filtered, displayWeeklyRange, selectedCampaigns);
+    weeklyCalendarComplete = coverage.ok;
+    weeklyCalendarNote = coverage.error;
+  }
+
+  const weeklyRawRows =
+    displayWeeklyRange && (reportType === "WEEKLY" || reportType === "DAILY")
+      ? filterNreRowsByDateRange(filtered, displayWeeklyRange)
+      : (split.weeklyRawRows ?? []);
+
   if (weeklyRawRows.length > 0 && report.campaignSlides.length > 0 && (reportType === "WEEKLY" || reportType === "DAILY")) {
     const csvWeeklySpend = sumSpend(weeklyRawRows as MetricRow[]);
     const csvStdWeeklyResults = sumResultsForLabelFromRawDailyRows(
@@ -518,6 +561,17 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
     const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";
 
+    if (!weeklyCalendarComplete && displayWeeklyRange) {
+      checks.push({
+        metric: "Daily rows in report week",
+        scope: weeklyScope,
+        reportDisplay: `${displayWeeklyRange.startIso} – ${displayWeeklyRange.endIso}`,
+        csvDisplay: "Missing days",
+        status: "mismatch",
+        note: weeklyCalendarNote,
+      });
+    }
+
     checks.push(
       ...scopedChecks({
         scope: weeklyScope,
@@ -537,6 +591,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         csvStandardResults: csvStdWeeklyResults,
         csvExportResults: csvExportWeeklyResults,
         countingMode,
+        calendarComplete: weeklyCalendarComplete,
+        calendarIncompleteNote: weeklyCalendarNote,
       }),
     );
   }
