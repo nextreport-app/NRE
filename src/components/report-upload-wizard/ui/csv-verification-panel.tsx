@@ -56,7 +56,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
   const byScope = groupByScope(mismatches);
 
   if (ok) {
-    const detailText = `Spend, results, and cost per result match for ${verifiedScopesLabel(verification.scopesVerified)}. Small spend rounding (about $2 either way) is ignored.`;
+    const detailText = `Spend, results, and cost per result match your uploaded CSV for ${verifiedScopesLabel(verification.scopesVerified)} (every day in the weekly window must be present). Small spend rounding (about $2 either way) is ignored.`;
     return (
       <div className="rounded-lg border border-emerald-800/35 bg-emerald-950/15 px-4 py-3">
         <details className="group">
