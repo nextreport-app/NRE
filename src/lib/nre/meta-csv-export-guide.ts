@@ -28,11 +28,27 @@ export const META_CSV_IMPORT_TOOLTIP = {
 
 export const META_CSV_EXPORT_PATH = {
   title: "Always use the Ad Reporting section to export (required)",
-  exportSteps:
-    "Ads Manager → open Ad Reporting → build a Campaign report → Select last 30 days → Breakdown (Day-wise) always → Include metrics to go in the report → Save → Export table data → CSV.",
+  exportSteps: [
+    "Ads Manager → open Ad Reporting",
+    "Build a Campaign report",
+    "Select last 30 days",
+    "Breakdown (Day-wise) always",
+    "Include metrics to go in the report",
+    "Save → Export table data → CSV",
+  ] as const,
   dayBreakdownImportant: 'Important - Set Time breakdown to "Day-wise" — for all campaigns.',
-  baseColumnsNote:
-    "Include base columns (Amount spent, Reach, Impressions, Results, Cost per result, CTR, CPC, Link clicks, Landing Page Views, Cost Per LPV) + extras for your campaign objectives.",
+  baseColumnsIntro: "Include base columns:",
+  baseColumnsInExport: [
+    "Amount spent",
+    "Reach",
+    "Impressions",
+    "Results",
+    "Cost per result",
+    "CTR",
+    "CPC",
+    "Link clicks",
+  ] as const,
+  baseColumnsOutro: "+ extras for your campaign objectives.",
   saveTip: "Save the report before downloading so next time you don't have to select again.",
 } as const;
 
@@ -51,7 +67,7 @@ export function metaCsvColumnsForObjectiveGroup(groupId: string): string[] {
 
 /** Curated lists for /help/download — simpler than full dictionary chips. */
 export const META_CSV_HELP_BASE = {
-  title: "Base columns (always)",
+  title: "Base columns",
   subtitle: "Popular metric from meta to always include.",
   metrics: [
     "Amount spent",
@@ -80,4 +96,10 @@ export const META_CSV_HELP_BY_OBJECTIVE = {
     "Add to Cart",
     "Initiate Checkout",
   ],
+} as const;
+
+export const META_CSV_HELP_PREVIOUS_MONTH = {
+  title: "1st of month · previous month file · historical",
+  body:
+    'Go to Ads reporting section within Ads Manager, select the ad account, select time duration as whole "Previous month", breakdown day-wise, include metrics, export CSV — Upload the file in the previous month section. This will add a previous month data row along with the current month till date row in your Monthly campaign overview slide. This helps in comparison between current month campaign performance vs last month campaign performance.',
 } as const;
