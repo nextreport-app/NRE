@@ -71,6 +71,7 @@ export function WizardGenerateStep() {
     handleGenerateStepPrimary,
     handleGenerateAnother,
     handleGeneratePreviousMonthSummary,
+    handleReportTypeChange,
     handleSaveButtonClick,
     clientTimezone,
     handleSaveToFolderLink,
@@ -166,23 +167,15 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <WizardReportSetupPanel
-                  variant="summary"
-                  reportType={reportType}
-                  reportTypeLabel={reportTypeLabel()}
-                  platform={platform}
-                  clientTimezone={clientTimezone}
-                  onReportTypeChange={() => {}}
-                />
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-[14px] font-medium text-dash-accent hover:underline"
-                >
-                  Change report type →
-                </button>
-              </div>
+              <WizardReportSetupPanel
+                variant="summary"
+                allowInlineChange
+                reportType={reportType}
+                reportTypeLabel={reportTypeLabel()}
+                platform={platform}
+                clientTimezone={clientTimezone}
+                onReportTypeChange={handleReportTypeChange}
+              />
 
             {reportType === "HISTORICAL" && (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
