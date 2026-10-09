@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildCampaignShortLabels, formatCampaignDisplayName, formatRankedCampaignLabel } from "../chart-campaign-labels";
+import {
+  buildCampaignShortLabels,
+  formatCampaignDisplayName,
+  formatRankedCampaignLabel,
+  maxCampaignNameCharsForSingleLine,
+} from "../chart-campaign-labels";
 
 describe("buildCampaignShortLabels", () => {
   it("strips a shared prefix so similar campaign names stay distinguishable", () => {
@@ -39,6 +44,11 @@ describe("buildCampaignShortLabels", () => {
 
   it("formats ranked labels for chart rows", () => {
     expect(formatRankedCampaignLabel(1, "LPV Campaign A")).toBe("1. LPV Campaign A");
+  });
+
+  it("estimates single-line capacity from label width and font size", () => {
+    expect(maxCampaignNameCharsForSingleLine(356, 15, 5)).toBeGreaterThan(40);
+    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeGreaterThan(16);
   });
 
   it("preserves the start of long campaign names when truncating for display", () => {
