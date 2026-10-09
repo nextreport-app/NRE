@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { SlidePreviewCarousel } from "@/components/wizard-preview-carousel";
+import { normalizeCampaignName } from "@/lib/nre/objective";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
@@ -8,7 +10,15 @@ import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
-import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShareReportUrl, buildSlackShareUrl, buildTelegramShareUrl, buildWhatsAppShareUrl } from "../utils";
+import {
+  isNoDataRowsError,
+  isSpecificFieldError,
+  buildClientReportWhatsAppShareUrl,
+  buildMailtoShareUrl,
+  buildShareReportUrl,
+  buildSlackShareUrl,
+  buildTelegramShareUrl,
+} from "../utils";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
@@ -159,7 +169,20 @@ export function WizardGenerateStep() {
     weeklyOptions,
     weeklyPeriodSummaryLabel,
     weeklyRangeIso,
+    reportPeriodConfirmationLine,
+    wizardSharePlatformLabel,
+    driveDateRangeLabel,
+    perCampaignMetrics,
   } = w;
+
+  const periodConfirmation = reportPeriodConfirmationLine();
+  const slideCount = estimatedSlideCount();
+
+  const carouselSelectedMetrics = useMemo(() => {
+    if (!data?.campaignSlides[0]) return [];
+    const norm = normalizeCampaignName(data.campaignSlides[0].campaignName);
+    return perCampaignMetrics.get(norm) ?? [];
+  }, [data, perCampaignMetrics]);
 
   if (!stepActive) return null;
 
@@ -425,8 +448,19 @@ export function WizardGenerateStep() {
                 </div>
               )}
               {previewStatus === "error" && previewMessage && (
-                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
-                  {previewMessage}
+                <div className="space-y-3 rounded-lg border border-red-900 bg-red-950/40 p-4">
+                  <p className="text-[14px] text-red-300">{previewMessage}</p>
+                  <p className="text-[13px] text-red-200/90">
+                    Your campaigns, objectives, and metrics are still saved — use Retry preview below (no need to start
+                    over).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGenerateStepPrimary}
+                    className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                  >
+                    Retry preview
+                  </button>
                 </div>
               )}
               {previewRefreshing && (data || comparisonData || historicalData || dayBreakdownData) ? (
@@ -481,6 +515,36 @@ export function WizardGenerateStep() {
               )}
             </section>
           )}
+
+            {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
+              <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">Confirmed period</p>
+                <p className="mt-1 text-[15px] font-medium leading-snug text-white">{periodConfirmation}</p>
+              </div>
+            ) : null}
+
+            {generateStepPreviewReady &&
+            generateStatus === "idle" &&
+            (previewKind === "normal" || previewKind === "comparison") &&
+            (data || comparisonData) ? (
+              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+                <h4 className="text-[16px] font-semibold text-white">Slide preview</h4>
+                <p className="mt-1 text-[13px] text-dash-ink-secondary">
+                  Sample slides with your real CSV numbers — swipe to see layout before you generate.
+                </p>
+                <div className="mt-4">
+                  <SlidePreviewCarousel
+                    platform={platform}
+                    reportType={reportType}
+                    previewKind={previewKind === "comparison" ? "comparison" : "normal"}
+                    clientName={clientName}
+                    data={data}
+                    comparisonData={comparisonData}
+                    selectedMetrics={carouselSelectedMetrics}
+                  />
+                </div>
+              </section>
+            ) : null}
 
             <div className="space-y-4">
               {(previewKind === "normal" ||
@@ -658,15 +722,51 @@ export function WizardGenerateStep() {
           ) : null}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
-              <div className="border-b border-dash-border px-5 py-4">
-                <p className="text-[16px] font-semibold text-[#68d391]">Report ready</p>
+            <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-[#111f35]">
+              <div className="border-b border-dash-border bg-emerald-950/20 px-5 py-5 text-center">
+                <div
+                  className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-2xl text-emerald-300"
+                  aria-hidden
+                >
+                  ✓
+                </div>
+                <p className="text-[18px] font-bold text-emerald-300">Report generated</p>
+                <p className="mt-1 text-[15px] font-semibold text-white">
+                  {clientName} · {reportTypeLabel()}
+                </p>
                 <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                  Share the live link with your client or download files below.
+                  {slideCount} slide{slideCount === 1 ? "" : "s"}
+                  {driveDateRangeLabel() ? ` · ${driveDateRangeLabel()}` : ""}
                 </p>
               </div>
 
               <div className="space-y-5 p-5">
+                {shareToken ? (
+                  <a
+                    href={`https://${buildShareReportUrl(shareToken)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3.5 text-[16px] font-semibold text-dash-ink shadow-sm hover:bg-dash-accent-hover"
+                  >
+                    View report in browser
+                  </a>
+                ) : null}
+                {shareToken ? (
+                  <a
+                    href={buildClientReportWhatsAppShareUrl({
+                      clientName,
+                      reportTypeLabel: reportTypeLabel(),
+                      platformLabel: wizardSharePlatformLabel(),
+                      dateRangeLabel: driveDateRangeLabel() || "this period",
+                      reportUrl: `https://${buildShareReportUrl(shareToken)}`,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#25D366]/40 bg-[#25D366]/10 px-4 py-3 text-[15px] font-semibold text-[#86efac] hover:bg-[#25D366]/15"
+                  >
+                    Share on WhatsApp
+                  </a>
+                ) : null}
                 {publishedAt ? (
                   <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
                     Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
@@ -782,7 +882,13 @@ export function WizardGenerateStep() {
                           Email
                         </a>
                         <a
-                          href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
+                          href={buildClientReportWhatsAppShareUrl({
+                            clientName,
+                            reportTypeLabel: reportTypeLabel(),
+                            platformLabel: wizardSharePlatformLabel(),
+                            dateRangeLabel: driveDateRangeLabel() || "this period",
+                            reportUrl: `https://${buildShareReportUrl(shareToken)}`,
+                          })}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
@@ -996,12 +1102,15 @@ export function WizardGenerateStep() {
                   <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                     {generateMessage}
                   </div>
+                  <p className="text-[13px] text-dash-ink-secondary">
+                    Your setup is unchanged — retry uses the same CSV, campaigns, and metrics.
+                  </p>
                   <button
                     type="button"
                     onClick={handleGenerate}
                     className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                   >
-                    Try Again
+                    Retry generate
                   </button>
                 </div>
               )}

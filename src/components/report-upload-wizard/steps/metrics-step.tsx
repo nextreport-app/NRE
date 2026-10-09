@@ -5,6 +5,7 @@ import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
+import { readClientWizardPreferences } from "../client-wizard-preferences";
 
 export function WizardMetricsStep() {
   const w = useWizardContext();
@@ -15,7 +16,10 @@ export function WizardMetricsStep() {
     return w.campaigns.filter((name) => w.selectedCampaigns.has(name));
   }, [stepActive, w.campaigns, w.selectedCampaigns]);
 
-  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(false);
+  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(() => {
+    const prefs = readClientWizardPreferences(w.clientId);
+    return !(prefs?.metricsStepConfirmed ?? false);
+  });
 
   if (!stepActive) return null;
 

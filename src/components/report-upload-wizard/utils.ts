@@ -55,6 +55,19 @@ export function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
 
+/** Pre-filled client share message for agencies (WhatsApp one-tap send). */
+export function buildClientReportWhatsAppShareUrl(input: {
+  clientName: string;
+  reportTypeLabel: string;
+  platformLabel: string;
+  dateRangeLabel: string;
+  reportUrl: string;
+}): string {
+  const typePhrase = input.reportTypeLabel.toLowerCase();
+  const text = `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
 export function buildTelegramShareUrl(reportUrl: string): string {
   return `https://t.me/share/url?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
 }
