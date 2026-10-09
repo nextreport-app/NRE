@@ -7,23 +7,19 @@ import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
 import { LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
 
-export function WizardReportSetupPanel({
+function WizardReportTypePickerGrid({
   reportType,
-  reportTypeLabel,
   onReportTypeChange,
-  variant = "full",
+  moreOpen,
+  setMoreOpen,
+  onAfterSelect,
 }: {
   reportType: ReportTypeValue;
-  reportTypeLabel: string;
-  platform: Platform;
-  clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
-  variant?: "full" | "summary";
+  moreOpen: boolean;
+  setMoreOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  onAfterSelect?: () => void;
 }) {
-  const [moreOpen, setMoreOpen] = useState(() =>
-    LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
-  );
-
   const weekly = WIZARD_REPORT_TYPE_COPY.WEEKLY;
   const monthly = WIZARD_REPORT_TYPE_COPY.MONTHLY;
   const daily = WIZARD_REPORT_TYPE_COPY.DAILY;
@@ -31,26 +27,13 @@ export function WizardReportSetupPanel({
   const historical = WIZARD_REPORT_TYPE_COPY.HISTORICAL;
   const dayTable = WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
 
-  if (variant === "summary") {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-card px-4 py-3">
-        <div>
-          <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
-          <p className="text-[15px] font-semibold text-white">{reportTypeLabel}</p>
-        </div>
-      </div>
-    );
+  function select(next: ReportTypeValue) {
+    onReportTypeChange(next);
+    onAfterSelect?.();
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
-      <div>
-        <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Each type produces a different deck. Hover a card to see what you get.
-        </p>
-      </div>
-
+    <>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <ReportTypeCard
           icon="📊"
@@ -58,7 +41,7 @@ export function WizardReportSetupPanel({
           description={weekly.cardOneLiner}
           detailTooltip={weekly.cardYouGet}
           selected={reportType === "WEEKLY"}
-          onSelect={() => onReportTypeChange("WEEKLY")}
+          onSelect={() => select("WEEKLY")}
           layout="compact"
           recommended
         />
@@ -68,7 +51,7 @@ export function WizardReportSetupPanel({
           description={monthly.cardOneLiner}
           detailTooltip={monthly.cardYouGet}
           selected={reportType === "MONTHLY"}
-          onSelect={() => onReportTypeChange("MONTHLY")}
+          onSelect={() => select("MONTHLY")}
           layout="compact"
         />
         <ReportTypeCard
@@ -77,7 +60,7 @@ export function WizardReportSetupPanel({
           description={daily.cardOneLiner}
           detailTooltip={daily.cardYouGet}
           selected={reportType === "DAILY"}
-          onSelect={() => onReportTypeChange("DAILY")}
+          onSelect={() => select("DAILY")}
           layout="compact"
         />
       </div>
@@ -100,7 +83,7 @@ export function WizardReportSetupPanel({
               description={comparison.cardOneLiner}
               detailTooltip={comparison.cardYouGet}
               selected={reportType === "COMPARISON"}
-              onSelect={() => onReportTypeChange("COMPARISON")}
+              onSelect={() => select("COMPARISON")}
               layout="compact"
             />
             <ReportTypeCard
@@ -109,7 +92,7 @@ export function WizardReportSetupPanel({
               description={historical.cardOneLiner}
               detailTooltip={historical.cardYouGet}
               selected={reportType === "HISTORICAL"}
-              onSelect={() => onReportTypeChange("HISTORICAL")}
+              onSelect={() => select("HISTORICAL")}
               layout="compact"
             />
             <ReportTypeCard
@@ -118,12 +101,90 @@ export function WizardReportSetupPanel({
               description={dayTable.cardOneLiner}
               detailTooltip={dayTable.cardYouGet}
               selected={reportType === "DAY_BREAKDOWN"}
-              onSelect={() => onReportTypeChange("DAY_BREAKDOWN")}
+              onSelect={() => select("DAY_BREAKDOWN")}
               layout="compact"
             />
           </div>
         ) : null}
       </div>
+    </>
+  );
+}
+
+export function WizardReportSetupPanel({
+  reportType,
+  reportTypeLabel,
+  onReportTypeChange,
+  variant = "full",
+  allowInlineChange = false,
+}: {
+  reportType: ReportTypeValue;
+  reportTypeLabel: string;
+  platform: Platform;
+  clientTimezone: string;
+  onReportTypeChange: (next: ReportTypeValue) => void;
+  variant?: "full" | "summary";
+  /** Generate step: expand report type cards in place instead of returning to Import. */
+  allowInlineChange?: boolean;
+}) {
+  const [moreOpen, setMoreOpen] = useState(() =>
+    LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  if (variant === "summary") {
+    return (
+      <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
+            <p className="text-[15px] font-semibold text-white">{reportTypeLabel}</p>
+          </div>
+          {allowInlineChange ? (
+            <button
+              type="button"
+              onClick={() => setPickerOpen((open) => !open)}
+              className="text-[14px] font-medium text-dash-accent hover:underline"
+              aria-expanded={pickerOpen}
+            >
+              {pickerOpen ? "Hide report types" : "Change report type →"}
+            </button>
+          ) : null}
+        </div>
+        {allowInlineChange && pickerOpen ? (
+          <div className="mt-4 space-y-4 border-t border-dash-border/70 pt-4">
+            <p className="text-[13px] text-dash-ink-secondary">
+              Switch type here — your upload, campaigns, and metrics stay as they are. Confirm dates below for the new
+              type.
+            </p>
+            <WizardReportTypePickerGrid
+              reportType={reportType}
+              onReportTypeChange={onReportTypeChange}
+              moreOpen={moreOpen}
+              setMoreOpen={setMoreOpen}
+              onAfterSelect={() => setPickerOpen(false)}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
+      <div>
+        <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">
+          Each type produces a different deck. Hover a card to see what you get.
+        </p>
+      </div>
+
+      <WizardReportTypePickerGrid
+        reportType={reportType}
+        onReportTypeChange={onReportTypeChange}
+        moreOpen={moreOpen}
+        setMoreOpen={setMoreOpen}
+      />
     </section>
   );
 }
