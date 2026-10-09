@@ -8,6 +8,8 @@ export type ClientWizardPreferences = {
   includePreviousMonthComparison?: boolean;
   showBudgetOnCover?: boolean;
   dataSourceMode?: "csv" | "api";
+  /** User completed Metrics at least once for this client — metrics step may start collapsed. */
+  metricsStepConfirmed?: boolean;
   updatedAt?: string;
 };
 

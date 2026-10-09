@@ -84,6 +84,13 @@ import {
   saveWizardPlatformChoice,
 } from "./platform-storage";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
+import {
+  clearWizardDraft,
+  loadWizardDraft,
+  saveWizardDraft,
+  type WizardDraftSnapshot,
+} from "@/lib/nre/wizard-draft";
+import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 
 export function useReportUploadWizard({
   clientId,
@@ -150,6 +157,8 @@ export function useReportUploadWizard({
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
+
+  const wizardDraftRestoredRef = useRef(false);
 
   useEffect(() => {
     stepRef.current = step;
@@ -420,6 +429,7 @@ export function useReportUploadWizard({
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
+  const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
   function acknowledgePostGenerateEdit() {
@@ -872,6 +882,60 @@ export function useReportUploadWizard({
     }
   }
 
+  function buildWizardDraftSnapshot(): WizardDraftSnapshot | null {
+    if (!uploadSessionId) return null;
+    return {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      step: stepRef.current,
+      visitedSteps: [...visitedSteps],
+      uploadSessionId,
+      platform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      selectedCampaigns: Array.from(selectedCampaigns),
+      selectedAdSets: Array.from(selectedAdSets),
+      campaigns,
+      perCampaignMetrics: [...perCampaignMetrics.entries()].map(([normalized, metrics]) => ({ normalized, metrics })),
+      campaignObjectives: [...campaignObjectives.entries()],
+      previewKind,
+      previewStatus,
+      data,
+      comparisonData,
+      historicalData,
+      dayBreakdownData,
+      mtdRange,
+    };
+  }
+
+  function applyWizardDraft(draft: WizardDraftSnapshot) {
+    setUploadSessionId(draft.uploadSessionId);
+    if (draft.platform !== "GA4") {
+      setPlatform(coerceLaunchPlatform(draft.platform));
+    }
+    setReportType(coerceLaunchReportType(draft.reportType));
+    setDateMode(draft.dateMode);
+    setCustomStart(draft.customStart);
+    setCustomEnd(draft.customEnd);
+    setCampaigns(draft.campaigns);
+    setSelectedCampaigns(new Set(draft.selectedCampaigns));
+    setSelectedAdSets(new Set(draft.selectedAdSets));
+    setPerCampaignMetrics(new Map(draft.perCampaignMetrics.map((e) => [e.normalized, e.metrics])));
+    setCampaignObjectives(new Map(draft.campaignObjectives));
+    setPreviewKind(draft.previewKind);
+    setPreviewStatus(draft.previewStatus);
+    setData(draft.data);
+    setComparisonData(draft.comparisonData);
+    setHistoricalData(draft.historicalData);
+    setDayBreakdownData(draft.dayBreakdownData);
+    setMtdRange(draft.mtdRange);
+    stepRef.current = draft.step;
+    setStepState(draft.step);
+    setVisitedSteps(new Set(draft.visitedSteps));
+  }
+
   /** Legacy hook for import continue (UI no longer shows a second CTA). */
   function handleImportContinue() {
     if (!uploadSessionId || campaigns.length === 0) return;
@@ -1312,6 +1376,7 @@ export function useReportUploadWizard({
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
     setPerCampaignMinWarning(null);
+    saveClientWizardPreferences(clientId, { metricsStepConfirmed: true });
     setStep(4);
   }
 
@@ -1704,7 +1769,59 @@ export function useReportUploadWizard({
 
     applyPreviewResult(json);
     setPreviewRefreshing(false);
+    const snap = buildWizardDraftSnapshot();
+    if (snap) saveWizardDraft(clientId, snap);
   }
+
+  useLayoutEffect(() => {
+    if (resumeReportId || wizardDraftRestoredRef.current) return;
+    const draft = loadWizardDraft(clientId);
+    if (!draft?.uploadSessionId) return;
+    wizardDraftRestoredRef.current = true;
+    applyWizardDraft(draft);
+    setDraftRestoredBanner(true);
+    const needsPreview =
+      draft.step === 4 &&
+      !draft.data &&
+      !draft.comparisonData &&
+      !draft.historicalData &&
+      !draft.dayBreakdownData;
+    if (needsPreview) {
+      setPreviewStatus("loading");
+      queueMicrotask(() => {
+        void fetchPreview();
+      });
+    }
+  }, [clientId, resumeReportId]);
+
+  useEffect(() => {
+    if (!uploadSessionId || step < 2 || generateStatus === "done") return;
+    const snap = buildWizardDraftSnapshot();
+    if (snap) saveWizardDraft(clientId, snap);
+  }, [
+    clientId,
+    uploadSessionId,
+    step,
+    visitedSteps,
+    platform,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    selectedCampaigns,
+    selectedAdSets,
+    campaigns,
+    perCampaignMetrics,
+    campaignObjectives,
+    previewKind,
+    previewStatus,
+    data,
+    comparisonData,
+    historicalData,
+    dayBreakdownData,
+    mtdRange,
+    generateStatus,
+  ]);
 
   // Google Ads has no Reporting Period section on Step 5 at all (see this
   // file's header) — dispatchAfterAnalyze already fetched its one-shot
@@ -1859,6 +1976,7 @@ export function useReportUploadWizard({
     setShareToken(finalShareToken);
     setPublishedAt(null);
     setGenerateStatus("done");
+    clearWizardDraft(clientId);
     persistGenerateSnapshot(
       {
         reportId: json.reportId,
@@ -2058,6 +2176,7 @@ export function useReportUploadWizard({
     setComparisonData(null);
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
+    clearWizardDraft(clientId);
     setStep(1);
   }
 
@@ -2098,6 +2217,38 @@ export function useReportUploadWizard({
       return "Report period";
     }
     return "Week period";
+  }
+
+  /** Confirmed date line shown before Generate — makes the reporting window explicit. */
+  function reportPeriodConfirmationLine(): string | null {
+    if (previewKind === "comparison" && comparisonData) {
+      return `Your comparison report will cover Period A (${comparisonData.periodALabel}) vs Period B (${comparisonData.periodBLabel}).`;
+    }
+    if (previewKind === "historical" && historicalData) {
+      return `Your historical report will cover ${historicalData.monthsLabel}.`;
+    }
+    if (previewKind === "dayBreakdown" && dayBreakdownData) {
+      return `Your day-by-day report will cover ${dayBreakdownData.rangeLabel}.`;
+    }
+    if (reportType === "WEEKLY" && weeklyRangeIso && mtdRange) {
+      return `Your weekly report will cover ${formatIsoRange(weeklyRangeIso)} with MTD from ${formatIsoRange(mtdRange)}.`;
+    }
+    if (reportType === "MONTHLY" && mtdRange) {
+      return `Your monthly report will cover ${formatIsoRange(mtdRange)}.`;
+    }
+    if (reportType === "DAILY" && dailyRange) {
+      return `Your daily report will cover ${formatIsoRange(dailyRange)}.`;
+    }
+    if (reportType === "DAY_BREAKDOWN" && weeklyRangeIso) {
+      return `Your day breakdown will cover ${formatIsoRange(weeklyRangeIso)}.`;
+    }
+    return null;
+  }
+
+  function wizardSharePlatformLabel(): string {
+    if (platform === "GOOGLE") return "Google Ads";
+    if (platform === "TIKTOK") return "TikTok Ads";
+    return sharePlatformBadge(platform).label;
   }
 
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
@@ -2457,6 +2608,10 @@ export function useReportUploadWizard({
     weeklyRangeIso,
     reportTypeLabel,
     weeklyPeriodSummaryLabel,
+    reportPeriodConfirmationLine,
+    wizardSharePlatformLabel,
+    draftRestoredBanner,
+    setDraftRestoredBanner,
     summaryCampaignNames,
     historicalMonthLabels,
     estimatedSlideCount,

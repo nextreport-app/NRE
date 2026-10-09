@@ -23,14 +23,16 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
 
 function WizardClientLine({ clientName }: { clientName: string }) {
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/40 border-l-4 border-l-[#f6ad55] bg-dash-card/90 px-4 py-3 shadow-sm">
-      <span className="text-[12px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Client</span>
-      <span className="text-[17px] font-bold leading-tight text-[#fbd38d]">{clientName}</span>
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-dash-card px-4 py-3.5 shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Reporting for</span>
+      <span className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#fbd38d] sm:text-[26px]" title={clientName}>
+        {clientName}
+      </span>
       <Link
         href="/clients"
-        className="ml-auto text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
+        className="shrink-0 text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
       >
-        Select client →
+        Change client →
       </Link>
     </div>
   );
@@ -46,6 +48,19 @@ function ReportUploadWizardBody() {
       wizardTopRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
     }
   }, [w.step]);
+
+  const wizardLeaveGuard =
+    w.step > 1 && w.generateStatus !== "done" && w.generateStatus !== "loading";
+
+  useEffect(() => {
+    if (!wizardLeaveGuard) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [wizardLeaveGuard]);
 
   if (w.resumeBootstrapping) {
     return (
@@ -102,6 +117,21 @@ function ReportUploadWizardBody() {
         ) : null}
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+
+      {w.draftRestoredBanner ? (
+        <div className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-4 py-3">
+          <p className="text-[14px] leading-relaxed text-sky-100">
+            Restored your in-progress report setup from this browser session.{" "}
+            <button
+              type="button"
+              className="font-semibold text-sky-300 underline hover:no-underline"
+              onClick={() => w.setDraftRestoredBanner(false)}
+            >
+              Dismiss
+            </button>
+          </p>
+        </div>
+      ) : null}
 
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
