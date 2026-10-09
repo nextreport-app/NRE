@@ -7,7 +7,6 @@ import { BetaBanner } from "@/components/beta-banner";
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
 import {
   META_CSV_EXPORT_PATH,
-  META_CSV_HELP_BASE,
   META_CSV_HELP_BY_OBJECTIVE,
   META_CSV_HELP_PREVIOUS_MONTH,
 } from "@/lib/nre/meta-csv-export-guide";
@@ -84,11 +83,6 @@ export default async function DownloadGuidePage() {
             </div>
 
             <div id="meta-metrics" className="space-y-4">
-              <HelpBlock title={META_CSV_HELP_BASE.title}>
-                <p className="text-[14px] text-ink-muted">{META_CSV_HELP_BASE.subtitle}</p>
-                <VerticalMetricList metrics={META_CSV_HELP_BASE.metrics} />
-              </HelpBlock>
-
               <HelpBlock title={META_CSV_HELP_BY_OBJECTIVE.title}>
                 <VerticalMetricList metrics={META_CSV_HELP_BY_OBJECTIVE.metrics} />
               </HelpBlock>
