@@ -25,9 +25,15 @@ export const metadata: Metadata = pageMetadata({
   ],
 });
 
-function VerticalMetricList({ metrics }: { metrics: readonly string[] }) {
+function VerticalMetricList({
+  metrics,
+  className = "mt-2 space-y-1.5 border-l-2 border-navy-border pl-4 text-[15px] leading-relaxed text-ink-secondary",
+}: {
+  metrics: readonly string[];
+  className?: string;
+}) {
   return (
-    <ul className="mt-2 space-y-1.5 border-l-2 border-navy-border pl-4 text-[15px] leading-relaxed text-ink-secondary">
+    <ul className={className}>
       {metrics.map((metric) => (
         <li key={metric}>{metric}</li>
       ))}
@@ -77,7 +83,10 @@ export default async function DownloadGuidePage() {
 
               <div>
                 <p className="text-[15px] leading-relaxed text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsIntro}</p>
-                <VerticalMetricList metrics={META_CSV_EXPORT_PATH.baseColumnsInExport} />
+                <VerticalMetricList
+                  metrics={META_CSV_EXPORT_PATH.baseColumnsInExport}
+                  className="mt-2 space-y-1.5 border-l-2 border-amber-500/40 pl-4 text-[15px] leading-relaxed text-amber-50/95"
+                />
                 <p className="mt-2 text-[15px] text-ink-secondary">{META_CSV_EXPORT_PATH.baseColumnsOutro}</p>
               </div>
 
