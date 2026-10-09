@@ -52,7 +52,7 @@ export function getWizardStepHeading(step: 1 | 2 | 3 | 4, platform: Platform): s
     2:
       platform === "TIKTOK" || platform === "GOOGLE"
         ? "Select campaigns, ad groups & objectives"
-        : "Select campaigns & campaign objectives",
+        : "Select campaigns & objectives",
     3: "Review metrics",
     4: "Generate report",
   };
