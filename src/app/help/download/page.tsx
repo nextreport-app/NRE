@@ -8,7 +8,6 @@ import {
   META_CSV_BASE_COLUMNS,
   META_CSV_EXPORT_PATH,
   META_CSV_OBJECTIVE_COLUMN_GROUPS,
-  META_CSV_QUICK_STEPS,
 } from "@/lib/nre/meta-csv-export-guide";
 
 export const metadata: Metadata = pageMetadata({
@@ -51,9 +50,7 @@ export default async function DownloadGuidePage() {
         <section className="bg-navy px-6 py-12 text-center">
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">CSV export — quick guide</h1>
-            <p className="mt-3 text-base text-ink-muted">
-              Export once in Ads Manager, upload on Import. The wizard shows date range and columns for your report type.
-            </p>
+            <p className="mt-3 text-base text-ink-muted">Export once in Ads Manager, upload on Import.</p>
           </div>
         </section>
 
@@ -63,21 +60,13 @@ export default async function DownloadGuidePage() {
 
             <div className="mt-4 rounded-lg border border-amber-500/40 border-l-4 border-l-amber-400 bg-amber-950/25 p-4">
               <p className="font-semibold text-amber-100">{META_CSV_EXPORT_PATH.title}</p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-[15px] text-ink-secondary">
-                <li>{META_CSV_EXPORT_PATH.doThis}</li>
-                <li className="text-amber-100/90">{META_CSV_EXPORT_PATH.notThis}</li>
-                <li>{META_CSV_EXPORT_PATH.dayBreakdown}</li>
+              <ul className="mt-2 list-inside list-disc space-y-2 text-[15px] text-ink-secondary">
+                <li>{META_CSV_EXPORT_PATH.exportSteps}</li>
+                <li className="text-amber-100/90">{META_CSV_EXPORT_PATH.dayBreakdownImportant}</li>
+                <li>{META_CSV_EXPORT_PATH.baseColumnsNote}</li>
+                <li>{META_CSV_EXPORT_PATH.saveTip}</li>
               </ul>
             </div>
-
-            <ol className="mt-6 space-y-2 text-[15px] text-ink-secondary">
-              {META_CSV_QUICK_STEPS.map((step, i) => (
-                <li key={step.title} className="flex gap-3">
-                  <span className="font-semibold text-accent-orange">{i + 1}.</span>
-                  <span>{step.title}</span>
-                </li>
-              ))}
-            </ol>
 
             <div id="meta-metrics" className="mt-8 scroll-mt-24">
               <h3 className="text-lg font-semibold text-white">Base columns (always)</h3>
