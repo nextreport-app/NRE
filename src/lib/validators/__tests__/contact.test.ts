@@ -67,4 +67,12 @@ describe("contactSchema", () => {
   it("rejects a missing required field", () => {
     expect(contactSchema.safeParse({}).success).toBe(false);
   });
+
+  it("rejects WhatsApp without a country code", () => {
+    const result = contactSchema.safeParse(validInput({ whatsapp: "8130833792" }));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "whatsapp")).toBe(true);
+    }
+  });
 });

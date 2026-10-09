@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CONTACT_SUBJECTS } from "@/lib/validators/contact";
+import { CONTACT_SUBJECTS, contactSchema } from "@/lib/validators/contact";
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -27,6 +27,8 @@ export function ContactForm({
   const [subject, setSubject] = useState<string>(defaultSubject);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   // Captured at submit time, not read back from state after clearing the
   // form — the success message below still needs to show the address the
   // message was sent about, even after the fields themselves are reset.
@@ -34,15 +36,34 @@ export function ContactForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage(null);
+    setWhatsappError(null);
+
+    const parsed = contactSchema.safeParse({ name, email, whatsapp, subject, message });
+    if (!parsed.success) {
+      const issues = parsed.error.issues;
+      const whatsappIssue = issues.find((i) => i.path[0] === "whatsapp");
+      if (whatsappIssue) setWhatsappError(whatsappIssue.message);
+      setErrorMessage(issues[0]?.message ?? ERROR_MESSAGE);
+      setStatus("error");
+      return;
+    }
+
     setStatus("loading");
 
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, whatsapp, subject, message }),
+        body: JSON.stringify(parsed.data),
       });
       if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const apiMsg = typeof data?.error === "string" ? data.error : null;
+        if (apiMsg && apiMsg.toLowerCase().includes("country code")) {
+          setWhatsappError(apiMsg);
+        }
+        setErrorMessage(apiMsg ?? ERROR_MESSAGE);
         setStatus("error");
         return;
       }
@@ -55,6 +76,7 @@ export function ContactForm({
       setMessage("");
       setStatus("done");
     } catch {
+      setErrorMessage(ERROR_MESSAGE);
       setStatus("error");
     }
   }
@@ -108,14 +130,27 @@ export function ContactForm({
           type="tel"
           required
           value={whatsapp}
-          onChange={(e) => setWhatsapp(e.target.value)}
+          onChange={(e) => {
+            setWhatsapp(e.target.value);
+            if (whatsappError) setWhatsappError(null);
+            if (errorMessage) setErrorMessage(null);
+            if (status === "error") setStatus("idle");
+          }}
           placeholder="+91 …, +1 …, or +44 …"
           autoComplete="tel"
-          className={inputClassName}
+          aria-invalid={whatsappError ? true : undefined}
+          aria-describedby={whatsappError ? "contact-whatsapp-error" : "contact-whatsapp-hint"}
+          className={`${inputClassName}${whatsappError ? " border-red-800 focus:border-red-500" : ""}`}
         />
-        <p className="mt-1 text-xs text-ink-muted">
-          Include country code (India +91, US +1, UK +44). We often reply faster on WhatsApp than email.
-        </p>
+        {whatsappError ? (
+          <p id="contact-whatsapp-error" className="mt-1 text-xs text-red-400">
+            {whatsappError}
+          </p>
+        ) : (
+          <p id="contact-whatsapp-hint" className="mt-1 text-xs text-ink-muted">
+            Include country code (India +91, US +1, UK +44). We often reply faster on WhatsApp than email.
+          </p>
+        )}
       </div>
 
       <div>
@@ -153,8 +188,8 @@ export function ContactForm({
         />
       </div>
 
-      {status === "error" && (
-        <div className="rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">{ERROR_MESSAGE}</div>
+      {status === "error" && errorMessage && !whatsappError && (
+        <div className="rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">{errorMessage}</div>
       )}
 
       <button
