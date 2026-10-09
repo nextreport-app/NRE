@@ -17,13 +17,16 @@ import {
 } from "./date-range";
 import type { NreRow } from "./columns";
 import { getRowDate } from "./columns";
+import { validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
 
 export type CsvDateWarningKind =
   | "first_of_month"
   | "missing_month_start"
   | "early_month_last30"
   /** Default weekly period spans days before the account had any delivery. */
-  | "weekly_period_partial";
+  | "weekly_period_partial"
+  /** CSV has daily rows for some days in the default week but not every calendar day in that week. */
+  | "weekly_missing_day_rows";
 
 export interface CsvDateWarning {
   kind: CsvDateWarningKind;
@@ -121,6 +124,19 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), t
     csvBounds.minIso > mtdRange.startIso && !monthStartPresentInCsv(rows, mtdRange.startIso);
 
   const warnings: CsvDateWarning[] = [];
+
+  if (weeklyOptions) {
+    const coverage = validateWeeklyCsvDayRowsPresent(rows, weeklyOptions.last7, null);
+    if (!coverage.ok && coverage.error) {
+      warnings.push({
+        kind: "weekly_missing_day_rows",
+        title: "Weekly CSV is missing days",
+        message: coverage.error,
+        weeklyRangeLabel,
+        suggestedDownload: "last_30_days",
+      });
+    }
+  }
 
   if (monthStartMissing) {
     const missingDateLabel = friendlyDate(mtdRange.startIso);
