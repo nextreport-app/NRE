@@ -430,6 +430,7 @@ export function useReportUploadWizard({
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
   const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
+  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
   function acknowledgePostGenerateEdit() {
@@ -800,24 +801,47 @@ export function useReportUploadWizard({
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function applyAnalyzeResult(json: any) {
+  function applyAnalyzeResult(json: any, options?: { preserveProgress?: boolean }) {
+    const preserve = options?.preserveProgress === true;
+    const campaignList: string[] = json.campaigns || [];
+    const validCampaigns = new Set(campaignList);
+
     setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
     setCsvHeaders(Array.isArray(json.headers) ? json.headers : []);
-    setCampaigns(json.campaigns || []);
+    setCampaigns(campaignList);
     setCampaignSpend(json.campaignSpend || {});
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
-    setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
+
+    if (preserve) {
+      setSelectedCampaigns((prev) => {
+        const kept = [...prev].filter((name) => validCampaigns.has(name));
+        if (kept.length > 0) return new Set(kept);
+        return new Set<string>(json.selectedCampaigns || []);
+      });
+    } else {
+      setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
+    }
+
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
-    // Default checked state: a campaign with exactly one ad set starts
-    // UNCHECKED (its own slide would just repeat the campaign slide — the
-    // user opts in if they want one anyway); a campaign with 2+ ad sets
-    // starts with all of them CHECKED.
-    setSelectedAdSets(
-      new Set(
-        groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
-      ),
-    );
+    if (preserve) {
+      setSelectedAdSets((prev) => {
+        const validKeys = new Set(
+          groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
+        );
+        const kept = [...prev].filter((key) => validKeys.has(key));
+        if (kept.length > 0) return new Set(kept);
+        return new Set(
+          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
+        );
+      });
+    } else {
+      setSelectedAdSets(
+        new Set(
+          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
+        ),
+      );
+    }
     setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
     setCsvDateGuidance(json.csvDateGuidance || null);
@@ -837,10 +861,30 @@ export function useReportUploadWizard({
     setComparisonPreset("thisWeek");
     setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
     setComparisonPeriodA(json.weeklyOptions?.last7 || null);
-    resetMetricsState();
-    resetPreviewState();
-    resetGenerateState();
+    if (!preserve) {
+      resetMetricsState();
+      resetPreviewState();
+      resetGenerateState();
+    }
     setUploadSessionRecovery(null);
+  }
+
+  function clearAllWizardDrafts() {
+    clearWizardDraft(clientId);
+    void fetch(`/api/clients/${clientId}/wizard-draft`, { method: "DELETE" }).catch(() => undefined);
+  }
+
+  const serverDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function queueServerDraftSave(snapshot: WizardDraftSnapshot) {
+    if (serverDraftSaveTimerRef.current) clearTimeout(serverDraftSaveTimerRef.current);
+    serverDraftSaveTimerRef.current = setTimeout(() => {
+      void fetch(`/api/clients/${clientId}/wizard-draft`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: snapshot }),
+      }).catch(() => undefined);
+    }, 900);
   }
 
   /** Populates data/comparisonData from a successful /preview response, and clears any stale generate/Drive state left over from a previous attempt. */
@@ -1043,7 +1087,7 @@ export function useReportUploadWizard({
       return;
     }
 
-    applyAnalyzeResult(json);
+    applyAnalyzeResult(json, { preserveProgress: true });
     setAnalyzeStatus("idle");
 
     const currentStep = stepRef.current;
@@ -1054,6 +1098,11 @@ export function useReportUploadWizard({
       void fetchPreview();
     }
     showToast("Upload session restored — continue where you left off.");
+  }
+
+  /** Import step — network/server error retry; keeps the selected file. */
+  function handleRetryAnalyze() {
+    void handleAnalyze();
   }
 
   function handleMtdFileSelected(file: File | null) {
@@ -1773,31 +1822,41 @@ export function useReportUploadWizard({
     if (snap) saveWizardDraft(clientId, snap);
   }
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (resumeReportId || wizardDraftRestoredRef.current) return;
-    const draft = loadWizardDraft(clientId);
-    if (!draft?.uploadSessionId) return;
-    wizardDraftRestoredRef.current = true;
-    applyWizardDraft(draft);
-    setDraftRestoredBanner(true);
-    const needsPreview =
-      draft.step === 4 &&
-      !draft.data &&
-      !draft.comparisonData &&
-      !draft.historicalData &&
-      !draft.dayBreakdownData;
-    if (needsPreview) {
-      setPreviewStatus("loading");
-      queueMicrotask(() => {
-        void fetchPreview();
-      });
-    }
+    let cancelled = false;
+    void (async () => {
+      const local = loadWizardDraft(clientId);
+      const res = await fetch(`/api/clients/${clientId}/wizard-draft`);
+      const json = await res.json().catch(() => null);
+      if (cancelled || wizardDraftRestoredRef.current) return;
+
+      const serverDraft =
+        json?.ok && json.draft && typeof json.draft === "object" ? (json.draft as WizardDraftSnapshot) : null;
+
+      let draft: WizardDraftSnapshot | null = local;
+      if (serverDraft?.uploadSessionId) {
+        const localTs = local?.savedAt ? Date.parse(local.savedAt) : 0;
+        const serverTs = Date.parse(serverDraft.savedAt);
+        if (!local || (Number.isFinite(serverTs) && serverTs >= localTs)) {
+          draft = serverDraft;
+        }
+      }
+
+      if (!draft?.uploadSessionId) return;
+      restoreWizardDraft(draft);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [clientId, resumeReportId]);
 
   useEffect(() => {
     if (!uploadSessionId || step < 2 || generateStatus === "done") return;
     const snap = buildWizardDraftSnapshot();
-    if (snap) saveWizardDraft(clientId, snap);
+    if (!snap) return;
+    saveWizardDraft(clientId, snap);
+    queueServerDraftSave(snap);
   }, [
     clientId,
     uploadSessionId,
@@ -1976,7 +2035,7 @@ export function useReportUploadWizard({
     setShareToken(finalShareToken);
     setPublishedAt(null);
     setGenerateStatus("done");
-    clearWizardDraft(clientId);
+    clearAllWizardDrafts();
     persistGenerateSnapshot(
       {
         reportId: json.reportId,
@@ -2176,8 +2235,43 @@ export function useReportUploadWizard({
     setComparisonData(null);
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
-    clearWizardDraft(clientId);
+    clearAllWizardDrafts();
     setStep(1);
+  }
+
+  const wizardLeaveGuardActive = step > 1 && generateStatus !== "done" && generateStatus !== "loading";
+
+  function requestWizardLeave(href: string) {
+    setPendingLeaveHref(href);
+  }
+
+  function cancelWizardLeave() {
+    setPendingLeaveHref(null);
+  }
+
+  function confirmWizardLeave() {
+    const href = pendingLeaveHref;
+    setPendingLeaveHref(null);
+    if (href) router.push(href);
+  }
+
+  function restoreWizardDraft(draft: WizardDraftSnapshot) {
+    wizardDraftRestoredRef.current = true;
+    applyWizardDraft(draft);
+    saveWizardDraft(clientId, draft);
+    setDraftRestoredBanner(true);
+    const needsPreview =
+      draft.step === 4 &&
+      !draft.data &&
+      !draft.comparisonData &&
+      !draft.historicalData &&
+      !draft.dayBreakdownData;
+    if (needsPreview) {
+      setPreviewStatus("loading");
+      queueMicrotask(() => {
+        void fetchPreview();
+      });
+    }
   }
 
   const spanDays = customSpanDays();
@@ -2612,6 +2706,12 @@ export function useReportUploadWizard({
     wizardSharePlatformLabel,
     draftRestoredBanner,
     setDraftRestoredBanner,
+    wizardLeaveGuardActive,
+    pendingLeaveHref,
+    requestWizardLeave,
+    cancelWizardLeave,
+    confirmWizardLeave,
+    handleRetryAnalyze,
     summaryCampaignNames,
     historicalMonthLabels,
     estimatedSlideCount,

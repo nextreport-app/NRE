@@ -16,6 +16,8 @@ import type {
 
 const DRAFT_VERSION = 1 as const;
 
+export const WIZARD_SERVER_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export type WizardDraftSnapshot = {
   version: typeof DRAFT_VERSION;
   savedAt: string;
@@ -45,15 +47,26 @@ function storageKey(clientId: string): string {
   return `nre.wizardDraft.${clientId}`;
 }
 
-function parseDraft(raw: string): WizardDraftSnapshot | null {
+export function parseWizardDraftSnapshot(raw: string): WizardDraftSnapshot | null {
   try {
     const parsed = JSON.parse(raw) as WizardDraftSnapshot;
     if (parsed?.version !== DRAFT_VERSION || typeof parsed.uploadSessionId !== "string") return null;
     if (typeof parsed.step !== "number" || parsed.step < 1 || parsed.step > 4) return null;
+    if (typeof parsed.savedAt !== "string") return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+export function isWizardServerDraftExpired(draft: WizardDraftSnapshot, now = Date.now()): boolean {
+  const saved = Date.parse(draft.savedAt);
+  if (!Number.isFinite(saved)) return true;
+  return now - saved > WIZARD_SERVER_DRAFT_TTL_MS;
+}
+
+function parseDraft(raw: string): WizardDraftSnapshot | null {
+  return parseWizardDraftSnapshot(raw);
 }
 
 export function saveWizardDraft(clientId: string, snapshot: WizardDraftSnapshot): void {
