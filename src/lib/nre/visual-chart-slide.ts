@@ -15,11 +15,20 @@ import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import {
   CHART_CAMPAIGN_DISPLAY_MAX,
-  CHART_CAMPAIGN_LABEL_MAX,
   formatCampaignDisplayName,
+  maxCampaignNameCharsForSingleLine,
 } from "./chart-campaign-labels";
+import { resultBarColumns } from "../pptx/chart-campaign-bars-render";
+import { resultBarLayout } from "../pptx/chart-slide-layout";
 
-const SPLIT_PANEL_CAMPAIGN_NAME_MAX = CHART_CAMPAIGN_LABEL_MAX;
+const RESULT_BAR_RIGHT_LABEL_W_PT = 96;
+
+function splitPanelCampaignNameLayout(barCount: number, hasSubheading = false) {
+  const cols = resultBarColumns(true);
+  const layout = resultBarLayout(barCount, hasSubheading);
+  const labelWidthPt = cols.trackW - RESULT_BAR_RIGHT_LABEL_W_PT;
+  return { labelWidthPt, nameSizePt: layout.nameSizePt };
+}
 
 /** Chart segment colors — vivid enough to read on navy slides, softer than legacy neon accents. */
 export const VISUAL_CHART_PALETTE = ["5eb0ef", "f2ab50", "5fd98d", "f48484", "b090ef"] as const;
@@ -230,9 +239,12 @@ function buildResultBars(
     /** Bar fill width reflects spend share (default) or results share. */
     barScale?: "spend" | "results";
     campaignNameMax?: number;
+    /** When set, truncates each bar name to fit one line with its ranked prefix ("1. …"). */
+    campaignLabelWidthPt?: number;
+    campaignNameFontSizePt?: number;
   },
 ): VisualResultBar[] {
-  const nameMax = options.campaignNameMax ?? CHART_CAMPAIGN_DISPLAY_MAX;
+  const defaultNameMax = options.campaignNameMax ?? CHART_CAMPAIGN_DISPLAY_MAX;
   const barScale = options.barScale ?? "spend";
   const totalResults = rows.reduce((sum, row) => sum + row.results, 0);
   const maxSpend = Math.max(1, ...rows.map((r) => r.spend));
@@ -255,8 +267,17 @@ function buildResultBars(
       if (options.singleCampaignBarCap && rows.length === 1) {
         barPct = Math.min(barPct, SINGLE_CAMPAIGN_BAR_CAP);
       }
+      const rank = index + 1;
+      const nameMax =
+        options.campaignLabelWidthPt != null && options.campaignNameFontSizePt != null
+          ? maxCampaignNameCharsForSingleLine(
+              options.campaignLabelWidthPt,
+              options.campaignNameFontSizePt,
+              rank,
+            )
+          : defaultNameMax;
       return {
-        rank: index + 1,
+        rank,
         name: formatCampaignDisplayName(row.name, nameMax),
         color: row.color,
         spendLabel,
@@ -431,7 +452,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       chart.campaigns.map((c) => {
         const display = chartCampaignDisplayFields(c);
         return {
-          name: formatCampaignDisplayName(c.name),
+          name: c.name,
           color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
           spend: c.spend,
           results: c.results,
@@ -445,7 +466,10 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
         includeSpend: false,
         includeResultsShare: false,
         barScale: barSort,
-        campaignNameMax: SPLIT_PANEL_CAMPAIGN_NAME_MAX,
+        ...(() => {
+          const { labelWidthPt, nameSizePt } = splitPanelCampaignNameLayout(reportingCampaigns.length, false);
+          return { campaignLabelWidthPt: labelWidthPt, campaignNameFontSizePt: nameSizePt };
+        })(),
       },
     );
 
@@ -527,7 +551,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     chart.campaigns.map((c) => {
       const display = chartCampaignDisplayFields(c);
       return {
-        name: formatCampaignDisplayName(c.name),
+        name: c.name,
         color: colorByCampaign.get(c.name) ?? INACTIVE_COLOR,
         spend: c.spend,
         results: c.results,
@@ -542,7 +566,12 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       includeResultsShare: false,
       singleCampaignBarCap: useSplitPanel && reportingCampaigns.length === 1,
       barScale: "results",
-      campaignNameMax: useSplitPanel ? SPLIT_PANEL_CAMPAIGN_NAME_MAX : CHART_CAMPAIGN_DISPLAY_MAX,
+      ...(useSplitPanel
+        ? (() => {
+            const { labelWidthPt, nameSizePt } = splitPanelCampaignNameLayout(reportingCampaigns.length, false);
+            return { campaignLabelWidthPt: labelWidthPt, campaignNameFontSizePt: nameSizePt };
+          })()
+        : { campaignNameMax: CHART_CAMPAIGN_DISPLAY_MAX }),
     },
   );
 

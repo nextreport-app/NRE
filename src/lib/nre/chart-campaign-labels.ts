@@ -99,3 +99,19 @@ export function formatRankedCampaignLabel(rank: number, shortLabel: string): str
 export function formatCampaignDisplayName(name: string, max = CHART_CAMPAIGN_DISPLAY_MAX): string {
   return truncateLabel(name.trim(), max);
 }
+
+/**
+ * How many characters fit on one result-bar name line (Poppins ~0.5× font size per char).
+ * Reserves space for a ranked prefix such as "5. ".
+ */
+export function maxCampaignNameCharsForSingleLine(
+  labelWidthPt: number,
+  fontSizePt: number,
+  maxRank = 5,
+): number {
+  if (labelWidthPt <= 0 || fontSizePt <= 0) return CHART_CAMPAIGN_LABEL_MAX;
+  const avgCharWidthPt = fontSizePt * 0.48;
+  const rankPrefixChars = String(maxRank).length + 2;
+  const capacity = Math.floor(labelWidthPt / avgCharWidthPt) - rankPrefixChars;
+  return Math.max(CHART_CAMPAIGN_LABEL_MAX, capacity);
+}

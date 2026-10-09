@@ -89,6 +89,29 @@ describe("buildVisualChartSlideModel", () => {
     ).toBe("Website Leads · 100% · C$1,164");
   });
 
+  it("keeps a long campaign name on one split-panel bar line when it fits the label width", () => {
+    const longName = "GZ Australia | Lead Forms | Top Funnel | A3HD";
+    const model = buildVisualChartSlideModel(
+      chart({
+        campaigns: [
+          campaign(longName, {
+            spend: 933,
+            results: 20,
+            resLabel: "META FORM LEADS",
+            cprLabel: "COST PER META FORM LEAD",
+            cpr: 46.67,
+          }),
+          campaign("Secondary Campaign", { spend: 1, results: 0 }),
+        ],
+        totalAllSpend: 934,
+      }),
+      "A$",
+    );
+    expect(model.useSplitPanel).toBe(true);
+    expect(model.resultBars.some((b) => b.name === longName)).toBe(true);
+    expect(model.resultBars.find((b) => b.name === longName)?.name).not.toMatch(/…$/);
+  });
+
   it("uses spend donut + results bars when two or more campaigns report", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
     expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
@@ -350,11 +373,11 @@ describe("buildVisualChartSlideModel", () => {
     );
 
     expect(model.resultBars.map((b) => b.name)).toEqual([
-      "Tractor - DC - Traffic…",
+      "Tractor - DC - Traffic Campaign",
       "Traffic - Tractor",
       "Traffic - UTV",
       "Traffic - CFMOTO",
-      "Tractor_Traffic_Septemb…",
+      "Tractor_Traffic_September",
     ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
