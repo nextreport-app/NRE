@@ -34,9 +34,6 @@ export interface WizardGenerateSnapshot {
   comparisonData: ComparisonReportData | null;
   historicalData: HistoricalReportData | null;
   dayBreakdownData: DayBreakdownReportData | null;
-  reportTitle: string;
-  reportTitleTouched: boolean;
-  customTitleExpanded: boolean;
   selectedCampaigns: string[];
   driveView: "collapsed" | "editing" | "success";
   driveSaveUrl: string | null;

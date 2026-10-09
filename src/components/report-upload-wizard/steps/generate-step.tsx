@@ -42,7 +42,6 @@ export function WizardGenerateStep() {
     customEnd,
     customRangeError,
     customStart,
-    customTitleExpanded,
     dailyRange,
     data,
     dateBounds,
@@ -103,8 +102,6 @@ export function WizardGenerateStep() {
     rememberedFolder,
     reportId,
     reportSummaryExpanded,
-    reportTitle,
-    reportTitleTouched,
     reportType,
     reportTypeLabel,
     setCustomEnd,
@@ -113,7 +110,6 @@ export function WizardGenerateStep() {
     editCustomEnd,
     editCustomStart,
     editDateMode,
-    setCustomTitleExpanded,
     setDateMode,
     setDriveFolderLinkInput,
     setDriveFolderNameInput,
@@ -125,8 +121,6 @@ export function WizardGenerateStep() {
     editHistoricalMonthCount,
     setLongRangeConfirmed,
     setReportSummaryExpanded,
-    setReportTitle,
-    setReportTitleTouched,
     setStep,
     shareToken,
     showBudgetOnCover,
@@ -633,34 +627,6 @@ export function WizardGenerateStep() {
               </div>
             )}
 
-            {/* Section 2 — Custom title, collapsed behind a small link by default. */}
-            <div className="rounded-lg bg-[#1e293b] p-5">
-              {!customTitleExpanded && !reportTitleTouched ? (
-                <button
-                  type="button"
-                  onClick={() => setCustomTitleExpanded(true)}
-                  className="text-[14px] text-dash-accent hover:underline"
-                >
-                  Add custom PPT report title +
-                </button>
-              ) : (
-                <>
-                  <label className="mb-1 block text-[14px] text-[#94a3b8]">Custom report title</label>
-                  <input
-                    value={reportTitle}
-                    onChange={(e) => {
-                      setReportTitle(e.target.value);
-                      setReportTitleTouched(true);
-                    }}
-                    placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
-                    maxLength={100}
-                    disabled={generateStatus === "loading" || generateStatus === "done"}
-                    className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
-                  />
-                  <p className="mt-1 text-[14px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
-                </>
-              )}
-            </div>
           </div>
 
           {!generateStepPreviewReady && previewStatus === "loading" && generateStatus === "idle" ? (
