@@ -65,7 +65,6 @@ import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import {
   ADD_FROM_CSV_VISIBLE,
   ADSET_CHIP_CLASS,
-  DEFAULT_REPORT_TITLE,
   MIN_SELECTED_METRICS,
 } from "./constants";
 import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
@@ -386,16 +385,6 @@ export function useReportUploadWizard({
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
   const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
-  const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
-  // False until the user actually types in the Report Title field — while
-  // false, switching Report Type keeps swapping the title's own default
-  // text to match; once true, their custom title is left alone regardless
-  // of which Report Type is picked.
-  const [reportTitleTouched, setReportTitleTouched] = useState(false);
-  // Custom title input starts collapsed behind an "Add custom PPT report
-  // title +" link on the merged Step 3 — expanding it once (or having already typed
-  // a title) keeps it expanded for the rest of the session.
-  const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
   const [showBudgetOnCover, setShowBudgetOnCover] = useState(clientShowBudgetPacingOnCover ?? false);
@@ -445,7 +434,6 @@ export function useReportUploadWizard({
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
         const coerced = coerceLaunchReportType(prefs.reportType);
         setReportType(coerced);
-        setReportTitle(defaultReportTitleFor(coerced));
       }
       if (prefs.dateMode) {
         if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
@@ -494,9 +482,6 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
-    if (!reportTitleTouched) {
-      setReportTitle(defaultReportTitleFor(reportTypeChoice));
-    }
     if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
@@ -670,9 +655,6 @@ export function useReportUploadWizard({
       comparisonData,
       historicalData,
       dayBreakdownData,
-      reportTitle,
-      reportTitleTouched,
-      customTitleExpanded,
       selectedCampaigns: Array.from(selectedCampaigns),
       driveView: extras?.driveView ?? driveView,
       driveSaveUrl: extras?.driveSaveUrl ?? driveSaveUrl,
@@ -711,9 +693,6 @@ export function useReportUploadWizard({
     setComparisonData(snapshot.comparisonData);
     setHistoricalData(snapshot.historicalData ?? null);
     setDayBreakdownData(snapshot.dayBreakdownData ?? null);
-    setReportTitle(snapshot.reportTitle);
-    setReportTitleTouched(snapshot.reportTitleTouched);
-    setCustomTitleExpanded(snapshot.customTitleExpanded);
     setSelectedCampaigns(new Set(snapshot.selectedCampaigns));
     setDriveView(snapshot.driveView);
     setDriveSaveUrl(snapshot.driveSaveUrl);
@@ -1802,7 +1781,7 @@ export function useReportUploadWizard({
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
           dateSelection:
             reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined,
-          reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
+          reportTitle: defaultReportTitleFor(reportType),
           reportType,
           platform,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
@@ -2054,10 +2033,6 @@ export function useReportUploadWizard({
     setPreviewKind("normal");
     setData(null);
     setComparisonData(null);
-    setReportTitle(DEFAULT_REPORT_TITLE);
-    setReportTitleTouched(false);
-    setCustomTitleExpanded(false);
-
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
     setStep(1);
@@ -2416,12 +2391,6 @@ export function useReportUploadWizard({
     comparisonData,
     historicalData,
     dayBreakdownData,
-    reportTitle,
-    setReportTitle,
-    reportTitleTouched,
-    setReportTitleTouched,
-    customTitleExpanded,
-    setCustomTitleExpanded,
     reportSummaryExpanded,
     setReportSummaryExpanded,
     showBudgetOnCover,
