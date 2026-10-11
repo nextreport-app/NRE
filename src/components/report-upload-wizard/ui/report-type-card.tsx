@@ -119,11 +119,6 @@ export function ReportTypeCard({
           {showInlineDescription ? (
             <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
           ) : null}
-          {csvRequiredNote ? (
-            <span className="mt-1.5 block text-[11px] font-medium leading-snug text-amber-200/90">
-              Required: {csvRequiredNote}
-            </span>
-          ) : null}
         </button>
       </div>
     );
