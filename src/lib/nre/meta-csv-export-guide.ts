@@ -14,7 +14,7 @@ import {
 /** Direct deep link — Ads Manager → Reporting (Ad Reporting export). */
 export const META_ADS_MANAGER_REPORTING = {
   href: "https://adsmanager.facebook.com/adsmanager/reporting",
-  linkLabel: "Open Meta Ads Reporting",
+  linkLabel: "Meta Ads Reporting Section",
   shortLabel: "Meta Ads Reporting",
 } as const;
 
@@ -22,7 +22,7 @@ export type MetaAdsReportingLinkVariant = "inline" | "button" | "help";
 
 /** Import-step tooltip — day-wise CSV from Ads Reporting + common metrics. */
 export const META_CSV_IMPORT_TOOLTIP = {
-  body: "Download the day-wise breakdown CSV from Ads Reporting in Meta Ads Manager. Use the Open Meta Ads Reporting link on this step to jump there directly. Include these common metrics when possible:",
+  body: "Download the day-wise breakdown CSV from Ads Reporting in Meta Ads Manager. Include these common metrics when possible:",
   metrics: [
     "Amount spent",
     "Reach",
@@ -38,7 +38,7 @@ export const META_CSV_IMPORT_TOOLTIP = {
 export const META_CSV_EXPORT_PATH = {
   title: "Always use the Ad Reporting section to export (required)",
   exportSteps: [
-    "Open Meta Ads Reporting (link above) and select the ad account",
+    "Open Meta Ads Reporting Section (link above) and select the ad account",
     "Build a Campaign report",
     "Select last 30 days",
     "Breakdown (Day-wise) always",
