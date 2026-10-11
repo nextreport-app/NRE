@@ -15,8 +15,6 @@ const ALL_LINKS: SiteLink[] = [
 
 const LINKS = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING);
 
-const navPillOutline =
-  "inline-flex items-center justify-center rounded-full border border-navy-border bg-navy-panel/60 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy-panel";
 const navPillPrimary =
   "inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-navy transition-opacity hover:opacity-90";
 
@@ -27,8 +25,7 @@ function navLinkClass(active: boolean) {
 }
 
 /**
- * Public marketing header — Cursor-style: logo left, links centered, Sign in /
- * demo / primary CTA on the right. Sign out when already logged in (switch Google account via /login).
+ * Public marketing header — logo left, links centered, Sign in + primary CTA on the right.
  */
 export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   const [open, setOpen] = useState(false);
@@ -68,9 +65,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           <CurrencySelector compact />
           {loggedIn ? (
             <>
-              <Link href="/book-demo" className={navPillOutline}>
-                Request a demo
-              </Link>
               <button type="button" onClick={handleSignOut} className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
                 Sign out
               </button>
@@ -82,9 +76,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             <>
               <Link href="/login" className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
                 Sign in
-              </Link>
-              <Link href="/book-demo" className={navPillOutline}>
-                Request a demo
               </Link>
               <Link href="/signup" className={navPillPrimary}>
                 Start free trial
@@ -125,13 +116,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/book-demo"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2.5 text-sm text-ink-secondary hover:bg-navy-panel hover:text-white"
-            >
-              Request a demo
-            </Link>
             <div className="mt-2 border-t border-navy-border px-3 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Currency</p>
               <CurrencySelector compact className="mt-2" />
