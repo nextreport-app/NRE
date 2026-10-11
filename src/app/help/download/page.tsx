@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { DEFAULT_KEYWORDS, pageMetadata } from "@/lib/seo";
+import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 import {
   META_CSV_EXPORT_PATH,
   META_CSV_HELP_BY_OBJECTIVE,
@@ -61,13 +62,22 @@ export default async function DownloadGuidePage() {
         <section className="bg-navy px-6 py-12 text-center">
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">CSV export — quick guide</h1>
-            <p className="mt-3 text-base text-ink-muted">Export once in Ads Manager, upload on Import.</p>
+            <p className="mt-3 text-base text-ink-muted">
+              Export once in Ads Manager, upload on Import.{" "}
+              <MetaAdsReportingLink variant="help">Open Meta Ads Reporting</MetaAdsReportingLink>
+            </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-3xl space-y-10 px-6 py-12">
           <section id="meta-ads" className="space-y-6 rounded-lg border border-navy-border bg-navy-panel p-6">
             <h2 className="text-xl font-semibold text-accent-orange">Meta Ads</h2>
+            <p className="text-[15px] leading-relaxed text-ink-secondary">
+              <MetaAdsReportingLink variant="button" className="mr-2">
+                Open Meta Ads Reporting →
+              </MetaAdsReportingLink>
+              Jump straight to the reporting section in Ads Manager (same place you export the day-wise CSV).
+            </p>
 
             <div className="space-y-4 rounded-lg border border-amber-500/35 bg-amber-950/20 p-5">
               <p className="text-[16px] font-semibold text-amber-100">{META_CSV_EXPORT_PATH.title}</p>
