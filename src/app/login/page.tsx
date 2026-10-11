@@ -50,7 +50,7 @@ function LoginForm() {
             style={{
               fontWeight: 700,
               fontSize: "22px",
-              color: "white",
+              color: "var(--color-ink)",
               letterSpacing: "-0.3px",
               fontFamily: "var(--font-inter), sans-serif",
             }}
@@ -69,7 +69,7 @@ function LoginForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-ink outline-none focus:border-accent"
             placeholder="you@agency.com"
           />
         </div>
@@ -80,7 +80,7 @@ function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
+            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-ink outline-none focus:border-accent"
             placeholder="••••••••"
           />
         </div>
@@ -108,7 +108,7 @@ function LoginForm() {
           setGoogleLoading(true);
           void signIn("google", { callbackUrl }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS);
         }}
-        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border disabled:opacity-60"
+        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-ink hover:bg-navy-border disabled:opacity-60"
       >
         {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
       </button>

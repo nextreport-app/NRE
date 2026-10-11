@@ -18,7 +18,7 @@ const LINKS = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING);
 const navPillOutline =
   "inline-flex items-center justify-center rounded-full border border-navy-border bg-navy-panel/60 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy-panel";
 const navPillPrimary =
-  "inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-white/90";
+  "inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-navy transition-opacity hover:opacity-90";
 
 function navLinkClass(active: boolean) {
   return active
