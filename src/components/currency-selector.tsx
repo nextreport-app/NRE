@@ -18,11 +18,12 @@ export function CurrencySelector({ compact = false, className = "" }: CurrencySe
   if (!ctx) return null;
 
   const { currency, setCurrency } = ctx;
-  const pad = compact ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm";
+  const pad = compact ? "px-2.5 text-xs leading-none" : "px-3 text-sm leading-none";
+  const height = compact ? "h-8" : "h-9";
 
   return (
     <div
-      className={`inline-flex w-fit max-w-full items-center gap-0.5 rounded-full border border-navy-border bg-navy-panel p-0.5 ${className}`}
+      className={`inline-flex w-fit max-w-full items-stretch gap-0.5 rounded-full border border-navy-border bg-navy-panel p-0.5 ${className}`}
       role="group"
       aria-label="Display currency"
     >
@@ -33,7 +34,7 @@ export function CurrencySelector({ compact = false, className = "" }: CurrencySe
           onClick={() => setCurrency(code)}
           aria-pressed={currency === code}
           aria-label={code === "INR" ? "Show prices in Indian Rupees" : "Show prices in US Dollars"}
-          className={`shrink-0 rounded-full font-medium transition-colors ${pad} ${
+          className={`inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors ${height} ${pad} ${
             currency === code ? "bg-accent text-navy" : "text-ink-muted hover:text-white"
           }`}
         >
