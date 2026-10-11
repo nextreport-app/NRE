@@ -343,7 +343,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "How long does it take to generate a report?",
     answer:
-      "Most reports generate in under 2 minutes from CSV upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
+      "Most reports generate in under 2 minutes from CSV upload through to a downloadable PowerPoint (.pptx) or live browser link.",
   },
   {
     question: "Is there a free trial?",
@@ -364,23 +364,19 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
 
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
-    name: "Add your ad data",
-    text: "Upload a Meta CSV export from Ads Manager in the report wizard.",
+    name: "Import",
+    text: "Choose report type, export the matching day-wise Meta Ads Reporting CSV, and upload (optional Previous Month CSV for weekly decks).",
   },
   {
-    name: "Select campaigns and ad sets",
-    text: "Choose which campaigns and ad sets to include in the client deck.",
+    name: "Campaigns & objectives",
+    text: "Select campaigns and confirm each campaign’s primary result objective.",
   },
   {
-    name: "Confirm objectives",
-    text: "Review auto-detected campaign objectives — leads, purchases, traffic, reach, and more — and correct any that look wrong.",
+    name: "Review metrics",
+    text: "Preview KPI chips on each slide and add or remove metrics as needed.",
   },
   {
-    name: "Review metric cards",
-    text: "Preview the KPI chips on each campaign slide and add or remove metrics as needed.",
-  },
-  {
-    name: "Choose report type and generate",
-    text: "Pick weekly, monthly, comparison, or custom dates, then download .pptx, share a live link, export PDF, or save to Google Drive.",
+    name: "Generate report",
+    text: "Confirm dates, generate, then download .pptx, share a live link, save to Google Drive, or send via WhatsApp or email.",
   },
 ];

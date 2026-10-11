@@ -13,19 +13,16 @@ import {
   pageMetadata,
   PRODUCT_FAQ_SCHEMA,
 } from "@/lib/seo";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
+import { MARKETING_TRY_CTA_HEADLINE } from "@/lib/product-positioning";
+import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
+import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
 
 export const metadata: Metadata = pageMetadata({
-  title: "How It Works — 5-Step Report Wizard",
+  title: "How It Works — 4-Step Report Wizard",
   description:
-    "Set up a client, upload a Meta Ads Manager CSV, then generate a branded .pptx, live link, or PDF in under 2 minutes. Google, TikTok & GA4 launching soon.",
+    "Add a client, pick a report type, upload a day-wise Meta Ads Reporting CSV, and generate a branded .pptx or live share link in under 2 minutes.",
   path: "/how-it-works",
 });
-
-interface ReportType {
-  name: string;
-  description: string;
-}
 
 const SETUP_STEPS = [
   {
@@ -37,21 +34,18 @@ const SETUP_STEPS = [
     body: "From My Clients, add the client name and upload their logo. Every slide and export uses that branding automatically.",
   },
   {
-    title: "Connect ad accounts (optional)",
-    body: "Optional: connect GA4 in Account Settings for website reports. Meta, Google, and TikTok ad reports use a CSV export from each ads manager on Step 1 of the wizard.",
+    title: "Optional: GA4 in Account Settings",
+    body: "Website (GA4) reports connect here when they launch. Meta ad reports use a CSV from Meta Ads Reporting on Step 1 of the wizard today.",
   },
 ];
 
-const REPORT_TYPES: ReportType[] = [
-  { name: "Weekly Performance Report", description: "Last 7 days vs month to date — the default for agency weekly check-ins." },
-  { name: "Monthly Performance Report", description: "Full calendar month summary with MTD context where applicable." },
-  { name: "Yesterday Performance Report", description: "Full campaign deck for one day only — not a day-by-day table." },
-  {
-    name: "Comparison Report",
-    description: "Compare any two periods side by side — this week vs last week, this month vs last month, or any custom range.",
-  },
-  { name: "Multi-Month Historical Report", description: "Several complete prior months in one deck." },
-  { name: "Day-by-Day Table Report", description: "Account totals in a table — one row per day, no campaign slides." },
+const REPORT_TYPE_ORDER: LaunchEnabledReportType[] = [
+  "WEEKLY",
+  "MONTHLY",
+  "DAILY",
+  "COMPARISON",
+  "HISTORICAL",
+  "DAY_BREAKDOWN",
 ];
 
 interface Step {
@@ -62,28 +56,23 @@ interface Step {
 
 const WIZARD_STEPS: Step[] = [
   {
-    title: "Add your ad data",
-    body: "Open New Report on a client and upload your Meta Ads Manager CSV (Last 30 days, Day breakdown). You can also attach an optional Previous Month CSV for the monthly overview row.",
-    detail: "Step label in the app: Upload",
+    title: "Import",
+    body: "Choose the report type first, then export the matching day-wise CSV from Meta Ads Reporting and upload it. Optional Previous Month CSV adds the prior-month row on weekly decks.",
+    detail: "Step label in the app: Import",
   },
   {
-    title: "Select campaigns and ad sets",
-    body: "Check the campaigns that belong in this deck. Unchecked campaigns stay out entirely. Ad-set slides are optional — campaign totals still include their spend.",
+    title: "Campaigns & objectives",
+    body: "Select campaigns for this deck and confirm each campaign’s primary result objective (leads, purchases, traffic, reach, and more).",
     detail: "Step label in the app: Campaigns",
   },
   {
-    title: "Confirm objectives",
-    body: "NextReport detects whether each campaign optimised for leads, purchases, traffic, reach, or other goals. Confirm or correct anything flagged — wrong objectives mean wrong metric cards.",
-    detail: "Step label in the app: Objectives",
-  },
-  {
-    title: "Review metric cards",
-    body: "See the KPI chips that will appear on each campaign slide. Remove metrics you do not need or add extras from the CSV columns available.",
+    title: "Review metrics",
+    body: "Preview the KPI chips on each campaign slide. Remove metrics you do not need or add extras from columns in your export.",
     detail: "Step label in the app: Metrics",
   },
   {
-    title: "Choose report type and generate",
-    body: "Pick weekly, monthly, yesterday, comparison, historical, or daily performance. Review the summary, then generate. Download .pptx, share a live browser link, export PDF, email, WhatsApp, or save to Google Drive.",
+    title: "Generate report",
+    body: "Confirm dates and report type, then generate. Download .pptx (open in PowerPoint or Google Slides), share a live browser link, save to Google Drive, or send via WhatsApp or email.",
     detail: "Step label in the app: Generate",
   },
 ];
@@ -92,7 +81,7 @@ const OUTPUTS = [
   {
     icon: "📥",
     title: "Download as PowerPoint (.pptx)",
-    description: "The same format your clients already expect — with your agency branding and AI-written insights.",
+    description: "The format clients already expect — agency branding and AI-written insights on every slide.",
   },
   {
     icon: "🔗",
@@ -100,39 +89,23 @@ const OUTPUTS = [
     description: "Clients open the report on any device. No PowerPoint install required.",
   },
   {
-    icon: "📄",
-    title: "Export PDF",
-    description: "Print-ready PDF from the same report data — ideal for email attachments.",
-  },
-  {
     icon: "☁️",
     title: "Save to Google Drive",
-    description: "Automatic upload to your Drive with a shareable folder link.",
+    description: "Upload the deck to your folder and share from Drive.",
   },
   {
     icon: "💬",
     title: "Share via WhatsApp or Email",
-    description: "One click from the download screen after generation.",
+    description: "One click from the generate screen after the deck is ready.",
   },
 ];
 
-function FileCard({ label, cadence, title, body }: { label: string; cadence: string; title: string; body: string }) {
-  return (
-    <div className="rounded-lg border border-navy-border border-l-4 border-l-accent-orange bg-navy-panel p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-accent-orange">
-        {label} <span className="text-ink-muted">— {cadence}</span>
-      </p>
-      <h3 className="mt-1 text-base font-semibold text-white">{title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{body}</p>
-    </div>
-  );
-}
-
-function ReportTypeRow({ type }: { type: ReportType }) {
+function ReportTypeRow({ reportType }: { reportType: LaunchEnabledReportType }) {
+  const copy = WIZARD_REPORT_TYPE_COPY[reportType];
   return (
     <li className="rounded-lg border border-navy-border bg-navy-panel p-4">
-      <p className="text-sm font-semibold text-white">{type.name}</p>
-      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{type.description}</p>
+      <p className="text-sm font-semibold text-white">{copy.cardHeading}</p>
+      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{copy.cardYouGet}</p>
     </li>
   );
 }
@@ -172,7 +145,7 @@ export default async function HowItWorksPage() {
             faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
               "How to generate a client report with NextReport",
-              "Generate a branded Meta Ads client report in under 2 minutes via CSV upload from Ads Manager.",
+              "Generate a branded Meta Ads client report in under 2 minutes via day-wise CSV from Meta Ads Reporting.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
           ],
@@ -185,20 +158,21 @@ export default async function HowItWorksPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
             <p className="mt-4 text-lg text-ink-muted">
-              From client setup to a branded client deck in under 2 minutes — CSV upload
+              Client setup once, then a branded Meta deck in under 2 minutes — pick a report type and upload a
+              day-wise CSV.
             </p>
             <p className="mt-3 text-sm text-ink-secondary">
-              Supports {PLATFORM_LIST_SHORT}
+              Live today: Meta Ads reporting. Google Ads, TikTok Ads, and GA4 are launching soon.
             </p>
           </div>
         </section>
 
         <section className="border-b border-navy-border bg-navy-panel px-6 py-16">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-center text-2xl font-semibold text-white">Watch the 5-step flow</h2>
+            <h2 className="text-center text-2xl font-semibold text-white">Watch the wizard flow</h2>
             <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-secondary">
-              This animated walkthrough mirrors the actual report wizard in the app. Each step auto-advances — click the
-              dots to jump ahead.
+              This animated walkthrough mirrors the report wizard. Each step auto-advances — click the dots to jump
+              ahead.
             </p>
             <div className="mt-10">
               <ProductExplainerAnimation />
@@ -217,7 +191,7 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">Before your first report</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Three one-time setup steps — then every report reuses the same client and connections.
+              Three one-time setup steps — then every report reuses the same client and branding.
             </p>
             <ol className="mt-6 space-y-4">
               {SETUP_STEPS.map((step, i) => (
@@ -251,61 +225,16 @@ export default async function HowItWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">How you get data in</h2>
+            <h2 className="text-2xl font-semibold text-white">How you get data in (Meta)</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Meta, Google, and TikTok ad reports use a CSV export from each platform&apos;s ads manager on Step 1 of the
-              wizard. GA4 website reports can use the GA4 Data API after you connect in Account Settings. Automatic ad
-              platform API import in the wizard is turned off.
+              On Import, choose your report type — each type needs a specific date range with{" "}
+              <strong className="font-medium text-ink-muted">day-wise</strong> breakdown from{" "}
+              <strong className="font-medium text-ink-muted">Meta Ads Reporting</strong> (not the Campaigns screen
+              export). Hover a report-type card in the wizard for the exact CSV range. Automatic Meta API sync in the
+              wizard is off for now; CSV is the supported path.
             </p>
-          </section>
-
-          <section>
-            <h2 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-white">
-              TikTok Ads
-              <span className="rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
-                Launching soon
-              </span>
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              TikTok reporting is built and waiting on the same parity bar as Meta. You can connect TikTok in Account
-              Settings today; the wizard will open once we finish golden tests.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-white">
-              Website Traffic (GA4)
-              <span className="rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
-                Launching soon
-              </span>
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              GA4 website decks — sessions, channels, landing pages, device and geo breakdowns — are ready in code. Connect
-              GA4 and link a property per client in settings; report generation opens after Meta v1 ships.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white">If you use CSV (Meta)</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Two optional uploads power the full weekly Meta workflow:
-            </p>
-            <div className="mt-6 space-y-4">
-              <FileCard
-                label="File 1"
-                cadence="upload once per month"
-                title="Previous Month CSV"
-                body="Last full calendar month from Meta. Adds the previous month row on the Monthly Overview slide — so clients see how campaigns performed last month alongside this month's MTD. Not a month-over-month comparison."
-              />
-              <FileCard
-                label="File 2"
-                cadence="upload every week"
-                title="Last 30 Days, Day by Day"
-                body="Powers weekly slides, MTD row, visual chart (last 30 days), and comparison reports. On the 1st, export Previous Month with Day breakdown instead — see the CSV Export Guide."
-              />
-            </div>
             <p className="mt-4 text-sm text-ink-muted">
-              Step-by-step export instructions:{" "}
+              Export walkthrough:{" "}
               <Link href="/help/download" className="text-accent-orange hover:underline">
                 CSV Export Guide
               </Link>
@@ -313,18 +242,29 @@ export default async function HowItWorksPage() {
           </section>
 
           <section>
+            <h2 className="text-2xl font-semibold text-white">Optional: Previous Month CSV (weekly decks)</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
+              For weekly reports, you can attach a second file with the last full calendar month (day-wise). It powers
+              the previous-month row on the Monthly Overview slide — not a month-over-month comparison deck.
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-2xl font-semibold text-white">Report types available</h2>
+            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
+              Six types in the wizard today — names and slide layouts match what you select on Import.
+            </p>
             <ul className="mt-6 space-y-3">
-              {REPORT_TYPES.map((type) => (
-                <ReportTypeRow key={type.name} type={type} />
+              {REPORT_TYPE_ORDER.map((type) => (
+                <ReportTypeRow key={type} reportType={type} />
               ))}
             </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">The 5 wizard steps</h2>
+            <h2 className="text-2xl font-semibold text-white">The 4 wizard steps</h2>
             <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              These match the report wizard exactly — same order, same labels you see in the app.
+              Same order and labels as the app — Import, Campaigns, Metrics, Generate.
             </p>
             <div className="mt-6 space-y-4">
               {WIZARD_STEPS.map((step, i) => (
@@ -352,7 +292,7 @@ export default async function HowItWorksPage() {
         </div>
 
         <section className="bg-navy-panel px-6 py-16 text-center">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Ready to try it yourself?</h2>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">{MARKETING_TRY_CTA_HEADLINE}</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-ink-secondary">
             Start a free 7-day trial — or book a live demo if you want us to walk through your workflow first.
           </p>

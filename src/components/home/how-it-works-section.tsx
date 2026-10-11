@@ -4,7 +4,7 @@ const STEPS = [
   {
     number: "1",
     title: "Upload CSV",
-    description: "Export from Meta Ads Manager and upload the CSV in the report wizard.",
+    description: "Pick report type, export day-wise CSV from Meta Ads Reporting, and upload on Import.",
   },
   {
     number: "2",
@@ -14,7 +14,7 @@ const STEPS = [
   {
     number: "3",
     title: "Generate & share",
-    description: "Branded .pptx, live link, PDF, Google Drive, WhatsApp, or email — often under 2 minutes.",
+    description: "Branded .pptx, live link, Google Drive, WhatsApp, or email — often under 2 minutes.",
   },
 ];
 
@@ -26,7 +26,7 @@ export function HowItWorksSection() {
           Client reports in three moves
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">
-          The wizard has five detailed steps — here is the short version.
+          The wizard has four detailed steps — here is the short version.
         </p>
 
         <div className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
@@ -43,7 +43,7 @@ export function HowItWorksSection() {
 
         <p className="mt-10 text-center text-sm">
           <Link href="/how-it-works" className="text-accent-orange hover:underline">
-            See the full 5-step walkthrough →
+            See the full 4-step walkthrough →
           </Link>
         </p>
       </div>
