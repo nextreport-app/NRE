@@ -1281,6 +1281,108 @@ function buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, options =
   return [headerRow, mtdDataRow, periodDataRow];
 }
 
+// src/lib/pptx/chart-slide-layout.ts
+var MTD_SLIDE_H = 540;
+var MTD_BLOCK = {
+  titleH: 50,
+  gapAfterTitle: 8,
+  panelH: 384,
+  gapBeforeSummary: 12,
+  summaryH: 36
+};
+function mtdContentBlockTop() {
+  const blockH = MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary + MTD_BLOCK.summaryH;
+  return Math.round((MTD_SLIDE_H - blockH) / 2);
+}
+var MTD_BLOCK_TOP = mtdContentBlockTop();
+var MTD_VISUAL = {
+  marginX: 52,
+  titleY: MTD_BLOCK_TOP,
+  titleH: MTD_BLOCK.titleH,
+  panelY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle,
+  panelH: MTD_BLOCK.panelH,
+  summaryY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary,
+  summaryH: MTD_BLOCK.summaryH,
+  leftX: 52,
+  leftW: 348,
+  sepX: 412,
+  rightX: 428,
+  rightW: 480,
+  /** Full-width panel for the unified performance leaderboard. */
+  fullPanelX: 52,
+  fullPanelW: 856,
+  miniDonutCaptionH: 28,
+  groupedDonutD: 188,
+  barH: 7,
+  barNameH: 20,
+  barMetricsH: 16,
+  barRowGap: 16,
+  groupedDonutLegendRowH: 24,
+  groupedDonutLegendRowGap: 8,
+  groupedDonutLegendSizePt: 18,
+  barTrackMaxW: 824,
+  labelColW: 0,
+  panelHeadingH: 26,
+  panelSubheadingH: 16,
+  panelSubheadingGap: 4,
+  panelPad: 14
+};
+function chartPanelHeaderHeight(hasSubheading = true) {
+  return MTD_VISUAL.panelHeadingH + (hasSubheading ? MTD_VISUAL.panelSubheadingH + MTD_VISUAL.panelSubheadingGap : 0) + 8;
+}
+var MTD_DONUT_D = 220;
+var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
+var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barH + 4 + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
+function resultBarLayout(barCount, hasSubheading = true) {
+  const header = chartPanelHeaderHeight(hasSubheading);
+  const available = MTD_VISUAL.panelH - header;
+  const minRowH = 52;
+  const rowH = barCount > 0 ? Math.max(minRowH, Math.min(IDEAL_RESULT_BAR_ROW_H, Math.floor(available / barCount))) : IDEAL_RESULT_BAR_ROW_H;
+  const scale = Math.min(1, rowH / IDEAL_RESULT_BAR_ROW_H);
+  const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
+  const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
+  const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
+  const nameBarGap = Math.max(2, Math.round(4 * scale));
+  const barFooterGap = Math.max(2, Math.round(4 * scale));
+  const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
+  const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const blockH = barCount * rowH;
+  const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
+  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
+}
+
+// src/lib/pptx/chart-campaign-bars-render.ts
+var VISUAL_CHART_COLORS_DARK = {
+  ink: "ffffff",
+  inkMuted: "94a3b8",
+  accent: "f6ad55",
+  track: "2a3441",
+  panelFill: "111f35",
+  separator: "1e3a5f",
+  heading: "94a3b8"
+};
+var VISUAL_CHART_COLORS_LIGHT = {
+  ink: "0d1b2e",
+  inkMuted: "475569",
+  accent: "c2410c",
+  track: "ede6da",
+  panelFill: "faf8f5",
+  separator: "e5ddd0",
+  heading: "0d1b2e"
+};
+var CAMPAIGN_BAR_COLORS_DARK = {
+  ink: VISUAL_CHART_COLORS_DARK.ink,
+  inkMuted: VISUAL_CHART_COLORS_DARK.inkMuted,
+  accent: VISUAL_CHART_COLORS_DARK.accent,
+  track: VISUAL_CHART_COLORS_DARK.track
+};
+var CAMPAIGN_BAR_COLORS_LIGHT = {
+  ink: VISUAL_CHART_COLORS_LIGHT.ink,
+  inkMuted: VISUAL_CHART_COLORS_LIGHT.inkMuted,
+  accent: VISUAL_CHART_COLORS_LIGHT.accent,
+  track: VISUAL_CHART_COLORS_LIGHT.track
+};
+
 // src/lib/nre/visual-chart-slide.ts
 var VISUAL_CHART_PALETTE = ["5eb0ef", "f2ab50", "5fd98d", "f48484", "b090ef"];
 function visualResultBarRightLabel(_bar) {
@@ -1448,76 +1550,6 @@ function ShareReportBrandingHeader({
       ] })
     }
   );
-}
-
-// src/lib/pptx/chart-slide-layout.ts
-var MTD_SLIDE_H = 540;
-var MTD_BLOCK = {
-  titleH: 50,
-  gapAfterTitle: 8,
-  panelH: 384,
-  gapBeforeSummary: 12,
-  summaryH: 36
-};
-function mtdContentBlockTop() {
-  const blockH = MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary + MTD_BLOCK.summaryH;
-  return Math.round((MTD_SLIDE_H - blockH) / 2);
-}
-var MTD_BLOCK_TOP = mtdContentBlockTop();
-var MTD_VISUAL = {
-  marginX: 52,
-  titleY: MTD_BLOCK_TOP,
-  titleH: MTD_BLOCK.titleH,
-  panelY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle,
-  panelH: MTD_BLOCK.panelH,
-  summaryY: MTD_BLOCK_TOP + MTD_BLOCK.titleH + MTD_BLOCK.gapAfterTitle + MTD_BLOCK.panelH + MTD_BLOCK.gapBeforeSummary,
-  summaryH: MTD_BLOCK.summaryH,
-  leftX: 52,
-  leftW: 348,
-  sepX: 412,
-  rightX: 428,
-  rightW: 480,
-  /** Full-width panel for the unified performance leaderboard. */
-  fullPanelX: 52,
-  fullPanelW: 856,
-  miniDonutCaptionH: 28,
-  groupedDonutD: 188,
-  barH: 7,
-  barNameH: 20,
-  barMetricsH: 16,
-  barRowGap: 16,
-  groupedDonutLegendRowH: 24,
-  groupedDonutLegendRowGap: 8,
-  groupedDonutLegendSizePt: 18,
-  barTrackMaxW: 824,
-  labelColW: 0,
-  panelHeadingH: 26,
-  panelSubheadingH: 16,
-  panelSubheadingGap: 4,
-  panelPad: 14
-};
-function chartPanelHeaderHeight(hasSubheading = true) {
-  return MTD_VISUAL.panelHeadingH + (hasSubheading ? MTD_VISUAL.panelSubheadingH + MTD_VISUAL.panelSubheadingGap : 0) + 8;
-}
-var MTD_DONUT_D = 220;
-var MTD_DONUT_OUTER_R = MTD_DONUT_D / 2;
-var IDEAL_RESULT_BAR_ROW_H = MTD_VISUAL.barNameH + 4 + MTD_VISUAL.barH + 4 + MTD_VISUAL.barMetricsH + MTD_VISUAL.barRowGap;
-function resultBarLayout(barCount, hasSubheading = true) {
-  const header = chartPanelHeaderHeight(hasSubheading);
-  const available = MTD_VISUAL.panelH - header;
-  const minRowH = 52;
-  const rowH = barCount > 0 ? Math.max(minRowH, Math.min(IDEAL_RESULT_BAR_ROW_H, Math.floor(available / barCount))) : IDEAL_RESULT_BAR_ROW_H;
-  const scale = Math.min(1, rowH / IDEAL_RESULT_BAR_ROW_H);
-  const nameH = Math.max(12, Math.round(MTD_VISUAL.barNameH * scale));
-  const metricsH = Math.max(13, Math.round(MTD_VISUAL.barMetricsH * scale));
-  const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
-  const nameBarGap = Math.max(2, Math.round(4 * scale));
-  const barFooterGap = Math.max(2, Math.round(4 * scale));
-  const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
-  const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
-  const blockH = barCount * rowH;
-  const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
-  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
 }
 
 // src/lib/pptx/metric-icons.ts
@@ -1804,7 +1836,8 @@ function VisualResultBar({
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
         "p",
         {
-          className: `min-w-0 flex-1 truncate font-medium leading-snug text-white [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[14px]"}`,
+          className: `min-w-0 flex-1 truncate whitespace-nowrap font-medium leading-snug text-white ${compact ? "text-[13px]" : "text-[14px]"}`,
+          title: `${rank}. ${name}`,
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "mr-1 text-[#94a3b8]", children: [
               rank,

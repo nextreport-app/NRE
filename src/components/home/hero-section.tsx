@@ -32,7 +32,7 @@ const METRICS = [
  */
 function SlideMockup() {
   return (
-    <div className="w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
+    <div className="nre-keep-dark-surface w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Coastal Skin Co. — Lead Gen</span>
         <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
@@ -57,7 +57,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             {META_LAUNCH_HERO_BADGE}
           </span>
 
-          <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-white sm:text-[3rem]">
+          <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-ink sm:text-[3rem]">
             {PRODUCT_HERO_HEADLINE}
           </h1>
 
@@ -65,21 +65,21 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             {loggedIn ? (
               <Link
                 href="/clients"
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-navy hover:bg-white/90 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
               >
                 Go to Dashboard
               </Link>
             ) : (
               <Link
                 href="/signup"
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-navy hover:bg-white/90 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
               >
                 Start free trial
               </Link>
             )}
             <Link
               href="/book-demo"
-              className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-white hover:bg-navy-panel sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-ink hover:bg-navy-panel sm:w-auto"
             >
               Request a demo <span aria-hidden="true">→</span>
             </Link>
