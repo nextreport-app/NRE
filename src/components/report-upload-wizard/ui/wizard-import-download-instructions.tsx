@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
+import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
 import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
 import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 import type { ReportTypeValue } from "../types";
@@ -23,6 +24,8 @@ export function WizardImportDownloadInstructions({
     platform,
     clientTimezone,
   });
+  const csvReq =
+    platform === "META" ? wizardCsvRequirementForReportType({ reportType, clientTimezone }) : null;
   const platformLabel = getPlatformLabel(platform);
 
   return (
@@ -38,6 +41,12 @@ export function WizardImportDownloadInstructions({
         Download instructions
         {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
       </h4>
+      {csvReq ? (
+        <p className="mt-2 rounded-md border border-amber-800/40 bg-amber-950/25 px-3 py-2 text-[12px] leading-relaxed text-amber-100/95">
+          <span className="font-semibold text-amber-200">Required for this report:</span> {csvReq.shortNote}.{" "}
+          {csvReq.detail}
+        </p>
+      ) : null}
       {platform === "META" ? (
         <p className="mt-2">
           <MetaAdsReportingLink variant="button">Meta Ads Reporting Section →</MetaAdsReportingLink>
