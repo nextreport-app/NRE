@@ -27,7 +27,11 @@ const EN_LINKS: Record<string, string> = {
 };
 
 function links(overrides: Partial<Record<string, string>>): Record<string, string> {
-  return { ...EN_LINKS, ...overrides };
+  const out: Record<string, string> = { ...EN_LINKS };
+  for (const [href, label] of Object.entries(overrides)) {
+    if (label !== undefined) out[href] = label;
+  }
+  return out;
 }
 
 export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
