@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BETA_HIDE_PRICING } from "@/lib/beta";
 import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
 import { PRODUCT_HERO_HEADLINE } from "@/lib/product-positioning";
 
@@ -62,33 +61,28 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             {PRODUCT_HERO_HEADLINE}
           </h1>
 
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
             {loggedIn ? (
               <Link
                 href="/clients"
-                className="w-full rounded-md bg-accent-orange px-6 py-3 text-center text-sm font-semibold text-navy hover:bg-accent-orange-hover sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-navy hover:bg-white/90 sm:w-auto"
               >
                 Go to Dashboard
               </Link>
             ) : (
-              <>
-                <Link
-                  href="/signup"
-                  className="w-full rounded-md bg-accent-orange px-6 py-3 text-center text-sm font-semibold text-navy hover:bg-accent-orange-hover sm:w-auto"
-                >
-                  Start free trial
-                </Link>
-                {/* BETA: hidden during beta period — restore before public launch (see lib/beta.ts's BETA_HIDE_PRICING) */}
-                {!BETA_HIDE_PRICING && (
-                  <Link
-                    href="/pricing"
-                    className="w-full rounded-md border border-navy-border px-6 py-3 text-center text-sm font-medium text-white hover:bg-navy-panel sm:w-auto"
-                  >
-                    View pricing
-                  </Link>
-                )}
-              </>
+              <Link
+                href="/signup"
+                className="inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-navy hover:bg-white/90 sm:w-auto"
+              >
+                Start free trial
+              </Link>
             )}
+            <Link
+              href="/book-demo"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-white hover:bg-navy-panel sm:w-auto"
+            >
+              Request a demo <span aria-hidden="true">→</span>
+            </Link>
           </div>
 
           {!loggedIn && (
