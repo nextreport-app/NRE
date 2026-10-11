@@ -13,8 +13,8 @@ import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { V1PromiseSection } from "@/components/home/v1-promise-section";
 import { CommunityReferralSection } from "@/components/home/community-referral-section";
+import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
 import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
 
 export const metadata = pageMetadata({
@@ -48,7 +48,6 @@ export default async function Home() {
             the hero and the 3-step "how it works" — it used to sit near the
             bottom of the page, well past where most visitors scroll. */}
         <PainPointSection />
-        <V1PromiseSection />
         <FeaturesSection />
         <TrustStrip />
         <ReportPreviewSection />
@@ -57,6 +56,7 @@ export default async function Home() {
         <CommunityReferralSection />
         <LeadCaptureSection />
         <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
+        <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>
   );

@@ -3,6 +3,12 @@
  * Keep Meta CSV v1 claims aligned with /help/download.
  */
 
+/** Bottom-of-page and how-it-works closing CTA headline. */
+export const MARKETING_TRY_CTA_HEADLINE = "Try NextReport now.";
+
+/** Homepage hero — one line (Cursor-style). */
+export const PRODUCT_HERO_HEADLINE = "NextReport is branded Meta client reporting in minutes.";
+
 /** Hero / homepage — time → money (no geo-specific rates). */
 export const SPECIALIST_TIME_SAVINGS_LINE =
   "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — not just a shorter Friday.";
