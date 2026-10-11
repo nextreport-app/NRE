@@ -148,6 +148,10 @@ html[data-site-theme="light"] .text-ink-muted {
   color: var(--color-ink-muted);
 }
 
+html[data-site-theme="light"] .public-site-header {
+  background-color: color-mix(in srgb, var(--color-navy-panel) 92%, transparent);
+}
+
 .nre-theme-dark-lock {
   background-color: var(--color-dash-bg);
   background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);

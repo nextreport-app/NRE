@@ -45,7 +45,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/95 backdrop-blur-md">
+    <header className="public-site-header sticky top-0 z-40 border-b border-navy-border bg-navy/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2 lg:w-[168px]">
           <img src="/logo.png" alt="NextReport logo" className="h-9 w-9 sm:h-10 sm:w-10" />

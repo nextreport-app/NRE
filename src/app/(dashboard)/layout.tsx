@@ -7,6 +7,7 @@ import { getDashboardOnboarding } from "@/lib/onboarding-state";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { DASHBOARD_THEME_LOCK_CLASS } from "@/lib/site-theme";
+import { DashboardThemeGuard } from "@/components/dashboard-theme-guard";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -18,6 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <ToastProvider>
+      <DashboardThemeGuard>
       <div className={`${DASHBOARD_THEME_LOCK_CLASS} flex min-h-screen flex-1 flex-col bg-dash-bg`}>
         <Nav />
         {status && <TrialBanner status={status} />}
@@ -28,6 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {children}
         </main>
       </div>
+      </DashboardThemeGuard>
     </ToastProvider>
   );
 }

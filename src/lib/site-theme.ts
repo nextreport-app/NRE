@@ -1,4 +1,8 @@
-/** Marketing-site appearance — dashboard/wizard stay on {@link DASHBOARD_THEME_LOCK_CLASS}. */
+/**
+ * Cursor-style site theme: same pages and layout; only the marketing palette swaps
+ * (dark navy ↔ light gray/white, text inverted for contrast). Accent orange unchanged.
+ * Dashboard/wizard always stay dark ({@link DASHBOARD_THEME_LOCK_CLASS} + DashboardThemeGuard).
+ */
 
 export type SiteThemeMode = "system" | "light" | "dark";
 
