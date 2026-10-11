@@ -5,6 +5,7 @@ import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
 import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
+import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 import type { ReportTypeValue } from "../types";
 
 /** Shown on Import just above CSV upload / API sync — right before the user adds data. */
@@ -37,6 +38,14 @@ export function WizardImportDownloadInstructions({
         Download instructions
         {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
       </h4>
+      {platform === "META" ? (
+        <p className="mt-2">
+          <MetaAdsReportingLink variant="button">Open Meta Ads Reporting →</MetaAdsReportingLink>
+          <span className="mt-1 block text-[12px] text-dash-ink-muted">
+            Opens the reporting section in Ads Manager so you can export your CSV without hunting through menus.
+          </span>
+        </p>
+      ) : null}
       <p className="mt-0.5 text-[12px] text-dash-ink-muted">{guidance.context}</p>
       <ul className="mt-2 list-inside list-disc space-y-1">
         {guidance.lines.map((line) => (

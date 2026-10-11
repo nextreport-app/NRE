@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  META_ADS_MANAGER_REPORTING,
   META_CSV_BASE_COLUMNS,
   META_CSV_HELP_BASE,
   META_CSV_IMPORT_TOOLTIP,
@@ -7,6 +8,10 @@ import {
 } from "../meta-csv-export-guide";
 
 describe("meta-csv-export-guide", () => {
+  it("exposes Meta Ads Manager reporting deep link", () => {
+    expect(META_ADS_MANAGER_REPORTING.href).toBe("https://adsmanager.facebook.com/adsmanager/reporting");
+  });
+
   it("includes purchase funnel columns for purchase group", () => {
     const cols = metaCsvColumnsForObjectiveGroup("purchase");
     expect(cols.some((c) => /purchase roas/i.test(c))).toBe(true);

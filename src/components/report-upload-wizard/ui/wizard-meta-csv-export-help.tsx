@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { META_CSV_IMPORT_TOOLTIP } from "@/lib/nre/meta-csv-export-guide";
+import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 
 /** Meta Import — compact CSV export hint (replaces the large Reports export panel). */
 export function WizardMetaCsvImportTooltip() {
@@ -30,6 +31,11 @@ export function WizardMetaCsvImportTooltip() {
         }`}
       >
         <p className="text-[12px] leading-snug text-dash-ink">{META_CSV_IMPORT_TOOLTIP.body}</p>
+        <p className="mt-2">
+          <MetaAdsReportingLink variant="inline" className="text-[12px] text-[#93c5fd]">
+            Open Meta Ads Reporting →
+          </MetaAdsReportingLink>
+        </p>
         <ul className="mt-2 list-inside list-disc space-y-0.5 text-[12px] text-dash-ink-secondary">
           {META_CSV_IMPORT_TOOLTIP.metrics.map((m) => (
             <li key={m}>{m}</li>
