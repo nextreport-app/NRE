@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
 import { CurrencySelector } from "@/components/currency-selector";
 import { PUBLIC_NAV_LINKS, filterBetaLinks, type SiteLink } from "@/lib/site-links";
@@ -14,6 +15,11 @@ const ALL_LINKS: SiteLink[] = [
 
 const LINKS = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING);
 
+const navPillOutline =
+  "inline-flex items-center justify-center rounded-full border border-navy-border bg-navy-panel/60 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy-panel";
+const navPillPrimary =
+  "inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-white/90";
+
 function navLinkClass(active: boolean) {
   return active
     ? "font-medium text-white"
@@ -21,8 +27,8 @@ function navLinkClass(active: boolean) {
 }
 
 /**
- * Top nav for public marketing pages — auth-aware, active-route highlighting,
- * expanded link set, and a persistent demo CTA.
+ * Public marketing header — Cursor-style: logo left, links centered, Sign in /
+ * demo / primary CTA on the right. Sign out when already logged in (switch Google account via /login).
  */
 export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   const [open, setOpen] = useState(false);
@@ -33,51 +39,55 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  function handleSignOut() {
+    setOpen(false);
+    void signOut({ callbackUrl: "/login" });
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-navy-border bg-navy/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2 lg:w-[168px]">
           <img src="/logo.png" alt="NextReport logo" className="h-9 w-9 sm:h-10 sm:w-10" />
           <span className="text-lg font-bold tracking-tight text-white sm:text-xl">NextReport</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
+        <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex" aria-label="Main">
           {LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded-md px-3 py-2 text-sm ${navLinkClass(isActive(link.href))}`}
+              className={`rounded-full px-3 py-2 text-sm ${navLinkClass(isActive(link.href))}`}
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 lg:flex lg:w-[168px] lg:flex-none">
           <CurrencySelector compact />
-          <Link
-            href="/book-demo"
-            className="rounded-md px-3 py-2 text-sm text-ink-secondary transition-colors hover:text-white"
-          >
-            Book a demo
-          </Link>
           {loggedIn ? (
-            <Link
-              href="/clients"
-              className="rounded-md bg-accent-orange px-4 py-2 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link href="/book-demo" className={navPillOutline}>
+                Request a demo
+              </Link>
+              <button type="button" onClick={handleSignOut} className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
+                Sign out
+              </button>
+              <Link href="/clients" className={navPillPrimary}>
+                Dashboard
+              </Link>
+            </>
           ) : (
             <>
-              <Link href="/login" className="rounded-md px-3 py-2 text-sm text-ink-secondary hover:text-white">
-                Login
+              <Link href="/login" className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
+                Sign in
               </Link>
-              <Link
-                href="/signup"
-                className="rounded-md bg-accent-orange px-4 py-2 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
-              >
-                Get Started
+              <Link href="/book-demo" className={navPillOutline}>
+                Request a demo
+              </Link>
+              <Link href="/signup" className={navPillPrimary}>
+                Start free trial
               </Link>
             </>
           )}
@@ -88,7 +98,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-navy-border text-white lg:hidden"
+          className="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-navy-border text-white lg:ml-0 lg:hidden"
         >
           {open ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
@@ -120,7 +130,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2.5 text-sm text-ink-secondary hover:bg-navy-panel hover:text-white"
             >
-              Book a demo
+              Request a demo
             </Link>
             <div className="mt-2 border-t border-navy-border px-3 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Currency</p>
@@ -129,28 +139,40 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           </div>
           <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
             {loggedIn ? (
-              <Link
-                href="/clients"
-                onClick={() => setOpen(false)}
-                className="rounded-md bg-accent-orange px-4 py-2.5 text-center text-sm font-semibold text-navy"
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/clients"
+                  onClick={() => setOpen(false)}
+                  className={`${navPillPrimary} w-full py-2.5 text-center`}
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full rounded-full border border-navy-border px-4 py-2.5 text-center text-sm text-white hover:bg-navy-panel"
+                >
+                  Sign out
+                </button>
+                <p className="px-1 text-center text-xs text-ink-muted">
+                  Sign out ends your NextReport session only — use another Google account on the next sign-in.
+                </p>
+              </>
             ) : (
               <>
                 <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="rounded-md border border-navy-border px-4 py-2.5 text-center text-sm text-white"
-                >
-                  Login
-                </Link>
-                <Link
                   href="/signup"
                   onClick={() => setOpen(false)}
-                  className="rounded-md bg-accent-orange px-4 py-2.5 text-center text-sm font-semibold text-navy"
+                  className={`${navPillPrimary} w-full py-2.5 text-center`}
                 >
-                  Get Started — free trial
+                  Start free trial
+                </Link>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="w-full rounded-full border border-navy-border px-4 py-2.5 text-center text-sm text-white hover:bg-navy-panel"
+                >
+                  Sign in
                 </Link>
               </>
             )}
