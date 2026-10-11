@@ -61,23 +61,30 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           ))}
         </nav>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 lg:flex lg:w-[168px] lg:flex-none">
-          <CurrencySelector compact />
+        <div className="hidden shrink-0 items-center justify-end gap-2.5 lg:flex">
+          <CurrencySelector compact className="shrink-0" />
           {loggedIn ? (
             <>
-              <button type="button" onClick={handleSignOut} className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
+              >
                 Sign out
               </button>
-              <Link href="/clients" className={navPillPrimary}>
+              <Link href="/clients" className={`${navPillPrimary} shrink-0 whitespace-nowrap`}>
                 Dashboard
               </Link>
             </>
           ) : (
             <>
-              <Link href="/login" className="rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white">
+              <Link
+                href="/login"
+                className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
+              >
                 Sign in
               </Link>
-              <Link href="/signup" className={navPillPrimary}>
+              <Link href="/signup" className={`${navPillPrimary} shrink-0 whitespace-nowrap`}>
                 Start free trial
               </Link>
             </>
