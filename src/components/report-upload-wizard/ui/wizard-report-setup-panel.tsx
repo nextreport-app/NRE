@@ -6,15 +6,22 @@ import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
 import { LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
+import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
+
+function csvNote(reportType: ReportTypeValue, clientTimezone: string): string {
+  return wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote;
+}
 
 function WizardReportTypePickerGrid({
   reportType,
+  clientTimezone,
   onReportTypeChange,
   moreOpen,
   setMoreOpen,
   onAfterSelect,
 }: {
   reportType: ReportTypeValue;
+  clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
   moreOpen: boolean;
   setMoreOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
@@ -40,6 +47,7 @@ function WizardReportTypePickerGrid({
           heading={weekly.cardHeading}
           description={weekly.cardOneLiner}
           detailTooltip={weekly.cardYouGet}
+          csvRequiredNote={csvNote("WEEKLY", clientTimezone)}
           selected={reportType === "WEEKLY"}
           onSelect={() => select("WEEKLY")}
           layout="compact"
@@ -50,6 +58,7 @@ function WizardReportTypePickerGrid({
           heading={monthly.cardHeading}
           description={monthly.cardOneLiner}
           detailTooltip={monthly.cardYouGet}
+          csvRequiredNote={csvNote("MONTHLY", clientTimezone)}
           selected={reportType === "MONTHLY"}
           onSelect={() => select("MONTHLY")}
           layout="compact"
@@ -59,6 +68,7 @@ function WizardReportTypePickerGrid({
           heading={daily.cardHeading}
           description={daily.cardOneLiner}
           detailTooltip={daily.cardYouGet}
+          csvRequiredNote={csvNote("DAILY", clientTimezone)}
           selected={reportType === "DAILY"}
           onSelect={() => select("DAILY")}
           layout="compact"
@@ -82,6 +92,7 @@ function WizardReportTypePickerGrid({
               heading={comparison.cardHeading}
               description={comparison.cardOneLiner}
               detailTooltip={comparison.cardYouGet}
+              csvRequiredNote={csvNote("COMPARISON", clientTimezone)}
               selected={reportType === "COMPARISON"}
               onSelect={() => select("COMPARISON")}
               layout="compact"
@@ -91,6 +102,7 @@ function WizardReportTypePickerGrid({
               heading={historical.cardHeading}
               description={historical.cardOneLiner}
               detailTooltip={historical.cardYouGet}
+              csvRequiredNote={csvNote("HISTORICAL", clientTimezone)}
               selected={reportType === "HISTORICAL"}
               onSelect={() => select("HISTORICAL")}
               layout="compact"
@@ -100,6 +112,7 @@ function WizardReportTypePickerGrid({
               heading={dayTable.cardHeading}
               description={dayTable.cardOneLiner}
               detailTooltip={dayTable.cardYouGet}
+              csvRequiredNote={csvNote("DAY_BREAKDOWN", clientTimezone)}
               selected={reportType === "DAY_BREAKDOWN"}
               onSelect={() => select("DAY_BREAKDOWN")}
               layout="compact"
@@ -114,6 +127,7 @@ function WizardReportTypePickerGrid({
 export function WizardReportSetupPanel({
   reportType,
   reportTypeLabel,
+  clientTimezone,
   onReportTypeChange,
   variant = "full",
   allowInlineChange = false,
@@ -139,6 +153,9 @@ export function WizardReportSetupPanel({
           <div>
             <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
             <p className="text-[15px] font-semibold text-white">{reportTypeLabel}</p>
+            <p className="mt-1 text-[12px] text-amber-200/90">
+              Required CSV: {csvNote(reportType, clientTimezone)}
+            </p>
           </div>
           {allowInlineChange ? (
             <button
@@ -159,6 +176,7 @@ export function WizardReportSetupPanel({
             </p>
             <WizardReportTypePickerGrid
               reportType={reportType}
+              clientTimezone={clientTimezone}
               onReportTypeChange={onReportTypeChange}
               moreOpen={moreOpen}
               setMoreOpen={setMoreOpen}
@@ -175,12 +193,13 @@ export function WizardReportSetupPanel({
       <div>
         <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Each type produces a different deck. Hover a card to see what you get.
+          Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.
         </p>
       </div>
 
       <WizardReportTypePickerGrid
         reportType={reportType}
+        clientTimezone={clientTimezone}
         onReportTypeChange={onReportTypeChange}
         moreOpen={moreOpen}
         setMoreOpen={setMoreOpen}

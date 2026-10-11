@@ -9,6 +9,7 @@ export function ReportTypeCard({
   heading,
   description,
   detailTooltip,
+  csvRequiredNote,
   selected,
   onSelect,
   disabled = false,
@@ -23,6 +24,8 @@ export function ReportTypeCard({
   description: string;
   /** Full “what you get” copy — compact layout shows this in a hover/tap popover instead of inline. */
   detailTooltip?: string;
+  /** Short CSV export requirement, e.g. "Last 30 days · Day-wise CSV". */
+  csvRequiredNote?: string;
   selected: boolean;
   onSelect: () => void;
   disabled?: boolean;
@@ -61,7 +64,15 @@ export function ReportTypeCard({
               detailOpen ? "opacity-100" : "opacity-0 max-sm:opacity-0 [@media(hover:hover)]:group-hover/card:opacity-100 [@media(hover:hover)]:group-focus-within/card:opacity-100"
             }`}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-dash-accent">What you get</p>
+            {csvRequiredNote ? (
+              <>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/90">Required CSV</p>
+                <p className="mt-1 text-[12px] leading-snug text-amber-50/95">{csvRequiredNote}</p>
+              </>
+            ) : null}
+            <p className={`text-[10px] font-semibold uppercase tracking-wide text-dash-accent${csvRequiredNote ? " mt-2.5" : ""}`}>
+              What you get
+            </p>
             <p className="mt-1 text-[12px] leading-snug text-dash-ink">{detailTooltip}</p>
           </div>
         ) : null}
@@ -107,6 +118,11 @@ export function ReportTypeCard({
           </span>
           {showInlineDescription ? (
             <span className="mt-1 block text-[12px] leading-snug text-dash-ink-secondary">{description}</span>
+          ) : null}
+          {csvRequiredNote ? (
+            <span className="mt-1.5 block text-[11px] font-medium leading-snug text-amber-200/90">
+              Required: {csvRequiredNote}
+            </span>
           ) : null}
         </button>
       </div>
