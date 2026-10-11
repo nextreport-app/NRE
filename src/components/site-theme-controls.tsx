@@ -1,6 +1,7 @@
 "use client";
 
 import { SITE_LOCALES, type SiteThemeMode } from "@/lib/site-theme";
+import { footerCopy } from "@/lib/footer-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
 
 function ThemeIcon({ kind }: { kind: "system" | "light" | "dark" }) {
@@ -35,8 +36,10 @@ const THEME_OPTIONS: { mode: SiteThemeMode; label: string; icon: "system" | "lig
 
 export function SiteThemeControls() {
   const { themeMode, setThemeMode, locale, setLocale } = useSiteTheme();
+  const localeNote = footerCopy(locale).uiEnglishNote;
 
   return (
+    <div className="flex flex-col items-center gap-2 sm:items-end">
     <div className="flex flex-wrap items-center justify-center gap-4 sm:justify-end">
       <div className="flex items-center gap-0.5 rounded-full border border-navy-border bg-navy-panel/50 p-0.5">
         {THEME_OPTIONS.map((opt) => {
@@ -78,6 +81,12 @@ export function SiteThemeControls() {
           ))}
         </select>
       </label>
+    </div>
+    {localeNote ? (
+      <p className="max-w-md text-center text-[11px] leading-snug text-ink-muted sm:text-right" role="status">
+        {localeNote}
+      </p>
+    ) : null}
     </div>
   );
 }
