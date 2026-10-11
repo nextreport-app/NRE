@@ -64,7 +64,7 @@ export default async function DownloadGuidePage() {
             <h1 className="text-3xl font-bold text-white sm:text-4xl">CSV export — quick guide</h1>
             <p className="mt-3 text-base text-ink-muted">
               Export once in Ads Manager, upload on Import.{" "}
-              <MetaAdsReportingLink variant="help">Open Meta Ads Reporting</MetaAdsReportingLink>
+              <MetaAdsReportingLink variant="help">Meta Ads Reporting Section</MetaAdsReportingLink>
             </p>
           </div>
         </section>
@@ -74,7 +74,7 @@ export default async function DownloadGuidePage() {
             <h2 className="text-xl font-semibold text-accent-orange">Meta Ads</h2>
             <p className="text-[15px] leading-relaxed text-ink-secondary">
               <MetaAdsReportingLink variant="button" className="mr-2">
-                Open Meta Ads Reporting →
+                Meta Ads Reporting Section →
               </MetaAdsReportingLink>
               Jump straight to the reporting section in Ads Manager (same place you export the day-wise CSV).
             </p>

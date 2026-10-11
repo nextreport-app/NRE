@@ -40,13 +40,9 @@ export function WizardImportDownloadInstructions({
       </h4>
       {platform === "META" ? (
         <p className="mt-2">
-          <MetaAdsReportingLink variant="button">Open Meta Ads Reporting →</MetaAdsReportingLink>
-          <span className="mt-1 block text-[12px] text-dash-ink-muted">
-            Opens the reporting section in Ads Manager so you can export your CSV without hunting through menus.
-          </span>
+          <MetaAdsReportingLink variant="button">Meta Ads Reporting Section →</MetaAdsReportingLink>
         </p>
       ) : null}
-      <p className="mt-0.5 text-[12px] text-dash-ink-muted">{guidance.context}</p>
       <ul className="mt-2 list-inside list-disc space-y-1">
         {guidance.lines.map((line) => (
           <li key={line}>{line}</li>
