@@ -1,9 +1,14 @@
-/** A one-line trust statement strip — muted grey background, centered 14px text. Placed below the features section. */
+"use client";
+
+import { useSiteCopy } from "@/hooks/use-site-copy";
+
 export function TrustStrip() {
+  const { home } = useSiteCopy();
+
   return (
     <div className="border-y border-navy-border bg-navy-panel px-4 py-4">
       <p className="mx-auto max-w-6xl overflow-x-auto text-center text-xs whitespace-nowrap text-ink-muted sm:text-sm">
-        Every number comes from your Meta account or CSV export. We never modify your campaign data.
+        {home.trustStrip}
       </p>
     </div>
   );

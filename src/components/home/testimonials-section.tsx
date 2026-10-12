@@ -1,36 +1,18 @@
-const TESTIMONIALS = [
-  {
-    quote:
-      "We used to spend half a day every Monday formatting Meta reports in PowerPoint. NextReport cut that to under 15 minutes for our whole client roster.",
-    role: "Founder",
-    company: "Performance marketing agency",
-    location: "India",
-  },
-  {
-    quote:
-      "The AI summaries are actually usable — I edit maybe one sentence and send. Clients notice the polish compared to our old manual decks.",
-    role: "Account manager",
-    company: "Boutique digital agency",
-    location: "UAE",
-  },
-  {
-    quote:
-      "Google Slides export plus a share link means I don't chase clients for file downloads anymore. They get a link, they're happy.",
-    role: "Freelance media buyer",
-    company: "Independent consultant",
-    location: "United States",
-  },
-] as const;
+"use client";
+
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 export function TestimonialsSection() {
+  const { home } = useSiteCopy();
+
   return (
     <section className="border-t border-navy-border bg-navy px-6 py-20">
       <div className="mx-auto max-w-5xl">
-        <p className="text-center text-sm font-medium uppercase tracking-widest text-accent">Early users</p>
-        <h2 className="mt-3 text-center text-3xl font-semibold text-white">Agencies are shipping reports faster</h2>
+        <p className="text-center text-sm font-medium uppercase tracking-widest text-accent">{home.testimonialsEyebrow}</p>
+        <h2 className="mt-3 text-center text-3xl font-semibold text-white">{home.testimonialsTitle}</h2>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {TESTIMONIALS.map((t) => (
+          {home.testimonials.map((t) => (
             <blockquote
               key={t.quote.slice(0, 40)}
               className="rounded-xl border border-navy-border bg-navy-panel p-6 text-sm leading-relaxed text-ink-secondary"

@@ -8,6 +8,8 @@ type BillingIntervalToggleProps = {
   /** Dashboard pages use dash tokens; public pricing uses navy/accent. */
   variant?: "dashboard" | "pricing";
   className?: string;
+  /** Localized labels (homepage pricing section). */
+  labels?: { aria: string; monthly: string; annual: string };
 };
 
 export function BillingIntervalToggle({
@@ -15,7 +17,11 @@ export function BillingIntervalToggle({
   onChange,
   variant = "dashboard",
   className = "",
+  labels,
 }: BillingIntervalToggleProps) {
+  const monthlyLabel = labels?.monthly ?? "Monthly";
+  const annualLabel = labels?.annual ?? "Annual (save 20%)";
+  const ariaLabel = labels?.aria ?? "Billing period";
   const isDashboard = variant === "dashboard";
   const shell = isDashboard
     ? "border border-dash-border bg-dash-card"
@@ -29,7 +35,7 @@ export function BillingIntervalToggle({
     <div
       className={`inline-flex items-center gap-1 rounded-full p-1 text-sm ${shell} ${className}`}
       role="group"
-      aria-label="Billing period"
+      aria-label={ariaLabel}
     >
       <button
         type="button"
@@ -39,7 +45,7 @@ export function BillingIntervalToggle({
           interval === "monthly" ? active : inactive
         }`}
       >
-        Monthly
+        {monthlyLabel}
       </button>
       <button
         type="button"
@@ -49,7 +55,7 @@ export function BillingIntervalToggle({
           interval === "annual" ? active : inactive
         }`}
       >
-        Annual (save 20%)
+        {annualLabel}
       </button>
     </div>
   );

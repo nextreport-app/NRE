@@ -13,7 +13,7 @@ export function PricingCtaSection({
   userEmail?: string | null;
   userName?: string | null;
 }) {
-  const { marketing } = useSiteCopy();
+  const { marketing, home } = useSiteCopy();
 
   return (
     <section className="bg-navy px-6 py-20">
@@ -29,7 +29,7 @@ export function PricingCtaSection({
         <CurrencyPricing loggedIn={loggedIn} userEmail={userEmail} userName={userName} />
 
         <p className="mt-10 text-sm text-ink-muted">
-          Need a demo? Email us at{" "}
+          {home.pricingNeedDemo}{" "}
           <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
             hello@nextreport.in
           </a>
