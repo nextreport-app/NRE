@@ -25,7 +25,7 @@ export function WizardStickyFooter({
   extra?: ReactNode;
 }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-dash-border bg-[#0d1b2e]/95 px-4 py-3 backdrop-blur-sm md:hidden">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-dash-border bg-dash-sidebar/95 px-4 py-3 backdrop-blur-sm md:hidden">
       <div className="pointer-events-auto mx-auto flex max-w-3xl items-center gap-3">
         {showBack && onBack ? (
           <button

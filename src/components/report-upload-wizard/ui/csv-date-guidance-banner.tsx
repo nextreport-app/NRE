@@ -20,10 +20,10 @@ export function CsvDateGuidanceBanner({
     : "border-dash-accent/40 border-l-dash-accent";
 
   return (
-    <div className={`space-y-3 rounded-lg border border-l-4 bg-[#1e293b] p-4 ${borderClass}`}>
+    <div className={`space-y-3 rounded-lg border border-l-4 bg-dash-card nre-dash-surface p-4 ${borderClass}`}>
       <div className="space-y-1.5">
-        <p className="text-[15px] font-semibold leading-snug text-white">{warning.title}</p>
-        <p className="text-[14px] leading-relaxed text-[#e2e8f0]">{warning.message}</p>
+        <p className="text-[15px] font-semibold leading-snug text-dash-ink">{warning.title}</p>
+        <p className="text-[14px] leading-relaxed text-dash-ink-secondary">{warning.message}</p>
       </div>
       <div className="flex flex-wrap gap-2 pt-1">
         <button

@@ -302,10 +302,10 @@ export function WizardCampaignsStep() {
 
           <section
             aria-labelledby="wizard-objectives-section-heading"
-            className="space-y-4 rounded-lg border border-dash-border bg-[#151f33] p-4 sm:p-5"
+            className="space-y-4 rounded-lg border border-dash-border nre-wizard-panel p-4 sm:p-5"
           >
           <div>
-            <h3 id="wizard-objectives-section-heading" className="text-[15px] font-semibold text-white">
+            <h3 id="wizard-objectives-section-heading" className="text-[15px] font-semibold text-dash-ink">
               Campaign objectives
             </h3>
             <p className="mt-1 text-[13px] text-dash-ink-secondary">
@@ -344,7 +344,7 @@ export function WizardCampaignsStep() {
                   return (
                     <li key={name} className={`px-4 py-3 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="truncate text-[14px] text-white" title={name}>
+                        <span className="truncate text-[14px] text-dash-ink" title={name}>
                           {name}
                         </span>
                         <select

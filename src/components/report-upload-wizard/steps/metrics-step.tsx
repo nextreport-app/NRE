@@ -71,11 +71,11 @@ export function WizardMetricsStep() {
     return (
       <div
         key={name}
-        className="mb-4 rounded-lg bg-[#1e293b] p-4 last:mb-0"
+        className="mb-4 rounded-lg bg-dash-card nre-dash-surface p-4 last:mb-0"
         style={{ borderTop: `3px solid ${accent.borderHex}` }}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="truncate text-[15px] font-bold text-white" title={name}>
+          <span className="truncate text-[15px] font-bold text-dash-ink" title={name}>
             {name}
           </span>
           {objective && (
@@ -98,10 +98,10 @@ export function WizardMetricsStep() {
           {selectedForCampaign.map((m) => (
             <span
               key={m.key}
-              className="flex items-center gap-2 rounded-md border border-[#334155] bg-[#111f35]"
+              className="flex items-center gap-2 rounded-md border border-dash-border bg-dash-card nre-dash-surface"
               style={{ padding: "8px 12px" }}
             >
-              <span className="text-[14px] uppercase text-white" style={{ letterSpacing: "0.5px" }}>
+              <span className="text-[14px] uppercase text-dash-ink" style={{ letterSpacing: "0.5px" }}>
                 {m.label}
               </span>
               <button
@@ -120,7 +120,7 @@ export function WizardMetricsStep() {
           <p className="mt-2 text-[14px] text-amber-300">{perCampaignMinWarning}</p>
         )}
 
-        <div className="my-3 border-t border-[#334155]" />
+        <div className="my-3 border-t border-dash-border" />
         <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">Add from your CSV</p>
         <p className="mt-0.5 text-[14px] text-dash-ink-secondary">Columns in this file that are not already chips.</p>
         {availableForCampaign.length === 0 ? (

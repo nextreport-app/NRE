@@ -102,7 +102,7 @@ function ReportUploadWizardBody() {
       <div className="space-y-6">
         <div>
           <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
-          <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
+          <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
           <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
       </div>
@@ -114,7 +114,7 @@ function ReportUploadWizardBody() {
       <div className="space-y-6">
         <div>
           <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
-          <h1 className="mb-1 text-[20px] font-bold text-white">Google Analytics</h1>
+          <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Google Analytics</h1>
           <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
         <button
@@ -144,7 +144,7 @@ function ReportUploadWizardBody() {
     <div className="space-y-6">
       <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
-        <h1 className="mb-1 text-[20px] font-bold text-white">
+        <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
           {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : wizardStepHeading(w.step, w.platform, locale)}
         </h1>
         {wizardStepSubtitle(w.step, w.platform, locale) ? (

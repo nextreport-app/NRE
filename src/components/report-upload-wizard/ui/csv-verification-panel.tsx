@@ -138,7 +138,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
                     className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px] text-amber-50"
                   >
                     <dt className="text-dash-ink-secondary">{c.metric}</dt>
-                    <dd className="text-right text-white tabular-nums">{c.reportDisplay}</dd>
+                    <dd className="text-right text-dash-ink tabular-nums">{c.reportDisplay}</dd>
                     <dd className="text-right tabular-nums text-dash-ink-muted">CSV {c.csvDisplay}</dd>
                     {c.note ? (
                       <dd className="col-span-3 text-[12px] leading-snug text-amber-100/80">{c.note}</dd>

@@ -104,7 +104,7 @@ export function WizardPlatformCompactBar({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold leading-snug text-white">{heading}</p>
+          <p className="text-[15px] font-semibold leading-snug text-dash-ink">{heading}</p>
           <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-secondary">{description}</p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function WizardPlatformCompactBar({
         <button
           type="button"
           onClick={onToggle}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-dash-ink"
           aria-expanded={expanded}
         >
           Change platform

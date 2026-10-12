@@ -690,7 +690,7 @@ export function WebsiteReportWizard({
               </p>
             ) : null}
             {shareToken ? (
-              <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
+              <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
                   {buildShareReportUrl(shareToken)}
                 </span>

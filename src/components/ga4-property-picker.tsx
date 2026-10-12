@@ -129,7 +129,7 @@ export function Ga4PropertyPicker({
         <select
           value={propertyId}
           onChange={(e) => setPropertyId(e.target.value)}
-          className="w-full rounded-md border border-dash-border bg-[#0f172a] px-3 py-2.5 text-[14px] text-white"
+          className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
         >
           <option value="">Select GA4 property…</option>
           {properties.map((p) => (

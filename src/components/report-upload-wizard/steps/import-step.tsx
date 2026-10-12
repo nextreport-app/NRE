@@ -157,7 +157,7 @@ export function WizardImportStep() {
         </>
       ) : (
         <>
-          <h3 className="text-[16px] font-semibold text-white">Select platform</h3>
+          <h3 className="text-[16px] font-semibold text-dash-ink">Select platform</h3>
           <WizardPlatformPickerGrid
             showTikTokOption={showTikTokOption}
             selectedPlatformCard={selectedPlatformCard}
@@ -178,7 +178,7 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && importPipelineLabel ? (
-            <p className="rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2 text-[14px] text-dash-ink-secondary">
+            <p className="rounded-md border border-dash-border nre-wizard-panel px-3 py-2 text-[14px] text-dash-ink-secondary">
               {importPipelineLabel}
             </p>
           ) : null}
@@ -217,8 +217,8 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
-            <div className="space-y-2 rounded-lg border border-dash-border bg-[#0d1b2e]/60 px-4 py-3">
-              <p className="text-[14px] font-medium text-white">Optional: Ads Manager reference CSV</p>
+            <div className="space-y-2 rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
+              <p className="text-[14px] font-medium text-dash-ink">Optional: Ads Manager reference CSV</p>
               <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
                 Upload the manual export if API Result columns look off — we merge{" "}
                 <span className="text-dash-ink">Result type</span>, <span className="text-dash-ink">Results</span>, and{" "}
@@ -232,7 +232,7 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (
-            <div className="rounded-lg border border-dash-border bg-[#0d1b2e]/40 px-4 py-3">
+            <div className="rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
               <button
                 type="button"
                 onClick={() => setApiDiagnosticsOpen((open) => !open)}
@@ -253,7 +253,7 @@ export function WizardImportStep() {
             <div
               className={`mt-3 rounded-md border px-3 py-3 ${
                 metaSyncDiagnostics.mappedResultsSum > 0
-                  ? "border-emerald-500/35 bg-[#0d1b2e]/80"
+                  ? "border-emerald-500/35 nre-wizard-panel"
                   : "border-amber-500/40 bg-amber-950/20"
               }`}
             >
@@ -266,7 +266,7 @@ export function WizardImportStep() {
               <ul className="mt-2 space-y-1 text-[13px] text-dash-ink-secondary">
                 <li>
                   Mapped Results total:{" "}
-                  <span className="font-semibold text-white">{metaSyncDiagnostics.mappedResultsSum}</span>
+                  <span className="font-semibold text-dash-ink">{metaSyncDiagnostics.mappedResultsSum}</span>
                 </li>
                 <li>
                   Rows: {metaSyncDiagnostics.rowCount} · Meta sent{" "}
@@ -348,8 +348,8 @@ export function WizardImportStep() {
           ) : null}
 
           {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
-            <div className="rounded-lg border border-emerald-500/35 bg-[#0d1b2e]/80 px-4 py-3">
-              <p className="text-[14px] font-medium text-white">API sync complete</p>
+            <div className="rounded-lg border border-emerald-500/35 nre-wizard-panel px-4 py-3">
+              <p className="text-[14px] font-medium text-dash-ink">API sync complete</p>
               <button
                 type="button"
                 onClick={() => downloadWizardCsvFile(mtdFile)}

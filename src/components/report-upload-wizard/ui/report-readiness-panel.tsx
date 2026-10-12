@@ -140,7 +140,7 @@ export function ReportReadinessPanel({ items }: { items: ReadinessItem[] }) {
   return (
     <section className="rounded-lg border border-dash-border bg-dash-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-[16px] font-semibold text-white">Report readiness</h4>
+        <h4 className="text-[16px] font-semibold text-dash-ink">Report readiness</h4>
         <span
           className={`rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-wide ${
             ready ? "bg-emerald-500/15 text-emerald-200" : "bg-sky-500/15 text-sky-200"

@@ -79,7 +79,7 @@ function WizardReportTypePickerGrid({
         <button
           type="button"
           onClick={() => setMoreOpen((open) => !open)}
-          className="flex w-full items-center justify-between rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
+          className="flex w-full items-center justify-between rounded-md border border-dash-border nre-wizard-panel px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
           aria-expanded={moreOpen}
         >
           <span>More report types</span>
@@ -152,7 +152,7 @@ export function WizardReportSetupPanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
-            <p className="text-[15px] font-semibold text-white">{reportTypeLabel}</p>
+            <p className="text-[15px] font-semibold text-dash-ink">{reportTypeLabel}</p>
             <p className="mt-1 text-[12px] text-amber-200/90">
               Required CSV: {csvNote(reportType, clientTimezone)}
             </p>
@@ -191,7 +191,7 @@ export function WizardReportSetupPanel({
   return (
     <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
       <div>
-        <h3 className="text-[16px] font-semibold text-white">What report are you building?</h3>
+        <h3 className="text-[16px] font-semibold text-dash-ink">What report are you building?</h3>
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
           Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.
         </p>

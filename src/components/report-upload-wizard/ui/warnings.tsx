@@ -88,7 +88,7 @@ export function PreviousMonthSummaryOption({
           type="button"
           onClick={onGenerate}
           disabled={status === "loading"}
-          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-white hover:bg-dash-accent-hover disabled:opacity-60"
+          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
         >
           {status === "loading" ? "Generating…" : "Generate Previous Month Summary Report"}
         </button>
