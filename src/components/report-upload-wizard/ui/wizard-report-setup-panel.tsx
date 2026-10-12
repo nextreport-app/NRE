@@ -153,9 +153,6 @@ export function WizardReportSetupPanel({
           <div>
             <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
             <p className="text-[15px] font-semibold text-dash-ink">{reportTypeLabel}</p>
-            <p className="mt-1 text-[12px] text-amber-200/90">
-              Required CSV: {csvNote(reportType, clientTimezone)}
-            </p>
           </div>
           {allowInlineChange ? (
             <button
