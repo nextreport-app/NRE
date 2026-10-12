@@ -23,16 +23,7 @@ export function IconConnect({ className, title }: IconProps) {
   );
 }
 
-export function IconCsvUpload({ className, title }: IconProps) {
-  return (
-    <svg className={`${base} ${className ?? ""}`} viewBox="0 0 24 24" fill="none" aria-hidden={!title}>
-      {title ? <title>{title}</title> : null}
-      <path d="M12 16V6M9 9l3-3 3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      <path d="M4 18h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      <rect x="6" y="12" width="12" height="6" rx="1" stroke="currentColor" strokeWidth="1.75" />
-    </svg>
-  );
-}
+export { IconCsvUpload } from "@/components/marketing/csv-icons";
 
 export function IconApiSync({ className, title }: IconProps) {
   return (
