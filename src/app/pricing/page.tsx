@@ -11,7 +11,7 @@ import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). Google, TikTok & GA4 launching soon. 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). 7-day free trial.",
   path: "/pricing",
 });
 
