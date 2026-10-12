@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useId, useRef, useState } from "react";
+import { useSiteTheme } from "@/components/site-theme-provider";
+import {
+  colorSchemeForSurface,
+  LOGO_PALETTES,
+  type NextReportLogoColorScheme,
+} from "@/components/brand/logo-color-schemes";
 
 export type NextReportLogoVariant =
   | "classic"
@@ -19,7 +25,9 @@ export type NextReportLogoVariant =
   /** Filled hex + white N, rounded strokes, no baseline. */
   | "filled-inverse-n-rounded"
   /** Filled hex + white N, compact triple-touch anchors. */
-  | "filled-inverse-n-touch";
+  | "filled-inverse-n-touch"
+  /** Final mark: bold typographic N in hex (use with colorScheme). */
+  | "filled-n";
 
 type Props = {
   className?: string;
@@ -27,6 +35,10 @@ type Props = {
   /** Cursor-style tilt + bar lift on hover (disable for static export contexts). */
   interactive?: boolean;
   variant?: NextReportLogoVariant;
+  /** Light/dark surface palettes; `auto` follows site theme. */
+  colorScheme?: NextReportLogoColorScheme | "auto";
+  /** Larger N, Cursor-style fill inside hex. */
+  compact?: boolean;
   title?: string;
 };
 
@@ -56,7 +68,26 @@ const LAYOUT = {
 
 type NGlyphStyle = "block" | "rounded" | "touch";
 
-function filledNGlyph(style: NGlyphStyle, showBaseline: boolean) {
+function typographicMarkN(glyphFill: string, compact: boolean) {
+  const fontSize = compact ? 62 : 54;
+  const y = compact ? 71.5 : 68;
+  return (
+    <text
+      x="50"
+      y={y}
+      textAnchor="middle"
+      fill={glyphFill}
+      fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
+      fontSize={fontSize}
+      fontWeight={700}
+      letterSpacing="-0.04em"
+    >
+      N
+    </text>
+  );
+}
+
+function filledNGlyph(style: NGlyphStyle, showBaseline: boolean, glyphFill = INK_ON_FILL) {
   const rx = style === "rounded" ? 1.6 : 0.8;
   const touch = style === "touch";
   const left = touch ? { x: 14, y: 22, w: 12.5, h: 50.5 } : { x: 15, y: 24, w: 12, h: showBaseline ? 46.5 : 48.5 };
@@ -70,7 +101,7 @@ function filledNGlyph(style: NGlyphStyle, showBaseline: boolean) {
       : "26.5,22 39,22 85.5,72.5 73,72.5";
 
   return (
-    <g fill={INK_ON_FILL}>
+    <g fill={glyphFill}>
       {showBaseline ? (
         <rect x={14} y={71.2} width={72} height={2.8} rx="0.5" />
       ) : null}
@@ -90,8 +121,11 @@ export function NextReportLogoMark({
   size = 48,
   interactive = true,
   variant = "classic",
+  colorScheme = "auto",
+  compact = true,
   title = "NextReport",
 }: Props) {
+  const { resolvedTheme } = useSiteTheme();
   const uid = useId().replace(/:/g, "");
   const rootRef = useRef<HTMLSpanElement>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, lift: 0 });
@@ -121,7 +155,11 @@ export function NextReportLogoMark({
   const hexJoin = variant === "premium-rounded" ? "round" : "miter";
   const mergedRight = variant === "merged-right";
   const filledInverse = variant === "filled-inverse";
+  const filledTypographicN = variant === "filled-n";
   const filledNVariant =
+    filledTypographicN
+      ? null
+      :
     variant === "filled-inverse-n"
       ? { style: "block" as NGlyphStyle, baseline: true }
       : variant === "filled-inverse-n-plain"
@@ -131,7 +169,10 @@ export function NextReportLogoMark({
           : variant === "filled-inverse-n-touch"
             ? { style: "touch" as NGlyphStyle, baseline: false }
             : null;
-  const filledHex = filledInverse || filledNVariant !== null;
+  const filledHex = filledInverse || filledNVariant !== null || filledTypographicN;
+  const resolvedScheme: NextReportLogoColorScheme =
+    colorScheme === "auto" ? colorSchemeForSurface(resolvedTheme) : colorScheme;
+  const palette = filledTypographicN ? LOGO_PALETTES[resolvedScheme] : null;
   const tripleTouch = variant === "triple-touch" || filledInverse;
 
   const layout = tripleTouch ? LAYOUT.tripleTouch : LAYOUT.classic;
@@ -180,12 +221,27 @@ export function NextReportLogoMark({
       >
         <polygon
           points="50,4 88,26 88,74 50,96 12,74 12,26"
-          stroke={filledHex ? "none" : NAVY}
-          strokeWidth={mergedRight && !tripleTouch ? 2 : 2.25}
+          stroke={
+            palette
+              ? palette.hexStroke === "none"
+                ? "none"
+                : palette.hexStroke
+              : filledHex
+                ? "none"
+                : NAVY
+          }
+          strokeWidth={
+            palette ? palette.hexStrokeWidth : mergedRight && !tripleTouch ? 2 : 2.25
+          }
           strokeLinejoin={hexJoin}
-          fill={filledHex ? NAVY : "none"}
+          fill={palette ? palette.hexFill : filledHex ? NAVY : "none"}
         />
-        {filledNVariant ? (
+        {palette?.accent && resolvedScheme === "on-light-amber-ring" ? (
+          <circle cx="50" cy="11" r="2.2" fill={palette.accent} />
+        ) : null}
+        {filledTypographicN && palette ? (
+          typographicMarkN(palette.glyphFill, compact)
+        ) : filledNVariant ? (
           filledNGlyph(filledNVariant.style, filledNVariant.baseline)
         ) : (
           <g>
