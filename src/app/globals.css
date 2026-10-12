@@ -5,6 +5,19 @@
 :root {
   --background: #0d1b2e;
   --foreground: #ffffff;
+
+  /* Logged-in dashboard / wizard — referenced by Tailwind dash-* utilities via @theme. */
+  --nre-dash-bg: #0f172a;
+  --nre-dash-sidebar: #0d1b2e;
+  --nre-dash-card: #1e293b;
+  --nre-dash-border: #334155;
+  --nre-dash-ink: #f1f5f9;
+  --nre-dash-ink-secondary: #94a3b8;
+  --nre-dash-accent: #f5b45a;
+  --nre-dash-accent-hover: #ed8936;
+  --nre-dash-secondary: #1e3a5f;
+  --nre-dash-success: #68d391;
+  --nre-dash-error: #fc8181;
 }
 
 html[data-site-theme="light"] {
@@ -17,6 +30,14 @@ html[data-site-theme="light"] {
   --color-ink: #000000;
   --color-ink-secondary: #000000;
   --color-ink-muted: #000000;
+
+  --nre-dash-bg: #f8fafc;
+  --nre-dash-sidebar: #ffffff;
+  --nre-dash-card: #ffffff;
+  --nre-dash-border: #e2e8f0;
+  --nre-dash-ink: #000000;
+  --nre-dash-ink-secondary: #475569;
+  --nre-dash-secondary: #e2e8f0;
 }
 
 html[data-site-theme="light"] body {
@@ -70,17 +91,17 @@ html[data-site-theme="light"] body {
      components rendered inside src/app/(dashboard) (Nav, client
      list/detail/new, account, billing, the report wizard, ...) — every
      public-facing page keeps using the tokens above, unchanged. */
-  --color-dash-bg: #0f172a;
-  --color-dash-sidebar: #0d1b2e;
-  --color-dash-card: #1e293b;
-  --color-dash-border: #334155;
-  --color-dash-ink: #f1f5f9;
-  --color-dash-ink-secondary: #94a3b8;
-  --color-dash-accent: #f5b45a;
-  --color-dash-accent-hover: #ed8936;
-  --color-dash-secondary: #1e3a5f;
-  --color-dash-success: #68d391;
-  --color-dash-error: #fc8181;
+  --color-dash-bg: var(--nre-dash-bg);
+  --color-dash-sidebar: var(--nre-dash-sidebar);
+  --color-dash-card: var(--nre-dash-card);
+  --color-dash-border: var(--nre-dash-border);
+  --color-dash-ink: var(--nre-dash-ink);
+  --color-dash-ink-secondary: var(--nre-dash-ink-secondary);
+  --color-dash-accent: var(--nre-dash-accent);
+  --color-dash-accent-hover: var(--nre-dash-accent-hover);
+  --color-dash-secondary: var(--nre-dash-secondary);
+  --color-dash-success: var(--nre-dash-success);
+  --color-dash-error: var(--nre-dash-error);
 }
 
 html {
@@ -217,22 +238,57 @@ html[data-site-theme="light"] .public-site-header {
 }
 
 .nre-app-shell {
-  background-color: var(--color-dash-bg);
+  background-color: var(--nre-dash-bg);
   background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
   background-size: 32px 32px;
-  color: var(--color-dash-ink);
+  color: var(--nre-dash-ink);
 }
 
 html[data-site-theme="light"] .nre-app-shell {
-  --color-dash-bg: #f8fafc;
-  --color-dash-sidebar: #ffffff;
-  --color-dash-card: #ffffff;
-  --color-dash-border: #e2e8f0;
-  --color-dash-ink: #000000;
-  --color-dash-ink-secondary: #000000;
-  --color-dash-secondary: #e2e8f0;
   color-scheme: light;
   background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+}
+
+/* Legacy text-white in dashboard/wizard — remap on light so headings stay readable. */
+html[data-site-theme="light"] .nre-app-shell .text-white {
+  color: var(--nre-dash-ink);
+}
+
+/* Status chips (client list, etc.) — dark tints on light cards. */
+html[data-site-theme="light"] .nre-app-shell .text-emerald-200 {
+  color: #065f46;
+}
+
+html[data-site-theme="light"] .nre-app-shell .bg-emerald-950\/40 {
+  background-color: #ecfdf5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .border-emerald-800\/50 {
+  border-color: #6ee7b7;
+}
+
+html[data-site-theme="light"] .nre-app-shell .text-amber-200 {
+  color: #92400e;
+}
+
+html[data-site-theme="light"] .nre-app-shell .bg-amber-950\/40 {
+  background-color: #fff7ed;
+}
+
+html[data-site-theme="light"] .nre-app-shell .border-amber-800\/50 {
+  border-color: #fdba74;
+}
+
+html[data-site-theme="light"] .nre-app-shell .text-sky-200 {
+  color: #075985;
+}
+
+html[data-site-theme="light"] .nre-app-shell .bg-sky-950\/40 {
+  background-color: #f0f9ff;
+}
+
+html[data-site-theme="light"] .nre-app-shell .border-sky-800\/50 {
+  border-color: #7dd3fc;
 }
 
 html[data-site-theme="light"] .nre-app-shell .text-dash-accent,
