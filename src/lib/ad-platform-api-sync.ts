@@ -7,3 +7,8 @@
  */
 export const AD_PLATFORM_API_SYNC_ENABLED =
   process.env.AD_PLATFORM_API_SYNC_ENABLED === "true";
+
+/** Client detail "Platform connections" + Connect CTAs — only when wizard API import is on. */
+export function isClientPlatformConnectionsSectionVisible(): boolean {
+  return AD_PLATFORM_API_SYNC_ENABLED;
+}

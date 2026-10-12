@@ -29,6 +29,7 @@ import {
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
 import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
+import { isClientPlatformConnectionsSectionVisible } from "@/lib/ad-platform-api-sync";
 import { WizardReturnBanner } from "@/components/wizard-return-banner";
 
 const RECENT_REPORTS_LIMIT = 5;
@@ -146,33 +147,35 @@ export default async function ClientDetailPage({
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
-        <Card id="platform-connections">
-          <CardHeading hint="Account-level connections used by every client in the report wizard.">
-            Platform connections
-          </CardHeading>
-          <ClientPlatformConnections
-            meta={{
-              connected: !!owner?.metaConnectedUserId,
-              detail: owner?.metaConnectedName ?? null,
-              configured: isMetaApiConfigured(),
-            }}
-            googleAds={{
-              connected: !!owner?.googleAdsRefreshToken || !!owner?.googleAdsEnabled,
-              detail: owner?.googleAdsConnectedEmail ?? null,
-              configured: isGoogleAdsApiConfigured(),
-            }}
-            tiktok={{
-              connected: !!owner?.tiktokRefreshToken || !!owner?.tiktokAdsEnabled,
-              detail: owner?.tiktokConnectedName ?? null,
-              configured: isTikTokApiConfigured(),
-            }}
-            ga4={{
-              connected: ga4Connected,
-              detail: owner?.ga4ConnectedEmail ?? null,
-              configured: isGa4ApiConfigured(),
-            }}
-          />
-        </Card>
+        {isClientPlatformConnectionsSectionVisible() ? (
+          <Card id="platform-connections">
+            <CardHeading hint="Account-level connections used by every client in the report wizard.">
+              Platform connections
+            </CardHeading>
+            <ClientPlatformConnections
+              meta={{
+                connected: !!owner?.metaConnectedUserId,
+                detail: owner?.metaConnectedName ?? null,
+                configured: isMetaApiConfigured(),
+              }}
+              googleAds={{
+                connected: !!owner?.googleAdsRefreshToken || !!owner?.googleAdsEnabled,
+                detail: owner?.googleAdsConnectedEmail ?? null,
+                configured: isGoogleAdsApiConfigured(),
+              }}
+              tiktok={{
+                connected: !!owner?.tiktokRefreshToken || !!owner?.tiktokAdsEnabled,
+                detail: owner?.tiktokConnectedName ?? null,
+                configured: isTikTokApiConfigured(),
+              }}
+              ga4={{
+                connected: ga4Connected,
+                detail: owner?.ga4ConnectedEmail ?? null,
+                configured: isGa4ApiConfigured(),
+              }}
+            />
+          </Card>
+        ) : null}
 
         <Card id="previous-month-data">
           <CardHeading hint="Optional — adds a previous-month comparison row on Monthly overview slides.">
@@ -254,7 +257,7 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Meta Ads reporting is live. Google, TikTok, and GA4 open after parity testing completes.">
+          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
             Generate report
           </CardHeading>
           <Link
