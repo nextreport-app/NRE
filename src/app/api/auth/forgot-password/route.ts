@@ -8,7 +8,7 @@ const bodySchema = z.object({
 });
 
 const GENERIC_OK = {
-  message: "If an account exists with that email and a password, we sent reset instructions.",
+  message: "If an account exists with that email, we sent reset instructions.",
 };
 
 export async function POST(req: Request) {

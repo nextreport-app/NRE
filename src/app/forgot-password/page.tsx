@@ -37,7 +37,7 @@ function ForgotPasswordForm() {
   return (
     <AuthPageShell
       title="Reset your password"
-      subtitle="We will email you a secure link if this address has a password login."
+      subtitle="We will email you a secure link if this address is registered."
       footer={
         <p className="text-center text-sm text-ink-muted">
           Remember your password?{" "}
@@ -50,10 +50,13 @@ function ForgotPasswordForm() {
       {sent ? (
         <div className="space-y-3 text-sm leading-relaxed text-ink-secondary">
           <p>
-            If an account exists with <strong className="text-ink">{submittedEmail}</strong> and uses email/password sign-in,
-            check your inbox for a reset link (expires in 1 hour).
+            If an account exists with <strong className="text-ink">{submittedEmail}</strong>, check your inbox for a reset link
+            (expires in 1 hour). You can set or change your password even if you originally signed up with Google.
           </p>
-          <p className="text-ink-muted">Signed up with Google only? Use <strong className="text-ink-secondary">Continue with Google</strong> on the login page instead.</p>
+          <p className="text-ink-muted">
+            Prefer Google sign-in? Use <strong className="text-ink-secondary">Continue with Google</strong> on the login page — your
+            password is optional in that case.
+          </p>
           <Link href="/login" className="inline-block text-sm font-medium text-accent hover:underline">
             Return to log in →
           </Link>

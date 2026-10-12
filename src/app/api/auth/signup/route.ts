@@ -5,6 +5,7 @@ import { signupSchema } from "@/lib/validators/auth";
 import { apiErrorResponse } from "@/lib/api-error";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
+import { findUserByEmail } from "@/lib/find-user-by-email";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   const { name, email, password } = parsed.data;
 
   try {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await findUserByEmail(email, { id: true });
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
     }
