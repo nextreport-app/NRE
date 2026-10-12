@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/components/toast";
 import type { OnboardingStep } from "@/lib/onboarding";
+import { OnboardingResourceLinks } from "@/components/onboarding-resource-links";
 
 export function OnboardingChecklist({
   steps,
@@ -40,7 +41,9 @@ export function OnboardingChecklist({
         <div>
           <h2 className="text-[18px] font-semibold text-dash-ink">Getting started</h2>
           <p className="mt-1 text-[14px] text-dash-ink-secondary">
-            {progress.completed} of {progress.total} required steps complete
+            {progress.completed === 0
+              ? "Welcome — add a client, upload a Meta day-wise CSV, then generate your deck."
+              : `${progress.completed} of ${progress.total} required steps complete`}
           </p>
         </div>
         <button
@@ -91,6 +94,8 @@ export function OnboardingChecklist({
           </li>
         ))}
       </ol>
+
+      <OnboardingResourceLinks />
     </section>
   );
 }

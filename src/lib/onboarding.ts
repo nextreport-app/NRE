@@ -34,7 +34,8 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "connect-platforms",
       title: "Connect ad accounts (optional)",
-      description: "Optional — connect ad platforms in Account settings when API import returns. Reports use CSV upload today.",
+      description:
+        "You can skip this for now — your first report works with CSV only. Connect Meta, Google, or TikTok later under Account when you want API import.",
       href: "/account#meta-ads",
       done: input.hasPlatformConnection,
       optional: true,
@@ -43,7 +44,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
       id: "generate-report",
       title: "Generate your first report",
       description:
-        "Open New Report — choose Weekly (recommended), export Last 30 days with Day breakdown from Ads Manager, upload, then generate your deck.",
+        "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },
