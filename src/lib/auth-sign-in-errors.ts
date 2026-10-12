@@ -12,7 +12,7 @@ export function messageForAuthSignInError(code: string | null | undefined): stri
     case "AccessDenied":
       return "Google sign-in was cancelled or denied.";
     case "CredentialsSignin":
-      return "Invalid email or password.";
+      return "Invalid email or password. If you use Google sign-in, choose Continue with Google instead.";
     default:
       return "Sign-in failed. Try again or use email and password.";
   }

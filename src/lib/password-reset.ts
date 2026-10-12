@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/password-reset-email";
+import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 
