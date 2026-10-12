@@ -49,10 +49,10 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
 
   return (
     <header className="public-site-header sticky top-0 z-40 border-b border-navy-border bg-navy/95 font-sans text-[13px] antialiased backdrop-blur-md">
-      <div className="mx-auto flex h-[52px] max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 lg:min-w-[148px]">
-          <img src="/logo.png" alt="NextReport logo" className="h-11 w-11 shrink-0" width={44} height={44} />
-          <span className="text-[15px] font-semibold tracking-[-0.02em] text-ink">NextReport</span>
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 lg:min-w-[168px]">
+          <img src="/logo.png" alt="NextReport logo" className="h-12 w-12 shrink-0" width={48} height={48} />
+          <span className="text-[18px] font-semibold leading-none tracking-[-0.02em] text-ink">NextReport</span>
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-0 lg:flex" aria-label="Main">
