@@ -22,7 +22,7 @@ type Props = {
  */
 export function NextReportLogoLockup({
   mode = "auto",
-  iconGlyph = "spark",
+  iconGlyph = "n",
   iconSize = 48,
   className = "",
   interactive = true,
