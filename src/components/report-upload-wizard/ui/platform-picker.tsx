@@ -7,7 +7,7 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import { DEFERRED_PLATFORMS } from "@/lib/meta-launch-scope";
+import { DEFERRED_PLATFORMS, SHOW_DEFERRED_PLATFORM_UI } from "@/lib/meta-launch-scope";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -41,7 +41,7 @@ export function WizardPlatformPickerGrid({
   onChooseWebsitePlatform?: () => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={`grid grid-cols-1 gap-3 ${SHOW_DEFERRED_PLATFORM_UI ? "sm:grid-cols-2 lg:grid-cols-4" : "max-w-md"}`}>
       <ReportTypeCard
         icon={<MetaAdsBrandIcon />}
         heading="Meta Ads"
@@ -50,7 +50,8 @@ export function WizardPlatformPickerGrid({
         onSelect={() => onChoosePlatform("META")}
         singleLineHeading
       />
-      {DEFERRED_PLATFORMS.map((platform) => {
+      {SHOW_DEFERRED_PLATFORM_UI
+        ? DEFERRED_PLATFORMS.map((platform) => {
         const icon =
           platform.id === "GOOGLE" ? (
             <GoogleAdsBrandIcon />
@@ -71,7 +72,8 @@ export function WizardPlatformPickerGrid({
             singleLineHeading
           />
         );
-      })}
+      })
+        : null}
     </div>
   );
 }

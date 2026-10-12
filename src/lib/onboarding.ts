@@ -35,7 +35,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
       id: "connect-platforms",
       title: "Connect ad accounts (optional)",
       description:
-        "You can skip this for now — your first report works with CSV only. Connect Meta, Google, or TikTok later under Account when you want API import.",
+        "Optional — CSV is enough for your first deck. Connect Meta in Account later if you want API import.",
       href: "/account#meta-ads",
       done: input.hasPlatformConnection,
       optional: true,

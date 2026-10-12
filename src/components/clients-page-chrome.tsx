@@ -5,18 +5,8 @@ import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
-export function ClientsPageHeader({
-  isEmpty,
-  clientCount,
-  showGettingStarted,
-}: {
-  isEmpty: boolean;
-  clientCount: number;
-  showGettingStarted: boolean;
-}) {
+export function ClientsPageHeader({ isEmpty, clientCount }: { isEmpty: boolean; clientCount: number }) {
   const { dashboard: d } = useSiteCopy();
-
-  if (showGettingStarted && isEmpty) return null;
 
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -34,18 +24,6 @@ export function ClientsPageHeader({
           {d.clientsNewClient}
         </Link>
       ) : null}
-    </div>
-  );
-}
-
-export function ClientsGuidePlaceholder() {
-  const { dashboard: d } = useSiteCopy();
-  return (
-    <div
-      className="rounded-xl border border-dashed border-dash-border/90 bg-dash-bg/40 px-6 py-10 text-center"
-      aria-hidden={false}
-    >
-      <p className="text-[14px] text-dash-ink-secondary">{d.clientsPlaceholderDuringGuide}</p>
     </div>
   );
 }

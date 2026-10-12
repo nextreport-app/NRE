@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/components/toast";
 import type { OnboardingStep } from "@/lib/onboarding";
-import { FirstRunHelpLinks } from "@/components/first-run-help-links";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 import { localizedOnboardingStep } from "@/lib/dashboard-i18n";
 
@@ -149,9 +148,6 @@ export function OnboardingChecklist({
         })}
       </ol>
 
-      <div className="px-6 py-5 sm:px-8">
-        <FirstRunHelpLinks />
-      </div>
     </section>
   );
 }

@@ -26,8 +26,18 @@ export type DashboardCopy = {
   emptyBody: string;
   emptyAddClientCta: string;
   helpCsvGuide: string;
-  helpSampleReport: string;
   helpHowItWorks: string;
+  gettingStartedTitle: string;
+  gettingStartedLead: string;
+  gettingStartedStep1Title: string;
+  gettingStartedStep1Body: string;
+  gettingStartedStep2Title: string;
+  gettingStartedStep2Body: string;
+  gettingStartedStep3Title: string;
+  gettingStartedStep3Body: string;
+  gettingStartedAlsoTitle: string;
+  gettingStartedAccountLink: string;
+  gettingStartedHowItWorksLink: string;
   onboardingAria: string;
   onboardingWelcome: string;
   onboardingTitle: string;
@@ -74,8 +84,19 @@ const EN: DashboardCopy = {
     "One workspace per brand — set currency, timezone, and logo once. Then open New Report and upload your Meta CSV.",
   emptyAddClientCta: "+ Add client",
   helpCsvGuide: "CSV Export Guide",
-  helpSampleReport: "Sample report",
   helpHowItWorks: "How it works",
+  gettingStartedTitle: "Start here",
+  gettingStartedLead:
+    "NextReport is Meta Ads reporting only today: add a client, upload a day-wise CSV from Ads Manager, and generate a branded deck.",
+  gettingStartedStep1Title: "Add a client",
+  gettingStartedStep1Body: "Name, currency, timezone, and logo — one workspace per brand.",
+  gettingStartedStep2Title: "Export your Meta CSV",
+  gettingStartedStep2Body: "Day-wise breakdown from Meta Ads Reporting (not the Campaigns screen export).",
+  gettingStartedStep3Title: "Open the wizard & generate",
+  gettingStartedStep3Body: "From the client page, choose New Report → pick a report type → upload CSV → Generate.",
+  gettingStartedAlsoTitle: "Helpful links",
+  gettingStartedAccountLink: "Account settings (agency branding)",
+  gettingStartedHowItWorksLink: "How it works (full walkthrough)",
   onboardingAria: "Getting started",
   onboardingWelcome: "Welcome",
   onboardingTitle: "Set up your first client report",
@@ -92,7 +113,7 @@ const EN: DashboardCopy = {
     "Set the client name, currency, and logo — every report uses that branding automatically.",
   stepConnectTitle: "Connect ad accounts (optional)",
   stepConnectDesc:
-    "You can skip this for now — your first report works with CSV only. Connect Meta, Google, or TikTok later under Account when you want API import.",
+    "Optional — CSV is enough for your first deck. Connect Meta in Account later if you want API import.",
   stepGenerateTitle: "Generate your first report",
   stepGenerateDesc:
     "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
@@ -126,8 +147,19 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = 
       "Un espacio por marca — configura moneda, zona horaria y logo una vez. Luego abre Nuevo informe y sube tu CSV de Meta.",
     emptyAddClientCta: "+ Añadir cliente",
     helpCsvGuide: "Guía CSV",
-    helpSampleReport: "Informe de ejemplo",
     helpHowItWorks: "Cómo funciona",
+    gettingStartedTitle: "Empieza aquí",
+    gettingStartedLead:
+      "Hoy solo informes de Meta Ads: añade un cliente, sube un CSV diario de Ads Manager y genera un deck con tu marca.",
+    gettingStartedStep1Title: "Añadir un cliente",
+    gettingStartedStep1Body: "Nombre, moneda, zona horaria y logo — un espacio por marca.",
+    gettingStartedStep2Title: "Exportar CSV de Meta",
+    gettingStartedStep2Body: "Desglose por día en Meta Ads Reporting (no la exportación de Campañas).",
+    gettingStartedStep3Title: "Abrir el asistente y generar",
+    gettingStartedStep3Body: "Desde el cliente, Nuevo informe → tipo → subir CSV → Generar.",
+    gettingStartedAlsoTitle: "Enlaces útiles",
+    gettingStartedAccountLink: "Cuenta (marca de agencia)",
+    gettingStartedHowItWorksLink: "Cómo funciona (guía completa)",
     onboardingWelcome: "Bienvenido",
     onboardingTitle: "Configura tu primer informe de cliente",
     onboardingLead:
@@ -143,7 +175,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = 
       "Nombre, moneda y logo del cliente — cada informe usará esa marca automáticamente.",
     stepConnectTitle: "Conectar cuentas de anuncios (opcional)",
     stepConnectDesc:
-      "Puedes omitirlo — tu primer informe funciona solo con CSV. Conecta Meta, Google o TikTok más tarde en Cuenta para importar por API.",
+      "Opcional — el CSV basta para el primer informe. Conecta Meta en Cuenta más tarde si quieres importación por API.",
     stepGenerateTitle: "Genera tu primer informe",
     stepGenerateDesc:
       "Nuevo informe → Semanal (recomendado) → sube un CSV de Meta con desglose por día (últimos 30 días). Usa la guía CSV si no estás seguro.",
@@ -163,7 +195,6 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = 
     onboardingTitle: "Configurez votre premier rapport client",
     onboardingSkip: "Ignorer le guide",
     helpCsvGuide: "Guide CSV",
-    helpSampleReport: "Exemple de rapport",
     helpHowItWorks: "Comment ça marche",
   },
   pt: {
@@ -180,7 +211,6 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = 
     emptyAddClientCta: "+ Adicionar cliente",
     onboardingTitle: "Configure seu primeiro relatório de cliente",
     helpCsvGuide: "Guia CSV",
-    helpSampleReport: "Relatório de exemplo",
     helpHowItWorks: "Como funciona",
   },
   de: {
@@ -197,7 +227,6 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = 
     emptyAddClientCta: "+ Kunde hinzufügen",
     onboardingTitle: "Ersten Kundenreport einrichten",
     helpCsvGuide: "CSV-Anleitung",
-    helpSampleReport: "Beispielreport",
     helpHowItWorks: "So funktioniert's",
   },
 };

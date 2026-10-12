@@ -23,13 +23,13 @@ export type MarketingCopy = {
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Branded client reporting for agencies — Meta live, Google, TikTok & GA4 next.",
+  brandTagline: "Branded Meta Ads client reporting for agencies.",
   navSignIn: "Sign in",
   navContact: "Contact",
   navSignOut: "Sign out",
   navStartTrial: "Start free trial",
   navDashboard: "Dashboard",
-  heroBadge: "Meta Ads — live now · Google, TikTok & GA4 — launching soon",
+  heroBadge: "Meta Ads reporting for agencies",
   heroHeadline: "NextReport is branded client reporting for agencies in minutes.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
