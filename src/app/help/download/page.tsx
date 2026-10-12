@@ -15,15 +15,9 @@ import {
 export const metadata: Metadata = pageMetadata({
   title: "CSV Export Guide",
   description:
-    "Quick Meta, Google, and TikTok CSV export steps for NextReport — Ad Reporting export with Day-wise breakdown and recommended columns.",
+    "Meta Ads CSV export for NextReport — day-wise breakdown from Meta Ads Reporting, recommended columns, and previous-month tips.",
   path: "/help/download",
-  keywords: [
-    "meta ads csv export",
-    "google ads csv export",
-    "csv to ppt",
-    "meta reporting csv columns",
-    ...DEFAULT_KEYWORDS,
-  ],
+  keywords: ["meta ads csv export", "csv to ppt", "meta reporting csv columns", ...DEFAULT_KEYWORDS],
 });
 
 function VerticalMetricList({
@@ -114,28 +108,6 @@ export default async function DownloadGuidePage() {
             </HelpBlock>
           </section>
 
-          <section id="google-ads" className="rounded-lg border border-navy-border bg-navy-panel p-6">
-            <h2 className="text-xl font-semibold text-accent-orange">Google Ads</h2>
-            <ol className="mt-4 list-inside list-decimal space-y-1 text-[15px] text-ink-secondary">
-              <li>Reports → Predefined → Basic → Campaign</li>
-              <li>Segment → Day · Last 30 days</li>
-              <li>Columns: Campaign, Day, Cost, Impressions, Clicks, CTR, Avg. CPC, Conversions, Cost per conversion</li>
-              <li>Download CSV → upload on Import</li>
-            </ol>
-          </section>
-
-          <section id="tiktok-ads" className="rounded-lg border border-navy-border bg-navy-panel p-6">
-            <h2 className="text-xl font-semibold text-accent-orange">TikTok Ads</h2>
-            <ol className="mt-4 list-inside list-decimal space-y-1 text-[15px] text-ink-secondary">
-              <li>Campaign or Ad group report · Last 30 days · Breakdown: Day</li>
-              <li>Columns: Campaign name, Ad group name, Day, Cost, Impressions, Clicks, CTR, CPC, Conversions</li>
-              <li>Download CSV → same wizard as Meta</li>
-            </ol>
-          </section>
-
-          <p className="text-center text-sm text-ink-muted">
-            GA4 website reports: connect in Account Settings, then choose Google Analytics in the wizard.
-          </p>
         </div>
 
         <section className="bg-navy-panel px-6 py-12 text-center">

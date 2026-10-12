@@ -15,29 +15,33 @@ import {
 } from "@/lib/seo";
 import { MARKETING_TRY_CTA_HEADLINE } from "@/lib/product-positioning";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
+import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
 import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
 
 export const metadata: Metadata = pageMetadata({
-  title: "How It Works — 4-Step Report Wizard",
+  title: "How It Works — Meta Ads Report Wizard",
   description:
-    "Add a client, pick a report type, upload a day-wise Meta Ads Reporting CSV, and generate a branded .pptx or live share link in under 2 minutes.",
+    "Add a Meta client, upload a day-wise CSV from Ads Manager Reporting, and generate a branded .pptx or live share link — usually under 2 minutes.",
   path: "/how-it-works",
 });
 
 const SETUP_STEPS = [
   {
     title: "Create your free trial account",
-    body: "Sign up in under a minute — no credit card required. You get 7 days to try the full wizard.",
+    body: "Sign up in under a minute — no credit card. You get 7 days to run the full Meta report wizard.",
   },
   {
-    title: "Add a client with branding",
-    body: "From My Clients, add the client name and upload their logo. Every slide and export uses that branding automatically.",
+    title: "Add a client workspace",
+    body: "From My Clients, set the client name, currency, timezone, and logo. Every slide uses that branding automatically.",
   },
-  {
-    title: "Optional: GA4 in Account Settings",
-    body: "Website (GA4) reports connect here when they launch. Meta ad reports use a CSV from Meta Ads Reporting on Step 1 of the wizard today.",
-  },
-];
+] as const;
+
+const QUICK_LINKS_LOGGED_IN = [
+  { href: "/clients/new", label: "Add a client", hint: "Name, currency, logo" },
+  { href: "/help/download", label: "CSV export guide", hint: "Day-wise Meta export" },
+  { href: "/account", label: "Account settings", hint: "Agency branding" },
+  { href: "/clients", label: "My Clients", hint: "Open a report wizard" },
+] as const;
 
 const REPORT_TYPE_ORDER: LaunchEnabledReportType[] = [
   "WEEKLY",
@@ -57,23 +61,23 @@ interface Step {
 const WIZARD_STEPS: Step[] = [
   {
     title: "Import",
-    body: "Choose the report type first, then export the matching day-wise CSV from Meta Ads Reporting and upload it. Optional Previous Month CSV adds the prior-month row on weekly decks.",
-    detail: "Step label in the app: Import",
+    body: "Choose the report type, export the matching day-wise CSV from Meta Ads Reporting, and upload it. Optional Previous Month CSV adds the prior-month row on weekly decks.",
+    detail: "Wizard step: Import",
   },
   {
     title: "Campaigns & objectives",
     body: "Select campaigns for this deck and confirm each campaign’s primary result objective (leads, purchases, traffic, reach, and more).",
-    detail: "Step label in the app: Campaigns",
+    detail: "Wizard step: Campaigns",
   },
   {
     title: "Review metrics",
-    body: "Preview the KPI chips on each campaign slide. Remove metrics you do not need or add extras from columns in your export.",
-    detail: "Step label in the app: Metrics",
+    body: "Preview KPI chips on each campaign slide. Remove metrics you do not need or add extras from columns in your export.",
+    detail: "Wizard step: Metrics",
   },
   {
     title: "Generate report",
-    body: "Confirm dates and report type, then generate. Download .pptx (open in PowerPoint or Google Slides), share a live browser link, save to Google Drive, or send via WhatsApp or email.",
-    detail: "Step label in the app: Generate",
+    body: "Confirm dates and report type, then generate. Download .pptx (PowerPoint or Google Slides), share a live link, save to Google Drive, or send via WhatsApp or email.",
+    detail: "Wizard step: Generate",
   },
 ];
 
@@ -81,7 +85,7 @@ const OUTPUTS = [
   {
     icon: "📥",
     title: "Download as PowerPoint (.pptx)",
-    description: "The format clients already expect — agency branding and AI-written insights on every slide.",
+    description: "The format clients expect — your branding and AI-written insights on every slide.",
   },
   {
     icon: "🔗",
@@ -98,31 +102,31 @@ const OUTPUTS = [
     title: "Share via WhatsApp or Email",
     description: "One click from the generate screen after the deck is ready.",
   },
-];
+] as const;
 
 function ReportTypeRow({ reportType }: { reportType: LaunchEnabledReportType }) {
   const copy = WIZARD_REPORT_TYPE_COPY[reportType];
   return (
-    <li className="rounded-lg border border-navy-border bg-navy-panel p-4">
+    <li className="rounded-lg border border-navy-border bg-navy p-4 sm:p-5">
       <p className="text-sm font-semibold text-white">{copy.cardHeading}</p>
-      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{copy.cardYouGet}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{copy.cardYouGet}</p>
     </li>
   );
 }
 
 function StepRow({ number, step }: { number: number; step: Step }) {
   return (
-    <div className="flex gap-4 rounded-lg border border-navy-border bg-navy-panel p-5">
+    <div className="flex gap-4 rounded-lg border border-navy-border bg-navy-panel p-5 sm:gap-5">
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-orange text-sm font-bold text-navy"
         aria-hidden="true"
       >
         {number}
       </div>
-      <div>
+      <div className="min-w-0">
         <h3 className="text-base font-semibold text-white">{step.title}</h3>
-        {step.detail ? <p className="mt-0.5 text-xs text-ink-muted">{step.detail}</p> : null}
-        <p className="mt-1 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
+        {step.detail ? <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-ink-muted">{step.detail}</p> : null}
+        <p className="mt-2 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
       </div>
     </div>
   );
@@ -144,7 +148,7 @@ export default async function HowItWorksPage() {
             ]),
             faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
-              "How to generate a client report with NextReport",
+              "How to generate a Meta Ads client report with NextReport",
               "Generate a branded Meta Ads client report in under 2 minutes via day-wise CSV from Meta Ads Reporting.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
@@ -154,46 +158,83 @@ export default async function HowItWorksPage() {
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
-        <section className="bg-navy px-6 py-16 text-center">
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">How NextReport Works</h1>
-            <p className="mt-4 text-lg text-ink-muted">
-              Client setup once, then a branded Meta deck in under 2 minutes — pick a report type and upload a
-              day-wise CSV.
+        <section className="border-b border-navy-border bg-navy px-6 py-14 sm:py-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent-orange">
+              {META_LAUNCH_HERO_BADGE}
             </p>
-            <p className="mt-3 text-sm text-ink-secondary">
-              Live today: Meta Ads reporting. Google Ads, TikTok Ads, and GA4 are launching soon.
+            <h1 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">How NextReport works</h1>
+            <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
+              One-time client setup, then a branded Meta deck in under 2 minutes — pick a report type and upload a
+              day-wise CSV from Ads Manager Reporting.
             </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href={loggedIn ? "/clients/new" : "/signup"}
+                className="inline-flex rounded-md bg-accent-orange px-6 py-2.5 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
+              >
+                {loggedIn ? "Add a client" : "Start free trial"}
+              </Link>
+              <Link
+                href="/help/download"
+                className="inline-flex rounded-md border border-navy-border px-6 py-2.5 text-sm font-semibold text-white hover:bg-navy-panel"
+              >
+                CSV export guide
+              </Link>
+            </div>
           </div>
         </section>
 
-        <section className="border-b border-navy-border bg-navy-panel px-6 py-16">
+        {loggedIn ? (
+          <section className="border-b border-navy-border bg-navy-panel/60 px-6 py-10">
+            <div className="mx-auto max-w-4xl">
+              <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-ink-muted">Jump to</h2>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                {QUICK_LINKS_LOGGED_IN.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="flex flex-col rounded-lg border border-navy-border bg-navy px-4 py-3 transition-colors hover:border-accent-orange/40 hover:bg-navy-panel"
+                    >
+                      <span className="text-sm font-semibold text-white">{item.label}</span>
+                      <span className="mt-0.5 text-xs text-ink-muted">{item.hint}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="border-b border-navy-border px-6 py-14">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-center text-2xl font-semibold text-white">Watch the wizard flow</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-secondary">
-              This animated walkthrough mirrors the report wizard. Each step auto-advances — click the dots to jump
-              ahead.
-            </p>
-            <div className="mt-10">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-semibold text-white">Watch the wizard flow</h2>
+              <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+                Mirrors the in-app report wizard. Auto-advances — use the dots to jump between steps.
+              </p>
+            </div>
+            <div className="mt-10 rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
               <ProductExplainerAnimation />
             </div>
             <p className="mx-auto mt-6 max-w-xl text-center text-xs text-ink-muted">
-              Prefer a live walkthrough with your own accounts?{" "}
-              <Link href="/book-demo" className="text-accent-orange hover:underline">
+              Want a live walkthrough with your accounts?{" "}
+              <Link href="/book-demo" className="font-medium text-accent-orange hover:underline">
                 Book a demo
               </Link>
-              .
             </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-16 px-6 py-16">
-          <section>
-            <h2 className="text-2xl font-semibold text-white">Before your first report</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              Three one-time setup steps — then every report reuses the same client and branding.
-            </p>
-            <ol className="mt-6 space-y-4">
+          <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Before your first report</h2>
+              <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+                Two one-time steps — then every report reuses the same client and branding.
+              </p>
+            </div>
+            <ol className="space-y-3">
               {SETUP_STEPS.map((step, i) => (
                 <li key={step.title} className="flex gap-4 rounded-lg border border-navy-border bg-navy-panel p-5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-bold text-accent-orange">
@@ -206,37 +247,20 @@ export default async function HowItWorksPage() {
                 </li>
               ))}
             </ol>
-            {loggedIn ? (
-              <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                <Link href="/clients/new" className="text-accent-orange hover:underline">
-                  Add a client →
-                </Link>
-                <Link href="/account" className="text-accent-orange hover:underline">
-                  Account Settings →
-                </Link>
-              </div>
-            ) : (
-              <p className="mt-4 text-sm">
-                <Link href="/signup" className="text-accent-orange hover:underline">
-                  Start free trial →
-                </Link>
-              </p>
-            )}
           </section>
 
-          <section>
-            <h2 className="text-2xl font-semibold text-white">How you get data in (Meta)</h2>
+          <section className="rounded-xl border border-navy-border bg-navy-panel p-6 sm:p-8">
+            <h2 className="text-2xl font-semibold text-white">Getting data in (Meta CSV)</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              On Import, choose your report type — each type needs a specific date range with{" "}
-              <strong className="font-medium text-ink-muted">day-wise</strong> breakdown from{" "}
-              <strong className="font-medium text-ink-muted">Meta Ads Reporting</strong> (not the Campaigns screen
-              export). Hover a report-type card in the wizard for the exact CSV range. Automatic Meta API sync in the
-              wizard is off for now; CSV is the supported path.
+              On <strong className="font-medium text-ink-muted">Import</strong>, choose your report type first. Each type
+              needs a specific date range with <strong className="font-medium text-ink-muted">day-wise</strong> breakdown
+              from <strong className="font-medium text-ink-muted">Meta Ads Reporting</strong> — not the Campaigns screen
+              export. Hover a report-type card in the wizard for the exact CSV range.
             </p>
             <p className="mt-4 text-sm text-ink-muted">
-              Export walkthrough:{" "}
-              <Link href="/help/download" className="text-accent-orange hover:underline">
-                CSV Export Guide
+              Step-by-step export:{" "}
+              <Link href="/help/download" className="font-medium text-accent-orange hover:underline">
+                CSV Export Guide →
               </Link>
             </p>
           </section>
@@ -244,17 +268,17 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">Optional: Previous Month CSV (weekly decks)</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
-              For weekly reports, you can attach a second file with the last full calendar month (day-wise). It powers
-              the previous-month row on the Monthly Overview slide — not a month-over-month comparison deck.
+              For weekly reports, attach a second file with the last full calendar month (day-wise). It powers the
+              previous-month row on the Monthly Overview slide — not a month-over-month comparison deck.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">Report types available</h2>
+            <h2 className="text-2xl font-semibold text-white">Report types in the wizard</h2>
             <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              Six types in the wizard today — names and slide layouts match what you select on Import.
+              Six Meta report types — names and slide layouts match what you select on Import.
             </p>
-            <ul className="mt-6 space-y-3">
+            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {REPORT_TYPE_ORDER.map((type) => (
                 <ReportTypeRow key={type} reportType={type} />
               ))}
@@ -263,10 +287,8 @@ export default async function HowItWorksPage() {
 
           <section>
             <h2 className="text-2xl font-semibold text-white">The 4 wizard steps</h2>
-            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              Same order and labels as the app — Import, Campaigns, Metrics, Generate.
-            </p>
-            <div className="mt-6 space-y-4">
+            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">Same order and labels as the app.</p>
+            <div className="mt-6 space-y-3">
               {WIZARD_STEPS.map((step, i) => (
                 <StepRow key={step.title} number={i + 1} step={step} />
               ))}
@@ -274,7 +296,7 @@ export default async function HowItWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">What you get</h2>
+            <h2 className="text-2xl font-semibold text-white">What you get after Generate</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {OUTPUTS.map((output) => (
                 <div key={output.title} className="flex gap-4 rounded-lg border border-navy-border bg-navy-panel p-5">
@@ -291,17 +313,17 @@ export default async function HowItWorksPage() {
           </section>
         </div>
 
-        <section className="bg-navy-panel px-6 py-16 text-center">
+        <section className="border-t border-navy-border bg-navy-panel px-6 py-16 text-center">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">{MARKETING_TRY_CTA_HEADLINE}</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-ink-secondary">
-            Start a free 7-day trial — or book a live demo if you want us to walk through your workflow first.
+            Start a free 7-day trial — or book a demo if you want us to walk through your Meta workflow first.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href={loggedIn ? "/clients" : "/signup"}
               className="inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
             >
-              {loggedIn ? "Go to Dashboard" : "Start free trial"}
+              {loggedIn ? "Go to My Clients" : "Start free trial"}
             </Link>
             <Link
               href="/book-demo"

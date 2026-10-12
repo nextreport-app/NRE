@@ -36,7 +36,7 @@ export const HOME_EN: HomeCopy = {
   painWithCalc: "10 clients × 2 minutes",
   painWithResult: "= 20 minutes/week",
   featuresTitle: "Everything you need to send better Meta reports",
-  featuresSubtitle: "Launching with Meta Ads first — Google Ads, TikTok, and GA4 launching soon.",
+  featuresSubtitle: "Meta Ads reporting — day-wise CSV in, branded client deck out.",
   features: [
     {
       title: "CSV upload",
@@ -65,15 +65,6 @@ export const HOME_EN: HomeCopy = {
     {
       title: "Share a browser link",
       description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
-    },
-    {
-      title: "GA4 website reporting",
-      description:
-        "Traffic, channels, landing pages, device and geo breakdowns — a full website performance deck.",
-    },
-    {
-      title: "Google & TikTok Ads",
-      description: "Same branded template and wizard flow — CSV upload when we open the next platforms.",
     },
   ],
   trustStrip: "Every number comes from your Meta account or CSV export. We never modify your campaign data.",

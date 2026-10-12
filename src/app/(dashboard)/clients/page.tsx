@@ -1,13 +1,8 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientList } from "@/components/client-list";
-import { ClientsEmptyPanel } from "@/components/clients-empty-panel";
-import {
-  ClientsGuidePlaceholder,
-  ClientsPageHeader,
-  ClientsPageSupportLine,
-} from "@/components/clients-page-chrome";
-import { getDashboardOnboarding } from "@/lib/onboarding-state";
+import { ClientsGettingStarted } from "@/components/clients-getting-started";
+import { ClientsPageHeader, ClientsPageSupportLine } from "@/components/clients-page-chrome";
 
 export default async function ClientsPage() {
   const session = await auth();
@@ -41,26 +36,12 @@ export default async function ClientsPage() {
   }));
 
   const isEmpty = clientCards.length === 0;
-  const onboarding = isEmpty && userId ? await getDashboardOnboarding(userId) : null;
-  const showGettingStarted = onboarding?.show ?? false;
 
   return (
     <div className="mx-auto max-w-5xl">
-      <ClientsPageHeader
-        isEmpty={isEmpty}
-        clientCount={clientCards.length}
-        showGettingStarted={showGettingStarted}
-      />
+      <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} />
 
-      {isEmpty ? (
-        showGettingStarted ? (
-          <ClientsGuidePlaceholder />
-        ) : (
-          <ClientsEmptyPanel />
-        )
-      ) : (
-        <ClientList clients={clientCards} totalCount={clientCards.length} />
-      )}
+      {isEmpty ? <ClientsGettingStarted /> : <ClientList clients={clientCards} totalCount={clientCards.length} />}
 
       <ClientsPageSupportLine />
     </div>
