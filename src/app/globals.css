@@ -93,7 +93,12 @@ html[data-site-theme="light"] body {
 html {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Public marketing header — Cursor-like density (13px nav, tight line-height). */
+.public-site-header {
+  letter-spacing: -0.011em;
 }
 
 /* Fix 3 — dot-grid texture applied directly to `body` instead of a

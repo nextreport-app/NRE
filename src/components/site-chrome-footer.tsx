@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WhatsAppButton } from "@/components/whatsapp-button";
-import { SocialLinks } from "@/components/social-links";
+import { SocialLinksFooter } from "@/components/social-links";
 import { FooterLinkColumn } from "@/components/footer-link-column";
 import { SiteThemeControls } from "@/components/site-theme-controls";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
@@ -60,9 +60,7 @@ export function SiteChromeFooter() {
               >
                 {SUPPORT_EMAIL}
               </a>
-              <div className="mt-4">
-                <SocialLinks />
-              </div>
+              <SocialLinksFooter />
             </div>
           </div>
 
