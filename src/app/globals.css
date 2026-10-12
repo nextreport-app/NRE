@@ -91,17 +91,17 @@ html[data-site-theme="light"] body {
      components rendered inside src/app/(dashboard) (Nav, client
      list/detail/new, account, billing, the report wizard, ...) — every
      public-facing page keeps using the tokens above, unchanged. */
-  --color-dash-bg: var(--nre-dash-bg);
-  --color-dash-sidebar: var(--nre-dash-sidebar);
-  --color-dash-card: var(--nre-dash-card);
-  --color-dash-border: var(--nre-dash-border);
-  --color-dash-ink: var(--nre-dash-ink);
-  --color-dash-ink-secondary: var(--nre-dash-ink-secondary);
-  --color-dash-accent: var(--nre-dash-accent);
-  --color-dash-accent-hover: var(--nre-dash-accent-hover);
-  --color-dash-secondary: var(--nre-dash-secondary);
-  --color-dash-success: var(--nre-dash-success);
-  --color-dash-error: var(--nre-dash-error);
+  --color-dash-bg: var(--nre-dash-bg, #0f172a);
+  --color-dash-sidebar: var(--nre-dash-sidebar, #0d1b2e);
+  --color-dash-card: var(--nre-dash-card, #1e293b);
+  --color-dash-border: var(--nre-dash-border, #334155);
+  --color-dash-ink: var(--nre-dash-ink, #f1f5f9);
+  --color-dash-ink-secondary: var(--nre-dash-ink-secondary, #94a3b8);
+  --color-dash-accent: var(--nre-dash-accent, #f5b45a);
+  --color-dash-accent-hover: var(--nre-dash-accent-hover, #ed8936);
+  --color-dash-secondary: var(--nre-dash-secondary, #1e3a5f);
+  --color-dash-success: var(--nre-dash-success, #68d391);
+  --color-dash-error: var(--nre-dash-error, #fc8181);
 }
 
 html {
@@ -254,41 +254,52 @@ html[data-site-theme="light"] .nre-app-shell .text-white {
   color: var(--nre-dash-ink);
 }
 
-/* Status chips (client list, etc.) — dark tints on light cards. */
-html[data-site-theme="light"] .nre-app-shell .text-emerald-200 {
+/* Status chips (client list) — dark + light. */
+.nre-dash-status {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.nre-dash-status--good {
+  border-color: rgb(6 78 59 / 0.5);
+  background-color: rgb(2 44 34 / 0.4);
+  color: #a7f3d0;
+}
+
+.nre-dash-status--warn {
+  border-color: rgb(146 64 14 / 0.5);
+  background-color: rgb(69 26 3 / 0.4);
+  color: #fde68a;
+}
+
+.nre-dash-status--info {
+  border-color: rgb(12 74 110 / 0.5);
+  background-color: rgb(8 47 73 / 0.4);
+  color: #bae6fd;
+}
+
+.nre-dash-status--neutral {
+  border-color: var(--nre-dash-border);
+  background-color: var(--nre-dash-bg);
+  color: var(--nre-dash-ink-secondary);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--good {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
   color: #065f46;
 }
 
-html[data-site-theme="light"] .nre-app-shell .bg-emerald-950\/40 {
-  background-color: #ecfdf5;
-}
-
-html[data-site-theme="light"] .nre-app-shell .border-emerald-800\/50 {
-  border-color: #6ee7b7;
-}
-
-html[data-site-theme="light"] .nre-app-shell .text-amber-200 {
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--warn {
+  border-color: #fdba74;
+  background-color: #fff7ed;
   color: #92400e;
 }
 
-html[data-site-theme="light"] .nre-app-shell .bg-amber-950\/40 {
-  background-color: #fff7ed;
-}
-
-html[data-site-theme="light"] .nre-app-shell .border-amber-800\/50 {
-  border-color: #fdba74;
-}
-
-html[data-site-theme="light"] .nre-app-shell .text-sky-200 {
-  color: #075985;
-}
-
-html[data-site-theme="light"] .nre-app-shell .bg-sky-950\/40 {
-  background-color: #f0f9ff;
-}
-
-html[data-site-theme="light"] .nre-app-shell .border-sky-800\/50 {
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--info {
   border-color: #7dd3fc;
+  background-color: #f0f9ff;
+  color: #075985;
 }
 
 html[data-site-theme="light"] .nre-app-shell .text-dash-accent,
@@ -300,7 +311,7 @@ html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/8,
 html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/12,
 html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/15,
 html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/20 {
-  background-color: color-mix(in srgb, var(--color-dash-accent) 18%, #ffffff);
+  background-color: color-mix(in srgb, var(--nre-dash-accent) 18%, #ffffff);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--active {
