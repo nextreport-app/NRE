@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { QuickEnquiryForm } from "@/components/quick-enquiry-form";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 export function LeadCaptureSection() {
+  const { home } = useSiteCopy();
+
   return (
     <section className="border-t border-navy-border bg-navy-panel px-6 py-12 sm:py-14">
       <div className="mx-auto max-w-6xl">
@@ -12,14 +17,12 @@ export function LeadCaptureSection() {
                 <path strokeLinecap="round" d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
               </svg>
             </div>
-            <h2 className="mt-4 text-xl font-bold text-white sm:text-2xl">Ask us anything</h2>
-            <p className="mt-2 text-sm text-ink-muted">
-              Demo, pricing, or a feature question — drop a quick note and we&apos;ll respond within one business day.
-            </p>
+            <h2 className="mt-4 text-xl font-bold text-white sm:text-2xl">{home.leadTitle}</h2>
+            <p className="mt-2 text-sm text-ink-muted">{home.leadBody}</p>
             <p className="mt-4 text-xs text-ink-muted">
-              Prefer email?{" "}
+              {home.leadPreferEmail}{" "}
               <Link href="/contact" className="text-accent hover:underline">
-                Full contact form →
+                {home.leadContactLink}
               </Link>
             </p>
           </div>

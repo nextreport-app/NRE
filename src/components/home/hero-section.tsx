@@ -13,28 +13,25 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-const METRICS = [
-  { label: "Ad Spend", value: "$2,847" },
-  { label: "Reach", value: "45,231" },
-  { label: "Impressions", value: "89,456" },
-  { label: "Instant Form Leads", value: "34" },
-  { label: "Cost per Lead", value: "$8.42" },
-  { label: "CTR (All)", value: "2.4%" },
-  { label: "Link Clicks", value: "1,847" },
-  { label: "Cost per Click", value: "$1.54" },
-];
-
-function SlideMockup() {
+function SlideMockup({
+  campaign,
+  weekly,
+  metrics,
+}: {
+  campaign: string;
+  weekly: string;
+  metrics: { label: string; value: string }[];
+}) {
   return (
     <div className="nre-keep-dark-surface w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Coastal Skin Co. — Lead Gen</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">{campaign}</span>
         <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          Weekly
+          {weekly}
         </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
-        {METRICS.map((m) => (
+        {metrics.map((m) => (
           <MetricCard key={m.label} label={m.label} value={m.value} />
         ))}
       </div>
@@ -43,7 +40,7 @@ function SlideMockup() {
 }
 
 export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
-  const { marketing } = useSiteCopy();
+  const { marketing, home } = useSiteCopy();
 
   return (
     <section className="bg-navy px-6 py-20 sm:py-28">
@@ -85,7 +82,11 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">
-          <SlideMockup />
+          <SlideMockup
+            campaign={home.heroMockCampaign}
+            weekly={home.heroMockWeekly}
+            metrics={home.heroMetrics}
+          />
         </div>
       </div>
     </section>

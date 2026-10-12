@@ -1,19 +1,21 @@
+"use client";
+
+import { useSiteCopy } from "@/hooks/use-site-copy";
+
 export function PainPointSection() {
+  const { home } = useSiteCopy();
+
   return (
     <section className="border-t-4 border-accent-orange bg-navy px-6 py-20">
       <div className="mx-auto max-w-3xl text-center">
-        <h2 className="text-[2rem] font-bold text-white">Stop spending hours on reporting every week</h2>
-        <p className="mt-5 text-base leading-relaxed text-ink-muted">
-          The average digital agency spends 25 minutes per client per week manually downloading data,
-          formatting slides, and writing campaign summaries. With 10 clients that is 4+ hours every
-          week on work that adds zero strategic value. NextReport does it in under 2 minutes.
-        </p>
+        <h2 className="text-[2rem] font-bold text-white">{home.painTitle}</h2>
+        <p className="mt-5 text-base leading-relaxed text-ink-muted">{home.painBody}</p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
           <div className="rounded-xl border border-navy-border bg-navy-panel p-6">
-            <p className="text-xs uppercase tracking-wide text-ink-muted">Without NextReport</p>
-            <p className="mt-2 text-xl font-semibold text-white">10 clients × 25 minutes</p>
-            <p className="mt-1 text-sm font-medium text-red-400">= 4+ hours/week</p>
+            <p className="text-xs uppercase tracking-wide text-ink-muted">{home.painWithoutLabel}</p>
+            <p className="mt-2 text-xl font-semibold text-white">{home.painWithoutCalc}</p>
+            <p className="mt-1 text-sm font-medium text-red-400">{home.painWithoutResult}</p>
           </div>
 
           <div className="hidden text-2xl font-bold text-accent-orange sm:block" aria-hidden="true">
@@ -24,9 +26,9 @@ export function PainPointSection() {
           </div>
 
           <div className="rounded-xl border border-accent-orange/50 bg-navy-panel p-6">
-            <p className="text-xs uppercase tracking-wide text-ink-muted">With NextReport</p>
-            <p className="mt-2 text-xl font-semibold text-white">10 clients × 2 minutes</p>
-            <p className="mt-1 text-sm font-medium text-accent-orange">= 20 minutes/week</p>
+            <p className="text-xs uppercase tracking-wide text-ink-muted">{home.painWithLabel}</p>
+            <p className="mt-2 text-xl font-semibold text-white">{home.painWithCalc}</p>
+            <p className="mt-1 text-sm font-medium text-accent-orange">{home.painWithResult}</p>
           </div>
         </div>
       </div>

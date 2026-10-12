@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 import { CONTACT_SUBJECTS } from "@/lib/validators/contact";
 
 type Status = "idle" | "loading" | "done" | "error";
@@ -10,14 +11,16 @@ const inputClassName =
 
 /** Compact homepage lead form — posts to the same /api/contact endpoint as /contact. */
 export function QuickEnquiryForm() {
+  const { home } = useSiteCopy();
+  const e = home.enquiry;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault();
     setStatus("loading");
 
     try {
@@ -49,7 +52,7 @@ export function QuickEnquiryForm() {
   if (status === "done") {
     return (
       <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/30 p-5 text-sm text-emerald-300">
-        Thanks — we&apos;ll reply within one business day.
+        {e.success}
       </div>
     );
   }
@@ -61,18 +64,18 @@ export function QuickEnquiryForm() {
           type="text"
           required
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-          aria-label="Your name"
+          onChange={(ev) => setName(ev.target.value)}
+          placeholder={e.namePlaceholder}
+          aria-label={e.namePlaceholder}
           className={inputClassName}
         />
         <input
           type="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Work email"
-          aria-label="Work email"
+          onChange={(ev) => setEmail(ev.target.value)}
+          placeholder={e.emailPlaceholder}
+          aria-label={e.emailPlaceholder}
           className={inputClassName}
         />
       </div>
@@ -80,9 +83,9 @@ export function QuickEnquiryForm() {
         type="tel"
         required
         value={whatsapp}
-        onChange={(e) => setWhatsapp(e.target.value)}
-        placeholder="WhatsApp (+91, +1, +44 …)"
-        aria-label="WhatsApp number"
+        onChange={(ev) => setWhatsapp(ev.target.value)}
+        placeholder={e.whatsappPlaceholder}
+        aria-label={e.whatsappPlaceholder}
         autoComplete="tel"
         className={inputClassName}
       />
@@ -91,20 +94,18 @@ export function QuickEnquiryForm() {
         minLength={10}
         rows={3}
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Tell us about your agency or ask a question…"
-        aria-label="Message"
+        onChange={(ev) => setMessage(ev.target.value)}
+        placeholder={e.messagePlaceholder}
+        aria-label={e.messagePlaceholder}
         className={inputClassName}
       />
-      {status === "error" ? (
-        <p className="text-xs text-red-400">Something went wrong — email hello@nextreport.in directly.</p>
-      ) : null}
+      {status === "error" ? <p className="text-xs text-red-400">{e.error}</p> : null}
       <button
         type="submit"
         disabled={status === "loading"}
         className="w-full rounded-md bg-accent-orange px-4 py-2.5 text-sm font-semibold text-navy hover:bg-accent-orange-hover disabled:opacity-60"
       >
-        {status === "loading" ? "Sending…" : "Send enquiry"}
+        {status === "loading" ? e.sending : e.send}
       </button>
     </form>
   );
