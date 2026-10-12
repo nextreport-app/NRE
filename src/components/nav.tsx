@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
-const LINKS = [
-  { href: "/", label: "Home", hideOnMobile: true },
-  { href: "/clients", label: "My Clients", hideOnMobile: false },
-  { href: "/account", label: "Account", hideOnMobile: false },
-  { href: "/billing", label: "Billing", hideOnMobile: false },
-  { href: "/support", label: "Support", hideOnMobile: false },
-  { href: "/pricing", label: "Pricing", hideOnMobile: true },
-  { href: "/help/download", label: "CSV Export Guide", hideOnMobile: true },
+const LINK_HREFS = [
+  { href: "/", key: "navHome" as const, hideOnMobile: true },
+  { href: "/clients", key: "navClients" as const, hideOnMobile: false },
+  { href: "/account", key: "navAccount" as const, hideOnMobile: false },
+  { href: "/billing", key: "navBilling" as const, hideOnMobile: false },
+  { href: "/support", key: "navSupport" as const, hideOnMobile: false },
+  { href: "/pricing", key: "navPricing" as const, hideOnMobile: true },
+  { href: "/help/download", key: "navCsvGuide" as const, hideOnMobile: true },
 ];
 
 /** Active-page match: exact for "/", prefix for everything else (so /clients/abc still highlights "My Clients"). */
@@ -23,27 +24,21 @@ function isActive(pathname: string, href: string): boolean {
 export function Nav() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { dashboard: d } = useSiteCopy();
 
   return (
     <header className="border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <img src="/logo.png" alt="NextReport logo" style={{ height: "40px", width: "40px", display: "block" }} />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: "20px",
-              color: "white",
-              letterSpacing: "-0.3px",
-              fontFamily: "var(--font-inter), sans-serif",
-            }}
-          >
+        <Link href="/" className="flex items-center gap-2 no-underline">
+          <img src="/logo.png" alt="NextReport logo" className="block h-10 w-10" />
+          <span className="text-[20px] font-bold tracking-[-0.3px] text-dash-ink" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
             NextReport
           </span>
         </Link>
         <div className="flex min-w-0 max-w-[min(100%,52rem)] flex-1 items-center justify-end gap-x-3 gap-y-2 overflow-x-auto text-[14px] text-dash-ink-secondary sm:gap-x-4">
-          {LINKS.map((link) => {
+          {LINK_HREFS.map((link) => {
             const active = isActive(pathname, link.href);
+            const label = d[link.key];
             return (
               <Link
                 key={link.href}
@@ -56,7 +51,7 @@ export function Nav() {
                     : "border-b-2 border-transparent pb-[2px] hover:text-dash-ink")
                 }
               >
-                {link.label}
+                {label}
               </Link>
             );
           })}
@@ -69,9 +64,9 @@ export function Nav() {
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="ml-1 shrink-0 rounded-full border border-dash-border px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-card sm:text-[14px]"
-            title="Sign out of NextReport (you can sign in with a different Google account next)"
+            title={d.navSignOutTitle}
           >
-            Sign out
+            {d.navSignOut}
           </button>
         </div>
       </div>

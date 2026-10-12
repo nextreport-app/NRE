@@ -1,13 +1,17 @@
-import Link from "next/link";
+"use client";
 
-const LINKS = [
-  { href: "/help/download", label: "CSV Export Guide" },
-  { href: "/sample-report.pptx", label: "Sample report" },
-  { href: "/how-it-works", label: "How it works" },
-] as const;
+import Link from "next/link";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** Inline help links — use once per screen (checklist or dismissed empty state). */
 export function FirstRunHelpLinks({ className = "" }: { className?: string }) {
+  const { dashboard: d } = useSiteCopy();
+  const LINKS = [
+    { href: "/help/download", label: d.helpCsvGuide },
+    { href: "/sample-report.pptx", label: d.helpSampleReport },
+    { href: "/how-it-works", label: d.helpHowItWorks },
+  ] as const;
+
   return (
     <p className={`text-[13px] leading-relaxed text-dash-ink-secondary ${className}`.trim()}>
       {LINKS.map((item, index) => (

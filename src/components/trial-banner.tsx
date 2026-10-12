@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 import type { SubscriptionStatus } from "@/lib/subscription";
 
 /**
@@ -10,24 +13,26 @@ import type { SubscriptionStatus } from "@/lib/subscription";
  * ("subscribed users: full access, no banner") — null whenever isSubscribed.
  */
 export function TrialBanner({ status }: { status: SubscriptionStatus }) {
+  const { dashboard: d } = useSiteCopy();
+
   if (status.isSubscribed) return null;
 
   if (status.isTrialing && !status.isTrialExpired) {
     return (
-      <div className="border-b border-amber-900 bg-amber-950/40 px-4 py-2 text-center text-sm text-amber-200">
-        Your free trial ends in {status.trialDaysLeft} day{status.trialDaysLeft === 1 ? "" : "s"} —{" "}
+      <div className="nre-trial-banner--active border-b border-amber-900 bg-amber-950/40 px-4 py-2 text-center text-sm text-amber-200">
+        {d.trialEnds(status.trialDaysLeft)}{" "}
         <Link href="/pricing" className="font-medium underline">
-          Subscribe now
+          {d.trialSubscribeNow}
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="border-b border-red-900 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
-      Your free trial has ended —{" "}
+    <div className="nre-trial-banner--expired border-b border-red-900 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
+      {d.trialEnded}{" "}
       <Link href="/pricing" className="font-medium underline">
-        Subscribe to continue
+        {d.trialSubscribeContinue}
       </Link>
     </div>
   );

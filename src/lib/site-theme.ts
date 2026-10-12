@@ -1,7 +1,7 @@
 /**
  * Cursor-style site theme: same pages and layout; only the marketing palette swaps
  * (dark navy ↔ light gray/white, text inverted for contrast). Accent orange unchanged.
- * Dashboard/wizard always stay dark ({@link DASHBOARD_THEME_LOCK_CLASS} + DashboardThemeGuard).
+ * Logged-in app shell ({@link APP_SHELL_CLASS}) follows the same light/dark preference as marketing.
  */
 
 export type SiteThemeMode = "system" | "light" | "dark";
@@ -43,5 +43,8 @@ export function resolveSiteTheme(mode: SiteThemeMode): "light" | "dark" {
   return "dark";
 }
 
-/** Wrapper class on logged-in app shell — keeps wizard/dashboard on dark tokens. */
-export const DASHBOARD_THEME_LOCK_CLASS = "nre-theme-dark-lock";
+/** Wrapper class on logged-in dashboard + wizard — dash tokens swap under html[data-site-theme="light"]. */
+export const APP_SHELL_CLASS = "nre-app-shell";
+
+/** @deprecated Use {@link APP_SHELL_CLASS} */
+export const DASHBOARD_THEME_LOCK_CLASS = APP_SHELL_CLASS;
