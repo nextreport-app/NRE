@@ -138,12 +138,12 @@ function StatusChip({
 }) {
   const toneClass =
     tone === "good"
-      ? "border-emerald-800/50 bg-emerald-950/40 text-emerald-200"
+      ? "nre-dash-status nre-dash-status--good"
       : tone === "warn"
-        ? "border-amber-800/50 bg-amber-950/40 text-amber-200"
+        ? "nre-dash-status nre-dash-status--warn"
         : tone === "info"
-          ? "border-sky-800/50 bg-sky-950/40 text-sky-200"
-          : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+          ? "nre-dash-status nre-dash-status--info"
+          : "nre-dash-status nre-dash-status--neutral";
 
   return (
     <span
