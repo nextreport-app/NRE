@@ -7,7 +7,11 @@ export type NextReportLogoVariant =
   | "amber-cap"
   | "amber-center"
   | "merged-right"
-  | "premium-rounded";
+  | "premium-rounded"
+  /** Bars + baseline touch hex on bottom, left, and upper-right (Cursor-style fit). */
+  | "triple-touch"
+  /** Solid navy hex; bars and baseline in off-white (Cursor inverse). */
+  | "filled-inverse";
 
 type Props = {
   className?: string;
@@ -20,6 +24,27 @@ type Props = {
 
 const NAVY = "#0d1b2e";
 const AMBER = "#f5b45a";
+const INK_ON_FILL = "#f7f7f4";
+
+/** Shared bar layout; triple-touch uses tighter anchors to the hex interior. */
+const LAYOUT = {
+  classic: {
+    baseline: { x: 16, y: 76, w: 70, h: 3.2 },
+    bars: [
+      { x: 18, y: 54, w: 11, h: 22 },
+      { x: 33, y: 44, w: 11, h: 32 },
+      { x: 73, y: 26, w: 13, h: 50 },
+    ],
+  },
+  tripleTouch: {
+    baseline: { x: 14, y: 71.2, w: 72, h: 2.8 },
+    bars: [
+      { x: 14, y: 54, w: 11.5, h: 17.2 },
+      { x: 28.5, y: 42, w: 11.5, h: 29.2 },
+      { x: 72.5, y: 22, w: 13.5, h: 49.2 },
+    ],
+  },
+} as const;
 
 /**
  * Compact hex + ascending bars mark (Build step). Right bar aligns with hex interior —
@@ -57,16 +82,24 @@ export function NextReportLogoMark({
     [interactive],
   );
 
-  const barRx = variant === "premium-rounded" ? 1.4 : 0.8;
+  const barRx = variant === "premium-rounded" ? 1.4 : 0.6;
   const hexJoin = variant === "premium-rounded" ? "round" : "miter";
   const mergedRight = variant === "merged-right";
+  const filledInverse = variant === "filled-inverse";
+  const tripleTouch = variant === "triple-touch" || filledInverse;
+
+  const layout = tripleTouch ? LAYOUT.tripleTouch : LAYOUT.classic;
+  const [barL, barM, barR] = layout.bars;
+  const rightBar = mergedRight && !tripleTouch ? { ...barR, x: 75 } : barR;
 
   const barFill = (which: "left" | "mid" | "right") => {
+    if (filledInverse) return INK_ON_FILL;
     if (variant === "amber-center" && which === "mid") return AMBER;
     return NAVY;
   };
 
   const capAmber = variant === "amber-cap";
+  const baselineFill = filledInverse ? INK_ON_FILL : NAVY;
 
   return (
     <span
@@ -101,42 +134,49 @@ export function NextReportLogoMark({
       >
         <polygon
           points="50,4 88,26 88,74 50,96 12,74 12,26"
-          stroke={NAVY}
-          strokeWidth={mergedRight ? 2 : 2.25}
+          stroke={filledInverse ? "none" : NAVY}
+          strokeWidth={mergedRight && !tripleTouch ? 2 : 2.25}
           strokeLinejoin={hexJoin}
-          fill="none"
+          fill={filledInverse ? NAVY : "none"}
         />
         <g>
-          <rect x="16" y="76" width="70" height="3.2" rx="0.6" fill={NAVY} />
-          <rect x="18" y="54" width="11" height="22" rx={barRx} fill={barFill("left")} />
           <rect
-            x="33"
-            y="44"
-            width="11"
-            height="32"
+            x={layout.baseline.x}
+            y={layout.baseline.y}
+            width={layout.baseline.w}
+            height={layout.baseline.h}
+            rx="0.5"
+            fill={baselineFill}
+          />
+          <rect x={barL.x} y={barL.y} width={barL.w} height={barL.h} rx={barRx} fill={barFill("left")} />
+          <rect
+            x={barM.x}
+            y={barM.y}
+            width={barM.w}
+            height={barM.h}
             rx={barRx}
             fill={barFill("mid")}
             style={{
               transition: "transform 280ms ease",
               transform: hovering && interactive ? "scaleY(1.04)" : "scaleY(1)",
-              transformOrigin: "38.5px 76px",
+              transformOrigin: `${barM.x + barM.w / 2}px ${layout.baseline.y}px`,
             }}
           />
           <rect
-            x={mergedRight ? 75 : 73}
-            y="26"
-            width="13"
-            height="50"
+            x={rightBar.x}
+            y={rightBar.y}
+            width={rightBar.w}
+            height={rightBar.h}
             rx={barRx}
             fill={barFill("right")}
             style={{
               transition: "transform 280ms ease",
               transform: hovering && interactive ? "scaleY(1.05)" : "scaleY(1)",
-              transformOrigin: "79.5px 76px",
+              transformOrigin: `${rightBar.x + rightBar.w / 2}px ${layout.baseline.y}px`,
             }}
           />
           {capAmber ? (
-            <rect x={mergedRight ? 75 : 73} y="26" width="13" height="3.5" rx="0.5" fill={AMBER} />
+            <rect x={rightBar.x} y={rightBar.y} width={rightBar.w} height="3.5" rx="0.5" fill={AMBER} />
           ) : null}
         </g>
         {variant === "amber-center" ? (

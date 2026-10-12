@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+  <polygon
+    points="50,4 88,26 88,74 50,96 12,74 12,26"
+    stroke="#0d1b2e"
+    stroke-width="2.25"
+    stroke-linejoin="round"
+  />
+  <g fill="#0d1b2e">
+    <!-- Bottom + left + right/top anchor: bars touch hex on three sides (Cursor-style fit) -->
+    <rect x="14" y="71.2" width="72" height="2.8" rx="0.5" />
+    <rect x="14" y="54" width="11.5" height="17.2" rx="0.6" />
+    <rect x="28.5" y="42" width="11.5" height="29.2" rx="0.6" />
+    <rect x="72.5" y="22" width="13.5" height="49.2" rx="0.6" />
+  </g>
+</svg>
