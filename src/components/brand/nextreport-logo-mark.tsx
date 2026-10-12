@@ -7,7 +7,14 @@ import {
   LOGO_PALETTES,
   type NextReportLogoColorScheme,
 } from "@/components/brand/logo-color-schemes";
+import {
+  NextReportAbstractGlyph,
+  type AbstractGlyphId,
+} from "@/components/brand/nextreport-abstract-glyphs";
 import { NextReportSparkGlyph } from "@/components/brand/nextreport-spark-glyph";
+
+export type { AbstractGlyphId };
+export type HexGlyphId = "n" | "spark" | AbstractGlyphId;
 
 export type NextReportLogoVariant =
   | "classic"
@@ -30,7 +37,9 @@ export type NextReportLogoVariant =
   /** Final mark: bold typographic N in hex (use with colorScheme). */
   | "filled-n"
   /** Final mark: spark burst in hex (Claude-style category, original shape). */
-  | "filled-spark";
+  | "filled-spark"
+  /** Final mark: original abstract symbol (see `abstractGlyph`). */
+  | "filled-abstract";
 
 type Props = {
   className?: string;
@@ -42,6 +51,8 @@ type Props = {
   colorScheme?: NextReportLogoColorScheme | "auto";
   /** Larger N, Cursor-style fill inside hex. */
   compact?: boolean;
+  /** With `filled-abstract` — which symbol to draw. */
+  abstractGlyph?: AbstractGlyphId;
   title?: string;
 };
 
@@ -126,6 +137,7 @@ export function NextReportLogoMark({
   variant = "classic",
   colorScheme = "auto",
   compact = true,
+  abstractGlyph = "forward",
   title = "NextReport",
 }: Props) {
   const { resolvedTheme } = useSiteTheme();
@@ -158,7 +170,8 @@ export function NextReportLogoMark({
   const hexJoin = variant === "premium-rounded" ? "round" : "miter";
   const mergedRight = variant === "merged-right";
   const filledInverse = variant === "filled-inverse";
-  const filledFinalMark = variant === "filled-n" || variant === "filled-spark";
+  const filledFinalMark =
+    variant === "filled-n" || variant === "filled-spark" || variant === "filled-abstract";
   const filledNVariant =
     filledFinalMark
       ? null
@@ -249,6 +262,8 @@ export function NextReportLogoMark({
             scale={compact ? 1.08 : 0.95}
             rotateDeg={sparkRotate}
           />
+        ) : filledFinalMark && palette && variant === "filled-abstract" ? (
+          <NextReportAbstractGlyph id={abstractGlyph} color={palette.glyphFill} />
         ) : filledFinalMark && palette ? (
           typographicMarkN(palette.glyphFill, compact)
         ) : filledNVariant ? (

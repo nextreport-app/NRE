@@ -1,14 +1,15 @@
 "use client";
 
-import { NextReportLogoMark } from "@/components/brand/nextreport-logo-mark";
+import { resolveHexMark } from "@/components/brand/hex-glyph-utils";
+import { NextReportLogoMark, type HexGlyphId } from "@/components/brand/nextreport-logo-mark";
 import { CURSOR_CREAM, NEXTREPORT_NAVY } from "@/components/brand/cursor-brand-colors";
 import { useSiteTheme } from "@/components/site-theme-provider";
 
 type Props = {
   /** Force light or dark lockup; `auto` follows site theme. */
   mode?: "light" | "dark" | "auto";
-  /** Hex icon glyph: spark (default) or letter N. */
-  iconGlyph?: "spark" | "n";
+  /** Hex icon: n, spark, or abstract (forward, fold, ascend, orbit, pulse, stack). */
+  iconGlyph?: HexGlyphId;
   /** Icon size in px (wordmark scales with icon). */
   iconSize?: number;
   className?: string;
@@ -32,12 +33,14 @@ export function NextReportLogoLockup({
 
   const wordmarkColor = isLight ? NEXTREPORT_NAVY : CURSOR_CREAM;
   const fontSize = Math.round(iconSize * 0.375);
+  const mark = resolveHexMark(iconGlyph);
 
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`.trim()}>
       <NextReportLogoMark
         size={iconSize}
-        variant={iconGlyph === "spark" ? "filled-spark" : "filled-n"}
+        variant={mark.variant}
+        abstractGlyph={mark.abstractGlyph}
         colorScheme={isLight ? "final-light" : "final-dark"}
         compact
         interactive={interactive}
