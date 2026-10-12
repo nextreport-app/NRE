@@ -1,6 +1,12 @@
+import { CURSOR_CREAM, NEXTREPORT_NAVY } from "@/components/brand/cursor-brand-colors";
+
 /** Final N-in-hex mark palettes for light vs dark surfaces. */
 
 export type NextReportLogoColorScheme =
+  /** Shipped final: navy hex, Cursor cream N (light canvas / header). */
+  | "final-light"
+  /** Shipped final: cream hex, navy N (dark canvas / header). */
+  | "final-dark"
   | "on-light"
   | "on-light-soft"
   | "on-light-amber-ring"
@@ -18,14 +24,26 @@ export type LogoPalette = {
   accent?: string;
 };
 
-const NAVY = "#0d1b2e";
-const CREAM = "#f7f7f4";
+const NAVY = NEXTREPORT_NAVY;
+const CREAM = CURSOR_CREAM;
 const PANEL = "#111f35";
 const ELEVATED = "#1e3a5f";
 const BORDER = "#3d5a80";
 const AMBER = "#f5b45a";
 
 export const LOGO_PALETTES: Record<NextReportLogoColorScheme, LogoPalette> = {
+  "final-light": {
+    hexFill: NAVY,
+    hexStroke: "none",
+    hexStrokeWidth: 0,
+    glyphFill: CREAM,
+  },
+  "final-dark": {
+    hexFill: CREAM,
+    hexStroke: "none",
+    hexStrokeWidth: 0,
+    glyphFill: NAVY,
+  },
   "on-light": {
     hexFill: NAVY,
     hexStroke: "none",
@@ -80,5 +98,5 @@ export const LOGO_PALETTES: Record<NextReportLogoColorScheme, LogoPalette> = {
 };
 
 export function colorSchemeForSurface(surface: "light" | "dark"): NextReportLogoColorScheme {
-  return surface === "light" ? "on-light" : "on-dark-elevated";
+  return surface === "light" ? "final-light" : "final-dark";
 }

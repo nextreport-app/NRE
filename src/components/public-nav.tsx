@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
 import { PUBLIC_NAV_LINKS, filterBetaLinks, type SiteLink } from "@/lib/site-links";
 import { useSiteCopy } from "@/hooks/use-site-copy";
-import { NextReportLogoMark } from "@/components/brand/nextreport-logo-mark";
+import { NextReportLogoLockup } from "@/components/brand/nextreport-logo-lockup";
 
 const ALL_LINKS: SiteLink[] = [
   ...PUBLIC_NAV_LINKS,
@@ -49,9 +49,8 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   return (
     <header className="public-site-header sticky top-0 z-40 border-b border-navy-border bg-navy/95 font-sans text-[13px] antialiased backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 lg:min-w-[168px]">
-          <NextReportLogoMark size={48} variant="filled-n" colorScheme="auto" compact className="shrink-0" />
-          <span className="text-[18px] font-semibold leading-none tracking-[-0.02em] text-ink">NextReport</span>
+        <Link href="/" className="flex shrink-0 items-center lg:min-w-[168px]">
+          <NextReportLogoLockup mode="auto" iconSize={48} className="shrink-0" />
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-0 lg:flex" aria-label="Main">
