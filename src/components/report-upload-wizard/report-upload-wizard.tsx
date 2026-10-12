@@ -145,10 +145,10 @@ function ReportUploadWizardBody() {
       <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
         <h1 className="mb-1 text-[20px] font-bold text-white">
-          {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : getWizardStepHeading(w.step, w.platform)}
+          {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : wizardStepHeading(w.step, w.platform, locale)}
         </h1>
-        {getWizardStepSubtitle(w.step, w.platform) ? (
-          <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(w.step, w.platform)}</p>
+        {wizardStepSubtitle(w.step, w.platform, locale) ? (
+          <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>
         ) : null}
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
