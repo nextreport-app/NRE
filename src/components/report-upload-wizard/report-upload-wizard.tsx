@@ -3,7 +3,9 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
-import { getAdWizardFlow, getWizardStepHeading, getWizardStepSubtitle } from "@/lib/nre/platform-labels";
+import { getAdWizardFlow } from "@/lib/nre/platform-labels";
+import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
+import { useSiteTheme } from "@/components/site-theme-provider";
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
 import { StepIndicator } from "./ui/step-indicator";
@@ -48,6 +50,7 @@ function WizardClientLine({
 
 function ReportUploadWizardBody() {
   const w = useWizardContext();
+  const { locale } = useSiteTheme();
   const wizardTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -5,15 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
-import { CurrencySelector } from "@/components/currency-selector";
 import { PUBLIC_NAV_LINKS, filterBetaLinks, type SiteLink } from "@/lib/site-links";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 const ALL_LINKS: SiteLink[] = [
   ...PUBLIC_NAV_LINKS,
   { href: "/pricing", label: "Pricing", hideDuringBeta: true },
 ];
-
-const LINKS = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING);
 
 const navPillPrimary =
   "inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-navy transition-opacity hover:opacity-90";
@@ -24,12 +22,15 @@ function navLinkClass(active: boolean) {
     : "text-ink-secondary transition-colors hover:text-white";
 }
 
-/**
- * Public marketing header — logo left, links centered, Sign in + primary CTA on the right.
- */
 export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { marketing, linkLabel } = useSiteCopy();
+
+  const links = filterBetaLinks(ALL_LINKS, BETA_HIDE_PRICING).map((link) => ({
+    href: link.href,
+    label: linkLabel(link.href, link.label),
+  }));
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -50,7 +51,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex" aria-label="Main">
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -62,7 +63,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
         </nav>
 
         <div className="hidden shrink-0 items-center justify-end gap-2.5 lg:flex">
-          <CurrencySelector compact className="shrink-0" />
           {loggedIn ? (
             <>
               <button
@@ -70,10 +70,16 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 onClick={handleSignOut}
                 className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
               >
-                Sign out
+                {marketing.navSignOut}
               </button>
+              <Link
+                href="/contact"
+                className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
+              >
+                {marketing.navContact}
+              </Link>
               <Link href="/clients" className={`${navPillPrimary} shrink-0 whitespace-nowrap`}>
-                Dashboard
+                {marketing.navDashboard}
               </Link>
             </>
           ) : (
@@ -82,10 +88,16 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 href="/login"
                 className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
               >
-                Sign in
+                {marketing.navSignIn}
+              </Link>
+              <Link
+                href="/contact"
+                className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-secondary hover:text-white"
+              >
+                {marketing.navContact}
               </Link>
               <Link href="/signup" className={`${navPillPrimary} shrink-0 whitespace-nowrap`}>
-                Start free trial
+                {marketing.navStartTrial}
               </Link>
             </>
           )}
@@ -113,7 +125,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
       {open ? (
         <nav className="border-t border-navy-border bg-navy px-4 py-4 sm:px-6 lg:hidden" aria-label="Mobile">
           <div className="flex flex-col gap-1">
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -123,10 +135,13 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 {link.label}
               </Link>
             ))}
-            <div className="mt-2 border-t border-navy-border px-3 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Currency</p>
-              <CurrencySelector compact className="mt-2" />
-            </div>
+            <Link
+              href="/contact"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2.5 text-sm text-ink-secondary hover:bg-navy-panel hover:text-white"
+            >
+              {marketing.navContact}
+            </Link>
           </div>
           <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
             {loggedIn ? (
@@ -136,18 +151,15 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                   onClick={() => setOpen(false)}
                   className={`${navPillPrimary} w-full py-2.5 text-center`}
                 >
-                  Dashboard
+                  {marketing.navDashboard}
                 </Link>
                 <button
                   type="button"
                   onClick={handleSignOut}
                   className="w-full rounded-full border border-navy-border px-4 py-2.5 text-center text-sm text-white hover:bg-navy-panel"
                 >
-                  Sign out
+                  {marketing.navSignOut}
                 </button>
-                <p className="px-1 text-center text-xs text-ink-muted">
-                  Sign out ends your NextReport session only — use another Google account on the next sign-in.
-                </p>
               </>
             ) : (
               <>
@@ -156,14 +168,14 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                   onClick={() => setOpen(false)}
                   className={`${navPillPrimary} w-full py-2.5 text-center`}
                 >
-                  Start free trial
+                  {marketing.navStartTrial}
                 </Link>
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
                   className="w-full rounded-full border border-navy-border px-4 py-2.5 text-center text-sm text-white hover:bg-navy-panel"
                 >
-                  Sign in
+                  {marketing.navSignIn}
                 </Link>
               </>
             )}

@@ -1,6 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
-import { PRODUCT_HERO_HEADLINE } from "@/lib/product-positioning";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -23,13 +24,6 @@ const METRICS = [
   { label: "Cost per Click", value: "$1.54" },
 ];
 
-/**
- * A miniature mock of a real NextReport campaign slide — 8 metric cards in
- * a 4x2 grid, dark navy background, amber labels, white bold values — so a
- * visitor sees exactly what the PPTX output looks like before they ever
- * upload a CSV. Static placeholder numbers, deliberately realistic-looking
- * rather than obviously fake round numbers.
- */
 function SlideMockup() {
   return (
     <div className="nre-keep-dark-surface w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
@@ -49,16 +43,18 @@ function SlideMockup() {
 }
 
 export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
+  const { marketing } = useSiteCopy();
+
   return (
     <section className="bg-navy px-6 py-20 sm:py-28">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
-            {META_LAUNCH_HERO_BADGE}
+            {marketing.heroBadge}
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-ink sm:text-[3rem]">
-            {PRODUCT_HERO_HEADLINE}
+            {marketing.heroHeadline}
           </h1>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
@@ -67,27 +63,25 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
                 href="/clients"
                 className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
               >
-                Go to Dashboard
+                {marketing.heroGoDashboard}
               </Link>
             ) : (
               <Link
                 href="/signup"
                 className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
               >
-                Start free trial
+                {marketing.heroStartTrial}
               </Link>
             )}
             <Link
               href="/book-demo"
               className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-ink hover:bg-navy-panel sm:w-auto"
             >
-              Request a demo <span aria-hidden="true">→</span>
+              {marketing.heroRequestDemo} <span aria-hidden="true">→</span>
             </Link>
           </div>
 
-          {!loggedIn && (
-            <p className="mt-4 text-xs text-ink-muted">No credit card required.</p>
-          )}
+          {!loggedIn && <p className="mt-4 text-xs text-ink-muted">{marketing.heroNoCard}</p>}
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">

@@ -1,4 +1,8 @@
+"use client";
+
 import { CurrencyPricing } from "@/components/currency-pricing";
+import { CurrencySelector } from "@/components/currency-selector";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 export function PricingCtaSection({
   loggedIn,
@@ -9,11 +13,18 @@ export function PricingCtaSection({
   userEmail?: string | null;
   userName?: string | null;
 }) {
+  const { marketing } = useSiteCopy();
+
   return (
     <section className="bg-navy px-6 py-20">
       <div className="mx-auto max-w-5xl text-center">
-        <h2 className="text-2xl font-semibold text-white sm:text-3xl">Simple pricing for growing agencies</h2>
-        <p className="mt-3 text-base text-ink-muted">Start free for 7 days. No credit card required.</p>
+        <h2 className="text-2xl font-semibold text-white sm:text-3xl">{marketing.pricingTitle}</h2>
+        <p className="mt-3 text-base text-ink-muted">{marketing.pricingSubtitle}</p>
+
+        <div className="mt-6 flex flex-col items-center justify-center gap-2">
+          <p className="text-sm text-ink-muted">{marketing.pricingCurrencyLabel}</p>
+          <CurrencySelector />
+        </div>
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={userEmail} userName={userName} />
 
