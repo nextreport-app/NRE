@@ -39,7 +39,11 @@ function ResetPasswordForm() {
       setError(data.error || "Could not reset password.");
       return;
     }
-    router.push("/login?reset=1");
+    const loginEmail =
+      typeof data.email === "string" && data.email.trim().length > 0
+        ? `&email=${encodeURIComponent(data.email.trim())}`
+        : "";
+    router.push(`/login?reset=1${loginEmail}`);
   }
 
   if (!token) {

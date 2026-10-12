@@ -9,6 +9,7 @@ import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
 import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
 import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
+import { findUserByEmail } from "@/lib/find-user-by-email";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -37,9 +38,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !password) return null;
 
         try {
-          const user = await prisma.user.findUnique({
-            where: { email },
-            select: { id: true, email: true, name: true, image: true, passwordHash: true },
+          const user = await findUserByEmail(emailRaw, {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            passwordHash: true,
           });
           if (!user?.passwordHash) return null;
 

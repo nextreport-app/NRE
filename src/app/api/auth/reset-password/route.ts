@@ -23,7 +23,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    return NextResponse.json({ message: "Password updated. You can log in now." });
+    return NextResponse.json({
+      message: "Password updated. You can log in now.",
+      email: result.email,
+    });
   } catch (err) {
     return apiErrorResponse(err, "auth:reset-password");
   }

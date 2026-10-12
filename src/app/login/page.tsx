@@ -16,8 +16,9 @@ function LoginForm() {
   const callbackUrl = params.get("callbackUrl") || "/clients";
   const authErrorCode = params.get("error");
   const passwordResetOk = params.get("reset") === "1";
+  const prefilledEmail = params.get("email")?.trim() ?? "";
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const urlError = messageForAuthSignInError(authErrorCode);
   const [formError, setFormError] = useState<string | null>(null);
