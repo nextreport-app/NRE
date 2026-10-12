@@ -7,6 +7,7 @@ import {
   LOGO_PALETTES,
   type NextReportLogoColorScheme,
 } from "@/components/brand/logo-color-schemes";
+import { NextReportSparkGlyph } from "@/components/brand/nextreport-spark-glyph";
 
 export type NextReportLogoVariant =
   | "classic"
@@ -27,7 +28,9 @@ export type NextReportLogoVariant =
   /** Filled hex + white N, compact triple-touch anchors. */
   | "filled-inverse-n-touch"
   /** Final mark: bold typographic N in hex (use with colorScheme). */
-  | "filled-n";
+  | "filled-n"
+  /** Final mark: spark burst in hex (Claude-style category, original shape). */
+  | "filled-spark";
 
 type Props = {
   className?: string;
@@ -155,9 +158,9 @@ export function NextReportLogoMark({
   const hexJoin = variant === "premium-rounded" ? "round" : "miter";
   const mergedRight = variant === "merged-right";
   const filledInverse = variant === "filled-inverse";
-  const filledTypographicN = variant === "filled-n";
+  const filledFinalMark = variant === "filled-n" || variant === "filled-spark";
   const filledNVariant =
-    filledTypographicN
+    filledFinalMark
       ? null
       :
     variant === "filled-inverse-n"
@@ -169,10 +172,11 @@ export function NextReportLogoMark({
           : variant === "filled-inverse-n-touch"
             ? { style: "touch" as NGlyphStyle, baseline: false }
             : null;
-  const filledHex = filledInverse || filledNVariant !== null || filledTypographicN;
+  const filledHex = filledInverse || filledNVariant !== null || filledFinalMark;
   const resolvedScheme: NextReportLogoColorScheme =
     colorScheme === "auto" ? colorSchemeForSurface(resolvedTheme) : colorScheme;
-  const palette = filledTypographicN ? LOGO_PALETTES[resolvedScheme] : null;
+  const palette = filledFinalMark ? LOGO_PALETTES[resolvedScheme] : null;
+  const sparkRotate = hovering && interactive && variant === "filled-spark" ? tilt.ry * 0.85 : 0;
   const tripleTouch = variant === "triple-touch" || filledInverse;
 
   const layout = tripleTouch ? LAYOUT.tripleTouch : LAYOUT.classic;
@@ -239,7 +243,13 @@ export function NextReportLogoMark({
         {palette?.accent && resolvedScheme === "on-light-amber-ring" ? (
           <circle cx="50" cy="11" r="2.2" fill={palette.accent} />
         ) : null}
-        {filledTypographicN && palette ? (
+        {filledFinalMark && palette && variant === "filled-spark" ? (
+          <NextReportSparkGlyph
+            color={palette.glyphFill}
+            scale={compact ? 1.08 : 0.95}
+            rotateDeg={sparkRotate}
+          />
+        ) : filledFinalMark && palette ? (
           typographicMarkN(palette.glyphFill, compact)
         ) : filledNVariant ? (
           filledNGlyph(filledNVariant.style, filledNVariant.baseline)

@@ -7,6 +7,8 @@ import { useSiteTheme } from "@/components/site-theme-provider";
 type Props = {
   /** Force light or dark lockup; `auto` follows site theme. */
   mode?: "light" | "dark" | "auto";
+  /** Hex icon glyph: spark (default) or letter N. */
+  iconGlyph?: "spark" | "n";
   /** Icon size in px (wordmark scales with icon). */
   iconSize?: number;
   className?: string;
@@ -15,10 +17,11 @@ type Props = {
 
 /**
  * Final horizontal lockup — Cursor cream (#f7f7f4) + NextReport navy (#0d1b2e).
- * Light: navy hex + cream N + navy wordmark. Dark: cream hex + navy N + cream wordmark.
+ * Light: navy hex + cream glyph + navy wordmark. Dark: cream hex + navy glyph + cream wordmark.
  */
 export function NextReportLogoLockup({
   mode = "auto",
+  iconGlyph = "spark",
   iconSize = 48,
   className = "",
   interactive = true,
@@ -34,7 +37,7 @@ export function NextReportLogoLockup({
     <span className={`inline-flex items-center gap-2.5 ${className}`.trim()}>
       <NextReportLogoMark
         size={iconSize}
-        variant="filled-n"
+        variant={iconGlyph === "spark" ? "filled-spark" : "filled-n"}
         colorScheme={isLight ? "final-light" : "final-dark"}
         compact
         interactive={interactive}
