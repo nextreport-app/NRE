@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -18,18 +18,15 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const urlError = messageForAuthSignInError(authErrorCode);
+  const [formError, setFormError] = useState<string | null>(null);
+  const error = formError ?? urlError;
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  useEffect(() => {
-    const fromUrl = messageForAuthSignInError(authErrorCode);
-    if (fromUrl) setError(fromUrl);
-  }, [authErrorCode]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    setFormError(null);
     setLoading(true);
     const res = await signIn("credentials", {
       email,
@@ -38,7 +35,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Invalid email or password.");
+      setFormError("Invalid email or password.");
       return;
     }
     router.push(callbackUrl);
@@ -121,7 +118,7 @@ function LoginForm() {
         type="button"
         disabled={googleLoading || loading}
         onClick={() => {
-          setError(null);
+          setFormError(null);
           setGoogleLoading(true);
           void signIn("google", { callbackUrl }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS);
         }}
