@@ -8,6 +8,7 @@ import { messageForAuthSignInError } from "@/lib/auth-sign-in-errors";
 import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
 import { AuthFieldLabel, AuthPageShell, authInputClassName } from "@/components/auth/auth-page-shell";
 import { PasswordInput } from "@/components/auth/password-input";
+import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 
 function LoginForm() {
   const router = useRouter();
@@ -28,14 +29,17 @@ function LoginForm() {
     e.preventDefault();
     setFormError(null);
     setLoading(true);
+    const normalizedEmail = normalizeAuthEmail(email);
     const res = await signIn("credentials", {
-      email,
+      email: normalizedEmail,
       password,
       redirect: false,
     });
     setLoading(false);
     if (res?.error) {
-      setFormError("Invalid email or password.");
+      setFormError(
+        "Invalid email or password. If you signed up with Google, use Continue with Google — or reset your password below.",
+      );
       return;
     }
     router.push(callbackUrl);
