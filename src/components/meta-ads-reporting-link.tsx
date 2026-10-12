@@ -7,7 +7,7 @@ import {
 const variantClass: Record<MetaAdsReportingLinkVariant, string> = {
   inline: "font-medium text-dash-accent underline decoration-dash-accent/50 underline-offset-2 hover:text-[#fbd38d]",
   button:
-    "inline-flex items-center justify-center rounded-md border border-[#1877f2]/40 bg-[#1877f2]/10 px-3 py-2 text-[13px] font-semibold text-[#93c5fd] hover:bg-[#1877f2]/20",
+    "nre-meta-reporting-btn inline-flex items-center justify-center rounded-md border border-[#1877f2]/40 bg-[#1877f2]/10 px-3 py-2 text-[13px] font-semibold text-[#93c5fd] hover:bg-[#1877f2]/20",
   help: "font-semibold text-accent-orange underline decoration-accent-orange/50 underline-offset-2 hover:text-[#fbd38d]",
 };
 
