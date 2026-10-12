@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientList } from "@/components/client-list";
+import { OnboardingResourceLinks } from "@/components/onboarding-resource-links";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
@@ -82,6 +83,7 @@ export default async function ClientsPage() {
           >
             + Add Client
           </Link>
+          <OnboardingResourceLinks compact />
         </div>
       ) : (
         <ClientList clients={clientCards} totalCount={clientCards.length} />
