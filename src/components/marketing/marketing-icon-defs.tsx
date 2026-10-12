@@ -3,6 +3,8 @@
  * Use stroke="currentColor" inside `text-ink` / `text-ink-secondary` parents.
  */
 
+import { IconCsvUpload } from "@/components/marketing/csv-icons";
+
 type IconProps = { className?: string; title?: string };
 
 const base = "h-6 w-6 shrink-0";
@@ -22,8 +24,6 @@ export function IconConnect({ className, title }: IconProps) {
     </svg>
   );
 }
-
-export { IconCsvUpload } from "@/components/marketing/csv-icons";
 
 export function IconApiSync({ className, title }: IconProps) {
   return (
