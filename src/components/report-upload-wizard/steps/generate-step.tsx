@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { SlidePreviewCarousel } from "@/components/wizard-preview-carousel";
-import { normalizeCampaignName } from "@/lib/nre/objective";
+import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
@@ -50,11 +48,6 @@ function CoverBudgetClientSettingsLink({
       >
         {hasBudget ? "Edit monthly budget" : "Set monthly budget"} in Client Settings
       </Link>
-      <span className="text-dash-ink-muted">
-        {" "}
-        (opens in a new tab — this report setup stays on this page). After saving, switch back here; the budget line
-        updates when you return to this tab.
-      </span>
     </p>
   );
 }
@@ -172,17 +165,10 @@ export function WizardGenerateStep() {
     reportPeriodConfirmationLine,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
-    perCampaignMetrics,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
   const slideCount = estimatedSlideCount();
-
-  const carouselSelectedMetrics = useMemo(() => {
-    if (!data?.campaignSlides[0]) return [];
-    const norm = normalizeCampaignName(data.campaignSlides[0].campaignName);
-    return perCampaignMetrics.get(norm) ?? [];
-  }, [data, perCampaignMetrics]);
 
   if (!stepActive) return null;
 
@@ -521,29 +507,6 @@ export function WizardGenerateStep() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">Confirmed period</p>
                 <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
-            ) : null}
-
-            {generateStepPreviewReady &&
-            generateStatus === "idle" &&
-            (previewKind === "normal" || previewKind === "comparison") &&
-            (data || comparisonData) ? (
-              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-                <h4 className="text-[16px] font-semibold text-dash-ink">Slide preview</h4>
-                <p className="mt-1 text-[13px] text-dash-ink-secondary">
-                  Sample slides with your real CSV numbers — swipe to see layout before you generate.
-                </p>
-                <div className="mt-4">
-                  <SlidePreviewCarousel
-                    platform={platform}
-                    reportType={reportType}
-                    previewKind={previewKind === "comparison" ? "comparison" : "normal"}
-                    clientName={clientName}
-                    data={data}
-                    comparisonData={comparisonData}
-                    selectedMetrics={carouselSelectedMetrics}
-                  />
-                </div>
-              </section>
             ) : null}
 
             <div className="space-y-4">
