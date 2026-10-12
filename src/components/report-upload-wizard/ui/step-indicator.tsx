@@ -28,7 +28,7 @@ export function StepIndicator({
               <button
                 type="button"
                 onClick={() => onNavigate(s)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-white"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-dash-ink"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
                 {wizardStepLabel(s, locale)}

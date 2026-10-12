@@ -31,10 +31,10 @@ export function WizardImportDownloadInstructions({
       aria-labelledby="wizard-download-instructions-heading"
     >
       <div
-        className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/50 px-4 py-3"
+        className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3"
         aria-labelledby="wizard-download-instructions-heading"
       >
-      <h4 id="wizard-download-instructions-heading" className="flex flex-wrap items-center text-[14px] font-semibold text-white">
+      <h4 id="wizard-download-instructions-heading" className="flex flex-wrap items-center text-[14px] font-semibold text-dash-ink">
         Download instructions
         {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
       </h4>

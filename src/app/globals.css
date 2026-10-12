@@ -18,6 +18,9 @@
   --nre-dash-secondary: #1e3a5f;
   --nre-dash-success: #68d391;
   --nre-dash-error: #fc8181;
+  /* Inset panels (wizard callouts, nested boxes) — not pure white on dark. */
+  --nre-dash-inset: #151f33;
+  --nre-dash-popover: #0a1628;
 }
 
 html[data-site-theme="light"] {
@@ -40,6 +43,8 @@ html[data-site-theme="light"] {
   --nre-dash-ink: #000000;
   --nre-dash-ink-secondary: #475569;
   --nre-dash-secondary: #e8e7e2;
+  --nre-dash-inset: #efeeea;
+  --nre-dash-popover: #ffffff;
 }
 
 html[data-site-theme="light"] body {
@@ -104,6 +109,8 @@ html[data-site-theme="light"] body {
   --color-dash-secondary: var(--nre-dash-secondary, #1e3a5f);
   --color-dash-success: var(--nre-dash-success, #68d391);
   --color-dash-error: var(--nre-dash-error, #fc8181);
+  --color-dash-inset: var(--nre-dash-inset, #151f33);
+  --color-dash-popover: var(--nre-dash-popover, #0a1628);
 }
 
 html {
@@ -253,11 +260,33 @@ html[data-site-theme="light"] .nre-app-shell {
 
 /* Client cards + search — elevated white surfaces on Cursor-style canvas. */
 html[data-site-theme="light"] .nre-app-shell .nre-client-card,
-html[data-site-theme="light"] .nre-app-shell .nre-dash-surface {
+html[data-site-theme="light"] .nre-app-shell .nre-dash-surface,
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-panel,
+html[data-site-theme="light"] .nre-app-shell .bg-dash-popover {
   border-color: var(--nre-dash-border);
   box-shadow:
     0 1px 2px rgba(38, 37, 30, 0.06),
     0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+/* Wizard + dashboard nested panels (replaces hardcoded #0d1b2e panels). */
+.nre-wizard-panel {
+  border: 1px solid var(--nre-dash-border);
+  background-color: var(--nre-dash-inset);
+}
+
+/* Marketing / auth elevated panels on #f7f7f4 canvas. */
+html[data-site-theme="light"] .bg-navy-panel {
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+/* Form fields on public pages (signup, contact) — readable on light canvas. */
+html[data-site-theme="light"] input,
+html[data-site-theme="light"] select,
+html[data-site-theme="light"] textarea {
+  color: var(--color-ink);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-client-card__divider {

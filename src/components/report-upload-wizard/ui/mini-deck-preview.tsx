@@ -101,17 +101,17 @@ export function MiniDeckPreview({ slides }: { slides: SlideChip[] }) {
 
   return (
     <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-      <h4 className="text-[16px] font-semibold text-white">Deck preview</h4>
+      <h4 className="text-[16px] font-semibold text-dash-ink">Deck preview</h4>
       <p className="mt-1 text-[13px] text-dash-ink-secondary">Quick map of slide order — not a pixel-perfect PPT preview.</p>
       <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
         {slides.map((slide, index) => (
           <div
             key={slide.key}
-            className={`flex h-[88px] w-[140px] shrink-0 flex-col justify-between rounded-md border border-dash-border border-l-4 bg-[#0f172a] p-3 ${accentBorder(slide.accent)}`}
+            className={`flex h-[88px] w-[140px] shrink-0 flex-col justify-between rounded-md border border-dash-border border-l-4 bg-dash-bg p-3 ${accentBorder(slide.accent)}`}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wide text-dash-ink-muted">Slide {index + 1}</span>
             <div>
-              <p className="truncate text-[13px] font-semibold text-white" title={slide.title}>
+              <p className="truncate text-[13px] font-semibold text-dash-ink" title={slide.title}>
                 {slide.title}
               </p>
               {slide.subtitle ? (

@@ -60,7 +60,7 @@ export function ReportTypeCard({
           <div
             id={tooltipId}
             role="tooltip"
-            className={`pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-20 w-[min(300px,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-dash-border bg-[#0a1628] px-3 py-2.5 text-left shadow-xl transition-opacity duration-150 ${
+            className={`pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-20 w-[min(300px,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-dash-border bg-dash-popover nre-dash-surface px-3 py-2.5 text-left shadow-xl transition-opacity duration-150 ${
               detailOpen ? "opacity-100" : "opacity-0 max-sm:opacity-0 [@media(hover:hover)]:group-hover/card:opacity-100 [@media(hover:hover)]:group-focus-within/card:opacity-100"
             }`}
           >
@@ -84,7 +84,7 @@ export function ReportTypeCard({
             aria-expanded={detailOpen}
             aria-controls={tooltipId}
             disabled={disabled}
-            className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-semibold text-dash-ink-secondary hover:bg-dash-border/50 hover:text-white focus:outline-none focus:ring-2 focus:ring-dash-accent/60 [@media(hover:hover)]:hidden"
+            className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-semibold text-dash-ink-secondary hover:bg-dash-border/50 hover:text-dash-ink focus:outline-none focus:ring-2 focus:ring-dash-accent/60 [@media(hover:hover)]:hidden"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -107,7 +107,7 @@ export function ReportTypeCard({
             {icon}
           </span>
           <span className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            <span className="block text-[13px] font-semibold leading-snug text-white">{heading}</span>
+            <span className="block text-[13px] font-semibold leading-snug text-dash-ink">{heading}</span>
             {recommended ? (
               <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
                 Recommended
@@ -136,7 +136,7 @@ export function ReportTypeCard({
         {icon}
       </span>
       <p
-        className={`mt-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-white${singleLineHeading ? "" : ""}`}
+        className={`mt-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-dash-ink${singleLineHeading ? "" : ""}`}
       >
         <span className={singleLineHeading ? "whitespace-nowrap" : undefined}>{heading}</span>
         {showSoonBadge ? <ComingSoonBadge /> : null}

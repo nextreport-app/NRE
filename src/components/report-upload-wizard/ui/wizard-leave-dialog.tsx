@@ -14,7 +14,7 @@ export function WizardLeaveDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-md rounded-xl border border-dash-border bg-dash-card p-5 shadow-xl">
-        <h2 className="text-[17px] font-semibold text-white">Leave report setup?</h2>
+        <h2 className="text-[17px] font-semibold text-dash-ink">Leave report setup?</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
           You have a report in progress. Your progress is saved for this client, but leaving now means you will need to
           return to the wizard to finish generating.

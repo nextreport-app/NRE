@@ -224,14 +224,14 @@ export function WizardGenerateStep() {
 
             {reportType === "HISTORICAL" && (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-                <h4 className="text-[15px] font-semibold text-white">Historical months</h4>
+                <h4 className="text-[15px] font-semibold text-dash-ink">Historical months</h4>
                 <div className="mt-3 space-y-3">
                   <label className="block text-[14px] text-dash-ink-secondary">
                     How many complete prior months?
                     <select
                       value={historicalMonthCount}
                       onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
-                      className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
+                      className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-dash-ink"
                     >
                       {[2, 3, 4, 5, 6, 8, 12].map((n) => (
                         <option key={n} value={n}>
@@ -241,7 +241,7 @@ export function WizardGenerateStep() {
                     </select>
                   </label>
                   <p className="text-[14px] text-dash-ink-secondary">
-                    Months: <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
+                    Months: <span className="text-dash-ink">{historicalMonthLabels.join(" · ")}</span>
                   </p>
                   {dateBounds && (
                     <p className="text-[14px] text-dash-ink-muted">
@@ -253,18 +253,18 @@ export function WizardGenerateStep() {
             )}
             {reportType === "DAILY" && dailyRange && (
               <p className="text-[14px] text-dash-ink-secondary">
-                Reporting on <span className="text-white">{formatIsoRange(dailyRange)}</span>.
+                Reporting on <span className="text-dash-ink">{formatIsoRange(dailyRange)}</span>.
               </p>
             )}
 
           {/* Date range (Weekly + Day-by-Day) */}
           {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">
+              <h4 className="text-[16px] font-semibold text-dash-ink">
                 {reportType === "DAY_BREAKDOWN" ? "Select date range" : "Select report period"}
               </h4>
               {reportType === "DAY_BREAKDOWN" ? (
-                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
                   <p className="text-[14px] text-dash-ink-secondary">
                     Pick any range covered by your day-level CSV
                     {dateBounds
@@ -315,7 +315,7 @@ export function WizardGenerateStep() {
                   </div>
 
                   {dateMode === "custom" ? (
-                    <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                    <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
                       <WizardDateRangeFields
                         startIso={customStart}
                         endIso={customEnd}
@@ -359,7 +359,7 @@ export function WizardGenerateStep() {
           {/* Section 2 (Comparison variant) — Period A/B presets (A1) */}
           {reportType === "COMPARISON" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">Select comparison periods</h4>
+              <h4 className="text-[16px] font-semibold text-dash-ink">Select comparison periods</h4>
               <div className="mt-4 flex flex-wrap gap-3">
                 <WeeklyPeriodOption
                   selected={comparisonPreset === "thisWeek"}
@@ -379,9 +379,9 @@ export function WizardGenerateStep() {
               </div>
 
               {comparisonPreset === "custom" && (
-                <div className="mt-4 space-y-4 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                <div className="mt-4 space-y-4 rounded-lg border border-dash-border nre-wizard-panel p-4">
                   <div>
-                    <p className="mb-3 text-[14px] font-medium text-white">Period A (current)</p>
+                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period A (current)</p>
                     <WizardDateRangeFields
                       startIso={comparisonPeriodA?.startIso ?? ""}
                       endIso={comparisonPeriodA?.endIso ?? ""}
@@ -394,7 +394,7 @@ export function WizardGenerateStep() {
                     />
                   </div>
                   <div>
-                    <p className="mb-3 text-[14px] font-medium text-white">Period B (compare)</p>
+                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period B (compare)</p>
                     <WizardDateRangeFields
                       startIso={comparisonPeriodB?.startIso ?? ""}
                       endIso={comparisonPeriodB?.endIso ?? ""}
@@ -472,11 +472,11 @@ export function WizardGenerateStep() {
 
           {showStandardCoverBudget && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">Cover slide budget</h4>
+              <h4 className="text-[16px] font-semibold text-dash-ink">Cover slide budget</h4>
               {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
-                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
                   {coverBudgetPreviewLine ? (
-                    <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-white">
+                    <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-dash-ink">
                       {coverBudgetPreviewLine}
                     </p>
                   ) : (
@@ -519,7 +519,7 @@ export function WizardGenerateStep() {
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
               <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">Confirmed period</p>
-                <p className="mt-1 text-[15px] font-medium leading-snug text-white">{periodConfirmation}</p>
+                <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
             ) : null}
 
@@ -528,7 +528,7 @@ export function WizardGenerateStep() {
             (previewKind === "normal" || previewKind === "comparison") &&
             (data || comparisonData) ? (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-                <h4 className="text-[16px] font-semibold text-white">Slide preview</h4>
+                <h4 className="text-[16px] font-semibold text-dash-ink">Slide preview</h4>
                 <p className="mt-1 text-[13px] text-dash-ink-secondary">
                   Sample slides with your real CSV numbers — swipe to see layout before you generate.
                 </p>
@@ -564,14 +564,14 @@ export function WizardGenerateStep() {
                   what used to be two separate cards (Reporting Period +
                   Ready to generate) into the one card the merged Step 3
                   spec calls for. */}
-              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
+              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-dash-card nre-dash-surface p-5">
                 <button
                   type="button"
                   onClick={() => setReportSummaryExpanded((open) => !open)}
                   aria-expanded={reportSummaryExpanded}
                   className="flex w-full items-center justify-between gap-3 text-left"
                 >
-                  <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
+                  <h3 className="text-[15px] font-semibold text-dash-ink">Report Summary</h3>
                   <span
                     className={`text-[15px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
                     aria-hidden
@@ -581,23 +581,23 @@ export function WizardGenerateStep() {
                 </button>
                 {reportSummaryExpanded && (
                   <>
-                <hr className="my-3 border-t border-[#334155]" />
+                <hr className="my-3 border-t border-dash-border" />
                 <div className="space-y-2">
                   {apiSyncHybridImport ? (
-                    <p className="rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
+                    <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
                       {META_HYBRID_API_CSV_IMPORT_NOTE}
                     </p>
                   ) : null}
                   <p className="text-[14px] text-[#94a3b8]">
-                    Report type: <span className="text-[14px] text-white">{reportTypeLabel()}</span>
+                    Report type: <span className="text-[14px] text-dash-ink">{reportTypeLabel()}</span>
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
-                    Client: <span className="text-[14px] text-white">{clientName}</span>
+                    Client: <span className="text-[14px] text-dash-ink">{clientName}</span>
                   </p>
                   <div>
                     <p className="text-[14px] text-[#94a3b8]">
                       Campaigns:{" "}
-                      <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
+                      <span className="text-[14px] text-dash-ink">{summaryCampaignNames().length} selected</span>
                     </p>
                     <ul className="mt-1 space-y-0.5 pl-4">
                       {summaryCampaignNames().map((name) => (
@@ -610,19 +610,19 @@ export function WizardGenerateStep() {
                   {previewKind === "comparison" && comparisonData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Comparison periods:{" "}
-                      <span className="text-[14px] text-white">
+                      <span className="text-[14px] text-dash-ink">
                         {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
                       </span>
                     </p>
                   ) : previewKind === "historical" && historicalData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Months covered:{" "}
-                      <span className="text-[14px] text-white">{historicalData.monthsLabel}</span>
+                      <span className="text-[14px] text-dash-ink">{historicalData.monthsLabel}</span>
                     </p>
                   ) : previewKind === "dayBreakdown" && dayBreakdownData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Date range:{" "}
-                      <span className="text-[14px] text-white">{dayBreakdownData.rangeLabel}</span>
+                      <span className="text-[14px] text-dash-ink">{dayBreakdownData.rangeLabel}</span>
                       {" · "}
                       {dayBreakdownData.dayCount} day{dayBreakdownData.dayCount === 1 ? "" : "s"} with data
                     </p>
@@ -630,40 +630,40 @@ export function WizardGenerateStep() {
                     <>
                       {reportType === "DAILY" && dailyRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Daily period: <span className="text-[14px] text-white">{formatSummaryRange(dailyRange)}</span>
+                          Daily period: <span className="text-[14px] text-dash-ink">{formatSummaryRange(dailyRange)}</span>
                         </p>
                       )}
                       {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso && (
                         <p className="text-[14px] text-[#94a3b8]">
                           {reportType === "DAY_BREAKDOWN" ? "Date range" : weeklyPeriodSummaryLabel()}:{" "}
-                          <span className="text-[14px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                          <span className="text-[14px] text-dash-ink">{formatSummaryRange(weeklyRangeIso)}</span>
                         </p>
                       )}
                       {reportType === "MONTHLY" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Full month: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Full month: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "CREATIVE" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Data window: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Data window: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "WEEKLY" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Month to date: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Month to date: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                     </>
                   )}
                   <p className="text-[14px] text-[#94a3b8]">
-                    Template: <span className="text-[14px] text-white">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
+                    Template: <span className="text-[14px] text-dash-ink">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
                     Platform: <WizardPlatformSummaryLabel platform={platform} />
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
-                    Estimated slides: <span className="text-[14px] text-white">{estimatedSlideCount()}</span>
+                    Estimated slides: <span className="text-[14px] text-dash-ink">{estimatedSlideCount()}</span>
                   </p>
                 </div>
                   </>
@@ -722,7 +722,7 @@ export function WizardGenerateStep() {
           ) : null}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-[#111f35]">
+            <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
               <div className="border-b border-dash-border bg-emerald-950/20 px-5 py-5 text-center">
                 <div
                   className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-2xl text-emerald-300"
@@ -731,7 +731,7 @@ export function WizardGenerateStep() {
                   ✓
                 </div>
                 <p className="text-[18px] font-bold text-emerald-300">Report generated</p>
-                <p className="mt-1 text-[15px] font-semibold text-white">
+                <p className="mt-1 text-[15px] font-semibold text-dash-ink">
                   {clientName} · {reportTypeLabel()}
                 </p>
                 <p className="mt-1 text-[14px] text-dash-ink-secondary">
@@ -793,7 +793,7 @@ export function WizardGenerateStep() {
                 ) : null}
 
                 {shareToken ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
+                  <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-3 py-2.5">
                     <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
                       {buildShareReportUrl(shareToken)}
                     </span>
@@ -865,7 +865,7 @@ export function WizardGenerateStep() {
                 })()}
 
                 {shareToken ? (
-                  <details className="group rounded-lg border border-dash-border bg-[#0d1b2e]">
+                  <details className="group rounded-lg border border-dash-border bg-dash-sidebar">
                     <summary className="cursor-pointer list-none px-4 py-3 text-[14px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center justify-between gap-2">
                         Share with client
