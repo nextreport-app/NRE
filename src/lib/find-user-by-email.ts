@@ -1,14 +1,15 @@
 import "server-only";
 
-import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 
+type UserFindSelect = NonNullable<Parameters<typeof prisma.user.findUnique>[0]>["select"];
+
 /** Lookup by normalized email, with case-insensitive fallback for legacy rows. */
-export async function findUserByEmail<T extends Prisma.UserSelect>(
+export async function findUserByEmail<S extends UserFindSelect>(
   emailRaw: string,
-  select: T,
-): Promise<Prisma.UserGetPayload<{ select: T }> | null> {
+  select: S,
+) {
   const email = normalizeAuthEmail(emailRaw);
   if (!email) return null;
 
