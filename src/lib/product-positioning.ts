@@ -7,7 +7,7 @@
 export const MARKETING_TRY_CTA_HEADLINE = "Try NextReport now.";
 
 /** Homepage hero — one line (Cursor-style). */
-export const PRODUCT_HERO_HEADLINE = "NextReport is branded Meta client reporting in minutes.";
+export const PRODUCT_HERO_HEADLINE = "NextReport is branded client reporting for agencies in minutes.";
 
 /** Hero / homepage — time → money (no geo-specific rates). */
 export const SPECIALIST_TIME_SAVINGS_LINE =

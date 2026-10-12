@@ -6,8 +6,6 @@ export type FooterCopy = {
   legal: string;
   connect: string;
   copyright: string;
-  /** Shown when locale ≠ English — product UI stays English for now. */
-  uiEnglishNote: string;
   linkLabels: Record<string, string>;
 };
 
@@ -41,7 +39,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Legal",
     connect: "Connect",
     copyright: "© 2026 NextReport. All rights reserved.",
-    uiEnglishNote: "",
     linkLabels: EN_LINKS,
   },
   es: {
@@ -50,7 +47,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Legal",
     connect: "Contacto",
     copyright: "© 2026 NextReport. Todos los derechos reservados.",
-    uiEnglishNote: "La aplicación sigue en inglés; más idiomas pronto.",
     linkLabels: links({
       "/how-it-works": "Primeros pasos",
       "/help/download": "Guía de exportación CSV",
@@ -71,7 +67,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Mentions légales",
     connect: "Contact",
     copyright: "© 2026 NextReport. Tous droits réservés.",
-    uiEnglishNote: "L’application reste en anglais ; d’autres langues arrivent.",
     linkLabels: links({
       "/how-it-works": "Premiers pas",
       "/help/download": "Guide d’export CSV",
@@ -92,7 +87,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Legal",
     connect: "Contato",
     copyright: "© 2026 NextReport. Todos os direitos reservados.",
-    uiEnglishNote: "O app continua em inglês; mais idiomas em breve.",
     linkLabels: links({
       "/how-it-works": "Começar",
       "/help/download": "Guia de exportação CSV",
@@ -113,7 +107,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Rechtliches",
     connect: "Kontakt",
     copyright: "© 2026 NextReport. Alle Rechte vorbehalten.",
-    uiEnglishNote: "Die App ist derzeit auf Englisch; weitere Sprachen folgen.",
     linkLabels: links({
       "/how-it-works": "Erste Schritte",
       "/help/download": "CSV-Export-Anleitung",
@@ -134,7 +127,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Правовая информация",
     connect: "Связь",
     copyright: "© 2026 NextReport. Все права защищены.",
-    uiEnglishNote: "Интерфейс пока на английском; другие языки скоро.",
     linkLabels: links({
       "/how-it-works": "Начало работы",
       "/help/download": "Экспорт CSV",
@@ -155,7 +147,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "Legale",
     connect: "Contatti",
     copyright: "© 2026 NextReport. Tutti i diritti riservati.",
-    uiEnglishNote: "L’app è ancora in inglese; altre lingue in arrivo.",
     linkLabels: links({
       "/how-it-works": "Per iniziare",
       "/help/download": "Guida export CSV",
@@ -176,7 +167,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "法律",
     connect: "联系",
     copyright: "© 2026 NextReport. 保留所有权利。",
-    uiEnglishNote: "产品界面仍为英文，更多语言即将推出。",
     linkLabels: links({
       "/how-it-works": "入门指南",
       "/help/download": "CSV 导出指南",
@@ -197,7 +187,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "আইনি",
     connect: "যোগাযোগ",
     copyright: "© ২০২৬ NextReport. সর্বস্বত্ব সংরক্ষিত।",
-    uiEnglishNote: "অ্যাপ এখনও ইংরেজিতে; আরও ভাষা শীঘ্রই।",
     linkLabels: links({
       "/how-it-works": "শুরু করুন",
       "/help/download": "CSV এক্সপোর্ট গাইড",
@@ -218,7 +207,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "कायदेशीर",
     connect: "संपर्क",
     copyright: "© २०२६ NextReport. सर्व हक्क राखीव.",
-    uiEnglishNote: "अॅप अद्याप इंग्रजीत; अधिक भाषा लवकरच.",
     linkLabels: links({
       "/how-it-works": "सुरुवात",
       "/help/download": "CSV एक्सपोर्ट मार्गदर्शक",
@@ -239,7 +227,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "చట్టపరమైన",
     connect: "సంప్రదించండి",
     copyright: "© 2026 NextReport. అన్ని హక్కులు రిజర్వ్.",
-    uiEnglishNote: "యాప్ ఇంకా ఇంగ్లీష్‌లో; మరిన్ని భాషలు త్వరలో.",
     linkLabels: links({
       "/how-it-works": "ప్రారంభం",
       "/help/download": "CSV ఎగుమతి గైడ్",
@@ -260,7 +247,6 @@ export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
     legal: "சட்டம்",
     connect: "தொடர்பு",
     copyright: "© 2026 NextReport. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
-    uiEnglishNote: "பயன்பாடு இன்னும் ஆங்கிலத்தில்; மேலும் மொழிகள் விரைவில்.",
     linkLabels: links({
       "/how-it-works": "தொடங்குங்கள்",
       "/help/download": "CSV ஏற்றுமதி வழிகாட்டி",

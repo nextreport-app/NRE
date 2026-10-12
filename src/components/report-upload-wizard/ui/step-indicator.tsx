@@ -1,7 +1,9 @@
 "use client";
 
+import { useSiteTheme } from "@/components/site-theme-provider";
+import { wizardStepLabel } from "@/lib/wizard-i18n";
 import type { Step } from "../types";
-import { getVisibleWizardSteps, getWizardStepLabel } from "@/lib/nre/platform-labels";
+import { getVisibleWizardSteps } from "@/lib/nre/platform-labels";
 
 export function StepIndicator({
   step,
@@ -14,6 +16,7 @@ export function StepIndicator({
   onNavigate: (s: Step) => void;
   flow: "full" | "simple";
 }) {
+  const { locale } = useSiteTheme();
   const steps = getVisibleWizardSteps(flow);
   return (
     <div className="flex flex-wrap items-center gap-2 text-[14px]">
@@ -28,7 +31,7 @@ export function StepIndicator({
                 className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-white"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
-                {getWizardStepLabel(s, flow)}
+                {wizardStepLabel(s, locale)}
               </button>
             ) : (
               <span
@@ -38,7 +41,7 @@ export function StepIndicator({
                     : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
                 }
               >
-                {getWizardStepLabel(s, flow)}
+                {wizardStepLabel(s, locale)}
               </span>
             )}
             {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
