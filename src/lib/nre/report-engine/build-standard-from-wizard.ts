@@ -30,8 +30,10 @@ import { createReportEngine } from "./report-engine-impl";
 import { prisma } from "@/lib/prisma";
 import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
 import {
+  collectReportReachDateRanges,
   parseMetaAdAccountIdFromForm,
   resolveMetaCampaignPeriodReachForWizard,
+  sessionMapsCoverReachRanges,
 } from "../resolve-meta-campaign-reach-for-wizard";
 import type { MetaCampaignPeriodReachMaps } from "../campaign-period-reach-maps";
 import type { AiCopy } from "@/lib/pptx/fill-tags";
@@ -139,16 +141,24 @@ export async function buildStandardReportForWizard(
 
   let metaAccessToken: string | null = null;
   if (platform === "META") {
-    const user = await prisma.user.findUnique({
-      where: { id: client.userId },
-      select: { metaAccessToken: true, metaTokenExpiresAt: true, metaAdsEnabled: true },
+    const reachRanges = collectReportReachDateRanges({
+      mtdDailyRows: mtdParsed.rows,
+      timezone: client.timezone,
+      dateSelection,
     });
-    if (user?.metaAdsEnabled && user.metaAccessToken) {
-      const fresh = await ensureFreshMetaAccessToken({
-        accessToken: user.metaAccessToken,
-        tokenExpiresAt: user.metaTokenExpiresAt,
+    const skipMetaLiveFetch = sessionMapsCoverReachRanges(metaCampaignPeriodReachFromSession, reachRanges);
+    if (!skipMetaLiveFetch) {
+      const user = await prisma.user.findUnique({
+        where: { id: client.userId },
+        select: { metaAccessToken: true, metaTokenExpiresAt: true, metaAdsEnabled: true },
       });
-      metaAccessToken = fresh.accessToken;
+      if (user?.metaAdsEnabled && user.metaAccessToken) {
+        const fresh = await ensureFreshMetaAccessToken({
+          accessToken: user.metaAccessToken,
+          tokenExpiresAt: user.metaTokenExpiresAt,
+        });
+        metaAccessToken = fresh.accessToken;
+      }
     }
   }
 
