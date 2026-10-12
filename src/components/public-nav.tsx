@@ -15,16 +15,14 @@ const ALL_LINKS: SiteLink[] = [
 
 /** Cursor-style compact marketing header type (13px, tight pills). */
 const navText =
-  "shrink-0 whitespace-nowrap text-[13px] leading-none text-ink-muted transition-colors hover:text-ink";
+  "shrink-0 whitespace-nowrap text-[13px] leading-none text-ink transition-colors hover:opacity-80";
 const navOutlinePill =
   "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-navy-border px-3 py-[7px] text-[13px] font-medium leading-none text-ink transition-colors hover:bg-navy-panel/50";
 const navPrimaryPill =
   "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-ink px-3 py-[7px] text-[13px] font-medium leading-none text-navy transition-opacity hover:opacity-90";
 
 function navLinkClass(active: boolean) {
-  return active
-    ? "font-medium text-ink"
-    : "font-normal text-ink-muted transition-colors hover:text-ink";
+  return active ? "font-semibold text-ink" : "font-normal text-ink transition-colors hover:opacity-80";
 }
 
 export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
@@ -122,7 +120,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className={`rounded-md px-3 py-2 text-[13px] ${isActive(link.href) ? "bg-navy-panel font-medium text-ink" : "text-ink-muted hover:bg-navy-panel hover:text-ink"}`}
+                className={`rounded-md px-3 py-2 text-[13px] ${isActive(link.href) ? "bg-navy-panel font-medium text-ink" : "text-ink hover:bg-navy-panel hover:opacity-80"}`}
               >
                 {link.label}
               </Link>
@@ -130,7 +128,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             <Link
               href="/contact"
               onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-[13px] text-ink-muted hover:bg-navy-panel hover:text-ink"
+              className="rounded-md px-3 py-2 text-[13px] text-ink hover:bg-navy-panel hover:opacity-80"
             >
               {marketing.navContact}
             </Link>

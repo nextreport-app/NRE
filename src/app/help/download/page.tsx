@@ -79,7 +79,7 @@ export default async function DownloadGuidePage() {
               Jump straight to the reporting section in Ads Manager (same place you export the day-wise CSV).
             </p>
 
-            <div className="space-y-4 rounded-lg border border-amber-500/35 bg-amber-950/20 p-5">
+            <div className="nre-help-amber-callout space-y-4 rounded-lg border border-amber-500/35 bg-amber-950/20 p-5">
               <p className="text-[16px] font-semibold text-amber-100">{META_CSV_EXPORT_PATH.title}</p>
 
               <div>

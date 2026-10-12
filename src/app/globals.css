@@ -9,13 +9,14 @@
 
 html[data-site-theme="light"] {
   --background: #f8fafc;
-  --foreground: #0f172a;
+  --foreground: #000000;
   --color-navy: #f8fafc;
   --color-navy-panel: #ffffff;
   --color-navy-border: #e2e8f0;
-  --color-ink: #0f172a;
-  --color-ink-secondary: #334155;
-  --color-ink-muted: #64748b;
+  /* Cursor-like light mode: body copy and nav use pure black on pale backgrounds. */
+  --color-ink: #000000;
+  --color-ink-secondary: #000000;
+  --color-ink-muted: #000000;
 }
 
 html[data-site-theme="light"] body {
@@ -116,7 +117,7 @@ body {
 }
 
 html[data-site-theme="light"] body {
-  color: var(--color-ink-secondary);
+  color: #000000;
 }
 
 /* Marketing pages use text-white on navy; remap on light except fixed dark mockups/cards. */
@@ -151,6 +152,72 @@ html[data-site-theme="light"] .text-ink-secondary {
 
 html[data-site-theme="light"] .text-ink-muted {
   color: var(--color-ink-muted);
+}
+
+/* Tailwind opacity variants — still full black on light marketing pages. */
+html[data-site-theme="light"] .text-ink-muted\/90,
+html[data-site-theme="light"] .text-ink-muted\/80 {
+  color: #000000;
+}
+
+/*
+ * Public marketing chrome + main (not dashboard/wizard dark lock, not hero mock slides).
+ * Force readable black for accent/muted utility classes used as body or nav text.
+ */
+html[data-site-theme="light"] .site-footer .text-accent,
+html[data-site-theme="light"] .site-footer a,
+html[data-site-theme="light"] .public-site-header a:not([class*="bg-ink"]),
+html[data-site-theme="light"] .public-site-header button,
+html[data-site-theme="light"] main .text-accent-orange,
+html[data-site-theme="light"] main .text-accent,
+html[data-site-theme="light"] main .text-red-400 {
+  color: #000000;
+}
+
+/* Keep fixed dark marketing mockups (hero slide, carousel) on their own contrast. */
+html[data-site-theme="light"] .nre-keep-dark-surface,
+html[data-site-theme="light"] .nre-keep-dark-surface * {
+  --color-ink: #ffffff;
+  --color-ink-secondary: #e2e8f0;
+  --color-ink-muted: #94a3b8;
+}
+
+html[data-site-theme="light"] .public-site-header a:not([class*="bg-ink"]):hover,
+html[data-site-theme="light"] .site-footer a:hover {
+  color: #000000;
+  opacity: 0.72;
+}
+
+/* Help / docs callouts (amber) — dark-theme tints are illegible on white. */
+html[data-site-theme="light"] .nre-help-amber-callout {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-100,
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-100\/90,
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-50\/95,
+html[data-site-theme="light"] .nre-help-amber-callout .text-ink-secondary {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout hr {
+  border-color: #fdba74;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout .border-amber-500\/40 {
+  border-color: #fdba74;
+}
+
+html[data-site-theme="light"] .nre-meta-reporting-btn {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-meta-reporting-btn:hover {
+  background-color: #e2e8f0;
+  color: #000000;
 }
 
 html[data-site-theme="light"] .public-site-header {
