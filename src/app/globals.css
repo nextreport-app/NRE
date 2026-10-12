@@ -21,28 +21,30 @@
 }
 
 html[data-site-theme="light"] {
-  --background: #f8fafc;
+  /* Cursor.com marketing light canvas (see cursor.com — #f7f7f4). */
+  --background: #f7f7f4;
   --foreground: #000000;
-  --color-navy: #f8fafc;
+  --color-navy: #f7f7f4;
   --color-navy-panel: #ffffff;
-  --color-navy-border: #e2e8f0;
+  --color-navy-border: #d1d0cb;
   /* Cursor-like light mode: body copy and nav use pure black on pale backgrounds. */
   --color-ink: #000000;
   --color-ink-secondary: #000000;
   --color-ink-muted: #000000;
 
-  --nre-dash-bg: #f8fafc;
+  --nre-dash-bg: #f7f7f4;
   --nre-dash-sidebar: #ffffff;
   --nre-dash-card: #ffffff;
-  --nre-dash-border: #e2e8f0;
+  /* Stronger than slate-200 — white cards must read clearly on #f7f7f4. */
+  --nre-dash-border: #c9c9c4;
   --nre-dash-ink: #000000;
   --nre-dash-ink-secondary: #475569;
-  --nre-dash-secondary: #e2e8f0;
+  --nre-dash-secondary: #e8e7e2;
 }
 
 html[data-site-theme="light"] body {
-  background-color: #f8fafc;
-  background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+  background-color: #f7f7f4;
+  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
 }
 
 .nre-app-shell {
@@ -246,7 +248,20 @@ html[data-site-theme="light"] .public-site-header {
 
 html[data-site-theme="light"] .nre-app-shell {
   color-scheme: light;
-  background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
+}
+
+/* Client cards + search — elevated white surfaces on Cursor-style canvas. */
+html[data-site-theme="light"] .nre-app-shell .nre-client-card,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-surface {
+  border-color: var(--nre-dash-border);
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-client-card__divider {
+  border-color: #d8d7d2;
 }
 
 /* Legacy text-white in dashboard/wizard — remap on light so headings stay readable. */
