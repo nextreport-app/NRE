@@ -11,7 +11,15 @@ export type NextReportLogoVariant =
   /** Bars + baseline touch hex on bottom, left, and upper-right (Cursor-style fit). */
   | "triple-touch"
   /** Solid navy hex; bars and baseline in off-white (Cursor inverse). */
-  | "filled-inverse";
+  | "filled-inverse"
+  /** Filled hex + white geometric N (with baseline). */
+  | "filled-inverse-n"
+  /** Filled hex + white N, no baseline. */
+  | "filled-inverse-n-plain"
+  /** Filled hex + white N, rounded strokes, no baseline. */
+  | "filled-inverse-n-rounded"
+  /** Filled hex + white N, compact triple-touch anchors. */
+  | "filled-inverse-n-touch";
 
 type Props = {
   className?: string;
@@ -45,6 +53,33 @@ const LAYOUT = {
     ],
   },
 } as const;
+
+type NGlyphStyle = "block" | "rounded" | "touch";
+
+function filledNGlyph(style: NGlyphStyle, showBaseline: boolean) {
+  const rx = style === "rounded" ? 1.6 : 0.8;
+  const touch = style === "touch";
+  const left = touch ? { x: 14, y: 22, w: 12.5, h: 50.5 } : { x: 15, y: 24, w: 12, h: showBaseline ? 46.5 : 48.5 };
+  const right = touch
+    ? { x: 73, y: 22, w: 12.5, h: 50.5 }
+    : { x: 73, y: 24, w: 12, h: showBaseline ? 46.5 : 48.5 };
+  const diag = touch
+    ? "26.5,22 39,22 85.5,72.5 73,72.5"
+    : showBaseline
+      ? "27,24 39,24 85,70.5 73,70.5"
+      : "26.5,22 39,22 85.5,72.5 73,72.5";
+
+  return (
+    <g fill={INK_ON_FILL}>
+      {showBaseline ? (
+        <rect x={14} y={71.2} width={72} height={2.8} rx="0.5" />
+      ) : null}
+      <rect x={left.x} y={left.y} width={left.w} height={left.h} rx={rx} />
+      <rect x={right.x} y={right.y} width={right.w} height={right.h} rx={rx} />
+      <polygon points={diag} />
+    </g>
+  );
+}
 
 /**
  * Compact hex + ascending bars mark (Build step). Right bar aligns with hex interior —
@@ -86,6 +121,17 @@ export function NextReportLogoMark({
   const hexJoin = variant === "premium-rounded" ? "round" : "miter";
   const mergedRight = variant === "merged-right";
   const filledInverse = variant === "filled-inverse";
+  const filledNVariant =
+    variant === "filled-inverse-n"
+      ? { style: "block" as NGlyphStyle, baseline: true }
+      : variant === "filled-inverse-n-plain"
+        ? { style: "block" as NGlyphStyle, baseline: false }
+        : variant === "filled-inverse-n-rounded"
+          ? { style: "rounded" as NGlyphStyle, baseline: false }
+          : variant === "filled-inverse-n-touch"
+            ? { style: "touch" as NGlyphStyle, baseline: false }
+            : null;
+  const filledHex = filledInverse || filledNVariant !== null;
   const tripleTouch = variant === "triple-touch" || filledInverse;
 
   const layout = tripleTouch ? LAYOUT.tripleTouch : LAYOUT.classic;
@@ -93,13 +139,13 @@ export function NextReportLogoMark({
   const rightBar = mergedRight && !tripleTouch ? { ...barR, x: 75 } : barR;
 
   const barFill = (which: "left" | "mid" | "right") => {
-    if (filledInverse) return INK_ON_FILL;
+    if (filledHex && !filledNVariant) return INK_ON_FILL;
     if (variant === "amber-center" && which === "mid") return AMBER;
     return NAVY;
   };
 
   const capAmber = variant === "amber-cap";
-  const baselineFill = filledInverse ? INK_ON_FILL : NAVY;
+  const baselineFill = filledHex && !filledNVariant ? INK_ON_FILL : NAVY;
 
   return (
     <span
@@ -134,51 +180,55 @@ export function NextReportLogoMark({
       >
         <polygon
           points="50,4 88,26 88,74 50,96 12,74 12,26"
-          stroke={filledInverse ? "none" : NAVY}
+          stroke={filledHex ? "none" : NAVY}
           strokeWidth={mergedRight && !tripleTouch ? 2 : 2.25}
           strokeLinejoin={hexJoin}
-          fill={filledInverse ? NAVY : "none"}
+          fill={filledHex ? NAVY : "none"}
         />
-        <g>
-          <rect
-            x={layout.baseline.x}
-            y={layout.baseline.y}
-            width={layout.baseline.w}
-            height={layout.baseline.h}
-            rx="0.5"
-            fill={baselineFill}
-          />
-          <rect x={barL.x} y={barL.y} width={barL.w} height={barL.h} rx={barRx} fill={barFill("left")} />
-          <rect
-            x={barM.x}
-            y={barM.y}
-            width={barM.w}
-            height={barM.h}
-            rx={barRx}
-            fill={barFill("mid")}
-            style={{
-              transition: "transform 280ms ease",
-              transform: hovering && interactive ? "scaleY(1.04)" : "scaleY(1)",
-              transformOrigin: `${barM.x + barM.w / 2}px ${layout.baseline.y}px`,
-            }}
-          />
-          <rect
-            x={rightBar.x}
-            y={rightBar.y}
-            width={rightBar.w}
-            height={rightBar.h}
-            rx={barRx}
-            fill={barFill("right")}
-            style={{
-              transition: "transform 280ms ease",
-              transform: hovering && interactive ? "scaleY(1.05)" : "scaleY(1)",
-              transformOrigin: `${rightBar.x + rightBar.w / 2}px ${layout.baseline.y}px`,
-            }}
-          />
-          {capAmber ? (
-            <rect x={rightBar.x} y={rightBar.y} width={rightBar.w} height="3.5" rx="0.5" fill={AMBER} />
-          ) : null}
-        </g>
+        {filledNVariant ? (
+          filledNGlyph(filledNVariant.style, filledNVariant.baseline)
+        ) : (
+          <g>
+            <rect
+              x={layout.baseline.x}
+              y={layout.baseline.y}
+              width={layout.baseline.w}
+              height={layout.baseline.h}
+              rx="0.5"
+              fill={baselineFill}
+            />
+            <rect x={barL.x} y={barL.y} width={barL.w} height={barL.h} rx={barRx} fill={barFill("left")} />
+            <rect
+              x={barM.x}
+              y={barM.y}
+              width={barM.w}
+              height={barM.h}
+              rx={barRx}
+              fill={barFill("mid")}
+              style={{
+                transition: "transform 280ms ease",
+                transform: hovering && interactive ? "scaleY(1.04)" : "scaleY(1)",
+                transformOrigin: `${barM.x + barM.w / 2}px ${layout.baseline.y}px`,
+              }}
+            />
+            <rect
+              x={rightBar.x}
+              y={rightBar.y}
+              width={rightBar.w}
+              height={rightBar.h}
+              rx={barRx}
+              fill={barFill("right")}
+              style={{
+                transition: "transform 280ms ease",
+                transform: hovering && interactive ? "scaleY(1.05)" : "scaleY(1)",
+                transformOrigin: `${rightBar.x + rightBar.w / 2}px ${layout.baseline.y}px`,
+              }}
+            />
+            {capAmber ? (
+              <rect x={rightBar.x} y={rightBar.y} width={rightBar.w} height="3.5" rx="0.5" fill={AMBER} />
+            ) : null}
+          </g>
+        )}
         {variant === "amber-center" ? (
           <defs>
             <linearGradient id={`${uid}-sheen`} x1="0" y1="0" x2="1" y2="1">
