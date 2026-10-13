@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { resultBarColumns } from "../../pptx/chart-campaign-bars-render";
+import { resultBarLayout } from "../../pptx/chart-slide-layout";
+import { estimateTextWidthPt } from "../../pptx/text-fit";
 import {
   buildCampaignShortLabels,
+  fitCampaignNameForSingleBarLine,
   formatCampaignDisplayName,
   formatRankedCampaignLabel,
   maxCampaignNameCharsForSingleLine,
@@ -56,5 +60,26 @@ describe("buildCampaignShortLabels", () => {
     const name = "Tractor - DC - Traffic Campaign Extra Long Name";
     expect(formatCampaignDisplayName(name)).toBe("Tractor - DC - Traffic Campaign Extra Long…");
     expect(formatCampaignDisplayName("Traffic - Tractor")).toBe("Traffic - Tractor");
+  });
+
+  it("keeps a long name untruncated when it fits the split-panel bar label column", () => {
+    const cols = resultBarColumns(true);
+    const layout = resultBarLayout(1, false);
+    const labelWidthPt = cols.trackW - 96;
+    const short = "Website Retargeting";
+    const fitted = fitCampaignNameForSingleBarLine(short, 1, labelWidthPt, layout.nameSizePt);
+    expect(fitted).toBe(short);
+  });
+
+  it("truncates Kaizen-style names before they would wrap behind the bar (regression)", () => {
+    const cols = resultBarColumns(true);
+    const layout = resultBarLayout(1, false);
+    const labelWidthPt = cols.trackW - 96;
+    const longName = "New Leads campaign_Kaizen Homes - Website";
+    const fitted = fitCampaignNameForSingleBarLine(longName, 1, labelWidthPt, layout.nameSizePt);
+    expect(fitted.length).toBeLessThan(longName.length);
+    expect(fitted).toMatch(/…$/);
+    const line = `1. ${fitted}`;
+    expect(estimateTextWidthPt(line, layout.nameSizePt)).toBeLessThanOrEqual(labelWidthPt);
   });
 });

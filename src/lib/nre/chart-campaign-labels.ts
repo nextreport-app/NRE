@@ -1,5 +1,7 @@
 /** Campaign labels for the visual chart slide. */
 
+import { estimateTextWidthPt } from "../pptx/text-fit";
+
 export const CHART_CAMPAIGN_LABEL_MAX = 24;
 /** Full-width leaderboard rows — preserve the start of the name; truncate at the end only. */
 export const CHART_CAMPAIGN_DISPLAY_MAX = 44;
@@ -103,6 +105,7 @@ export function formatCampaignDisplayName(name: string, max = CHART_CAMPAIGN_DIS
 /**
  * How many characters fit on one result-bar name line (Poppins ~0.5× font size per char).
  * Reserves space for a ranked prefix such as "5. ".
+ * @deprecated Prefer {@link fitCampaignNameForSingleBarLine} — char heuristics under-estimate width.
  */
 export function maxCampaignNameCharsForSingleLine(
   labelWidthPt: number,
@@ -116,6 +119,37 @@ export function maxCampaignNameCharsForSingleLine(
   return Math.max(8, Math.min(CHART_CAMPAIGN_DISPLAY_MAX, capacity));
 }
 
+function rankedBarLine(rank: number, displayName: string): string {
+  return `${rank}. ${displayName}`;
+}
+
+/**
+ * Campaign name for a result bar — use the full name while it fits on one line
+ * beside the right-side share label; truncate with an ellipsis only when wider
+ * than the label column (same width as the bar track minus the right label).
+ */
+export function fitCampaignNameForSingleBarLine(
+  name: string,
+  rank: number,
+  labelWidthPt: number,
+  fontSizePt: number,
+): string {
+  const trimmed = name.trim();
+  if (!trimmed || labelWidthPt <= 0 || fontSizePt <= 0) return trimmed;
+
+  if (estimateTextWidthPt(rankedBarLine(rank, trimmed), fontSizePt) <= labelWidthPt) {
+    return trimmed;
+  }
+
+  for (let maxChars = trimmed.length - 1; maxChars >= 8; maxChars--) {
+    const candidate = formatCampaignDisplayName(trimmed, maxChars);
+    if (estimateTextWidthPt(rankedBarLine(rank, candidate), fontSizePt) <= labelWidthPt) {
+      return candidate;
+    }
+  }
+  return formatCampaignDisplayName(trimmed, 8);
+}
+
 /** Rank-prefixed bar title — one line in PPT/browser/SVG. */
 export function formatRankedCampaignBarLabel(
   rank: number,
@@ -123,6 +157,5 @@ export function formatRankedCampaignBarLabel(
   labelWidthPt: number,
   fontSizePt: number,
 ): string {
-  const nameMax = maxCampaignNameCharsForSingleLine(labelWidthPt, fontSizePt, rank);
-  return `${rank}. ${formatCampaignDisplayName(name, nameMax)}`;
+  return rankedBarLine(rank, fitCampaignNameForSingleBarLine(name, rank, labelWidthPt, fontSizePt));
 }
