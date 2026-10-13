@@ -2235,12 +2235,7 @@ export function useReportUploadWizard({
       { publishedAt: null },
     );
 
-    if (
-      dataSourceMode === "csv" &&
-      !isApiSyncArtifact(mtdFile) &&
-      !apiSyncHybridImport &&
-      platform !== "GA4"
-    ) {
+    if (dataSourceMode === "csv" && !isApiSyncArtifact(mtdFile) && !apiSyncHybridImport) {
       const objectiveSnapshot = new Map<string, { key: string; resultLabel: string; costLabel: string }>();
       for (const [name, info] of campaignObjectives) {
         objectiveSnapshot.set(name, {
