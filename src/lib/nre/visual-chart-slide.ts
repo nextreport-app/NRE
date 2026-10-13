@@ -15,8 +15,8 @@ import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import {
   CHART_CAMPAIGN_DISPLAY_MAX,
+  fitCampaignNameForSingleBarLine,
   formatCampaignDisplayName,
-  maxCampaignNameCharsForSingleLine,
 } from "./chart-campaign-labels";
 import { resultBarColumns } from "../pptx/chart-campaign-bars-render";
 import { resultBarLayout } from "../pptx/chart-slide-layout";
@@ -268,15 +268,15 @@ function buildResultBars(
         barPct = Math.min(barPct, SINGLE_CAMPAIGN_BAR_CAP);
       }
       const rank = index + 1;
-      const nameMax =
+      const displayName =
         options.campaignLabelWidthPt != null && options.campaignNameFontSizePt != null
-          ? maxCampaignNameCharsForSingleLine(
+          ? fitCampaignNameForSingleBarLine(
+              row.name,
+              rank,
               options.campaignLabelWidthPt,
               options.campaignNameFontSizePt,
-              rank,
             )
-          : defaultNameMax;
-      const displayName = formatCampaignDisplayName(row.name, nameMax);
+          : formatCampaignDisplayName(row.name, defaultNameMax);
       return {
         rank,
         name: displayName,
