@@ -151,7 +151,8 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
             </div>
           ))}
           <p className="text-[12px] leading-relaxed text-dash-ink-muted">
-            You can still generate — this is a sanity check, not a block.
+            Generate is blocked until these match or you fix the CSV / report setup (same checks as comparing to Ads
+            Manager before send).
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             <SupportTicketLink clientId={clientId} openInNewTab className="nre-wizard-callout-warn__title underline hover:no-underline" />
