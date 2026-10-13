@@ -70,6 +70,8 @@ export function WizardGenerateStep() {
     comparisonPeriodB,
     comparisonPreset,
     copied,
+    clientShareMessageCopied,
+    handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
     customEnd,
@@ -771,6 +773,16 @@ export function WizardGenerateStep() {
                   >
                     Share on Slack
                   </a>
+                ) : null}
+                {shareToken ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyClientShareMessage()}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-border"
+                  >
+                    <CopyIcon />
+                    {clientShareMessageCopied ? "Copied!" : "Copy message"}
+                  </button>
                 ) : null}
                 {publishedAt ? (
                   <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">

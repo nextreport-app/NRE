@@ -55,16 +55,23 @@ export function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
 
-/** Pre-filled client share message for agencies (WhatsApp one-tap send). */
-export function buildClientReportWhatsAppShareUrl(input: {
+export type ClientReportShareMessageInput = {
   clientName: string;
   reportTypeLabel: string;
   platformLabel: string;
   dateRangeLabel: string;
   reportUrl: string;
-}): string {
+};
+
+/** Plain-text client share blurb — WhatsApp, Slack, email, Teams, SMS, etc. */
+export function buildClientReportShareMessage(input: ClientReportShareMessageInput): string {
   const typePhrase = input.reportTypeLabel.toLowerCase();
-  const text = `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+  return `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+}
+
+/** Pre-filled client share message for agencies (WhatsApp one-tap send). */
+export function buildClientReportWhatsAppShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
@@ -77,15 +84,8 @@ export function buildSlackShareUrl(reportUrl: string): string {
 }
 
 /** Pre-filled client share message for agencies (Slack share dialog). */
-export function buildClientReportSlackShareUrl(input: {
-  clientName: string;
-  reportTypeLabel: string;
-  platformLabel: string;
-  dateRangeLabel: string;
-  reportUrl: string;
-}): string {
-  const typePhrase = input.reportTypeLabel.toLowerCase();
-  const text = `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+export function buildClientReportSlackShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
   return `https://slack.com/share?url=${encodeURIComponent(input.reportUrl)}&text=${encodeURIComponent(text)}`;
 }
 
