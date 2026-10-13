@@ -160,11 +160,25 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
   const barFooterGap = Math.max(2, Math.round(4 * scale));
   const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
   const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const nameHFit = Math.max(nameH, Math.ceil(nameSizePt * 1.28));
 
-  const blockH = barCount * rowH;
+  const contentH = nameHFit + nameBarGap + barH + barFooterGap + metricsH;
+  const rowHAdjusted = Math.max(rowH, contentH + Math.max(4, Math.round(MTD_VISUAL.barRowGap * scale * 0.5)));
+
+  const blockH = barCount * rowHAdjusted;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
 
-  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
+  return {
+    rowH: rowHAdjusted,
+    startY,
+    nameH: nameHFit,
+    metricsH,
+    barH,
+    nameBarGap,
+    barFooterGap,
+    nameSizePt,
+    metricsSizePt,
+  };
 }
 
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {

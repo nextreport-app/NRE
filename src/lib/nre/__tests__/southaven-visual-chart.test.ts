@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseCsvText } from "../parse-csv";
 import { buildReportData } from "../report-data";
+import { estimateTextWidthPt } from "../../pptx/text-fit";
+import { resultBarColumns } from "../../pptx/chart-campaign-bars-render";
+import { resultBarLayout } from "../../pptx/chart-slide-layout";
 import { buildVisualChartSlideModel, formatDonutObjectiveLabel } from "../visual-chart-slide";
 
 beforeAll(() => {
@@ -61,5 +64,13 @@ describe("Southaven weekly CSV — visual chart slide", () => {
 
     // Guard against folded snapshot summary (6173 = lead gen + traffic combined).
     expect(model.summaryLine).not.toMatch(/Website Leads:\s*6,?173/);
+
+    const cols = resultBarColumns(true);
+    const barLayout = resultBarLayout(model.resultBars.length, false);
+    const labelWidthPt = (cols.trackW - 96) * 0.96;
+    for (const bar of model.resultBars) {
+      const line = `${bar.rank}. ${bar.name}`;
+      expect(estimateTextWidthPt(line, barLayout.nameSizePt)).toBeLessThanOrEqual(labelWidthPt + 0.01);
+    }
   });
 });
