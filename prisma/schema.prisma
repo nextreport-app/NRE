@@ -56,6 +56,8 @@ model User {
   // Both optional; either/both absent means those elements are simply
   // skipped at render time, never shown empty.
   agencyName    String?
+  // When false, PPTX cover omits "Prepared by …" even if agencyName is set (share link still uses agencyName).
+  showAgencyNameOnCover Boolean @default(true)
   agencyLogoUrl String?
   // Client-facing share/PDF branding: nextreport (default), agency (use agencyName), hidden.
   reportBrandingMode String @default("agency")

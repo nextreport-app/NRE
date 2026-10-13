@@ -20,6 +20,7 @@ export async function GET() {
       select: {
         agencyName: true,
         reportBrandingMode: true,
+        showAgencyNameOnCover: true,
         googleDriveEnabled: true,
         googleConnectedEmail: true,
         reportRetentionDays: true,
@@ -36,6 +37,7 @@ export async function GET() {
     return NextResponse.json({
       agencyName: user.agencyName ?? null,
       reportBrandingMode: normalizeReportBrandingMode(user.reportBrandingMode),
+      showAgencyNameOnCover: user.showAgencyNameOnCover ?? true,
       googleDriveEnabled: user.googleDriveEnabled ?? false,
       googleConnectedEmail: user.googleConnectedEmail ?? null,
       reportRetentionDays: normalizeReportRetentionDays(user.reportRetentionDays, status.planId),
@@ -56,9 +58,17 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const data: { agencyName?: string | null; reportBrandingMode?: string; reportRetentionDays?: number } = {};
+  const data: {
+    agencyName?: string | null;
+    reportBrandingMode?: string;
+    showAgencyNameOnCover?: boolean;
+    reportRetentionDays?: number;
+  } = {};
   if (parsed.data.agencyName !== undefined) data.agencyName = parsed.data.agencyName;
   if (parsed.data.reportBrandingMode !== undefined) data.reportBrandingMode = parsed.data.reportBrandingMode;
+  if (parsed.data.showAgencyNameOnCover !== undefined) {
+    data.showAgencyNameOnCover = parsed.data.showAgencyNameOnCover;
+  }
 
   if (parsed.data.reportRetentionDays !== undefined) {
     const user = await prisma.user.findUnique({

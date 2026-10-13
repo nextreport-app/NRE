@@ -39,6 +39,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         ga4RefreshToken: true,
         agencyName: true,
         reportBrandingMode: true,
+        showAgencyNameOnCover: true,
       },
     }),
   ]);
@@ -102,6 +103,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
+          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
           accountDisplayName={user.name}
         />
       </Suspense>

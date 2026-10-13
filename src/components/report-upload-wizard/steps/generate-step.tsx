@@ -179,6 +179,8 @@ export function WizardGenerateStep() {
     reportBrandingError,
     reportBrandingSaving,
     reportBrandingBlocksGenerate,
+    showAgencyNameOnCover,
+    setShowAgencyNameOnCover,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -558,6 +560,8 @@ export function WizardGenerateStep() {
               <WizardReportBrandingPanel
                 agencyName={agencyName}
                 onAgencyNameChange={handleWizardAgencyNameChange}
+                showAgencyNameOnCover={showAgencyNameOnCover}
+                onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
                 reportBrandingMode={reportBrandingMode}
                 onReportBrandingModeChange={setReportBrandingMode}
                 saving={reportBrandingSaving}
