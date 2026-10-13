@@ -909,6 +909,14 @@ export function WizardGenerateStep() {
                           </svg>
                           Telegram
                         </a>
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyClientShareMessage()}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <CopyIcon />
+                          {clientShareMessageCopied ? "Copied!" : "Copy message"}
+                        </button>
                         {driveSaveUrl ? (
                           <button
                             type="button"
