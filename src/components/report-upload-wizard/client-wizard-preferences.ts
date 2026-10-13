@@ -1,5 +1,5 @@
 import type { DateMode, ReportTypeValue } from "./types";
-import type { WizardGenerateBaseline } from "./wizard-happy-path";
+import type { WizardGenerateBaseline } from "@/lib/nre/wizard-generate-baseline";
 
 export type ClientWizardPreferences = {
   reportType?: ReportTypeValue;

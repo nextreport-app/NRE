@@ -376,6 +376,11 @@ model Client {
   // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
   lastDateSelection       String? @db.Text
 
+  // Happy-path v2 — last successful manual CSV generate snapshot for this
+  // client (JSON WizardGenerateBaseline). Syncs across devices; browser
+  // localStorage is a cache only.
+  wizardGenerateBaseline String? @db.Text
+
   // Free-text notes on the client's own Manage page (industry, key
   // contacts, reporting preferences, special requirements, ...) — plain
   // display copy, never read by the NRE engine or any report. 1000-char
