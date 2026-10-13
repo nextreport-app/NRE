@@ -31,6 +31,8 @@ const SHARE_LINK_OPTIONS: {
 export function WizardReportBrandingPanel({
   agencyName,
   onAgencyNameChange,
+  showAgencyNameOnCover,
+  onShowAgencyNameOnCoverChange,
   reportBrandingMode,
   onReportBrandingModeChange,
   saving,
@@ -38,6 +40,8 @@ export function WizardReportBrandingPanel({
 }: {
   agencyName: string;
   onAgencyNameChange: (value: string) => void;
+  showAgencyNameOnCover: boolean;
+  onShowAgencyNameOnCoverChange: (show: boolean) => void;
   reportBrandingMode: ReportBrandingMode;
   onReportBrandingModeChange: (mode: ReportBrandingMode) => void;
   saving?: boolean;
@@ -49,8 +53,7 @@ export function WizardReportBrandingPanel({
     <section className="rounded-lg border border-l-4 border-l-[#f6ad55] border-dash-border bg-dash-card p-4">
       <h4 className="text-[15px] font-semibold text-dash-ink">White-label &amp; your name</h4>
       <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-        <span className="text-dash-ink">PowerPoint cover</span> — &quot;Prepared by …&quot; when you add a name below.{" "}
-        <span className="text-dash-ink">Share link</span> — pick one option (PDF export uses the same branding).
+        <span className="text-dash-ink">PowerPoint cover</span> — &quot;Prepared by …&quot; when you add a name below.
       </p>
 
       <label className="mt-3 block text-[13px] font-medium text-dash-ink-secondary">
@@ -63,6 +66,17 @@ export function WizardReportBrandingPanel({
           disabled={saving}
           className="mt-1 w-full rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
         />
+      </label>
+
+      <label className="mt-2 flex cursor-pointer items-start gap-2.5 text-[13px] text-dash-ink-secondary">
+        <input
+          type="checkbox"
+          checked={!showAgencyNameOnCover}
+          disabled={saving}
+          onChange={(e) => onShowAgencyNameOnCoverChange(!e.target.checked)}
+          className="mt-0.5 shrink-0"
+        />
+        <span>Hide the name</span>
       </label>
 
       <fieldset className="mt-3">

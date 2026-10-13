@@ -97,6 +97,7 @@ export interface ReportUploadWizardProps {
   /** Account white-label — cover slide + share/PDF/email (see report-branding.ts). */
   initialAgencyName?: string | null;
   initialReportBrandingMode?: ReportBrandingMode;
+  initialShowAgencyNameOnCover?: boolean;
   /** Prefill agency name when unset (usually User.name). */
   accountDisplayName?: string | null;
 }
