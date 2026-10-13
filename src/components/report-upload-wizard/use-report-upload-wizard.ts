@@ -27,6 +27,8 @@ import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/camp
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
+import { useSiteTheme } from "@/components/site-theme-provider";
+import { wizardObjectiveBadgeText } from "@/lib/wizard-i18n";
 import { budgetPacingWarning, buildBudgetCoverPreview, buildBudgetSummary } from "@/lib/nre/budget-pacing";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
@@ -119,6 +121,7 @@ export function useReportUploadWizard({
   clientMonthlyBudget: initialClientMonthlyBudget = null,
   clientShowBudgetPacingOnCover = false,
 }: ReportUploadWizardProps) {
+  const { locale } = useSiteTheme();
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
   const [step, setStepState] = useState<Step>(1);
@@ -1553,16 +1556,36 @@ export function useReportUploadWizard({
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
     if (tier === "cached") {
-      return { icon: "✓", text: "Previously confirmed", className: "nre-wizard-confidence--ok", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "cached").text,
+        className: "nre-wizard-confidence--ok",
+        pill: false,
+      };
     }
     if (tier === "high" || tier === "medium") {
-      return { icon: "✓", text: "Detected — change if wrong", className: "nre-wizard-confidence--ok", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "high").text,
+        className: "nre-wizard-confidence--ok",
+        pill: false,
+      };
     }
     if (tier === "low") {
-      return { icon: "✓", text: "Detected — confirm lead type if wrong", className: "nre-wizard-confidence--warn", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "low").text,
+        className: "nre-wizard-confidence--warn",
+        pill: false,
+      };
     }
     if (tier === "verify") {
-      return { icon: "⚠", text: "Confirmation required", className: "nre-wizard-confidence--required", pill: true };
+      return {
+        icon: "⚠",
+        text: wizardObjectiveBadgeText(locale, "verify").text,
+        className: "nre-wizard-confidence--required",
+        pill: true,
+      };
     }
     return null;
   }

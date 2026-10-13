@@ -5,6 +5,9 @@ import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
+import { wizardStepLabel } from "@/lib/wizard-i18n";
+import { useSiteTheme } from "@/components/site-theme-provider";
 import { readClientWizardPreferences } from "../client-wizard-preferences";
 
 export function WizardMetricsStep() {
@@ -22,6 +25,9 @@ export function WizardMetricsStep() {
   });
 
   if (!stepActive) return null;
+
+  const copy = useWizardCopy();
+  const { locale } = useSiteTheme();
 
   const {
     ADD_FROM_CSV_VISIBLE,
@@ -93,7 +99,7 @@ export function WizardMetricsStep() {
             : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on a continuation slide`}
         </p>
 
-        <p className="mt-3 text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">Included metrics</p>
+        <p className="mt-3 text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.includedMetrics}</p>
         <div className="mt-1.5 flex flex-wrap gap-2">
           {selectedForCampaign.map((m) => (
             <span
@@ -121,8 +127,8 @@ export function WizardMetricsStep() {
         )}
 
         <div className="my-3 border-t border-dash-border" />
-        <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">Add from your CSV</p>
-        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">Columns in this file that are not already chips.</p>
+        <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.addFromCsv}</p>
+        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{copy.addFromCsvHint}</p>
         {availableForCampaign.length === 0 ? (
           <p className="mt-1.5 text-[14px] text-dash-ink-secondary">No extra columns in this export.</p>
         ) : (
@@ -204,7 +210,7 @@ export function WizardMetricsStep() {
           onClick={() => setStep(2)}
           className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
         >
-          Back
+          {copy.back}
         </button>
         <button
           onClick={handleMetricsContinue}
@@ -213,16 +219,17 @@ export function WizardMetricsStep() {
           )}
           className="rounded-md bg-dash-accent px-6 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
         >
-          Continue to generate
+          {copy.continueToGenerate}
         </button>
       </div>
 
       <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
 
       <WizardStickyFooter
-        stepLabel="Step 3 of 4 · Metrics"
+        stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))}
         onBack={() => setStep(2)}
-        primaryLabel="Continue to generate"
+        backLabel={copy.back}
+        primaryLabel={copy.continueToGenerate}
         onPrimary={handleMetricsContinue}
         primaryDisabled={[...perCampaignMetrics.values()].some(
           (metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS,

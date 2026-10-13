@@ -8,6 +8,9 @@ import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
+import { wizardStepLabel } from "@/lib/wizard-i18n";
+import { useSiteTheme } from "@/components/site-theme-provider";
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
@@ -23,6 +26,9 @@ export function WizardCampaignsStep() {
   }, [stepActive, selectionKey, selectedCount, objectivesReady, w.ensureObjectivesForSelection]);
 
   if (!stepActive) return null;
+
+  const copy = useWizardCopy();
+  const { locale } = useSiteTheme();
 
   const {
     ADSET_CHIP_CLASS,
@@ -306,11 +312,9 @@ export function WizardCampaignsStep() {
           >
           <div>
             <h3 id="wizard-objectives-section-heading" className="text-[15px] font-semibold text-dash-ink">
-              Campaign objectives
+              {copy.campaignObjectives}
             </h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">
-              Detected from your CSV. Change a dropdown only if something looks wrong, then continue.
-            </p>
+            <p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.objectivesIntro}</p>
           </div>
 
           {blockingCount > 0 ? (
@@ -391,23 +395,24 @@ export function WizardCampaignsStep() {
           onClick={() => setStep(1)}
           className="rounded-md border border-dash-border px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border"
         >
-          Back
+          {copy.back}
         </button>
         <button
           onClick={() => void handleCampaignsContinue()}
           disabled={selectedCampaigns.size === 0 || objectivesLoading || hasBlockingObjectives()}
           className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
         >
-          {objectivesLoading ? "Loading objectives…" : "Continue to metrics"}
+          {objectivesLoading ? copy.loading : copy.continueToMetrics}
         </button>
       </div>
 
       <WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} />
 
       <WizardStickyFooter
-        stepLabel="Step 2 of 4 · Campaigns"
+        stepLabel={copy.stepOf(2, 4, wizardStepLabel(2, locale))}
         onBack={() => setStep(1)}
-        primaryLabel={objectivesLoading ? "Loading objectives…" : "Continue to metrics"}
+        backLabel={copy.back}
+        primaryLabel={objectivesLoading ? copy.loading : copy.continueToMetrics}
         onPrimary={() => void handleCampaignsContinue()}
         primaryDisabled={selectedCampaigns.size === 0 || objectivesLoading || hasBlockingObjectives()}
         primaryLoading={objectivesLoading}

@@ -143,7 +143,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
                     <dd className="text-right text-dash-ink tabular-nums">{c.reportDisplay}</dd>
                     <dd className="text-right tabular-nums text-dash-ink-muted">CSV {c.csvDisplay}</dd>
                     {c.note ? (
-                      <dd className="col-span-3 text-[12px] leading-snug text-amber-100/80">{c.note}</dd>
+                      <dd className="nre-wizard-callout-warn__body col-span-3 text-[12px] leading-snug">{c.note}</dd>
                     ) : null}
                   </div>
                 ))}
@@ -154,10 +154,10 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
             You can still generate — this is a sanity check, not a block.
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
-            <SupportTicketLink clientId={clientId} openInNewTab className="text-amber-100" />
+            <SupportTicketLink clientId={clientId} openInNewTab className="nre-wizard-callout-warn__title underline hover:no-underline" />
             <span className="text-dash-ink-muted">·</span>
             <WhatsAppChatLink
-              className="font-medium text-amber-100 underline hover:no-underline"
+              className="nre-wizard-callout-warn__title font-medium underline hover:no-underline"
               message={`Hi — CSV verification mismatch on my report. ${whatsappHint}`}
             >
               Chat on WhatsApp

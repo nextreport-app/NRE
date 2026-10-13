@@ -6,6 +6,7 @@ import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { getAdWizardFlow } from "@/lib/nre/platform-labels";
 import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
 import { StepIndicator } from "./ui/step-indicator";
@@ -31,9 +32,10 @@ function WizardClientLine({
   clientName: string;
   onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
+  const copy = useWizardCopy();
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-dash-card px-4 py-3.5 shadow-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Reporting for</span>
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">{copy.reportingFor}</span>
       <span className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#fbd38d] sm:text-[26px]" title={clientName}>
         {clientName}
       </span>
@@ -42,7 +44,7 @@ function WizardClientLine({
         onClick={onChangeClientClick}
         className="shrink-0 text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
       >
-        Change client →
+        {copy.changeClient}
       </Link>
     </div>
   );
@@ -51,6 +53,7 @@ function WizardClientLine({
 function ReportUploadWizardBody() {
   const w = useWizardContext();
   const { locale } = useSiteTheme();
+  const copy = useWizardCopy();
   const wizardTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -145,7 +148,9 @@ function ReportUploadWizardBody() {
       <div ref={wizardTopRef}>
         <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
         <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
-          {w.step === 4 ? `Generate: ${w.reportTypeLabel()}` : wizardStepHeading(w.step, w.platform, locale)}
+          {w.step === 4
+            ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
+            : wizardStepHeading(w.step, w.platform, locale)}
         </h1>
         {wizardStepSubtitle(w.step, w.platform, locale) ? (
           <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>

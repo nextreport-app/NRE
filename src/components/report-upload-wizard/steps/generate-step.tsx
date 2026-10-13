@@ -29,6 +29,7 @@ import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { clientMonthlyBudgetSettingsHref } from "@/lib/nre/client-settings-navigation";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 
 function CoverBudgetClientSettingsLink({
   clientId,
@@ -53,6 +54,7 @@ function CoverBudgetClientSettingsLink({
 }
 
 export function WizardGenerateStep() {
+  const copy = useWizardCopy();
   const w = useWizardContext();
 
   const stepActive = w.step === 4;
@@ -190,7 +192,7 @@ export function WizardGenerateStep() {
                 : previewStatus === "idle"
                   ? "Choose dates above"
                   : "Loading report options…"
-            : "Generate Report";
+            : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 

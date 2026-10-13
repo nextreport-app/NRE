@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { ComingSoonBadge } from "@/components/coming-soon-badge";
 import { PlatformBetaBadge } from "@/components/platform-beta-badge";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 
 export function ReportTypeCard({
   icon,
@@ -37,6 +38,7 @@ export function ReportTypeCard({
   /** Highlights the default choice (e.g. Weekly). */
   recommended?: boolean;
 }) {
+  const copy = useWizardCopy();
   const showSoonBadge =
     comingSoon && !/launching soon/i.test(description.trim());
 
@@ -66,12 +68,12 @@ export function ReportTypeCard({
           >
             {csvRequiredNote ? (
               <>
-                <p className="nre-wizard-tooltip-csv-label">Required CSV</p>
+                <p className="nre-wizard-tooltip-csv-label">{copy.requiredCsv}</p>
                 <p className="nre-wizard-tooltip-csv-body mt-1">{csvRequiredNote}</p>
               </>
             ) : null}
             <p className={`text-[10px] font-semibold uppercase tracking-wide text-dash-accent${csvRequiredNote ? " mt-2.5" : ""}`}>
-              What you get
+              {copy.whatYouGet}
             </p>
             <p className="mt-1 text-[12px] leading-snug text-dash-ink">{detailTooltip}</p>
           </div>
@@ -109,7 +111,7 @@ export function ReportTypeCard({
           <span className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             <span className="block text-[13px] font-semibold leading-snug text-dash-ink">{heading}</span>
             {recommended ? (
-              <span className="nre-wizard-badge-recommended">Recommended</span>
+              <span className="nre-wizard-badge-recommended">{copy.recommended}</span>
             ) : null}
             {showSoonBadge ? <ComingSoonBadge /> : null}
             {!showSoonBadge && beta ? <PlatformBetaBadge /> : null}
