@@ -87,6 +87,12 @@ import {
 } from "./platform-storage";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 import {
+  buildWizardGenerateBaseline,
+  evaluateHappyPathEligibility,
+  selectionFromBaseline,
+  type WizardGenerateBaseline,
+} from "./wizard-happy-path";
+import {
   clearWizardDraft,
   loadWizardDraft,
   saveWizardDraft,
@@ -133,6 +139,7 @@ export function useReportUploadWizard({
   // navigating back to it and forward again).
   const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(new Set([1]));
   const stepRef = useRef<Step>(1);
+  const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
   const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
@@ -156,6 +163,7 @@ export function useReportUploadWizard({
   function setStep(s: Step) {
     const current = stepRef.current;
     if (s < current) invalidateDownstreamFromStep(s);
+    if (s < 4) setHappyPathSkippedSteps(false);
     stepRef.current = s;
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
@@ -519,6 +527,7 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
+    setHappyPathSkippedSteps(false);
     if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
@@ -1040,7 +1049,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(detected);
-    setStep(2);
+    await dispatchAfterAnalyze(json, detected);
   }
 
   type ApiSyncMeta = import("./types").ApiSyncMeta & {
@@ -1194,7 +1203,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
-    setStep(2);
+    await dispatchAfterAnalyze(json, selectedPlatformCard);
     if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
       setPreviousMonthHasFile(true);
       if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
@@ -1246,7 +1255,7 @@ export function useReportUploadWizard({
 
     applyAnalyzeResult(json);
     rememberPlatformChoice(selectedPlatformCard);
-    setStep(2);
+    await dispatchAfterAnalyze(json, selectedPlatformCard);
   }
 
   /** Mismatch warning's "Go back" — just clears the warning locally, no re-fetch, so the user can reconsider the platform card or re-upload a different file. */
@@ -1318,25 +1327,48 @@ export function useReportUploadWizard({
    * here, in a function invoked from a later user click, is always the
    * fully-committed value.
    */
-  async function fetchObjectivesAndMetrics(selectionKey: string) {
-    if (!mtdFile && !uploadSessionId) return;
+  async function fetchObjectivesAndMetrics(
+    selectionKey: string,
+    options?: {
+      selectedCampaignsOverride?: string[];
+      skipResetTouched?: boolean;
+      platformOverride?: "META" | "GOOGLE" | "TIKTOK";
+    },
+  ): Promise<{
+    ok: boolean;
+    perCampaignSelection?: Record<string, SelectedMetric[]>;
+    requiresConfirmation?: Map<string, boolean>;
+  }> {
+    if (!mtdFile && !uploadSessionId) return { ok: false };
     setMetricsStatus("loading");
-    setTouchedObjectiveCampaigns(new Set());
+    if (!options?.skipResetTouched) {
+      setTouchedObjectiveCampaigns(new Set());
+    }
     setPerCampaignMinWarning(null);
+
+    const campaignsForRequest = options?.selectedCampaignsOverride ?? Array.from(selectedCampaigns);
+    const platformForRequest = options?.platformOverride ?? platform;
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }, uploadSessionId),
+      body: buildUploadFormData(
+        mtdFile,
+        { platform: platformForRequest, selectedCampaigns: campaignsForRequest },
+        uploadSessionId,
+      ),
     });
     const json = await res.json().catch(() => null);
 
     // Ignore stale responses when the user changed selection mid-fetch.
-    if (selectedCampaignsKey() !== selectionKey) return;
+    const requestKey = options?.selectedCampaignsOverride
+      ? [...options.selectedCampaignsOverride].sort().join("\0")
+      : selectedCampaignsKey();
+    if (requestKey !== selectionKey) return { ok: false };
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
       setMetricsStatus("error");
-      return;
+      return { ok: false };
     }
 
     if (!res.ok || !json || json.error) {
@@ -1352,7 +1384,7 @@ export function useReportUploadWizard({
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
       setCampaignRequiresConfirmation(new Map());
-      return;
+      return { ok: false };
     }
 
     setPerCampaignMetrics(new Map(Object.entries(json.perCampaignSelection || {})));
@@ -1362,6 +1394,137 @@ export function useReportUploadWizard({
     setCampaignObjectiveConfidence(confidence);
     setCampaignRequiresConfirmation(requiresConfirmation);
     setMetricsStatus("idle");
+    return {
+      ok: true,
+      perCampaignSelection: json.perCampaignSelection || {},
+      requiresConfirmation,
+    };
+  }
+
+  function applyBaselineObjectivesAfterFetch(baseline: WizardGenerateBaseline) {
+    const nextObjectives = new Map<string, ObjectiveInfo>();
+    for (const [name, info] of baseline.campaignObjectives) {
+      const option =
+        OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
+        objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
+      nextObjectives.set(name, option);
+    }
+    setCampaignObjectives(nextObjectives);
+    setTouchedObjectiveCampaigns(new Set(baseline.touchedObjectiveCampaigns));
+    setCampaignRequiresConfirmation((prev) => {
+      const next = new Map(prev);
+      for (const name of baseline.touchedObjectiveCampaigns) {
+        next.delete(name);
+      }
+      return next;
+    });
+    setCampaignObjectiveConfidence((prev) => {
+      const next = new Map(prev);
+      for (const name of baseline.touchedObjectiveCampaigns) {
+        next.delete(name);
+      }
+      return next;
+    });
+    setPerCampaignMetrics((prev) => {
+      const merged = new Map(prev);
+      for (const entry of baseline.perCampaignMetrics) {
+        merged.set(entry.normalized, entry.metrics.map((m) => ({ ...m })));
+      }
+      return merged;
+    });
+  }
+
+  /**
+   * After a successful analyze, optionally restore last generate settings and jump to step 4.
+   * Falls back to campaigns step when anything differs or objectives still need confirmation.
+   */
+  async function dispatchAfterAnalyze(
+    analyzeJson: {
+      campaigns?: string[];
+      headers?: string[];
+      adSetGroups?: AdSetGroup[];
+    },
+    adsPlatform: "META" | "GOOGLE" | "TIKTOK",
+  ) {
+    setHappyPathSkippedSteps(false);
+    const baseline = readClientWizardPreferences(clientId)?.generateBaseline;
+    const campaignList: string[] = analyzeJson.campaigns || [];
+    const headers: string[] = Array.isArray(analyzeJson.headers) ? analyzeJson.headers : [];
+    const groups: AdSetGroup[] = analyzeJson.adSetGroups || [];
+    const validCampaigns = new Set(campaignList);
+    const validAdSetKeys = new Set(
+      groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
+    );
+
+    const eligibility = evaluateHappyPathEligibility({
+      baseline,
+      platform: adsPlatform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      includePreviousMonthComparison,
+      showBudgetOnCover,
+      dataSourceMode,
+      isApiSyncArtifact: isApiSyncArtifact(mtdFile),
+      apiSyncHybridImport,
+      csvHeaders: headers,
+      campaignNames: campaignList,
+      validCampaigns,
+      validAdSetKeys,
+    });
+
+    if (!eligibility.ok || !baseline) {
+      setStep(2);
+      return;
+    }
+
+    const applied = selectionFromBaseline(baseline, validCampaigns, validAdSetKeys);
+    setSelectedCampaigns(new Set(applied.selectedCampaigns));
+    setSelectedAdSets(new Set(applied.selectedAdSets));
+    setPerCampaignMetrics(applied.perCampaignMetrics);
+    setCampaignObjectives(
+      new Map(
+        applied.campaignObjectives.entries().map(([name, info]) => {
+          const option =
+            OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
+            objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
+          return [name, option] as const;
+        }),
+      ),
+    );
+    setTouchedObjectiveCampaigns(applied.touchedObjectiveCampaigns);
+
+    const selectionKey = [...applied.selectedCampaigns].sort().join("\0");
+    metricsFetchedKeyRef.current = null;
+    setMetricsFetchedForSelection(null);
+    const metricsResult = await fetchObjectivesAndMetrics(selectionKey, {
+      selectedCampaignsOverride: applied.selectedCampaigns,
+      skipResetTouched: true,
+      platformOverride: adsPlatform,
+    });
+    if (!metricsResult.ok) {
+      setStep(2);
+      return;
+    }
+
+    const stillBlocking = applied.selectedCampaigns.some((name) => {
+      const normalized = normalizeCampaignName(name);
+      return (
+        metricsResult.requiresConfirmation?.get(normalized) === true &&
+        !applied.touchedObjectiveCampaigns.has(normalized)
+      );
+    });
+    if (stillBlocking) {
+      setStep(2);
+      return;
+    }
+
+    applyBaselineObjectivesAfterFetch(baseline);
+
+    setHappyPathSkippedSteps(true);
+    setStep(4);
+    showToast("Using your last report setup — review dates below, then generate.");
   }
 
   function selectedCampaignsKey(): string {
@@ -2071,6 +2234,45 @@ export function useReportUploadWizard({
       },
       { publishedAt: null },
     );
+
+    if (
+      dataSourceMode === "csv" &&
+      !isApiSyncArtifact(mtdFile) &&
+      !apiSyncHybridImport &&
+      platform !== "GA4"
+    ) {
+      const objectiveSnapshot = new Map<string, { key: string; resultLabel: string; costLabel: string }>();
+      for (const [name, info] of campaignObjectives) {
+        objectiveSnapshot.set(name, {
+          key: info.key,
+          resultLabel: info.resultLabel,
+          costLabel: info.costLabel,
+        });
+      }
+      const touchedForBaseline = new Set<string>([
+        ...touchedObjectiveCampaigns,
+        ...objectiveSnapshot.keys(),
+      ]);
+      const baseline = buildWizardGenerateBaseline({
+        platform,
+        reportType,
+        dateMode,
+        customStart,
+        customEnd,
+        includePreviousMonthComparison,
+        showBudgetOnCover,
+        csvHeaders,
+        campaignNames: campaigns,
+        selectedCampaigns: Array.from(selectedCampaigns),
+        selectedAdSets: Array.from(selectedAdSets),
+        perCampaignMetrics,
+        campaignObjectives: objectiveSnapshot,
+        touchedObjectiveCampaigns: touchedForBaseline,
+      });
+      if (baseline) {
+        saveClientWizardPreferences(clientId, { generateBaseline: baseline });
+      }
+    }
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -2733,6 +2935,7 @@ export function useReportUploadWizard({
     wizardSharePlatformLabel,
     draftRestoredBanner,
     setDraftRestoredBanner,
+    happyPathSkippedSteps,
     wizardLeaveGuardActive,
     pendingLeaveHref,
     requestWizardLeave,

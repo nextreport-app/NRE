@@ -12,9 +12,9 @@ import {
   isNoDataRowsError,
   isSpecificFieldError,
   buildClientReportWhatsAppShareUrl,
+  buildClientReportSlackShareUrl,
   buildMailtoShareUrl,
   buildShareReportUrl,
-  buildSlackShareUrl,
   buildTelegramShareUrl,
 } from "../utils";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
@@ -167,6 +167,7 @@ export function WizardGenerateStep() {
     reportPeriodConfirmationLine,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
+    happyPathSkippedSteps,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -209,6 +210,29 @@ export function WizardGenerateStep() {
                 clientTimezone={clientTimezone}
                 onReportTypeChange={handleReportTypeChange}
               />
+
+            {happyPathSkippedSteps ? (
+              <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
+                <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">{copy.happyPathBannerBody}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
+                  >
+                    {copy.happyPathReviewCampaigns}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
+                  >
+                    {copy.happyPathReviewMetrics}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {reportType === "HISTORICAL" && (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
@@ -732,6 +756,22 @@ export function WizardGenerateStep() {
                     Share on WhatsApp
                   </a>
                 ) : null}
+                {shareToken ? (
+                  <a
+                    href={buildClientReportSlackShareUrl({
+                      clientName,
+                      reportTypeLabel: reportTypeLabel(),
+                      platformLabel: wizardSharePlatformLabel(),
+                      dateRangeLabel: driveDateRangeLabel() || "this period",
+                      reportUrl: `https://${buildShareReportUrl(shareToken)}`,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#611f69]/40 bg-[#611f69]/15 px-4 py-3 text-[15px] font-semibold text-[#e9d8fd] hover:bg-[#611f69]/25"
+                  >
+                    Share on Slack
+                  </a>
+                ) : null}
                 {publishedAt ? (
                   <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
                     Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
@@ -847,24 +887,6 @@ export function WizardGenerateStep() {
                           Email
                         </a>
                         <a
-                          href={buildClientReportWhatsAppShareUrl({
-                            clientName,
-                            reportTypeLabel: reportTypeLabel(),
-                            platformLabel: wizardSharePlatformLabel(),
-                            dateRangeLabel: driveDateRangeLabel() || "this period",
-                            reportUrl: `https://${buildShareReportUrl(shareToken)}`,
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
-                          </svg>
-                          WhatsApp
-                        </a>
-                        <a
                           href={buildTelegramShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -874,32 +896,6 @@ export function WizardGenerateStep() {
                             <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
                           </svg>
                           Telegram
-                        </a>
-                        <a
-                          href={buildSlackShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
-                            <path
-                              d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52z"
-                              fill="#36C5F0"
-                            />
-                            <path
-                              d="M6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834z"
-                              fill="#2EB67D"
-                            />
-                            <path
-                              d="M8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"
-                              fill="#ECB22E"
-                            />
-                            <path
-                              d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"
-                              fill="#E01E5A"
-                            />
-                          </svg>
-                          Slack
                         </a>
                         {driveSaveUrl ? (
                           <button

@@ -1,4 +1,5 @@
 import type { DateMode, ReportTypeValue } from "./types";
+import type { WizardGenerateBaseline } from "./wizard-happy-path";
 
 export type ClientWizardPreferences = {
   reportType?: ReportTypeValue;
@@ -10,6 +11,8 @@ export type ClientWizardPreferences = {
   dataSourceMode?: "csv" | "api";
   /** User completed Metrics at least once for this client — metrics step may start collapsed. */
   metricsStepConfirmed?: boolean;
+  /** Snapshot from the last successful standard report — powers repeat-client skip to Generate. */
+  generateBaseline?: WizardGenerateBaseline;
   updatedAt?: string;
 };
 

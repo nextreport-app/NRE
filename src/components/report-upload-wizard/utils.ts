@@ -76,6 +76,19 @@ export function buildSlackShareUrl(reportUrl: string): string {
   return `https://slack.com/share?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
 }
 
+/** Pre-filled client share message for agencies (Slack share dialog). */
+export function buildClientReportSlackShareUrl(input: {
+  clientName: string;
+  reportTypeLabel: string;
+  platformLabel: string;
+  dateRangeLabel: string;
+  reportUrl: string;
+}): string {
+  const typePhrase = input.reportTypeLabel.toLowerCase();
+  const text = `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+  return `https://slack.com/share?url=${encodeURIComponent(input.reportUrl)}&text=${encodeURIComponent(text)}`;
+}
+
 export function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
   const subject = encodeURIComponent(`${accountName} — Performance Report`);
   const body = encodeURIComponent(`Hi,\n\nYour report is ready to view:\n${reportUrl}\n\n`);
