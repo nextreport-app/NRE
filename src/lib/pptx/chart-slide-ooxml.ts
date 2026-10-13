@@ -8,6 +8,7 @@ import type { TemplateBackgroundImage } from "./package";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
 import { VISUAL_CHART_TITLE_SIZE_PT } from "./fill-tags";
 import { reportHeaderColor } from "./light-theme-colors";
+import { fitCampaignNameForSingleBarLine } from "../nre/chart-campaign-labels";
 import {
   resultBarColumns,
   resultBarFillWidth,
@@ -131,14 +132,40 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
     const footerY = barY + layout.barH + layout.barFooterGap;
     const rightLabel = visualResultBarRightLabel(bar);
     const rightLabelW = 96;
+    const labelWidthPt = cols.trackW - rightLabelW;
+    const displayName = fitCampaignNameForSingleBarLine(
+      bar.name,
+      bar.rank,
+      labelWidthPt,
+      layout.nameSizePt,
+    );
 
+    // Bars and metrics first; campaign name labels last so fill bars never paint over text.
+    shapes.push(roundedBar({ x: cols.barX, y: barY, w: cols.trackW, h: layout.barH, fillHex: c.track }));
+    if (fillW > 0) {
+      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
+    }
     shapes.push(
       textBox({
         x: cols.barX,
+        y: footerY,
+        w: cols.trackW,
+        h: layout.metricsH,
+        text: bar.statLine,
+        sizePt: layout.metricsSizePt,
+        bold: false,
+        colorHex: c.inkMuted,
+        align: "l",
+        anchor: "t",
+        clipOverflow: true,
+        nowrap: true,
+      }),
+      textBox({
+        x: cols.barX,
         y: nameY,
-        w: cols.trackW - rightLabelW,
+        w: labelWidthPt,
         h: layout.nameH,
-        text: `${bar.rank}. ${bar.name}`,
+        text: `${bar.rank}. ${displayName}`,
         sizePt: layout.nameSizePt,
         bold: false,
         colorHex: c.ink,
@@ -157,26 +184,6 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         bold: false,
         colorHex: c.ink,
         align: "r",
-        anchor: "t",
-        clipOverflow: true,
-        nowrap: true,
-      }),
-      roundedBar({ x: cols.barX, y: barY, w: cols.trackW, h: layout.barH, fillHex: c.track }),
-    );
-    if (fillW > 0) {
-      shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
-    }
-    shapes.push(
-      textBox({
-        x: cols.barX,
-        y: footerY,
-        w: cols.trackW,
-        h: layout.metricsH,
-        text: bar.statLine,
-        sizePt: layout.metricsSizePt,
-        bold: false,
-        colorHex: c.inkMuted,
-        align: "l",
         anchor: "t",
         clipOverflow: true,
         nowrap: true,

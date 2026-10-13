@@ -123,6 +123,13 @@ function rankedBarLine(rank: number, displayName: string): string {
   return `${rank}. ${displayName}`;
 }
 
+/** Slight under-fill so Poppins in PowerPoint stays on one line (LibreOffice-calibrated estimator). */
+const BAR_LABEL_WIDTH_SAFETY = 0.96;
+
+function effectiveBarLabelWidthPt(labelWidthPt: number): number {
+  return Math.max(40, labelWidthPt * BAR_LABEL_WIDTH_SAFETY);
+}
+
 /**
  * Campaign name for a result bar — use the full name while it fits on one line
  * beside the right-side share label; truncate with an ellipsis only when wider
@@ -137,13 +144,14 @@ export function fitCampaignNameForSingleBarLine(
   const trimmed = name.trim();
   if (!trimmed || labelWidthPt <= 0 || fontSizePt <= 0) return trimmed;
 
-  if (estimateTextWidthPt(rankedBarLine(rank, trimmed), fontSizePt) <= labelWidthPt) {
+  const maxW = effectiveBarLabelWidthPt(labelWidthPt);
+  if (estimateTextWidthPt(rankedBarLine(rank, trimmed), fontSizePt) <= maxW) {
     return trimmed;
   }
 
   for (let maxChars = trimmed.length - 1; maxChars >= 8; maxChars--) {
     const candidate = formatCampaignDisplayName(trimmed, maxChars);
-    if (estimateTextWidthPt(rankedBarLine(rank, candidate), fontSizePt) <= labelWidthPt) {
+    if (estimateTextWidthPt(rankedBarLine(rank, candidate), fontSizePt) <= maxW) {
       return candidate;
     }
   }
