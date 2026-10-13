@@ -31,6 +31,7 @@ import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { clientMonthlyBudgetSettingsHref } from "@/lib/nre/client-settings-navigation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
+import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
 
 function CoverBudgetClientSettingsLink({
   clientId,
@@ -171,6 +172,13 @@ export function WizardGenerateStep() {
     wizardSharePlatformLabel,
     driveDateRangeLabel,
     happyPathSkippedSteps,
+    agencyName,
+    handleWizardAgencyNameChange,
+    reportBrandingMode,
+    setReportBrandingMode,
+    reportBrandingError,
+    reportBrandingSaving,
+    reportBrandingBlocksGenerate,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -180,7 +188,9 @@ export function WizardGenerateStep() {
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
   const generateCtaDisabled =
-    previewStatus === "invalid" || (previewStatus !== "error" && !generateStepPreviewReady);
+    previewStatus === "invalid" ||
+    (previewStatus !== "error" && !generateStepPreviewReady) ||
+    reportBrandingBlocksGenerate;
   const generateCtaLabel =
     generateStatus === "loading"
       ? "Generating…"
@@ -536,6 +546,17 @@ export function WizardGenerateStep() {
                 <p className="nre-wizard-callout-success__label">Confirmed period</p>
                 <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
+            ) : null}
+
+            {generateStepPreviewReady && generateStatus === "idle" ? (
+              <WizardReportBrandingPanel
+                agencyName={agencyName}
+                onAgencyNameChange={handleWizardAgencyNameChange}
+                reportBrandingMode={reportBrandingMode}
+                onReportBrandingModeChange={setReportBrandingMode}
+                saving={reportBrandingSaving}
+                error={reportBrandingError}
+              />
             ) : null}
 
             <div className="space-y-4">
