@@ -89,9 +89,15 @@ import { readClientWizardPreferences, saveClientWizardPreferences } from "./clie
 import {
   buildWizardGenerateBaseline,
   evaluateHappyPathEligibility,
+  metricsMatchBaseline,
   selectionFromBaseline,
   type WizardGenerateBaseline,
-} from "./wizard-happy-path";
+} from "@/lib/nre/wizard-generate-baseline";
+import {
+  hydrateGenerateBaseline,
+  persistGenerateBaselineToServer,
+  readGenerateBaselineForHappyPath,
+} from "./wizard-baseline-sync";
 import {
   clearWizardDraft,
   loadWizardDraft,
@@ -140,6 +146,8 @@ export function useReportUploadWizard({
   const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(new Set([1]));
   const stepRef = useRef<Step>(1);
   const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
+  /** User confirmed objectives (metrics continue or happy-path restore) — preview/generate use full objective map. */
+  const [objectivesLockedForReport, setObjectivesLockedForReport] = useState(false);
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
   const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
@@ -474,6 +482,7 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
+    void hydrateGenerateBaseline(clientId);
     const prefs = readClientWizardPreferences(clientId);
     if (prefs) {
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
@@ -649,6 +658,7 @@ export function useReportUploadWizard({
     setTouchedObjectiveCampaigns(new Set());
     setPerCampaignMinWarning(null);
     setExpandedCsvExtras(new Set());
+    setObjectivesLockedForReport(false);
   }
 
   /** Resets everything the Preview/Generate/Download screen (step 6) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
@@ -1428,7 +1438,10 @@ export function useReportUploadWizard({
     setPerCampaignMetrics((prev) => {
       const merged = new Map(prev);
       for (const entry of baseline.perCampaignMetrics) {
-        merged.set(entry.normalized, entry.metrics.map((m) => ({ ...m })));
+        merged.set(
+          entry.normalized,
+          entry.metrics.map((m) => ({ ...m })) as SelectedMetric[],
+        );
       }
       return merged;
     });
@@ -1447,7 +1460,7 @@ export function useReportUploadWizard({
     adsPlatform: "META" | "GOOGLE" | "TIKTOK",
   ) {
     setHappyPathSkippedSteps(false);
-    const baseline = readClientWizardPreferences(clientId)?.generateBaseline;
+    const baseline = readGenerateBaselineForHappyPath(clientId);
     const campaignList: string[] = analyzeJson.campaigns || [];
     const headers: string[] = Array.isArray(analyzeJson.headers) ? analyzeJson.headers : [];
     const groups: AdSetGroup[] = analyzeJson.adSetGroups || [];
@@ -1508,6 +1521,12 @@ export function useReportUploadWizard({
       return;
     }
 
+    const fetchedMetrics = metricsResult.perCampaignSelection ?? {};
+    if (!metricsMatchBaseline(baseline, applied.selectedCampaigns, fetchedMetrics)) {
+      setStep(2);
+      return;
+    }
+
     const stillBlocking = applied.selectedCampaigns.some((name) => {
       const normalized = normalizeCampaignName(name);
       return (
@@ -1521,6 +1540,7 @@ export function useReportUploadWizard({
     }
 
     applyBaselineObjectivesAfterFetch(baseline);
+    setObjectivesLockedForReport(true);
 
     setHappyPathSkippedSteps(true);
     setStep(4);
@@ -1591,6 +1611,7 @@ export function useReportUploadWizard({
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
     setPerCampaignMinWarning(null);
+    setObjectivesLockedForReport(true);
     saveClientWizardPreferences(clientId, { metricsStepConfirmed: true });
     setStep(4);
   }
@@ -1673,6 +1694,17 @@ export function useReportUploadWizard({
    * another account's stale cache.
    */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
+    if (campaignObjectives.size === 0) return undefined;
+    // After metrics continue (or happy-path restore), every objective shown in
+    // the wizard is what preview verification and generate must use — matches
+    // the /metrics step and avoids engine re-detection drift on first-time clients.
+    if (objectivesLockedForReport || happyPathSkippedSteps) {
+      const out: Record<string, { resultLabel: string; costLabel: string }> = {};
+      for (const [name, info] of campaignObjectives) {
+        out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
+      }
+      return out;
+    }
     const relevant = new Set(touchedObjectiveCampaigns);
     if (relevant.size === 0) return undefined;
     const out: Record<string, { resultLabel: string; costLabel: string }> = {};
@@ -2265,7 +2297,7 @@ export function useReportUploadWizard({
         touchedObjectiveCampaigns: touchedForBaseline,
       });
       if (baseline) {
-        saveClientWizardPreferences(clientId, { generateBaseline: baseline });
+        void persistGenerateBaselineToServer(clientId, baseline);
       }
     }
   }
