@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="50" fill="#0d1b2e"/>
-  <polygon points="50,20 78,72 22,72" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" role="img" aria-label="NextReport">
+  <rect x="18" y="46" width="36" height="36" rx="1.5" stroke="#f5b45a" stroke-width="2.6"/>
+  <rect x="24" y="40" width="36" height="36" rx="1.5" stroke="#f5b45a" stroke-width="2.6"/>
+  <rect x="30" y="34" width="36" height="36" rx="1.5" stroke="#f5b45a" stroke-width="2.6"/>
+  <rect x="36" y="28" width="36" height="36" rx="1.5" fill="#f5b45a"/>
+  <path
+    fill="#ffffff"
+    d="M43 58V38h4.5l9.5 16.2V38h4.5v20h-4.5L47.5 41.8V58H43z"
+  />
 </svg>
