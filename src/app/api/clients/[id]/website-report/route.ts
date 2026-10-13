@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fileFromFormData } from "@/lib/http-file";
 import { buildShareWebsiteReportData } from "@/lib/nre/share-website-report";
-import { shareReportExtrasFromUser } from "@/lib/nre/user-report-branding";
+import { agencyNameForCoverSlide, shareReportExtrasFromUser } from "@/lib/nre/user-report-branding";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
@@ -37,6 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           agencyName: true,
           agencyLogoUrl: true,
           reportBrandingMode: true,
+          showAgencyNameOnCover: true,
           slackWebhookUrl: true,
           automationWebhookUrl: true,
         },
@@ -130,7 +131,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       templateBuffer,
       data: websiteData,
       accountName: client.accountName,
-      agencyName: user?.agencyName,
+      agencyName: agencyNameForCoverSlide(user ?? {}),
       isLightTemplate: isLightReportTemplate(client.template),
     });
 

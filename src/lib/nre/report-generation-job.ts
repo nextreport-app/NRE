@@ -14,7 +14,11 @@ import {
   type ReportGenerationJobPayload,
 } from "@/lib/nre/report-generation-job-payload";
 import { buildShareReportData, buildDayBreakdownShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
-import { shareReportExtrasFromUser, USER_REPORT_BRANDING_SELECT } from "@/lib/nre/user-report-branding";
+import {
+  agencyNameForCoverSlide,
+  shareReportExtrasFromUser,
+  USER_REPORT_BRANDING_SELECT,
+} from "@/lib/nre/user-report-branding";
 import { generateShareToken } from "@/lib/share-token";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
@@ -135,7 +139,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         data: job.summaryData,
         currencySymbol,
         reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
       });
@@ -178,7 +182,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.comparisonData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         isLightTemplate: isLightReportTemplate(client.template),
       });
 
@@ -229,7 +233,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.historicalData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
         aiCopyBySlideKey: aiCopyMap,
@@ -248,7 +252,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
           historicalData: job.historicalData,
           aiCopy: Object.fromEntries(aiCopyMap),
           reportTitle: job.reportTitle,
-          agencyName: user?.agencyName ?? null,
+          agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
           isLightTemplate: isLightReportTemplate(client.template),
         },
       };
@@ -285,7 +289,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.dayBreakdownData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
       });
@@ -301,7 +305,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         _renderArchive: {
           dayBreakdownData: job.dayBreakdownData,
           reportTitle: job.reportTitle,
-          agencyName: user?.agencyName ?? null,
+          agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
           isLightTemplate: isLightReportTemplate(client.template),
         },
       };
@@ -349,7 +353,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       currencySymbol,
       aiCopyBySlideKey,
       reportTitle,
-      agencyName: user?.agencyName,
+      agencyName: agencyNameForCoverSlide(user ?? {}),
       clientLogo,
       isLightTemplate: isLightReportTemplate(client.template),
     });
@@ -372,7 +376,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         currencySymbol,
         isLightTemplate: isLightReportTemplate(client.template),
         reportTitle,
-        agencyName: user?.agencyName ?? null,
+        agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
       },
     };
 

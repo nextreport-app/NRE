@@ -136,6 +136,7 @@ export function useReportUploadWizard({
   clientShowBudgetPacingOnCover = false,
   initialAgencyName = null,
   initialReportBrandingMode = "nextreport",
+  initialShowAgencyNameOnCover = true,
   accountDisplayName = null,
 }: ReportUploadWizardProps) {
   const { locale } = useSiteTheme();
@@ -193,12 +194,14 @@ export function useReportUploadWizard({
 
   const savedAgencyNameRef = useRef(initialAgencyName?.trim() || "");
   const savedReportBrandingModeRef = useRef<ReportBrandingMode>(initialReportBrandingMode);
+  const savedShowAgencyNameOnCoverRef = useRef(initialShowAgencyNameOnCover);
   const [agencyName, setAgencyName] = useState(
     () => savedAgencyNameRef.current || accountDisplayName?.trim() || "",
   );
   const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
     initialReportBrandingMode,
   );
+  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(initialShowAgencyNameOnCover);
   const [reportBrandingError, setReportBrandingError] = useState<string | null>(null);
   const [reportBrandingSaving, setReportBrandingSaving] = useState(false);
 
@@ -210,20 +213,11 @@ export function useReportUploadWizard({
     }
   }
 
-  function reportBrandingSettingsDirty(): boolean {
-    const name = agencyName.trim() || "";
-    return (
-      name !== savedAgencyNameRef.current ||
-      reportBrandingMode !== savedReportBrandingModeRef.current
-    );
-  }
-
   async function persistReportBrandingSettings(): Promise<boolean> {
     if (reportBrandingMode === "agency" && !agencyName.trim()) {
       setReportBrandingError("Enter your agency name to show it on client reports.");
       return false;
     }
-    if (!reportBrandingSettingsDirty()) return true;
 
     setReportBrandingSaving(true);
     setReportBrandingError(null);
@@ -234,6 +228,7 @@ export function useReportUploadWizard({
         body: JSON.stringify({
           agencyName: agencyName.trim() || null,
           reportBrandingMode,
+          showAgencyNameOnCover,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -245,6 +240,7 @@ export function useReportUploadWizard({
       }
       savedAgencyNameRef.current = agencyName.trim();
       savedReportBrandingModeRef.current = reportBrandingMode;
+      savedShowAgencyNameOnCoverRef.current = showAgencyNameOnCover;
       return true;
     } catch {
       const message = "Could not save your agency name. Check your connection and try again.";
@@ -3064,6 +3060,8 @@ export function useReportUploadWizard({
     reportBrandingError,
     reportBrandingSaving,
     reportBrandingBlocksGenerate,
+    showAgencyNameOnCover,
+    setShowAgencyNameOnCover,
     generateStatus,
     generateMessage,
     handleGenerate,

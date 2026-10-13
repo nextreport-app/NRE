@@ -60,6 +60,7 @@ export default async function AccountSettingsPage({
         agencyName: true,
         agencyLogoUrl: true,
         reportBrandingMode: true,
+        showAgencyNameOnCover: true,
         googleConnectedEmail: true,
         metaConnectedName: true,
         metaConnectedUserId: true,
@@ -104,6 +105,7 @@ export default async function AccountSettingsPage({
         <AccountSettingsForm
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
+          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
           hasAgencyLogo={!!user.agencyLogoUrl}
         />
       </section>

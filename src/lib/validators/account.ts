@@ -21,6 +21,7 @@ export const accountSettingsSchema = z
       .optional()
       .transform((v) => (v === undefined ? undefined : v || null)),
     reportBrandingMode: reportBrandingModeSchema,
+    showAgencyNameOnCover: z.boolean().optional(),
     reportRetentionDays: z.coerce.number().int().positive().optional(),
     slackWebhookUrl: webhookUrlField,
     automationWebhookUrl: webhookUrlField,
