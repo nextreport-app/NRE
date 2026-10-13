@@ -89,6 +89,16 @@ export function buildClientReportSlackShareUrl(input: ClientReportShareMessageIn
   return `https://slack.com/share?url=${encodeURIComponent(input.reportUrl)}&text=${encodeURIComponent(text)}`;
 }
 
+/** Opens Microsoft Teams share dialog (web or desktop) with link + message. */
+export function buildClientReportTeamsShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
+  const params = new URLSearchParams({
+    href: input.reportUrl,
+    msgText: text,
+  });
+  return `https://teams.microsoft.com/share?${params.toString()}`;
+}
+
 export function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
   const subject = encodeURIComponent(`${accountName} — Performance Report`);
   const body = encodeURIComponent(`Hi,\n\nYour report is ready to view:\n${reportUrl}\n\n`);

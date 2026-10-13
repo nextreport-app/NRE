@@ -13,6 +13,7 @@ import {
   isSpecificFieldError,
   buildClientReportWhatsAppShareUrl,
   buildClientReportSlackShareUrl,
+  buildClientReportTeamsShareUrl,
   buildMailtoShareUrl,
   buildShareReportUrl,
   buildTelegramShareUrl,
@@ -908,6 +909,30 @@ export function WizardGenerateStep() {
                             <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
                           </svg>
                           Telegram
+                        </a>
+                        <a
+                          href={buildClientReportTeamsShareUrl({
+                            clientName,
+                            reportTypeLabel: reportTypeLabel(),
+                            platformLabel: wizardSharePlatformLabel(),
+                            dateRangeLabel: driveDateRangeLabel() || "this period",
+                            reportUrl: `https://${buildShareReportUrl(shareToken)}`,
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
+                            <path
+                              fill="#5059C9"
+                              d="M20.625 8.25h-3.375V5.625A2.629 2.629 0 0 0 14.625 3h-5.25A2.629 2.629 0 0 0 6.75 5.625v2.625H3.375A1.128 1.128 0 0 0 2.25 9.375v9A2.629 2.629 0 0 0 4.875 21h14.25a2.629 2.629 0 0 0 2.625-2.625v-9a1.128 1.128 0 0 0-1.125-1.125ZM9 5.625a1.128 1.128 0 0 1 1.125-1.125h3.75A1.128 1.128 0 0 1 15 5.625V8.25H9V5.625Zm10.5 12.75a1.128 1.128 0 0 1-1.125 1.125H5.625A1.128 1.128 0 0 1 4.5 18.375v-7.5h15v7.5Z"
+                            />
+                            <path
+                              fill="#7B83EB"
+                              d="M12.75 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-3.375 6.375h6.75a.375.375 0 0 0 .375-.375v-1.125a2.25 2.25 0 0 0-2.25-2.25h-3a2.25 2.25 0 0 0-2.25 2.25v1.125a.375.375 0 0 0 .375.375Z"
+                            />
+                          </svg>
+                          Teams
                         </a>
                         <button
                           type="button"
