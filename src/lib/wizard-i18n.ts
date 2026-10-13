@@ -38,6 +38,11 @@ const EN_UI = {
   stepOf: (step: number, total: number, label: string) => `Step ${step} of ${total} · ${label}`,
   generateHeadingPrefix: "Generate:",
   moreReportTypes: "More report types",
+  happyPathBannerTitle: "Using your saved setup for this client",
+  happyPathBannerBody:
+    "Campaigns, objectives, and metrics match your last successful report. Confirm dates below, or review campaigns or metrics if anything changed.",
+  happyPathReviewCampaigns: "Review campaigns",
+  happyPathReviewMetrics: "Review metrics",
 };
 
 const EN_STEPS = {
