@@ -66,8 +66,8 @@ export function ReportTypeCard({
           >
             {csvRequiredNote ? (
               <>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/90">Required CSV</p>
-                <p className="mt-1 text-[12px] leading-snug text-amber-50/95">{csvRequiredNote}</p>
+                <p className="nre-wizard-tooltip-csv-label">Required CSV</p>
+                <p className="nre-wizard-tooltip-csv-body mt-1">{csvRequiredNote}</p>
               </>
             ) : null}
             <p className={`text-[10px] font-semibold uppercase tracking-wide text-dash-accent${csvRequiredNote ? " mt-2.5" : ""}`}>
@@ -109,9 +109,7 @@ export function ReportTypeCard({
           <span className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             <span className="block text-[13px] font-semibold leading-snug text-dash-ink">{heading}</span>
             {recommended ? (
-              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
-                Recommended
-              </span>
+              <span className="nre-wizard-badge-recommended">Recommended</span>
             ) : null}
             {showSoonBadge ? <ComingSoonBadge /> : null}
             {!showSoonBadge && beta ? <PlatformBetaBadge /> : null}

@@ -378,6 +378,205 @@ html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--expired a {
   color: #000000;
 }
 
+/* Wizard — status badges & callouts (dark defaults; light overrides below). */
+.nre-wizard-badge-recommended {
+  border-radius: 9999px;
+  background-color: rgb(16 185 129 / 0.2);
+  padding: 0.125rem 0.5rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-badge-recommended {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.nre-wizard-confidence--ok {
+  color: #68d391;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--ok {
+  color: #047857;
+}
+
+.nre-wizard-confidence--warn {
+  color: #f6ad55;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--warn {
+  color: #b45309;
+}
+
+.nre-wizard-confidence--required {
+  background-color: #fc8181;
+  color: #2d0b0b;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--required {
+  background-color: #fecaca;
+  color: #7f1d1d;
+}
+
+.nre-wizard-callout-success {
+  border: 1px solid rgb(6 78 59 / 0.45);
+  background-color: rgb(2 44 34 / 0.22);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+}
+
+.nre-wizard-callout-success__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(110 231 183 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__label {
+  color: #047857;
+}
+
+.nre-wizard-callout-success__title {
+  color: #d1fae5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__title {
+  color: #065f46;
+}
+
+.nre-wizard-callout-success__detail {
+  color: rgb(209 250 229 / 0.78);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__detail {
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__icon {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__detail {
+  border-color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__icon {
+  background-color: #ffedd5;
+  color: #92400e;
+}
+
+.nre-wizard-callout-warn {
+  border: 1px solid rgb(146 64 14 / 0.4);
+  background-color: rgb(69 26 3 / 0.12);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+}
+
+.nre-wizard-callout-warn__title {
+  color: #fffbeb;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__title {
+  color: #92400e;
+}
+
+.nre-wizard-callout-warn__body {
+  color: rgb(254 243 199 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
+  color: #78350f;
+}
+
+.nre-wizard-objective-pill {
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.nre-wizard-objective-pill--leads {
+  background-color: rgb(69 26 3 / 0.35);
+  color: #f6ad55;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--leads {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.nre-wizard-objective-pill--sales {
+  background-color: rgb(69 10 10 / 0.35);
+  color: #fc8181;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--sales {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.nre-wizard-objective-pill--reach {
+  background-color: rgb(2 44 34 / 0.35);
+  color: #68d391;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--reach {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.nre-wizard-objective-pill--video {
+  background-color: rgb(59 7 100 / 0.35);
+  color: #b794f4;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--video {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.nre-wizard-objective-pill--default {
+  background-color: rgb(23 37 84 / 0.35);
+  color: #63b3ed;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--default {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.nre-wizard-tooltip-csv-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(252 211 77 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-tooltip-csv-label {
+  color: #b45309;
+}
+
+.nre-wizard-tooltip-csv-body {
+  font-size: 12px;
+  line-height: 1.375;
+  color: rgb(255 251 235 / 0.95);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-tooltip-csv-body {
+  color: #78350f;
+}
+
 /* /light-preview (src/app/light-preview/page.tsx) renders its own
    light-themed footer and marks its root element #light-preview-page —
    this hides the real site-wide dark footer (in the root layout, present
