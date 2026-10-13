@@ -26,7 +26,7 @@ export function verifyStandardWizardReportAgainstCsv(input: {
   platform: Platform;
   now?: Date;
   periodRows?: NreRow[] | null;
-}): Promise<CsvVerificationResult> {
+}): CsvVerificationResult {
   const { client, mtdRows, report, reportType, formData, platform } = input;
   const now = input.now ?? new Date();
   const csvAlign = resolveCsvAlignResults(formData);
