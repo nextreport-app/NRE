@@ -58,24 +58,26 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
   if (ok) {
     const detailText = `Spend, results, and cost per result match your uploaded CSV for ${verifiedScopesLabel(verification.scopesVerified)} (every day in the weekly window must be present). Small spend rounding (about $2 either way) is ignored.`;
     return (
-      <div className="rounded-lg border border-emerald-800/35 bg-emerald-950/15 px-4 py-3">
+      <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
         <details className="group">
           <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
+              className="nre-wizard-callout-success__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
               aria-hidden
             >
               ✓
             </span>
-            <span className="min-w-0 flex-1 text-[14px] font-medium text-emerald-100">Verified against your CSV</span>
+            <span className="nre-wizard-callout-success__title min-w-0 flex-1 text-[14px] font-medium">
+              Verified against your CSV
+            </span>
             <span
-              className="shrink-0 text-[15px] leading-none text-emerald-100/70 transition-transform group-open:rotate-180"
+              className="nre-wizard-callout-success__detail shrink-0 text-[15px] leading-none transition-transform group-open:rotate-180"
               aria-hidden
             >
               ▾
             </span>
           </summary>
-          <p className="mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug text-emerald-100/75">
+          <p className="nre-wizard-callout-success__detail mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug">
             {detailText}
           </p>
         </details>
@@ -89,7 +91,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
     .join("; ");
 
   return (
-    <div className="rounded-lg border border-amber-800/35 bg-amber-950/10 px-4 py-3.5">
+    <div className="nre-wizard-callout-warn rounded-lg px-4 py-3.5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -97,12 +99,12 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
         aria-expanded={open}
       >
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-900/40 text-[13px] text-amber-100"
+          className="nre-wizard-callout-warn__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-900/40 text-[13px] text-amber-100"
           aria-hidden
         >
           !
         </span>
-        <span className="min-w-0 flex-1 text-[14px] font-medium text-amber-50">
+        <span className="nre-wizard-callout-warn__title min-w-0 flex-1 text-[14px] font-medium">
           {mismatches.length} meaningful mismatch{mismatches.length === 1 ? "" : "es"} vs your CSV
         </span>
         <span
@@ -114,14 +116,14 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
       </button>
 
       {verification.canAlignWithCsvExport && !verification.alignedWithCsvExport ? (
-        <p className="mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed text-amber-100/90">
+        <p className="nre-wizard-callout-warn__body mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed">
           Results may match your export if you use CSV export counting — we turned that on automatically for this
           preview. Generate again if totals still look off.
         </p>
       ) : null}
 
       {verification.alignedWithCsvExport ? (
-        <p className="mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed text-amber-100/90">
+        <p className="nre-wizard-callout-warn__body mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed">
           Totals use CSV export counting. Generate uses the same rules.
         </p>
       ) : null}
@@ -135,7 +137,7 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
                 {scopeChecks.map((c) => (
                   <div
                     key={`${scope}-${c.metric}`}
-                    className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px] text-amber-50"
+                    className="nre-wizard-callout-warn__body grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px]"
                   >
                     <dt className="text-dash-ink-secondary">{c.metric}</dt>
                     <dd className="text-right text-dash-ink tabular-nums">{c.reportDisplay}</dd>

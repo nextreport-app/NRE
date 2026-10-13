@@ -503,8 +503,8 @@ export function WizardGenerateStep() {
           )}
 
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
-              <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">Confirmed period</p>
+              <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
+                <p className="nre-wizard-callout-success__label">Confirmed period</p>
                 <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
             ) : null}

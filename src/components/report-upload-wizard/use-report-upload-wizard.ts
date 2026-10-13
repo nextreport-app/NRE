@@ -1553,16 +1553,16 @@ export function useReportUploadWizard({
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
     if (tier === "cached") {
-      return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]", pill: false };
+      return { icon: "✓", text: "Previously confirmed", className: "nre-wizard-confidence--ok", pill: false };
     }
     if (tier === "high" || tier === "medium") {
-      return { icon: "✓", text: "Detected — change if wrong", className: "text-[#68d391]", pill: false };
+      return { icon: "✓", text: "Detected — change if wrong", className: "nre-wizard-confidence--ok", pill: false };
     }
     if (tier === "low") {
-      return { icon: "✓", text: "Detected — confirm lead type if wrong", className: "text-[#f6ad55]", pill: false };
+      return { icon: "✓", text: "Detected — confirm lead type if wrong", className: "nre-wizard-confidence--warn", pill: false };
     }
     if (tier === "verify") {
-      return { icon: "⚠", text: "Confirmation required", className: "bg-[#fc8181] text-[#2d0b0b]", pill: true };
+      return { icon: "⚠", text: "Confirmation required", className: "nre-wizard-confidence--required", pill: true };
     }
     return null;
   }
@@ -1637,13 +1637,17 @@ export function useReportUploadWizard({
    */
   function objectiveAccent(resultLabel: string | undefined): { badgeClassName: string; borderHex: string } {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD")) return { badgeClassName: "bg-amber-950/30 text-[#f6ad55]", borderHex: "#f6ad55" };
-    if (label.includes("PURCHASE") || label.includes("SALE")) return { badgeClassName: "bg-red-950/30 text-[#fc8181]", borderHex: "#fc8181" };
-    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
-      return { badgeClassName: "bg-emerald-950/30 text-[#68d391]", borderHex: "#68d391" };
+    if (label.includes("LEAD")) return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--leads", borderHex: "#f6ad55" };
+    if (label.includes("PURCHASE") || label.includes("SALE")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--sales", borderHex: "#fc8181" };
     }
-    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return { badgeClassName: "bg-purple-950/30 text-[#b794f4]", borderHex: "#b794f4" };
-    return { badgeClassName: "bg-blue-950/30 text-[#63b3ed]", borderHex: "#63b3ed" };
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--reach", borderHex: "#68d391" };
+    }
+    if (label.includes("VIDEO") || label.includes("THRUPLAY")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--video", borderHex: "#b794f4" };
+    }
+    return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--default", borderHex: "#63b3ed" };
   }
 
   // ── Step 5: Dates ───────────────────────────────────────────────────────

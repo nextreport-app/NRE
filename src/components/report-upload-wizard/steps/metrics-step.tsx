@@ -117,7 +117,7 @@ export function WizardMetricsStep() {
         </div>
 
         {perCampaignMinWarning && (
-          <p className="mt-2 text-[14px] text-amber-300">{perCampaignMinWarning}</p>
+          <p className="nre-wizard-confidence--warn mt-2 text-[14px]">{perCampaignMinWarning}</p>
         )}
 
         <div className="my-3 border-t border-dash-border" />
