@@ -147,7 +147,7 @@ export function AccountSettingsForm({
 
       <fieldset>
         <legend className="mb-2 block text-sm font-medium text-dash-ink-secondary">
-          Branding on shared client reports
+          Branding on shared client reports (also on wizard Step 4)
         </legend>
         <div className="space-y-2">
           {(Object.keys(REPORT_BRANDING_MODE_LABELS) as ReportBrandingMode[]).map((mode) => {

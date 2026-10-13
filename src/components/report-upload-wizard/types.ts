@@ -8,6 +8,7 @@ import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
 import type { AdSetGroup } from "@/lib/nre/ad-sets";
 import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import type { TEMPLATES } from "@/lib/validators/client";
+import type { ReportBrandingMode } from "@/lib/report-branding";
 
 export type Step = 1 | 2 | 3 | 4;
 
@@ -93,6 +94,11 @@ export interface ReportUploadWizardProps {
   showTikTokOption?: boolean;
   clientMonthlyBudget?: number | null;
   clientShowBudgetPacingOnCover?: boolean;
+  /** Account white-label — cover slide + share/PDF/email (see report-branding.ts). */
+  initialAgencyName?: string | null;
+  initialReportBrandingMode?: ReportBrandingMode;
+  /** Prefill agency name when unset (usually User.name). */
+  accountDisplayName?: string | null;
 }
 
 /** Overflow dialog when adding metrics beyond slide limits. */

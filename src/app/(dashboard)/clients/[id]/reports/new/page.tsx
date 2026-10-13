@@ -13,6 +13,7 @@ import {
   loadPreviousMonthDataCampaignSpend,
   parsePreviousMonthSelectedCampaigns,
 } from "@/lib/nre/previous-month-data";
+import { normalizeReportBrandingMode } from "@/lib/report-branding";
 
 export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,6 +37,8 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         tiktokAccessToken: true,
         ga4Enabled: true,
         ga4RefreshToken: true,
+        agencyName: true,
+        reportBrandingMode: true,
       },
     }),
   ]);
@@ -97,6 +100,9 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           showTikTokOption={showTikTokOption}
           clientMonthlyBudget={client.monthlyBudget}
           clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
+          initialAgencyName={user.agencyName}
+          initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
+          accountDisplayName={user.name}
         />
       </Suspense>
     </div>

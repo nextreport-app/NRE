@@ -94,7 +94,9 @@ export default async function AccountSettingsPage({
     <div className="mx-auto max-w-xl">
       <h1 className="mb-2 text-[24px] font-bold text-dash-ink">Account settings</h1>
       <p className="mb-8 text-[15px] text-dash-ink-secondary">
-        Agency name and white-label settings apply to every report you generate for any client.
+        Agency name and white-label settings apply to every report you generate for any client. You can also set
+        these on <strong className="font-medium text-dash-ink">Step 4 (Generate)</strong> in the report wizard before
+        each run.
       </p>
 
       <section className="mb-10">
