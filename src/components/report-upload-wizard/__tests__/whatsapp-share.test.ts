@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildClientReportShareMessage,
   buildClientReportSlackShareUrl,
+  buildClientReportTeamsShareUrl,
   buildClientReportWhatsAppShareUrl,
 } from "../utils";
 
@@ -34,6 +35,21 @@ describe("buildClientReportShareMessage", () => {
     const wa = buildClientReportWhatsAppShareUrl(input);
     expect(message).toContain("Acme Co");
     expect(decodeURIComponent(wa)).toContain(message);
+  });
+});
+
+describe("buildClientReportTeamsShareUrl", () => {
+  it("uses Teams share endpoint with href and message", () => {
+    const url = buildClientReportTeamsShareUrl({
+      clientName: "Acme Co",
+      reportTypeLabel: "Weekly Performance Report",
+      platformLabel: "Meta Ads",
+      dateRangeLabel: "Sep 22 – Sep 28",
+      reportUrl: "https://nextreport.in/r/abc",
+    });
+    expect(url).toContain("teams.microsoft.com/share");
+    expect(decodeURIComponent(url)).toContain("nextreport.in/r/abc");
+    expect(decodeURIComponent(url)).toContain("Acme Co");
   });
 });
 
