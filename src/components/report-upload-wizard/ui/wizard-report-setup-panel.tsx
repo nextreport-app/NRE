@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
+import { useSiteTheme } from "@/components/site-theme-provider";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
+import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
@@ -27,12 +30,13 @@ function WizardReportTypePickerGrid({
   setMoreOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onAfterSelect?: () => void;
 }) {
-  const weekly = WIZARD_REPORT_TYPE_COPY.WEEKLY;
-  const monthly = WIZARD_REPORT_TYPE_COPY.MONTHLY;
-  const daily = WIZARD_REPORT_TYPE_COPY.DAILY;
-  const comparison = WIZARD_REPORT_TYPE_COPY.COMPARISON;
-  const historical = WIZARD_REPORT_TYPE_COPY.HISTORICAL;
-  const dayTable = WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
+  const { locale } = useSiteTheme();
+  const weekly = wizardReportTypeCopyForLocale(locale, "WEEKLY") ?? WIZARD_REPORT_TYPE_COPY.WEEKLY;
+  const monthly = wizardReportTypeCopyForLocale(locale, "MONTHLY") ?? WIZARD_REPORT_TYPE_COPY.MONTHLY;
+  const daily = wizardReportTypeCopyForLocale(locale, "DAILY") ?? WIZARD_REPORT_TYPE_COPY.DAILY;
+  const comparison = wizardReportTypeCopyForLocale(locale, "COMPARISON") ?? WIZARD_REPORT_TYPE_COPY.COMPARISON;
+  const historical = wizardReportTypeCopyForLocale(locale, "HISTORICAL") ?? WIZARD_REPORT_TYPE_COPY.HISTORICAL;
+  const dayTable = wizardReportTypeCopyForLocale(locale, "DAY_BREAKDOWN") ?? WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
 
   function select(next: ReportTypeValue) {
     onReportTypeChange(next);
@@ -145,6 +149,7 @@ export function WizardReportSetupPanel({
     LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
   const [pickerOpen, setPickerOpen] = useState(false);
+  const copy = useWizardCopy();
 
   if (variant === "summary") {
     return (
@@ -188,10 +193,8 @@ export function WizardReportSetupPanel({
   return (
     <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
       <div>
-        <h3 className="text-[16px] font-semibold text-dash-ink">What report are you building?</h3>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.
-        </p>
+        <h3 className="text-[16px] font-semibold text-dash-ink">{copy.whatReportBuilding}</h3>
+        <p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.reportTypeHint}</p>
       </div>
 
       <WizardReportTypePickerGrid
