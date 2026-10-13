@@ -2187,11 +2187,34 @@ export function useReportUploadWizard({
   // report was already generated naturally clears the stale download links
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
+  const selectedCampaignsFingerprint = useMemo(
+    () => Array.from(selectedCampaigns).sort().join("\0"),
+    [selectedCampaigns],
+  );
+  const selectedAdSetsFingerprint = useMemo(
+    () => Array.from(selectedAdSets).sort().join("\0"),
+    [selectedAdSets],
+  );
+  const objectivesFingerprint = useMemo(
+    () =>
+      [...campaignObjectives.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${v.resultLabel}:${v.costLabel}`)
+        .join("|"),
+    [campaignObjectives],
+  );
+  const metricsFingerprint = useMemo(
+    () =>
+      JSON.stringify(
+        [...perCampaignMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    [perCampaignMetrics],
+  );
+
   useEffect(() => {
     csvAlignAttemptedRef.current = false;
     setCsvAlignResults(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportType, dateMode, customStart, customEnd, Array.from(selectedCampaigns).join("\0")]);
+  }, [reportType, dateMode, customStart, customEnd, selectedCampaignsFingerprint]);
 
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
@@ -2242,6 +2265,11 @@ export function useReportUploadWizard({
     generateStatus,
     uploadSessionId,
     mtdFile,
+    selectedCampaignsFingerprint,
+    selectedAdSetsFingerprint,
+    objectivesFingerprint,
+    metricsFingerprint,
+    showBudgetOnCover,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
@@ -2311,6 +2339,9 @@ export function useReportUploadWizard({
 
     if (!res.ok || !json?.ok || !json.reportId) {
       setGenerateStatus("error");
+      if (json?.csvVerification) {
+        setCsvVerification(json.csvVerification);
+      }
       setGenerateMessage(json?.error || "Report generation failed. Please try again.");
       return;
     }

@@ -48,6 +48,7 @@ import {
   parseBooleanFormField,
 } from "@/lib/validators/report-wizard";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+import { verifyStandardWizardReportAgainstCsv } from "@/lib/nre/wizard-csv-verification";
 
 /** Comparison / day-table renders are fast (no AI) — finish in-request so the wizard is not stuck polling. */
 export const maxDuration = 300;
@@ -435,6 +436,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
   const { data, aiCopyPrecalc } = result;
+
+  if (platform === "META" && data.reportType !== "CREATIVE") {
+    const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+    const periodRowsForVerify = includePreviousMonthComparison
+      ? await loadPreviousMonthDataRows(client)
+      : undefined;
+    const csvVerification = verifyStandardWizardReportAgainstCsv({
+      client,
+      mtdRows: mtdParsed.rows,
+      report: data,
+      reportType: data.reportType,
+      formData,
+      platform,
+      periodRows: periodRowsForVerify,
+    });
+    if (csvVerification.status === "mismatch") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "CSV verification failed — report totals do not match your upload for at least one window (weekly, MTD, or chart). Review the verification panel on Step 4 before generating.",
+          csvVerification,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")

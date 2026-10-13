@@ -11,8 +11,8 @@ import {
   reconcileComparisonReportWithCsv,
   reconcileDayBreakdownReportWithCsv,
   reconcileHistoricalReportWithCsv,
-  reconcileStandardReportWithCsv,
 } from "@/lib/nre/csv-report-reconciliation";
+import { verifyStandardWizardReportAgainstCsv } from "@/lib/nre/wizard-csv-verification";
 import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { computeDailyRangeIso } from "@/lib/nre/date-range";
@@ -324,22 +324,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const csvAlign = resolveCsvAlignResults(formData);
   const reportType = built.data.reportType;
-  const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
   const previewNow = new Date();
-  let weeklyRange: { startIso: string; endIso: string } | undefined;
-  if (reportType === "DAILY") {
-    weeklyRange = computeDailyRangeIso(mtdParsed.rows, previewNow, client.timezone) ?? undefined;
-  } else if (reportType === "WEEKLY") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, previewNow, client.timezone);
-    weeklyRange = dateResolution.ok ? dateResolution.weeklyRange : undefined;
-  }
-
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
   const periodRowsForVerify = includePreviousMonthComparison
     ? await loadPreviousMonthDataRows(client)
     : undefined;
+  const csvAlign = resolveCsvAlignResults(formData);
 
   if (uploadSessionId && fileHash) {
     try {
@@ -368,19 +359,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  const csvVerification = reconcileStandardReportWithCsv({
+  const csvVerification = verifyStandardWizardReportAgainstCsv({
+    client,
+    mtdRows: mtdParsed.rows,
     report: built.data,
-    mtdDailyRows: mtdParsed.rows,
-    selectedCampaigns: selectedCampaigns ?? null,
-    weeklyRange,
     reportType,
-    timezone: client.timezone,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
-    now: previewNow,
-    resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
-    periodRows: periodRowsForVerify,
-    campaignObjectives: campaignObjectives ?? null,
+    formData,
     platform,
+    now: previewNow,
+    periodRows: periodRowsForVerify,
   });
 
   return NextResponse.json({
