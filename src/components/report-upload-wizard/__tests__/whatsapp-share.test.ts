@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildClientReportSlackShareUrl, buildClientReportWhatsAppShareUrl } from "../utils";
+import {
+  buildClientReportShareMessage,
+  buildClientReportSlackShareUrl,
+  buildClientReportWhatsAppShareUrl,
+} from "../utils";
 
 describe("buildClientReportWhatsAppShareUrl", () => {
   it("includes client name, report type, platform, dates, and link", () => {
@@ -14,6 +18,22 @@ describe("buildClientReportWhatsAppShareUrl", () => {
     expect(decodeURIComponent(url)).toContain("Acme Co");
     expect(decodeURIComponent(url)).toContain("Sep 22");
     expect(decodeURIComponent(url)).toContain("nextreport.in/r/abc");
+  });
+});
+
+describe("buildClientReportShareMessage", () => {
+  it("matches the WhatsApp prefill body", () => {
+    const input = {
+      clientName: "Acme Co",
+      reportTypeLabel: "Weekly Performance Report",
+      platformLabel: "Meta Ads",
+      dateRangeLabel: "Sep 22 – Sep 28",
+      reportUrl: "https://nextreport.in/r/abc",
+    };
+    const message = buildClientReportShareMessage(input);
+    const wa = buildClientReportWhatsAppShareUrl(input);
+    expect(message).toContain("Acme Co");
+    expect(decodeURIComponent(wa)).toContain(message);
   });
 });
 

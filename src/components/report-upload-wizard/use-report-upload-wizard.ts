@@ -71,6 +71,7 @@ import {
 } from "./constants";
 import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
 import {
+  buildClientReportShareMessage,
   buildShareReportUrl,
   buildUploadFormData,
   defaultReportTitleFor,
@@ -445,6 +446,7 @@ export function useReportUploadWizard({
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [clientShareMessageCopied, setClientShareMessageCopied] = useState(false);
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
@@ -2362,6 +2364,26 @@ export function useReportUploadWizard({
     showToast("Share link copied!");
   }
 
+  async function handleCopyClientShareMessage() {
+    if (!shareToken) return;
+    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const text = buildClientReportShareMessage({
+      clientName,
+      reportTypeLabel: reportTypeLabel(),
+      platformLabel: wizardSharePlatformLabel(),
+      dateRangeLabel: driveDateRangeLabel() || "this period",
+      reportUrl,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      setClientShareMessageCopied(true);
+      showToast("Message copied — paste into email, Teams, or anywhere.");
+      window.setTimeout(() => setClientShareMessageCopied(false), 2000);
+    } catch {
+      showToast("Could not copy — try again or use Share on WhatsApp.");
+    }
+  }
+
   async function handleSaveToDrive(folderId: string, folderName?: string) {
     if (!reportId) return;
     setDriveSaving(true);
@@ -2948,6 +2970,8 @@ export function useReportUploadWizard({
     persistGenerateSnapshot,
     copied,
     handleCopyShareLink,
+    handleCopyClientShareMessage,
+    clientShareMessageCopied,
     handleSaveButtonClick,
     handleSaveToFolderLink,
     handleCopyLink,

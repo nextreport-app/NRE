@@ -70,6 +70,8 @@ export function WizardGenerateStep() {
     comparisonPeriodB,
     comparisonPreset,
     copied,
+    clientShareMessageCopied,
+    handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
     customEnd,
@@ -772,6 +774,16 @@ export function WizardGenerateStep() {
                     Share on Slack
                   </a>
                 ) : null}
+                {shareToken ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyClientShareMessage()}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-border"
+                  >
+                    <CopyIcon />
+                    {clientShareMessageCopied ? "Copied!" : "Copy message"}
+                  </button>
+                ) : null}
                 {publishedAt ? (
                   <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
                     Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
@@ -897,6 +909,14 @@ export function WizardGenerateStep() {
                           </svg>
                           Telegram
                         </a>
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyClientShareMessage()}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
+                        >
+                          <CopyIcon />
+                          {clientShareMessageCopied ? "Copied!" : "Copy message"}
+                        </button>
                         {driveSaveUrl ? (
                           <button
                             type="button"
