@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
@@ -9,16 +9,10 @@ import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
 import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 import type { ReportTypeValue } from "../types";
 import {
-  readClientWizardPreferences,
-  saveClientWizardPreferences,
-} from "../client-wizard-preferences";
-
-function importDownloadInstructionsStartExpanded(clientId: string): boolean {
-  const prefs = readClientWizardPreferences(clientId);
-  if (prefs?.importDownloadInstructionsCollapsed) return false;
-  if (prefs?.generateBaseline) return false;
-  return true;
-}
+  importDownloadInstructionsCollapsedLocally,
+  isReturningImportClient,
+  rememberImportDownloadInstructionsCollapsed,
+} from "../import-download-instructions-state";
 
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
@@ -45,7 +39,9 @@ export function WizardImportDownloadInstructions({
   clientTimezone: string;
 }) {
   const panelId = useId();
-  const [open, setOpen] = useState(() => importDownloadInstructionsStartExpanded(clientId));
+  const locallyCollapsed = importDownloadInstructionsCollapsedLocally(clientId);
+  const [open, setOpen] = useState(false);
+  const [resolved, setResolved] = useState(locallyCollapsed);
 
   const guidance = wizardExportGuidanceForReportType({
     reportType,
@@ -54,22 +50,69 @@ export function WizardImportDownloadInstructions({
   });
   const platformLabel = getPlatformLabel(platform);
 
-  const setCollapsedPreference = useCallback(
-    (collapsed: boolean) => {
-      if (collapsed) {
-        saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
+  const collapseAndRemember = useCallback(() => {
+    rememberImportDownloadInstructionsCollapsed(clientId);
+  }, [clientId]);
+
+  useEffect(() => {
+    if (importDownloadInstructionsCollapsedLocally(clientId)) {
+      setOpen(false);
+      setResolved(true);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/clients/${clientId}/wizard-generate-baseline`);
+        if (!res.ok) {
+          if (!cancelled) {
+            setOpen(false);
+            setResolved(true);
+          }
+          return;
+        }
+        const json = (await res.json()) as {
+          baseline?: unknown;
+          completedReportCount?: number;
+        };
+        if (cancelled) return;
+
+        const returning = isReturningImportClient({
+          baseline: json.baseline ?? null,
+          completedReportCount:
+            typeof json.completedReportCount === "number" ? json.completedReportCount : 0,
+        });
+
+        if (returning) {
+          setOpen(false);
+          collapseAndRemember();
+        } else {
+          setOpen(true);
+        }
+        setResolved(true);
+      } catch {
+        if (!cancelled) {
+          setOpen(false);
+          setResolved(true);
+        }
       }
-    },
-    [clientId],
-  );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, collapseAndRemember]);
 
   function toggleOpen() {
     setOpen((prev) => {
       const next = !prev;
-      if (!next) setCollapsedPreference(true);
+      if (!next) collapseAndRemember();
       return next;
     });
   }
+
+  const showExpandedBody = open && resolved;
 
   return (
     <section className="text-[13px] leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
@@ -78,7 +121,7 @@ export function WizardImportDownloadInstructions({
           type="button"
           id="wizard-download-instructions-heading"
           className="flex w-full items-center justify-between gap-2 text-left"
-          aria-expanded={open}
+          aria-expanded={showExpandedBody}
           aria-controls={panelId}
           onClick={toggleOpen}
         >
@@ -87,11 +130,11 @@ export function WizardImportDownloadInstructions({
             {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
           </span>
           <ChevronDownIcon
-            className={`h-4 w-4 shrink-0 text-dash-ink-secondary transition-transform ${open ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-dash-ink-secondary transition-transform ${showExpandedBody ? "rotate-180" : ""}`}
           />
         </button>
 
-        {open ? (
+        {showExpandedBody ? (
           <div id={panelId} className="mt-2 space-y-2">
             {platform === "META" ? (
               <p>

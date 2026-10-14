@@ -25,7 +25,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const baseline = parseWizardGenerateBaseline(client.wizardGenerateBaseline);
-    return NextResponse.json({ ok: true, baseline });
+    const completedReportCount = await prisma.report.count({
+      where: { clientId: id, status: "COMPLETE" },
+    });
+    return NextResponse.json({ ok: true, baseline, completedReportCount });
   } catch (err) {
     return apiErrorResponse(err, "wizard-generate-baseline:get");
   }
