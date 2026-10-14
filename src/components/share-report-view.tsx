@@ -700,7 +700,7 @@ export function ShareReportView({
   data: ShareReportData;
   shareToken?: string;
   mode?: "share" | "print";
-  /** Prefix for /metric-icons in PDF export (e.g. https://nextreport.in). */
+  /** Prefix for /metric-icons on the share page (e.g. https://nextreport.in). */
   assetBaseUrl?: string;
 }) {
   const isPrint = mode === "print";

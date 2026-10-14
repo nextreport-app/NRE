@@ -195,7 +195,7 @@ export function AccountSettingsForm({
           })}
         </div>
         <p className="mt-2 text-[13px] text-dash-ink-secondary">
-          Applies to live share links, PDF exports, and client emails for reports you generate from
+          Applies to live share links and client emails for reports you generate from
           now on. Included on free trial, Agency, and Professional plans.
         </p>
       </fieldset>

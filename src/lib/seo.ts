@@ -28,7 +28,6 @@ export const DEFAULT_KEYWORDS = [
   "meta ads powerpoint report",
   "csv to powerpoint",
   "csv to pptx",
-  "csv to pdf",
   "meta marketing api reporting",
   "google ads api sync",
   "tiktok marketing api",
@@ -137,7 +136,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -159,7 +158,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
     images: ogImages(),
   },
   twitter: {
@@ -217,7 +216,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and PDF exports in under two minutes. Google, TikTok, and GA4 launching soon.",
+        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Google, TikTok, and GA4 launching soon.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -247,19 +246,19 @@ export const HOME_JSON_LD = {
       offers: [
         {
           "@type": "Offer",
-          price: "699",
+          price: "799",
           priceCurrency: "INR",
-          description: `${getPlanDisplayName("starter")} plan from ₹699/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from ₹799/month with 7-day free trial`,
         },
         {
           "@type": "Offer",
-          price: "8",
+          price: "9",
           priceCurrency: "USD",
-          description: `${getPlanDisplayName("starter")} plan from $8/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from $9/month with 7-day free trial`,
         },
       ],
       description:
-        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and Google Slides export with AI-written insights.",
       featureList: [
         "Meta Ads CSV import",
         "Meta Ads CSV upload",
@@ -267,7 +266,6 @@ export const HOME_JSON_LD = {
         "TikTok CSV import (launching soon)",
         "Google Analytics 4 website reporting (launching soon)",
         "CSV to PowerPoint (.pptx)",
-        "CSV to PDF",
         "Live browser share link",
         "AI campaign summaries",
       ],
@@ -358,7 +356,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I white-label reports for my clients?",
     answer:
-      "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely.",
+      "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
   },
 ];
 

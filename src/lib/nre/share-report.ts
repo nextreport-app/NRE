@@ -171,7 +171,7 @@ export interface ShareReportData {
   metricGuide: LegendEntry[];
   /** Account/agency name from User.agencyName — null when the generating user never set one (see reports/route.ts). Drives the cover slide "Prepared by" line. */
   agencyName: string | null;
-  /** Snapshotted at generation — controls NextReport vs agency vs hidden branding on share/PDF. */
+  /** Snapshotted at generation — controls NextReport vs agency vs hidden branding on share links. */
   reportBranding?: ReportBrandingSettings;
   generatedAt: string;
   /** Which sections appear on the live link / regenerated PPT — all true when omitted (legacy reports). */

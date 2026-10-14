@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/password-reset-email";
 import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 import { findUserByEmail } from "@/lib/find-user-by-email";
-import { appBaseUrl } from "@/lib/pdf/app-base-url";
+import { appBaseUrl } from "@/lib/app-base-url";
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 

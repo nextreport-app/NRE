@@ -1,4 +1,4 @@
-/** Canonical app origin for absolute asset URLs in PDF/HTML export. */
+/** Canonical app origin for absolute asset URLs in emails and share pages. */
 export function appBaseUrl(): string {
   if (process.env.VERCEL_ENV === "production") {
     return "https://nextreport.in";

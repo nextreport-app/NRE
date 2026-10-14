@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMetadata({
 const DEMO_POINTS = [
   "Live walkthrough of the 4-step report wizard",
   "CSV workflow and report types for your agency",
-  "Branded .pptx, live link, PDF, and Google Drive export",
+  "Branded .pptx, live link, Google Slides, and Google Drive export",
   "Agency plan limits, client setup, and billing Q&A",
 ];
 

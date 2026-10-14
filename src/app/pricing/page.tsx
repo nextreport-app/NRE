@@ -11,7 +11,7 @@ import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
   path: "/pricing",
 });
 
@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: "Can I hide NextReport branding on client reports?",
-    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
+    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
   },
   {
     q: "Which platforms are live today?",
@@ -106,7 +106,7 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta Ads reporting — CSV upload, then share a live link, download a PDF, or export PowerPoint (.pptx).
+            Meta Ads reporting — CSV upload, then share a live link, download PowerPoint (.pptx), or save to Google Slides.
           </p>
         </div>
 

@@ -94,7 +94,7 @@ export interface ReportUploadWizardProps {
   showTikTokOption?: boolean;
   clientMonthlyBudget?: number | null;
   clientShowBudgetPacingOnCover?: boolean;
-  /** Account white-label — cover slide + share/PDF/email (see report-branding.ts). */
+  /** Account white-label — cover slide + share/email (see report-branding.ts). */
   initialAgencyName?: string | null;
   initialReportBrandingMode?: ReportBrandingMode;
   initialShowAgencyNameOnCover?: boolean;

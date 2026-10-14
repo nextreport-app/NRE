@@ -20,7 +20,7 @@ export function SiteChromeFooter() {
   const pathname = usePathname();
   const { marketing, footer, linkLabel } = useSiteCopy();
 
-  if (pathname?.startsWith("/r/") || pathname?.startsWith("/print/")) return null;
+  if (pathname?.startsWith("/r/")) return null;
 
   const productLinks = filterBetaLinks(FOOTER_PRODUCT_LINKS, BETA_HIDE_PRICING).map((link) => ({
     href: link.href,
