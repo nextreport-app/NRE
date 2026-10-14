@@ -45,9 +45,9 @@ const FRAMES: ExplainerFrame[] = [
   {
     step: "5 / 5",
     title: "Generate & share",
-    caption: "Download .pptx, share a live link, export PDF, or save to Google Drive — under 2 minutes.",
+    caption: "Download .pptx, share a live link, or save to Google Drive — under 2 minutes.",
     voiceoverScript:
-      "Hit generate and deliver a branded PowerPoint, live browser link, or PDF — often in under two minutes.",
+      "Hit generate and deliver a branded PowerPoint or live browser link — often in under two minutes.",
   },
 ];
 
@@ -105,7 +105,7 @@ function MockWizardPanel({ frameIndex }: { frameIndex: number }) {
         Weekly Performance Report · Last 7 days
       </div>
       <div className="grid grid-cols-2 gap-1">
-        {["Download .pptx", "Live link", "Export PDF", "Google Drive"].map((action) => (
+        {["Download .pptx", "Live link", "Google Slides", "Google Drive"].map((action) => (
           <span key={action} className="rounded bg-navy-panel px-2 py-1 text-center text-[9px] text-ink-secondary">
             {action}
           </span>

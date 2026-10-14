@@ -15,8 +15,8 @@ const ANNUAL_PRICES: Record<BillablePlanId, Record<PricingCurrency, string>> = {
 };
 
 const MONTHLY_PRICES: Record<BillablePlanId, Record<PricingCurrency, string>> = {
-  starter: { INR: "₹699", USD: "$8" },
-  professional: { INR: "₹1,699", USD: "$20" },
+  starter: { INR: "₹799", USD: "$9" },
+  professional: { INR: "₹1,299", USD: "$15" },
 };
 
 const PLAN_OPTIONS: { id: BillablePlanId; highlighted?: boolean }[] = [

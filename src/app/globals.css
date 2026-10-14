@@ -601,7 +601,7 @@ body:has(#light-preview-page) .whatsapp-float {
    since :has() isn't supported in every browser/WebView a shared link might
    be opened in. */
 
-/* PDF export — one slide per page when Puppeteer prints /print/r/[token]. */
+/* Browser print — one slide per page when printing a share link from the browser. */
 @media print {
   .print-slide {
     break-after: page;

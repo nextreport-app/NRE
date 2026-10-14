@@ -10,13 +10,13 @@ import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 const ANNUAL_PRICES = {
-  starter: { inr: "₹6,710", usd: "$77" },
-  professional: { inr: "₹16,310", usd: "$192" },
+  starter: { inr: "₹7,670", usd: "$86" },
+  professional: { inr: "₹12,470", usd: "$144" },
 } as const;
 
 const MONTHLY_PRICES = {
-  starter: { inr: "₹699", usd: "$8" },
-  professional: { inr: "₹1,699", usd: "$20" },
+  starter: { inr: "₹799", usd: "$9" },
+  professional: { inr: "₹1,299", usd: "$15" },
 } as const;
 
 function CheckIcon() {

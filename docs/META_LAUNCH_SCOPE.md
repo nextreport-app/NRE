@@ -10,7 +10,7 @@
 | **Platform** | Meta Ads only |
 | **Ingestion** | Manual CSV upload + Meta Marketing API sync (must produce identical calculations — see `dc-credit-firm-api-parity.test.ts`) |
 | **Report types** | Weekly, Monthly, Yesterday (Daily), Comparison, Multi-Month Historical, Daily Performance (day breakdown) |
-| **Output** | Branded PPTX, share link, PDF, Google Drive, AI summaries |
+| **Output** | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
 
 ## Deferred until Meta v1 is stable
 

@@ -33,15 +33,15 @@ export interface PlanDefinition {
   amountUsdCents: number;
 }
 
-// ₹699 / $8 per month (Agency) and ₹1,699 / $20 per month (Professional) —
+// ₹799 / $9 per month (Agency) and ₹1,299 / $15 per month (Professional) —
 // matches the /pricing page's displayed prices exactly in both currencies.
 // Prices exclude GST (18% on SaaS in India, added at checkout for INR).
 // Keeping the amount here (not trusted from the client) is what stops a
 // tampered frontend request from creating an order for less than the real
 // price, in either currency.
 export const PLANS: Record<PlanId, PlanDefinition> = {
-  starter: { name: getPlanDisplayName("starter"), amountPaise: 69_900, amountUsdCents: 800 },
-  professional: { name: getPlanDisplayName("professional"), amountPaise: 169_900, amountUsdCents: 2_000 },
+  starter: { name: getPlanDisplayName("starter"), amountPaise: 79_900, amountUsdCents: 900 },
+  professional: { name: getPlanDisplayName("professional"), amountPaise: 129_900, amountUsdCents: 1_500 },
 };
 
 export function isPlanId(value: unknown): value is PlanId {

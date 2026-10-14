@@ -24,7 +24,7 @@ What it is not:
 - Supermetrics / Swydo pricing ($100+/mo)
 - A full marketing suite
 
-**Agency plan from ₹699 / $8 per month** — because small teams should not pay enterprise prices to skip busywork.
+**Agency plan from ₹799 / $9 per month** — because small teams should not pay enterprise prices to skip busywork.
 
 **Free 7-day trial** (no card): https://nextreport.in/signup
 
@@ -52,7 +52,7 @@ Trial: https://nextreport.in/signup
 
 2/ I couldn't find a tool that outputs *the deck agencies actually send* — not another client dashboard. So I built NextReport.in
 
-3/ Upload your Ads Manager CSV → branded PowerPoint / browser link / Slides + AI summary. Often under 2 min. Meta live now. From ₹699 / $8/mo.
+3/ Upload your Ads Manager CSV → branded PowerPoint / browser link / Slides + AI summary. Often under 2 min. Meta live now. From ₹799 / $9/mo.
 
 4/ Free trial: https://nextreport.in/signup
 
@@ -64,7 +64,7 @@ Hi everyone — I'm a Meta ads specialist and built **NextReport.in** for agenci
 
 **Problem:** 20–30 min per client × many clients = hours of copy-paste from Ads Manager.
 
-**Solution:** Upload CSV → auto-filled branded report (PPT + share link) with AI summary. **White-label** included. **Agency plan ₹699/mo.**
+**Solution:** Upload CSV → auto-filled branded report (PPT + share link) with AI summary. **White-label** included. **Agency plan ₹799/mo.**
 
 Meta CSV reporting is **live**. Google/TikTok/GA4 coming soon.
 
@@ -84,7 +84,7 @@ I manage Meta at scale (remote for a US agency). Reporting used to be **2–3 ho
 
 So I built **NextReport**: upload the **CSV you already export**, get a **branded .pptx, live link, or Google Slides** + **AI insights** in about **2 minutes**.
 
-Not Supermetrics pricing. **From $8/mo.** White-label included.
+Not Supermetrics pricing. **From $9/mo.** White-label included.
 
 If you run Meta for clients and still rebuild decks by hand — try one real CSV on the free trial (no card):
 
@@ -106,7 +106,7 @@ Export CSV → open PPT → replace every card → write summary → WhatsApp or
 
 **NextReport.in** — upload Ads Manager CSV → **client-ready deck** (PowerPoint + share link) with **AI summary**, often under **2 minutes**. **White-label** so your brand shows, not ours.
 
-**Agency plan from ₹699/month.** 7-day free trial, no credit card.
+**Agency plan from ₹799/month.** 7-day free trial, no credit card.
 
 Built by a Meta specialist who got tired of doing this manually for US clients from India.
 
@@ -130,7 +130,7 @@ That’s not “nice to have” — it’s **billable capacity** (INR or USD) yo
 
 No new dashboard for clients. Same deliverable you send today, faster.
 
-From **₹699 / $8 per month**. Free trial: https://nextreport.in/signup
+From **₹799 / $9 per month**. Free trial: https://nextreport.in/signup
 
 If the numbers match your Ads Manager export for one week, it pays for itself in the first day.
 
@@ -168,7 +168,7 @@ It’s live with a free trial. I’m **not** claiming perfect parity with every 
 
 1. Do you still build **PPT/Google Slides**, or only dashboards?
 2. What would make you **trust** automated numbers vs Ads Manager?
-3. Is **$8/mo** insane, fair, or too cheap to trust?
+3. Is **$9/mo** insane, fair, or too cheap to trust?
 
 Link if allowed: https://nextreport.in/signup — happy to answer export/setup questions in comments without pitching.
 

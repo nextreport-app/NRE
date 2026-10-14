@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { appBaseUrl } from "@/lib/pdf/app-base-url";
+import { appBaseUrl } from "@/lib/app-base-url";
 
 describe("password reset token hashing", () => {
   it("uses stable sha256 hex for lookup", () => {
