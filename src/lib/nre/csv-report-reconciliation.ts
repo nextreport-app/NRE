@@ -457,10 +457,13 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       csvMtdResults > 0 && mtdAttributedSpend > 0 ? mtdAttributedSpend / csvMtdResults : 0;
     const reportMtdResults = parseCellNum(primaryCol.value);
     const reportMtdSpend = parseCellNum(report.mtdRow.spend);
+    const mtdCprFromTable = parseCellNum(primaryCol.cprValue);
     const reportMtdCpr =
-      reportMtdResults > 0 && reportMtdSpend > 0
-        ? reportMtdSpend / reportMtdResults
-        : parseCellNum(primaryCol.cprValue);
+      mtdCprFromTable > 0
+        ? mtdCprFromTable
+        : reportMtdResults > 0 && reportMtdSpend > 0
+          ? reportMtdSpend / reportMtdResults
+          : 0;
 
     checks.push(
       ...scopedChecks({
@@ -477,6 +480,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCpr: reportMtdCpr,
         csvCpr: csvMtdCpr,
         reportCprDisplay: primaryCol.cprValue,
+        cprReportSpend: mtdAttributedSpend,
+        cprCsvSpend: mtdAttributedSpend,
         canAlignRef,
         csvStandardResults: csvStdMtdResults,
         csvExportResults: csvExportMtdResults,
@@ -586,14 +591,19 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     );
     const reportWeeklySpend = reportPeriodSpendFromSlides(report);
     const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
+    const blendedSlideCpr = blendedCprFromSlides(report, resultLabel);
     const reportWeeklyCpr =
-      reportWeeklyResults > 0 && reportWeeklySpend > 0
-        ? reportWeeklySpend / reportWeeklyResults
-        : blendedCprFromSlides(report, resultLabel);
+      blendedSlideCpr > 0
+        ? blendedSlideCpr
+        : reportWeeklyResults > 0 && reportWeeklySpend > 0
+          ? reportWeeklySpend / reportWeeklyResults
+          : 0;
     const slideCpr =
-      reportWeeklyResults > 0 && reportWeeklySpend > 0
-        ? fmtCurrency(reportWeeklyCpr, currencySymbol)
-        : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+      blendedSlideCpr > 0
+        ? fmtCurrency(blendedSlideCpr, currencySymbol)
+        : reportWeeklyResults > 0 && reportWeeklySpend > 0
+          ? fmtCurrency(reportWeeklyCpr, currencySymbol)
+          : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
     const csvWeeklyCpr =
       csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
     const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";
@@ -630,6 +640,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         countingMode,
         calendarComplete: weeklyCalendarComplete,
         calendarIncompleteNote: weeklyCalendarNote,
+        cprReportSpend: weeklyAttributedSpend,
+        cprCsvSpend: weeklyAttributedSpend,
       }),
     );
   }

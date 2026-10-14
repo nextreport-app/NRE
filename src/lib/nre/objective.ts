@@ -1104,7 +1104,8 @@ function namedCampaignObjectiveFromRows(rows: MetricRow[]): ResultLabels | null 
   return (
     reachObjectiveIfNamedCampaign(rows) ??
     metaFormLeadsObjectiveIfNamedCampaign(rows) ??
-    linkClicksObjectiveIfNamedCampaign(rows)
+    linkClicksObjectiveIfNamedCampaign(rows) ??
+    leadObjectiveFromCampaignNameOnly(rows)
   );
 }
 

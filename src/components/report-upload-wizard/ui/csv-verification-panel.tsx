@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 
@@ -9,6 +10,7 @@ type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
   clientId?: string;
+  onReviewCampaignObjectives?: () => void;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -27,8 +29,14 @@ function verifiedScopesLabel(scopes: string[] | undefined): string {
   return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
 }
 
-export function CsvVerificationPanel({ verification, refreshing, clientId }: Props) {
-  const [open, setOpen] = useState(false);
+export function CsvVerificationPanel({
+  verification,
+  refreshing,
+  clientId,
+  onReviewCampaignObjectives,
+}: Props) {
+  const copy = useWizardCopy();
+  const [open, setOpen] = useState(true);
 
   if (!verification) return null;
 
@@ -150,11 +158,22 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
               </dl>
             </div>
           ))}
-          <p className="text-[12px] leading-relaxed text-dash-ink-muted">
-            Generate is blocked until these match or you fix the CSV / report setup (same checks as comparing to Ads
-            Manager before send).
-          </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+          <p className="text-[12px] leading-relaxed text-dash-ink-muted">{copy.csvMismatchBlocked}</p>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[12px] leading-relaxed text-dash-ink-secondary">
+            <li>{copy.csvMismatchStepObjectives}</li>
+            <li>{copy.csvMismatchStepExport}</li>
+            <li>{copy.csvMismatchStepSupport}</li>
+          </ol>
+          {onReviewCampaignObjectives ? (
+            <button
+              type="button"
+              onClick={onReviewCampaignObjectives}
+              className="mt-3 text-[13px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
+            >
+              {copy.csvMismatchReviewObjectives}
+            </button>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             <SupportTicketLink clientId={clientId} openInNewTab className="nre-wizard-callout-warn__title underline hover:no-underline" />
             <span className="text-dash-ink-muted">·</span>
             <WhatsAppChatLink

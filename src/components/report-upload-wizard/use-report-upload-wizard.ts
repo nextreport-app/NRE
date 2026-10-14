@@ -145,6 +145,7 @@ export function useReportUploadWizard({
   initialReportBrandingMode = "nextreport",
   initialShowAgencyNameOnCover = true,
   accountDisplayName = null,
+  wizardClients = [],
 }: ReportUploadWizardProps) {
   const { locale } = useSiteTheme();
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
@@ -2964,6 +2965,7 @@ export function useReportUploadWizard({
   return {
     clientId,
     clientName,
+    wizardClients,
     clientTimezone,
     currencySymbol,
     hasGoogleDriveConnected,
