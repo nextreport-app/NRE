@@ -1,17 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
-import {
-  hasSeenImportDownloadInstructions,
-  markImportDownloadInstructionsSeen,
-} from "../wizard-download-instructions-storage";
 import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
 import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
 import type { ReportTypeValue } from "../types";
+import {
+  readClientWizardPreferences,
+  saveClientWizardPreferences,
+} from "../client-wizard-preferences";
+
+function importDownloadInstructionsStartExpanded(clientId: string): boolean {
+  const prefs = readClientWizardPreferences(clientId);
+  if (prefs?.importDownloadInstructionsCollapsed) return false;
+  if (prefs?.generateBaseline) return false;
+  return true;
+}
 
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
@@ -27,15 +34,19 @@ function ChevronDownIcon({ className }: { className?: string }) {
 
 /** Shown on Import just above CSV upload / API sync — right before the user adds data. */
 export function WizardImportDownloadInstructions({
+  clientId,
   reportType,
   platform,
   clientTimezone,
 }: {
+  clientId: string;
   reportType: ReportTypeValue;
   platform: Platform;
   clientTimezone: string;
 }) {
   const panelId = useId();
+  const [open, setOpen] = useState(() => importDownloadInstructionsStartExpanded(clientId));
+
   const guidance = wizardExportGuidanceForReportType({
     reportType,
     platform,
@@ -43,19 +54,22 @@ export function WizardImportDownloadInstructions({
   });
   const platformLabel = getPlatformLabel(platform);
 
-  const [expanded, setExpanded] = useState(true);
+  const setCollapsedPreference = useCallback(
+    (collapsed: boolean) => {
+      if (collapsed) {
+        saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
+      }
+    },
+    [clientId],
+  );
 
-  useEffect(() => {
-    if (hasSeenImportDownloadInstructions()) {
-      setExpanded(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      markImportDownloadInstructionsSeen();
-    };
-  }, []);
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev;
+      if (!next) setCollapsedPreference(true);
+      return next;
+    });
+  }
 
   return (
     <section className="text-[13px] leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
@@ -64,20 +78,20 @@ export function WizardImportDownloadInstructions({
           type="button"
           id="wizard-download-instructions-heading"
           className="flex w-full items-center justify-between gap-2 text-left"
-          aria-expanded={expanded}
+          aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setExpanded((open) => !open)}
+          onClick={toggleOpen}
         >
           <span className="flex min-w-0 flex-wrap items-center text-[14px] font-semibold text-dash-ink">
             Download instructions
             {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
           </span>
           <ChevronDownIcon
-            className={`h-4 w-4 shrink-0 text-dash-ink-secondary transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-dash-ink-secondary transition-transform ${open ? "rotate-180" : ""}`}
           />
         </button>
 
-        {expanded ? (
+        {open ? (
           <div id={panelId} className="mt-2 space-y-2">
             {platform === "META" ? (
               <p>
@@ -95,7 +109,9 @@ export function WizardImportDownloadInstructions({
               </Link>
             </p>
           </div>
-        ) : null}
+        ) : (
+          <p className="mt-1 text-[12px] text-dash-ink-muted">Expand if you need export steps for this report type.</p>
+        )}
       </div>
     </section>
   );

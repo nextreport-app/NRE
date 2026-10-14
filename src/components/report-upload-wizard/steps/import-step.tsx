@@ -184,6 +184,7 @@ export function WizardImportStep() {
           ) : null}
 
           <WizardImportDownloadInstructions
+            clientId={clientId}
             reportType={reportType}
             platform={selectedPlatformCard}
             clientTimezone={clientTimezone}
