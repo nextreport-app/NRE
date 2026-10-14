@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/toast";
-import { shareReportUrl, formatReportDate } from "@/lib/report-list-shared";
+import { reportHistoryMetaSubtitle, shareReportUrl } from "@/lib/report-list-shared";
 
 export interface ReportHistoryItem {
   id: string;
@@ -17,10 +17,6 @@ export interface ReportHistoryItem {
   shareToken: string | null;
   /** Report.displayName, already resolved to the auto-generated default (lib/nre/report-display-name.ts) when no custom name was saved — always a non-empty display string, never re-derived client-side. */
   displayName: string;
-}
-
-function weekPeriodLabel(r: ReportHistoryItem): string {
-  return r.weekStart && r.weekEnd ? `${r.weekStart} – ${r.weekEnd}` : "—";
 }
 
 /**
@@ -49,11 +45,15 @@ export function ReportHistoryList({
   clientId,
   initialReports,
   hasMoreReports = false,
+  clientTimezone,
+  reportRetentionDays,
 }: {
   clientId: string;
   initialReports: ReportHistoryItem[];
   /** True when the client has reports beyond the ones shown here — see clients/[id]/page.tsx's total-count query. Drives the "View all reports →" link. */
   hasMoreReports?: boolean;
+  clientTimezone: string;
+  reportRetentionDays: number;
 }) {
   const { showToast } = useToast();
   const [reports, setReports] = useState(initialReports);
@@ -236,9 +236,18 @@ export function ReportHistoryList({
                     </button>
                   </p>
                 )}
-                <p className="mt-0.5 text-[13px] text-dash-ink-secondary">
-                  Generated {formatReportDate(r.createdAt)} · Week: {weekPeriodLabel(r)}
-                </p>
+                {(() => {
+                  const meta = reportHistoryMetaSubtitle(r, {
+                    timeZone: clientTimezone,
+                    retentionDays: reportRetentionDays,
+                  });
+                  return (
+                    <>
+                      <p className="mt-1 text-[14px] font-medium tabular-nums text-dash-ink">{meta.generatedLine}</p>
+                      <p className="mt-0.5 text-[13px] text-dash-ink-secondary">{meta.detailLine}</p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

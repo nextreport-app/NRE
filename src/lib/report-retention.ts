@@ -4,7 +4,7 @@ import { deleteReportFile } from "@/lib/storage";
 import type { PlanId } from "@/lib/subscription";
 
 /** Default and legacy constant — existing imports keep working. */
-export const DEFAULT_REPORT_RETENTION_DAYS = 30;
+export const DEFAULT_REPORT_RETENTION_DAYS = 7;
 export const REPORT_RETENTION_DAYS = DEFAULT_REPORT_RETENTION_DAYS;
 
 /** Selectable retention windows (days). Professional plans may use the full list. */

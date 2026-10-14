@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { FullReportHistoryList } from "@/components/full-report-history-list";
+import { DEFAULT_REPORT_RETENTION_DAYS, normalizeReportRetentionDays } from "@/lib/report-retention";
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 const PAGE_SIZE = 20;
 const REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE"] as const;
@@ -69,7 +71,7 @@ export default async function ClientAllReportsPage({
 
   const requestedPage = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
-  const [total, reports] = await Promise.all([
+  const [total, reports, owner] = await Promise.all([
     prisma.report.count({ where }),
     prisma.report.findMany({
       where,
@@ -77,7 +79,15 @@ export default async function ClientAllReportsPage({
       skip: (requestedPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { reportRetentionDays: true, planId: true, trialEndsAt: true, email: true },
+    }),
   ]);
+
+  const reportRetentionDays = owner
+    ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
+    : DEFAULT_REPORT_RETENTION_DAYS;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
@@ -106,7 +116,8 @@ export default async function ClientAllReportsPage({
         </Link>
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">All Reports</h1>
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
-          {client.accountName} · {total} report{total === 1 ? "" : "s"}
+          {client.accountName} · {total} report{total === 1 ? "" : "s"} · Auto-delete after {reportRetentionDays} days
+          (change in Account settings)
         </p>
       </div>
 
@@ -157,7 +168,12 @@ export default async function ClientAllReportsPage({
           {hasActiveFilters ? "No reports match these filters." : "No reports yet."}
         </p>
       ) : (
-        <FullReportHistoryList clientId={client.id} initialReports={reportItems} />
+        <FullReportHistoryList
+          clientId={client.id}
+          initialReports={reportItems}
+          clientTimezone={client.timezone}
+          reportRetentionDays={reportRetentionDays}
+        />
       )}
 
       {totalPages > 1 && (
