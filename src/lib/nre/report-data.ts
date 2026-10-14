@@ -1011,6 +1011,7 @@ function buildLast30DaysChartSlide(params: {
   );
   const chartRawRows = filterRawRowsToRange(params.filteredMtdDailyRows, chartRange.startIso, chartRange.endIso);
   const chartRows: AggRow[] = aggregateRows(chartRawRows);
+  const chartRawGroups = groupRawRowsByCampaign(chartRawRows);
   const actualChartRangeForReach = computeActualDataRangeInWindow(chartRawRows, chartRange) ?? chartRange;
   const chartReachOpts: ReachAggregationOptions | undefined = params.metaCampaignPeriodReach
     ? {
@@ -1038,6 +1039,7 @@ function buildLast30DaysChartSlide(params: {
   let totalAllSpend = 0;
   const chartCampaignsAll: ChartCampaignData[] = chartCampaignNames.map((name) => {
     const rows = chartGroups[name] || [];
+    const rawRowsForObjective = chartRawGroups[name] || [];
     const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
     const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
     const avgCtr = average(ctrs);
@@ -1047,12 +1049,13 @@ function buildLast30DaysChartSlide(params: {
     };
     const resLabel = chartObjective.resultLabel;
     const cprLabel = chartObjective.costLabel;
-    let { count: results, cpr } = comparisonObjectiveTotals(rows, chartObjective, resultCountingMode, {
+    const objectiveCountRows = rawRowsForObjective.length > 0 ? rawRowsForObjective : rows;
+    let { count: results, cpr } = comparisonObjectiveTotals(objectiveCountRows, chartObjective, resultCountingMode, {
       ...chartReachOpts,
       scope: "campaign",
     });
-    if (resLabel === "REACH" && rows.length > 0) {
-      const periodReach = aggregateReach(rows, chartReachOpts);
+    if (resLabel === "REACH" && objectiveCountRows.length > 0) {
+      const periodReach = aggregateReach(objectiveCountRows, chartReachOpts);
       if (periodReach > 0) {
         results = periodReach;
         cpr = spend > 0 ? (spend * 1000) / periodReach : 0;
@@ -1096,14 +1099,14 @@ function buildLast30DaysChartSlide(params: {
     campaignSpendByObjective.set(c.resLabel, (campaignSpendByObjective.get(c.resLabel) ?? 0) + c.spend);
   });
   const chartObjectiveGroups = groupResultsByCampaignObjective(
-    chartRows,
+    chartRawRows as MetricRow[],
     chartObjectiveMap,
     undefined,
     resultCountingMode,
     chartReachOpts,
   );
   const chartSnapshotRow = computeTableRow(
-    chartRows as MetricRow[],
+    chartRawRows as MetricRow[],
     params.currencySymbol,
     false,
     chartObjectiveMap,
@@ -1467,10 +1470,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   );
   // Combined Total "current period" row — same window as campaign slides for
   // DAILY (yesterday only); full MTD for WEEKLY; calendar span for MONTHLY+.
-  const combinedTotalCurrentRows = isDailyReport ? primaryRows : mtdRows;
   const combinedTotalCurrentRange = isDailyReport
     ? (displayWeeklyRange ?? resolvedWeeklyRange ?? mtdCalendarRange)
     : mtdCalendarRange;
+  const combinedTotalRawInRange = filterNreRowsByDateRange(filteredMtdDailyRows, combinedTotalCurrentRange);
+  const combinedTotalCurrentRows: MetricRow[] = isDailyReport
+    ? primaryRawRows.length > 0
+      ? primaryRawRows
+      : primaryRows
+    : combinedTotalRawInRange;
   let mtdRow = computeTableRow(
     combinedTotalCurrentRows,
     currencySymbol,
@@ -1482,7 +1490,6 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     resultCountingMode,
     metaCampaignPeriodReach,
   );
-  const combinedTotalRawInRange = filterNreRowsByDateRange(filteredMtdDailyRows, combinedTotalCurrentRange);
   const actualCombinedTotalLabelRange = computeActualDataRangeInWindow(
     combinedTotalRawInRange,
     combinedTotalCurrentRange,
