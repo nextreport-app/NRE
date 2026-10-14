@@ -81,7 +81,6 @@ export function QuickEnquiryForm() {
       </div>
       <input
         type="tel"
-        required
         value={whatsapp}
         onChange={(ev) => setWhatsapp(ev.target.value)}
         placeholder={e.whatsappPlaceholder}
@@ -91,7 +90,6 @@ export function QuickEnquiryForm() {
       />
       <textarea
         required
-        minLength={10}
         rows={3}
         value={message}
         onChange={(ev) => setMessage(ev.target.value)}

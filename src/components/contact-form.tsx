@@ -123,12 +123,11 @@ export function ContactForm({
 
       <div>
         <label htmlFor="contact-whatsapp" className="mb-1 block text-sm text-ink-secondary">
-          WhatsApp Number
+          WhatsApp Number <span className="text-ink-muted">(optional)</span>
         </label>
         <input
           id="contact-whatsapp"
           type="tel"
-          required
           value={whatsapp}
           onChange={(e) => {
             setWhatsapp(e.target.value);
@@ -148,7 +147,7 @@ export function ContactForm({
           </p>
         ) : (
           <p id="contact-whatsapp-hint" className="mt-1 text-xs text-ink-muted">
-            Include country code (India +91, US +1, UK +44). We often reply faster on WhatsApp than email.
+            Optional — include country code if you add one (India +91, US +1, UK +44).
           </p>
         )}
       </div>
@@ -179,7 +178,6 @@ export function ContactForm({
         <textarea
           id="contact-message"
           required
-          minLength={10}
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
