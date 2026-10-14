@@ -18,6 +18,7 @@ import {
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import {
+  DEFAULT_REPORT_RETENTION_DAYS,
   normalizeReportRetentionDays,
   purgeExpiredReportsForUser,
 } from "@/lib/report-retention";
@@ -105,7 +106,7 @@ export default async function ClientDetailPage({
 
   const reportRetentionDays = owner
     ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
-    : 30;
+    : DEFAULT_REPORT_RETENTION_DAYS;
 
   let previousMonthCampaigns: string[] = [];
   let previousMonthCampaignSpend: Record<string, number> = {};
@@ -244,6 +245,8 @@ export default async function ClientDetailPage({
               clientId={client.id}
               initialReports={reportItems}
               hasMoreReports={reportCount > reportItems.length}
+              clientTimezone={client.timezone}
+              reportRetentionDays={reportRetentionDays}
             />
             {reportCount > reportItems.length ? (
               <Link

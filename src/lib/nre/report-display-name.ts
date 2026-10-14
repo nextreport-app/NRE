@@ -43,7 +43,8 @@ const MONTHS = [
  * are ≤12 (confirmed empirically: parseDate("08/05/2026") reads as May 8,
  * not August 5). This parses the known MM/DD/YYYY shape directly instead.
  */
-function formatWeekRange(weekStart: string, weekEnd: string): string {
+/** Human-readable period from stored MM/DD/YYYY weekStart/weekEnd (report history, share copy). */
+export function formatReportWeekRange(weekStart: string, weekEnd: string): string {
   const parse = (raw: string) => {
     const [month, day, year] = raw.split("/").map(Number);
     return { month, day, year };
@@ -83,5 +84,5 @@ export function defaultReportDisplayName(
     return periodLabel ? `${typeLabel} — ${periodLabel}` : typeLabel;
   }
   if (!weekStart || !weekEnd) return typeLabel;
-  return `${typeLabel} — ${formatWeekRange(weekStart, weekEnd)}`;
+  return `${typeLabel} — ${formatReportWeekRange(weekStart, weekEnd)}`;
 }
