@@ -42,10 +42,17 @@ describe("wizard-draft", () => {
       comparisonData: null,
       historicalData: null,
       dayBreakdownData: null,
-      mtdRange: null,
+      mtdRange: { startIso: "2026-10-01", endIso: "2026-10-13" },
+      weeklyOptions: {
+        last7: { startIso: "2026-10-07", endIso: "2026-10-13" },
+        prev7: { startIso: "2026-09-30", endIso: "2026-10-06" },
+        last14: { startIso: "2026-09-30", endIso: "2026-10-13" },
+      },
+      dateBounds: { minIso: "2026-09-01", maxIso: "2026-10-13" },
     });
     const loaded = loadWizardDraft(clientId);
     expect(loaded?.step).toBe(3);
     expect(loaded?.uploadSessionId).toBe("sess-1");
+    expect(loaded?.weeklyOptions?.last7.endIso).toBe("2026-10-13");
   });
 });
