@@ -2781,7 +2781,11 @@ export function useReportUploadWizard({
       return `Your day-by-day report will cover ${dayBreakdownData.rangeLabel}.`;
     }
     if (reportType === "WEEKLY" && weeklyRangeIso && mtdRange) {
-      return `Your weekly report will cover ${formatIsoRange(weeklyRangeIso)} with MTD from ${formatIsoRange(mtdRange)}.`;
+      const base = `Your weekly report will cover ${formatIsoRange(weeklyRangeIso)} with MTD from ${formatIsoRange(mtdRange)}`;
+      if (previewKind === "normal" && data?.chart) {
+        return `${base} and Last 30 days in a visual chart slide.`;
+      }
+      return `${base}.`;
     }
     if (reportType === "MONTHLY" && mtdRange) {
       return `Your monthly report will cover ${formatIsoRange(mtdRange)}.`;

@@ -32,8 +32,6 @@ import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { clientMonthlyBudgetSettingsHref } from "@/lib/nre/client-settings-navigation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
-import { WizardGenerateChartSlidePreview } from "../ui/wizard-generate-chart-slide-preview";
-
 function CoverBudgetClientSettingsLink({
   clientId,
   hasBudget,
@@ -67,7 +65,6 @@ export function WizardGenerateStep() {
     clientId,
     clientMonthlyBudget,
     clientName,
-    currencySymbol,
     clientTemplate,
     comparisonData,
     comparisonPeriodA,
@@ -552,14 +549,9 @@ export function WizardGenerateStep() {
           )}
 
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
-              <div className="space-y-4">
-                <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-                  <p className="nre-wizard-callout-success__label">Confirmed period</p>
-                  <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
-                </div>
-                {previewKind === "normal" && data?.chart ? (
-                  <WizardGenerateChartSlidePreview chart={data.chart} currencySymbol={currencySymbol} />
-                ) : null}
+              <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
+                <p className="nre-wizard-callout-success__label">Confirmed period</p>
+                <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
             ) : null}
 
