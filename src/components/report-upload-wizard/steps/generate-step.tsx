@@ -484,19 +484,6 @@ export function WizardGenerateStep() {
           )}
 
 
-          {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
-            <WizardCoverBudgetSection
-              clientId={clientId}
-              clientMonthlyBudget={clientMonthlyBudget}
-              coverBudgetPreviewLine={coverBudgetPreviewLine}
-              showBudgetOnCover={showBudgetOnCover}
-              onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
-              coverBudgetPacingWarning={coverBudgetPacingWarning}
-              budgetToggleSaving={budgetToggleSaving}
-              previewReady={Boolean(data)}
-            />
-          ) : null}
-
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
                 <p className="nre-wizard-callout-success__label">Confirmed period</p>
@@ -515,6 +502,19 @@ export function WizardGenerateStep() {
                   verification={csvVerification}
                   refreshing={previewRefreshing}
                   clientId={clientId}
+                />
+              ) : null}
+
+              {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
+                <WizardCoverBudgetSection
+                  clientId={clientId}
+                  clientMonthlyBudget={clientMonthlyBudget}
+                  coverBudgetPreviewLine={coverBudgetPreviewLine}
+                  showBudgetOnCover={showBudgetOnCover}
+                  onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
+                  coverBudgetPacingWarning={coverBudgetPacingWarning}
+                  budgetToggleSaving={budgetToggleSaving}
+                  previewReady={Boolean(data)}
                 />
               ) : null}
 
