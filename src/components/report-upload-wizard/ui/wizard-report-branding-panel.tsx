@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  REPORT_BRANDING_MODE_LABELS,
-  type ReportBrandingMode,
-} from "@/lib/report-branding";
+import type { ReportBrandingMode } from "@/lib/report-branding";
 import {
   markReportBrandingWizardCollapsed,
   reportBrandingWizardSummary,
   shouldExpandReportBrandingWizard,
 } from "@/lib/report-branding-wizard-ui";
 
-const SHARE_LINK_MODES: ReportBrandingMode[] = ["nextreport", "agency", "hidden"];
+const WIZARD_SHARE_LINK_OPTIONS: { mode: ReportBrandingMode; label: string }[] = [
+  { mode: "nextreport", label: "NextReport branding (default)" },
+  { mode: "agency", label: "My agency name on the link" },
+  { mode: "hidden", label: "No third-party branding" },
+];
 
 function DeliveryBadge({ children }: { children: string }) {
   return (
@@ -103,7 +104,7 @@ export function WizardReportBrandingPanel({
               <h5 className="text-[14px] font-semibold text-dash-ink">PowerPoint cover slide</h5>
             </div>
             <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-              Optional &quot;Prepared by …&quot; line on the first slide of the downloaded deck.
+              Optional &quot;Prepared by …&quot; line on the first slide of the deck.
             </p>
 
             <label className="mt-3 block text-[13px] font-medium text-dash-ink-secondary">
@@ -135,56 +136,41 @@ export function WizardReportBrandingPanel({
               <DeliveryBadge>Link</DeliveryBadge>
               <h5 className="text-[14px] font-semibold text-dash-ink">Browser share link</h5>
             </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-              How the live client page looks when you share the report URL (header, footer, and emails).
-            </p>
-
-            <fieldset className="mt-3">
-              <legend className="sr-only">Share link branding</legend>
-              <div className="space-y-2">
-                {SHARE_LINK_MODES.map((mode) => {
-                  const option = REPORT_BRANDING_MODE_LABELS[mode];
-                  const disabled = mode === "agency" && !trimmed;
+            <label className="mt-3 block text-[13px] font-medium text-dash-ink-secondary">
+              Branding on the client page
+              <select
+                value={reportBrandingMode}
+                disabled={saving}
+                onChange={(e) => onReportBrandingModeChange(e.target.value as ReportBrandingMode)}
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
+              >
+                {WIZARD_SHARE_LINK_OPTIONS.map((opt) => {
+                  const disabled = opt.mode === "agency" && !trimmed;
                   return (
-                    <label
-                      key={mode}
-                      className={`flex cursor-pointer gap-2.5 rounded-md border px-3 py-2.5 ${
-                        reportBrandingMode === mode
-                          ? "border-dash-accent bg-dash-accent/5"
-                          : "border-dash-border bg-dash-sidebar/30"
-                      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="wizardShareBranding"
-                        checked={reportBrandingMode === mode}
-                        disabled={disabled || saving}
-                        onChange={() => onReportBrandingModeChange(mode)}
-                        className="mt-0.5 shrink-0"
-                      />
-                      <span className="min-w-0">
-                        <span className="text-[13px] font-medium text-dash-ink">{option.title}</span>
-                        {mode === "nextreport" ? (
-                          <span className="ml-1.5 text-[11px] font-medium text-dash-ink-muted">(default)</span>
-                        ) : null}
-                        <span className="mt-0.5 block text-[12px] leading-snug text-dash-ink-muted">
-                          {option.description}
-                        </span>
-                      </span>
-                    </label>
+                    <option key={opt.mode} value={opt.mode} disabled={disabled}>
+                      {opt.label}
+                    </option>
                   );
                 })}
-              </div>
-            </fieldset>
+              </select>
+            </label>
+            {reportBrandingMode === "agency" && !trimmed ? (
+              <p className="mt-1 text-[12px] text-dash-ink-muted">Add your agency name above to use white-label on the link.</p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <p className="text-[13px] text-dash-ink-secondary">
-              <Link href="/account" className="font-medium text-dash-accent hover:underline">
+              <Link
+                href="/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-dash-accent hover:underline"
+              >
                 Account settings
               </Link>
-              {" — "}
-              agency logo and the same options anytime.
+              {" "}
+              (opens in a new tab) for agency logo.
             </p>
             <button
               type="button"

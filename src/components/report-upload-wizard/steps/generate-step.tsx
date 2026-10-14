@@ -29,30 +29,9 @@ import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
-import { clientMonthlyBudgetSettingsHref } from "@/lib/nre/client-settings-navigation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
-function CoverBudgetClientSettingsLink({
-  clientId,
-  hasBudget,
-}: {
-  clientId: string;
-  hasBudget: boolean;
-}) {
-  const href = clientMonthlyBudgetSettingsHref(clientId, { returnToWizard: true });
-  return (
-    <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-      <Link
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-medium text-dash-accent hover:underline"
-      >
-        {hasBudget ? "Edit monthly budget" : "Set monthly budget"} in Client Settings
-      </Link>
-    </p>
-  );
-}
+import { WizardCoverBudgetSection } from "../ui/wizard-cover-budget-section";
 
 export function WizardGenerateStep() {
   const copy = useWizardCopy();
@@ -505,73 +484,24 @@ export function WizardGenerateStep() {
           )}
 
 
-          {showStandardCoverBudget && (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-dash-ink">Cover slide budget</h4>
-              {clientMonthlyBudget != null && clientMonthlyBudget > 0 ? (
-                <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                  {coverBudgetPreviewLine ? (
-                    <p className="rounded-md border border-dash-border bg-dash-bg/80 px-4 py-3 text-[14px] leading-relaxed text-dash-ink">
-                      {coverBudgetPreviewLine}
-                    </p>
-                  ) : (
-                    <p className="rounded-md border border-dash-border bg-dash-bg/60 px-4 py-3 text-[14px] text-dash-ink-secondary">
-                      Calculating spend vs budget…
-                    </p>
-                  )}
-                  <label
-                    className={`flex items-start gap-3 ${budgetToggleSaving || !data ? "cursor-wait" : "cursor-pointer"}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={showBudgetOnCover}
-                      disabled={budgetToggleSaving || !data}
-                      onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
-                    />
-                    <span className="text-[14px] leading-snug text-dash-ink-secondary">
-                      Show monthly budget used on cover slide
-                    </span>
-                  </label>
-                  {showBudgetOnCover && coverBudgetPacingWarning ? (
-                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-[14px] leading-relaxed text-amber-200">
-                      {coverBudgetPacingWarning}
-                    </p>
-                  ) : null}
-                  <CoverBudgetClientSettingsLink clientId={clientId} hasBudget />
-                </div>
-              ) : (
-                <div className="mt-4 space-y-2">
-                  <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                    No monthly budget set for this client.
-                  </p>
-                  <CoverBudgetClientSettingsLink clientId={clientId} hasBudget={false} />
-                </div>
-              )}
-            </section>
-          )}
+          {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
+            <WizardCoverBudgetSection
+              clientId={clientId}
+              clientMonthlyBudget={clientMonthlyBudget}
+              coverBudgetPreviewLine={coverBudgetPreviewLine}
+              showBudgetOnCover={showBudgetOnCover}
+              onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
+              coverBudgetPacingWarning={coverBudgetPacingWarning}
+              budgetToggleSaving={budgetToggleSaving}
+              previewReady={Boolean(data)}
+            />
+          ) : null}
 
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
                 <p className="nre-wizard-callout-success__label">Confirmed period</p>
                 <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
               </div>
-            ) : null}
-
-            {generateStepPreviewReady && generateStatus === "idle" ? (
-              <WizardReportBrandingPanel
-                agencyName={agencyName}
-                onAgencyNameChange={handleWizardAgencyNameChange}
-                showAgencyNameOnCover={showAgencyNameOnCover}
-                onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
-                reportBrandingMode={reportBrandingMode}
-                onReportBrandingModeChange={setReportBrandingMode}
-                initialReportBrandingMode={initialReportBrandingMode}
-                initialAgencyName={initialAgencyName}
-                initialShowAgencyNameOnCover={initialShowAgencyNameOnCover}
-                saving={reportBrandingSaving}
-                error={reportBrandingError}
-              />
             ) : null}
 
             <div className="space-y-4">
@@ -585,6 +515,22 @@ export function WizardGenerateStep() {
                   verification={csvVerification}
                   refreshing={previewRefreshing}
                   clientId={clientId}
+                />
+              ) : null}
+
+              {generateStepPreviewReady && generateStatus === "idle" ? (
+                <WizardReportBrandingPanel
+                  agencyName={agencyName}
+                  onAgencyNameChange={handleWizardAgencyNameChange}
+                  showAgencyNameOnCover={showAgencyNameOnCover}
+                  onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
+                  reportBrandingMode={reportBrandingMode}
+                  onReportBrandingModeChange={setReportBrandingMode}
+                  initialReportBrandingMode={initialReportBrandingMode}
+                  initialAgencyName={initialAgencyName}
+                  initialShowAgencyNameOnCover={initialShowAgencyNameOnCover}
+                  saving={reportBrandingSaving}
+                  error={reportBrandingError}
                 />
               ) : null}
 
