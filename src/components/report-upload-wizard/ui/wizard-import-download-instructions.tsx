@@ -152,9 +152,7 @@ export function WizardImportDownloadInstructions({
               </Link>
             </p>
           </div>
-        ) : (
-          <p className="mt-1 text-[12px] text-dash-ink-muted">Expand if you need export steps for this report type.</p>
-        )}
+        ) : null}
       </div>
     </section>
   );
