@@ -107,6 +107,7 @@ import {
 } from "@/lib/nre/wizard-draft";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import type { ReportBrandingMode } from "@/lib/report-branding";
+import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
 
 function readRestorableLocalDraft(clientId: string): WizardDraftSnapshot | null {
   if (typeof window === "undefined") return null;
@@ -218,9 +219,6 @@ export function useReportUploadWizard({
   function handleWizardAgencyNameChange(value: string) {
     setAgencyName(value);
     setReportBrandingError(null);
-    if (value.trim() && reportBrandingMode === "nextreport") {
-      setReportBrandingMode("agency");
-    }
   }
 
   async function persistReportBrandingSettings(): Promise<boolean> {
@@ -251,6 +249,7 @@ export function useReportUploadWizard({
       savedAgencyNameRef.current = agencyName.trim();
       savedReportBrandingModeRef.current = reportBrandingMode;
       savedShowAgencyNameOnCoverRef.current = showAgencyNameOnCover;
+      markReportBrandingWizardCollapsed();
       return true;
     } catch {
       const message = "Could not save your agency name. Check your connection and try again.";
@@ -3135,6 +3134,9 @@ export function useReportUploadWizard({
     reportBrandingBlocksGenerate,
     showAgencyNameOnCover,
     setShowAgencyNameOnCover,
+    initialAgencyName,
+    initialReportBrandingMode,
+    initialShowAgencyNameOnCover,
     generateStatus,
     generateMessage,
     handleGenerate,
