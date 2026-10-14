@@ -19,6 +19,16 @@ const EN_UI = {
   noMatchingClients: "No clients match your search.",
   currentClientBadge: "Current",
   allClients: "All clients →",
+  csvMismatchBlocked:
+    "Generate stays off until report totals match your CSV. That usually means a setup issue we can fix together — not a bad file.",
+  csvMismatchStepObjectives:
+    "1. Go to Campaigns and check each campaign’s objective dropdown matches Ads Manager (Results column for that campaign).",
+  csvMismatchStepExport:
+    "2. If objectives look right, re-export the CSV (day breakdown, same dates and campaigns) and upload again on Import.",
+  csvMismatchStepSupport:
+    "3. Still stuck? Send us the CSV via support or WhatsApp — this may be a product bug.",
+  csvMismatchReviewObjectives: "Review campaign objectives",
+  generateBlockedCsvMismatch: "Resolve CSV check above",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",

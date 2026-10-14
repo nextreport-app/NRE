@@ -209,7 +209,7 @@ export function WizardGenerateStep() {
                   ? "Choose dates above"
                   : "Loading report options…"
             : csvVerificationBlocksGenerate
-              ? "Fix CSV verification above"
+              ? copy.generateBlockedCsvMismatch
               : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
@@ -545,6 +545,7 @@ export function WizardGenerateStep() {
                   verification={csvVerification}
                   refreshing={previewRefreshing}
                   clientId={clientId}
+                  onReviewCampaignObjectives={() => setStep(2)}
                 />
               ) : null}
 
