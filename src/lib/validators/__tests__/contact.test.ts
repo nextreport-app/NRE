@@ -40,12 +40,12 @@ describe("contactSchema", () => {
     expect(contactSchema.safeParse(validInput({ name: "" })).success).toBe(false);
   });
 
-  it("rejects a message shorter than 10 characters", () => {
-    expect(contactSchema.safeParse(validInput({ message: "too short" })).success).toBe(false);
+  it("accepts a short message", () => {
+    expect(contactSchema.safeParse(validInput({ message: "Hi" })).success).toBe(true);
   });
 
-  it("accepts a message of exactly 10 characters", () => {
-    expect(contactSchema.safeParse(validInput({ message: "1234567890" })).success).toBe(true);
+  it("rejects an empty message", () => {
+    expect(contactSchema.safeParse(validInput({ message: "" })).success).toBe(false);
   });
 
   it("rejects an unrecognized subject", () => {
@@ -68,11 +68,16 @@ describe("contactSchema", () => {
     expect(contactSchema.safeParse({}).success).toBe(false);
   });
 
-  it("rejects WhatsApp without a country code", () => {
+  it("rejects WhatsApp without a country code when provided", () => {
     const result = contactSchema.safeParse(validInput({ whatsapp: "8130833792" }));
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.some((i) => i.path[0] === "whatsapp")).toBe(true);
     }
+  });
+
+  it("accepts omitted WhatsApp as null", () => {
+    const parsed = contactSchema.parse(validInput({ whatsapp: "" }));
+    expect(parsed.whatsapp).toBeNull();
   });
 });

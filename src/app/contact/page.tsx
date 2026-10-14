@@ -41,7 +41,7 @@ export default async function ContactPage() {
         </div>
 
         <p className="mt-10 text-center text-sm text-ink-muted">
-          Add your WhatsApp number — we usually reply there within a few hours. Email replies within one business day.
+          WhatsApp is optional — add it if you want a faster reply there. We respond by email within one business day.
         </p>
 
         <section className="mt-10 rounded-lg border border-navy-border bg-navy-panel/60 p-5 text-left">

@@ -90,12 +90,11 @@ export function BookDemoForm() {
 
       <div>
         <label htmlFor="demo-whatsapp" className="mb-1 block text-sm text-ink-secondary">
-          WhatsApp Number
+          WhatsApp Number <span className="text-ink-muted">(optional)</span>
         </label>
         <input
           id="demo-whatsapp"
           type="tel"
-          required
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
           placeholder="+91 …, +1 …, or +44 …"
@@ -103,7 +102,7 @@ export function BookDemoForm() {
           className={inputClassName}
         />
         <p className="mt-1 text-xs text-ink-muted">
-          Include country code (India +91, US +1, UK +44). We&apos;ll use this to confirm your demo — usually faster than email.
+          Optional — include country code if you add one (India +91, US +1, UK +44).
         </p>
       </div>
 
@@ -148,7 +147,6 @@ export function BookDemoForm() {
         <textarea
           id="demo-message"
           required
-          minLength={10}
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
