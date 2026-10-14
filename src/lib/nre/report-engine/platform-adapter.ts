@@ -105,14 +105,15 @@ class MetaPlatformAdapter implements PlatformReportAdapter {
 
   groupedResultDisplay(
     rows: AggRow[],
-    _rawRows: NreRow[],
+    rawRows: NreRow[],
     campaignName: string,
     _googleContext: GoogleCampaignContext | null,
     campaignObjectiveMap: Map<string, CampaignObjectiveRef>,
     currencySymbol: string,
   ): CampaignResultDisplay {
     const objective = this.slideObjective(campaignName, null, campaignObjectiveMap);
-    return getGroupedResultDisplayForObjective(rows, objective, currencySymbol);
+    const rowsForObjectiveTotals = rawRows.length > 0 ? rawRows : rows;
+    return getGroupedResultDisplayForObjective(rowsForObjectiveTotals, objective, currencySymbol);
   }
 
   singleRowResultDisplay(
