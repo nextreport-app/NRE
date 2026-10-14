@@ -19,7 +19,7 @@
  * would ever need a presigned URL to fetch directly from Blob's CDN.
  */
 
-import { put, del, get, list } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } from "./logo-processing";
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
@@ -217,12 +217,13 @@ export async function readWizardUploadSessionBlob(
   sessionId: string,
 ): Promise<string | null> {
   const pathname = wizardUploadSessionPathname(userId, clientId, sessionId);
-  const { blobs } = await list({ prefix: pathname, limit: 1 });
-  const match = blobs.find((b) => b.pathname === pathname);
-  if (!match) return null;
-  const result = await get(match.url, { access: "private" });
-  if (!result || result.statusCode !== 200) return null;
-  return await new Response(result.stream).text();
+  try {
+    const result = await get(pathname, { access: "private" });
+    if (!result || result.statusCode !== 200) return null;
+    return await new Response(result.stream).text();
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteWizardUploadSessionBlob(
@@ -231,9 +232,7 @@ export async function deleteWizardUploadSessionBlob(
   sessionId: string,
 ): Promise<void> {
   const pathname = wizardUploadSessionPathname(userId, clientId, sessionId);
-  const { blobs } = await list({ prefix: pathname, limit: 1 });
-  const match = blobs.find((b) => b.pathname === pathname);
-  if (match) await del(match.url).catch(() => {});
+  await del(pathname).catch(() => {});
 }
 
 // ─────────────────────── Wizard in-progress drafts ───────────────────────
@@ -253,17 +252,16 @@ export async function saveWizardDraftBlob(userId: string, clientId: string, json
 
 export async function readWizardDraftBlob(userId: string, clientId: string): Promise<string | null> {
   const pathname = wizardDraftPathname(userId, clientId);
-  const { blobs } = await list({ prefix: pathname, limit: 1 });
-  const match = blobs.find((b) => b.pathname === pathname);
-  if (!match) return null;
-  const result = await get(match.url, { access: "private" });
-  if (!result || result.statusCode !== 200) return null;
-  return await new Response(result.stream).text();
+  try {
+    const result = await get(pathname, { access: "private" });
+    if (!result || result.statusCode !== 200) return null;
+    return await new Response(result.stream).text();
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteWizardDraftBlob(userId: string, clientId: string): Promise<void> {
   const pathname = wizardDraftPathname(userId, clientId);
-  const { blobs } = await list({ prefix: pathname, limit: 1 });
-  const match = blobs.find((b) => b.pathname === pathname);
-  if (match) await del(match.url).catch(() => {});
+  await del(pathname).catch(() => {});
 }
