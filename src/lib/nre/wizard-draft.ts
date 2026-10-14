@@ -14,6 +14,17 @@ import type {
   WizardPlatformChoice,
 } from "@/components/report-upload-wizard/types";
 
+export type WizardDraftWeeklyOptions = {
+  last7: DateRangeIso;
+  prev7: DateRangeIso;
+  last14: DateRangeIso;
+};
+
+export type WizardDraftDateBounds = {
+  minIso: string;
+  maxIso: string;
+};
+
 const DRAFT_VERSION = 1 as const;
 
 export const WIZARD_SERVER_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -41,6 +52,10 @@ export type WizardDraftSnapshot = {
   historicalData: HistoricalReportData | null;
   dayBreakdownData: DayBreakdownReportData | null;
   mtdRange: DateRangeIso | null;
+  /** From analyze — required to show Last 7 days after refresh (optional for older drafts). */
+  weeklyOptions?: WizardDraftWeeklyOptions | null;
+  dateBounds?: WizardDraftDateBounds | null;
+  dailyRange?: DateRangeIso | null;
 };
 
 function storageKey(clientId: string): string {
