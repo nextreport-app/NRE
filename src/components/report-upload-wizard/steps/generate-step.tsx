@@ -9,21 +9,17 @@ import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner"
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
+  formatIso,
+  formatIsoRange,
+  formatSummaryRange,
   isNoDataRowsError,
   isSpecificFieldError,
-  buildClientReportWhatsAppShareUrl,
-  buildClientReportSlackShareUrl,
-  buildClientReportTeamsShareUrl,
-  buildMailtoShareUrl,
-  buildShareReportUrl,
-  buildTelegramShareUrl,
 } from "../utils";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
-import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
+import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
-import { formatRelativeReportDate } from "@/lib/client-display";
 import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
@@ -32,6 +28,7 @@ import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
 import { WizardCoverBudgetSection } from "../ui/wizard-cover-budget-section";
+import { WizardGenerateSuccessPanel } from "../ui/wizard-generate-success-panel";
 
 export function WizardGenerateStep() {
   const copy = useWizardCopy();
@@ -742,249 +739,36 @@ export function WizardGenerateStep() {
           ) : null}
 
           {generateStatus === "done" && downloadUrl && (
-            <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
-              <div className="border-b border-dash-border bg-emerald-950/20 px-5 py-5 text-center">
-                <div
-                  className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-2xl text-emerald-300"
-                  aria-hidden
-                >
-                  ✓
-                </div>
-                <p className="text-[18px] font-bold text-emerald-300">Report generated</p>
-                <p className="mt-1 text-[15px] font-semibold text-dash-ink">
-                  {clientName} · {reportTypeLabel()}
-                </p>
-                <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                  {slideCount} slide{slideCount === 1 ? "" : "s"}
-                  {driveDateRangeLabel() ? ` · ${driveDateRangeLabel()}` : ""}
-                </p>
-              </div>
-
-              <div className="space-y-5 p-5">
-                {shareToken ? (
-                  <a
-                    href={`https://${buildShareReportUrl(shareToken)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3.5 text-[16px] font-semibold text-dash-ink shadow-sm hover:bg-dash-accent-hover"
-                  >
-                    View report in browser
-                  </a>
-                ) : null}
-                {shareToken ? (
-                  <a
-                    href={buildClientReportWhatsAppShareUrl({
-                      clientName,
-                      reportTypeLabel: reportTypeLabel(),
-                      platformLabel: wizardSharePlatformLabel(),
-                      dateRangeLabel: driveDateRangeLabel() || "this period",
-                      reportUrl: `https://${buildShareReportUrl(shareToken)}`,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#25D366]/40 bg-[#25D366]/10 px-4 py-3 text-[15px] font-semibold text-[#86efac] hover:bg-[#25D366]/15"
-                  >
-                    Share on WhatsApp
-                  </a>
-                ) : null}
-                {shareToken ? (
-                  <a
-                    href={buildClientReportSlackShareUrl({
-                      clientName,
-                      reportTypeLabel: reportTypeLabel(),
-                      platformLabel: wizardSharePlatformLabel(),
-                      dateRangeLabel: driveDateRangeLabel() || "this period",
-                      reportUrl: `https://${buildShareReportUrl(shareToken)}`,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#611f69]/40 bg-[#611f69]/15 px-4 py-3 text-[15px] font-semibold text-[#e9d8fd] hover:bg-[#611f69]/25"
-                  >
-                    Share on Slack
-                  </a>
-                ) : null}
-                {shareToken ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleCopyClientShareMessage()}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-4 py-3 text-[15px] font-semibold text-dash-ink hover:bg-dash-border"
-                  >
-                    <CopyIcon />
-                    {clientShareMessageCopied ? "Copied!" : "Copy message"}
-                  </button>
-                ) : null}
-                {publishedAt ? (
-                  <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
-                    Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
-                    {driveSaveUrl ? " Re-save to Google Drive manually if you updated the PPT." : null}
-                  </div>
-                ) : null}
-
-                {shareToken && reportId ? (
-                  <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                    PPT and the live link are ready.{" "}
-                    <Link
-                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="font-medium text-dash-accent hover:underline"
-                      onClick={() => {
-                        if (reportId && downloadUrl) {
-                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                        }
-                      }}
-                    >
-                      {publishedAt ? "Edit review" : "Review slides and edit"}
-                    </Link>{" "}
-                    before sharing.
-                  </p>
-                ) : null}
-
-                {shareToken ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar px-3 py-2.5">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
-                      {buildShareReportUrl(shareToken)}
-                    </span>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <a
-                        href={`https://${buildShareReportUrl(shareToken)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
-                      >
-                        View
-                      </a>
-                      <span className="text-[12px] text-dash-border" aria-hidden="true">
-                        ·
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyShareLink}
-                        className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(() => {
-                  const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
-                  const gridClass = showDrive ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2";
-
-                  return (
-                <div>
-                  <p className="mb-2 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
-                  <div className={gridClass}>
-                    <a
-                      href={downloadUrl}
-                      className="flex items-center justify-center rounded-lg border border-[#f5b45a]/30 bg-[#f5b45a]/10 px-3 py-3 text-[14px] font-medium text-[#f0c27a] transition-colors hover:border-[#f5b45a]/50 hover:bg-[#f5b45a]/15"
-                    >
-                      PPTX
-                    </a>
-                    {showDrive ? (
-                      <button
-                        type="button"
-                        onClick={handleSaveButtonClick}
-                        disabled={driveSaving}
-                        className="flex items-center justify-center rounded-lg border border-[#68d391]/30 bg-[#68d391]/10 px-3 py-3 text-[14px] font-medium text-[#9ae6b4] transition-colors hover:border-[#68d391]/50 hover:bg-[#68d391]/15 disabled:opacity-50"
-                      >
-                        {driveSaving ? "Saving…" : "Google Drive"}
-                      </button>
-                    ) : null}
-                  </div>
-                  {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
-                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                      Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDriveSaveError(null);
-                          setDriveView("editing");
-                        }}
-                        className="text-dash-accent hover:underline"
-                      >
-                        Change
-                      </button>
-                    </p>
-                  ) : null}
-                </div>
-                  );
-                })()}
-
-                {shareToken ? (
-                  <details className="group rounded-lg border border-dash-border bg-dash-sidebar">
-                    <summary className="cursor-pointer list-none px-4 py-3 text-[14px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
-                      <span className="flex items-center justify-between gap-2">
-                        Share with client
-                        <span className="text-[15px] leading-none text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
-                      </span>
-                    </summary>
-                    <div className="border-t border-dash-border px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={buildMailtoShareUrl(`https://${buildShareReportUrl(shareToken)}`, clientName)}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <MailIcon />
-                          Email
-                        </a>
-                        <a
-                          href={buildTelegramShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" fill="#26A5E4" width={16} height={16} aria-hidden="true">
-                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                          </svg>
-                          Telegram
-                        </a>
-                        <a
-                          href={buildClientReportTeamsShareUrl({
-                            clientName,
-                            reportTypeLabel: reportTypeLabel(),
-                            platformLabel: wizardSharePlatformLabel(),
-                            dateRangeLabel: driveDateRangeLabel() || "this period",
-                            reportUrl: `https://${buildShareReportUrl(shareToken)}`,
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
-                            <path
-                              fill="#5059C9"
-                              d="M20.625 8.25h-3.375V5.625A2.629 2.629 0 0 0 14.625 3h-5.25A2.629 2.629 0 0 0 6.75 5.625v2.625H3.375A1.128 1.128 0 0 0 2.25 9.375v9A2.629 2.629 0 0 0 4.875 21h14.25a2.629 2.629 0 0 0 2.625-2.625v-9a1.128 1.128 0 0 0-1.125-1.125ZM9 5.625a1.128 1.128 0 0 1 1.125-1.125h3.75A1.128 1.128 0 0 1 15 5.625V8.25H9V5.625Zm10.5 12.75a1.128 1.128 0 0 1-1.125 1.125H5.625A1.128 1.128 0 0 1 4.5 18.375v-7.5h15v7.5Z"
-                            />
-                            <path
-                              fill="#7B83EB"
-                              d="M12.75 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-3.375 6.375h6.75a.375.375 0 0 0 .375-.375v-1.125a2.25 2.25 0 0 0-2.25-2.25h-3a2.25 2.25 0 0 0-2.25 2.25v1.125a.375.375 0 0 0 .375.375Z"
-                            />
-                          </svg>
-                          Teams
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => void handleCopyClientShareMessage()}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <CopyIcon />
-                          {clientShareMessageCopied ? "Copied!" : "Copy message"}
-                        </button>
-                        {driveSaveUrl ? (
-                          <button
-                            type="button"
-                            onClick={handleCopyLink}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                          >
-                            <CopyIcon />
-                            {copied ? "Copied!" : "Copy Drive link"}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </details>
-                ) : null}
-
+            <WizardGenerateSuccessPanel
+              clientName={clientName}
+              clientId={clientId}
+              reportId={reportId}
+              reportTypeLabel={reportTypeLabel()}
+              wizardSharePlatformLabel={wizardSharePlatformLabel()}
+              slideCount={slideCount}
+              dateRangeLabel={driveDateRangeLabel()}
+              downloadUrl={downloadUrl}
+              shareToken={shareToken}
+              publishedAt={publishedAt}
+              clientShareMessageCopied={clientShareMessageCopied}
+              onCopyClientShareMessage={handleCopyClientShareMessage}
+              onCopyShareLink={handleCopyShareLink}
+              persistGenerateSnapshot={persistGenerateSnapshot}
+              hasGoogleDriveConnected={hasGoogleDriveConnected}
+              driveView={driveView}
+              driveSaving={driveSaving}
+              handleSaveButtonClick={handleSaveButtonClick}
+              rememberedFolder={rememberedFolder}
+              setDriveView={setDriveView}
+              onEditDriveFolder={() => {
+                setDriveSaveError(null);
+                setDriveView("editing");
+              }}
+              copied={copied}
+              driveSaveUrl={driveSaveUrl}
+              handleCopyLink={handleCopyLink}
+              handleGenerateAnother={handleGenerateAnother}
+            >
                 {hasGoogleDriveConnected && driveView === "editing" && (
                 <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
                   <div>
@@ -1097,17 +881,7 @@ export function WizardGenerateStep() {
                 </div>
               )}
 
-              <div className="border-t border-dash-border pt-4">
-                <button
-                  type="button"
-                  onClick={handleGenerateAnother}
-                  className="w-full text-center text-[14px] font-medium text-[#63b3ed] hover:underline"
-                >
-                  Generate another report for {clientName}
-                </button>
-              </div>
-              </div>
-            </div>
+            </WizardGenerateSuccessPanel>
           )}
 
           {showGenerateFooter && (
