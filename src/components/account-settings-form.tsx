@@ -14,10 +14,12 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 export function AccountSettingsForm({
   initialAgencyName,
   initialReportBrandingMode,
+  initialShowAgencyNameOnCover = true,
   hasAgencyLogo = false,
 }: {
   initialAgencyName: string | null;
   initialReportBrandingMode: ReportBrandingMode;
+  initialShowAgencyNameOnCover?: boolean;
   hasAgencyLogo?: boolean;
 }) {
   const router = useRouter();
@@ -26,6 +28,7 @@ export function AccountSettingsForm({
   const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
     initialReportBrandingMode,
   );
+  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(initialShowAgencyNameOnCover);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -44,7 +47,7 @@ export function AccountSettingsForm({
     const res = await fetch("/api/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agencyName, reportBrandingMode }),
+      body: JSON.stringify({ agencyName, reportBrandingMode, showAgencyNameOnCover }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -112,8 +115,18 @@ export function AccountSettingsForm({
           className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Shown as &quot;Prepared by {agencyName || "..."}&quot; on every report&apos;s cover slide.
+          {showAgencyNameOnCover
+            ? `Shown as "Prepared by ${agencyName || "..."}" on every report's cover slide.`
+            : "Hidden on the cover slide — your name can still appear on shared links when white-label is on."}
         </p>
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-dash-ink-secondary">
+          <input
+            type="checkbox"
+            checked={!showAgencyNameOnCover}
+            onChange={(e) => setShowAgencyNameOnCover(!e.target.checked)}
+          />
+          Hide the name
+        </label>
       </div>
 
       <div>
@@ -147,7 +160,7 @@ export function AccountSettingsForm({
 
       <fieldset>
         <legend className="mb-2 block text-sm font-medium text-dash-ink-secondary">
-          Branding on shared client reports
+          Branding on shared client reports (also on wizard Step 4)
         </legend>
         <div className="space-y-2">
           {(Object.keys(REPORT_BRANDING_MODE_LABELS) as ReportBrandingMode[]).map((mode) => {
@@ -182,7 +195,7 @@ export function AccountSettingsForm({
           })}
         </div>
         <p className="mt-2 text-[13px] text-dash-ink-secondary">
-          Applies to live share links, PDF exports, and client emails for reports you generate from
+          Applies to live share links and client emails for reports you generate from
           now on. Included on free trial, Agency, and Professional plans.
         </p>
       </fieldset>

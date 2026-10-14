@@ -1,0 +1,272 @@
+import type { SiteLocaleId } from "./site-theme";
+
+export type FooterCopy = {
+  product: string;
+  company: string;
+  legal: string;
+  connect: string;
+  copyright: string;
+  linkLabels: Record<string, string>;
+};
+
+const EN_LINKS: Record<string, string> = {
+  "/": "Home",
+  "/how-it-works": "Getting Started",
+  "/help/download": "CSV Export Guide",
+  "/pricing": "Pricing",
+  "/about": "About Us",
+  "/book-demo": "Book a Demo",
+  "/contact": "Contact",
+  "/feedback": "Feedback",
+  "/refer": "Refer an Agency",
+  "/privacy": "Privacy Policy",
+  "/terms": "Terms of Service",
+  "/data-deletion": "Data Deletion",
+};
+
+function links(overrides: Partial<Record<string, string>>): Record<string, string> {
+  const out: Record<string, string> = { ...EN_LINKS };
+  for (const [href, label] of Object.entries(overrides)) {
+    if (label !== undefined) out[href] = label;
+  }
+  return out;
+}
+
+export const FOOTER_I18N: Record<SiteLocaleId, FooterCopy> = {
+  en: {
+    product: "Product",
+    company: "Company",
+    legal: "Legal",
+    connect: "Connect",
+    copyright: "© 2026 NextReport. All rights reserved.",
+    linkLabels: EN_LINKS,
+  },
+  es: {
+    product: "Producto",
+    company: "Empresa",
+    legal: "Legal",
+    connect: "Contacto",
+    copyright: "© 2026 NextReport. Todos los derechos reservados.",
+    linkLabels: links({
+      "/how-it-works": "Primeros pasos",
+      "/help/download": "Guía de exportación CSV",
+      "/pricing": "Precios",
+      "/about": "Sobre nosotros",
+      "/book-demo": "Reservar demo",
+      "/contact": "Contacto",
+      "/feedback": "Comentarios",
+      "/refer": "Referir una agencia",
+      "/privacy": "Privacidad",
+      "/terms": "Términos",
+      "/data-deletion": "Eliminación de datos",
+    }),
+  },
+  fr: {
+    product: "Produit",
+    company: "Entreprise",
+    legal: "Mentions légales",
+    connect: "Contact",
+    copyright: "© 2026 NextReport. Tous droits réservés.",
+    linkLabels: links({
+      "/how-it-works": "Premiers pas",
+      "/help/download": "Guide d’export CSV",
+      "/pricing": "Tarifs",
+      "/about": "À propos",
+      "/book-demo": "Réserver une démo",
+      "/contact": "Contact",
+      "/feedback": "Commentaires",
+      "/refer": "Parrainer une agence",
+      "/privacy": "Confidentialité",
+      "/terms": "Conditions",
+      "/data-deletion": "Suppression des données",
+    }),
+  },
+  pt: {
+    product: "Produto",
+    company: "Empresa",
+    legal: "Legal",
+    connect: "Contato",
+    copyright: "© 2026 NextReport. Todos os direitos reservados.",
+    linkLabels: links({
+      "/how-it-works": "Começar",
+      "/help/download": "Guia de exportação CSV",
+      "/pricing": "Preços",
+      "/about": "Sobre nós",
+      "/book-demo": "Agendar demo",
+      "/contact": "Contato",
+      "/feedback": "Feedback",
+      "/refer": "Indicar agência",
+      "/privacy": "Privacidade",
+      "/terms": "Termos",
+      "/data-deletion": "Exclusão de dados",
+    }),
+  },
+  de: {
+    product: "Produkt",
+    company: "Unternehmen",
+    legal: "Rechtliches",
+    connect: "Kontakt",
+    copyright: "© 2026 NextReport. Alle Rechte vorbehalten.",
+    linkLabels: links({
+      "/how-it-works": "Erste Schritte",
+      "/help/download": "CSV-Export-Anleitung",
+      "/pricing": "Preise",
+      "/about": "Über uns",
+      "/book-demo": "Demo buchen",
+      "/contact": "Kontakt",
+      "/feedback": "Feedback",
+      "/refer": "Agentur empfehlen",
+      "/privacy": "Datenschutz",
+      "/terms": "AGB",
+      "/data-deletion": "Datenlöschung",
+    }),
+  },
+  ru: {
+    product: "Продукт",
+    company: "Компания",
+    legal: "Правовая информация",
+    connect: "Связь",
+    copyright: "© 2026 NextReport. Все права защищены.",
+    linkLabels: links({
+      "/how-it-works": "Начало работы",
+      "/help/download": "Экспорт CSV",
+      "/pricing": "Цены",
+      "/about": "О нас",
+      "/book-demo": "Запись на демо",
+      "/contact": "Контакты",
+      "/feedback": "Отзыв",
+      "/refer": "Пригласить агентство",
+      "/privacy": "Конфиденциальность",
+      "/terms": "Условия",
+      "/data-deletion": "Удаление данных",
+    }),
+  },
+  it: {
+    product: "Prodotto",
+    company: "Azienda",
+    legal: "Legale",
+    connect: "Contatti",
+    copyright: "© 2026 NextReport. Tutti i diritti riservati.",
+    linkLabels: links({
+      "/how-it-works": "Per iniziare",
+      "/help/download": "Guida export CSV",
+      "/pricing": "Prezzi",
+      "/about": "Chi siamo",
+      "/book-demo": "Prenota demo",
+      "/contact": "Contatti",
+      "/feedback": "Feedback",
+      "/refer": "Segnala un’agenzia",
+      "/privacy": "Privacy",
+      "/terms": "Termini",
+      "/data-deletion": "Eliminazione dati",
+    }),
+  },
+  zh: {
+    product: "产品",
+    company: "公司",
+    legal: "法律",
+    connect: "联系",
+    copyright: "© 2026 NextReport. 保留所有权利。",
+    linkLabels: links({
+      "/how-it-works": "入门指南",
+      "/help/download": "CSV 导出指南",
+      "/pricing": "定价",
+      "/about": "关于我们",
+      "/book-demo": "预约演示",
+      "/contact": "联系我们",
+      "/feedback": "反馈",
+      "/refer": "推荐代理商",
+      "/privacy": "隐私政策",
+      "/terms": "服务条款",
+      "/data-deletion": "数据删除",
+    }),
+  },
+  bn: {
+    product: "পণ্য",
+    company: "কোম্পানি",
+    legal: "আইনি",
+    connect: "যোগাযোগ",
+    copyright: "© ২০২৬ NextReport. সর্বস্বত্ব সংরক্ষিত।",
+    linkLabels: links({
+      "/how-it-works": "শুরু করুন",
+      "/help/download": "CSV এক্সপোর্ট গাইড",
+      "/pricing": "মূল্য",
+      "/about": "আমাদের সম্পর্কে",
+      "/book-demo": "ডেমো বুক করুন",
+      "/contact": "যোগাযোগ",
+      "/feedback": "মতামত",
+      "/refer": "এজেন্সি রেফার করুন",
+      "/privacy": "গোপনীয়তা",
+      "/terms": "শর্তাবলী",
+      "/data-deletion": "ডেটা মুছে ফেলা",
+    }),
+  },
+  mr: {
+    product: "उत्पादन",
+    company: "कंपनी",
+    legal: "कायदेशीर",
+    connect: "संपर्क",
+    copyright: "© २०२६ NextReport. सर्व हक्क राखीव.",
+    linkLabels: links({
+      "/how-it-works": "सुरुवात",
+      "/help/download": "CSV एक्सपोर्ट मार्गदर्शक",
+      "/pricing": "किंमत",
+      "/about": "आमच्याबद्दल",
+      "/book-demo": "डेमो बुक करा",
+      "/contact": "संपर्क",
+      "/feedback": "अभिप्राय",
+      "/refer": "एजन्सी refer करा",
+      "/privacy": "गोपनीयता",
+      "/terms": "अटी",
+      "/data-deletion": "डेटा हटवणे",
+    }),
+  },
+  te: {
+    product: "ఉత్పత్తి",
+    company: "కంపెనీ",
+    legal: "చట్టపరమైన",
+    connect: "సంప్రదించండి",
+    copyright: "© 2026 NextReport. అన్ని హక్కులు రిజర్వ్.",
+    linkLabels: links({
+      "/how-it-works": "ప్రారంభం",
+      "/help/download": "CSV ఎగుమతి గైడ్",
+      "/pricing": "ధరలు",
+      "/about": "మా గురించి",
+      "/book-demo": "డెమో బుక్ చేయండి",
+      "/contact": "సంప్రదించండి",
+      "/feedback": "అభిప్రాయం",
+      "/refer": "ఏజెన్సీని refer చేయండి",
+      "/privacy": "గోప్యత",
+      "/terms": "నిబంధనలు",
+      "/data-deletion": "డేటా తొలగింపు",
+    }),
+  },
+  ta: {
+    product: "தயாரிப்பு",
+    company: "நிறுவனம்",
+    legal: "சட்டம்",
+    connect: "தொடர்பு",
+    copyright: "© 2026 NextReport. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
+    linkLabels: links({
+      "/how-it-works": "தொடங்குங்கள்",
+      "/help/download": "CSV ஏற்றுமதி வழிகாட்டி",
+      "/pricing": "விலை",
+      "/about": "எங்களைப் பற்றி",
+      "/book-demo": "டெமோ பதிவு",
+      "/contact": "தொடர்பு",
+      "/feedback": "கருத்து",
+      "/refer": "ஏజென்சியை பரிந்துரை",
+      "/privacy": "தனியுரிமை",
+      "/terms": "விதிமுறைகள்",
+      "/data-deletion": "தரவு நீக்கம்",
+    }),
+  },
+};
+
+export function footerCopy(locale: SiteLocaleId): FooterCopy {
+  return FOOTER_I18N[locale] ?? FOOTER_I18N.en;
+}
+
+export function footerLinkLabel(locale: SiteLocaleId, href: string, fallback: string): string {
+  return footerCopy(locale).linkLabels[href] ?? fallback;
+}

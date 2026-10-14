@@ -5,72 +5,19 @@ import { BillingIntervalToggle } from "@/components/billing-interval-toggle";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
-import {
-  AGENCY_CLIENT_LIMIT_FEATURE,
-  getPlanDisplayName,
-  PROFESSIONAL_CLIENT_LIMIT_FEATURE,
-  WHITE_LABEL_FEATURE,
-  type BillablePlanId,
-} from "@/lib/plan-labels";
+import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import type { BillingInterval } from "@/lib/razorpay";
+import { useSiteCopy } from "@/hooks/use-site-copy";
 
 const ANNUAL_PRICES = {
-  starter: { inr: "₹6,710", usd: "$77" },
-  professional: { inr: "₹16,310", usd: "$192" },
+  starter: { inr: "₹7,670", usd: "$86" },
+  professional: { inr: "₹12,470", usd: "$144" },
 } as const;
 
-interface Plan {
-  id: BillablePlanId;
-  name: string;
-  priceInr: string;
-  priceUsd: string;
-  bestFor: string;
-  features: string[];
-  highlighted?: boolean;
-}
-
-const PLANS: Plan[] = [
-  {
-    id: "starter",
-    name: getPlanDisplayName("starter"),
-    priceInr: "₹699",
-    priceUsd: "$8",
-    bestFor: "Freelancers and boutique agencies",
-    features: [
-      AGENCY_CLIENT_LIMIT_FEATURE,
-      "Unlimited report generation",
-      "Meta Ads — API sync & CSV upload (live)",
-      "Google, TikTok & GA4 — launching soon",
-      "AI-written campaign summaries & insights",
-      "PowerPoint, Google Slides & live browser share",
-      "Google Drive auto-save",
-      WHITE_LABEL_FEATURE,
-      "Slack & Zapier webhooks",
-      "Email support within 24 hours",
-    ],
-  },
-  {
-    id: "professional",
-    name: getPlanDisplayName("professional"),
-    priceInr: "₹1,699",
-    priceUsd: "$20",
-    bestFor: "Growing agencies with larger client rosters",
-    highlighted: true,
-    features: [
-      PROFESSIONAL_CLIENT_LIMIT_FEATURE,
-      "Everything in Agency",
-      "Meta for every client today — more platforms as we launch them",
-      "Quarterly, YTD & creative reports — launching soon",
-      "Priority email support",
-      "Early access to new features",
-    ],
-  },
-];
-
-const PAYMENT_METHOD_LINE: Record<PricingCurrency, string> = {
-  INR: "Pay securely with UPI, Cards, Net Banking",
-  USD: "Pay securely with Credit or Debit Card",
-};
+const MONTHLY_PRICES = {
+  starter: { inr: "₹799", usd: "$9" },
+  professional: { inr: "₹1,299", usd: "$15" },
+} as const;
 
 function CheckIcon() {
   return (
@@ -90,25 +37,31 @@ function CheckIcon() {
 }
 
 function PlanCard({
-  plan,
+  planId,
+  highlighted,
   currency,
   interval,
   loggedIn,
   userEmail,
   userName,
 }: {
-  plan: Plan;
+  planId: BillablePlanId;
+  highlighted?: boolean;
   currency: PricingCurrency;
   interval: BillingInterval;
   loggedIn: boolean;
   userEmail?: string | null;
   userName?: string | null;
 }) {
-  const monthlyPrice = currency === "INR" ? plan.priceInr : plan.priceUsd;
-  const annualPrice = currency === "INR" ? ANNUAL_PRICES[plan.id].inr : ANNUAL_PRICES[plan.id].usd;
+  const { home } = useSiteCopy();
+  const p = home.pricing;
+  const planCopy = home.pricing.plans[planId];
+  const name = getPlanDisplayName(planId);
+  const monthlyPrice = currency === "INR" ? MONTHLY_PRICES[planId].inr : MONTHLY_PRICES[planId].usd;
+  const annualPrice = currency === "INR" ? ANNUAL_PRICES[planId].inr : ANNUAL_PRICES[planId].usd;
   const displayPrice = interval === "annual" ? annualPrice : monthlyPrice;
   const ctaClassName = `mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
-    plan.highlighted
+    highlighted
       ? "bg-accent text-white hover:bg-accent-hover"
       : "border border-navy-border text-white hover:bg-navy"
   }`;
@@ -116,49 +69,47 @@ function PlanCard({
   return (
     <div
       className={`relative flex flex-col rounded-xl border p-8 ${
-        plan.highlighted
+        highlighted
           ? "border-accent bg-navy-panel shadow-[0_0_0_1px_rgba(74,144,217,0.4)]"
           : "border-navy-border bg-navy-panel"
       }`}
     >
-      {plan.highlighted && (
+      {highlighted && (
         <span className="absolute -top-3 left-8 rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-          Most Popular
+          {p.mostPopular}
         </span>
       )}
 
-      <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-      <p className="mt-1 text-sm text-ink-muted">{plan.bestFor}</p>
+      <h3 className="text-lg font-semibold text-white">{name}</h3>
+      <p className="mt-1 text-sm text-ink-muted">{planCopy.bestFor}</p>
 
       <div className="mt-6 flex items-baseline gap-1">
         <span className="text-4xl font-semibold text-white">{displayPrice}</span>
-        <span className="text-sm text-ink-muted">{interval === "annual" ? "/year" : "/month"}</span>
+        <span className="text-sm text-ink-muted">{interval === "annual" ? p.perYear : p.perMonth}</span>
       </div>
-      {interval === "annual" && (
-        <p className="mt-1 text-xs font-medium text-emerald-400">Save 20% vs paying monthly</p>
-      )}
-      <p className="mt-1 text-xs text-ink-muted">{PAYMENT_METHOD_LINE[currency]}</p>
-      <p className="mt-0.5 text-[11px] text-ink-muted/80">
-        {currency === "INR" ? "Excl. 18% GST" : "Excl. tax"}
-      </p>
+      {interval === "annual" && <p className="mt-1 text-xs font-medium text-emerald-400">{p.saveAnnual}</p>}
+      <p className="mt-1 text-xs text-ink-muted">{currency === "INR" ? p.payInr : p.payUsd}</p>
+      <p className="mt-0.5 text-[11px] text-ink-muted/80">{currency === "INR" ? p.exclGst : p.exclTax}</p>
 
-      <ul className="mt-8 space-y-3 text-sm text-ink-secondary">
-        {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
+      <ul className="mt-8 space-y-3 text-left text-sm text-ink-secondary">
+        {planCopy.features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2 text-left">
             <CheckIcon />
-            <span>{feature}</span>
+            <span className="min-w-0 flex-1 text-left leading-snug">{feature}</span>
           </li>
         ))}
       </ul>
 
       <SubscribeButton
-        planId={plan.id}
+        planId={planId}
         currency={currency}
         interval={interval}
         loggedIn={loggedIn}
         userEmail={userEmail}
         userName={userName}
         className={ctaClassName}
+        label={`${p.subscribeToPrefix} ${name}`}
+        loadingLabel={p.redirecting}
       />
     </div>
   );
@@ -175,25 +126,38 @@ export function CurrencyPricing({
 }) {
   const { currency } = usePricingCurrency();
   const [interval, setInterval] = useState<BillingInterval>("monthly");
+  const { home } = useSiteCopy();
+  const p = home.pricing;
 
   return (
     <>
       <div className="mx-auto mb-8 flex max-w-xl justify-center">
-        <BillingIntervalToggle interval={interval} onChange={setInterval} variant="pricing" />
+        <BillingIntervalToggle
+          interval={interval}
+          onChange={setInterval}
+          variant="pricing"
+          labels={{ aria: p.billingPeriodAria, monthly: p.monthly, annual: p.annual }}
+        />
       </div>
 
       <div className="mt-4 grid gap-8 sm:grid-cols-2">
-        {PLANS.map((plan) => (
-          <PlanCard
-            key={plan.name}
-            plan={plan}
-            currency={currency}
-            interval={interval}
-            loggedIn={loggedIn}
-            userEmail={userEmail}
-            userName={userName}
-          />
-        ))}
+        <PlanCard
+          planId="starter"
+          currency={currency}
+          interval={interval}
+          loggedIn={loggedIn}
+          userEmail={userEmail}
+          userName={userName}
+        />
+        <PlanCard
+          planId="professional"
+          highlighted
+          currency={currency}
+          interval={interval}
+          loggedIn={loggedIn}
+          userEmail={userEmail}
+          userName={userName}
+        />
       </div>
 
       <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3">

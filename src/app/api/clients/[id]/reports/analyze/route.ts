@@ -8,11 +8,20 @@ import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
-import { computeCsvDateBounds, computeDailyRangeIso, computeMonthComparisonRangeOptions, computeMtdRangeIso, computeWeeklyRangeOptions } from "@/lib/nre/date-range";
+import { computeCsvDateBounds } from "@/lib/nre/date-range";
+import { computeWizardUploadDateContext } from "@/lib/nre/wizard-upload-date-context";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
-import { campaignSelectionMemorySchema, dateSelectionSchema, parseJsonFormField, platformSchema, type DateSelection } from "@/lib/validators/report-wizard";
+import {
+  campaignSelectionMemorySchema,
+  dateSelectionSchema,
+  metaAdAccountIdSchema,
+  metaCampaignPeriodReachMapsSchema,
+  parseJsonFormField,
+  platformSchema,
+  type DateSelection,
+} from "@/lib/validators/report-wizard";
 import { detectPlatform } from "@/lib/nre/google-columns";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
@@ -112,15 +121,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (parsed.success) dateSelection = parsed.data;
     }
 
-    const dateBounds = computeCsvDateBounds(mtdParsed.rows);
-    const weeklyOptions = computeWeeklyRangeOptions(mtdParsed.rows, new Date(), client.timezone);
-    const mtdRange = computeMtdRangeIso(mtdParsed.rows, new Date(), client.timezone);
-    // Comparison Report's "This week vs Last week" preset reuses
-    // weeklyOptions.last7/prev7 directly (already exactly Period A/B); "This
-    // month vs Last month" needs its own computation, additive alongside
-    // the existing three.
-    const monthComparisonOptions = computeMonthComparisonRangeOptions(mtdParsed.rows, new Date(), client.timezone);
-    const dailyRange = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
+    const { dateBounds, weeklyOptions, mtdRange, monthComparisonOptions, dailyRange } = computeWizardUploadDateContext(
+      mtdParsed.rows,
+      client.timezone,
+    );
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
     const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone);
 
@@ -136,6 +140,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           )
         : null;
 
+    const metaCampaignPeriodReach = formData
+      ? parseJsonFormField(formData, "metaCampaignPeriodReach", metaCampaignPeriodReachMapsSchema)
+      : undefined;
+    const metaAdAccountId = formData ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema) : undefined;
+
     const uploadSessionId = await saveWizardUploadSession({
       userId: session.user.id,
       clientId: id,
@@ -144,6 +153,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       rows: mtdParsed.rows,
       headers: mtdParsed.headers,
       fileHash: hashUploadBuffer(mtdDailyBuffer),
+      metaCampaignPeriodReach,
+      metaAdAccountId,
     });
 
     return NextResponse.json({

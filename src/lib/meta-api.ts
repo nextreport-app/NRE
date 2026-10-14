@@ -154,6 +154,9 @@ export interface MetaInsightRow {
   /** When present, matches Ads Manager Results column (preferred over inferring from actions). */
   results?: MetaInsightResultMetric[];
   cost_per_result?: MetaInsightResultMetric[];
+  /** Objective-aligned results / CPR — often paired when results[] is incomplete. */
+  objective_results?: MetaInsightResultMetric[];
+  cost_per_objective_result?: MetaInsightResultMetric[];
 }
 
 export interface MetaGraphErrorDetails {
@@ -217,6 +220,8 @@ const META_INSIGHT_FIELDS = [
   "cost_per_action_type",
   "results",
   "cost_per_result",
+  "objective_results",
+  "cost_per_objective_result",
   "date_start",
   "date_stop",
 ].join(",");
@@ -293,18 +298,21 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   return allRows;
 }
 
-/** Fetches daily insights for an ad account (paginated, retried, chunked on Meta code 1). */
-export async function fetchMetaAdAccountInsights(params: {
+function proactiveInsightsChunkDays(level: MetaInsightsLevel): number {
+  // Ad-set rows are heavier (more rows × rich action/result fields) — smaller windows avoid Vercel timeouts.
+  return level === "adset" ? 5 : 7;
+}
+
+/** One date window: paginated fetch with Meta code-1 retry, then weekly sub-chunks if still failing. */
+async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   accessToken: string;
   adAccountId: string;
   sinceIso: string;
   untilIso: string;
-  /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
-  level?: MetaInsightsLevel;
+  level: MetaInsightsLevel;
 }): Promise<MetaInsightRow[]> {
-  const level = params.level ?? "campaign";
   try {
-    return await fetchMetaAdAccountInsightsForRange({ ...params, level });
+    return await fetchMetaAdAccountInsightsForRange(params);
   } catch (err) {
     if (!(err instanceof MetaInsightsFetchError) || err.meta.code !== 1) {
       throw err;
@@ -315,11 +323,88 @@ export async function fetchMetaAdAccountInsights(params: {
       throw err;
     }
 
-    const chunkRows = await Promise.all(
-      chunks.map((chunk) => fetchMetaAdAccountInsightsForRange({ ...params, ...chunk, level })),
-    );
-    return chunkRows.flat();
+    const allRows: MetaInsightRow[] = [];
+    for (const chunk of chunks) {
+      allRows.push(
+        ...(await fetchMetaAdAccountInsightsForRange({ ...params, ...chunk })),
+      );
+    }
+    return allRows;
   }
+}
+
+/** Fetches daily insights for an ad account (paginated, retried, chunked on Meta code 1). */
+export async function fetchMetaAdAccountInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+  /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
+  level?: MetaInsightsLevel;
+}): Promise<MetaInsightRow[]> {
+  const level = params.level ?? "campaign";
+  const chunkDays = proactiveInsightsChunkDays(level);
+  const chunks = splitIsoDateRangeIntoChunks(params.sinceIso, params.untilIso, chunkDays);
+
+  if (chunks.length > 1) {
+    const allRows: MetaInsightRow[] = [];
+    for (const chunk of chunks) {
+      allRows.push(
+        ...(await fetchMetaAdAccountInsightsForRangeResilient({ ...params, ...chunk, level })),
+      );
+    }
+    return allRows;
+  }
+
+  return fetchMetaAdAccountInsightsForRangeResilient({ ...params, level });
+}
+
+const META_CAMPAIGN_PERIOD_REACH_FIELDS = ["campaign_name", "reach", "spend", "impressions"].join(",");
+
+/**
+ * One row per campaign for the full date range — reach matches Ads Manager
+ * campaign-level totals (not additive daily breakdown).
+ */
+export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+}): Promise<MetaInsightRow[]> {
+  const accountId = params.adAccountId.startsWith("act_")
+    ? params.adAccountId
+    : `act_${params.adAccountId.replace(/\D/g, "")}`;
+
+  const allRows: MetaInsightRow[] = [];
+  let nextUrl: string | null = null;
+
+  const buildUrl = () => {
+    const url = new URL(`${metaGraphBase()}/${accountId}/insights`);
+    url.searchParams.set("level", "campaign");
+    url.searchParams.set("fields", META_CAMPAIGN_PERIOD_REACH_FIELDS);
+    url.searchParams.set(
+      "time_range",
+      JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
+    );
+    url.searchParams.set(
+      "filtering",
+      JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: "0" }]),
+    );
+    url.searchParams.set("limit", "250");
+    url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("access_token", params.accessToken);
+    return url.toString();
+  };
+
+  nextUrl = buildUrl();
+
+  while (nextUrl) {
+    const data = await fetchMetaInsightsPageWithRetry(nextUrl);
+    allRows.push(...(data.data ?? []));
+    nextUrl = data.paging?.next ?? null;
+  }
+
+  return allRows;
 }
 
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */

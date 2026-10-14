@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { SITE_THEME_BOOT_SCRIPT } from "@/components/site-theme-provider";
 import { SiteChromeFooter } from "@/components/site-chrome-footer";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { rootMetadataWithVerification } from "@/lib/seo";
@@ -26,11 +27,16 @@ export default function RootLayout({
   const gaMeasurementId = process.env.GA_MEASUREMENT_ID?.trim();
 
   return (
-    <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SITE_THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
         {gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-        <Providers>{children}</Providers>
-        <SiteChromeFooter />
+        <Providers>
+          {children}
+          <SiteChromeFooter />
+        </Providers>
       </body>
     </html>
   );

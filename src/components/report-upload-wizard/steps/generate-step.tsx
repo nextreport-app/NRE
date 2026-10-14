@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
@@ -8,27 +8,34 @@ import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
-import { isNoDataRowsError, isSpecificFieldError, buildMailtoShareUrl, buildShareReportUrl, buildSlackShareUrl, buildTelegramShareUrl, buildWhatsAppShareUrl } from "../utils";
-import { ReportTypeCard } from "../ui/report-type-card";
-import { WeeklyPeriodOption } from "../ui/weekly-period-option";
-import { WizardDateRangeFields } from "../ui/wizard-date-picker";
-import { Spinner, MailIcon, CopyIcon } from "../ui/icons";
-import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
-import { formatRelativeReportDate } from "@/lib/client-display";
 import {
-  LAUNCH_PRIMARY_REPORT_TYPES,
-  LAUNCH_SECONDARY_REPORT_TYPES,
-} from "@/lib/meta-launch-scope";
-
-const PRIMARY_REPORT_TYPES = new Set<string>(LAUNCH_PRIMARY_REPORT_TYPES);
-const LAUNCH_REPORT_TYPES = new Set<string>([
-  ...LAUNCH_PRIMARY_REPORT_TYPES,
-  ...LAUNCH_SECONDARY_REPORT_TYPES,
-]);
+  formatIso,
+  formatIsoRange,
+  formatSummaryRange,
+  isNoDataRowsError,
+  isSpecificFieldError,
+} from "../utils";
+import { WeeklyPeriodOption } from "../ui/weekly-period-option";
+import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
+import { WizardDateRangeFields } from "../ui/wizard-date-picker";
+import { Spinner } from "../ui/icons";
+import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
+import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+import { CsvVerificationPanel } from "../ui/csv-verification-panel";
+import { SupportTicketLink } from "@/components/support-ticket-link";
+import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
+import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
+import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
+import { WizardCoverBudgetSection } from "../ui/wizard-cover-budget-section";
+import { WizardGenerateSuccessPanel } from "../ui/wizard-generate-success-panel";
 
 export function WizardGenerateStep() {
+  const copy = useWizardCopy();
   const w = useWizardContext();
-  if (w.step !== 4) return null;
+
+  const stepActive = w.step === 4;
+
   const {
     budgetToggleSaving,
     clientId,
@@ -40,12 +47,13 @@ export function WizardGenerateStep() {
     comparisonPeriodB,
     comparisonPreset,
     copied,
+    clientShareMessageCopied,
+    handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
     customEnd,
     customRangeError,
     customStart,
-    customTitleExpanded,
     dailyRange,
     data,
     dateBounds,
@@ -63,6 +71,7 @@ export function WizardGenerateStep() {
     formatIso,
     formatIsoRange,
     formatSummaryRange,
+    apiSyncHybridImport,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -70,10 +79,12 @@ export function WizardGenerateStep() {
     handleCopyLink,
     handleCopyShareLink,
     handleGenerate,
+    handleGenerateStepPrimary,
     handleGenerateAnother,
     handleGeneratePreviousMonthSummary,
     handleReportTypeChange,
     handleSaveButtonClick,
+    clientTimezone,
     handleSaveToFolderLink,
     handleShowBudgetOnCoverChange,
     hasAdLevelCsv,
@@ -83,8 +94,6 @@ export function WizardGenerateStep() {
     historicalMonthCount,
     historicalMonthLabels,
     includePreviousMonthComparison,
-    monthComparisonCoverage,
-    monthComparisonOptions,
     mtdRange,
     needsLongRangeConfirm,
     persistGenerateSnapshot,
@@ -97,14 +106,14 @@ export function WizardGenerateStep() {
     previewMessage,
     previewStatus,
     previewRefreshing,
+    generateStepPreviewReady,
+    csvVerification,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
     rememberedFolder,
     reportId,
     reportSummaryExpanded,
-    reportTitle,
-    reportTitleTouched,
     reportType,
     reportTypeLabel,
     setCustomEnd,
@@ -113,7 +122,6 @@ export function WizardGenerateStep() {
     editCustomEnd,
     editCustomStart,
     editDateMode,
-    setCustomTitleExpanded,
     setDateMode,
     setDriveFolderLinkInput,
     setDriveFolderNameInput,
@@ -125,8 +133,6 @@ export function WizardGenerateStep() {
     editHistoricalMonthCount,
     setLongRangeConfirmed,
     setReportSummaryExpanded,
-    setReportTitle,
-    setReportTitleTouched,
     setStep,
     shareToken,
     showBudgetOnCover,
@@ -136,160 +142,179 @@ export function WizardGenerateStep() {
     updateComparisonPeriodB,
     weeklyOptions,
     weeklyPeriodSummaryLabel,
-    weeklyRangeIso
+    weeklyRangeIso,
+    reportPeriodConfirmationLine,
+    wizardSharePlatformLabel,
+    driveDateRangeLabel,
+    happyPathSkippedSteps,
+    agencyName,
+    handleWizardAgencyNameChange,
+    reportBrandingMode,
+    setReportBrandingMode,
+    reportBrandingError,
+    reportBrandingSaving,
+    reportBrandingBlocksGenerate,
+    showAgencyNameOnCover,
+    setShowAgencyNameOnCover,
+    initialAgencyName,
+    initialReportBrandingMode,
+    initialShowAgencyNameOnCover,
   } = w;
 
-  const [moreReportTypesOpen, setMoreReportTypesOpen] = useState(
-    () => LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
-  );
+  const periodConfirmation = reportPeriodConfirmationLine();
+  const slideCount = estimatedSlideCount();
+
+  const weeklyPeriodNeedsAttention =
+    reportType === "WEEKLY" &&
+    (dateMode === "custom" || Boolean(customRangeError) || needsLongRangeConfirm);
+  const [weeklyPeriodExpanded, setWeeklyPeriodExpanded] = useState(false);
+
+  useEffect(() => {
+    if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
+  }, [weeklyPeriodNeedsAttention]);
+
+  const weeklyPeriodSummary =
+    dateMode === "last7" && weeklyOptions
+      ? `Last 7 days · ${formatIsoRange(weeklyOptions.last7)}`
+      : dateMode === "custom" && customStart && customEnd
+        ? `Custom range · ${formatIsoRange({ startIso: customStart, endIso: customEnd })}`
+        : weeklyRangeIso
+          ? formatIsoRange(weeklyRangeIso)
+          : "Expand to choose dates";
+
+  if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
+  const csvVerificationBlocksGenerate =
+    csvVerification?.status === "mismatch" && usesFullAdWizard(platform);
+  const generateCtaDisabled =
+    previewStatus === "invalid" ||
+    (previewStatus !== "error" && !generateStepPreviewReady) ||
+    reportBrandingBlocksGenerate ||
+    csvVerificationBlocksGenerate ||
+    previewRefreshing;
+  const generateCtaLabel =
+    generateStatus === "loading"
+      ? "Generating…"
+      : generateStatus === "error"
+        ? "Try again"
+        : previewStatus === "loading" || previewRefreshing
+          ? "Loading report options…"
+          : !generateStepPreviewReady
+            ? previewStatus === "invalid"
+              ? "Fix options above"
+              : previewStatus === "error"
+                ? "Retry preview"
+                : previewStatus === "idle"
+                  ? "Choose dates above"
+                  : "Loading report options…"
+            : csvVerificationBlocksGenerate
+              ? "Fix CSV verification above"
+              : copy.generateReport;
+  const showStandardCoverBudget =
+    reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
   return (
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              <section className="rounded-lg border border-dash-border border-l-4 border-l-[#f6ad55] bg-dash-card p-5">
-            <h4 className="text-[15px] font-semibold text-white">Report Type</h4>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <ReportTypeCard
-                icon="📊"
-                heading="Weekly Performance Report"
-                description="One week with a daily chart."
-                selected={reportType === "WEEKLY"}
-                onSelect={() => handleReportTypeChange("WEEKLY")}
-                layout="compact"
+              <WizardReportSetupPanel
+                variant="summary"
+                allowInlineChange
+                reportType={reportType}
+                reportTypeLabel={reportTypeLabel()}
+                platform={platform}
+                clientTimezone={clientTimezone}
+                onReportTypeChange={handleReportTypeChange}
               />
-              <ReportTypeCard
-                icon="📅"
-                heading="Monthly Performance Report"
-                description="Full month with MTD chart."
-                selected={reportType === "MONTHLY"}
-                onSelect={() => handleReportTypeChange("MONTHLY")}
-                layout="compact"
-              />
-              <ReportTypeCard
-                icon="☀️"
-                heading="Yesterday Performance Report"
-                description="Latest complete day"
-                selected={reportType === "DAILY"}
-                onSelect={() => handleReportTypeChange("DAILY")}
-                layout="compact"
-              />
-            </div>
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setMoreReportTypesOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-md border border-dash-border bg-[#0d1b2e]/60 px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
-                aria-expanded={moreReportTypesOpen}
-              >
-                <span>
-                  More report types
-                  {LAUNCH_SECONDARY_REPORT_TYPES.includes(
-                    reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number],
-                  ) ? (
-                    <span className="ml-2 font-normal text-dash-accent">· {reportTypeLabel()}</span>
-                  ) : null}
-                </span>
-                <span className="text-dash-ink-secondary">{moreReportTypesOpen ? "▲" : "▼"}</span>
-              </button>
-              {moreReportTypesOpen ? (
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  <ReportTypeCard
-                    icon="🔀"
-                    heading="Comparison Report"
-                    description="Two periods side by side."
-                    selected={reportType === "COMPARISON"}
-                    onSelect={() => handleReportTypeChange("COMPARISON")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="📆"
-                    heading="Multi-Month Historical Report"
-                    description="Several past months in one deck."
-                    selected={reportType === "HISTORICAL"}
-                    onSelect={() => handleReportTypeChange("HISTORICAL")}
-                    layout="compact"
-                  />
-                  <ReportTypeCard
-                    icon="📋"
-                    heading="Daily Performance Report"
-                    description="Multiple days, one row per day"
-                    selected={reportType === "DAY_BREAKDOWN"}
-                    onSelect={() => handleReportTypeChange("DAY_BREAKDOWN")}
-                    layout="compact"
-                  />
-                </div>
-              ) : null}
-            </div>
-            {reportType === "HISTORICAL" && (
-              <div className="mt-4 space-y-3">
-                <label className="block text-[14px] text-dash-ink-secondary">
-                  How many complete prior months?
-                  <select
-                    value={historicalMonthCount}
-                    onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
-                    className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-white"
+
+            {happyPathSkippedSteps ? (
+              <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
+                <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">{copy.happyPathBannerBody}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
                   >
-                    {[2, 3, 4, 5, 6, 8, 12].map((n) => (
-                      <option key={n} value={n}>
-                        Last {n} months
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="text-[14px] text-dash-ink-secondary">
-                  Months: <span className="text-white">{historicalMonthLabels.join(" · ")}</span>
-                </p>
-                {dateBounds && (
-                  <p className="text-[14px] text-dash-ink-muted">
-                    CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
-                  </p>
-                )}
+                    {copy.happyPathReviewCampaigns}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
+                  >
+                    {copy.happyPathReviewMetrics}
+                  </button>
+                </div>
               </div>
+            ) : null}
+
+            {reportType === "HISTORICAL" && (
+              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+                <h4 className="text-[15px] font-semibold text-dash-ink">Historical months</h4>
+                <div className="mt-3 space-y-3">
+                  <label className="block text-[14px] text-dash-ink-secondary">
+                    How many complete prior months?
+                    <select
+                      value={historicalMonthCount}
+                      onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
+                      className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-dash-ink"
+                    >
+                      {[2, 3, 4, 5, 6, 8, 12].map((n) => (
+                        <option key={n} value={n}>
+                          Last {n} months
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="text-[14px] text-dash-ink-secondary">
+                    Months: <span className="text-dash-ink">{historicalMonthLabels.join(" · ")}</span>
+                  </p>
+                  {dateBounds && (
+                    <p className="text-[14px] text-dash-ink-muted">
+                      CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
+                    </p>
+                  )}
+                </div>
+              </section>
             )}
             {reportType === "DAILY" && dailyRange && (
-              <p className="mt-4 text-[14px] text-dash-ink-secondary">
-                Reporting on <span className="text-white">{formatIsoRange(dailyRange)}</span>.
+              <p className="text-[14px] text-dash-ink-secondary">
+                Reporting on <span className="text-dash-ink">{formatIsoRange(dailyRange)}</span>.
               </p>
             )}
-          </section>
 
-          {/* Section 2 — Date range (Weekly + Day-by-Day) */}
-          {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">
-                {reportType === "DAY_BREAKDOWN" ? "Select date range" : "Select report period"}
-              </h4>
-              {reportType === "DAY_BREAKDOWN" ? (
-                <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
-                  <p className="text-[14px] text-dash-ink-secondary">
-                    Pick any range covered by your day-level CSV
-                    {dateBounds
-                      ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
-                      : ""}
-                    .
-                  </p>
-                  <WizardDateRangeFields
-                    startIso={customStart}
-                    endIso={customEnd}
-                    minIso={dateBounds?.minIso}
-                    maxIso={dateBounds?.maxIso}
-                    onStartChange={(iso) => {
-                      editDateMode("custom");
-                      editCustomStart(iso);
-                    }}
-                    onEndChange={(iso) => {
-                      editDateMode("custom");
-                      editCustomEnd(iso);
-                    }}
-                  />
-                  {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+          {reportType === "WEEKLY" && (
+            <section className="rounded-lg border border-dash-border bg-dash-card">
+              <button
+                type="button"
+                onClick={() => setWeeklyPeriodExpanded((open) => !open)}
+                aria-expanded={weeklyPeriodExpanded}
+                className="flex w-full items-start justify-between gap-3 p-4 text-left"
+              >
+                <div className="min-w-0">
+                  <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
+                  {!weeklyPeriodExpanded ? (
+                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{weeklyPeriodSummary}</p>
+                  ) : (
+                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
+                      Change only if you need a different week — Confirmed period below matches your choice.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div className="mt-4 flex flex-wrap gap-3">
+                <span
+                  className={`mt-0.5 shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${weeklyPeriodExpanded ? " rotate-180" : ""}`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </button>
+
+              {weeklyPeriodExpanded ? (
+                <div className="space-y-4 border-t border-dash-border px-4 pb-4 pt-3">
+                  <div className="flex flex-wrap gap-3">
                     {weeklyOptions ? (
                       <WeeklyPeriodOption
                         selected={dateMode === "last7"}
@@ -309,12 +334,15 @@ export function WizardGenerateStep() {
                           ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
                           : "Pick any start and end date in your CSV"
                       }
-                      onSelect={() => editDateMode("custom")}
+                      onSelect={() => {
+                        editDateMode("custom");
+                        setWeeklyPeriodExpanded(true);
+                      }}
                     />
                   </div>
 
                   {dateMode === "custom" ? (
-                    <div className="mt-4 space-y-3 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                    <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
                       <WizardDateRangeFields
                         startIso={customStart}
                         endIso={customEnd}
@@ -350,15 +378,45 @@ export function WizardGenerateStep() {
                       ) : null}
                     </div>
                   ) : null}
-                </>
-              )}
+                </div>
+              ) : null}
+            </section>
+          )}
+
+          {reportType === "DAY_BREAKDOWN" && (
+            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+              <h4 className="text-[16px] font-semibold text-dash-ink">Select date range</h4>
+              <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
+                <p className="text-[14px] text-dash-ink-secondary">
+                  Pick any range covered by your day-level CSV
+                  {dateBounds
+                    ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
+                    : ""}
+                  .
+                </p>
+                <WizardDateRangeFields
+                  startIso={customStart}
+                  endIso={customEnd}
+                  minIso={dateBounds?.minIso}
+                  maxIso={dateBounds?.maxIso}
+                  onStartChange={(iso) => {
+                    editDateMode("custom");
+                    editCustomStart(iso);
+                  }}
+                  onEndChange={(iso) => {
+                    editDateMode("custom");
+                    editCustomEnd(iso);
+                  }}
+                />
+                {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+              </div>
             </section>
           )}
 
           {/* Section 2 (Comparison variant) — Period A/B presets (A1) */}
           {reportType === "COMPARISON" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-white">Select comparison periods</h4>
+              <h4 className="text-[16px] font-semibold text-dash-ink">Select comparison periods</h4>
               <div className="mt-4 flex flex-wrap gap-3">
                 <WeeklyPeriodOption
                   selected={comparisonPreset === "thisWeek"}
@@ -371,16 +429,6 @@ export function WizardGenerateStep() {
                   onSelect={() => handleComparisonPresetSelect("thisWeek")}
                 />
                 <WeeklyPeriodOption
-                  selected={comparisonPreset === "thisMonth"}
-                  label="Month-on-month (this month vs last)"
-                  sublabel={
-                    monthComparisonOptions
-                      ? `${formatIsoRange(monthComparisonOptions.periodA)} vs ${formatIsoRange(monthComparisonOptions.periodB)}`
-                      : undefined
-                  }
-                  onSelect={() => handleComparisonPresetSelect("thisMonth")}
-                />
-                <WeeklyPeriodOption
                   selected={comparisonPreset === "custom"}
                   label="Custom"
                   onSelect={() => handleComparisonPresetSelect("custom")}
@@ -388,9 +436,9 @@ export function WizardGenerateStep() {
               </div>
 
               {comparisonPreset === "custom" && (
-                <div className="mt-4 space-y-4 rounded-lg border border-dash-border bg-[#162033]/60 p-4">
+                <div className="mt-4 space-y-4 rounded-lg border border-dash-border nre-wizard-panel p-4">
                   <div>
-                    <p className="mb-3 text-[14px] font-medium text-white">Period A (current)</p>
+                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period A (current)</p>
                     <WizardDateRangeFields
                       startIso={comparisonPeriodA?.startIso ?? ""}
                       endIso={comparisonPeriodA?.endIso ?? ""}
@@ -403,7 +451,7 @@ export function WizardGenerateStep() {
                     />
                   </div>
                   <div>
-                    <p className="mb-3 text-[14px] font-medium text-white">Period B (compare)</p>
+                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period B (compare)</p>
                     <WizardDateRangeFields
                       startIso={comparisonPeriodB?.startIso ?? ""}
                       endIso={comparisonPeriodB?.endIso ?? ""}
@@ -418,22 +466,10 @@ export function WizardGenerateStep() {
                 </div>
               )}
 
-              {monthComparisonCoverage && !monthComparisonCoverage.valid ? (
-                <p className="mt-4 rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-                  {monthComparisonCoverage.error ??
-                    "Your CSV does not cover both comparison periods. Export a longer custom range or upload Previous Month Data on Manage."}
-                </p>
-              ) : monthComparisonCoverage?.periodBUsesSupplemental ? (
-                <p className="mt-4 rounded-md border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-[14px] text-sky-200">
-                  Period B will use your stored Previous Month Data for dates before your main CSV starts.
-                </p>
-              ) : (
-                <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
-                  Tip: Period A must fit your main CSV. For month-vs-month, upload Previous Month Data once on Manage — or
-                  export a custom range from{" "}
-                  {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes both periods.
-                </p>
-              )}
+              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
+                Tip: Both periods must fit your main CSV (or use Custom and export a longer range from{" "}
+                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes Period A and Period B).
+              </p>
             </section>
           )}
 
@@ -469,14 +505,19 @@ export function WizardGenerateStep() {
                 </div>
               )}
               {previewStatus === "error" && previewMessage && (
-                <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
-                  {previewMessage}
-                </div>
-              )}
-              {previewStatus === "loading" && !data && !comparisonData && !historicalData && !dayBreakdownData && (
-                <div className="flex items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary">
-                  <Spinner />
-                  Loading preview…
+                <div className="space-y-3 rounded-lg border border-red-900 bg-red-950/40 p-4">
+                  <p className="text-[14px] text-red-300">{previewMessage}</p>
+                  <p className="text-[13px] text-red-200/90">
+                    Your campaigns, objectives, and metrics are still saved — use Retry preview below (no need to start
+                    over).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGenerateStepPrimary}
+                    className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+                  >
+                    Retry preview
+                  </button>
                 </div>
               )}
               {previewRefreshing && (data || comparisonData || historicalData || dayBreakdownData) ? (
@@ -486,63 +527,68 @@ export function WizardGenerateStep() {
           )}
 
 
-          {previewKind === "normal" && data && (
-            <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <h4 className="text-[15px] font-semibold text-white">Cover slide budget</h4>
-              {clientMonthlyBudget != null && clientMonthlyBudget > 0 && coverBudgetPreviewLine ? (
-                <div className="mt-3 space-y-3">
-                  <p className="rounded-md border border-navy-border bg-navy-panel px-3 py-2.5 text-[14px] leading-relaxed text-dash-ink">
-                    {coverBudgetPreviewLine}
-                  </p>
-                  <label className={`flex items-start gap-3 ${budgetToggleSaving ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
-                    <input
-                      type="checkbox"
-                      checked={showBudgetOnCover}
-                      disabled={budgetToggleSaving}
-                      onChange={(e) => void handleShowBudgetOnCoverChange(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
-                    />
-                    <span className="text-[14px] text-dash-ink-secondary">
-                      Show monthly budget used on cover slide
-                    </span>
-                  </label>
-                  {coverBudgetPacingWarning && (
-                    <p className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[14px] text-amber-200">
-                      {coverBudgetPacingWarning}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
-                  No monthly budget set for this client.{" "}
-                  <Link
-                    href={`/clients/${clientId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-dash-accent hover:underline"
-                  >
-                    Set budget in Client Settings
-                  </Link>
-                </p>
-              )}
-            </div>
-          )}
+            {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
+              <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
+                <p className="nre-wizard-callout-success__label">Confirmed period</p>
+                <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+              </div>
+            ) : null}
 
-          {(data || comparisonData || historicalData || dayBreakdownData) && (
-            <>
             <div className="space-y-4">
+              {(previewKind === "normal" ||
+                previewKind === "comparison" ||
+                previewKind === "historical" ||
+                previewKind === "dayBreakdown") &&
+              generateStepPreviewReady &&
+              generateStatus === "idle" ? (
+                <CsvVerificationPanel
+                  verification={csvVerification}
+                  refreshing={previewRefreshing}
+                  clientId={clientId}
+                />
+              ) : null}
+
+              {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
+                <WizardCoverBudgetSection
+                  clientId={clientId}
+                  clientMonthlyBudget={clientMonthlyBudget}
+                  coverBudgetPreviewLine={coverBudgetPreviewLine}
+                  showBudgetOnCover={showBudgetOnCover}
+                  onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
+                  coverBudgetPacingWarning={coverBudgetPacingWarning}
+                  budgetToggleSaving={budgetToggleSaving}
+                  previewReady={Boolean(data)}
+                />
+              ) : null}
+
+              {generateStepPreviewReady && generateStatus === "idle" ? (
+                <WizardReportBrandingPanel
+                  agencyName={agencyName}
+                  onAgencyNameChange={handleWizardAgencyNameChange}
+                  showAgencyNameOnCover={showAgencyNameOnCover}
+                  onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
+                  reportBrandingMode={reportBrandingMode}
+                  onReportBrandingModeChange={setReportBrandingMode}
+                  initialReportBrandingMode={initialReportBrandingMode}
+                  initialAgencyName={initialAgencyName}
+                  initialShowAgencyNameOnCover={initialShowAgencyNameOnCover}
+                  saving={reportBrandingSaving}
+                  error={reportBrandingError}
+                />
+              ) : null}
+
               {/* Section 1 — Report summary card, amber left border. Merges
                   what used to be two separate cards (Reporting Period +
                   Ready to generate) into the one card the merged Step 3
                   spec calls for. */}
-              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-[#1e293b] p-5">
+              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-dash-card nre-dash-surface p-5">
                 <button
                   type="button"
                   onClick={() => setReportSummaryExpanded((open) => !open)}
                   aria-expanded={reportSummaryExpanded}
                   className="flex w-full items-center justify-between gap-3 text-left"
                 >
-                  <h3 className="text-[15px] font-semibold text-white">Report Summary</h3>
+                  <h3 className="text-[15px] font-semibold text-dash-ink">Report Summary</h3>
                   <span
                     className={`text-[15px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
                     aria-hidden
@@ -552,18 +598,23 @@ export function WizardGenerateStep() {
                 </button>
                 {reportSummaryExpanded && (
                   <>
-                <hr className="my-3 border-t border-[#334155]" />
+                <hr className="my-3 border-t border-dash-border" />
                 <div className="space-y-2">
+                  {apiSyncHybridImport ? (
+                    <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
+                      {META_HYBRID_API_CSV_IMPORT_NOTE}
+                    </p>
+                  ) : null}
                   <p className="text-[14px] text-[#94a3b8]">
-                    Report type: <span className="text-[14px] text-white">{reportTypeLabel()}</span>
+                    Report type: <span className="text-[14px] text-dash-ink">{reportTypeLabel()}</span>
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
-                    Client: <span className="text-[14px] text-white">{clientName}</span>
+                    Client: <span className="text-[14px] text-dash-ink">{clientName}</span>
                   </p>
                   <div>
                     <p className="text-[14px] text-[#94a3b8]">
                       Campaigns:{" "}
-                      <span className="text-[14px] text-white">{summaryCampaignNames().length} selected</span>
+                      <span className="text-[14px] text-dash-ink">{summaryCampaignNames().length} selected</span>
                     </p>
                     <ul className="mt-1 space-y-0.5 pl-4">
                       {summaryCampaignNames().map((name) => (
@@ -576,19 +627,19 @@ export function WizardGenerateStep() {
                   {previewKind === "comparison" && comparisonData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Comparison periods:{" "}
-                      <span className="text-[14px] text-white">
+                      <span className="text-[14px] text-dash-ink">
                         {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
                       </span>
                     </p>
                   ) : previewKind === "historical" && historicalData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Months covered:{" "}
-                      <span className="text-[14px] text-white">{historicalData.monthsLabel}</span>
+                      <span className="text-[14px] text-dash-ink">{historicalData.monthsLabel}</span>
                     </p>
                   ) : previewKind === "dayBreakdown" && dayBreakdownData ? (
                     <p className="text-[14px] text-[#94a3b8]">
                       Date range:{" "}
-                      <span className="text-[14px] text-white">{dayBreakdownData.rangeLabel}</span>
+                      <span className="text-[14px] text-dash-ink">{dayBreakdownData.rangeLabel}</span>
                       {" · "}
                       {dayBreakdownData.dayCount} day{dayBreakdownData.dayCount === 1 ? "" : "s"} with data
                     </p>
@@ -596,40 +647,40 @@ export function WizardGenerateStep() {
                     <>
                       {reportType === "DAILY" && dailyRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Daily period: <span className="text-[14px] text-white">{formatSummaryRange(dailyRange)}</span>
+                          Daily period: <span className="text-[14px] text-dash-ink">{formatSummaryRange(dailyRange)}</span>
                         </p>
                       )}
                       {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso && (
                         <p className="text-[14px] text-[#94a3b8]">
                           {reportType === "DAY_BREAKDOWN" ? "Date range" : weeklyPeriodSummaryLabel()}:{" "}
-                          <span className="text-[14px] text-white">{formatSummaryRange(weeklyRangeIso)}</span>
+                          <span className="text-[14px] text-dash-ink">{formatSummaryRange(weeklyRangeIso)}</span>
                         </p>
                       )}
                       {reportType === "MONTHLY" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Full month: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Full month: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "CREATIVE" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Data window: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Data window: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                       {reportType === "WEEKLY" && mtdRange && (
                         <p className="text-[14px] text-[#94a3b8]">
-                          Month to date: <span className="text-[14px] text-white">{formatSummaryRange(mtdRange)}</span>
+                          Month to date: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
                         </p>
                       )}
                     </>
                   )}
                   <p className="text-[14px] text-[#94a3b8]">
-                    Template: <span className="text-[14px] text-white">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
+                    Template: <span className="text-[14px] text-dash-ink">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
                     Platform: <WizardPlatformSummaryLabel platform={platform} />
                   </p>
                   <p className="text-[14px] text-[#94a3b8]">
-                    Estimated slides: <span className="text-[14px] text-white">{estimatedSlideCount()}</span>
+                    Estimated slides: <span className="text-[14px] text-dash-ink">{estimatedSlideCount()}</span>
                   </p>
                 </div>
                   </>
@@ -681,224 +732,43 @@ export function WizardGenerateStep() {
               </div>
             )}
 
-            {/* Section 2 — Custom title, collapsed behind a small link by default. */}
-            <div className="rounded-lg bg-[#1e293b] p-5">
-              {!customTitleExpanded && !reportTitleTouched ? (
-                <button
-                  type="button"
-                  onClick={() => setCustomTitleExpanded(true)}
-                  className="text-[14px] text-dash-accent hover:underline"
-                >
-                  Add custom PPT report title +
-                </button>
-              ) : (
-                <>
-                  <label className="mb-1 block text-[14px] text-[#94a3b8]">Custom report title</label>
-                  <input
-                    value={reportTitle}
-                    onChange={(e) => {
-                      setReportTitle(e.target.value);
-                      setReportTitleTouched(true);
-                    }}
-                    placeholder="e.g. Monthly Campaign Summary or Q3 Performance Review"
-                    maxLength={100}
-                    disabled={generateStatus === "loading" || generateStatus === "done"}
-                    className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
-                  />
-                  <p className="mt-1 text-[14px] text-[#94a3b8]">Replaces the report type title on the cover slide.</p>
-                </>
-              )}
-            </div>
           </div>
 
+          {!generateStepPreviewReady && previewStatus === "loading" && generateStatus === "idle" ? (
+            <p className="text-[14px] text-dash-ink-secondary">Loading report preview…</p>
+          ) : null}
+
           {generateStatus === "done" && downloadUrl && (
-            <div className="overflow-hidden rounded-xl border border-dash-border bg-[#111f35]">
-              <div className="border-b border-dash-border px-5 py-4">
-                <p className="text-[16px] font-semibold text-[#68d391]">Report ready</p>
-                <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                  Share the live link with your client or download files below.
-                </p>
-              </div>
-
-              <div className="space-y-5 p-5">
-                {publishedAt ? (
-                  <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
-                    Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
-                    {driveSaveUrl ? " Re-save to Google Drive manually if you updated the PPT." : null}
-                  </div>
-                ) : null}
-
-                {shareToken && reportId ? (
-                  <p className="text-[14px] leading-relaxed text-dash-ink-secondary">
-                    PPT and the live link are ready.{" "}
-                    <Link
-                      href={`/clients/${clientId}/reports/${reportId}/copy?from=generate`}
-                      className="font-medium text-dash-accent hover:underline"
-                      onClick={() => {
-                        if (reportId && downloadUrl) {
-                          persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
-                        }
-                      }}
-                    >
-                      {publishedAt ? "Edit review" : "Review slides and edit"}
-                    </Link>{" "}
-                    before sharing.
-                  </p>
-                ) : null}
-
-                {shareToken ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-[#0d1b2e] px-3 py-2.5">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[14px] text-[#94a3b8]">
-                      {buildShareReportUrl(shareToken)}
-                    </span>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <a
-                        href={`https://${buildShareReportUrl(shareToken)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
-                      >
-                        View
-                      </a>
-                      <span className="text-[12px] text-dash-border" aria-hidden="true">
-                        ·
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyShareLink}
-                        className="rounded-md px-2.5 py-1 text-[14px] font-medium text-dash-accent hover:bg-dash-border"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(() => {
-                  const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
-                  const gridClass = showDrive ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2";
-
-                  return (
-                <div>
-                  <p className="mb-2 text-[14px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Downloads</p>
-                  <div className={gridClass}>
-                    <a
-                      href={downloadUrl}
-                      className="flex items-center justify-center rounded-lg border border-[#f5b45a]/30 bg-[#f5b45a]/10 px-3 py-3 text-[14px] font-medium text-[#f0c27a] transition-colors hover:border-[#f5b45a]/50 hover:bg-[#f5b45a]/15"
-                    >
-                      PPTX
-                    </a>
-                    {showDrive ? (
-                      <button
-                        type="button"
-                        onClick={handleSaveButtonClick}
-                        disabled={driveSaving}
-                        className="flex items-center justify-center rounded-lg border border-[#68d391]/30 bg-[#68d391]/10 px-3 py-3 text-[14px] font-medium text-[#9ae6b4] transition-colors hover:border-[#68d391]/50 hover:bg-[#68d391]/15 disabled:opacity-50"
-                      >
-                        {driveSaving ? "Saving…" : "Google Drive"}
-                      </button>
-                    ) : null}
-                  </div>
-                  {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
-                    <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                      Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDriveSaveError(null);
-                          setDriveView("editing");
-                        }}
-                        className="text-dash-accent hover:underline"
-                      >
-                        Change
-                      </button>
-                    </p>
-                  ) : null}
-                </div>
-                  );
-                })()}
-
-                {shareToken ? (
-                  <details className="group rounded-lg border border-dash-border bg-[#0d1b2e]">
-                    <summary className="cursor-pointer list-none px-4 py-3 text-[14px] font-medium text-dash-ink marker:content-none [&::-webkit-details-marker]:hidden">
-                      <span className="flex items-center justify-between gap-2">
-                        Share with client
-                        <span className="text-[15px] leading-none text-dash-ink-secondary transition-transform group-open:rotate-180">▾</span>
-                      </span>
-                    </summary>
-                    <div className="border-t border-dash-border px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={buildMailtoShareUrl(`https://${buildShareReportUrl(shareToken)}`, clientName)}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <MailIcon />
-                          Email
-                        </a>
-                        <a
-                          href={buildWhatsAppShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" fill="#25D366" width={16} height={16} aria-hidden="true">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.862L0 24l6.324-1.51A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.37l-.36-.213-3.724.889.933-3.617-.235-.374A9.818 9.818 0 012.182 12C2.182 6.578 6.578 2.182 12 2.182S21.818 6.578 21.818 12 17.422 21.818 12 21.818z" />
-                          </svg>
-                          WhatsApp
-                        </a>
-                        <a
-                          href={buildTelegramShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" fill="#26A5E4" width={16} height={16} aria-hidden="true">
-                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                          </svg>
-                          Telegram
-                        </a>
-                        <a
-                          href={buildSlackShareUrl(`https://${buildShareReportUrl(shareToken)}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                        >
-                          <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
-                            <path
-                              d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52z"
-                              fill="#36C5F0"
-                            />
-                            <path
-                              d="M6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834z"
-                              fill="#2EB67D"
-                            />
-                            <path
-                              d="M8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"
-                              fill="#ECB22E"
-                            />
-                            <path
-                              d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"
-                              fill="#E01E5A"
-                            />
-                          </svg>
-                          Slack
-                        </a>
-                        {driveSaveUrl ? (
-                          <button
-                            type="button"
-                            onClick={handleCopyLink}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
-                          >
-                            <CopyIcon />
-                            {copied ? "Copied!" : "Copy Drive link"}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </details>
-                ) : null}
-
+            <WizardGenerateSuccessPanel
+              clientName={clientName}
+              clientId={clientId}
+              reportId={reportId}
+              reportTypeLabel={reportTypeLabel()}
+              wizardSharePlatformLabel={wizardSharePlatformLabel()}
+              slideCount={slideCount}
+              dateRangeLabel={driveDateRangeLabel()}
+              downloadUrl={downloadUrl}
+              shareToken={shareToken}
+              publishedAt={publishedAt}
+              clientShareMessageCopied={clientShareMessageCopied}
+              onCopyClientShareMessage={handleCopyClientShareMessage}
+              onCopyShareLink={handleCopyShareLink}
+              persistGenerateSnapshot={persistGenerateSnapshot}
+              hasGoogleDriveConnected={hasGoogleDriveConnected}
+              driveView={driveView}
+              driveSaving={driveSaving}
+              handleSaveButtonClick={handleSaveButtonClick}
+              rememberedFolder={rememberedFolder}
+              setDriveView={setDriveView}
+              onEditDriveFolder={() => {
+                setDriveSaveError(null);
+                setDriveView("editing");
+              }}
+              copied={copied}
+              driveSaveUrl={driveSaveUrl}
+              handleCopyLink={handleCopyLink}
+              handleGenerateAnother={handleGenerateAnother}
+            >
                 {hasGoogleDriveConnected && driveView === "editing" && (
                 <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
                   <div>
@@ -928,7 +798,7 @@ export function WizardGenerateStep() {
                       type="text"
                       value={driveFolderNameInput}
                       onChange={(e) => setDriveFolderNameInput(e.target.value)}
-                      placeholder="e.g. Reports or Alonzo Carr / Reports"
+                      placeholder="e.g. Reports"
                       className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
                     />
                     <p className="mt-1 text-[14px] text-dash-ink-secondary">
@@ -1011,35 +881,20 @@ export function WizardGenerateStep() {
                 </div>
               )}
 
-              <div className="border-t border-dash-border pt-4">
-                <button
-                  type="button"
-                  onClick={handleGenerateAnother}
-                  className="w-full text-center text-[14px] font-medium text-[#63b3ed] hover:underline"
-                >
-                  Generate another report for {clientName}
-                </button>
-              </div>
-              </div>
-            </div>
-          )}
-            </>
+            </WizardGenerateSuccessPanel>
           )}
 
           {showGenerateFooter && (
             <div className="space-y-3">
-              {generateStatus === "idle" && previewStatus === "loading" && (
-                <p className="text-[14px] text-dash-ink-secondary">Loading preview…</p>
-              )}
               {generateStatus === "idle" && (
                 <div className="hidden md:block">
                   <button
                     type="button"
                     onClick={handleGenerate}
-                    disabled={previewStatus === "loading" || previewStatus === "invalid"}
+                    disabled={generateCtaDisabled}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
-                    Generate Report
+                    {generateCtaLabel}
                   </button>
                   <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
                 </div>
@@ -1055,17 +910,29 @@ export function WizardGenerateStep() {
                   <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                     {generateMessage}
                   </div>
+                  <p className="text-[13px] text-dash-ink-secondary">
+                    Your setup is unchanged — retry uses the same CSV, campaigns, and metrics.
+                  </p>
                   <button
                     type="button"
                     onClick={handleGenerate}
                     className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                   >
-                    Try Again
+                    Retry generate
                   </button>
                 </div>
               )}
             </div>
           )}
+
+          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
+            Have a question or an issue with this report?{" "}
+            <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
+            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+            .
+          </p>
+
+          <WizardFeedbackLink />
 
           {showGenerateFooter ? (
             <WizardStickyFooter
@@ -1078,18 +945,13 @@ export function WizardGenerateStep() {
               }
               onBack={() => setStep(3)}
               backLabel="Back to metrics"
-              primaryLabel={
-                generateStatus === "loading"
-                  ? "Generating…"
-                  : generateStatus === "error"
-                    ? "Try again"
-                    : "Generate Report"
+              primaryLabel={generateCtaLabel}
+              onPrimary={handleGenerateStepPrimary}
+              primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
+              primaryLoading={
+                generateStatus === "loading" ||
+                (previewStatus === "loading" && generateStatus === "idle")
               }
-              onPrimary={handleGenerate}
-              primaryDisabled={
-                generateStatus !== "loading" && (previewStatus === "loading" || previewStatus === "invalid")
-              }
-              primaryLoading={generateStatus === "loading"}
             />
           ) : null}
         </div>

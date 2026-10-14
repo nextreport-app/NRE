@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSiteCopy } from "@/hooks/use-site-copy";
+import type { HomeCopy } from "@/lib/home-i18n";
 
 const SLIDE_BG = "#0d1b2e";
 const ACCENT = "#f6ad55";
@@ -198,12 +200,14 @@ function CombinedTotalSlide() {
   );
 }
 
-const SLIDES = [
-  { name: "Campaign Summary", render: () => <CampaignSummarySlide /> },
-  { name: "Ad Set", render: () => <AdSetSlide /> },
-  { name: "MTD Performance", render: () => <MtdChartSlide /> },
-  { name: "Combined Total", render: () => <CombinedTotalSlide /> },
-];
+function slideList(names: HomeCopy["reportSlideNames"]) {
+  return [
+    { name: names[0], render: () => <CampaignSummarySlide /> },
+    { name: names[1], render: () => <AdSetSlide /> },
+    { name: names[2], render: () => <MtdChartSlide /> },
+    { name: names[3], render: () => <CombinedTotalSlide /> },
+  ];
+}
 
 function ArrowIcon({ direction }: { direction: "left" | "right" }) {
   return (
@@ -214,9 +218,18 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
 }
 
 /** Interactive 4-slide carousel of real-looking report slide mockups — pure HTML/CSS, no image assets. */
-function SlideCarousel() {
+function SlideCarousel({
+  slideNames,
+  prevLabel,
+  nextLabel,
+}: {
+  slideNames: HomeCopy["reportSlideNames"];
+  prevLabel: string;
+  nextLabel: string;
+}) {
+  const slides = slideList(slideNames);
   const [index, setIndex] = useState(0);
-  const goTo = (i: number) => setIndex((i + SLIDES.length) % SLIDES.length);
+  const goTo = (i: number) => setIndex((i + slides.length) % slides.length);
 
   return (
     <div className="mx-auto w-full max-w-[680px]">
@@ -224,7 +237,7 @@ function SlideCarousel() {
         <button
           type="button"
           onClick={() => goTo(index - 1)}
-          aria-label="Previous slide"
+          aria-label={prevLabel}
           className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-navy-border text-white hover:bg-navy-panel"
         >
           <ArrowIcon direction="left" />
@@ -234,13 +247,13 @@ function SlideCarousel() {
           className="min-h-[420px] w-full min-w-0 overflow-x-hidden rounded-xl border border-navy-border p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:min-h-[380px] sm:p-6"
           style={{ background: SLIDE_BG }}
         >
-          {SLIDES[index].render()}
+          {slides[index].render()}
         </div>
 
         <button
           type="button"
           onClick={() => goTo(index + 1)}
-          aria-label="Next slide"
+          aria-label={nextLabel}
           className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-navy-border text-white hover:bg-navy-panel"
         >
           <ArrowIcon direction="right" />
@@ -248,7 +261,7 @@ function SlideCarousel() {
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-2">
-        {SLIDES.map((slide, i) => (
+        {slides.map((slide, i) => (
           <button
             key={slide.name}
             type="button"
@@ -262,27 +275,28 @@ function SlideCarousel() {
       </div>
 
       <p className="mt-2 text-center text-[11px] text-ink-muted sm:text-xs">
-        {index + 1} / {SLIDES.length} — {SLIDES[index].name}
+        {index + 1} / {slides.length} — {slides[index].name}
       </p>
     </div>
   );
 }
 
 export function ReportPreviewSection() {
+  const { home } = useSiteCopy();
+
   return (
     <section className="bg-navy-panel px-6 py-20">
       <div className="mx-auto max-w-5xl text-center">
-        <h2 className="text-2xl font-semibold text-white sm:text-3xl">What your clients will receive</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-base text-ink-muted">
-          A fully branded PowerPoint report with AI-written insights — automatically generated from your
-          campaign data.
-        </p>
+        <h2 className="text-2xl font-semibold text-white sm:text-3xl">{home.reportPreviewTitle}</h2>
+        <p className="mx-auto mt-3 max-w-2xl text-base text-ink-muted">{home.reportPreviewSubtitle}</p>
 
         <div className="mt-12">
-          <SlideCarousel />
-          <p className="mt-6 text-sm text-ink-muted">
-            Your actual reports will use your real campaign data and your agency branding.
-          </p>
+          <SlideCarousel
+            slideNames={home.reportSlideNames}
+            prevLabel={home.reportPrevSlide}
+            nextLabel={home.reportNextSlide}
+          />
+          <p className="mt-6 text-sm text-ink-muted">{home.reportPreviewFootnote}</p>
         </div>
       </div>
     </section>

@@ -29,7 +29,7 @@ export function parseCellNum(v: unknown): number {
   if (v === null || v === undefined || v === "") return 0;
   const s = String(v).trim();
   if (s === "") return 0;
-  const cleaned = s.replace(/[,$%\s]/g, "");
+  const cleaned = s.replace(/,/g, "").replace(/[^\d.-]/g, "");
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : 0;
 }

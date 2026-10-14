@@ -49,7 +49,7 @@ export function ReportRetentionSettings({
   return (
     <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border border-dash-border bg-dash-card p-5">
       <p className="text-[13px] text-dash-ink-secondary">
-        Generated PPTX and PDF files are removed automatically after this period. Share links stop working once a
+        Generated PPTX files are removed automatically after this period. Share links stop working once a
         report is purged — save important decks to Google Drive or download them before they expire.
       </p>
 

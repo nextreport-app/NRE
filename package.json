@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/build-pdf-html-bundle.mjs",
     "build": "prisma migrate deploy && next build --webpack",
     "start": "next start",
     "lint": "eslint",
@@ -12,6 +11,7 @@
     "test:objective-regression": "vitest run src/lib/nre/__tests__/meta-objective-regression.test.ts src/lib/nre/__tests__/google-objective-regression.test.ts src/lib/nre/__tests__/tiktok-objective-regression.test.ts src/lib/nre/__tests__/meta-dictionary-consistency.test.ts src/lib/nre/__tests__/gz-australia-cpl.test.ts src/lib/nre/__tests__/gz-australia-api-objective.test.ts",
     "test:api-routes": "vitest run src/app/api/__tests__",
     "meta:tier-qualification": "node scripts/meta-tier-qualification.js",
+    "blob:purge-ephemeral": "tsx scripts/purge-vercel-blob-ephemeral.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -19,7 +19,6 @@
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "@resvg/resvg-wasm": "^2.6.2",
-    "@sparticuz/chromium": "^141.0.0",
     "@vercel/blob": "^2.6.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
@@ -30,7 +29,6 @@
     "next-auth": "^5.0.0-beta.32",
     "papaparse": "^5.5.4",
     "pg": "^8.22.0",
-    "puppeteer-core": "^24.26.1",
     "razorpay": "^2.9.8",
     "react": "19.2.4",
     "react-dom": "19.2.4",

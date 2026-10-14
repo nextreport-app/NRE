@@ -8,7 +8,7 @@
  * This module maps each insight day to that same triple, then the shared CSV import
  * path (parseCsv → buildReportData) matches manual upload exactly.
  */
-import type { MetaInsightAction, MetaInsightRow } from "@/lib/meta-api";
+import type { MetaInsightAction, MetaInsightResultMetric, MetaInsightRow } from "@/lib/meta-api";
 import {
   campaignNameHaystack,
   isMetaFormLeadsCampaignHaystack,
@@ -19,6 +19,8 @@ import {
 } from "../campaign-name-heuristics";
 import { metaApiActionToCsvResultType } from "../meta-objective-dictionary";
 import { resolveObjectiveFromResultType } from "../result-type-map";
+import { hasMeaningfulWebsiteConversionFields } from "./conversion-field-signals";
+import { isWebsiteSubmissionResultAction } from "./website-submission-actions";
 
 const WEBSITE_LEAD_ACTION_TYPES = [
   "offsite_conversion.fb_pixel_lead",
@@ -65,44 +67,108 @@ function formatMoney(n: number): string {
 
 function parseIndicator(indicator: string): string | null {
   const trimmed = indicator.trim();
+  if (!trimmed) return null;
   if (trimmed.startsWith("actions:")) return trimmed.slice("actions:".length);
   if (trimmed.includes(".")) return trimmed;
+  // Graph API sometimes sends bare types (e.g. "lead") without an "actions:" prefix.
+  if (/^[a-z][a-z0-9_]*$/i.test(trimmed)) return trimmed;
   return null;
 }
 
-function metricValue(entry: { values?: Array<{ value?: string }> }): number {
-  const n = parseFloat(entry.values?.[0]?.value ?? "");
-  return Number.isFinite(n) ? n : 0;
+function metricValue(entry: { values?: Array<{ value?: string }>; value?: string }): number {
+  const nested = entry.values?.[0]?.value;
+  if (nested != null && nested !== "") {
+    const n = parseFloat(nested);
+    if (Number.isFinite(n)) return n;
+  }
+  const direct = entry.value;
+  if (direct != null && direct !== "") {
+    const n = parseFloat(direct);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
-function costForIndicator(
-  row: MetaInsightRow,
+function costForIndicatorOnList(
+  entries: MetaInsightRow["cost_per_result"] | undefined,
   indicator: string,
 ): number {
-  for (const entry of row.cost_per_result ?? []) {
-    if ((entry.indicator ?? "").trim() !== indicator.trim()) continue;
+  const want = indicator.trim();
+  const wantAction = parseIndicator(want);
+  for (const entry of entries ?? []) {
+    const ind = (entry.indicator ?? "").trim();
+    if (ind !== want && !(wantAction && parseIndicator(ind) === wantAction)) continue;
     const n = metricValue(entry);
     if (n > 0) return n;
   }
   return 0;
 }
 
+function costForIndicator(row: MetaInsightRow, indicator: string): number {
+  return costForIndicatorOnList(row.cost_per_result, indicator);
+}
+
 type CostedAdsManagerResult = { actionType: string; count: number; cost: number };
 
-/** Rows Meta Ads Manager export would treat as having a costed Result that day. */
-function costedAdsManagerResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+function costedAdsManagerResultsFrom(
+  resultMetrics: MetaInsightResultMetric[] | undefined,
+  costMetrics: MetaInsightResultMetric[] | undefined,
+): CostedAdsManagerResult[] {
   const out: CostedAdsManagerResult[] = [];
-  for (const entry of row.results ?? []) {
+  for (const entry of resultMetrics ?? []) {
     const indicator = entry.indicator ?? "";
     const actionType = parseIndicator(indicator);
     if (!actionType) continue;
     const count = metricValue(entry);
     if (count <= 0) continue;
-    const cost = costForIndicator(row, indicator);
+    const cost = costForIndicatorOnList(costMetrics, indicator);
     if (cost <= 0) continue;
     out.push({ actionType, count, cost });
   }
   return out;
+}
+
+/** Rows Meta Ads Manager export would treat as having a costed Result that day. */
+function costedAdsManagerResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+  return costedAdsManagerResultsFrom(row.results, row.cost_per_result);
+}
+
+function hasCostedCustomWebsiteInResults(row: MetaInsightRow): boolean {
+  return costedAdsManagerResults(row).some((c) => CUSTOM_CONVERSION.test(c.actionType));
+}
+
+/** Live Credit Firm: custom.* in actions[] without paired costed custom in results[] → Ads Manager blank. */
+function hasCustomConversionInActions(row: MetaInsightRow): boolean {
+  for (const actionType of actionValueMap(row.actions).keys()) {
+    if (CUSTOM_CONVERSION.test(actionType)) return true;
+  }
+  return false;
+}
+
+function rejectWebsiteLeadWhenCustomActionWithoutCostedCustomResult(
+  row: MetaInsightRow,
+  result: ManualExportPrimaryResult | null,
+): ManualExportPrimaryResult | null {
+  if (!result || !isWebsiteLeadCampaign(row)) return result;
+  if (hasCostedCustomWebsiteInResults(row)) return result;
+  if (hasCustomConversionInActions(row)) return null;
+  return result;
+}
+
+function costedObjectiveResults(row: MetaInsightRow): CostedAdsManagerResult[] {
+  return costedAdsManagerResultsFrom(row.objective_results, row.cost_per_objective_result);
+}
+
+function linkClickCount(row: MetaInsightRow): number {
+  const fromInline = parseFloat(row.inline_link_clicks ?? "");
+  if (Number.isFinite(fromInline) && fromInline > 0) return fromInline;
+  return actionValueMap(row.actions).get("link_click") ?? 0;
+}
+
+/** Reject primary results that match link clicks — common Meta/API over-count vs Ads Manager export. */
+function isLikelyLinkClickMisattribution(row: MetaInsightRow, count: number): boolean {
+  const linkClicks = linkClickCount(row);
+  return linkClicks > 0 && count === linkClicks;
 }
 
 function costPerAction(row: MetaInsightRow, actionType: string): number {
@@ -115,13 +181,26 @@ function isWebsiteLeadAction(actionType: string): boolean {
   return (WEBSITE_LEAD_ACTION_TYPES as readonly string[]).includes(actionType);
 }
 
+function isWebsiteSubmissionResultsAction(actionType: string): boolean {
+  return isWebsiteSubmissionResultAction(actionType);
+}
+
 function csvResultTypeForAction(
   actionType: string,
   row: MetaInsightRow,
   websiteLeadPrimary: boolean,
 ): string {
-  if (CUSTOM_CONVERSION.test(actionType)) return "Quote Request Submitted";
-  if (websiteLeadPrimary && isWebsiteLeadAction(actionType)) return "website submission";
+  if (CUSTOM_CONVERSION.test(actionType)) {
+    return websiteLeadPrimary && isWebsiteLeadCampaign(row)
+      ? "website submission"
+      : "Quote Request Submitted";
+  }
+  if (/offsite_conversion\.fb_pixel_custom/i.test(actionType) && websiteLeadPrimary) {
+    return "website submission";
+  }
+  if (websiteLeadPrimary && (isWebsiteLeadAction(actionType) || actionType === "lead")) {
+    return "website submission";
+  }
   return metaApiActionToCsvResultType(actionType);
 }
 
@@ -150,6 +229,310 @@ function costedWebsiteLeadFromActions(row: MetaInsightRow): ManualExportPrimaryR
     return pack(actionType, count, cost, row, true);
   }
   return null;
+}
+
+function costedWebsiteSubmissionPriority(actionType: string): number {
+  if (CUSTOM_CONVERSION.test(actionType)) return 0;
+  if (/offsite_conversion\.fb_pixel_custom/i.test(actionType)) return 1;
+  if (isWebsiteLeadAction(actionType)) return 2;
+  if (actionType === "lead") return 3;
+  return 9;
+}
+
+function pickCostedWebsiteLeadFromCostedList(
+  row: MetaInsightRow,
+  costed: CostedAdsManagerResult[],
+  options?: { includeGenericLead?: boolean },
+): ManualExportPrimaryResult | null {
+  const includeGenericLead = options?.includeGenericLead ?? false;
+  const candidates = costed.filter((c) => {
+    if (c.actionType === "lead") return includeGenericLead;
+    return isWebsiteSubmissionResultsAction(c.actionType);
+  });
+  if (candidates.length === 0) return null;
+  candidates.sort(
+    (a, b) => costedWebsiteSubmissionPriority(a.actionType) - costedWebsiteSubmissionPriority(b.actionType),
+  );
+  const pick = candidates[0];
+  if (isLikelyLinkClickMisattribution(row, pick.count)) return null;
+  return pack(pick.actionType, pick.count, pick.cost, row, true);
+}
+
+function websitePixelCountFromActions(row: MetaInsightRow): { actionType: string; count: number } | null {
+  const map = actionValueMap(row.actions);
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const count = map.get(actionType);
+    if (count != null && count > 0) return { actionType, count };
+  }
+  return null;
+}
+
+function uncostedMetricCount(
+  metrics: MetaInsightResultMetric[] | undefined,
+  actionType: string,
+): number {
+  for (const entry of metrics ?? []) {
+    if (parseIndicator(entry.indicator ?? "") !== actionType) continue;
+    const count = metricValue(entry);
+    if (count > 0) return count;
+  }
+  return 0;
+}
+
+/** Production 79-lead bug: uncosted actions:lead in results[] + costed pixel CPA only. */
+function isInflatedUncostedLeadWithCostedPixelOnly(row: MetaInsightRow): boolean {
+  const leadInResults = uncostedMetricCount(row.results, "lead");
+  if (leadInResults <= 0) return false;
+  if (costForIndicator(row, "actions:lead") > 0) return false;
+  return costedWebsiteLeadFromActions(row) != null;
+}
+
+/**
+ * Meta often sends matching actions:lead + pixel in actions[] but omits cost_per_result[].
+ * Ads Manager still shows website submission with CPR = spend / results.
+ */
+function websiteLeadFromLeadResultsMatchingPixel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (isInflatedUncostedLeadWithCostedPixelOnly(row)) return null;
+
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const leadCount = uncostedMetricCount(row.results, "lead");
+  if (leadCount <= 0 || leadCount !== pixel.count) return null;
+
+  const pixelInResults = uncostedMetricCount(row.results, pixel.actionType);
+  let cost = costForIndicator(row, "actions:lead");
+  if (cost <= 0) {
+    if (pixelInResults <= 0) return null;
+    const spend = parseFloat(row.spend ?? "0");
+    if (spend <= 0) return null;
+    cost = spend / pixel.count;
+  }
+
+  return pack(pixel.actionType, pixel.count, cost, row, true);
+}
+
+function uncostedWebsiteMetricCountInResults(row: MetaInsightRow, actionType: string): number {
+  if (costForIndicator(row, `actions:${actionType}`) > 0) return 0;
+  return uncostedMetricCount(row.results, actionType);
+}
+
+function resultsHaveUncostedWebsiteMetric(row: MetaInsightRow): boolean {
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    if (uncostedWebsiteMetricCountInResults(row, actionType) > 0) return true;
+  }
+  return false;
+}
+
+/** Single website submission when uncosted offsite=1 in results[] matches actions (not CPA-only noise). */
+function websiteLeadFromOffsiteCostPerAction(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (costedAdsManagerResults(row).length > 0) return null;
+
+  const map = actionValueMap(row.actions);
+  const count = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
+  if (count !== 1) return null;
+  if (isLikelyLinkClickMisattribution(row, count)) return null;
+
+  const offsiteR = uncostedWebsiteMetricCountInResults(row, "offsite_conversion.fb_pixel_lead");
+  if (offsiteR !== 1) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+  const cost = costPerAction(row, "offsite_conversion.fb_pixel_lead");
+  return pack("offsite_conversion.fb_pixel_lead", 1, cost > 0 ? cost : spend, row, true);
+}
+
+function shouldRejectUncostedOnsiteCount(
+  row: MetaInsightRow,
+  count: number,
+  offsiteA: number,
+  lpv: number,
+): boolean {
+  if (count < 1) return true;
+  if (offsiteA > 1) return true;
+  if (isLikelyLinkClickMisattribution(row, count)) return true;
+  if (lpv > 0 && count >= lpv) return true;
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend > 0 && spend / count < 7) return true;
+  if (count === 1) return false;
+  const linkClicks = linkClickCount(row);
+  if (linkClicks <= count * 2 + 4) return true;
+  return false;
+}
+
+/**
+ * Uncosted results[] (no cost_per_result pairs) — Credit Firm live API (deploy 036ab1c panel).
+ * Strict exact match when results[] carries website counts; otherwise CPA offsite=1 or guarded onsite in actions.
+ */
+/**
+ * Live Credit Firm (77b7977): no costed website in results[] — only cost_per_action_type
+ * with spend ≈ CPA × count (often fb_pixel_custom).
+ */
+function websiteLeadFromCostedActionSpendParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (hasMeaningfulWebsiteConversionFields(row)) return null;
+  // Ad-set insights often omit results[] after campaign merge is blocked — CPA on fb_pixel_custom over-counts.
+  if ((row.results?.length ?? 0) === 0) return null;
+  if (hasCustomConversionInActions(row) && !hasCostedCustomWebsiteInResults(row)) return null;
+  // Daily uncosted actions:lead on 30/30 — CPA parity here caused false positives (Sep 10/14/24/29).
+  if (uncostedMetricCount(row.results, "lead") > 0) return null;
+  if (
+    costedAdsManagerResults(row).some((c) => isWebsiteSubmissionResultsAction(c.actionType))
+  ) {
+    return null;
+  }
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  const map = actionValueMap(row.actions);
+  const lpv = map.get("landing_page_view") ?? 0;
+  const offsiteA = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
+
+  const priority = [
+    "offsite_conversion.fb_pixel_custom",
+    "offsite_conversion.fb_pixel_lead",
+    "onsite_web_lead",
+  ] as const;
+
+  for (const actionType of priority) {
+    const count = map.get(actionType) ?? 0;
+    if (count <= 0) continue;
+    if (isLikelyLinkClickMisattribution(row, count)) continue;
+    const cpa = costPerAction(row, actionType);
+    if (cpa <= 0) continue;
+    const relErr = Math.abs(spend - cpa * count) / spend;
+    if (relErr > 0.07) continue;
+
+    if (
+      actionType === "offsite_conversion.fb_pixel_lead" &&
+      isInflatedUncostedLeadWithCostedPixelOnly(row)
+    ) {
+      continue;
+    }
+    if (
+      actionType === "onsite_web_lead" &&
+      shouldRejectUncostedOnsiteCount(row, count, offsiteA, lpv)
+    ) {
+      continue;
+    }
+
+    return pack(actionType, count, cpa, row, true);
+  }
+
+  const onsite = map.get("onsite_web_lead") ?? 0;
+  if (
+    onsite >= 2 &&
+    offsiteA <= 1 &&
+    !shouldRejectUncostedOnsiteCount(row, onsite, offsiteA, lpv)
+  ) {
+    return pack("onsite_web_lead", onsite, spend / onsite, row, true);
+  }
+
+  return null;
+}
+
+function websiteLeadFromUncostedManualExportParity(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (!isWebsiteLeadCampaign(row)) return null;
+  if (costedAdsManagerResults(row).length > 0) return null;
+
+  const fromCpa = websiteLeadFromOffsiteCostPerAction(row);
+  if (fromCpa) return fromCpa;
+
+  const map = actionValueMap(row.actions);
+  const lpv = map.get("landing_page_view") ?? 0;
+  const offsiteA = map.get("offsite_conversion.fb_pixel_lead") ?? 0;
+  const onsiteA = map.get("onsite_web_lead") ?? 0;
+  const offsiteR = uncostedWebsiteMetricCountInResults(row, "offsite_conversion.fb_pixel_lead");
+  const onsiteR = uncostedWebsiteMetricCountInResults(row, "onsite_web_lead");
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  if (
+    offsiteR > 0 &&
+    offsiteR === offsiteA &&
+    !isLikelyLinkClickMisattribution(row, offsiteR)
+  ) {
+    return pack("offsite_conversion.fb_pixel_lead", offsiteR, spend / offsiteR, row, true);
+  }
+
+  if (
+    onsiteR > 0 &&
+    onsiteR === onsiteA &&
+    offsiteR === 0 &&
+    offsiteA <= 1 &&
+    !shouldRejectUncostedOnsiteCount(row, onsiteR, offsiteA, lpv)
+  ) {
+    return pack("onsite_web_lead", onsiteR, spend / onsiteR, row, true);
+  }
+
+  // results[] has website counts corroborated by actions (actions may round higher).
+  for (const actionType of WEBSITE_LEAD_ACTION_TYPES) {
+    const r = uncostedWebsiteMetricCountInResults(row, actionType);
+    if (r <= 0) continue;
+    const a = map.get(actionType) ?? 0;
+    if (a < r) continue;
+    if (isLikelyLinkClickMisattribution(row, r)) continue;
+
+    if (actionType === "offsite_conversion.fb_pixel_lead" && r === 1 && costPerAction(row, actionType) <= 0) {
+      continue;
+    }
+    if (actionType === "onsite_web_lead") {
+      if (shouldRejectUncostedOnsiteCount(row, r, offsiteA, lpv)) continue;
+      if (offsiteR > 0) continue;
+    }
+
+    return pack(actionType, r, spend / r, row, true);
+  }
+
+  return null;
+}
+
+function websiteLeadFromUncostedWebsiteInResults(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  return websiteLeadFromUncostedManualExportParity(row);
+}
+
+/** @deprecated alias */
+function websiteLeadFromUncostedResultsMetricsOnly(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  return websiteLeadFromUncostedManualExportParity(row);
+}
+
+/** Uncosted website pixel in results[] when count matches actions (objective channel missing). */
+function websiteLeadFromUncostedResultsPixel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const pixelInResults = uncostedMetricCount(row.results, pixel.actionType);
+  if (pixelInResults <= 0 || pixelInResults !== pixel.count) return null;
+  if (costForIndicator(row, `actions:${pixel.actionType}`) > 0) return null;
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+  return pack(pixel.actionType, pixel.count, spend / pixel.count, row, true);
+}
+
+/** No results[] — costed pixel CPA, or spend-derived CPR when Meta omits cost_per_action_type. */
+function websiteLeadFromActionsWhenNoResultsArray(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const pixel = websitePixelCountFromActions(row);
+  if (!pixel) return null;
+  if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
+
+  const costed = costPerAction(row, pixel.actionType);
+  if (costed > 0) {
+    return pack(pixel.actionType, pixel.count, costed, row, true);
+  }
+
+  const spend = parseFloat(row.spend ?? "0");
+  if (spend <= 0) return null;
+
+  // Incidental fb_pixel_lead=1 on blank days (no results[] / objective) — manual export stays blank.
+  if (pixel.count === 1) return null;
+
+  return pack(pixel.actionType, pixel.count, spend / pixel.count, row, true);
 }
 
 function firstCostedInActions(
@@ -234,30 +617,176 @@ function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
 }
 
-function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
-  const costed = costedAdsManagerResults(row);
+/** Non-lead costed objective rows (traffic, etc.) — manual export does not use results[] website instead. */
+function objectiveBlocksResultsWebsitePick(objectiveCosted: CostedAdsManagerResult[]): boolean {
+  return objectiveCosted.some(
+    (c) => c.actionType !== "lead" && !isWebsiteLeadAction(c.actionType),
+  );
+}
 
-  const fromWebIndicator = costed.find((c) => isWebsiteLeadAction(c.actionType));
-  if (fromWebIndicator) {
-    return pack(fromWebIndicator.actionType, fromWebIndicator.count, fromWebIndicator.cost, row, true);
+/**
+ * Manual export uses objective_results + cost_per_objective_result when Meta sends them.
+ * Costed website pixel in results[] alone (no objective lead) often over-counts on blank days.
+ */
+function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const objectiveCosted = costedObjectiveResults(row);
+  const objectiveWebsite = objectiveCosted.find((c) => isWebsiteLeadAction(c.actionType));
+  if (objectiveWebsite) {
+    return null;
   }
-
-  const pixelFromActions = costedWebsiteLeadFromActions(row);
-
-  if (!row.results?.length) {
-    return pixelFromActions;
-  }
-
-  const leadInResults = costed.find((c) => c.actionType === "lead");
-  if (!leadInResults) {
+  if (objectiveBlocksResultsWebsitePick(objectiveCosted)) {
     return null;
   }
 
-  if (pixelFromActions && leadInResults.count === parseFloat(pixelFromActions.value)) {
-    return pixelFromActions;
+  const objectiveLead = objectiveCosted.find((c) => c.actionType === "lead");
+
+  const resultsCosted = costedAdsManagerResults(row);
+  const websiteCosted = resultsCosted.filter((c) => isWebsiteSubmissionResultsAction(c.actionType));
+  if (websiteCosted.length === 0) {
+    return null;
+  }
+
+  const webPick = pickCostedWebsiteLeadFromCostedList(row, resultsCosted, {
+    includeGenericLead: true,
+  });
+  if (!webPick) return null;
+
+  const webCount = parseFloat(webPick.value);
+  if (objectiveLead && webCount !== objectiveLead.count) {
+    // Ads Manager "website submission" follows costed pixel in results[]; objective
+    // actions:lead is a combined metric and often differs (e.g. 1 vs 3 leads).
+    const objectiveIsGenericLead = objectiveLead.actionType === "lead";
+    if (!(isWebsiteLeadCampaign(row) && objectiveIsGenericLead)) {
+      return null;
+    }
+  }
+
+  const soleCostedWebsiteInResults =
+    websiteCosted.length === 1 &&
+    resultsCosted.length === 1 &&
+    (isWebsiteLeadAction(resultsCosted[0].actionType) ||
+      CUSTOM_CONVERSION.test(resultsCosted[0].actionType));
+
+  // Reject impossible website counts vs LPV (Sep 2 bad API: costed pixel 4, LPV 3, manual blank).
+  if (soleCostedWebsiteInResults && !objectiveLead) {
+    const lpv = actionValueMap(row.actions).get("landing_page_view") ?? 0;
+    if (lpv > 0 && webCount > lpv) {
+      return null;
+    }
+  }
+
+  if (isLikelyLinkClickMisattribution(row, webCount)) return null;
+
+  if (
+    !costedWebsiteResultCorroboratedInActions(row, webPick.action_type, webCount)
+  ) {
+    return null;
+  }
+
+  return webPick;
+}
+
+/** Costed custom.* in results[] without the same type in actions[] → +4 false lead days (Credit Firm). */
+function costedWebsiteResultCorroboratedInActions(
+  row: MetaInsightRow,
+  actionType: string,
+  count: number,
+): boolean {
+  if (!CUSTOM_CONVERSION.test(actionType)) {
+    return true;
+  }
+
+  const map = actionValueMap(row.actions);
+  const exact = map.get(actionType) ?? 0;
+  if (exact >= count) return true;
+
+  if (count >= 2) {
+    const onsite = map.get("onsite_web_lead") ?? 0;
+    if (onsite >= count) return true;
+  }
+
+  return false;
+}
+
+function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
+  if (fromObjective) return finalizeWebsiteLeadManualExport(row, fromObjective);
+
+  const fromResults = pickCostedWebsiteFromResultsChannel(row);
+  if (fromResults) return finalizeWebsiteLeadManualExport(row, fromResults);
+
+  const costedLeadOnly = costedAdsManagerResults(row).find((c) => c.actionType === "lead");
+  if (
+    costedLeadOnly &&
+    isWebsiteLeadCampaign(row) &&
+    !costedAdsManagerResults(row).some((c) => isWebsiteLeadAction(c.actionType)) &&
+    !isLikelyLinkClickMisattribution(row, costedLeadOnly.count)
+  ) {
+    return finalizeWebsiteLeadManualExport(
+      row,
+      pack("lead", costedLeadOnly.count, costedLeadOnly.cost, row, true),
+    );
+  }
+
+  const fromCostedActionParity = websiteLeadFromCostedActionSpendParity(row);
+  if (fromCostedActionParity) return finalizeWebsiteLeadManualExport(row, fromCostedActionParity);
+
+  const fromLeadMatch = websiteLeadFromLeadResultsMatchingPixel(row);
+  if (fromLeadMatch) return finalizeWebsiteLeadManualExport(row, fromLeadMatch);
+
+  const fromUncostedResultsPixel = websiteLeadFromUncostedResultsPixel(row);
+  if (fromUncostedResultsPixel) return finalizeWebsiteLeadManualExport(row, fromUncostedResultsPixel);
+
+  const fromUncostedWebsiteInResults = websiteLeadFromUncostedWebsiteInResults(row);
+  if (fromUncostedWebsiteInResults) {
+    return finalizeWebsiteLeadManualExport(row, fromUncostedWebsiteInResults);
+  }
+
+  const hasResultMetrics = (row.results?.length ?? 0) > 0;
+
+  if (!hasResultMetrics) {
+    return finalizeWebsiteLeadManualExport(row, websiteLeadFromActionsWhenNoResultsArray(row));
+  }
+
+  // Costed combined lead in results[] matching costed pixel — real lead day with full CPR payloads.
+  const costed = costedAdsManagerResults(row);
+  const leadInResults = costed.find((c) => c.actionType === "lead");
+  if (leadInResults) {
+    const pixelFromActions = costedWebsiteLeadFromActions(row);
+    if (
+      pixelFromActions &&
+      leadInResults.count === parseFloat(pixelFromActions.value) &&
+      !isLikelyLinkClickMisattribution(row, parseFloat(pixelFromActions.value))
+    ) {
+      return finalizeWebsiteLeadManualExport(row, pixelFromActions);
+    }
+    // Live OUTCOME_LEADS website campaigns often expose only costed actions:lead in results[]
+    // (no fb_pixel_lead breakdown). Ads Manager still labels these "website submission".
+    if (
+      isWebsiteLeadCampaign(row) &&
+      !costed.some((c) => isWebsiteLeadAction(c.actionType)) &&
+      !isLikelyLinkClickMisattribution(row, leadInResults.count)
+    ) {
+      return finalizeWebsiteLeadManualExport(
+        row,
+        pack("lead", leadInResults.count, leadInResults.cost, row, true),
+      );
+    }
+    return null;
+  }
+
+  if (isInflatedUncostedLeadWithCostedPixelOnly(row)) {
+    return null;
   }
 
   return null;
+}
+
+function finalizeWebsiteLeadManualExport(
+  row: MetaInsightRow,
+  result: ManualExportPrimaryResult | null,
+): ManualExportPrimaryResult | null {
+  return rejectWebsiteLeadWhenCustomActionWithoutCostedCustomResult(row, result);
 }
 
 function pickQuoteManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {

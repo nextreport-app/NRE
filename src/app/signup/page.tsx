@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -112,7 +113,8 @@ export default function SignupPage() {
       </div>
 
       <button
-        onClick={() => signIn("google", { callbackUrl: "/clients" })}
+        type="button"
+        onClick={() => signIn("google", { callbackUrl: "/clients" }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS)}
         className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border"
       >
         Continue with Google

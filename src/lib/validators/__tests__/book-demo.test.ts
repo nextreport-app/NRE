@@ -29,7 +29,12 @@ describe("bookDemoSchema", () => {
     expect(bookDemoSchema.safeParse(validInput({ company: "" })).success).toBe(false);
   });
 
-  it("rejects a message shorter than 10 characters", () => {
-    expect(bookDemoSchema.safeParse(validInput({ message: "too short" })).success).toBe(false);
+  it("accepts a short message", () => {
+    expect(bookDemoSchema.safeParse(validInput({ message: "Demo" })).success).toBe(true);
+  });
+
+  it("accepts empty WhatsApp as null", () => {
+    const parsed = bookDemoSchema.parse(validInput({ whatsapp: "" }));
+    expect(parsed.whatsapp).toBeNull();
   });
 });

@@ -7,7 +7,7 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import { DEFERRED_PLATFORMS } from "@/lib/meta-launch-scope";
+import { DEFERRED_PLATFORMS, SHOW_DEFERRED_PLATFORM_UI } from "@/lib/meta-launch-scope";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -41,7 +41,7 @@ export function WizardPlatformPickerGrid({
   onChooseWebsitePlatform?: () => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={`grid grid-cols-1 gap-3 ${SHOW_DEFERRED_PLATFORM_UI ? "sm:grid-cols-2 lg:grid-cols-4" : "max-w-md"}`}>
       <ReportTypeCard
         icon={<MetaAdsBrandIcon />}
         heading="Meta Ads"
@@ -50,7 +50,8 @@ export function WizardPlatformPickerGrid({
         onSelect={() => onChoosePlatform("META")}
         singleLineHeading
       />
-      {DEFERRED_PLATFORMS.map((platform) => {
+      {SHOW_DEFERRED_PLATFORM_UI
+        ? DEFERRED_PLATFORMS.map((platform) => {
         const icon =
           platform.id === "GOOGLE" ? (
             <GoogleAdsBrandIcon />
@@ -68,11 +69,11 @@ export function WizardPlatformPickerGrid({
             selected={false}
             onSelect={() => {}}
             disabled
-            comingSoon
             singleLineHeading
           />
         );
-      })}
+      })
+        : null}
     </div>
   );
 }
@@ -83,12 +84,15 @@ export function WizardPlatformCompactBar({
   description,
   expanded,
   onToggle,
+  allowPlatformChange = true,
 }: {
   icon: ReactNode;
   heading: string;
   description: string;
   expanded: boolean;
   onToggle: () => void;
+  /** False during Meta-only launch — compact bar without “Change platform”. */
+  allowPlatformChange?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/70 px-4 py-3.5">
@@ -100,21 +104,23 @@ export function WizardPlatformCompactBar({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold leading-snug text-white">{heading}</p>
+          <p className="text-[15px] font-semibold leading-snug text-dash-ink">{heading}</p>
           <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-secondary">{description}</p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-white"
-        aria-expanded={expanded}
-      >
-        Change platform
-        <ChevronDownIcon
-          className={`h-3.5 w-3.5 opacity-80 transition-transform ${expanded ? "rotate-180" : ""}`}
-        />
-      </button>
+      {allowPlatformChange ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink-secondary transition-colors hover:border-white/20 hover:bg-dash-border hover:text-dash-ink"
+          aria-expanded={expanded}
+        >
+          Change platform
+          <ChevronDownIcon
+            className={`h-3.5 w-3.5 opacity-80 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </button>
+      ) : null}
     </div>
   );
 }

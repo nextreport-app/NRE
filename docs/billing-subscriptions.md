@@ -15,8 +15,8 @@ In [Razorpay Dashboard → Subscriptions → Plans](https://dashboard.razorpay.c
 
 | Plan | INR (monthly) | INR (annual, 20% off) | USD (monthly) | USD (annual) |
 |------|---------------|------------------------|---------------|--------------|
-| Agency (starter) | ₹699 | ₹6,710 | $8 | $77 |
-| Professional | ₹1,699 | ₹16,310 | $20 | $192 |
+| Agency (starter) | ₹799 | ₹7,670 | $9 | $86 |
+| Professional | ₹1,299 | ₹12,470 | $15 | $144 |
 
 Annual amounts = monthly × 12 × 0.8 (see `amountForCurrency`).
 

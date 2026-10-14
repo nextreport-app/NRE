@@ -45,7 +45,7 @@ function collapsedHint(info: PreviousMonthComparisonInfo): string {
   if (info.status === "stale") {
     return `Update ${info.expectedMonthName} CSV once this month, then turn on to add the comparison row.`;
   }
-  return `Upload ${info.expectedMonthName} CSV once (or sync from API) to add a previous-month row on Combined Total.`;
+  return `Upload ${info.expectedMonthName} CSV once to add a previous-month row on Combined Total.`;
 }
 
 /**
@@ -293,7 +293,7 @@ function PreviousMonthDataWizardContent({
       <p className="text-[13px] font-medium text-[#f6ad55]">{title}</p>
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
         Skip this if you don&apos;t need a previous-month row.{" "}
-        <span className="text-dash-ink">Sync from API</span> auto-fetches last month when missing — or upload manually
+        Upload last month&apos;s CSV manually when you want a previous-month comparison row
         below.
       </p>
       {needsUpload ? (

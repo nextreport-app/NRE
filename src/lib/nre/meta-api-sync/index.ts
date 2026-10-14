@@ -18,3 +18,11 @@ export {
   insightToManualCsvRow,
   dedupeInsightsByAdSetDay,
 } from "./insight-engine";
+export {
+  API_TO_CSV_COLUMN_MAP,
+  formatCtrForManualCsv,
+  logIngestionNormalizationSample,
+  normalizeDateFormat,
+  normalizePercentage,
+  normalizedIngestionSample,
+} from "./api-csv-normalize";

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildCampaignShortLabels, formatCampaignDisplayName, formatRankedCampaignLabel } from "../chart-campaign-labels";
+import { resultBarColumns } from "../../pptx/chart-campaign-bars-render";
+import { resultBarLayout } from "../../pptx/chart-slide-layout";
+import { estimateTextWidthPt } from "../../pptx/text-fit";
+import {
+  buildCampaignShortLabels,
+  fitCampaignNameForSingleBarLine,
+  formatCampaignDisplayName,
+  formatRankedCampaignLabel,
+  maxCampaignNameCharsForSingleLine,
+} from "../chart-campaign-labels";
 
 describe("buildCampaignShortLabels", () => {
   it("strips a shared prefix so similar campaign names stay distinguishable", () => {
@@ -41,9 +50,36 @@ describe("buildCampaignShortLabels", () => {
     expect(formatRankedCampaignLabel(1, "LPV Campaign A")).toBe("1. LPV Campaign A");
   });
 
+  it("estimates single-line capacity from label width and font size", () => {
+    expect(maxCampaignNameCharsForSingleLine(356, 15, 5)).toBeGreaterThan(35);
+    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeLessThan(24);
+    expect(maxCampaignNameCharsForSingleLine(120, 12, 1)).toBeGreaterThan(10);
+  });
+
   it("preserves the start of long campaign names when truncating for display", () => {
     const name = "Tractor - DC - Traffic Campaign Extra Long Name";
     expect(formatCampaignDisplayName(name)).toBe("Tractor - DC - Traffic Campaign Extra Long…");
     expect(formatCampaignDisplayName("Traffic - Tractor")).toBe("Traffic - Tractor");
+  });
+
+  it("keeps a long name untruncated when it fits the split-panel bar label column", () => {
+    const cols = resultBarColumns(true);
+    const layout = resultBarLayout(1, false);
+    const labelWidthPt = cols.trackW - 96;
+    const short = "Website Retargeting";
+    const fitted = fitCampaignNameForSingleBarLine(short, 1, labelWidthPt, layout.nameSizePt);
+    expect(fitted).toBe(short);
+  });
+
+  it("truncates Kaizen-style names before they would wrap behind the bar (regression)", () => {
+    const cols = resultBarColumns(true);
+    const layout = resultBarLayout(1, false);
+    const labelWidthPt = cols.trackW - 96;
+    const longName = "New Leads campaign_Kaizen Homes - Website";
+    const fitted = fitCampaignNameForSingleBarLine(longName, 1, labelWidthPt, layout.nameSizePt);
+    expect(fitted.length).toBeLessThan(longName.length);
+    expect(fitted).toMatch(/…$/);
+    const line = `1. ${fitted}`;
+    expect(estimateTextWidthPt(line, layout.nameSizePt)).toBeLessThanOrEqual(labelWidthPt);
   });
 });

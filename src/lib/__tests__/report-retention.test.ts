@@ -40,7 +40,7 @@ describe("report retention options", () => {
   });
 
   it("normalizes invalid values to the plan default", () => {
-    expect(normalizeReportRetentionDays(90, "starter")).toBe(30);
+    expect(normalizeReportRetentionDays(90, "starter")).toBe(7);
     expect(normalizeReportRetentionDays(60, "professional")).toBe(60);
     expect(normalizeReportRetentionDays(null, "professional")).toBe(DEFAULT_REPORT_RETENTION_DAYS);
   });

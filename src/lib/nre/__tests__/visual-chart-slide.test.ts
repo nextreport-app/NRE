@@ -56,12 +56,80 @@ function chart(overrides: Partial<ChartSlideData> = {}): ChartSlideData {
 
 describe("buildVisualChartSlideModel", () => {
   it("formats grouped donut legend helper for legacy segments", () => {
-    const line = formatGroupedDonutLegendEntry({
-      name: "Alpha",
-      percentage: 28.5,
-      spendLabel: "$602",
-    });
-    expect(line).toBe("Alpha · 28.5% · $602");
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Alpha",
+        percentage: 28.5,
+        spendLabel: "$602",
+      }),
+    ).toBe("Alpha · 29% · $602");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 25.2,
+        spendLabel: "$303.13",
+      }),
+    ).toBe("Website Leads · 25% · $303");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 24.7,
+        spendLabel: "$303.51",
+      }),
+    ).toBe("Website Leads · 25% · $304");
+
+    expect(
+      formatGroupedDonutLegendEntry({
+        name: "Website Leads",
+        percentage: 100,
+        spendLabel: "C$1,164",
+      }),
+    ).toBe("Website Leads · 100% · C$1,164");
+  });
+
+  it("truncates split-panel bar names that would wrap to a second line", () => {
+    const longFourth =
+      "Brisbane North - Remarketing - website leads campaign";
+    const model = buildVisualChartSlideModel(
+      chart({
+        campaigns: [
+          campaign("Website Retargeting Campaign-September", { spend: 657, results: 176, resLabel: "QUOTE REQUESTS" }),
+          campaign("Brisbane South - cold traffic - website leads", { spend: 122, results: 27, resLabel: "QUOTE REQUESTS" }),
+          campaign("Brisbane North - cold traffic - website leads", { spend: 121, results: 18, resLabel: "QUOTE REQUESTS" }),
+          campaign(longFourth, { spend: 93, results: 9, resLabel: "QUOTE REQUESTS" }),
+        ],
+        totalAllSpend: 993,
+        snapshot: {
+          mode: "single",
+          primaryResultsLabel: "QUOTE REQUESTS",
+          primaryCprLabel: "COST PER QUOTE REQUEST",
+          objectives: [],
+        },
+      }),
+      "A$",
+    );
+    const fourth = model.resultBars.find((b) => b.rank === 4);
+    expect(fourth).toBeTruthy();
+    expect(fourth!.name.length).toBeLessThan(longFourth.length);
+    expect(fourth!.name).toMatch(/…$/);
+  });
+
+  it("keeps a short campaign name untruncated on split-panel bars", () => {
+    const shortName = "Website Retargeting";
+    const model = buildVisualChartSlideModel(
+      chart({
+        campaigns: [
+          campaign(shortName, { spend: 933, results: 20 }),
+          campaign("Secondary Campaign", { spend: 1, results: 0 }),
+        ],
+        totalAllSpend: 934,
+      }),
+      "A$",
+    );
+    expect(model.useSplitPanel).toBe(true);
+    expect(model.resultBars.find((b) => b.name === shortName)?.name).toBe(shortName);
   });
 
   it("uses spend donut + results bars when two or more campaigns report", () => {
@@ -75,10 +143,12 @@ describe("buildVisualChartSlideModel", () => {
       formatDonutObjectiveLabel("PURCHASES"),
       formatDonutObjectiveLabel("PURCHASES"),
     ]);
+    expect(new Set(model.groupedDonut!.map((s) => s.color))).toEqual(new Set(model.resultBars.map((b) => b.color)));
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
-    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
+    expect(model.resultBars[0]!.resultCount).toBeGreaterThanOrEqual(model.resultBars[1]!.resultCount);
     expect(model.summaryLine).toContain("Total Spend");
   });
 
@@ -222,7 +292,7 @@ describe("buildVisualChartSlideModel", () => {
 
     const linkBar = model.resultBars.find((b) => b.name === "Link Clicks");
     expect(linkBar).toBeDefined();
-    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC · 12.8% of total");
+    expect(linkBar!.statLine).toBe("$1,921 spend · 6,626 link clicks · $0.29 CPC");
     expect(linkBar!.statLine).not.toContain("\n");
     expect(linkBar!.costLine).toBe("$0.29 CPC");
   });
@@ -322,13 +392,19 @@ describe("buildVisualChartSlideModel", () => {
       "$",
     );
 
-    expect(model.resultBars.map((b) => b.name)).toEqual(names);
+    expect(model.resultBars.map((b) => b.name)).toEqual([
+      "Tractor - DC - Traffic Campaign",
+      "Traffic - Tractor",
+      "Traffic - UTV",
+      "Traffic - CFMOTO",
+      "Tractor_Traffic_September",
+    ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
-    expect(model.resultBars[0]!.spendLabel).toContain("599");
+    expect(model.resultBars[0]!.resultCount).toBe(2112);
     expect(model.useSplitPanel).toBe(true);
     expect(model.resultBars[0]!.statLine).toContain("landing page views");
-    expect(model.resultBars[0]!.statLine).toContain("% of total");
+    expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
   });
 

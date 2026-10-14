@@ -129,13 +129,14 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), t
     const gapFromMonthStart = daysBetween(mtdRange.startIso, csvBounds.minIso);
     const weeklyCovered = weeklyOptions ? isRangeWithinBounds(weeklyOptions.last7, csvBounds) : false;
 
-    // Newer campaigns / API sync often start mid-month — no delivery before csv min.
-    // When the default weekly window is fully covered, skip the scary re-export prompt.
+    // Newer campaigns often start mid-month — no delivery before csv min (not an export mistake).
+    const midMonthLaunch = gapFromMonthStart > 2;
+
     if (weeklyCovered && !usePreviousMonth) {
-      // No warning — MTD/chart simply cover from first delivery day onward.
+      // Default weekly window is inside the CSV — no re-export needed.
     } else if (
       !usePreviousMonth &&
-      gapFromMonthStart > 2 &&
+      midMonthLaunch &&
       weeklyOptions &&
       csvBounds.minIso > weeklyOptions.last7.startIso
     ) {
@@ -146,6 +147,19 @@ export function analyzeCsvDateGuidance(rows: NreRow[], now: Date = new Date(), t
         csvStartLabel,
         weeklyRangeLabel,
         suggestedDownload: "last_30_days",
+      });
+    } else if (midMonthLaunch) {
+      // First-of-month Previous Month close, or MTD, with launch after day 1 — labels already clamp to csv min.
+    } else if (weeklyCovered && usePreviousMonth) {
+      warnings.push({
+        kind: "first_of_month",
+        title: `${missingDateLabel} missing from your CSV`,
+        message: `Your file starts ${csvStartLabel}, so last month's totals skip ${missingDateLabel}. Re-export Previous Month (${intendedMtdLabel}) with Day breakdown.`,
+        missingDateLabel,
+        csvStartLabel,
+        intendedMtdLabel,
+        weeklyRangeLabel,
+        suggestedDownload: "previous_month",
       });
     } else {
       warnings.push({

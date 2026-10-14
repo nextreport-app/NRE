@@ -17,7 +17,7 @@ const REASONS = [
   {
     icon: "📊",
     title: "Meta Ads — live today",
-    description: "Weekly, monthly, and comparison reports from CSV or API sync. Google, TikTok, and GA4 launching soon.",
+    description: "Weekly, monthly, and comparison reports from CSV upload. Google, TikTok, and GA4 launching soon.",
   },
 ];
 

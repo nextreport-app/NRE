@@ -56,9 +56,11 @@ model User {
   // Both optional; either/both absent means those elements are simply
   // skipped at render time, never shown empty.
   agencyName    String?
+  // When false, PPTX cover omits "Prepared by …" even if agencyName is set (share link still uses agencyName).
+  showAgencyNameOnCover Boolean @default(true)
   agencyLogoUrl String?
   // Client-facing share/PDF branding: nextreport (default), agency (use agencyName), hidden.
-  reportBrandingMode String @default("nextreport")
+  reportBrandingMode String @default("agency")
 
   // Google Drive connection (account settings) — deliberately independent
   // of both the Credentials/Google sign-in above AND the NextAuth Account
@@ -147,7 +149,7 @@ model User {
   // How long generated PPTX/PDF reports are kept before the daily purge cron
   // deletes them (blobs + DB row). Configurable in Account settings; see
   // lib/report-retention.ts for allowed values and plan caps.
-  reportRetentionDays Int @default(30)
+  reportRetentionDays Int @default(7)
 
   // Set when the user dismisses the dashboard onboarding checklist ("Skip for
   // now"). Null means show the checklist until required steps are complete.
@@ -155,6 +157,7 @@ model User {
 
   accounts Account[]
   sessions Session[]
+  passwordResetTokens PasswordResetToken[]
   clients  Client[]
   supportTickets SupportTicket[]
 
@@ -196,6 +199,17 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─────────────────────────── DOMAIN MODELS ─────────────────────────────────
@@ -363,6 +377,11 @@ model Client {
   lastDeselectedAdSets    String? @db.Text
   // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
   lastDateSelection       String? @db.Text
+
+  // Happy-path v2 — last successful manual CSV generate snapshot for this
+  // client (JSON WizardGenerateBaseline). Syncs across devices; browser
+  // localStorage is a cache only.
+  wizardGenerateBaseline String? @db.Text
 
   // Free-text notes on the client's own Manage page (industry, key
   // contacts, reporting preferences, special requirements, ...) — plain

@@ -18,6 +18,8 @@ import {
   resolveCampaignObjective,
   resolveCampaignObjectiveWithConfidence,
   resolveObjective,
+  resultValueForObjective,
+  websiteLeadsCountFromExportRow,
   type ResultLabels,
 } from "../objective";
 import { parseCsvText } from "../parse-csv";
@@ -77,8 +79,8 @@ describe("getResultLabels", () => {
     ["Booking", "APPOINTMENT LEADS", "COST PER BOOKING"],
     ["Complete registration", "REGISTRATIONS", "COST PER REGISTRATION"],
     ["Registration", "REGISTRATIONS", "COST PER REGISTRATION"],
-    ["Submit application", "APPLICATIONS", "COST PER APPLICATION"],
-    ["Application", "APPLICATIONS", "COST PER APPLICATION"],
+    ["Submit application", "WEBSITE SUBMIT APPLICATIONS", "COST PER APPLICATION"],
+    ["Application", "WEBSITE SUBMIT APPLICATIONS", "COST PER APPLICATION"],
     ["Subscribe", "SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
     ["Subscription", "SUBSCRIPTIONS", "COST PER SUBSCRIPTION"],
     ["Custom conversion", "CONVERSIONS", "COST PER CONVERSION"],
@@ -137,7 +139,7 @@ describe("getResultLabels", () => {
   });
 
   it("keeps 'Submit application' distinct from any 'app'-prefixed bucket", () => {
-    expect(getResultLabels("Submit application").resultLabel).toBe("APPLICATIONS");
+    expect(getResultLabels("Submit application").resultLabel).toBe("WEBSITE SUBMIT APPLICATIONS");
     expect(getResultLabels("App install").resultLabel).toBe("APP INSTALLS");
   });
 
@@ -1695,6 +1697,35 @@ describe("getGroupedResultDisplay", () => {
     expect(display.resultLabel).toBe("WEBSITE LEADS");
     expect(display.cprValue).toBe("—");
     expect(display.resultValue).toBe("0");
+  });
+});
+
+describe("resultValueForObjective — WEBSITE LEADS", () => {
+  it("uses Results when present and ignores orphan website_leads without Result type", () => {
+    expect(
+      websiteLeadsCountFromExportRow({
+        result_type: "Website applications submitted",
+        results: 2,
+        website_leads: 2,
+      }),
+    ).toBe(2);
+    expect(websiteLeadsCountFromExportRow({ result_type: "", results: 0, website_leads: 1 })).toBe(0);
+    expect(resultValueForObjective(row({ result_type: "", results: 0, website_leads: 1 }), "WEBSITE LEADS")).toBe(0);
+  });
+
+  it("falls back to website_leads when Result type is Website lead but Results cell is blank", () => {
+    expect(
+      resultValueForObjective(row({ result_type: "Website lead", results: 0, website_leads: 1 }), "WEBSITE LEADS"),
+    ).toBe(1);
+  });
+
+  it("does not count website_leads when Result type is applications but Results is blank", () => {
+    expect(
+      resultValueForObjective(
+        row({ result_type: "Website applications submitted", results: 0, website_leads: 1 }),
+        "WEBSITE LEADS",
+      ),
+    ).toBe(0);
   });
 });
 

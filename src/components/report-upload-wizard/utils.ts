@@ -1,28 +1,10 @@
 import type { ValidationIssue } from "@/lib/nre/validate";
 import type { DateRangeIso, ReportTypeValue } from "./types";
-import {
-  DEFAULT_COMPARISON_REPORT_TITLE,
-  DEFAULT_CREATIVE_REPORT_TITLE,
-  DEFAULT_DAILY_REPORT_TITLE,
-  DEFAULT_DAY_BREAKDOWN_REPORT_TITLE,
-  DEFAULT_HISTORICAL_REPORT_TITLE,
-  DEFAULT_MONTHLY_REPORT_TITLE,
-  DEFAULT_QUARTER_REPORT_TITLE,
-  DEFAULT_REPORT_TITLE,
-  DEFAULT_YTD_REPORT_TITLE,
-  SPECIFIC_FIELD_ERRORS,
-} from "./constants";
+import { defaultDeckTitleForReportType } from "@/lib/nre/wizard-report-type-copy";
+import { SPECIFIC_FIELD_ERRORS } from "./constants";
 
 export function defaultReportTitleFor(reportType: ReportTypeValue): string {
-  if (reportType === "MONTHLY") return DEFAULT_MONTHLY_REPORT_TITLE;
-  if (reportType === "DAILY") return DEFAULT_DAILY_REPORT_TITLE;
-  if (reportType === "CREATIVE") return DEFAULT_CREATIVE_REPORT_TITLE;
-  if (reportType === "COMPARISON") return DEFAULT_COMPARISON_REPORT_TITLE;
-  if (reportType === "HISTORICAL") return DEFAULT_HISTORICAL_REPORT_TITLE;
-  if (reportType === "DAY_BREAKDOWN") return DEFAULT_DAY_BREAKDOWN_REPORT_TITLE;
-  if (reportType === "QUARTER") return DEFAULT_QUARTER_REPORT_TITLE;
-  if (reportType === "YTD") return DEFAULT_YTD_REPORT_TITLE;
-  return DEFAULT_REPORT_TITLE;
+  return defaultDeckTitleForReportType(reportType);
 }
 
 export function buildUploadFormData(
@@ -73,12 +55,48 @@ export function buildWhatsAppShareUrl(reportUrl: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`Your report is ready: ${reportUrl}`)}`;
 }
 
+export type ClientReportShareMessageInput = {
+  clientName: string;
+  reportTypeLabel: string;
+  platformLabel: string;
+  dateRangeLabel: string;
+  reportUrl: string;
+};
+
+/** Plain-text client share blurb — WhatsApp, Slack, email, Teams, SMS, etc. */
+export function buildClientReportShareMessage(input: ClientReportShareMessageInput): string {
+  const typePhrase = input.reportTypeLabel.toLowerCase();
+  return `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+}
+
+/** Pre-filled client share message for agencies (WhatsApp one-tap send). */
+export function buildClientReportWhatsAppShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
 export function buildTelegramShareUrl(reportUrl: string): string {
   return `https://t.me/share/url?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
 }
 
 export function buildSlackShareUrl(reportUrl: string): string {
   return `https://slack.com/share?url=${encodeURIComponent(reportUrl)}&text=${encodeURIComponent("Your performance report is ready")}`;
+}
+
+/** Pre-filled client share message for agencies (Slack share dialog). */
+export function buildClientReportSlackShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
+  return `https://slack.com/share?url=${encodeURIComponent(input.reportUrl)}&text=${encodeURIComponent(text)}`;
+}
+
+/** Opens Microsoft Teams share dialog (web or desktop) with link + message. */
+export function buildClientReportTeamsShareUrl(input: ClientReportShareMessageInput): string {
+  const text = buildClientReportShareMessage(input);
+  const params = new URLSearchParams({
+    href: input.reportUrl,
+    msgText: text,
+  });
+  return `https://teams.microsoft.com/share?${params.toString()}`;
 }
 
 export function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
@@ -95,13 +113,27 @@ export function isApiSyncArtifact(file: File | null): boolean {
   return Boolean(file?.name.includes("-api-sync-"));
 }
 
+/** Save a wizard File to the user's Downloads folder (browser only). */
+export function downloadWizardCsvFile(file: File): void {
+  if (typeof window === "undefined") return;
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name.endsWith(".csv") ? file.name : `${file.name}.csv`;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function wizardPlatformImportDescription(platform: "META" | "GOOGLE" | "TIKTOK"): string {
   switch (platform) {
     case "META":
-      return "Connect via API or upload a CSV from Ads Manager";
+      return "Upload a CSV export from Meta Ads Manager";
     case "GOOGLE":
-      return "Connect via API or upload a CSV from Google Ads";
+      return "Upload a CSV export from Google Ads";
     case "TIKTOK":
-      return "Connect via API or upload a CSV from TikTok Ads Manager";
+      return "Upload a CSV export from TikTok Ads Manager";
   }
 }

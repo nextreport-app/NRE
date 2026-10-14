@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildWhatsAppChatUrl, normalizeWhatsAppDigits } from "@/lib/whatsapp-number";
-import { whatsappNumberSchema } from "@/lib/validators/whatsapp-number";
+import { optionalWhatsappNumberSchema, whatsappNumberSchema } from "@/lib/validators/whatsapp-number";
 
 describe("normalizeWhatsAppDigits", () => {
   it("keeps India +91 numbers", () => {
@@ -46,5 +46,17 @@ describe("whatsappNumberSchema", () => {
 
   it("rejects too-short numbers", () => {
     expect(whatsappNumberSchema.safeParse("12345").success).toBe(false);
+  });
+});
+
+describe("optionalWhatsappNumberSchema", () => {
+  it("accepts blank input as null", () => {
+    expect(optionalWhatsappNumberSchema.parse("")).toBeNull();
+    expect(optionalWhatsappNumberSchema.parse("   ")).toBeNull();
+  });
+
+  it("validates non-empty values like the required schema", () => {
+    expect(optionalWhatsappNumberSchema.safeParse("+1 555 123 4567").success).toBe(true);
+    expect(optionalWhatsappNumberSchema.safeParse("6175551234").success).toBe(false);
   });
 });

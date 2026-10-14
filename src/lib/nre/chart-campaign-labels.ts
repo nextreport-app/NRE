@@ -1,5 +1,7 @@
 /** Campaign labels for the visual chart slide. */
 
+import { estimateTextWidthPt } from "../pptx/text-fit";
+
 export const CHART_CAMPAIGN_LABEL_MAX = 24;
 /** Full-width leaderboard rows — preserve the start of the name; truncate at the end only. */
 export const CHART_CAMPAIGN_DISPLAY_MAX = 44;
@@ -98,4 +100,70 @@ export function formatRankedCampaignLabel(rank: number, shortLabel: string): str
 /** Display name for chart rows — keeps the beginning of the campaign name readable. */
 export function formatCampaignDisplayName(name: string, max = CHART_CAMPAIGN_DISPLAY_MAX): string {
   return truncateLabel(name.trim(), max);
+}
+
+/**
+ * How many characters fit on one result-bar name line (Poppins ~0.5× font size per char).
+ * Reserves space for a ranked prefix such as "5. ".
+ * @deprecated Prefer {@link fitCampaignNameForSingleBarLine} — char heuristics under-estimate width.
+ */
+export function maxCampaignNameCharsForSingleLine(
+  labelWidthPt: number,
+  fontSizePt: number,
+  rank = 1,
+): number {
+  if (labelWidthPt <= 0 || fontSizePt <= 0) return CHART_CAMPAIGN_LABEL_MAX;
+  const avgCharWidthPt = fontSizePt * 0.52;
+  const rankPrefixChars = String(rank).length + 2;
+  const capacity = Math.floor(labelWidthPt / avgCharWidthPt) - rankPrefixChars - 1;
+  return Math.max(8, Math.min(CHART_CAMPAIGN_DISPLAY_MAX, capacity));
+}
+
+function rankedBarLine(rank: number, displayName: string): string {
+  return `${rank}. ${displayName}`;
+}
+
+/** Slight under-fill so Poppins in PowerPoint stays on one line (LibreOffice-calibrated estimator). */
+const BAR_LABEL_WIDTH_SAFETY = 0.96;
+
+function effectiveBarLabelWidthPt(labelWidthPt: number): number {
+  return Math.max(40, labelWidthPt * BAR_LABEL_WIDTH_SAFETY);
+}
+
+/**
+ * Campaign name for a result bar — use the full name while it fits on one line
+ * beside the right-side share label; truncate with an ellipsis only when wider
+ * than the label column (same width as the bar track minus the right label).
+ */
+export function fitCampaignNameForSingleBarLine(
+  name: string,
+  rank: number,
+  labelWidthPt: number,
+  fontSizePt: number,
+): string {
+  const trimmed = name.trim();
+  if (!trimmed || labelWidthPt <= 0 || fontSizePt <= 0) return trimmed;
+
+  const maxW = effectiveBarLabelWidthPt(labelWidthPt);
+  if (estimateTextWidthPt(rankedBarLine(rank, trimmed), fontSizePt) <= maxW) {
+    return trimmed;
+  }
+
+  for (let maxChars = trimmed.length - 1; maxChars >= 8; maxChars--) {
+    const candidate = formatCampaignDisplayName(trimmed, maxChars);
+    if (estimateTextWidthPt(rankedBarLine(rank, candidate), fontSizePt) <= maxW) {
+      return candidate;
+    }
+  }
+  return formatCampaignDisplayName(trimmed, 8);
+}
+
+/** Rank-prefixed bar title — one line in PPT/browser/SVG. */
+export function formatRankedCampaignBarLabel(
+  rank: number,
+  name: string,
+  labelWidthPt: number,
+  fontSizePt: number,
+): string {
+  return rankedBarLine(rank, fitCampaignNameForSingleBarLine(name, rank, labelWidthPt, fontSizePt));
 }

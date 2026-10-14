@@ -423,7 +423,7 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   {
     csvName: "applications submitted",
     key: "applications",
-    label: "APPLICATIONS",
+    label: "WEBSITE SUBMIT APPLICATIONS",
     type: "secondary",
     format: "number",
     objectives: ["applications"],

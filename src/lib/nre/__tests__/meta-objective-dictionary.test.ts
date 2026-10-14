@@ -21,7 +21,7 @@ describe("meta-objective-dictionary — universal alias coverage", () => {
       ["App installs", "APP INSTALLS"],
       ["Post engagements", "POST ENGAGEMENTS"],
       ["Complete registration", "REGISTRATIONS"],
-      ["Submit application", "APPLICATIONS"],
+      ["Submit application", "WEBSITE SUBMIT APPLICATIONS"],
       ["Add payment info", "PAYMENT INFO"],
       ["Schedule", "APPOINTMENT LEADS"],
       ["Adds to cart", "ADD TO CART"],

@@ -22,6 +22,7 @@
 import { useState, type ReactNode } from "react";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
+import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import type { Platform } from "@/lib/nre/google-columns";
 
@@ -54,8 +55,9 @@ function SlideHeading({ children }: { children: ReactNode }) {
   return <h4 className="mt-1 text-[13px] font-bold text-white sm:text-base">{children}</h4>;
 }
 
-/** A single metric card as it appears on a preview campaign/ad-set slide — amber label, white dash value (never a real number here). */
-function MetricCardMini({ label }: { label: string }) {
+/** A single metric card as on a campaign slide — label plus preview value when available. */
+function MetricCardMini({ label, value }: { label: string; value?: string | null }) {
+  const display = value && value.trim() ? value : "—";
   return (
     <div
       className="flex min-h-[36px] flex-col items-center justify-center rounded-md p-1 text-center sm:min-h-[44px] sm:p-1.5"
@@ -64,7 +66,7 @@ function MetricCardMini({ label }: { label: string }) {
       <p className="text-[6.5px] font-semibold uppercase leading-tight sm:text-[8px]" style={{ color: ACCENT }}>
         {label}
       </p>
-      <p className="mt-0.5 text-[10px] font-bold text-white sm:text-xs">—</p>
+      <p className="mt-0.5 text-[10px] font-bold text-white sm:text-xs">{display}</p>
     </div>
   );
 }
@@ -130,11 +132,11 @@ function CoverSlide({
 function MetricGridSlide({
   title,
   dateRangeLine,
-  metricLabels,
+  metricCards,
 }: {
   title: string;
   dateRangeLine: string;
-  metricLabels: string[];
+  metricCards: Array<{ label: string; value?: string | null }>;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -143,13 +145,21 @@ function MetricGridSlide({
         {dateRangeLine}
       </p>
       <div className="mt-2 grid grid-cols-4 gap-1 sm:mt-3 sm:gap-1.5">
-        {metricLabels.slice(0, 8).map((label, i) => (
-          <MetricCardMini key={`${label}-${i}`} label={label} />
+        {metricCards.slice(0, 8).map((card, i) => (
+          <MetricCardMini key={`${card.label}-${i}`} label={card.label} value={card.value} />
         ))}
       </div>
-      <PlaceholderTextBox text="Campaign summary will be generated..." />
+      <PlaceholderTextBox text="AI campaign summary is added when you generate." />
     </div>
   );
+}
+
+function metricCardsFromDynamic(metrics: (DynamicMetricValue | null)[], fallbackLabels: string[]) {
+  const filled = metrics.filter((m): m is DynamicMetricValue => m != null);
+  if (filled.length > 0) {
+    return filled.map((m) => ({ label: m.label, value: m.value }));
+  }
+  return fallbackLabels.map((label) => ({ label, value: null }));
 }
 
 // ── Slide 4 — MTD Chart ─────────────────────────────────────────────────
@@ -345,31 +355,33 @@ function buildSlides({
 
   const firstCampaign = data.campaignSlides[0];
   if (firstCampaign) {
-    const labels =
+    const fallbackLabels =
       selectedMetrics.length > 0
         ? selectedMetrics.map((m) => m.label)
         : firstCampaign.dynamicMetrics.filter((m) => m !== null).map((m) => m.label);
+    const cards = metricCardsFromDynamic(firstCampaign.dynamicMetrics, fallbackLabels);
     slides.push({
       key: "campaign",
       render: () => (
-        <MetricGridSlide title={firstCampaign.campaignName} dateRangeLine={firstCampaign.dateRangeLine} metricLabels={labels} />
+        <MetricGridSlide title={firstCampaign.campaignName} dateRangeLine={firstCampaign.dateRangeLine} metricCards={cards} />
       ),
     });
   }
 
   const firstAdSet = data.adSetSlides[0];
   if (firstAdSet) {
-    const labels =
+    const fallbackLabels =
       selectedMetrics.length > 0
         ? selectedMetrics.map((m) => m.label)
         : firstAdSet.dynamicMetrics.filter((m) => m !== null).map((m) => m.label);
+    const cards = metricCardsFromDynamic(firstAdSet.dynamicMetrics, fallbackLabels);
     slides.push({
       key: "adset",
       render: () => (
         <MetricGridSlide
           title={`${firstAdSet.campaignName} — ${firstAdSet.adSetName}`}
           dateRangeLine={firstAdSet.dateRangeLine}
-          metricLabels={labels}
+          metricCards={cards}
         />
       ),
     });
@@ -494,7 +506,7 @@ export function SlidePreviewCarousel(props: SlidePreviewCarouselProps) {
       )}
 
       <p className="mt-2 text-center text-[11px] text-dash-ink-secondary">
-        Preview based on your selections — actual values will be calculated on generation
+        Preview from your CSV and metric selections — sample campaign slide shows real calculated values
       </p>
       {moreText && <p className="mt-1 text-center text-[11px] text-dash-ink-secondary">{moreText}</p>}
     </div>

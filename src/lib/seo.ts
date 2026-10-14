@@ -28,7 +28,6 @@ export const DEFAULT_KEYWORDS = [
   "meta ads powerpoint report",
   "csv to powerpoint",
   "csv to pptx",
-  "csv to pdf",
   "meta marketing api reporting",
   "google ads api sync",
   "tiktok marketing api",
@@ -52,6 +51,7 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/feedback", changeFrequency: "monthly", priority: 0.55 },
   { path: "/book-demo", changeFrequency: "monthly", priority: 0.75 },
   { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
@@ -136,7 +136,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -158,7 +158,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. API sync or CSV — branded .pptx, live link & PDF. Google, TikTok & GA4 launching soon.",
+      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
     images: ogImages(),
   },
   twitter: {
@@ -216,7 +216,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and PDF exports in under two minutes. Google, TikTok, and GA4 launching soon.",
+        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Google, TikTok, and GA4 launching soon.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -246,27 +246,26 @@ export const HOME_JSON_LD = {
       offers: [
         {
           "@type": "Offer",
-          price: "699",
+          price: "799",
           priceCurrency: "INR",
-          description: `${getPlanDisplayName("starter")} plan from ₹699/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from ₹799/month with 7-day free trial`,
         },
         {
           "@type": "Offer",
-          price: "8",
+          price: "9",
           priceCurrency: "USD",
-          description: `${getPlanDisplayName("starter")} plan from $8/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from $9/month with 7-day free trial`,
         },
       ],
       description:
-        "Connect Meta Ads via API — or upload a CSV — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and PDF downloads with AI-written insights.",
+        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and Google Slides export with AI-written insights.",
       featureList: [
-        "Meta Marketing API sync",
+        "Meta Ads CSV import",
         "Meta Ads CSV upload",
-        "Google Ads API sync (launching soon)",
-        "TikTok Marketing API sync (launching soon)",
+        "Google Ads CSV import (launching soon)",
+        "TikTok CSV import (launching soon)",
         "Google Analytics 4 website reporting (launching soon)",
         "CSV to PowerPoint (.pptx)",
-        "CSV to PDF",
         "Live browser share link",
         "AI campaign summaries",
       ],
@@ -332,7 +331,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via official API or CSV upload. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
+      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
   },
   {
     question: "What file formats can I upload?",
@@ -342,7 +341,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "How long does it take to generate a report?",
     answer:
-      "Most reports generate in under 2 minutes from API sync or CSV upload through to a downloadable PowerPoint (.pptx), live browser link, or PDF.",
+      "Most reports generate in under 2 minutes from CSV upload through to a downloadable PowerPoint (.pptx) or live browser link.",
   },
   {
     question: "Is there a free trial?",
@@ -357,29 +356,25 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I white-label reports for my clients?",
     answer:
-      "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely.",
+      "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
   },
 ];
 
 export const HOW_IT_WORKS_STEPS_SCHEMA: HowToStepSchema[] = [
   {
-    name: "Add your ad data",
-    text: "Connect Meta via official API in Account Settings, or upload a Meta CSV export in the report wizard.",
+    name: "Import",
+    text: "Choose report type, export the matching day-wise Meta Ads Reporting CSV, and upload (optional Previous Month CSV for weekly decks).",
   },
   {
-    name: "Select campaigns and ad sets",
-    text: "Choose which campaigns and ad sets to include in the client deck.",
+    name: "Campaigns & objectives",
+    text: "Select campaigns and confirm each campaign’s primary result objective.",
   },
   {
-    name: "Confirm objectives",
-    text: "Review auto-detected campaign objectives — leads, purchases, traffic, reach, and more — and correct any that look wrong.",
+    name: "Review metrics",
+    text: "Preview KPI chips on each slide and add or remove metrics as needed.",
   },
   {
-    name: "Review metric cards",
-    text: "Preview the KPI chips on each campaign slide and add or remove metrics as needed.",
-  },
-  {
-    name: "Choose report type and generate",
-    text: "Pick weekly, monthly, comparison, or custom dates, then download .pptx, share a live link, export PDF, or save to Google Drive.",
+    name: "Generate report",
+    text: "Confirm dates, generate, then download .pptx, share a live link, save to Google Drive, or send via WhatsApp or email.",
   },
 ];

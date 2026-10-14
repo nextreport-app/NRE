@@ -41,12 +41,12 @@ export const MTD_VISUAL = {
   miniDonutCaptionH: 28,
   groupedDonutD: 188,
   barH: 7,
-  barNameH: 18,
-  barMetricsH: 14,
+  barNameH: 20,
+  barMetricsH: 16,
   barRowGap: 16,
-  groupedDonutLegendRowH: 22,
+  groupedDonutLegendRowH: 24,
   groupedDonutLegendRowGap: 8,
-  groupedDonutLegendSizePt: 16,
+  groupedDonutLegendSizePt: 18,
   barTrackMaxW: 824,
   labelColW: 0,
   panelHeadingH: 26,
@@ -158,13 +158,27 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
   const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
   const nameBarGap = Math.max(2, Math.round(4 * scale));
   const barFooterGap = Math.max(2, Math.round(4 * scale));
-  const nameSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
-  const metricsSizePt = scale <= 0.72 ? 10 : scale <= 0.82 ? 11 : scale <= 0.92 ? 11 : 12;
+  const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
+  const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const nameHFit = Math.max(nameH, Math.ceil(nameSizePt * 1.28));
 
-  const blockH = barCount * rowH;
+  const contentH = nameHFit + nameBarGap + barH + barFooterGap + metricsH;
+  const rowHAdjusted = Math.max(rowH, contentH + Math.max(4, Math.round(MTD_VISUAL.barRowGap * scale * 0.5)));
+
+  const blockH = barCount * rowHAdjusted;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
 
-  return { rowH, startY, nameH, metricsH, barH, nameBarGap, barFooterGap, nameSizePt, metricsSizePt };
+  return {
+    rowH: rowHAdjusted,
+    startY,
+    nameH: nameHFit,
+    metricsH,
+    barH,
+    nameBarGap,
+    barFooterGap,
+    nameSizePt,
+    metricsSizePt,
+  };
 }
 
 export function resultBarGeometry(barCount: number): { rowH: number; startY: number } {
@@ -192,18 +206,18 @@ export function groupedDonutLayout(segmentCount: number, panelTopY: number): Gro
 
   if (segmentCount >= 6) {
     donutD = 158;
-    legendRowH = 16;
+    legendRowH = 18;
     legendRowGap = 4;
-    legendSizePt = 11;
+    legendSizePt = 13;
   } else if (segmentCount >= 5) {
     donutD = 168;
-    legendRowH = 18;
-    legendRowGap = 5;
-    legendSizePt = 12;
-  } else if (segmentCount >= 4) {
     legendRowH = 20;
-    legendRowGap = 6;
+    legendRowGap = 5;
     legendSizePt = 14;
+  } else if (segmentCount >= 4) {
+    legendRowH = 22;
+    legendRowGap = 6;
+    legendSizePt = 16;
   }
 
   const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;

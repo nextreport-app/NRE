@@ -138,12 +138,12 @@ function StatusChip({
 }) {
   const toneClass =
     tone === "good"
-      ? "border-emerald-800/50 bg-emerald-950/40 text-emerald-200"
+      ? "nre-dash-status nre-dash-status--good"
       : tone === "warn"
-        ? "border-amber-800/50 bg-amber-950/40 text-amber-200"
+        ? "nre-dash-status nre-dash-status--warn"
         : tone === "info"
-          ? "border-sky-800/50 bg-sky-950/40 text-sky-200"
-          : "border-dash-border bg-dash-bg text-dash-ink-secondary";
+          ? "nre-dash-status nre-dash-status--info"
+          : "nre-dash-status nre-dash-status--neutral";
 
   return (
     <span
@@ -169,8 +169,8 @@ function ClientCard({ client }: { client: ClientListItem }) {
   );
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/50">
-      <div className="border-b border-dash-border px-5 py-4">
+    <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/60 hover:shadow-md">
+      <div className="nre-client-card__divider border-b border-dash-border px-5 py-4">
         <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
           {client.accountName}
         </h3>
@@ -183,18 +183,9 @@ function ClientCard({ client }: { client: ClientListItem }) {
           label={prevMonth.label}
           title={prevMonth.title}
         />
-        <StatusChip
-          tone={client.hasGa4Property ? "info" : "neutral"}
-          label={client.hasGa4Property ? "GA4 linked" : "GA4 not linked"}
-          title={
-            client.hasGa4Property
-              ? client.ga4PropertyName ?? "Google Analytics property linked on Manage."
-              : "Link Google Analytics on Manage for website reports."
-          }
-        />
       </div>
 
-      <div className="mt-auto flex gap-3 border-t border-dash-border px-5 py-4">
+      <div className="nre-client-card__divider mt-auto flex gap-3 border-t border-dash-border px-5 py-4">
         <Link
           href={`/clients/${client.id}/reports/new`}
           className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
@@ -247,7 +238,7 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by client name…"
           aria-label="Search clients"
-          className="w-full rounded-lg border border-dash-border bg-dash-card py-2.5 pl-10 pr-10 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent"
+          className="nre-dash-surface w-full rounded-lg border border-dash-border bg-dash-card py-2.5 pl-10 pr-10 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/30"
         />
         {search ? (
           <button

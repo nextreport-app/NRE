@@ -198,23 +198,16 @@ describe("fetchMetaAdAccountInsights", () => {
     vi.useRealTimers();
   });
 
-  it("falls back to weekly chunks when the full range keeps failing with code 1", async () => {
+  it("fetches multi-week ranges in weekly chunks (avoids one slow 30-day insights call)", async () => {
     vi.useFakeTimers();
-    let fullRangeAttempts = 0;
+    const ranges: string[] = [];
     const fetchMock = vi.fn(async (url: string) => {
       const parsed = new URL(url);
       const range = JSON.parse(parsed.searchParams.get("time_range") ?? "{}") as {
         since?: string;
         until?: string;
       };
-
-      if (range.since === "2026-09-01" && range.until === "2026-09-14") {
-        fullRangeAttempts += 1;
-        return {
-          ok: false,
-          json: async () => ({ error: { message: "An unknown error occurred", code: 1 } }),
-        };
-      }
+      ranges.push(`${range.since}:${range.until}`);
 
       return {
         ok: true,
@@ -241,8 +234,40 @@ describe("fetchMetaAdAccountInsights", () => {
     await vi.runAllTimersAsync();
     const rows = await promise;
 
-    expect(fullRangeAttempts).toBeGreaterThan(0);
+    expect(ranges.some((r) => r.startsWith("2026-09-01:2026-09-07"))).toBe(true);
+    expect(ranges.some((r) => r.startsWith("2026-09-08:2026-09-14"))).toBe(true);
     expect(rows.length).toBeGreaterThan(1);
     vi.useRealTimers();
+  });
+
+  it("uses smaller windows for ad-set level sync", async () => {
+    const ranges: string[] = [];
+    const fetchMock = vi.fn(async (url: string) => {
+      const parsed = new URL(url);
+      const range = JSON.parse(parsed.searchParams.get("time_range") ?? "{}") as {
+        since?: string;
+        until?: string;
+      };
+      ranges.push(`${range.since}:${range.until}`);
+      return {
+        ok: true,
+        json: async () => ({
+          data: [{ campaign_name: "A", adset_name: "B", date_start: range.since, spend: "1" }],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchMetaAdAccountInsights({
+      accessToken: "token",
+      adAccountId: "act_123",
+      sinceIso: "2026-09-01",
+      untilIso: "2026-09-12",
+      level: "adset",
+    });
+
+    expect(ranges).toContain("2026-09-01:2026-09-05");
+    expect(ranges).toContain("2026-09-06:2026-09-10");
+    expect(ranges).toContain("2026-09-11:2026-09-12");
   });
 });

@@ -7,13 +7,18 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import type { Platform } from "@/lib/nre/google-columns";
 import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
-import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
-import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
-import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
+import type { ReportData } from "@/lib/nre/report-data";
+import {
+  parseReportGenerationJob,
+  type ReportGenerationJobPayload,
+} from "@/lib/nre/report-generation-job-payload";
 import { buildShareReportData, buildDayBreakdownShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
-import { shareReportExtrasFromUser, USER_REPORT_BRANDING_SELECT } from "@/lib/nre/user-report-branding";
+import {
+  agencyNameForCoverSlide,
+  shareReportExtrasFromUser,
+  USER_REPORT_BRANDING_SELECT,
+} from "@/lib/nre/user-report-branding";
 import { generateShareToken } from "@/lib/share-token";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
@@ -28,74 +33,19 @@ import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, rea
 import { notifyReportGeneratedForUser } from "@/lib/report-notifications";
 import type { Client } from "@/generated/prisma/client";
 
-export const REPORT_GENERATION_JOB_VERSION = 1 as const;
-
-export type ReportGenerationJobPayload =
-  | StandardReportJobPayload
-  | ComparisonReportJobPayload
-  | HistoricalReportJobPayload
-  | DayBreakdownReportJobPayload
-  | PreviousMonthSummaryJobPayload;
-
-interface BaseJobPayload {
-  version: typeof REPORT_GENERATION_JOB_VERSION;
-  userId: string;
-  clientId: string;
-  uploadSessionId?: string;
-}
-
-export interface StandardReportJobPayload extends BaseJobPayload {
-  kind: "STANDARD";
-  platform: Platform;
-  reportTitle?: string;
-  reportData: ReportData;
-}
-
-export interface ComparisonReportJobPayload extends BaseJobPayload {
-  kind: "COMPARISON";
-  platform: Platform;
-  reportTitle?: string;
-  comparisonData: ComparisonReportData;
-}
-
-export interface HistoricalReportJobPayload extends BaseJobPayload {
-  kind: "HISTORICAL";
-  platform: Platform;
-  reportTitle?: string;
-  historicalData: HistoricalReportData;
-  shareToken: string;
-}
-
-export interface DayBreakdownReportJobPayload extends BaseJobPayload {
-  kind: "DAY_BREAKDOWN";
-  platform: Platform;
-  reportTitle?: string;
-  dayBreakdownData: DayBreakdownReportData;
-  shareToken: string;
-}
-
-export interface PreviousMonthSummaryJobPayload extends BaseJobPayload {
-  kind: "PREVIOUS_MONTH_SUMMARY";
-  platform: Platform;
-  summaryData: ReportData;
-  shareToken: string;
-}
-
-export function serializeReportGenerationJob(payload: ReportGenerationJobPayload): string {
-  return JSON.stringify({ ...payload, version: REPORT_GENERATION_JOB_VERSION });
-}
-
-export function parseReportGenerationJob(raw: string | null | undefined): ReportGenerationJobPayload | null {
-  if (!raw?.trim()) return null;
-  try {
-    const parsed = JSON.parse(raw) as ReportGenerationJobPayload;
-    if (parsed.version !== REPORT_GENERATION_JOB_VERSION) return null;
-    if (!parsed.userId || !parsed.clientId || !parsed.kind) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+export type {
+  ComparisonReportJobPayload,
+  DayBreakdownReportJobPayload,
+  HistoricalReportJobPayload,
+  PreviousMonthSummaryJobPayload,
+  ReportGenerationJobPayload,
+  StandardReportJobPayload,
+} from "@/lib/nre/report-generation-job-payload";
+export {
+  parseReportGenerationJob,
+  REPORT_GENERATION_JOB_VERSION,
+  serializeReportGenerationJob,
+} from "@/lib/nre/report-generation-job-payload";
 
 async function loadLogoAsset(url: string | null | undefined): Promise<ImageAsset | null> {
   if (!url) return null;
@@ -189,7 +139,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         data: job.summaryData,
         currencySymbol,
         reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
       });
@@ -232,7 +182,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.comparisonData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         isLightTemplate: isLightReportTemplate(client.template),
       });
 
@@ -283,7 +233,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.historicalData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
         aiCopyBySlideKey: aiCopyMap,
@@ -302,7 +252,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
           historicalData: job.historicalData,
           aiCopy: Object.fromEntries(aiCopyMap),
           reportTitle: job.reportTitle,
-          agencyName: user?.agencyName ?? null,
+          agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
           isLightTemplate: isLightReportTemplate(client.template),
         },
       };
@@ -339,7 +289,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         templateBuffer,
         data: job.dayBreakdownData,
         reportTitle: job.reportTitle,
-        agencyName: user?.agencyName,
+        agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
         isLightTemplate: isLightReportTemplate(client.template),
       });
@@ -355,7 +305,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         _renderArchive: {
           dayBreakdownData: job.dayBreakdownData,
           reportTitle: job.reportTitle,
-          agencyName: user?.agencyName ?? null,
+          agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
           isLightTemplate: isLightReportTemplate(client.template),
         },
       };
@@ -382,11 +332,16 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     }
 
     // STANDARD — Meta / Google / TikTok weekly/monthly/etc.
-    const { reportData, platform, reportTitle } = job;
+    const { reportData, platform, reportTitle, aiCopyPrecalc } = job;
     const currencySymbol = CURRENCY_SYMBOLS[client.currency];
 
+    const precalcMap =
+      aiCopyPrecalc && Object.keys(aiCopyPrecalc).length > 0
+        ? new Map(Object.entries(aiCopyPrecalc))
+        : null;
+
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      generateInsights(reportData, aiKeysFromEnv()),
+      precalcMap ? Promise.resolve(precalcMap) : generateInsights(reportData, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
     ]);
@@ -398,7 +353,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       currencySymbol,
       aiCopyBySlideKey,
       reportTitle,
-      agencyName: user?.agencyName,
+      agencyName: agencyNameForCoverSlide(user ?? {}),
       clientLogo,
       isLightTemplate: isLightReportTemplate(client.template),
     });
@@ -408,7 +363,10 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       reportData,
       aiCopyBySlideKey,
       new Date(),
-      shareReportExtrasFromUser(user, currencySymbol),
+      {
+        ...shareReportExtrasFromUser(user, currencySymbol),
+        ...(job.dataImportNote ? { dataImportNote: job.dataImportNote } : {}),
+      },
     );
     const shareWithArchive = {
       ...shareData,
@@ -418,7 +376,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         currencySymbol,
         isLightTemplate: isLightReportTemplate(client.template),
         reportTitle,
-        agencyName: user?.agencyName ?? null,
+        agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
       },
     };
 

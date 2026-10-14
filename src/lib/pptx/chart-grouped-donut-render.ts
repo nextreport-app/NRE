@@ -6,7 +6,10 @@ import type { VisualChartSegment } from "../nre/visual-chart-slide";
 import { formatGroupedDonutLegendEntry } from "../nre/visual-chart-slide";
 import { DONUT_HOLE_RATIO } from "./chart-slide-constants";
 import { groupedDonutLayout, MTD_VISUAL } from "./chart-slide-layout";
-import { donutRing, textBox, type DonutRingSegment } from "./shapes";
+import { donutRing, rectangle, textBox, type DonutRingSegment } from "./shapes";
+
+const LEGEND_SWATCH_PT = 10;
+const LEGEND_SWATCH_GAP = 6;
 
 export function visualChartSegmentsToRing(segments: VisualChartSegment[]): DonutRingSegment[] {
   let cursor = -90;
@@ -66,12 +69,21 @@ export function appendGroupedDonutOoxml(
   );
 
   let legendY = donutY + layout.donutD + 16;
+  const legendTextX = opts.leftX + 8 + LEGEND_SWATCH_PT + LEGEND_SWATCH_GAP;
+  const legendTextW = opts.leftW - 16 - LEGEND_SWATCH_PT - LEGEND_SWATCH_GAP;
   for (const seg of opts.segments) {
     shapes.push(
-      textBox({
+      rectangle({
         x: opts.leftX + 8,
+        y: legendY + Math.max(0, (layout.legendRowH - LEGEND_SWATCH_PT) / 2),
+        w: LEGEND_SWATCH_PT,
+        h: LEGEND_SWATCH_PT,
+        fillHex: seg.color,
+      }),
+      textBox({
+        x: legendTextX,
         y: legendY,
-        w: opts.leftW - 16,
+        w: legendTextW,
         h: layout.legendRowH,
         text: formatGroupedDonutLegendEntry(seg),
         sizePt: layout.legendSizePt,
@@ -79,7 +91,7 @@ export function appendGroupedDonutOoxml(
         align: "l",
         anchor: "t",
         clipOverflow: true,
-        nowrap: true,
+        nowrap: false,
       }),
     );
     legendY += layout.legendRowH + layout.legendRowGap;
@@ -131,9 +143,12 @@ export function buildGroupedDonutSvg(opts: {
   );
 
   let legendY = donutY + layout.donutD + 16;
+  const legendTextX = opts.leftX + 8 + LEGEND_SWATCH_PT + LEGEND_SWATCH_GAP;
   for (const seg of opts.segments) {
+    const swatchY = legendY + Math.max(0, (layout.legendRowH - LEGEND_SWATCH_PT) / 2);
     parts.push(
-      `<text x="${opts.leftX + 8}" y="${legendY + layout.legendRowH - 4}" fill="#94a3b8" font-family="Poppins" font-size="${layout.legendSizePt}">${escapeXml(formatGroupedDonutLegendEntry(seg))}</text>`,
+      `<rect x="${opts.leftX + 8}" y="${swatchY}" width="${LEGEND_SWATCH_PT}" height="${LEGEND_SWATCH_PT}" rx="2" fill="#${seg.color}"/>`,
+      `<text x="${legendTextX}" y="${legendY + layout.legendRowH - 4}" fill="#94a3b8" font-family="Poppins" font-size="${layout.legendSizePt}">${escapeXml(formatGroupedDonutLegendEntry(seg))}</text>`,
     );
     legendY += layout.legendRowH + layout.legendRowGap;
   }

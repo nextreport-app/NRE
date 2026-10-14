@@ -1,13 +1,59 @@
 @import "tailwindcss";
 
-/* NextReport is a dark-only app — the theme is fixed, not tied to the
-   visitor's OS light/dark preference. This is the single source of truth
-   for the palette; every page should use these tokens (bg-navy,
-   bg-navy-panel, text-ink, text-ink-secondary, text-ink-muted, bg-accent,
-   border-navy-border, ...) rather than raw Tailwind slate/indigo shades. */
+/* Marketing site palette — default dark; light via html[data-site-theme="light"].
+   Logged-in wizard/dashboard uses .nre-app-shell dash tokens (also swap on light). */
 :root {
   --background: #0d1b2e;
   --foreground: #ffffff;
+
+  /* Logged-in dashboard / wizard — referenced by Tailwind dash-* utilities via @theme. */
+  --nre-dash-bg: #0f172a;
+  --nre-dash-sidebar: #0d1b2e;
+  --nre-dash-card: #1e293b;
+  --nre-dash-border: #334155;
+  --nre-dash-ink: #f1f5f9;
+  --nre-dash-ink-secondary: #94a3b8;
+  --nre-dash-accent: #f5b45a;
+  --nre-dash-accent-hover: #ed8936;
+  --nre-dash-secondary: #1e3a5f;
+  --nre-dash-success: #68d391;
+  --nre-dash-error: #fc8181;
+  /* Inset panels (wizard callouts, nested boxes) — not pure white on dark. */
+  --nre-dash-inset: #151f33;
+  --nre-dash-popover: #0a1628;
+}
+
+html[data-site-theme="light"] {
+  /* Cursor.com marketing light canvas (see cursor.com — #f7f7f4). */
+  --background: #f7f7f4;
+  --foreground: #000000;
+  --color-navy: #f7f7f4;
+  --color-navy-panel: #ffffff;
+  --color-navy-border: #d1d0cb;
+  /* Cursor-like light mode: body copy and nav use pure black on pale backgrounds. */
+  --color-ink: #000000;
+  --color-ink-secondary: #000000;
+  --color-ink-muted: #000000;
+
+  --nre-dash-bg: #f7f7f4;
+  --nre-dash-sidebar: #ffffff;
+  --nre-dash-card: #ffffff;
+  /* Stronger than slate-200 — white cards must read clearly on #f7f7f4. */
+  --nre-dash-border: #c9c9c4;
+  --nre-dash-ink: #000000;
+  --nre-dash-ink-secondary: #475569;
+  --nre-dash-secondary: #e8e7e2;
+  --nre-dash-inset: #efeeea;
+  --nre-dash-popover: #ffffff;
+}
+
+html[data-site-theme="light"] body {
+  background-color: #f7f7f4;
+  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
+}
+
+.nre-app-shell {
+  color-scheme: dark;
 }
 
 /* Brand lock — button corner radius is 8px everywhere, buttons and cards
@@ -52,23 +98,30 @@
      components rendered inside src/app/(dashboard) (Nav, client
      list/detail/new, account, billing, the report wizard, ...) — every
      public-facing page keeps using the tokens above, unchanged. */
-  --color-dash-bg: #0f172a;
-  --color-dash-sidebar: #0d1b2e;
-  --color-dash-card: #1e293b;
-  --color-dash-border: #334155;
-  --color-dash-ink: #f1f5f9;
-  --color-dash-ink-secondary: #94a3b8;
-  --color-dash-accent: #f5b45a;
-  --color-dash-accent-hover: #ed8936;
-  --color-dash-secondary: #1e3a5f;
-  --color-dash-success: #68d391;
-  --color-dash-error: #fc8181;
+  --color-dash-bg: var(--nre-dash-bg, #0f172a);
+  --color-dash-sidebar: var(--nre-dash-sidebar, #0d1b2e);
+  --color-dash-card: var(--nre-dash-card, #1e293b);
+  --color-dash-border: var(--nre-dash-border, #334155);
+  --color-dash-ink: var(--nre-dash-ink, #f1f5f9);
+  --color-dash-ink-secondary: var(--nre-dash-ink-secondary, #94a3b8);
+  --color-dash-accent: var(--nre-dash-accent, #f5b45a);
+  --color-dash-accent-hover: var(--nre-dash-accent-hover, #ed8936);
+  --color-dash-secondary: var(--nre-dash-secondary, #1e3a5f);
+  --color-dash-success: var(--nre-dash-success, #68d391);
+  --color-dash-error: var(--nre-dash-error, #fc8181);
+  --color-dash-inset: var(--nre-dash-inset, #151f33);
+  --color-dash-popover: var(--nre-dash-popover, #0a1628);
 }
 
 html {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Public marketing header — Cursor-like density (13px nav, tight line-height). */
+.public-site-header {
+  letter-spacing: -0.011em;
 }
 
 /* Fix 3 — dot-grid texture applied directly to `body` instead of a
@@ -78,11 +131,450 @@ html {
    page-level wrappers (e.g. /light-preview's own solid background) still
    paint over it as before. */
 body {
-  background-color: #0d1b2e;
+  background-color: var(--background);
   background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
   background-size: 32px 32px;
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+html[data-site-theme="light"] body {
+  color: #000000;
+}
+
+/* Marketing pages use text-white on navy; remap on light except fixed dark mockups/cards. */
+html[data-site-theme="light"] .text-white {
+  color: var(--color-ink);
+}
+
+html[data-site-theme="light"] .nre-keep-dark-surface .text-white,
+html[data-site-theme="light"] .nre-keep-dark-surface.text-white {
+  color: #ffffff;
+}
+
+html[data-site-theme="light"] .bg-navy {
+  background-color: var(--color-navy);
+}
+
+html[data-site-theme="light"] .bg-navy-panel {
+  background-color: var(--color-navy-panel);
+}
+
+html[data-site-theme="light"] .border-navy-border {
+  border-color: var(--color-navy-border);
+}
+
+html[data-site-theme="light"] .text-ink {
+  color: var(--color-ink);
+}
+
+html[data-site-theme="light"] .text-ink-secondary {
+  color: var(--color-ink-secondary);
+}
+
+html[data-site-theme="light"] .text-ink-muted {
+  color: var(--color-ink-muted);
+}
+
+/* Tailwind opacity variants — still full black on light marketing pages. */
+html[data-site-theme="light"] .text-ink-muted\/90,
+html[data-site-theme="light"] .text-ink-muted\/80 {
+  color: #000000;
+}
+
+/*
+ * Public marketing chrome + main (not dashboard/wizard dark lock, not hero mock slides).
+ * Force readable black for accent/muted utility classes used as body or nav text.
+ */
+html[data-site-theme="light"] .site-footer .text-accent,
+html[data-site-theme="light"] .site-footer a,
+html[data-site-theme="light"] .public-site-header a:not([class*="bg-ink"]),
+html[data-site-theme="light"] .public-site-header button,
+html[data-site-theme="light"] main .text-accent-orange,
+html[data-site-theme="light"] main .text-accent,
+html[data-site-theme="light"] main .text-red-400 {
+  color: #000000;
+}
+
+/* Keep fixed dark marketing mockups (hero slide, carousel) on their own contrast. */
+html[data-site-theme="light"] .nre-keep-dark-surface,
+html[data-site-theme="light"] .nre-keep-dark-surface * {
+  --color-ink: #ffffff;
+  --color-ink-secondary: #e2e8f0;
+  --color-ink-muted: #94a3b8;
+}
+
+html[data-site-theme="light"] .public-site-header a:not([class*="bg-ink"]):hover,
+html[data-site-theme="light"] .site-footer a:hover {
+  color: #000000;
+  opacity: 0.72;
+}
+
+/* Help / docs callouts (amber) — dark-theme tints are illegible on white. */
+html[data-site-theme="light"] .nre-help-amber-callout {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-100,
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-100\/90,
+html[data-site-theme="light"] .nre-help-amber-callout .text-amber-50\/95,
+html[data-site-theme="light"] .nre-help-amber-callout .text-ink-secondary {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout hr {
+  border-color: #fdba74;
+}
+
+html[data-site-theme="light"] .nre-help-amber-callout .border-amber-500\/40 {
+  border-color: #fdba74;
+}
+
+html[data-site-theme="light"] .nre-meta-reporting-btn {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-meta-reporting-btn:hover {
+  background-color: #e2e8f0;
+  color: #000000;
+}
+
+html[data-site-theme="light"] .public-site-header {
+  background-color: color-mix(in srgb, var(--color-navy-panel) 92%, transparent);
+}
+
+.nre-app-shell {
+  background-color: var(--nre-dash-bg);
+  background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--nre-dash-ink);
+}
+
+html[data-site-theme="light"] .nre-app-shell {
+  color-scheme: light;
+  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
+}
+
+/* Client cards + search — elevated white surfaces on Cursor-style canvas. */
+html[data-site-theme="light"] .nre-app-shell .nre-client-card,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-surface,
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-panel,
+html[data-site-theme="light"] .nre-app-shell .bg-dash-popover {
+  border-color: var(--nre-dash-border);
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+/* Wizard + dashboard nested panels (replaces hardcoded #0d1b2e panels). */
+.nre-wizard-panel {
+  border: 1px solid var(--nre-dash-border);
+  background-color: var(--nre-dash-inset);
+}
+
+/* Marketing / auth elevated panels on #f7f7f4 canvas. */
+html[data-site-theme="light"] .bg-navy-panel {
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+/* Form fields on public pages (signup, contact) — readable on light canvas. */
+html[data-site-theme="light"] input,
+html[data-site-theme="light"] select,
+html[data-site-theme="light"] textarea {
+  color: var(--color-ink);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-client-card__divider {
+  border-color: #d8d7d2;
+}
+
+/* Legacy text-white in dashboard/wizard — remap on light so headings stay readable. */
+html[data-site-theme="light"] .nre-app-shell .text-white {
+  color: var(--nre-dash-ink);
+}
+
+/* Status chips (client list) — dark + light. */
+.nre-dash-status {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.nre-dash-status--good {
+  border-color: rgb(6 78 59 / 0.5);
+  background-color: rgb(2 44 34 / 0.4);
+  color: #a7f3d0;
+}
+
+.nre-dash-status--warn {
+  border-color: rgb(146 64 14 / 0.5);
+  background-color: rgb(69 26 3 / 0.4);
+  color: #fde68a;
+}
+
+.nre-dash-status--info {
+  border-color: rgb(12 74 110 / 0.5);
+  background-color: rgb(8 47 73 / 0.4);
+  color: #bae6fd;
+}
+
+.nre-dash-status--neutral {
+  border-color: var(--nre-dash-border);
+  background-color: var(--nre-dash-bg);
+  color: var(--nre-dash-ink-secondary);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--good {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--warn {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+  color: #92400e;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-status--info {
+  border-color: #7dd3fc;
+  background-color: #f0f9ff;
+  color: #075985;
+}
+
+html[data-site-theme="light"] .nre-app-shell .text-dash-accent,
+html[data-site-theme="light"] .nre-app-shell .text-dash-accent-hover {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/8,
+html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/12,
+html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/15,
+html[data-site-theme="light"] .nre-app-shell .bg-dash-accent\/20 {
+  background-color: color-mix(in srgb, var(--nre-dash-accent) 18%, #ffffff);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--active {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--active a {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--expired {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--expired a {
+  color: #000000;
+}
+
+/* Wizard — status badges & callouts (dark defaults; light overrides below). */
+.nre-wizard-badge-recommended {
+  border-radius: 9999px;
+  background-color: rgb(16 185 129 / 0.2);
+  padding: 0.125rem 0.5rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-badge-recommended {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.nre-wizard-confidence--ok {
+  color: #68d391;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--ok {
+  color: #047857;
+}
+
+.nre-wizard-confidence--warn {
+  color: #f6ad55;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--warn {
+  color: #b45309;
+}
+
+.nre-wizard-confidence--required {
+  background-color: #fc8181;
+  color: #2d0b0b;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-confidence--required {
+  background-color: #fecaca;
+  color: #7f1d1d;
+}
+
+.nre-wizard-callout-success {
+  border: 1px solid rgb(6 78 59 / 0.45);
+  background-color: rgb(2 44 34 / 0.22);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+}
+
+.nre-wizard-callout-success__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(110 231 183 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__label {
+  color: #047857;
+}
+
+.nre-wizard-callout-success__title {
+  color: #d1fae5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__title {
+  color: #065f46;
+}
+
+.nre-wizard-callout-success__detail {
+  color: rgb(209 250 229 / 0.78);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__detail {
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__icon {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-success__detail {
+  border-color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__icon {
+  background-color: #ffedd5;
+  color: #92400e;
+}
+
+.nre-wizard-callout-warn {
+  border: 1px solid rgb(146 64 14 / 0.4);
+  background-color: rgb(69 26 3 / 0.12);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn {
+  border-color: #fdba74;
+  background-color: #fff7ed;
+}
+
+.nre-wizard-callout-warn__title {
+  color: #fffbeb;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__title {
+  color: #92400e;
+}
+
+.nre-wizard-callout-warn__body {
+  color: rgb(254 243 199 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
+  color: #78350f;
+}
+
+.nre-wizard-objective-pill {
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.nre-wizard-objective-pill--leads {
+  background-color: rgb(69 26 3 / 0.35);
+  color: #f6ad55;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--leads {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.nre-wizard-objective-pill--sales {
+  background-color: rgb(69 10 10 / 0.35);
+  color: #fc8181;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--sales {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.nre-wizard-objective-pill--reach {
+  background-color: rgb(2 44 34 / 0.35);
+  color: #68d391;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--reach {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.nre-wizard-objective-pill--video {
+  background-color: rgb(59 7 100 / 0.35);
+  color: #b794f4;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--video {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.nre-wizard-objective-pill--default {
+  background-color: rgb(23 37 84 / 0.35);
+  color: #63b3ed;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-objective-pill--default {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.nre-wizard-tooltip-csv-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(252 211 77 / 0.92);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-tooltip-csv-label {
+  color: #b45309;
+}
+
+.nre-wizard-tooltip-csv-body {
+  font-size: 12px;
+  line-height: 1.375;
+  color: rgb(255 251 235 / 0.95);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-tooltip-csv-body {
+  color: #78350f;
 }
 
 /* /light-preview (src/app/light-preview/page.tsx) renders its own
@@ -109,7 +601,7 @@ body:has(#light-preview-page) .whatsapp-float {
    since :has() isn't supported in every browser/WebView a shared link might
    be opened in. */
 
-/* PDF export — one slide per page when Puppeteer prints /print/r/[token]. */
+/* Browser print — one slide per page when printing a share link from the browser. */
 @media print {
   .print-slide {
     break-after: page;

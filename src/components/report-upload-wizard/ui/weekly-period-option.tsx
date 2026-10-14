@@ -23,7 +23,7 @@ export function WeeklyPeriodOption({
           : "border-dash-border bg-dash-bg hover:bg-dash-border/30"
       }`}
     >
-      <span className="block text-[14px] font-medium text-white">{label}</span>
+      <span className="block text-[14px] font-medium text-dash-ink">{label}</span>
       {sublabel && <span className="mt-0.5 block text-[14px] text-dash-ink-secondary">{sublabel}</span>}
     </button>
   );

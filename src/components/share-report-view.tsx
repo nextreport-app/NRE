@@ -9,7 +9,7 @@ import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
-import { visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
+import { formatGroupedDonutLegendEntry, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -28,7 +28,7 @@ import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons"
 
 export function reportTypeLabel(data: ShareReportData): string {
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
-  if (data.reportType === "DAY_BREAKDOWN") return "Daily Performance Report";
+  if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Table Report";
   if (data.reportType === "DAILY") return "Yesterday Performance Report";
   if (data.reportType === "MONTHLY") return "Monthly Performance Report";
   return "Weekly Performance Report";
@@ -316,15 +316,15 @@ function VisualSpendDonut({
           {centerLabel}
         </div>
       </div>
-      <ul className="mt-4 w-full space-y-2 text-[13px] text-[#94a3b8]">
-        {segments.map((seg) => (
-          <li key={seg.name} className="flex min-w-0 items-start gap-2">
+      <ul className="mt-4 w-full space-y-2 text-[15px] text-[#94a3b8]">
+        {segments.map((seg, i) => (
+          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex min-w-0 items-start gap-2">
             <span
               className="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: `#${seg.color}` }}
               aria-hidden="true"
             />
-            <span className="min-w-0 truncate">{seg.name} · {seg.percentage}% · {seg.spendLabel}</span>
+            <span className="min-w-0 truncate">{formatGroupedDonutLegendEntry(seg)}</span>
           </li>
         ))}
       </ul>
@@ -355,14 +355,17 @@ function VisualResultBar({
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <p
-          className={`min-w-0 flex-1 truncate font-medium leading-snug text-white [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[14px]"}`}
+          className={`min-w-0 flex-1 truncate whitespace-nowrap font-medium leading-snug text-white ${compact ? "text-[13px]" : "text-[14px]"}`}
+          title={`${rank}. ${name}`}
         >
           <span className="mr-1 text-[#94a3b8]">{rank}.</span>
           {name}
         </p>
-        <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
-          {rightLabel}
-        </p>
+        {rightLabel ? (
+          <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
+            {rightLabel}
+          </p>
+        ) : null}
       </div>
       <div
         className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#2a3441] ${compact ? "h-[6px]" : "h-[7px]"}`}
@@ -372,7 +375,7 @@ function VisualResultBar({
           style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
         />
       </div>
-      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[11px]" : "text-[12px]"}`}>{statLine}</p>
+      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[12px]" : "text-[14px]"}`}>{statLine}</p>
     </div>
   );
 }
@@ -697,7 +700,7 @@ export function ShareReportView({
   data: ShareReportData;
   shareToken?: string;
   mode?: "share" | "print";
-  /** Prefix for /metric-icons in PDF export (e.g. https://nextreport.in). */
+  /** Prefix for /metric-icons on the share page (e.g. https://nextreport.in). */
   assetBaseUrl?: string;
 }) {
   const isPrint = mode === "print";
@@ -847,6 +850,22 @@ export function ShareReportView({
         </section>
         )}
       </main>
+
+      {!isPrint && visibleData.dataImportNote ? (
+        <p
+          style={{
+            textAlign: "center",
+            padding: "0 24px 24px",
+            color: "#64748b",
+            fontSize: "12px",
+            lineHeight: 1.5,
+            maxWidth: "640px",
+            margin: "0 auto",
+          }}
+        >
+          {visibleData.dataImportNote}
+        </p>
+      ) : null}
 
       {!isPrint && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
 export type WizardDataSource = "csv" | "api";
 
@@ -16,22 +17,15 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (
-    file: File,
-    meta?: {
-      previousMonthSynced?: boolean;
-      hasPreviousMonthData?: boolean;
-      previousMonthCampaigns?: string[];
-      previousMonthSelectedCampaigns?: string[] | null;
-      previousMonthUpdatedAt?: string | null;
-    },
-  ) => void;
+  onSynced: (file: File, meta?: ApiSyncMeta) => void;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
   onSyncError: (message: string) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
+  /** Optional Ads Manager CSV — server merges Result type / Results / Website leads over API delivery. */
+  referenceManualCsvText?: string | null;
 }
 
 interface MetaAccountOption {
@@ -54,7 +48,7 @@ interface TikTokAdvertiserOption {
 export function DataSourceBadge({ label }: { label: "CSV" | "API" }) {
   return (
     <span
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-black text-[9px] font-bold leading-none tracking-tight text-white"
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-black text-[9px] font-bold leading-none tracking-tight text-dash-ink"
       aria-hidden="true"
     >
       {label}
@@ -96,6 +90,7 @@ export function WizardDataSourcePanel({
   onSyncStart,
   onSyncError,
   importComplete = false,
+  referenceManualCsvText = null,
 }: WizardDataSourcePanelProps) {
   const showMeta = platform === "META";
   const showGoogle = platform === "GOOGLE";
@@ -111,7 +106,6 @@ export function WizardDataSourcePanel({
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
-
   const loadAccounts = useCallback(async () => {
     if (!connected) return;
     setAccountsLoading(true);
@@ -153,9 +147,14 @@ export function WizardDataSourcePanel({
   async function handleSync() {
     onSyncStart();
     try {
+      const refText = referenceManualCsvText?.trim() || undefined;
       const body =
         platform === "META"
-          ? { platform: "META" as const, metaAdAccountId: selectedMetaAccount }
+          ? {
+              platform: "META" as const,
+              metaAdAccountId: selectedMetaAccount,
+              ...(refText ? { referenceManualCsvText: refText } : {}),
+            }
           : platform === "GOOGLE"
             ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
             : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
@@ -199,6 +198,8 @@ export function WizardDataSourcePanel({
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([data.csvText], fileName, { type: "text/csv" });
       onSynced(file, {
+        metaSyncDiagnostics: data.metaSyncDiagnostics,
+        mergedWithManualReference: !!data.mergedWithManualReference,
         previousMonthSynced: !!data.previousMonthSynced,
         hasPreviousMonthData: !!data.hasPreviousMonthData,
         previousMonthCampaigns: Array.isArray(data.previousMonthCampaigns) ? data.previousMonthCampaigns : [],
@@ -206,6 +207,8 @@ export function WizardDataSourcePanel({
           ? data.previousMonthSelectedCampaigns
           : null,
         previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
+        campaignPeriodReachMaps: data.campaignPeriodReachMaps,
+        metaAdAccountId: platform === "META" ? selectedMetaAccount : undefined,
       });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
@@ -221,7 +224,7 @@ export function WizardDataSourcePanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-[#63b3ed]/30 bg-[#0d1b2e]/80 px-4 py-3">
+      <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
         <p className="text-[13px] text-dash-ink-secondary">
           Last 30 days through yesterday — Previous month loads automatically.
         </p>
@@ -231,7 +234,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[14px] font-semibold text-white">Meta Marketing API</p>
+              <p className="text-[14px] font-semibold text-dash-ink">Meta Marketing API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Approved · read-only ads reporting</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
@@ -277,7 +280,7 @@ export function WizardDataSourcePanel({
                 <select
                   value={selectedMetaAccount}
                   onChange={(e) => setSelectedMetaAccount(e.target.value)}
-                  className="w-full rounded-md border border-dash-border bg-[#0f172a] px-3 py-2.5 text-[14px] text-white"
+                  className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
                 >
                   <option value="">Select ad account…</option>
                   {metaAccounts.map((a) => (
@@ -299,7 +302,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[14px] font-semibold text-white">Google Ads API</p>
+              <p className="text-[14px] font-semibold text-dash-ink">Google Ads API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Approved · read-only campaign metrics</p>
             </div>
             <StatusPill ok={googleAdsConnected} label={googleAdsConnected ? "Connected" : "Not connected"} />
@@ -342,7 +345,7 @@ export function WizardDataSourcePanel({
                 <select
                   value={selectedGoogleCustomer}
                   onChange={(e) => setSelectedGoogleCustomer(e.target.value)}
-                  className="w-full rounded-md border border-dash-border bg-[#0f172a] px-3 py-2.5 text-[14px] text-white"
+                  className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
                 >
                   <option value="">Select customer…</option>
                   {googleCustomers.map((c) => (
@@ -364,7 +367,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[14px] font-semibold text-white">TikTok Marketing API</p>
+              <p className="text-[14px] font-semibold text-dash-ink">TikTok Marketing API</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only · USD reporting</p>
             </div>
             <StatusPill ok={tiktokConnected} label={tiktokConnected ? "Connected" : "Not connected"} />
@@ -407,7 +410,7 @@ export function WizardDataSourcePanel({
                 <select
                   value={selectedTikTokAdvertiser}
                   onChange={(e) => setSelectedTikTokAdvertiser(e.target.value)}
-                  className="w-full rounded-md border border-dash-border bg-[#0f172a] px-3 py-2.5 text-[14px] text-white"
+                  className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
                 >
                   <option value="">Select advertiser…</option>
                   {tiktokAdvertisers.map((a) => (
@@ -459,7 +462,7 @@ export function WizardDataSourceToggle({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[15px] font-semibold text-white">Import data</p>
+      <p className="text-[15px] font-semibold text-dash-ink">Import data</p>
       <div>
         <p className="mb-1.5 text-[12px] font-medium text-dash-ink-secondary">Import source</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -493,7 +496,7 @@ export function WizardDataSourceToggle({
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">Connect your data via API</span>
               <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-                Your data connects automatically
+                Sync last 30 days from Meta, Google, or TikTok
               </span>
             </span>
           </button>

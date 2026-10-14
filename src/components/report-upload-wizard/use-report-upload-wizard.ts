@@ -27,9 +27,13 @@ import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/camp
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
-import { budgetPacingWarning, buildBudgetCoverPreview } from "@/lib/nre/budget-pacing";
+import { useSiteTheme } from "@/components/site-theme-provider";
+import { wizardObjectiveBadgeText } from "@/lib/wizard-i18n";
+import { budgetPacingWarning, buildBudgetCoverPreview, buildBudgetSummary } from "@/lib/nre/budget-pacing";
+import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
+import { wizardReportTypePickerLabel } from "@/lib/nre/wizard-report-type-copy";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,
@@ -63,17 +67,18 @@ import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import {
   ADD_FROM_CSV_VISIBLE,
   ADSET_CHIP_CLASS,
-  DEFAULT_REPORT_TITLE,
   MIN_SELECTED_METRICS,
 } from "./constants";
 import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
 import {
+  buildClientReportShareMessage,
   buildShareReportUrl,
   buildUploadFormData,
   defaultReportTitleFor,
   formatIso,
   formatIsoRange,
   formatSummaryRange,
+  downloadWizardCsvFile,
   isApiSyncArtifact,
 } from "./utils";
 import {
@@ -81,6 +86,34 @@ import {
   readStoredWizardPlatform,
   saveWizardPlatformChoice,
 } from "./platform-storage";
+import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
+import {
+  buildWizardGenerateBaseline,
+  evaluateHappyPathEligibility,
+  metricsMatchBaseline,
+  selectionFromBaseline,
+  type WizardGenerateBaseline,
+} from "@/lib/nre/wizard-generate-baseline";
+import {
+  hydrateGenerateBaseline,
+  persistGenerateBaselineToServer,
+  readGenerateBaselineForHappyPath,
+} from "./wizard-baseline-sync";
+import {
+  clearWizardDraft,
+  loadWizardDraft,
+  saveWizardDraft,
+  type WizardDraftSnapshot,
+} from "@/lib/nre/wizard-draft";
+import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
+import type { ReportBrandingMode } from "@/lib/report-branding";
+import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
+
+function readRestorableLocalDraft(clientId: string): WizardDraftSnapshot | null {
+  if (typeof window === "undefined") return null;
+  const draft = loadWizardDraft(clientId);
+  return draft?.uploadSessionId ? draft : null;
+}
 
 export function useReportUploadWizard({
   clientId,
@@ -106,22 +139,39 @@ export function useReportUploadWizard({
   hasGa4Property = false,
   ga4Connected = false,
   showTikTokOption = true,
-  clientMonthlyBudget = null,
+  clientMonthlyBudget: initialClientMonthlyBudget = null,
   clientShowBudgetPacingOnCover = false,
+  initialAgencyName = null,
+  initialReportBrandingMode = "nextreport",
+  initialShowAgencyNameOnCover = true,
+  accountDisplayName = null,
+  wizardClients = [],
 }: ReportUploadWizardProps) {
+  const { locale } = useSiteTheme();
+  const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
-  const [step, setStepState] = useState<Step>(1);
+  const [step, setStepState] = useState<Step>(() => readRestorableLocalDraft(clientId)?.step ?? 1);
   // Which steps this session has actually passed through — the Google Ads
   // flow jumps straight from step 1 to step 6 (see dispatchAfterAnalyze),
   // so a plain "s < step" numeric check would wrongly offer steps 2-5 as
   // clickable/completed in the step indicator even though they were never
   // shown. Only grows (a step, once visited, stays "completed" even after
   // navigating back to it and forward again).
-  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(new Set([1]));
-  const stepRef = useRef<Step>(1);
+  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(() => {
+    const draft = readRestorableLocalDraft(clientId);
+    if (draft?.visitedSteps?.length) return new Set(draft.visitedSteps);
+    return new Set([1]);
+  });
+  const stepRef = useRef<Step>(readRestorableLocalDraft(clientId)?.step ?? 1);
+  const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
+  /** User confirmed objectives (metrics continue or happy-path restore) — preview/generate use full objective map. */
+  const [objectivesLockedForReport, setObjectivesLockedForReport] = useState(false);
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
   const [reanalyzeSessionStatus, setReanalyzeSessionStatus] = useState<"idle" | "loading">("idle");
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
+  const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
+  const [csvAlignResults, setCsvAlignResults] = useState(false);
+  const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
 
@@ -139,10 +189,13 @@ export function useReportUploadWizard({
   function setStep(s: Step) {
     const current = stepRef.current;
     if (s < current) invalidateDownstreamFromStep(s);
+    if (s < 4) setHappyPathSkippedSteps(false);
     stepRef.current = s;
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
+
+  const wizardDraftRestoredRef = useRef(false);
 
   useEffect(() => {
     stepRef.current = step;
@@ -150,6 +203,67 @@ export function useReportUploadWizard({
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const savedAgencyNameRef = useRef(initialAgencyName?.trim() || "");
+  const savedReportBrandingModeRef = useRef<ReportBrandingMode>(initialReportBrandingMode);
+  const savedShowAgencyNameOnCoverRef = useRef(initialShowAgencyNameOnCover);
+  const [agencyName, setAgencyName] = useState(
+    () => savedAgencyNameRef.current || accountDisplayName?.trim() || "",
+  );
+  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
+    initialReportBrandingMode,
+  );
+  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(initialShowAgencyNameOnCover);
+  const [reportBrandingError, setReportBrandingError] = useState<string | null>(null);
+  const [reportBrandingSaving, setReportBrandingSaving] = useState(false);
+
+  function handleWizardAgencyNameChange(value: string) {
+    setAgencyName(value);
+    setReportBrandingError(null);
+  }
+
+  async function persistReportBrandingSettings(): Promise<boolean> {
+    if (reportBrandingMode === "agency" && !agencyName.trim()) {
+      setReportBrandingError("Enter your agency name to show it on client reports.");
+      return false;
+    }
+
+    setReportBrandingSaving(true);
+    setReportBrandingError(null);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agencyName: agencyName.trim() || null,
+          reportBrandingMode,
+          showAgencyNameOnCover,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = (data.error as string) || "Could not save your agency name.";
+        setReportBrandingError(message);
+        showToast(message, "error");
+        return false;
+      }
+      savedAgencyNameRef.current = agencyName.trim();
+      savedReportBrandingModeRef.current = reportBrandingMode;
+      savedShowAgencyNameOnCoverRef.current = showAgencyNameOnCover;
+      markReportBrandingWizardCollapsed();
+      return true;
+    } catch {
+      const message = "Could not save your agency name. Check your connection and try again.";
+      setReportBrandingError(message);
+      showToast(message, "error");
+      return false;
+    } finally {
+      setReportBrandingSaving(false);
+    }
+  }
+
+  const reportBrandingBlocksGenerate =
+    reportBrandingMode === "agency" && !agencyName.trim();
 
   const [platformPickerExpanded, setPlatformPickerExpanded] = useState(true);
   const [hasSavedPlatformPreference, setHasSavedPlatformPreference] = useState(false);
@@ -199,9 +313,20 @@ export function useReportUploadWizard({
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
-  const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
+  const [uploadSessionId, setUploadSessionId] = useState<string | null>(
+    () => readRestorableLocalDraft(clientId)?.uploadSessionId ?? null,
+  );
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
+  /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
+  const [apiSyncHybridImport, setApiSyncHybridImport] = useState(false);
+  const [metaAdAccountId, setMetaAdAccountId] = useState<string | null>(null);
+  /** Optional Ads Manager CSV for Meta API hybrid merge (Result columns from manual export). */
+  const [metaManualReferenceCsvFile, setMetaManualReferenceCsvFile] = useState<File | null>(null);
+  const [metaManualReferenceCsvText, setMetaManualReferenceCsvText] = useState<string | null>(null);
+  const [metaSyncDiagnostics, setMetaSyncDiagnostics] = useState<
+    import("./types").MetaSyncDiagnosticsSummary | null
+  >(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>("idle");
   const [analyzeErrors, setAnalyzeErrors] = useState<ValidationIssue[]>([]);
   const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
@@ -305,7 +430,9 @@ export function useReportUploadWizard({
   } | null>(null);
 
   // Step 5 — Dates (populated by /analyze)
-  const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(null);
+  const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(
+    () => readRestorableLocalDraft(clientId)?.dateBounds ?? null,
+  );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
   const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
@@ -325,8 +452,12 @@ export function useReportUploadWizard({
       "current",
     [previousMonthHasFile, previousMonthUpdatedAt, clientTimezone],
   );
-  const [weeklyOptions, setWeeklyOptions] = useState<{ last7: DateRangeIso; prev7: DateRangeIso; last14: DateRangeIso } | null>(null);
-  const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
+  const [weeklyOptions, setWeeklyOptions] = useState<{
+    last7: DateRangeIso;
+    prev7: DateRangeIso;
+    last14: DateRangeIso;
+  } | null>(() => readRestorableLocalDraft(clientId)?.weeklyOptions ?? null);
+  const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(() => readRestorableLocalDraft(clientId)?.mtdRange ?? null);
   const [dateMode, setDateMode] = useState<DateMode>("last7");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -338,6 +469,7 @@ export function useReportUploadWizard({
   // card, showing its own Period A/B preset picker instead — see
   // fetchPreview/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
+  const clientPrefsHydratedRef = useRef(false);
 
   // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
   // weeklyOptions (This week vs Last week, the default preset) as soon as
@@ -369,16 +501,6 @@ export function useReportUploadWizard({
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
   const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
-  const [reportTitle, setReportTitle] = useState(DEFAULT_REPORT_TITLE);
-  // False until the user actually types in the Report Title field — while
-  // false, switching Report Type keeps swapping the title's own default
-  // text to match; once true, their custom title is left alone regardless
-  // of which Report Type is picked.
-  const [reportTitleTouched, setReportTitleTouched] = useState(false);
-  // Custom title input starts collapsed behind an "Add custom PPT report
-  // title +" link on the merged Step 3 — expanding it once (or having already typed
-  // a title) keeps it expanded for the rest of the session.
-  const [customTitleExpanded, setCustomTitleExpanded] = useState(false);
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
   const [showBudgetOnCover, setShowBudgetOnCover] = useState(clientShowBudgetPacingOnCover ?? false);
@@ -410,9 +532,12 @@ export function useReportUploadWizard({
   const [driveSaveUrl, setDriveSaveUrl] = useState<string | null>(null);
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [clientShareMessageCopied, setClientShareMessageCopied] = useState(false);
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
+  const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
+  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
   function acknowledgePostGenerateEdit() {
@@ -421,14 +546,86 @@ export function useReportUploadWizard({
     clearWizardGenerateSnapshot(clientId);
   }
 
+  useEffect(() => {
+    setClientMonthlyBudget(initialClientMonthlyBudget);
+  }, [clientId, initialClientMonthlyBudget]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refreshMonthlyBudget = () => {
+      void fetch(`/api/clients/${clientId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (!json?.client) return;
+          const next = json.client.monthlyBudget;
+          setClientMonthlyBudget(typeof next === "number" && next > 0 ? next : null);
+        })
+        .catch(() => {
+          /* offline */
+        });
+    };
+    window.addEventListener("focus", refreshMonthlyBudget);
+    return () => window.removeEventListener("focus", refreshMonthlyBudget);
+  }, [clientId]);
+
+  useEffect(() => {
+    clientPrefsHydratedRef.current = false;
+    void hydrateGenerateBaseline(clientId);
+    const pendingDraft = readRestorableLocalDraft(clientId);
+    const prefs = readClientWizardPreferences(clientId);
+    if (prefs) {
+      if (!pendingDraft && prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
+        const coerced = coerceLaunchReportType(prefs.reportType);
+        setReportType(coerced);
+      }
+      if (!pendingDraft && prefs.dateMode) {
+        if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
+          setDateMode("custom");
+          setCustomStart(prefs.customStart);
+          setCustomEnd(prefs.customEnd);
+        } else if (prefs.dateMode !== "custom") {
+          setDateMode(prefs.dateMode);
+        }
+      }
+      if (typeof prefs.includePreviousMonthComparison === "boolean") {
+        setIncludePreviousMonthComparison(prefs.includePreviousMonthComparison);
+      }
+      if (typeof prefs.showBudgetOnCover === "boolean") {
+        setShowBudgetOnCover(prefs.showBudgetOnCover);
+      }
+      if (prefs.dataSourceMode) setDataSourceMode(prefs.dataSourceMode);
+    }
+    clientPrefsHydratedRef.current = true;
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientPrefsHydratedRef.current) return;
+    saveClientWizardPreferences(clientId, {
+      reportType,
+      dateMode,
+      customStart: dateMode === "custom" ? customStart : undefined,
+      customEnd: dateMode === "custom" ? customEnd : undefined,
+      includePreviousMonthComparison,
+      showBudgetOnCover,
+      dataSourceMode,
+    });
+  }, [
+    clientId,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    includePreviousMonthComparison,
+    showBudgetOnCover,
+    dataSourceMode,
+  ]);
+
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
   function handleReportTypeChange(next: ReportTypeValue) {
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
-    if (!reportTitleTouched) {
-      setReportTitle(defaultReportTitleFor(reportTypeChoice));
-    }
+    setHappyPathSkippedSteps(false);
     if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
@@ -436,6 +633,7 @@ export function useReportUploadWizard({
         setCustomEnd(weeklyOptions.last7.endIso);
       }
     }
+    setCsvWarningDismissed(false);
   }
 
   function currentDateSelection(): DateSelection {
@@ -549,6 +747,7 @@ export function useReportUploadWizard({
     setTouchedObjectiveCampaigns(new Set());
     setPerCampaignMinWarning(null);
     setExpandedCsvExtras(new Set());
+    setObjectivesLockedForReport(false);
   }
 
   /** Resets everything the Preview/Generate/Download screen (step 6) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
@@ -601,9 +800,6 @@ export function useReportUploadWizard({
       comparisonData,
       historicalData,
       dayBreakdownData,
-      reportTitle,
-      reportTitleTouched,
-      customTitleExpanded,
       selectedCampaigns: Array.from(selectedCampaigns),
       driveView: extras?.driveView ?? driveView,
       driveSaveUrl: extras?.driveSaveUrl ?? driveSaveUrl,
@@ -625,9 +821,16 @@ export function useReportUploadWizard({
     setWeeklyOptions(snapshot.weeklyOptions);
     setMtdRange(snapshot.mtdRange);
     setMonthComparisonOptions(snapshot.monthComparisonOptions);
-    setComparisonPreset(snapshot.comparisonPreset);
-    setComparisonPeriodA(snapshot.comparisonPeriodA);
-    setComparisonPeriodB(snapshot.comparisonPeriodB);
+    const preset =
+      snapshot.comparisonPreset === "thisMonth" ? "thisWeek" : snapshot.comparisonPreset;
+    setComparisonPreset(preset);
+    if (preset === "thisWeek" && snapshot.weeklyOptions) {
+      setComparisonPeriodA(snapshot.weeklyOptions.last7);
+      setComparisonPeriodB(snapshot.weeklyOptions.prev7);
+    } else {
+      setComparisonPeriodA(snapshot.comparisonPeriodA);
+      setComparisonPeriodB(snapshot.comparisonPeriodB);
+    }
     setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
     setPreviewKind(snapshot.previewKind);
     setPreviewStatus(snapshot.previewStatus);
@@ -635,9 +838,6 @@ export function useReportUploadWizard({
     setComparisonData(snapshot.comparisonData);
     setHistoricalData(snapshot.historicalData ?? null);
     setDayBreakdownData(snapshot.dayBreakdownData ?? null);
-    setReportTitle(snapshot.reportTitle);
-    setReportTitleTouched(snapshot.reportTitleTouched);
-    setCustomTitleExpanded(snapshot.customTitleExpanded);
     setSelectedCampaigns(new Set(snapshot.selectedCampaigns));
     setDriveView(snapshot.driveView);
     setDriveSaveUrl(snapshot.driveSaveUrl);
@@ -712,24 +912,47 @@ export function useReportUploadWizard({
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function applyAnalyzeResult(json: any) {
+  function applyAnalyzeResult(json: any, options?: { preserveProgress?: boolean }) {
+    const preserve = options?.preserveProgress === true;
+    const campaignList: string[] = json.campaigns || [];
+    const validCampaigns = new Set(campaignList);
+
     setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
     setCsvHeaders(Array.isArray(json.headers) ? json.headers : []);
-    setCampaigns(json.campaigns || []);
+    setCampaigns(campaignList);
     setCampaignSpend(json.campaignSpend || {});
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
-    setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
+
+    if (preserve) {
+      setSelectedCampaigns((prev) => {
+        const kept = [...prev].filter((name) => validCampaigns.has(name));
+        if (kept.length > 0) return new Set(kept);
+        return new Set<string>(json.selectedCampaigns || []);
+      });
+    } else {
+      setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
+    }
+
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
-    // Default checked state: a campaign with exactly one ad set starts
-    // UNCHECKED (its own slide would just repeat the campaign slide — the
-    // user opts in if they want one anyway); a campaign with 2+ ad sets
-    // starts with all of them CHECKED.
-    setSelectedAdSets(
-      new Set(
-        groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
-      ),
-    );
+    if (preserve) {
+      setSelectedAdSets((prev) => {
+        const validKeys = new Set(
+          groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
+        );
+        const kept = [...prev].filter((key) => validKeys.has(key));
+        if (kept.length > 0) return new Set(kept);
+        return new Set(
+          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
+        );
+      });
+    } else {
+      setSelectedAdSets(
+        new Set(
+          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
+        ),
+      );
+    }
     setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
     setCsvDateGuidance(json.csvDateGuidance || null);
@@ -749,10 +972,30 @@ export function useReportUploadWizard({
     setComparisonPreset("thisWeek");
     setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
     setComparisonPeriodA(json.weeklyOptions?.last7 || null);
-    resetMetricsState();
-    resetPreviewState();
-    resetGenerateState();
+    if (!preserve) {
+      resetMetricsState();
+      resetPreviewState();
+      resetGenerateState();
+    }
     setUploadSessionRecovery(null);
+  }
+
+  function clearAllWizardDrafts() {
+    clearWizardDraft(clientId);
+    void fetch(`/api/clients/${clientId}/wizard-draft`, { method: "DELETE" }).catch(() => undefined);
+  }
+
+  const serverDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function queueServerDraftSave(snapshot: WizardDraftSnapshot) {
+    if (serverDraftSaveTimerRef.current) clearTimeout(serverDraftSaveTimerRef.current);
+    serverDraftSaveTimerRef.current = setTimeout(() => {
+      void fetch(`/api/clients/${clientId}/wizard-draft`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: snapshot }),
+      }).catch(() => undefined);
+    }, 900);
   }
 
   /** Populates data/comparisonData from a successful /preview response, and clears any stale generate/Drive state left over from a previous attempt. */
@@ -783,13 +1026,108 @@ export function useReportUploadWizard({
       setHistoricalData(null);
       setDayBreakdownData(null);
     }
+    setCsvVerification(json.csvVerification ?? null);
+    if (json.suggestCsvAlign && !csvAlignResults && !csvAlignAttemptedRef.current) {
+      csvAlignAttemptedRef.current = true;
+      setCsvAlignResults(true);
+    }
     setPreviewStatus("idle");
     if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done") {
       resetGenerateState();
     }
   }
 
-  /** Step 1 -> 2 after analyze — user confirms instead of auto-advancing. */
+  function buildWizardDraftSnapshot(): WizardDraftSnapshot | null {
+    if (!uploadSessionId) return null;
+    return {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      step: stepRef.current,
+      visitedSteps: [...visitedSteps],
+      uploadSessionId,
+      platform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      selectedCampaigns: Array.from(selectedCampaigns),
+      selectedAdSets: Array.from(selectedAdSets),
+      campaigns,
+      perCampaignMetrics: [...perCampaignMetrics.entries()].map(([normalized, metrics]) => ({ normalized, metrics })),
+      campaignObjectives: [...campaignObjectives.entries()],
+      previewKind,
+      previewStatus,
+      data,
+      comparisonData,
+      historicalData,
+      dayBreakdownData,
+      mtdRange,
+      weeklyOptions,
+      dateBounds,
+      dailyRange,
+    };
+  }
+
+  function applyWizardDraft(draft: WizardDraftSnapshot) {
+    setUploadSessionId(draft.uploadSessionId);
+    if (draft.platform !== "GA4") {
+      setPlatform(coerceLaunchPlatform(draft.platform));
+    }
+    setReportType(coerceLaunchReportType(draft.reportType));
+    setDateMode(draft.dateMode);
+    setCustomStart(draft.customStart);
+    setCustomEnd(draft.customEnd);
+    setCampaigns(draft.campaigns);
+    setSelectedCampaigns(new Set(draft.selectedCampaigns));
+    setSelectedAdSets(new Set(draft.selectedAdSets));
+    setPerCampaignMetrics(new Map(draft.perCampaignMetrics.map((e) => [e.normalized, e.metrics])));
+    setCampaignObjectives(new Map(draft.campaignObjectives));
+    setPreviewKind(draft.previewKind);
+    setPreviewStatus(draft.previewStatus);
+    setData(draft.data);
+    setComparisonData(draft.comparisonData);
+    setHistoricalData(draft.historicalData);
+    setDayBreakdownData(draft.dayBreakdownData);
+    setMtdRange(draft.mtdRange);
+    if (draft.weeklyOptions !== undefined) setWeeklyOptions(draft.weeklyOptions);
+    if (draft.dateBounds !== undefined) setDateBounds(draft.dateBounds);
+    if (draft.dailyRange !== undefined) setDailyRange(draft.dailyRange);
+    stepRef.current = draft.step;
+    setStepState(draft.step);
+    setVisitedSteps(new Set(draft.visitedSteps));
+  }
+
+  async function hydrateUploadSessionDateContext(sessionId: string): Promise<boolean> {
+    const res = await fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uploadSessionId: sessionId }),
+    });
+    const json = await res.json().catch(() => null);
+    if (json?.uploadSessionExpired) {
+      handleUploadSessionExpired(json.error);
+      return false;
+    }
+    if (!json?.ok) return false;
+    setWeeklyOptions(json.weeklyOptions ?? null);
+    setDateBounds(json.dateBounds ?? null);
+    if (json.mtdRange) setMtdRange(json.mtdRange);
+    if (json.dailyRange) setDailyRange(json.dailyRange);
+    if (json.monthComparisonOptions) setMonthComparisonOptions(json.monthComparisonOptions);
+    if (json.weeklyOptions?.last7 && json.weeklyOptions?.prev7) {
+      setComparisonPeriodA(json.weeklyOptions.last7);
+      setComparisonPeriodB(json.weeklyOptions.prev7);
+    }
+    return true;
+  }
+
+  useLayoutEffect(() => {
+    if (resumeReportId) return;
+    const local = readRestorableLocalDraft(clientId);
+    if (local) applyWizardDraft(local);
+  }, [clientId, resumeReportId]);
+
+  /** Legacy hook for import continue (UI no longer shows a second CTA). */
   function handleImportContinue() {
     if (!uploadSessionId || campaigns.length === 0) return;
     setStep(2);
@@ -846,16 +1184,18 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(detected);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
+    await dispatchAfterAnalyze(json, detected);
   }
 
-  type ApiSyncMeta = {
-    previousMonthSynced?: boolean;
-    hasPreviousMonthData?: boolean;
-    previousMonthCampaigns?: string[];
-    previousMonthSelectedCampaigns?: string[] | null;
-    previousMonthUpdatedAt?: string | null;
+  type ApiSyncMeta = import("./types").ApiSyncMeta & {
     previousMonthCampaignSpend?: Record<string, number>;
   };
+
+  function metaReachWizardFormExtra(): Record<string, unknown> {
+    if (!metaAdAccountId) return {};
+    return { metaAdAccountId };
+  }
 
   /** API-sync artifacts use a synthetic filename — discard when switching to manual CSV upload. */
   function isApiSyncArtifact(file: File | null): boolean {
@@ -895,7 +1235,7 @@ export function useReportUploadWizard({
       return;
     }
 
-    applyAnalyzeResult(json);
+    applyAnalyzeResult(json, { preserveProgress: true });
     setAnalyzeStatus("idle");
 
     const currentStep = stepRef.current;
@@ -906,6 +1246,11 @@ export function useReportUploadWizard({
       void fetchPreview();
     }
     showToast("Upload session restored — continue where you left off.");
+  }
+
+  /** Import step — network/server error retry; keeps the selected file. */
+  function handleRetryAnalyze() {
+    void handleAnalyze();
   }
 
   function handleMtdFileSelected(file: File | null) {
@@ -921,6 +1266,18 @@ export function useReportUploadWizard({
     setMtdFile(file);
   }
 
+  function handleMetaManualReferenceCsvSelected(file: File | null) {
+    setMetaManualReferenceCsvFile(file);
+    if (!file) {
+      setMetaManualReferenceCsvText(null);
+      return;
+    }
+    void file.text().then(
+      (text) => setMetaManualReferenceCsvText(text),
+      () => setMetaManualReferenceCsvText(null),
+    );
+  }
+
   function handleDataSourceModeChange(mode: WizardDataSource) {
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
       setMtdFile(null);
@@ -930,6 +1287,12 @@ export function useReportUploadWizard({
       setAnalyzeMessage(null);
       setApiSyncStatus("idle");
       setApiSyncError(null);
+      setApiSyncHybridImport(false);
+      setMetaSyncDiagnostics(null);
+    }
+    if (mode === "csv") {
+      setMetaManualReferenceCsvFile(null);
+      setMetaManualReferenceCsvText(null);
     }
     setDataSourceMode(mode);
   }
@@ -939,7 +1302,11 @@ export function useReportUploadWizard({
     if (!selectedPlatformCard) return;
     setApiSyncStatus("idle");
     setApiSyncError(null);
+    setApiSyncHybridImport(!!meta?.mergedWithManualReference);
+    setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
+    if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
     setMtdFile(file);
+    downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
@@ -947,7 +1314,11 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(file, { platform: selectedPlatformCard }),
+      body: buildUploadFormData(file, {
+        platform: selectedPlatformCard,
+        metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
+        metaAdAccountId: meta?.metaAdAccountId,
+      }),
     });
     const json = await res.json().catch(() => null);
 
@@ -968,6 +1339,8 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
+    await dispatchAfterAnalyze(json, selectedPlatformCard);
     if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
       setPreviousMonthHasFile(true);
       if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
@@ -1019,6 +1392,8 @@ export function useReportUploadWizard({
 
     applyAnalyzeResult(json);
     rememberPlatformChoice(selectedPlatformCard);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
+    await dispatchAfterAnalyze(json, selectedPlatformCard);
   }
 
   /** Mismatch warning's "Go back" — just clears the warning locally, no re-fetch, so the user can reconsider the platform card or re-upload a different file. */
@@ -1090,25 +1465,48 @@ export function useReportUploadWizard({
    * here, in a function invoked from a later user click, is always the
    * fully-committed value.
    */
-  async function fetchObjectivesAndMetrics(selectionKey: string) {
-    if (!mtdFile && !uploadSessionId) return;
+  async function fetchObjectivesAndMetrics(
+    selectionKey: string,
+    options?: {
+      selectedCampaignsOverride?: string[];
+      skipResetTouched?: boolean;
+      platformOverride?: "META" | "GOOGLE" | "TIKTOK";
+    },
+  ): Promise<{
+    ok: boolean;
+    perCampaignSelection?: Record<string, SelectedMetric[]>;
+    requiresConfirmation?: Map<string, boolean>;
+  }> {
+    if (!mtdFile && !uploadSessionId) return { ok: false };
     setMetricsStatus("loading");
-    setTouchedObjectiveCampaigns(new Set());
+    if (!options?.skipResetTouched) {
+      setTouchedObjectiveCampaigns(new Set());
+    }
     setPerCampaignMinWarning(null);
+
+    const campaignsForRequest = options?.selectedCampaignsOverride ?? Array.from(selectedCampaigns);
+    const platformForRequest = options?.platformOverride ?? platform;
 
     const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, selectedCampaigns: Array.from(selectedCampaigns) }, uploadSessionId),
+      body: buildUploadFormData(
+        mtdFile,
+        { platform: platformForRequest, selectedCampaigns: campaignsForRequest },
+        uploadSessionId,
+      ),
     });
     const json = await res.json().catch(() => null);
 
     // Ignore stale responses when the user changed selection mid-fetch.
-    if (selectedCampaignsKey() !== selectionKey) return;
+    const requestKey = options?.selectedCampaignsOverride
+      ? [...options.selectedCampaignsOverride].sort().join("\0")
+      : selectedCampaignsKey();
+    if (requestKey !== selectionKey) return { ok: false };
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
       setMetricsStatus("error");
-      return;
+      return { ok: false };
     }
 
     if (!res.ok || !json || json.error) {
@@ -1124,7 +1522,7 @@ export function useReportUploadWizard({
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
       setCampaignRequiresConfirmation(new Map());
-      return;
+      return { ok: false };
     }
 
     setPerCampaignMetrics(new Map(Object.entries(json.perCampaignSelection || {})));
@@ -1134,6 +1532,147 @@ export function useReportUploadWizard({
     setCampaignObjectiveConfidence(confidence);
     setCampaignRequiresConfirmation(requiresConfirmation);
     setMetricsStatus("idle");
+    return {
+      ok: true,
+      perCampaignSelection: json.perCampaignSelection || {},
+      requiresConfirmation,
+    };
+  }
+
+  function applyBaselineObjectivesAfterFetch(baseline: WizardGenerateBaseline) {
+    const nextObjectives = new Map<string, ObjectiveInfo>();
+    for (const [name, info] of baseline.campaignObjectives) {
+      const option =
+        OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
+        objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
+      nextObjectives.set(name, option);
+    }
+    setCampaignObjectives(nextObjectives);
+    setTouchedObjectiveCampaigns(new Set(baseline.touchedObjectiveCampaigns));
+    setCampaignRequiresConfirmation((prev) => {
+      const next = new Map(prev);
+      for (const name of baseline.touchedObjectiveCampaigns) {
+        next.delete(name);
+      }
+      return next;
+    });
+    setCampaignObjectiveConfidence((prev) => {
+      const next = new Map(prev);
+      for (const name of baseline.touchedObjectiveCampaigns) {
+        next.delete(name);
+      }
+      return next;
+    });
+    setPerCampaignMetrics((prev) => {
+      const merged = new Map(prev);
+      for (const entry of baseline.perCampaignMetrics) {
+        merged.set(
+          entry.normalized,
+          entry.metrics.map((m) => ({ ...m })) as SelectedMetric[],
+        );
+      }
+      return merged;
+    });
+  }
+
+  /**
+   * After a successful analyze, optionally restore last generate settings and jump to step 4.
+   * Falls back to campaigns step when anything differs or objectives still need confirmation.
+   */
+  async function dispatchAfterAnalyze(
+    analyzeJson: {
+      campaigns?: string[];
+      headers?: string[];
+      adSetGroups?: AdSetGroup[];
+    },
+    adsPlatform: "META" | "GOOGLE" | "TIKTOK",
+  ) {
+    setHappyPathSkippedSteps(false);
+    const baseline = readGenerateBaselineForHappyPath(clientId);
+    const campaignList: string[] = analyzeJson.campaigns || [];
+    const headers: string[] = Array.isArray(analyzeJson.headers) ? analyzeJson.headers : [];
+    const groups: AdSetGroup[] = analyzeJson.adSetGroups || [];
+    const validCampaigns = new Set(campaignList);
+    const validAdSetKeys = new Set(
+      groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
+    );
+
+    const eligibility = evaluateHappyPathEligibility({
+      baseline,
+      platform: adsPlatform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      includePreviousMonthComparison,
+      showBudgetOnCover,
+      dataSourceMode,
+      isApiSyncArtifact: isApiSyncArtifact(mtdFile),
+      apiSyncHybridImport,
+      csvHeaders: headers,
+      campaignNames: campaignList,
+      validCampaigns,
+      validAdSetKeys,
+    });
+
+    if (!eligibility.ok || !baseline) {
+      setStep(2);
+      return;
+    }
+
+    const applied = selectionFromBaseline(baseline, validCampaigns, validAdSetKeys);
+    setSelectedCampaigns(new Set(applied.selectedCampaigns));
+    setSelectedAdSets(new Set(applied.selectedAdSets));
+    setPerCampaignMetrics(applied.perCampaignMetrics);
+    setCampaignObjectives(
+      new Map(
+        applied.campaignObjectives.entries().map(([name, info]) => {
+          const option =
+            OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
+            objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
+          return [name, option] as const;
+        }),
+      ),
+    );
+    setTouchedObjectiveCampaigns(applied.touchedObjectiveCampaigns);
+
+    const selectionKey = [...applied.selectedCampaigns].sort().join("\0");
+    metricsFetchedKeyRef.current = null;
+    setMetricsFetchedForSelection(null);
+    const metricsResult = await fetchObjectivesAndMetrics(selectionKey, {
+      selectedCampaignsOverride: applied.selectedCampaigns,
+      skipResetTouched: true,
+      platformOverride: adsPlatform,
+    });
+    if (!metricsResult.ok) {
+      setStep(2);
+      return;
+    }
+
+    const fetchedMetrics = metricsResult.perCampaignSelection ?? {};
+    if (!metricsMatchBaseline(baseline, applied.selectedCampaigns, fetchedMetrics)) {
+      setStep(2);
+      return;
+    }
+
+    const stillBlocking = applied.selectedCampaigns.some((name) => {
+      const normalized = normalizeCampaignName(name);
+      return (
+        metricsResult.requiresConfirmation?.get(normalized) === true &&
+        !applied.touchedObjectiveCampaigns.has(normalized)
+      );
+    });
+    if (stillBlocking) {
+      setStep(2);
+      return;
+    }
+
+    applyBaselineObjectivesAfterFetch(baseline);
+    setObjectivesLockedForReport(true);
+
+    setHappyPathSkippedSteps(true);
+    setStep(4);
+    showToast("Using your last report setup — review dates below, then generate.");
   }
 
   function selectedCampaignsKey(): string {
@@ -1197,17 +1736,11 @@ export function useReportUploadWizard({
     }
   }, [selectedCampaignsKeyValue]);
 
-  // Prefetch objectives when campaigns step opens or selection changes.
-  useEffect(() => {
-    if (step !== 2) return;
-    if (selectedCampaigns.size === 0) return;
-    void ensureObjectivesForSelection(selectedCampaignsKeyValue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, selectedCampaignsKeyValue, uploadSessionId, mtdFile]);
-
   // ── Step 3 -> 4: Metric Cards -> Report Period & Generate ───────────────
   function handleMetricsContinue() {
     setPerCampaignMinWarning(null);
+    setObjectivesLockedForReport(true);
+    saveClientWizardPreferences(clientId, { metricsStepConfirmed: true });
     setStep(4);
   }
 
@@ -1289,6 +1822,17 @@ export function useReportUploadWizard({
    * another account's stale cache.
    */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
+    if (campaignObjectives.size === 0) return undefined;
+    // After metrics continue (or happy-path restore), every objective shown in
+    // the wizard is what preview verification and generate must use — matches
+    // the /metrics step and avoids engine re-detection drift on first-time clients.
+    if (objectivesLockedForReport || happyPathSkippedSteps) {
+      const out: Record<string, { resultLabel: string; costLabel: string }> = {};
+      for (const [name, info] of campaignObjectives) {
+        out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
+      }
+      return out;
+    }
     const relevant = new Set(touchedObjectiveCampaigns);
     if (relevant.size === 0) return undefined;
     const out: Record<string, { resultLabel: string; costLabel: string }> = {};
@@ -1335,16 +1879,36 @@ export function useReportUploadWizard({
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
     if (tier === "cached") {
-      return { icon: "✓", text: "Previously confirmed", className: "text-[#68d391]", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "cached").text,
+        className: "nre-wizard-confidence--ok",
+        pill: false,
+      };
     }
     if (tier === "high" || tier === "medium") {
-      return { icon: "✓", text: "Detected — change if wrong", className: "text-[#68d391]", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "high").text,
+        className: "nre-wizard-confidence--ok",
+        pill: false,
+      };
     }
     if (tier === "low") {
-      return { icon: "✓", text: "Detected — confirm lead type if wrong", className: "text-[#f6ad55]", pill: false };
+      return {
+        icon: "✓",
+        text: wizardObjectiveBadgeText(locale, "low").text,
+        className: "nre-wizard-confidence--warn",
+        pill: false,
+      };
     }
     if (tier === "verify") {
-      return { icon: "⚠", text: "Confirmation required", className: "bg-[#fc8181] text-[#2d0b0b]", pill: true };
+      return {
+        icon: "⚠",
+        text: wizardObjectiveBadgeText(locale, "verify").text,
+        className: "nre-wizard-confidence--required",
+        pill: true,
+      };
     }
     return null;
   }
@@ -1419,13 +1983,17 @@ export function useReportUploadWizard({
    */
   function objectiveAccent(resultLabel: string | undefined): { badgeClassName: string; borderHex: string } {
     const label = (resultLabel ?? "").toUpperCase();
-    if (label.includes("LEAD")) return { badgeClassName: "bg-amber-950/30 text-[#f6ad55]", borderHex: "#f6ad55" };
-    if (label.includes("PURCHASE") || label.includes("SALE")) return { badgeClassName: "bg-red-950/30 text-[#fc8181]", borderHex: "#fc8181" };
-    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
-      return { badgeClassName: "bg-emerald-950/30 text-[#68d391]", borderHex: "#68d391" };
+    if (label.includes("LEAD")) return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--leads", borderHex: "#f6ad55" };
+    if (label.includes("PURCHASE") || label.includes("SALE")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--sales", borderHex: "#fc8181" };
     }
-    if (label.includes("VIDEO") || label.includes("THRUPLAY")) return { badgeClassName: "bg-purple-950/30 text-[#b794f4]", borderHex: "#b794f4" };
-    return { badgeClassName: "bg-blue-950/30 text-[#63b3ed]", borderHex: "#63b3ed" };
+    if (label.includes("REACH") || label.includes("IMPRESSION") || label.includes("RECALL") || label.includes("AWARENESS")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--reach", borderHex: "#68d391" };
+    }
+    if (label.includes("VIDEO") || label.includes("THRUPLAY")) {
+      return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--video", borderHex: "#b794f4" };
+    }
+    return { badgeClassName: "nre-wizard-objective-pill nre-wizard-objective-pill--default", borderHex: "#63b3ed" };
   }
 
   // ── Step 5: Dates ───────────────────────────────────────────────────────
@@ -1464,19 +2032,37 @@ export function useReportUploadWizard({
    * same validation the old standalone Dates step's "Continue" button used
    * to gate on.
    */
+  function releasePreviewLoadingState(status: PreviewStatus = "idle") {
+    setPreviewRefreshing(false);
+    setPreviewStatus(status);
+  }
+
   async function fetchPreview() {
-    if (!mtdFile && !uploadSessionId) return;
+    if (!mtdFile && !uploadSessionId) {
+      setPreviewMessage("Go back to Import and upload your CSV again.");
+      releasePreviewLoadingState("error");
+      return;
+    }
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
     // sent (buildReportData then uses the full MTD data with no weekly
     // window — see report-data.ts's primaryRows). Comparison has its own
     // Period A/B requirement instead.
     if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
-      if (!validateCustomRange()) return;
+      if (dateMode === "custom" && (!customStart || !customEnd)) {
+        setCustomRangeError("Choose a start and end date.");
+        releasePreviewLoadingState("idle");
+        return;
+      }
+      if (!validateCustomRange()) {
+        releasePreviewLoadingState("idle");
+        return;
+      }
       if (reportType === "WEEKLY") {
         const spanDays = customSpanDays();
         if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
-          return; // the inline "Continue anyway?" prompt handles confirmation
+          releasePreviewLoadingState("idle");
+          return;
         }
       }
     }
@@ -1546,6 +2132,8 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),
@@ -1561,7 +2149,13 @@ export function useReportUploadWizard({
 
     if (!res.ok || !json) {
       setPreviewStatus("error");
-      setPreviewMessage("Something went wrong building the preview. Please try again.");
+      const apiMsg =
+        typeof json?.error === "string"
+          ? json.error
+          : Array.isArray(json?.errors) && json.errors[0]?.message
+            ? String(json.errors[0].message)
+            : null;
+      setPreviewMessage(apiMsg ?? "Something went wrong building the preview. Please try again.");
       setPreviewRefreshing(false);
       return;
     }
@@ -1574,7 +2168,72 @@ export function useReportUploadWizard({
 
     applyPreviewResult(json);
     setPreviewRefreshing(false);
+    const snap = buildWizardDraftSnapshot();
+    if (snap) saveWizardDraft(clientId, snap);
   }
+
+  useEffect(() => {
+    if (resumeReportId || wizardDraftRestoredRef.current) return;
+    let cancelled = false;
+    void (async () => {
+      const local = loadWizardDraft(clientId);
+      const res = await fetch(`/api/clients/${clientId}/wizard-draft`);
+      const json = await res.json().catch(() => null);
+      if (cancelled || wizardDraftRestoredRef.current) return;
+
+      const serverDraft =
+        json?.ok && json.draft && typeof json.draft === "object" ? (json.draft as WizardDraftSnapshot) : null;
+
+      let draft: WizardDraftSnapshot | null = local;
+      if (serverDraft?.uploadSessionId) {
+        const localTs = local?.savedAt ? Date.parse(local.savedAt) : 0;
+        const serverTs = Date.parse(serverDraft.savedAt);
+        if (!local || (Number.isFinite(serverTs) && serverTs >= localTs)) {
+          draft = serverDraft;
+        }
+      }
+
+      if (!draft?.uploadSessionId) return;
+      restoreWizardDraft(draft);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, resumeReportId]);
+
+  useEffect(() => {
+    if (!uploadSessionId || step < 2 || generateStatus === "done") return;
+    const snap = buildWizardDraftSnapshot();
+    if (!snap) return;
+    saveWizardDraft(clientId, snap);
+    queueServerDraftSave(snap);
+  }, [
+    clientId,
+    uploadSessionId,
+    step,
+    visitedSteps,
+    platform,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    selectedCampaigns,
+    selectedAdSets,
+    campaigns,
+    perCampaignMetrics,
+    campaignObjectives,
+    previewKind,
+    previewStatus,
+    data,
+    comparisonData,
+    historicalData,
+    dayBreakdownData,
+    mtdRange,
+    weeklyOptions,
+    dateBounds,
+    dailyRange,
+    generateStatus,
+  ]);
 
   // Google Ads has no Reporting Period section on Step 5 at all (see this
   // file's header) — dispatchAfterAnalyze already fetched its one-shot
@@ -1585,18 +2244,63 @@ export function useReportUploadWizard({
   // report was already generated naturally clears the stale download links
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
+  const selectedCampaignsFingerprint = useMemo(
+    () => Array.from(selectedCampaigns).sort().join("\0"),
+    [selectedCampaigns],
+  );
+  const selectedAdSetsFingerprint = useMemo(
+    () => Array.from(selectedAdSets).sort().join("\0"),
+    [selectedAdSets],
+  );
+  const objectivesFingerprint = useMemo(
+    () =>
+      [...campaignObjectives.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${v.resultLabel}:${v.costLabel}`)
+        .join("|"),
+    [campaignObjectives],
+  );
+  const metricsFingerprint = useMemo(
+    () =>
+      JSON.stringify(
+        [...perCampaignMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    [perCampaignMetrics],
+  );
+
+  useEffect(() => {
+    csvAlignAttemptedRef.current = false;
+    setCsvAlignResults(false);
+  }, [reportType, dateMode, customStart, customEnd, selectedCampaignsFingerprint]);
+
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
+    if (!mtdFile && !uploadSessionId) return;
+
+    const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
+    if (!hasExistingPreview && previewStatus !== "invalid" && previewStatus !== "error") {
+      setPreviewStatus("loading");
+    }
 
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     previewDebounceRef.current = setTimeout(() => {
       void fetchPreview();
     }, 500);
 
+    const stuckTimer = window.setTimeout(() => {
+      setPreviewRefreshing(false);
+      setPreviewStatus((current) => {
+        if (current !== "loading") return current;
+        setPreviewMessage("Preview is taking too long. Check your dates above or go back to Import and re-upload.");
+        return "error";
+      });
+    }, 90_000);
+
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      window.clearTimeout(stuckTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1613,14 +2317,26 @@ export function useReportUploadWizard({
     comparisonPeriodB?.startIso,
     comparisonPeriodB?.endIso,
     historicalMonthCount,
-    showBudgetOnCover,
     includePreviousMonthComparison,
+    csvAlignResults,
     generateStatus,
+    uploadSessionId,
+    mtdFile,
+    selectedCampaignsFingerprint,
+    selectedAdSetsFingerprint,
+    objectivesFingerprint,
+    metricsFingerprint,
+    showBudgetOnCover,
   ]);
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile && !uploadSessionId) return;
+    if (usesFullAdWizard(platform) && !generateStepPreviewReady) return;
+    if (reportBrandingBlocksGenerate) {
+      setReportBrandingError("Enter your agency name to show it on client reports.");
+      return;
+    }
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -1632,6 +2348,12 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setShareToken(null);
+
+    const brandingSaved = await persistReportBrandingSettings();
+    if (!brandingSaved) {
+      setGenerateStatus("idle");
+      return;
+    }
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -1649,7 +2371,7 @@ export function useReportUploadWizard({
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
           dateSelection:
             reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined,
-          reportTitle: reportTitle.trim() || defaultReportTitleFor(reportType),
+          reportTitle: defaultReportTitleFor(reportType),
           reportType,
           platform,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
@@ -1657,6 +2379,9 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
+          csvAlignResults,
+          metaHybridApiImport: apiSyncHybridImport && platform === "META",
+          ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
       ),
@@ -1671,6 +2396,9 @@ export function useReportUploadWizard({
 
     if (!res.ok || !json?.ok || !json.reportId) {
       setGenerateStatus("error");
+      if (json?.csvVerification) {
+        setCsvVerification(json.csvVerification);
+      }
       setGenerateMessage(json?.error || "Report generation failed. Please try again.");
       return;
     }
@@ -1680,17 +2408,20 @@ export function useReportUploadWizard({
 
     let finalShareToken: string | null = json.shareToken ?? null;
     if (json.status === "GENERATING") {
+      setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
-        const polled = await pollReportStatus(json.reportId);
+        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180 });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
         setGenerateStatus("error");
         setGenerateMessage(
           err instanceof ReportGenerationPollError
-            ? err.message
+            ? `${err.message} You can check Reports on the client page — the file may still finish in the background.`
             : "Report generation failed. Please try again.",
         );
         return;
+      } finally {
+        setGenerateMessage(null);
       }
     }
 
@@ -1698,6 +2429,7 @@ export function useReportUploadWizard({
     setShareToken(finalShareToken);
     setPublishedAt(null);
     setGenerateStatus("done");
+    clearAllWizardDrafts();
     persistGenerateSnapshot(
       {
         reportId: json.reportId,
@@ -1706,6 +2438,40 @@ export function useReportUploadWizard({
       },
       { publishedAt: null },
     );
+
+    if (dataSourceMode === "csv" && !isApiSyncArtifact(mtdFile) && !apiSyncHybridImport) {
+      const objectiveSnapshot = new Map<string, { key: string; resultLabel: string; costLabel: string }>();
+      for (const [name, info] of campaignObjectives) {
+        objectiveSnapshot.set(name, {
+          key: info.key,
+          resultLabel: info.resultLabel,
+          costLabel: info.costLabel,
+        });
+      }
+      const touchedForBaseline = new Set<string>([
+        ...touchedObjectiveCampaigns,
+        ...objectiveSnapshot.keys(),
+      ]);
+      const baseline = buildWizardGenerateBaseline({
+        platform,
+        reportType,
+        dateMode,
+        customStart,
+        customEnd,
+        includePreviousMonthComparison,
+        showBudgetOnCover,
+        csvHeaders,
+        campaignNames: campaigns,
+        selectedCampaigns: Array.from(selectedCampaigns),
+        selectedAdSets: Array.from(selectedAdSets),
+        perCampaignMetrics,
+        campaignObjectives: objectiveSnapshot,
+        touchedObjectiveCampaigns: touchedForBaseline,
+      });
+      if (baseline) {
+        void persistGenerateBaselineToServer(clientId, baseline);
+      }
+    }
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -1766,6 +2532,26 @@ export function useReportUploadWizard({
     if (!shareToken) return;
     await navigator.clipboard.writeText(buildShareReportUrl(shareToken));
     showToast("Share link copied!");
+  }
+
+  async function handleCopyClientShareMessage() {
+    if (!shareToken) return;
+    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const text = buildClientReportShareMessage({
+      clientName,
+      reportTypeLabel: reportTypeLabel(),
+      platformLabel: wizardSharePlatformLabel(),
+      dateRangeLabel: driveDateRangeLabel() || "this period",
+      reportUrl,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      setClientShareMessageCopied(true);
+      showToast("Message copied — paste into email, Teams, or anywhere.");
+      window.setTimeout(() => setClientShareMessageCopied(false), 2000);
+    } catch {
+      showToast("Could not copy — try again or use Share on WhatsApp.");
+    }
   }
 
   async function handleSaveToDrive(folderId: string, folderName?: string) {
@@ -1851,6 +2637,10 @@ export function useReportUploadWizard({
     setMismatchWarning(false);
     setDetectedPlatform(null);
     setPlatform("META");
+    setDataSourceMode("csv");
+    setApiSyncStatus("idle");
+    setApiSyncError(null);
+    setApiSyncHybridImport(false);
 
     setCampaigns([]);
     setSelectedCampaigns(new Set());
@@ -1891,13 +2681,53 @@ export function useReportUploadWizard({
     setPreviewKind("normal");
     setData(null);
     setComparisonData(null);
-    setReportTitle(DEFAULT_REPORT_TITLE);
-    setReportTitleTouched(false);
-    setCustomTitleExpanded(false);
-
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
+    clearAllWizardDrafts();
     setStep(1);
+  }
+
+  const wizardLeaveGuardActive = step > 1 && generateStatus !== "done" && generateStatus !== "loading";
+
+  function requestWizardLeave(href: string) {
+    setPendingLeaveHref(href);
+  }
+
+  function cancelWizardLeave() {
+    setPendingLeaveHref(null);
+  }
+
+  function confirmWizardLeave() {
+    const href = pendingLeaveHref;
+    setPendingLeaveHref(null);
+    if (href) router.push(href);
+  }
+
+  function restoreWizardDraft(draft: WizardDraftSnapshot) {
+    wizardDraftRestoredRef.current = true;
+    applyWizardDraft(draft);
+    saveWizardDraft(clientId, draft);
+    setDraftRestoredBanner(true);
+    const needsDateContext = !draft.weeklyOptions && !!draft.uploadSessionId;
+    if (needsDateContext) {
+      void hydrateUploadSessionDateContext(draft.uploadSessionId).then((ok) => {
+        if (!ok) return;
+        const snap = buildWizardDraftSnapshot();
+        if (snap) saveWizardDraft(clientId, snap);
+      });
+    }
+    const needsPreview =
+      draft.step === 4 &&
+      !draft.data &&
+      !draft.comparisonData &&
+      !draft.historicalData &&
+      !draft.dayBreakdownData;
+    if (needsPreview) {
+      setPreviewStatus("loading");
+      queueMicrotask(() => {
+        void fetchPreview();
+      });
+    }
   }
 
   const spanDays = customSpanDays();
@@ -1917,15 +2747,16 @@ export function useReportUploadWizard({
    * "Label: value" line, varying by report type.
    */
   function reportTypeLabel(): string {
-    if (previewKind === "comparison") return "Comparison Report";
-    if (previewKind === "historical") return "Multi-Month Report";
-    if (previewKind === "dayBreakdown") return "Daily Report";
-    if (reportType === "MONTHLY") return "Monthly Report";
-    if (reportType === "QUARTER") return "Quarterly Report";
-    if (reportType === "YTD") return "Year-to-Date Report";
-    if (reportType === "DAILY") return "Yesterday Report";
-    if (reportType === "CREATIVE") return "Creative Report";
-    return "Weekly Report";
+    if (previewKind === "comparison" || reportType === "COMPARISON") {
+      return wizardReportTypePickerLabel("COMPARISON");
+    }
+    if (previewKind === "historical" || reportType === "HISTORICAL") {
+      return wizardReportTypePickerLabel("HISTORICAL");
+    }
+    if (previewKind === "dayBreakdown" || reportType === "DAY_BREAKDOWN") {
+      return wizardReportTypePickerLabel("DAY_BREAKDOWN");
+    }
+    return wizardReportTypePickerLabel(reportType);
   }
 
   /** Summary card label for the weekly/custom date line — avoids calling a 10-day custom pick a "week". */
@@ -1938,6 +2769,42 @@ export function useReportUploadWizard({
     return "Week period";
   }
 
+  /** Confirmed date line shown before Generate — makes the reporting window explicit. */
+  function reportPeriodConfirmationLine(): string | null {
+    if (previewKind === "comparison" && comparisonData) {
+      return `Your comparison report will cover Period A (${comparisonData.periodALabel}) vs Period B (${comparisonData.periodBLabel}).`;
+    }
+    if (previewKind === "historical" && historicalData) {
+      return `Your historical report will cover ${historicalData.monthsLabel}.`;
+    }
+    if (previewKind === "dayBreakdown" && dayBreakdownData) {
+      return `Your day-by-day report will cover ${dayBreakdownData.rangeLabel}.`;
+    }
+    if (reportType === "WEEKLY" && weeklyRangeIso && mtdRange) {
+      const base = `Your weekly report will cover ${formatIsoRange(weeklyRangeIso)} with MTD from ${formatIsoRange(mtdRange)}`;
+      if (previewKind === "normal" && data?.chart) {
+        return `${base} and Last 30 days in a visual chart slide.`;
+      }
+      return `${base}.`;
+    }
+    if (reportType === "MONTHLY" && mtdRange) {
+      return `Your monthly report will cover ${formatIsoRange(mtdRange)}.`;
+    }
+    if (reportType === "DAILY" && dailyRange) {
+      return `Your daily report will cover ${formatIsoRange(dailyRange)}.`;
+    }
+    if (reportType === "DAY_BREAKDOWN" && weeklyRangeIso) {
+      return `Your day breakdown will cover ${formatIsoRange(weeklyRangeIso)}.`;
+    }
+    return null;
+  }
+
+  function wizardSharePlatformLabel(): string {
+    if (platform === "GOOGLE") return "Google Ads";
+    if (platform === "TIKTOK") return "TikTok Ads";
+    return sharePlatformBadge(platform).label;
+  }
+
   /** "Ready to generate" summary card's Campaigns line — the actual campaigns that will appear in the generated report, not the wizard's own selectedCampaigns Set (which is empty for the Google Ads flow, since it has no campaign-selection step). */
   function summaryCampaignNames(): string[] {
     if (previewKind === "comparison" && comparisonData) return comparisonData.campaigns.map((c) => c.campaignName);
@@ -1948,8 +2815,23 @@ export function useReportUploadWizard({
       return [`${dayBreakdownData.dayCount} day${dayBreakdownData.dayCount === 1 ? "" : "s"} with spend`];
     }
     if (data) return data.campaignSlides.map((s) => s.campaignName);
-    return [];
+    return campaigns.filter((name) => selectedCampaigns.has(name));
   }
+
+  const generateStepPreviewReady = useMemo(() => {
+    if (!usesFullAdWizard(platform)) return true;
+    if (previewStatus === "invalid" || previewStatus === "error") return false;
+    if (previewStatus === "loading" || previewRefreshing) return false;
+    return !!(data || comparisonData || historicalData || dayBreakdownData);
+  }, [
+    platform,
+    previewStatus,
+    previewRefreshing,
+    data,
+    comparisonData,
+    historicalData,
+    dayBreakdownData,
+  ]);
 
   const historicalMonthLabels = useMemo(
     () => computeHistoricalMonthRanges(historicalMonthCount, new Date(), clientTimezone).map((m) => m.fullMonthLabel),
@@ -1970,6 +2852,19 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const previous = showBudgetOnCover;
     setShowBudgetOnCover(next);
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        cover: {
+          ...prev.cover,
+          budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+            showOnCover: next,
+            timezone: clientTimezone,
+          }),
+        },
+      };
+    });
     setBudgetToggleSaving(true);
     try {
       const res = await fetch(`/api/clients/${clientId}`, {
@@ -1979,14 +2874,55 @@ export function useReportUploadWizard({
       });
       if (!res.ok) {
         setShowBudgetOnCover(previous);
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            cover: {
+              ...prev.cover,
+              budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+                showOnCover: previous,
+                timezone: clientTimezone,
+              }),
+            },
+          };
+        });
         showToast("Couldn't save cover budget preference.", "error");
       }
     } catch {
       setShowBudgetOnCover(previous);
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cover: {
+            ...prev.cover,
+            budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
+              showOnCover: previous,
+              timezone: clientTimezone,
+            }),
+          },
+        };
+      });
       showToast("Couldn't save cover budget preference.", "error");
     } finally {
       setBudgetToggleSaving(false);
     }
+  }
+
+  function retryPreview() {
+    setPreviewMessage(null);
+    setPreviewErrors([]);
+    setPreviewStatus("loading");
+    void fetchPreview();
+  }
+
+  function handleGenerateStepPrimary() {
+    if (previewStatus === "error") {
+      retryPreview();
+      return;
+    }
+    void handleGenerate();
   }
 
   function driveDateRangeLabel(): string {
@@ -2029,6 +2965,7 @@ export function useReportUploadWizard({
   return {
     clientId,
     clientName,
+    wizardClients,
     clientTimezone,
     currencySymbol,
     hasGoogleDriveConnected,
@@ -2059,22 +2996,23 @@ export function useReportUploadWizard({
     handleDataSourceModeChange,
     mtdFile,
     handleMtdFileSelected,
+    metaManualReferenceCsvFile,
+    handleMetaManualReferenceCsvSelected,
+    metaManualReferenceCsvText,
     uploadSessionId,
     apiSyncStatus,
     setApiSyncStatus,
     apiSyncError,
     setApiSyncError,
+    apiSyncHybridImport,
+    metaSyncDiagnostics,
     analyzeStatus,
     analyzeErrors,
     analyzeMessage,
     handleAnalyze,
     handleImportContinue,
-    showImportContinue:
-      step === 1 &&
-      !!uploadSessionId &&
-      campaigns.length > 0 &&
-      analyzeStatus === "idle" &&
-      !mismatchWarning,
+    ensureObjectivesForSelection,
+    showImportContinue: false,
     handleApiSynced,
     handleMismatchContinueAnyway,
     handleMismatchGoBack,
@@ -2182,12 +3120,6 @@ export function useReportUploadWizard({
     comparisonData,
     historicalData,
     dayBreakdownData,
-    reportTitle,
-    setReportTitle,
-    reportTitleTouched,
-    setReportTitleTouched,
-    customTitleExpanded,
-    setCustomTitleExpanded,
     reportSummaryExpanded,
     setReportSummaryExpanded,
     showBudgetOnCover,
@@ -2195,9 +3127,23 @@ export function useReportUploadWizard({
     budgetToggleSaving,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
+    agencyName,
+    handleWizardAgencyNameChange,
+    reportBrandingMode,
+    setReportBrandingMode,
+    reportBrandingError,
+    reportBrandingSaving,
+    reportBrandingBlocksGenerate,
+    showAgencyNameOnCover,
+    setShowAgencyNameOnCover,
+    initialAgencyName,
+    initialReportBrandingMode,
+    initialShowAgencyNameOnCover,
     generateStatus,
     generateMessage,
     handleGenerate,
+    handleGenerateStepPrimary,
+    retryPreview,
     reportId,
     downloadUrl,
     publishedAt,
@@ -2219,6 +3165,8 @@ export function useReportUploadWizard({
     persistGenerateSnapshot,
     copied,
     handleCopyShareLink,
+    handleCopyClientShareMessage,
+    clientShareMessageCopied,
     handleSaveButtonClick,
     handleSaveToFolderLink,
     handleCopyLink,
@@ -2229,6 +3177,17 @@ export function useReportUploadWizard({
     weeklyRangeIso,
     reportTypeLabel,
     weeklyPeriodSummaryLabel,
+    reportPeriodConfirmationLine,
+    wizardSharePlatformLabel,
+    draftRestoredBanner,
+    setDraftRestoredBanner,
+    happyPathSkippedSteps,
+    wizardLeaveGuardActive,
+    pendingLeaveHref,
+    requestWizardLeave,
+    cancelWizardLeave,
+    confirmWizardLeave,
+    handleRetryAnalyze,
     summaryCampaignNames,
     historicalMonthLabels,
     estimatedSlideCount,
@@ -2250,6 +3209,8 @@ export function useReportUploadWizard({
     reanalyzeSessionStatus,
     handleReanalyzeSession,
     previewRefreshing,
+    generateStepPreviewReady,
     importPipelineLabel,
+    csvVerification,
   };
 }

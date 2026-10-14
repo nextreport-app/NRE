@@ -72,6 +72,7 @@ function loadRazorpayCheckout(): Promise<boolean> {
 export function SubscribeButton({
   planId,
   label,
+  loadingLabel,
   className,
   loggedIn,
   userEmail,
@@ -82,6 +83,7 @@ export function SubscribeButton({
   planId: BillablePlanId;
   /** Defaults to "Subscribe" — callers pass e.g. "Upgrade to Professional" for the upgrade-prompt/billing contexts. */
   label?: string;
+  loadingLabel?: string;
   className?: string;
   /** Anonymous visitors (this button also renders on the public /pricing page) get sent to log in first rather than hitting a 401 from create-order. */
   loggedIn: boolean;
@@ -220,7 +222,7 @@ export function SubscribeButton({
         disabled={loading}
         className={className ?? "rounded-md bg-dash-accent px-5 py-2.5 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"}
       >
-        {loading ? "Redirecting…" : (label ?? `Subscribe to ${PLAN_NAMES[planId]}`)}
+        {loading ? (loadingLabel ?? "Redirecting…") : (label ?? `Subscribe to ${PLAN_NAMES[planId]}`)}
       </button>
       {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
     </div>

@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "showAgencyNameOnCover" BOOLEAN NOT NULL DEFAULT true;

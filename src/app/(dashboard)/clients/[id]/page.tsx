@@ -18,6 +18,7 @@ import {
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import {
+  DEFAULT_REPORT_RETENTION_DAYS,
   normalizeReportRetentionDays,
   purgeExpiredReportsForUser,
 } from "@/lib/report-retention";
@@ -28,6 +29,9 @@ import {
   isMetaApiConfigured,
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
+import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
+import { isClientPlatformConnectionsSectionVisible } from "@/lib/ad-platform-api-sync";
+import { WizardReturnBanner } from "@/components/wizard-return-banner";
 
 const RECENT_REPORTS_LIMIT = 5;
 
@@ -56,10 +60,13 @@ function Card({ children, accent = false, id }: { children: React.ReactNode; acc
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
   const session = await auth();
   if (!session?.user) notFound();
 
@@ -99,7 +106,7 @@ export default async function ClientDetailPage({
 
   const reportRetentionDays = owner
     ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
-    : 30;
+    : DEFAULT_REPORT_RETENTION_DAYS;
 
   let previousMonthCampaigns: string[] = [];
   let previousMonthCampaignSpend: Record<string, number> = {};
@@ -138,34 +145,38 @@ export default async function ClientDetailPage({
         <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{client.currency}</p>
       </div>
 
+      <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
+
       <div className="space-y-4">
-        <Card id="platform-connections">
-          <CardHeading hint="Account-level connections used by every client in the report wizard.">
-            Platform connections
-          </CardHeading>
-          <ClientPlatformConnections
-            meta={{
-              connected: !!owner?.metaConnectedUserId,
-              detail: owner?.metaConnectedName ?? null,
-              configured: isMetaApiConfigured(),
-            }}
-            googleAds={{
-              connected: !!owner?.googleAdsRefreshToken || !!owner?.googleAdsEnabled,
-              detail: owner?.googleAdsConnectedEmail ?? null,
-              configured: isGoogleAdsApiConfigured(),
-            }}
-            tiktok={{
-              connected: !!owner?.tiktokRefreshToken || !!owner?.tiktokAdsEnabled,
-              detail: owner?.tiktokConnectedName ?? null,
-              configured: isTikTokApiConfigured(),
-            }}
-            ga4={{
-              connected: ga4Connected,
-              detail: owner?.ga4ConnectedEmail ?? null,
-              configured: isGa4ApiConfigured(),
-            }}
-          />
-        </Card>
+        {isClientPlatformConnectionsSectionVisible() ? (
+          <Card id="platform-connections">
+            <CardHeading hint="Account-level connections used by every client in the report wizard.">
+              Platform connections
+            </CardHeading>
+            <ClientPlatformConnections
+              meta={{
+                connected: !!owner?.metaConnectedUserId,
+                detail: owner?.metaConnectedName ?? null,
+                configured: isMetaApiConfigured(),
+              }}
+              googleAds={{
+                connected: !!owner?.googleAdsRefreshToken || !!owner?.googleAdsEnabled,
+                detail: owner?.googleAdsConnectedEmail ?? null,
+                configured: isGoogleAdsApiConfigured(),
+              }}
+              tiktok={{
+                connected: !!owner?.tiktokRefreshToken || !!owner?.tiktokAdsEnabled,
+                detail: owner?.tiktokConnectedName ?? null,
+                configured: isTikTokApiConfigured(),
+              }}
+              ga4={{
+                connected: ga4Connected,
+                detail: owner?.ga4ConnectedEmail ?? null,
+                configured: isGa4ApiConfigured(),
+              }}
+            />
+          </Card>
+        ) : null}
 
         <Card id="previous-month-data">
           <CardHeading hint="Optional — adds a previous-month comparison row on Monthly overview slides.">
@@ -182,20 +193,19 @@ export default async function ClientDetailPage({
           />
         </Card>
 
-        <Card id="website-analytics">
-          <CardHeading hint="Pick one GA4 property now — Website Traffic reports open after Meta v1 launch.">
-            Google Analytics property
-            <span className="ml-2 rounded-full border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
-              Launching soon
-            </span>
-          </CardHeading>
-          <Ga4PropertyPicker
-            clientId={client.id}
-            initialPropertyId={client.ga4PropertyId}
-            initialPropertyName={client.ga4PropertyName}
-            ga4Connected={ga4Connected}
-          />
-        </Card>
+        {isClientPlatformConnectionVisible("ga4") ? (
+          <Card id="website-analytics">
+            <CardHeading hint="Pick one GA4 property for Website Traffic reports.">
+              Google Analytics property
+            </CardHeading>
+            <Ga4PropertyPicker
+              clientId={client.id}
+              initialPropertyId={client.ga4PropertyId}
+              initialPropertyName={client.ga4PropertyName}
+              ga4Connected={ga4Connected}
+            />
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeading>Client settings</CardHeading>
@@ -235,6 +245,8 @@ export default async function ClientDetailPage({
               clientId={client.id}
               initialReports={reportItems}
               hasMoreReports={reportCount > reportItems.length}
+              clientTimezone={client.timezone}
+              reportRetentionDays={reportRetentionDays}
             />
             {reportCount > reportItems.length ? (
               <Link
@@ -248,12 +260,12 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Meta Ads reporting is live. Google, TikTok, and GA4 open after parity testing completes.">
+          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
             Generate report
           </CardHeading>
           <Link
             href={`/clients/${client.id}/reports/new`}
-            className="block w-full rounded-md bg-dash-accent px-6 py-3 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
           >
             Generate Report
           </Link>

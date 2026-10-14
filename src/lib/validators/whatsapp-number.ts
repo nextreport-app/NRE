@@ -8,7 +8,7 @@ import {
 const COUNTRY_CODE_HINT =
   "Include country code — e.g. +1 (US), +44 (UK), +91 (India), or 07… for UK mobiles";
 
-function isValidWhatsAppInput(val: string): boolean {
+export function isValidWhatsAppInput(val: string): boolean {
   const trimmed = val.trim();
   const digits = whatsappDigitsOnly(trimmed);
 
@@ -32,3 +32,10 @@ export const whatsappNumberSchema = z
   .trim()
   .min(1, "Enter your WhatsApp number")
   .refine(isValidWhatsAppInput, COUNTRY_CODE_HINT);
+
+/** Contact/demo forms — omit or leave blank if the user has no WhatsApp. */
+export const optionalWhatsappNumberSchema = z
+  .string()
+  .trim()
+  .refine((val) => val === "" || isValidWhatsAppInput(val), COUNTRY_CODE_HINT)
+  .transform((val) => (val === "" ? null : val));

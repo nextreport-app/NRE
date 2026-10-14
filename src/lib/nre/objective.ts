@@ -7,8 +7,13 @@
  */
 
 import { hasRealRowDate } from "./columns";
+import {
+  metaCsvExportResultValue,
+  websiteLeadsFromMetaExportRow,
+  type ResultCountingMode,
+} from "./meta-csv-export-counting";
 import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
-import { aggregateReach, aggregateReachAcrossCampaigns } from "./reach-aggregation";
+import { aggregateReach, aggregateReachAcrossCampaigns, type ReachAggregationOptions } from "./reach-aggregation";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
 import {
@@ -473,10 +478,7 @@ export function resolveObjective(
     ) {
       return { ...columnObjective, source: "priority3" };
     }
-    if (
-      columnObjective?.resultLabel === "LINK CLICKS" &&
-      (rt.resultLabel === "LANDING PAGE VIEWS" || rt.resultLabel === "WEBSITE LEADS")
-    ) {
+    if (columnObjective?.resultLabel === "LINK CLICKS" && rt.resultLabel === "WEBSITE LEADS") {
       return { ...columnObjective, source: "priority3" };
     }
     return { ...rt, source: "resultType" };
@@ -955,15 +957,43 @@ function hasLinkClicksDelivery(rows: MetricRow[]): boolean {
   return rows.some((r) => parseCellNum(r.link_clicks) > 0 || parseCellNum(r.results) > 0);
 }
 
+/** Meta Traffic campaigns often optimize for LPV while names still contain "Traffic". */
+function campaignRowsOptimizeForLandingPageViews(rows: MetricRow[]): boolean {
+  let lpvResultTypeRows = 0;
+  let typedRows = 0;
+  for (const row of rows) {
+    const rt = (row.result_type || "").toLowerCase().trim();
+    if (!rt) continue;
+    typedRows++;
+    if (rt.includes("landing page view") || rt === "landing_page_view") lpvResultTypeRows++;
+  }
+  if (typedRows > 0 && lpvResultTypeRows > typedRows / 2) return true;
+
+  const anyLpvResultType = rows.some((r) =>
+    /landing page view|landing_page_view/i.test(r.result_type || ""),
+  );
+  if (!anyLpvResultType) return false;
+
+  let lpvTotal = 0;
+  let resultsTotal = 0;
+  for (const row of rows) {
+    lpvTotal += parseCellNum(row.landing_page_views);
+    resultsTotal += parseCellNum(row.results);
+  }
+  if (lpvTotal <= 0 || resultsTotal <= 0) return anyLpvResultType;
+  return Math.abs(lpvTotal - resultsTotal) <= Math.max(1, resultsTotal * 0.02);
+}
+
 /** LeadGen / InstantForm naming + lead delivery → META FORM LEADS over generic website-leads bleed. */
 function metaFormLeadsObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   if (!isMetaFormLeadsCampaignName(rows) || !hasMetaFormLeadsDelivery(rows)) return null;
   return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
 }
 
-/** Traffic / LinkClicks naming + click delivery → LINK CLICKS over website-leads/LPV bleed. */
+/** Traffic / LinkClicks naming + click delivery → LINK CLICKS over website-leads bleed (not LPV traffic). */
 function linkClicksObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   if (!isLinkClicksCampaignName(rows) || !hasLinkClicksDelivery(rows)) return null;
+  if (campaignRowsOptimizeForLandingPageViews(rows)) return null;
   return { resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK" };
 }
 
@@ -1341,7 +1371,20 @@ function rowAddToCart(row: MetricRow): number {
  * Comparison Report campaign totals being the other one, as of this fix —
  * gets the same mismatched-row correction instead of reimplementing it.
  */
-export function resultValueForObjective(row: MetricRow, label: string): number {
+/**
+ * Per-day Meta export row — Ads Manager period totals sum the Results column
+ * for the campaign's result type. The Website leads column can show +1 on days
+ * with blank Result type (attribution lag); those must not inflate totals.
+ */
+export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | "website_leads" | "result_type">): number {
+  return websiteLeadsFromMetaExportRow(row);
+}
+
+export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
+  if (mode === "meta-csv-export") {
+    return metaCsvExportResultValue(row, label);
+  }
+
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
 
   if (ownLabel === label) {
@@ -1352,11 +1395,7 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
       return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
     }
     if (label === "WEBSITE LEADS") {
-      // Results = Meta's attributed result for the row's Result type (e.g.
-      // "Website applications submitted"). Website leads column can differ on
-      // the same day — prefer Results; fall back to website_leads when Results
-      // is blank (API-sync rows or sparse exports).
-      return parseCellNum(row.results) || parseCellNum(row.website_leads);
+      return websiteLeadsCountFromExportRow(row);
     }
     if (label === "META FORM LEADS") {
       return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
@@ -1375,12 +1414,27 @@ export function resultValueForObjective(row: MetricRow, label: string): number {
   const rowResultLabel = getResultLabels(row.result_type).resultLabel;
   if (rowResultLabel === label) {
     if (label === "REACH") return parseCellNum(row.reach) || parseCellNum(row.results);
+    if (label === "WEBSITE LEADS") return websiteLeadsCountFromExportRow(row);
     return parseCellNum(row.results);
+  }
+  // Campaign pinned to WEBSITE LEADS but Meta Result type is applications submitted.
+  if (
+    label === "WEBSITE LEADS" &&
+    (rowResultLabel === "WEBSITE SUBMIT APPLICATIONS" || rowResultLabel === "APPLICATIONS")
+  ) {
+    return websiteLeadsCountFromExportRow(row);
   }
   if (label === "PURCHASES") return parseCellNum(row.purchases);
   if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
   if (label === "ADD TO CART") return rowAddToCart(row);
   if (label === "LINK CLICKS") return parseCellNum(row.link_clicks);
+  if (label === "LANDING PAGE VIEWS") {
+    const lpv = parseCellNum(row.landing_page_views);
+    if (lpv > 0) return lpv;
+    if (getResultLabels(row.result_type).resultLabel === "LANDING PAGE VIEWS") {
+      return parseCellNum(row.results);
+    }
+  }
   // No dedicated field tracks any other objective (Leads, Reach, ...) on a
   // mismatched row — it contributes nothing to a bucket it has no real
   // metric for, rather than reusing `results`, which measures something
@@ -1469,6 +1523,8 @@ export function groupResultsByCampaignObjective(
   rows: MetricRow[],
   objectiveMap: Map<string, ResultLabels>,
   debugLabel?: string,
+  resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultGroup[] {
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
@@ -1478,12 +1534,12 @@ export function groupResultsByCampaignObjective(
     let campaignValueSum = 0;
     let campaignReachAdded = false;
     campRows.forEach((row) => {
-      const value = resultValueForObjective(row, label);
+      const value = resultValueForObjective(row, label, resultCountingMode);
       groups[label].count += value;
       if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
         groups[label].totalSpend += parseCellNum(row.spend);
         if (!campaignReachAdded) {
-          groups[label].totalReach += aggregateReach(campRows);
+          groups[label].totalReach += aggregateReach(campRows, reachOpts);
           campaignReachAdded = true;
         }
       }
@@ -1554,6 +1610,8 @@ export function getGroupedResultDisplayForObjective(
   campRows: MetricRow[],
   objective: ResultLabels,
   currencySymbol: string,
+  resultCountingMode: ResultCountingMode = "standard",
+  reachOpts?: ReachAggregationOptions,
 ): ResultDisplay {
   // MTD-row bug fix, extended to campaign slides — see
   // groupResultsByCampaignObjective's own doc comment and
@@ -1568,12 +1626,12 @@ export function getGroupedResultDisplayForObjective(
   let totalReach = 0;
   let campaignReachAdded = false;
   campRows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel);
+    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
     if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
       totalSpend += parseCellNum(row.spend);
       if (!campaignReachAdded) {
-        totalReach = aggregateReach(campRows);
+        totalReach = aggregateReach(campRows, reachOpts);
         campaignReachAdded = true;
       }
     }

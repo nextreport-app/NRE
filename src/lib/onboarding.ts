@@ -34,7 +34,8 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "connect-platforms",
       title: "Connect ad accounts (optional)",
-      description: "Link Meta in Account settings to sync from API in the wizard. Google, TikTok, and GA4 connections are optional and launching soon.",
+      description:
+        "Optional — CSV is enough for your first deck. Connect Meta in Account later if you want API import.",
       href: "/account#meta-ads",
       done: input.hasPlatformConnection,
       optional: true,
@@ -42,7 +43,8 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
     {
       id: "generate-report",
       title: "Generate your first report",
-      description: "Open New Report on a client — upload a CSV or sync from API, then download .pptx or share a link.",
+      description:
+        "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },

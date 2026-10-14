@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CONTACT_SUBJECTS } from "@/lib/validators/contact";
+import { CONTACT_SUBJECTS, contactSchema } from "@/lib/validators/contact";
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -14,13 +14,21 @@ const inputClassName =
 // catch the common cases before a request is even sent.
 const ERROR_MESSAGE = "Something went wrong. Please email us directly at hello@nextreport.in";
 
-export function ContactForm() {
+export function ContactForm({
+  defaultSubject = CONTACT_SUBJECTS[0],
+  messagePlaceholder = "Tell us how we can help...",
+}: {
+  defaultSubject?: (typeof CONTACT_SUBJECTS)[number];
+  messagePlaceholder?: string;
+} = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [subject, setSubject] = useState<string>(CONTACT_SUBJECTS[0]);
+  const [subject, setSubject] = useState<string>(defaultSubject);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   // Captured at submit time, not read back from state after clearing the
   // form — the success message below still needs to show the address the
   // message was sent about, even after the fields themselves are reset.
@@ -28,15 +36,34 @@ export function ContactForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage(null);
+    setWhatsappError(null);
+
+    const parsed = contactSchema.safeParse({ name, email, whatsapp, subject, message });
+    if (!parsed.success) {
+      const issues = parsed.error.issues;
+      const whatsappIssue = issues.find((i) => i.path[0] === "whatsapp");
+      if (whatsappIssue) setWhatsappError(whatsappIssue.message);
+      setErrorMessage(issues[0]?.message ?? ERROR_MESSAGE);
+      setStatus("error");
+      return;
+    }
+
     setStatus("loading");
 
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, whatsapp, subject, message }),
+        body: JSON.stringify(parsed.data),
       });
       if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const apiMsg = typeof data?.error === "string" ? data.error : null;
+        if (apiMsg && apiMsg.toLowerCase().includes("country code")) {
+          setWhatsappError(apiMsg);
+        }
+        setErrorMessage(apiMsg ?? ERROR_MESSAGE);
         setStatus("error");
         return;
       }
@@ -45,10 +72,11 @@ export function ContactForm() {
       setName("");
       setEmail("");
       setWhatsapp("");
-      setSubject(CONTACT_SUBJECTS[0]);
+      setSubject(defaultSubject);
       setMessage("");
       setStatus("done");
     } catch {
+      setErrorMessage(ERROR_MESSAGE);
       setStatus("error");
     }
   }
@@ -95,21 +123,33 @@ export function ContactForm() {
 
       <div>
         <label htmlFor="contact-whatsapp" className="mb-1 block text-sm text-ink-secondary">
-          WhatsApp Number
+          WhatsApp Number <span className="text-ink-muted">(optional)</span>
         </label>
         <input
           id="contact-whatsapp"
           type="tel"
-          required
           value={whatsapp}
-          onChange={(e) => setWhatsapp(e.target.value)}
+          onChange={(e) => {
+            setWhatsapp(e.target.value);
+            if (whatsappError) setWhatsappError(null);
+            if (errorMessage) setErrorMessage(null);
+            if (status === "error") setStatus("idle");
+          }}
           placeholder="+91 …, +1 …, or +44 …"
           autoComplete="tel"
-          className={inputClassName}
+          aria-invalid={whatsappError ? true : undefined}
+          aria-describedby={whatsappError ? "contact-whatsapp-error" : "contact-whatsapp-hint"}
+          className={`${inputClassName}${whatsappError ? " border-red-800 focus:border-red-500" : ""}`}
         />
-        <p className="mt-1 text-xs text-ink-muted">
-          Include country code (India +91, US +1, UK +44). We often reply faster on WhatsApp than email.
-        </p>
+        {whatsappError ? (
+          <p id="contact-whatsapp-error" className="mt-1 text-xs text-red-400">
+            {whatsappError}
+          </p>
+        ) : (
+          <p id="contact-whatsapp-hint" className="mt-1 text-xs text-ink-muted">
+            Optional — include country code if you add one (India +91, US +1, UK +44).
+          </p>
+        )}
       </div>
 
       <div>
@@ -138,17 +178,16 @@ export function ContactForm() {
         <textarea
           id="contact-message"
           required
-          minLength={10}
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tell us how we can help..."
+          placeholder={messagePlaceholder}
           className={inputClassName}
         />
       </div>
 
-      {status === "error" && (
-        <div className="rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">{ERROR_MESSAGE}</div>
+      {status === "error" && errorMessage && !whatsappError && (
+        <div className="rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">{errorMessage}</div>
       )}
 
       <button

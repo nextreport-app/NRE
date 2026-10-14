@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
-import { getAdWizardFlow, getWizardStepHeading, getWizardStepSubtitle } from "@/lib/nre/platform-labels";
+import { getAdWizardFlow } from "@/lib/nre/platform-labels";
+import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
+import { useSiteTheme } from "@/components/site-theme-provider";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import type { ReportUploadWizardProps } from "./types";
 import { WizardProvider, useWizardContext } from "./wizard-context";
 import { StepIndicator } from "./ui/step-indicator";
 import { UploadSessionRecoveryBanner } from "./ui/upload-session-recovery-banner";
+import { WizardLeaveDialog } from "./ui/wizard-leave-dialog";
 import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
 import { WizardGenerateStep } from "./steps/generate-step";
+import { WizardClientSwitcher } from "./ui/wizard-client-switcher";
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
   return (
@@ -23,36 +26,87 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
   );
 }
 
-function WizardClientLine({ clientName }: { clientName: string }) {
-  return (
-    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/40 border-l-4 border-l-[#f6ad55] bg-dash-card/90 px-4 py-3 shadow-sm">
-      <span className="text-[12px] font-semibold uppercase tracking-wider text-dash-ink-secondary">Client</span>
-      <span className="text-[17px] font-bold leading-tight text-[#fbd38d]">{clientName}</span>
-      <Link
-        href="/clients"
-        className="ml-auto text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
-      >
-        Select client →
-      </Link>
-    </div>
-  );
-}
-
 function ReportUploadWizardBody() {
   const w = useWizardContext();
+  const router = useRouter();
+  const { locale } = useSiteTheme();
+  const copy = useWizardCopy();
   const wizardTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    wizardTopRef.current?.scrollIntoView({ block: "start" });
-    window.scrollTo({ top: 0, left: 0 });
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (w.step !== 4) {
+      wizardTopRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    }
   }, [w.step]);
+
+  useEffect(() => {
+    if (!w.wizardLeaveGuardActive) return;
+    const wizardPath = `/clients/${w.clientId}/reports/new`;
+    const onClickCapture = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      if (anchor.target === "_blank") return;
+      const pathOnly = href.split("?")[0]?.split("#")[0] ?? "";
+      if (pathOnly === wizardPath) return;
+      if (!href.startsWith("/")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      w.requestWizardLeave(href);
+    };
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [w.wizardLeaveGuardActive, w.clientId, w.requestWizardLeave]);
+
+  useEffect(() => {
+    if (!w.wizardLeaveGuardActive) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [w.wizardLeaveGuardActive]);
+
+  const guardedClientsNav = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!w.wizardLeaveGuardActive) return;
+    event.preventDefault();
+    w.requestWizardLeave(href);
+  };
+
+  const { wizardLeaveGuardActive, requestWizardLeave } = w;
+
+  const switchWizardClient = useCallback(
+    (nextClientId: string) => {
+      const href = `/clients/${nextClientId}/reports/new`;
+      if (wizardLeaveGuardActive) {
+        requestWizardLeave(href);
+        return;
+      }
+      router.push(href);
+    },
+    [router, wizardLeaveGuardActive, requestWizardLeave],
+  );
+
+  const clientSwitcher = (
+    <WizardClientSwitcher
+      clientId={w.clientId}
+      clientName={w.clientName}
+      clients={w.wizardClients}
+      onSwitchClient={switchWizardClient}
+      onAllClientsClick={(event) => guardedClientsNav(event, "/clients")}
+    />
+  );
 
   if (w.resumeBootstrapping) {
     return (
       <div className="space-y-6">
         <div>
-          <WizardClientLine clientName={w.clientName} />
-          <h1 className="mb-1 text-[20px] font-bold text-white">Choose report type and generate</h1>
+          {clientSwitcher}
+          <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
           <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
       </div>
@@ -63,8 +117,8 @@ function ReportUploadWizardBody() {
     return (
       <div className="space-y-6">
         <div>
-          <WizardClientLine clientName={w.clientName} />
-          <h1 className="mb-1 text-[20px] font-bold text-white">Google Analytics</h1>
+          {clientSwitcher}
+          <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Google Analytics</h1>
           <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
         <button
@@ -93,13 +147,32 @@ function ReportUploadWizardBody() {
   return (
     <div className="space-y-6">
       <div ref={wizardTopRef}>
-        <WizardClientLine clientName={w.clientName} />
-        <h1 className="mb-1 text-[20px] font-bold text-white">{getWizardStepHeading(w.step, w.platform)}</h1>
-        {getWizardStepSubtitle(w.step, w.platform) ? (
-          <p className="text-[14px] text-dash-ink-secondary">{getWizardStepSubtitle(w.step, w.platform)}</p>
+        {clientSwitcher}
+        <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
+          {w.step === 4
+            ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
+            : wizardStepHeading(w.step, w.platform, locale)}
+        </h1>
+        {wizardStepSubtitle(w.step, w.platform, locale) ? (
+          <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>
         ) : null}
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+
+      {w.draftRestoredBanner ? (
+        <div className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-4 py-3">
+          <p className="text-[14px] leading-relaxed text-sky-100">
+            Restored your in-progress report setup (saved for this client on your account).{" "}
+            <button
+              type="button"
+              className="font-semibold text-sky-300 underline hover:no-underline"
+              onClick={() => w.setDraftRestoredBanner(false)}
+            >
+              Dismiss
+            </button>
+          </p>
+        </div>
+      ) : null}
 
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
@@ -110,19 +183,16 @@ function ReportUploadWizardBody() {
         />
       ) : null}
 
-      {w.step === 4 && (
-        <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-          Have a question or an issue with this report?{" "}
-          <SupportTicketLink clientId={w.clientId} openInNewTab /> or{" "}
-          <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-          .
-        </p>
-      )}
-
       <WizardImportStep />
       <WizardCampaignsStep />
       <WizardMetricsStep />
       <WizardGenerateStep />
+
+      <WizardLeaveDialog
+        open={!!w.pendingLeaveHref}
+        onStay={w.cancelWizardLeave}
+        onLeave={w.confirmWizardLeave}
+      />
     </div>
   );
 }

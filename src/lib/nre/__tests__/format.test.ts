@@ -7,12 +7,8 @@ describe("parseCellNum", () => {
     expect(parseCellNum("$99")).toBe(99);
     expect(parseCellNum("12%")).toBe(12);
     expect(parseCellNum(" 3.5 ")).toBe(3.5);
-    // parseCellNum_ only ever strips [,$%\s] in the source (a single-currency
-    // script) — it does not strip ₹ or other symbols. Raw CSV numeric columns
-    // from Meta/Google exports are always plain numbers or $-prefixed
-    // regardless of the client's configured display currency, so this never
-    // comes up in practice; the test documents the exact ported behaviour.
-    expect(parseCellNum("₹100000")).toBe(0);
+    expect(parseCellNum("₹100000")).toBe(100000);
+    expect(parseCellNum("A$43.10")).toBeCloseTo(43.1, 2);
     expect(parseCellNum("$1,00,000")).toBe(100000);
   });
 

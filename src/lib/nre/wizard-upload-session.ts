@@ -11,6 +11,7 @@ import {
   readWizardUploadSessionBlob,
   saveWizardUploadSessionBlob,
 } from "@/lib/storage";
+import type { MetaCampaignPeriodReachMaps } from "./campaign-period-reach-maps";
 
 export const WIZARD_UPLOAD_SESSION_VERSION = 1 as const;
 export const WIZARD_UPLOAD_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -26,6 +27,9 @@ export interface WizardUploadSessionPayload {
   fileHash: string;
   createdAt: string;
   expiresAt: string;
+  /** Meta campaign-level period reach from API sync (optional). */
+  metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
+  metaAdAccountId?: string;
 }
 
 export interface WizardParsedMtd {
@@ -65,6 +69,8 @@ export async function saveWizardUploadSession(input: {
   rows: NreRow[];
   headers: string[];
   fileHash: string;
+  metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
+  metaAdAccountId?: string;
 }): Promise<string> {
   const sessionId = randomUUID();
   const now = Date.now();
@@ -79,6 +85,8 @@ export async function saveWizardUploadSession(input: {
     fileHash: input.fileHash,
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + WIZARD_UPLOAD_SESSION_TTL_MS).toISOString(),
+    ...(input.metaCampaignPeriodReach ? { metaCampaignPeriodReach: input.metaCampaignPeriodReach } : {}),
+    ...(input.metaAdAccountId ? { metaAdAccountId: input.metaAdAccountId } : {}),
   };
   await saveWizardUploadSessionBlob(input.userId, input.clientId, sessionId, JSON.stringify(payload));
   return sessionId;

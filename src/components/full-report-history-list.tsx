@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/toast";
-import { shareReportUrl, formatReportDate } from "@/lib/report-list-shared";
+import { reportHistoryMetaSubtitle, shareReportUrl } from "@/lib/report-list-shared";
 
 export interface FullReportHistoryItem {
   id: string;
@@ -33,10 +33,6 @@ function ReportTypeBadge({ reportType }: { reportType: string }) {
   );
 }
 
-function weekPeriodLabel(r: FullReportHistoryItem): string {
-  return r.weekStart && r.weekEnd ? `${r.weekStart} – ${r.weekEnd}` : "—";
-}
-
 /**
  * Feature 1's full report history list — same row-level actions as the
  * Manage page's ReportHistoryList (select/bulk-delete/delete/rename/share),
@@ -48,7 +44,17 @@ function weekPeriodLabel(r: FullReportHistoryItem): string {
  * worth — the handful of truly-identical bits (shareReportUrl,
  * formatReportDate) already live in lib/report-list-shared.ts.
  */
-export function FullReportHistoryList({ clientId, initialReports }: { clientId: string; initialReports: FullReportHistoryItem[] }) {
+export function FullReportHistoryList({
+  clientId,
+  initialReports,
+  clientTimezone,
+  reportRetentionDays,
+}: {
+  clientId: string;
+  initialReports: FullReportHistoryItem[];
+  clientTimezone: string;
+  reportRetentionDays: number;
+}) {
   const { showToast } = useToast();
   const [reports, setReports] = useState(initialReports);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -237,9 +243,18 @@ export function FullReportHistoryList({ clientId, initialReports }: { clientId: 
                       )}
                       <ReportTypeBadge reportType={r.reportType} />
                     </div>
-                    <p className="mt-0.5 text-[13px] text-dash-ink-secondary">
-                      Generated {formatReportDate(r.createdAt)} · Week: {weekPeriodLabel(r)}
-                    </p>
+                    {(() => {
+                      const meta = reportHistoryMetaSubtitle(r, {
+                        timeZone: clientTimezone,
+                        retentionDays: reportRetentionDays,
+                      });
+                      return (
+                        <>
+                          <p className="mt-1 text-[14px] font-medium tabular-nums text-dash-ink">{meta.generatedLine}</p>
+                          <p className="mt-0.5 text-[13px] text-dash-ink-secondary">{meta.detailLine}</p>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 

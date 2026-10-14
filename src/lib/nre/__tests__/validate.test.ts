@@ -321,7 +321,7 @@ describe("validateMtdDailyCsv", () => {
       expect(result.valid).toBe(false);
       const err = result.errors.find((e) => e.field === "date_granularity");
       expect(err?.message).toBe(
-        "Your CSV appears to use weekly or monthly totals instead of daily data. Please re-download from Meta Ads Manager with daily (Day) breakdown before uploading.",
+        "Your CSV appears to use weekly or monthly totals instead of daily data. Re-export from Meta Ads Manager → Reports → Export table data with Time breakdown: Day (the Campaigns-screen export cannot include daily rows).",
       );
     });
 

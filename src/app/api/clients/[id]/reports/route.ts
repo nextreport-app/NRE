@@ -4,7 +4,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteReportFile } from "@/lib/storage";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
-import { scheduleReportGenerationJob } from "@/lib/nre/dispatch-report-generation-job";
+import {
+  dispatchReportGenerationJob,
+  scheduleReportGenerationJob,
+} from "@/lib/nre/dispatch-report-generation-job";
 import {
   serializeReportGenerationJob,
   type ComparisonReportJobPayload,
@@ -12,9 +15,9 @@ import {
   type HistoricalReportJobPayload,
   type PreviousMonthSummaryJobPayload,
   type StandardReportJobPayload,
-} from "@/lib/nre/report-generation-job";
+} from "@/lib/nre/report-generation-job-payload";
 import { createReportEngine } from "@/lib/nre/report-engine";
-import { buildStandardReportForWizard } from "@/lib/nre/report-engine/build-standard-from-wizard";
+import { resolveStandardReportForGenerate } from "@/lib/nre/report-engine/build-standard-from-wizard";
 import { generateShareToken } from "@/lib/share-token";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
@@ -42,7 +45,33 @@ import {
   selectedMetricsSchema,
   uploadSessionIdSchema,
   resolveIncludePreviousMonthComparison,
+  parseBooleanFormField,
 } from "@/lib/validators/report-wizard";
+import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
+import { verifyStandardWizardReportAgainstCsv } from "@/lib/nre/wizard-csv-verification";
+
+/** Comparison / day-table renders are fast (no AI) — finish in-request so the wizard is not stuck polling. */
+export const maxDuration = 300;
+
+async function respondAfterReportGeneration(reportId: string, shareToken?: string | null) {
+  await dispatchReportGenerationJob(reportId);
+  const row = await prisma.report.findUnique({
+    where: { id: reportId },
+    select: { status: true, shareToken: true, errorMessage: true },
+  });
+  if (row?.status === "FAILED") {
+    return NextResponse.json(
+      { ok: false, error: row.errorMessage ?? "Report generation failed." },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({
+    ok: true,
+    reportId,
+    shareToken: row?.shareToken ?? shareToken ?? undefined,
+    status: row?.status === "COMPLETE" ? ("COMPLETE" as const) : ("GENERATING" as const),
+  });
+}
 
 function enqueueResponse(reportId: string, shareToken?: string | null) {
   return NextResponse.json({
@@ -162,7 +191,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!resolved.ok) {
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
-  const { parsed: mtdParsed, uploadSessionId } = resolved.data;
+  const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId, fileHash } = resolved.data;
   const platform = mtdParsed.platform;
 
   if (reportType === "COMPARISON") {
@@ -244,8 +273,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return apiErrorResponse(err, "reports:generate:create-comparison");
     }
 
-    scheduleReportGenerationJob(comparisonReport.id);
-    return enqueueResponse(comparisonReport.id);
+    return respondAfterReportGeneration(comparisonReport.id);
   }
 
   if (reportType === "HISTORICAL") {
@@ -393,11 +421,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return enqueueResponse(dayBreakdownReport.id, shareToken);
   }
 
-  const result = await buildStandardReportForWizard({ client, mtdParsed, formData, platform });
+  const result = await resolveStandardReportForGenerate({
+    client,
+    mtdParsed,
+    formData,
+    platform,
+    metaCampaignPeriodReachFromSession: metaCampaignPeriodReach,
+    metaAdAccountIdFromSession: metaAdAccountId,
+    userId: session.user.id,
+    uploadSessionId,
+    fileHash,
+  });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  const { data } = result;
+  const { data, aiCopyPrecalc } = result;
+
+  if (platform === "META" && data.reportType !== "CREATIVE") {
+    const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+    const periodRowsForVerify = includePreviousMonthComparison
+      ? await loadPreviousMonthDataRows(client)
+      : undefined;
+    const csvVerification = verifyStandardWizardReportAgainstCsv({
+      client,
+      mtdRows: mtdParsed.rows,
+      report: data,
+      reportType: data.reportType,
+      formData,
+      platform,
+      periodRows: periodRowsForVerify,
+    });
+    if (csvVerification.status === "mismatch") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "CSV verification failed — report totals do not match your upload for at least one window (weekly, MTD, or chart). Review the verification panel on Step 4 before generating.",
+          csvVerification,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
@@ -413,6 +478,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let report;
   try {
+    const metaHybridApiImport = parseBooleanFormField(formData, "metaHybridApiImport") === true;
     const jobPayload: StandardReportJobPayload = {
       version: 1,
       kind: "STANDARD",
@@ -422,6 +488,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
       reportTitle,
       reportData: data,
+      ...(aiCopyPrecalc && Object.keys(aiCopyPrecalc).length > 0 ? { aiCopyPrecalc } : {}),
+      ...(metaHybridApiImport && platform === "META"
+        ? { dataImportNote: META_HYBRID_API_CSV_IMPORT_NOTE }
+        : {}),
     };
 
     report = await prisma.report.create({

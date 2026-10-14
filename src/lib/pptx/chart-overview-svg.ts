@@ -11,6 +11,7 @@ import {
   resultBarLayout,
 } from "./chart-slide-layout";
 import { buildGroupedDonutSvg, splitPanelSeparatorSvg } from "./chart-grouped-donut-render";
+import { fitCampaignNameForSingleBarLine } from "../nre/chart-campaign-labels";
 import { resultBarColumns, resultBarFillWidth } from "./chart-campaign-bars-render";
 
 const INK = "#ffffff";
@@ -71,24 +72,32 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   const cols = resultBarColumns(splitPanel);
   const barLayout = resultBarLayout(model.resultBars.length, hasSubheading);
+  const rightLabelW = 96;
+  const nameColW = Math.max(120, cols.trackW - rightLabelW);
   let rowY = barLayout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
-    const nameY = rowY + barLayout.nameH - 2;
+    const nameBaselineY = rowY + barLayout.nameSizePt + 1;
     const barY = rowY + barLayout.nameH + barLayout.nameBarGap;
-    const footerY = barY + barLayout.barH + barLayout.barFooterGap + barLayout.metricsH - 2;
+    const footerY = barY + barLayout.barH + barLayout.barFooterGap + barLayout.metricsSizePt;
     const barRx = barLayout.barH / 2;
     const rightLabel = visualResultBarRightLabel(bar);
-    parts.push(
-      `<text x="${cols.barX}" y="${nameY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(`${bar.rank}. ${bar.name}`)}</text>`,
-      `<text x="${cols.barX + cols.trackW}" y="${nameY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
-      `<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${barLayout.barH}" rx="${barRx}" fill="${TRACK}"/>`,
+    const labelWidthPt = cols.trackW - rightLabelW;
+    const displayName = fitCampaignNameForSingleBarLine(
+      bar.name,
+      bar.rank,
+      labelWidthPt,
+      barLayout.nameSizePt,
     );
+    const rankedLine = `${bar.rank}. ${displayName}`;
+    parts.push(`<rect x="${cols.barX}" y="${barY}" width="${cols.trackW}" height="${barLayout.barH}" rx="${barRx}" fill="${TRACK}"/>`);
     if (fillW > 0) {
       parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${barLayout.barH}" rx="${barRx}" fill="#${bar.color}"/>`);
     }
     parts.push(
       `<text x="${cols.barX}" y="${footerY}" fill="${MUTED}" font-family="Poppins" font-size="${barLayout.metricsSizePt}" font-weight="400">${escapeXml(bar.statLine)}</text>`,
+      `<text x="${cols.barX}" y="${nameBaselineY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rankedLine)}</text>`,
+      `<text x="${cols.barX + nameColW + rightLabelW}" y="${nameBaselineY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
     );
     rowY += barLayout.rowH;
   }

@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import authConfig from "@/lib/auth.config";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
+import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
+import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
+import { findUserByEmail } from "@/lib/find-user-by-email";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -16,6 +19,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
+      allowDangerousEmailAccountLinking: true,
+      authorization: { params: { ...GOOGLE_LOGIN_AUTHORIZATION_PARAMS } },
     }),
     Credentials({
       name: "Credentials",
@@ -24,17 +30,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const email = credentials?.email;
+        const emailRaw = credentials?.email;
         const password = credentials?.password;
-        if (typeof email !== "string" || typeof password !== "string") return null;
+        if (typeof emailRaw !== "string" || typeof password !== "string") return null;
 
-        const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-        if (!user || !user.passwordHash) return null;
+        const email = normalizeAuthEmail(emailRaw);
+        if (!email || !password) return null;
 
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        try {
+          const user = await findUserByEmail(emailRaw, {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            passwordHash: true,
+          });
+          if (!user?.passwordHash) return null;
 
-        return { id: user.id, email: user.email, name: user.name, image: user.image };
+          const valid = await bcrypt.compare(password, user.passwordHash);
+          if (!valid) return null;
+
+          return { id: user.id, email: user.email, name: user.name, image: user.image };
+        } catch (err) {
+          console.error("[auth:credentials] authorize failed:", err);
+          return null;
+        }
       },
     }),
   ],

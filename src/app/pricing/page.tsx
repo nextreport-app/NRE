@@ -11,7 +11,7 @@ import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Agency plan from ₹699/mo ($8), Professional unlimited clients from ₹1,699/mo ($20). Google, TikTok & GA4 launching soon. 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
   path: "/pricing",
 });
 
@@ -33,32 +33,28 @@ const FAQS = [
     a: "Yes. You can upgrade or downgrade at any time from your billing page. Changes take effect immediately.",
   },
   {
-    q: "Can I connect Meta, Google Ads, TikTok, or GA4 directly instead of uploading a CSV?",
-    a: "Yes for Meta — NextReport syncs with Meta's Marketing API today. Connect once in Account Settings and choose Sync from API in the report wizard. CSV upload remains fully supported. Google Ads, TikTok, and GA4 integrations are in place and launching soon.",
+    q: "Can I connect Meta directly instead of uploading a CSV?",
+    a: "Meta reports use a day-wise CSV from Meta Ads Reporting today — upload on Step 1 of the wizard. Optional Meta API connection in Account settings is available when enabled for your account; CSV remains the supported path for parity with Ads Manager exports.",
   },
   {
     q: "What file formats can I upload?",
-    a: "NextReport accepts CSV, Excel (xlsx, xls), TSV, and TXT files. Download your report from Meta Ads Manager or Google Ads in any of these formats and upload directly — no conversion needed.",
+    a: "NextReport accepts CSV, Excel (xlsx, xls), TSV, and TXT files. Export from Meta Ads Reporting and upload directly — no conversion needed.",
   },
   {
     q: "Do I need to include specific columns in my CSV?",
-    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our CSV Export Guide for the exact steps to download the right format from Meta and Google Ads.",
+    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our CSV Export Guide for the exact steps to download the right format from Meta Ads Reporting.",
   },
   {
     q: "How many reports can I generate per month?",
     a: "Unlimited on both plans. Generate as many reports as you need for as many clients as your plan allows — no per-report charges.",
   },
   {
-    q: "What is the difference between Meta Ads, Google Ads, TikTok, and GA4 reporting?",
-    a: "Meta, Google Ads, and TikTok reports use the same dark navy branded template with platform-specific metrics — reach and frequency on Meta, conversions and quality score on Google, and TikTok campaign KPIs. GA4 website reports cover traffic, channels, landing pages, and breakdowns you choose in the wizard.",
-  },
-  {
     q: "Is there a limit on ad accounts I can sync?",
-    a: "Each client workspace is one brand — Meta, Google, TikTok, and GA4 reports for that brand all count as one client, not one slot per platform. Platform connections are set up once in Account settings and shared across clients. Agency allows up to 10 client workspaces; Professional is unlimited. There is no separate cap on ad accounts you connect.",
+    a: "Each client workspace is one brand. Meta connection in Account settings can be shared across clients. Agency allows up to 10 client workspaces; Professional is unlimited.",
   },
   {
     q: "Do you offer an Enterprise plan?",
-    a: "We keep pricing simple with two paid tiers — Agency and Professional — plus a 7-day free trial. Professional includes unlimited client workspaces (all platforms included). If you need custom billing, onboarding, or agency-wide rollout, email hello@nextreport.in and we will help.",
+    a: "We keep pricing simple with two paid tiers — Agency and Professional — plus a 7-day free trial. Professional includes unlimited Meta client workspaces. If you need custom billing, onboarding, or agency-wide rollout, email hello@nextreport.in and we will help.",
   },
   {
     q: "Do you offer annual billing?",
@@ -74,11 +70,11 @@ const FAQS = [
   },
   {
     q: "Can I hide NextReport branding on client reports?",
-    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links, PDFs, and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
+    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
   },
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads reporting is live and what we recommend for production use today. Google Ads, TikTok Ads, and GA4 website reporting are launching soon — you can connect accounts in settings, but the wizard stays Meta-only until parity testing is complete.",
+    a: "Meta Ads reporting only. Upload a day-wise CSV from Meta Ads Reporting on Import in the report wizard.",
   },
 ];
 
@@ -110,8 +106,7 @@ export default async function PricingPage() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta Ads reporting is live — CSV or API sync, then share a live link, download a PDF, or export
-            PowerPoint (.pptx). Google, TikTok, and GA4 are launching soon.
+            Meta Ads reporting — CSV upload, then share a live link, download PowerPoint (.pptx), or save to Google Slides.
           </p>
         </div>
 

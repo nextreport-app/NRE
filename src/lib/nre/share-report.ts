@@ -171,13 +171,15 @@ export interface ShareReportData {
   metricGuide: LegendEntry[];
   /** Account/agency name from User.agencyName — null when the generating user never set one (see reports/route.ts). Drives the cover slide "Prepared by" line. */
   agencyName: string | null;
-  /** Snapshotted at generation — controls NextReport vs agency vs hidden branding on share/PDF. */
+  /** Snapshotted at generation — controls NextReport vs agency vs hidden branding on share links. */
   reportBranding?: ReportBrandingSettings;
   generatedAt: string;
   /** Which sections appear on the live link / regenerated PPT — all true when omitted (legacy reports). */
   visibility?: ShareVisibility;
   /** ISO timestamp when the agency last published edits from the pre-share editor. */
   publishedAt?: string | null;
+  /** Optional note when delivery metrics came from API and Results from a manual export. */
+  dataImportNote?: string;
 }
 
 export interface ShareVisibility {
@@ -221,6 +223,7 @@ export interface ShareReportExtras {
   currencySymbol?: string;
   agencyName?: string | null;
   reportBranding?: ReportBrandingSettings;
+  dataImportNote?: string;
 }
 
 const FALLBACK_AI_COPY: AiCopy = {
@@ -309,6 +312,7 @@ export function buildShareReportData(
     generatedAt: now.toISOString(),
     visibility: defaultShareVisibility({ campaigns, adSets }),
     publishedAt: null,
+    ...(extras.dataImportNote ? { dataImportNote: extras.dataImportNote } : {}),
   };
 }
 

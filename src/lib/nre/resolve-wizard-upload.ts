@@ -25,6 +25,8 @@ export interface ResolvedWizardMtd {
   fromCache: boolean;
   /** Present when the request included a fresh file upload (analyze save path). */
   fileHash?: string;
+  metaCampaignPeriodReach?: import("./meta-api-sync/fetch-campaign-period-reach").MetaCampaignPeriodReachMaps;
+  metaAdAccountId?: string;
 }
 
 type ResolveFailure = {
@@ -71,6 +73,9 @@ export async function resolveWizardMtdFromFormData(
         },
         uploadSessionId,
         fromCache: true,
+        fileHash: session.fileHash,
+        metaCampaignPeriodReach: session.metaCampaignPeriodReach,
+        metaAdAccountId: session.metaAdAccountId,
       },
     };
   }

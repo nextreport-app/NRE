@@ -171,8 +171,8 @@ export function WizardDatePicker({
           disabled
             ? "cursor-not-allowed border-dash-border/60 bg-dash-bg/60 text-dash-ink-secondary"
             : open
-              ? "border-dash-accent bg-[#162033] text-white shadow-[0_0_0_1px_rgba(245,180,90,0.35)]"
-              : "border-dash-border bg-[#162033] text-white hover:border-dash-accent/60 hover:bg-[#1a2740]"
+              ? "border-dash-accent bg-dash-inset text-dash-ink shadow-[0_0_0_1px_rgba(245,180,90,0.35)]"
+              : "border-dash-border bg-dash-inset text-dash-ink hover:border-dash-accent/60 hover:bg-dash-secondary"
         }`}
       >
         <CalendarIcon />
@@ -191,18 +191,18 @@ export function WizardDatePicker({
               type="button"
               aria-label="Previous month"
               onClick={() => shiftMonth(-1)}
-              className="rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] text-dash-ink-secondary hover:border-dash-accent/50 hover:text-white"
+              className="rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] text-dash-ink-secondary hover:border-dash-accent/50 hover:text-dash-ink"
             >
               ‹
             </button>
-            <p className="text-[14px] font-semibold text-white">
+            <p className="text-[14px] font-semibold text-dash-ink">
               {MONTH_LABELS[viewMonth - 1]} {viewYear}
             </p>
             <button
               type="button"
               aria-label="Next month"
               onClick={() => shiftMonth(1)}
-              className="rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] text-dash-ink-secondary hover:border-dash-accent/50 hover:text-white"
+              className="rounded-md border border-dash-border bg-dash-bg px-2 py-1 text-[14px] text-dash-ink-secondary hover:border-dash-accent/50 hover:text-dash-ink"
             >
               ›
             </button>
@@ -236,7 +236,7 @@ export function WizardDatePicker({
                       : selectedDay
                         ? "bg-dash-accent text-[#0f172a] shadow-sm"
                         : isToday
-                          ? "border border-dash-accent/70 bg-dash-accent/10 text-white hover:bg-dash-accent/20"
+                          ? "border border-dash-accent/70 bg-dash-accent/10 text-dash-ink hover:bg-dash-accent/20"
                           : "text-dash-ink hover:bg-white/8"
                   }`}
                 >
