@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { TEMPLATE_LABELS } from "@/lib/validators/client";
@@ -167,6 +167,24 @@ export function WizardGenerateStep() {
   const periodConfirmation = reportPeriodConfirmationLine();
   const slideCount = estimatedSlideCount();
 
+  const weeklyPeriodNeedsAttention =
+    reportType === "WEEKLY" &&
+    (dateMode === "custom" || Boolean(customRangeError) || needsLongRangeConfirm);
+  const [weeklyPeriodExpanded, setWeeklyPeriodExpanded] = useState(false);
+
+  useEffect(() => {
+    if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
+  }, [weeklyPeriodNeedsAttention]);
+
+  const weeklyPeriodSummary =
+    dateMode === "last7" && weeklyOptions
+      ? `Last 7 days · ${formatIsoRange(weeklyOptions.last7)}`
+      : dateMode === "custom" && customStart && customEnd
+        ? `Custom range · ${formatIsoRange({ startIso: customStart, endIso: customEnd })}`
+        : weeklyRangeIso
+          ? formatIsoRange(weeklyRangeIso)
+          : "Expand to choose dates";
+
   if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
@@ -271,40 +289,35 @@ export function WizardGenerateStep() {
               </p>
             )}
 
-          {/* Date range (Weekly + Day-by-Day) */}
-          {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-dash-ink">
-                {reportType === "DAY_BREAKDOWN" ? "Select date range" : "Select report period"}
-              </h4>
-              {reportType === "DAY_BREAKDOWN" ? (
-                <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                  <p className="text-[14px] text-dash-ink-secondary">
-                    Pick any range covered by your day-level CSV
-                    {dateBounds
-                      ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
-                      : ""}
-                    .
-                  </p>
-                  <WizardDateRangeFields
-                    startIso={customStart}
-                    endIso={customEnd}
-                    minIso={dateBounds?.minIso}
-                    maxIso={dateBounds?.maxIso}
-                    onStartChange={(iso) => {
-                      editDateMode("custom");
-                      editCustomStart(iso);
-                    }}
-                    onEndChange={(iso) => {
-                      editDateMode("custom");
-                      editCustomEnd(iso);
-                    }}
-                  />
-                  {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+          {reportType === "WEEKLY" && (
+            <section className="rounded-lg border border-dash-border bg-dash-card">
+              <button
+                type="button"
+                onClick={() => setWeeklyPeriodExpanded((open) => !open)}
+                aria-expanded={weeklyPeriodExpanded}
+                className="flex w-full items-start justify-between gap-3 p-4 text-left"
+              >
+                <div className="min-w-0">
+                  <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
+                  {!weeklyPeriodExpanded ? (
+                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{weeklyPeriodSummary}</p>
+                  ) : (
+                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
+                      Change only if you need a different week — Confirmed period below matches your choice.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div className="mt-4 flex flex-wrap gap-3">
+                <span
+                  className={`mt-0.5 shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${weeklyPeriodExpanded ? " rotate-180" : ""}`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </button>
+
+              {weeklyPeriodExpanded ? (
+                <div className="space-y-4 border-t border-dash-border px-4 pb-4 pt-3">
+                  <div className="flex flex-wrap gap-3">
                     {weeklyOptions ? (
                       <WeeklyPeriodOption
                         selected={dateMode === "last7"}
@@ -324,12 +337,15 @@ export function WizardGenerateStep() {
                           ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
                           : "Pick any start and end date in your CSV"
                       }
-                      onSelect={() => editDateMode("custom")}
+                      onSelect={() => {
+                        editDateMode("custom");
+                        setWeeklyPeriodExpanded(true);
+                      }}
                     />
                   </div>
 
                   {dateMode === "custom" ? (
-                    <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
+                    <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
                       <WizardDateRangeFields
                         startIso={customStart}
                         endIso={customEnd}
@@ -365,8 +381,38 @@ export function WizardGenerateStep() {
                       ) : null}
                     </div>
                   ) : null}
-                </>
-              )}
+                </div>
+              ) : null}
+            </section>
+          )}
+
+          {reportType === "DAY_BREAKDOWN" && (
+            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
+              <h4 className="text-[16px] font-semibold text-dash-ink">Select date range</h4>
+              <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
+                <p className="text-[14px] text-dash-ink-secondary">
+                  Pick any range covered by your day-level CSV
+                  {dateBounds
+                    ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
+                    : ""}
+                  .
+                </p>
+                <WizardDateRangeFields
+                  startIso={customStart}
+                  endIso={customEnd}
+                  minIso={dateBounds?.minIso}
+                  maxIso={dateBounds?.maxIso}
+                  onStartChange={(iso) => {
+                    editDateMode("custom");
+                    editCustomStart(iso);
+                  }}
+                  onEndChange={(iso) => {
+                    editDateMode("custom");
+                    editCustomEnd(iso);
+                  }}
+                />
+                {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+              </div>
             </section>
           )}
 
