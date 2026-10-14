@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useSiteCopy } from "@/hooks/use-site-copy";
-import { DashboardLocaleSelect } from "@/components/dashboard-locale-select";
-
 const LINK_HREFS = [
   { href: "/", key: "navHome" as const, hideOnMobile: true },
   { href: "/clients", key: "navClients" as const, hideOnMobile: false },
@@ -56,7 +54,6 @@ export function Nav() {
               </Link>
             );
           })}
-          <DashboardLocaleSelect />
           {session?.user?.email && (
             <span className="hidden max-w-[140px] truncate text-[13px] lg:inline" title={session.user.email}>
               {session.user.email}
