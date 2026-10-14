@@ -10,7 +10,7 @@ export type SiteLink = {
 export const PUBLIC_NAV_LINKS: SiteLink[] = [
   { href: "/how-it-works", label: "Getting Started" },
   { href: "/help/download", label: "CSV Guide" },
-  { href: "/about", label: "About" },
+  { href: "/book-demo", label: "Book Demo" },
 ];
 
 export const FOOTER_PRODUCT_LINKS: SiteLink[] = [
