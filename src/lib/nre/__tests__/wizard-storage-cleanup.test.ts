@@ -51,7 +51,7 @@ describe("purgeStaleWizardBlobs", () => {
 
     expect(result).toEqual({ uploadSessions: 1, drafts: 1 });
     expect(delMock).toHaveBeenCalledTimes(2);
-    expect(delMock).toHaveBeenCalledWith("https://blob/upload-old");
-    expect(delMock).toHaveBeenCalledWith("https://blob/draft-old");
+    expect(delMock).toHaveBeenCalledWith(["https://blob/upload-old"]);
+    expect(delMock).toHaveBeenCalledWith(["https://blob/draft-old"]);
   });
 });
