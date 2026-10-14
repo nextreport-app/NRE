@@ -1129,6 +1129,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(detected);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
     await dispatchAfterAnalyze(json, detected);
   }
 
@@ -1283,6 +1284,7 @@ export function useReportUploadWizard({
     applyAnalyzeResult(json);
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
     await dispatchAfterAnalyze(json, selectedPlatformCard);
     if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
       setPreviousMonthHasFile(true);
@@ -1335,6 +1337,7 @@ export function useReportUploadWizard({
 
     applyAnalyzeResult(json);
     rememberPlatformChoice(selectedPlatformCard);
+    saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
     await dispatchAfterAnalyze(json, selectedPlatformCard);
   }
 
