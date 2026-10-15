@@ -27,6 +27,8 @@ const EN_UI = {
   csvTroubleshootStillMismatch:
     "Totals still differ after troubleshooting. Generate for internal review only, or contact support with the details below.",
   generateForInternalReview: "Generate for internal review",
+  csvMismatchCtaFooter:
+    "Troubleshoot re-checks your CSV; internal review builds the deck without blocking you.",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
     "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
