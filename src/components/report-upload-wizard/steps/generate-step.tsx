@@ -82,7 +82,6 @@ export function WizardGenerateStep() {
     handleGenerateStepPrimary,
     handleGenerateAnother,
     handleGeneratePreviousMonthSummary,
-    handleReportTypeChange,
     handleSaveButtonClick,
     clientTimezone,
     handleSaveToFolderLink,
@@ -173,14 +172,8 @@ export function WizardGenerateStep() {
     if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
   }, [weeklyPeriodNeedsAttention]);
 
-  const weeklyPeriodSummary =
-    dateMode === "last7" && weeklyOptions
-      ? `Last 7 days · ${formatIsoRange(weeklyOptions.last7)}`
-      : dateMode === "custom" && customStart && customEnd
-        ? `Custom range · ${formatIsoRange({ startIso: customStart, endIso: customEnd })}`
-        : weeklyRangeIso
-          ? formatIsoRange(weeklyRangeIso)
-          : "Expand to choose dates";
+  const showWeeklyPeriodEditor =
+    reportType === "WEEKLY" && (weeklyPeriodNeedsAttention || weeklyPeriodExpanded);
 
   if (!stepActive) return null;
 
@@ -220,12 +213,12 @@ export function WizardGenerateStep() {
             <div className="space-y-5">
               <WizardReportSetupPanel
                 variant="summary"
-                allowInlineChange
+                onEditSetup={() => setStep(1)}
                 reportType={reportType}
                 reportTypeLabel={reportTypeLabel()}
                 platform={platform}
                 clientTimezone={clientTimezone}
-                onReportTypeChange={handleReportTypeChange}
+                onReportTypeChange={w.handleReportTypeChange}
               />
 
             {happyPathSkippedSteps ? (
@@ -286,102 +279,81 @@ export function WizardGenerateStep() {
               </p>
             )}
 
-          {reportType === "WEEKLY" && (
-            <section className="rounded-lg border border-dash-border bg-dash-card">
-              <button
-                type="button"
-                onClick={() => setWeeklyPeriodExpanded((open) => !open)}
-                aria-expanded={weeklyPeriodExpanded}
-                className="flex w-full items-start justify-between gap-3 p-4 text-left"
-              >
-                <div className="min-w-0">
-                  <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
-                  {!weeklyPeriodExpanded ? (
-                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{weeklyPeriodSummary}</p>
-                  ) : (
-                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-                      Change only if you need a different week — Confirmed period below matches your choice.
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`mt-0.5 shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${weeklyPeriodExpanded ? " rotate-180" : ""}`}
-                  aria-hidden
-                >
-                  ▾
-                </span>
-              </button>
-
-              {weeklyPeriodExpanded ? (
-                <div className="space-y-4 border-t border-dash-border px-4 pb-4 pt-3">
-                  <div className="flex flex-wrap gap-3">
-                    {weeklyOptions ? (
-                      <WeeklyPeriodOption
-                        selected={dateMode === "last7"}
-                        label="Last 7 days"
-                        sublabel={formatIsoRange(weeklyOptions.last7)}
-                        onSelect={() => {
-                          editDateMode("last7");
-                          setCustomRangeError(null);
-                        }}
-                      />
-                    ) : null}
+          {showWeeklyPeriodEditor ? (
+            <section className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
+              <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
+                Default is last 7 days in your CSV. Change here only if you need a different week.
+              </p>
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  {weeklyOptions ? (
                     <WeeklyPeriodOption
-                      selected={dateMode === "custom"}
-                      label="Custom date range"
-                      sublabel={
-                        dateBounds
-                          ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
-                          : "Pick any start and end date in your CSV"
-                      }
+                      selected={dateMode === "last7"}
+                      label="Last 7 days"
+                      sublabel={formatIsoRange(weeklyOptions.last7)}
                       onSelect={() => {
-                        editDateMode("custom");
-                        setWeeklyPeriodExpanded(true);
+                        editDateMode("last7");
+                        setCustomRangeError(null);
+                        setWeeklyPeriodExpanded(false);
                       }}
                     />
-                  </div>
-
-                  {dateMode === "custom" ? (
-                    <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                      <WizardDateRangeFields
-                        startIso={customStart}
-                        endIso={customEnd}
-                        minIso={dateBounds?.minIso}
-                        maxIso={dateBounds?.maxIso}
-                        onStartChange={(iso) => editCustomStart(iso)}
-                        onEndChange={(iso) => editCustomEnd(iso)}
-                      />
-
-                      {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
-
-                      {needsLongRangeConfirm ? (
-                        <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                          <p className="mb-2 text-[14px] text-amber-200">
-                            You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with
-                            this longer period anyway?
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setLongRangeConfirmed(true)}
-                              className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              onClick={() => setCustomEnd("")}
-                              className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
-                            >
-                              No
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
                   ) : null}
+                  <WeeklyPeriodOption
+                    selected={dateMode === "custom"}
+                    label="Custom date range"
+                    sublabel={
+                      dateBounds
+                        ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
+                        : "Pick any start and end date in your CSV"
+                    }
+                    onSelect={() => {
+                      editDateMode("custom");
+                      setWeeklyPeriodExpanded(true);
+                    }}
+                  />
                 </div>
-              ) : null}
+
+                {dateMode === "custom" ? (
+                  <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
+                    <WizardDateRangeFields
+                      startIso={customStart}
+                      endIso={customEnd}
+                      minIso={dateBounds?.minIso}
+                      maxIso={dateBounds?.maxIso}
+                      onStartChange={(iso) => editCustomStart(iso)}
+                      onEndChange={(iso) => editCustomEnd(iso)}
+                    />
+
+                    {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+
+                    {needsLongRangeConfirm ? (
+                      <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
+                        <p className="mb-2 text-[14px] text-amber-200">
+                          You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
+                          longer period anyway?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setLongRangeConfirmed(true)}
+                            className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setCustomEnd("")}
+                            className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </section>
-          )}
+          ) : null}
 
           {reportType === "DAY_BREAKDOWN" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
@@ -529,8 +501,21 @@ export function WizardGenerateStep() {
 
             {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-                <p className="nre-wizard-callout-success__label">Confirmed period</p>
-                <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="nre-wizard-callout-success__label">Confirmed period</p>
+                    <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                  </div>
+                  {reportType === "WEEKLY" && !showWeeklyPeriodEditor ? (
+                    <button
+                      type="button"
+                      onClick={() => setWeeklyPeriodExpanded(true)}
+                      className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
+                    >
+                      Change dates
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
