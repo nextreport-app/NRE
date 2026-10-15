@@ -103,7 +103,9 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
-          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
+          initialShowAgencyNameOnCover={
+            user.agencyName?.trim() ? (user.showAgencyNameOnCover ?? false) : false
+          }
           accountDisplayName={user.name}
         />
       </Suspense>
