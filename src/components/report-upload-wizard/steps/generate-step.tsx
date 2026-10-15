@@ -906,7 +906,13 @@ export function WizardGenerateStep() {
                       {copy.generateForInternalReview}
                     </button>
                   ) : null}
-                  <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                  {csvMismatchActive ? (
+                    <p className="mt-2 text-center text-[13px] leading-snug text-dash-ink-secondary">
+                      {copy.csvMismatchCtaFooter}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                  )}
                 </div>
               )}
               {generateStatus === "loading" && (
