@@ -33,7 +33,8 @@ export function SupportTicketForm({
   const [message, setMessage] = useState("");
   const [clientId, setClientId] = useState(defaultClientId ?? "");
   const [reportId, setReportId] = useState(defaultReportId ?? "");
-  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [includeReportDeck, setIncludeReportDeck] = useState(true);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -50,7 +51,12 @@ export function SupportTicketForm({
     formData.set("message", message.trim());
     if (clientId) formData.set("clientId", clientId);
     if (reportId) formData.set("reportId", reportId);
-    if (attachment) formData.set("attachment", attachment);
+    for (const file of attachments) {
+      formData.append("attachment", file);
+    }
+    if (reportId) {
+      formData.set("includeReportDeck", includeReportDeck ? "true" : "false");
+    }
 
     try {
       const res = await fetch("/api/support", { method: "POST", body: formData });
@@ -61,7 +67,7 @@ export function SupportTicketForm({
         return;
       }
       setMessage("");
-      setAttachment(null);
+      setAttachments([]);
       setStatus("done");
     } catch {
       setErrorMessage("Something went wrong. Email hello@nextreport.in directly.");
@@ -203,17 +209,39 @@ export function SupportTicketForm({
         />
       </div>
 
+      {reportId ? (
+        <label className="flex cursor-pointer items-start gap-2.5 text-sm text-dash-ink-secondary">
+          <input
+            type="checkbox"
+            checked={includeReportDeck}
+            onChange={(e) => setIncludeReportDeck(e.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span>
+            Include the selected report deck (PowerPoint) from your account
+            <span className="mt-0.5 block text-xs text-dash-ink-muted">
+              We attach the .pptx from report history — no need to upload it again if you pick the report above.
+            </span>
+          </span>
+        </label>
+      ) : null}
+
       <div>
         <label htmlFor="support-attachment" className="mb-1 block text-sm text-dash-ink-secondary">
-          Attach CSV or screenshot <span className="text-dash-ink-muted">(optional, max 10 MB)</span>
+          Attach CSV, deck, or screenshot{" "}
+          <span className="text-dash-ink-muted">(optional, max 10 MB each — you can pick multiple files)</span>
         </label>
         <input
           id="support-attachment"
           type="file"
-          accept=".csv,.xlsx,.xls,.tsv,.txt,image/*,.pdf"
-          onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+          multiple
+          accept=".csv,.xlsx,.xls,.tsv,.txt,image/*,.pdf,.pptx"
+          onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
           className="block w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-dash-ink hover:file:bg-dash-accent-hover"
         />
+        {attachments.length > 0 ? (
+          <p className="mt-1 text-xs text-dash-ink-muted">{attachments.map((f) => f.name).join(", ")}</p>
+        ) : null}
       </div>
 
       {status === "error" && errorMessage && (

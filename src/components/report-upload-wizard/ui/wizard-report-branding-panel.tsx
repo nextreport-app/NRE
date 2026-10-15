@@ -82,9 +82,8 @@ export function WizardReportBrandingPanel({
             <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{summary}</p>
           ) : (
             <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-              Every report is a <span className="text-dash-ink">PowerPoint file</span> and a{" "}
-              <span className="text-dash-ink">browser share link</span>. Defaults use NextReport until you change
-              settings here or in Account.
+              Default: no name on the PowerPoint cover and NextReport branding on the share link. Add a name only if
+              you want white-label delivery.
             </p>
           )}
         </div>

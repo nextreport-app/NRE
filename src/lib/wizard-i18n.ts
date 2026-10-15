@@ -17,9 +17,7 @@ const EN_UI = {
       ? "Deck preview differs from your CSV on 1 total"
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
-    "Your CSV is the file you exported from Ads Manager — we treat those numbers as the reference. If the deck preview below doesn't match, that's on our calculation engine, not something you can fix in the wizard. You can still generate; if the deck looks wrong, send us a ticket or WhatsApp message and we'll fix it on our side.",
-  csvMismatchFootnote:
-    "Include this screen (or the same CSV) when you contact us so we can align the engine with your export.",
+    "Your CSV is the reference. If deck totals differ, that's on our engine — not something you can fix here. You can still generate; if it looks wrong, contact support or WhatsApp and attach your CSV or this screen.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",

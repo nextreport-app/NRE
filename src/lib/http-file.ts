@@ -25,3 +25,19 @@ export async function fileEntryFromFormData(formData: FormData, field: string): 
     contentType: value.type || "application/octet-stream",
   };
 }
+
+/** All files for a form field (supports `multiple` on the file input). */
+export async function fileEntriesFromFormData(formData: FormData, field: string): Promise<UploadedFileEntry[]> {
+  const values = formData.getAll(field);
+  const out: UploadedFileEntry[] = [];
+  for (const value of values) {
+    if (!value || typeof value === "string") continue;
+    const arrayBuffer = await value.arrayBuffer();
+    out.push({
+      buffer: Buffer.from(arrayBuffer),
+      fileName: value.name || "file",
+      contentType: value.type || "application/octet-stream",
+    });
+  }
+  return out;
+}

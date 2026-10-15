@@ -190,19 +190,25 @@ export function useReportUploadWizard({
   const savedAgencyNameRef = useRef(initialAgencyName?.trim() || "");
   const savedReportBrandingModeRef = useRef<ReportBrandingMode>(initialReportBrandingMode);
   const savedShowAgencyNameOnCoverRef = useRef(initialShowAgencyNameOnCover);
-  const [agencyName, setAgencyName] = useState(
-    () => savedAgencyNameRef.current || accountDisplayName?.trim() || "",
+  const [agencyName, setAgencyName] = useState(() => savedAgencyNameRef.current);
+  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(() =>
+    initialAgencyName?.trim() ? initialReportBrandingMode : "nextreport",
   );
-  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
-    initialReportBrandingMode,
+  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(
+    () => Boolean(initialAgencyName?.trim() && initialShowAgencyNameOnCover),
   );
-  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(initialShowAgencyNameOnCover);
   const [reportBrandingError, setReportBrandingError] = useState<string | null>(null);
   const [reportBrandingSaving, setReportBrandingSaving] = useState(false);
 
   function handleWizardAgencyNameChange(value: string) {
     setAgencyName(value);
     setReportBrandingError(null);
+    if (!value.trim()) {
+      setShowAgencyNameOnCover(false);
+      if (reportBrandingMode === "agency") {
+        setReportBrandingMode("nextreport");
+      }
+    }
   }
 
   async function persistReportBrandingSettings(): Promise<boolean> {

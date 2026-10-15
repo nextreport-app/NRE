@@ -139,8 +139,6 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
             </div>
           ))}
 
-          <p className="text-[12px] leading-relaxed text-dash-ink-muted">{copy.csvMismatchFootnote}</p>
-
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium">
             <SupportTicketLink
               clientId={clientId}
