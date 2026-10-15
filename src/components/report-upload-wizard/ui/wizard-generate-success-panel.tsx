@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { CopyIcon, MailIcon } from "./icons";
+import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import type { DriveView } from "../types";
 import {
   buildClientReportSlackShareUrl,
@@ -43,6 +44,7 @@ type WizardGenerateSuccessPanelProps = {
   driveSaveUrl: string | null;
   handleCopyLink: () => void;
   handleGenerateAnother: () => void;
+  generatedWithCsvMismatch?: boolean;
   children?: ReactNode;
 };
 
@@ -72,8 +74,10 @@ export function WizardGenerateSuccessPanel({
   driveSaveUrl,
   handleCopyLink,
   handleGenerateAnother,
+  generatedWithCsvMismatch = false,
   children,
 }: WizardGenerateSuccessPanelProps) {
+  const copy = useWizardCopy();
   const reportUrl = shareToken ? `https://${buildShareReportUrl(shareToken)}` : null;
   const shareDateLabel = dateRangeLabel || "this period";
   const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
@@ -98,6 +102,17 @@ export function WizardGenerateSuccessPanel({
       </div>
 
       <div className="space-y-5 p-5">
+        {generatedWithCsvMismatch ? (
+          <div className="nre-wizard-callout-warn rounded-lg px-4 py-3.5">
+            <p className="nre-wizard-callout-warn__title text-[14px] font-semibold">
+              {copy.csvMismatchShareWarningTitle}
+            </p>
+            <p className="nre-wizard-callout-warn__body mt-1.5 text-[13px] leading-relaxed">
+              {copy.csvMismatchShareWarningBody}
+            </p>
+          </div>
+        ) : null}
+
         {shareToken && reportUrl ? (
           <>
             <a

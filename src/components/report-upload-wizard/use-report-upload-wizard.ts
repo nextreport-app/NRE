@@ -28,7 +28,7 @@ import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
 import { useSiteTheme } from "@/components/site-theme-provider";
-import { wizardObjectiveBadgeText } from "@/lib/wizard-i18n";
+import { wizardCopy, wizardObjectiveBadgeText } from "@/lib/wizard-i18n";
 import { budgetPacingWarning, buildBudgetCoverPreview, buildBudgetSummary } from "@/lib/nre/budget-pacing";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
@@ -155,6 +155,8 @@ export function useReportUploadWizard({
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
   const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
   const [csvAlignResults, setCsvAlignResults] = useState(false);
+  const [csvTroubleshooting, setCsvTroubleshooting] = useState(false);
+  const [generatedWithCsvMismatch, setGeneratedWithCsvMismatch] = useState(false);
   const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
@@ -751,6 +753,7 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setPublishedAt(null);
+    setGeneratedWithCsvMismatch(false);
   }
 
   useEffect(() => {
@@ -1924,11 +1927,12 @@ export function useReportUploadWizard({
     setPreviewStatus(status);
   }
 
-  async function fetchPreview() {
+  async function fetchPreview(options?: { csvAlignResults?: boolean }): Promise<CsvVerificationResult | null> {
+    const alignForRequest = options?.csvAlignResults ?? csvAlignResults;
     if (!mtdFile && !uploadSessionId) {
       setPreviewMessage("Go back to Import and upload your CSV again.");
       releasePreviewLoadingState("error");
-      return;
+      return null;
     }
     // Monthly has no weekly period selector at all — none of the custom-
     // range validation/confirmation below applies, and no dateSelection is
@@ -1939,17 +1943,17 @@ export function useReportUploadWizard({
       if (dateMode === "custom" && (!customStart || !customEnd)) {
         setCustomRangeError("Choose a start and end date.");
         releasePreviewLoadingState("idle");
-        return;
+        return null;
       }
       if (!validateCustomRange()) {
         releasePreviewLoadingState("idle");
-        return;
+        return null;
       }
       if (reportType === "WEEKLY") {
         const spanDays = customSpanDays();
         if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
           releasePreviewLoadingState("idle");
-          return;
+          return null;
         }
       }
     }
@@ -1959,19 +1963,19 @@ export function useReportUploadWizard({
       setPreviewErrors([
         { field: "reportType", message: "Daily table reports are available for Meta only in this version." },
       ]);
-      return;
+      return null;
     }
 
     if (reportType === "COMPARISON" && !comparisonPeriodsReady()) {
       setPreviewStatus("invalid");
       setPreviewErrors([{ field: "comparisonPeriod", message: "Choose both Period A and Period B date ranges." }]);
-      return;
+      return null;
     }
 
     if (reportType === "HISTORICAL" && (historicalMonthCount < 2 || historicalMonthCount > 12)) {
       setPreviewStatus("invalid");
       setPreviewErrors([{ field: "historicalMonthCount", message: "Choose between 2 and 12 months." }]);
-      return;
+      return null;
     }
 
     if (reportType === "CREATIVE" && !hasAdLevelCsv) {
@@ -1982,7 +1986,7 @@ export function useReportUploadWizard({
           message: "Upload an Ad-level CSV (Ads tab in Meta Ads Manager) to generate a Creative report.",
         },
       ]);
-      return;
+      return null;
     }
 
     const dateSelection =
@@ -2019,7 +2023,7 @@ export function useReportUploadWizard({
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
-          csvAlignResults,
+          csvAlignResults: alignForRequest,
           ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
@@ -2031,7 +2035,7 @@ export function useReportUploadWizard({
       handleUploadSessionExpired(json.error);
       setPreviewStatus("error");
       setPreviewRefreshing(false);
-      return;
+      return null;
     }
 
     if (!res.ok || !json) {
@@ -2044,17 +2048,18 @@ export function useReportUploadWizard({
             : null;
       setPreviewMessage(apiMsg ?? "Something went wrong building the preview. Please try again.");
       setPreviewRefreshing(false);
-      return;
+      return null;
     }
     if (!json.valid) {
       setPreviewStatus("invalid");
       setPreviewErrors(json.errors || []);
       setPreviewRefreshing(false);
-      return;
+      return null;
     }
 
     applyPreviewResult(json);
     setPreviewRefreshing(false);
+    return (json.csvVerification as CsvVerificationResult | undefined) ?? null;
   }
 
   // Google Ads has no Reporting Period section on Step 5 at all (see this
@@ -2159,6 +2164,7 @@ export function useReportUploadWizard({
       setReportBrandingError("Enter your agency name to show it on client reports.");
       return;
     }
+    const csvMismatchAtGenerate = csvVerification?.status === "mismatch";
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -2250,6 +2256,7 @@ export function useReportUploadWizard({
     setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);
+    setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
     setGenerateStatus("done");
     clearAllWizardDrafts();
     persistGenerateSnapshot(
@@ -2712,9 +2719,43 @@ export function useReportUploadWizard({
     void fetchPreview();
   }
 
+  async function handleCsvTroubleshoot() {
+    if (!mtdFile && !uploadSessionId) return;
+    if (csvTroubleshooting || previewRefreshing) return;
+    const copy = wizardCopy(locale);
+    setCsvTroubleshooting(true);
+    const useAlign = Boolean(csvVerification?.canAlignWithCsvExport);
+    if (useAlign) {
+      setCsvAlignResults(true);
+    }
+    try {
+      const result = await fetchPreview({ csvAlignResults: useAlign || csvAlignResults });
+      if (!result) return;
+      if (result.status === "ok") {
+        showToast(copy.csvTroubleshootSuccess);
+      } else if (result.status === "mismatch") {
+        showToast(copy.csvTroubleshootStillMismatch, "error");
+      }
+    } finally {
+      setCsvTroubleshooting(false);
+    }
+  }
+
+  function handleGenerateForInternalReview() {
+    void handleGenerate();
+  }
+
   function handleGenerateStepPrimary() {
     if (previewStatus === "error") {
       retryPreview();
+      return;
+    }
+    if (
+      generateStepPreviewReady &&
+      generateStatus === "idle" &&
+      csvVerification?.status === "mismatch"
+    ) {
+      void handleCsvTroubleshoot();
       return;
     }
     void handleGenerate();
@@ -2936,8 +2977,12 @@ export function useReportUploadWizard({
     generateStatus,
     generateMessage,
     handleGenerate,
+    handleGenerateForInternalReview,
     handleGenerateStepPrimary,
+    handleCsvTroubleshoot,
     retryPreview,
+    csvTroubleshooting,
+    generatedWithCsvMismatch,
     reportId,
     downloadUrl,
     publishedAt,

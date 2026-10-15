@@ -79,8 +79,11 @@ export function WizardGenerateStep() {
     handleCopyLink,
     handleCopyShareLink,
     handleGenerate,
+    handleGenerateForInternalReview,
     handleGenerateStepPrimary,
     handleGenerateAnother,
+    csvTroubleshooting,
+    generatedWithCsvMismatch,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
     clientTimezone,
@@ -178,17 +181,24 @@ export function WizardGenerateStep() {
   if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
+  const csvMismatchActive =
+    generateStepPreviewReady &&
+    generateStatus === "idle" &&
+    csvVerification?.status === "mismatch";
   const generateCtaDisabled =
     previewStatus === "invalid" ||
     (previewStatus !== "error" && !generateStepPreviewReady) ||
     reportBrandingBlocksGenerate ||
-    previewRefreshing;
+    previewRefreshing ||
+    csvTroubleshooting;
   const generateCtaLabel =
     generateStatus === "loading"
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
-        : previewStatus === "loading" || previewRefreshing
+        : csvTroubleshooting
+          ? copy.csvTroubleshooting
+          : previewStatus === "loading" || previewRefreshing
           ? "Loading report options…"
           : !generateStepPreviewReady
             ? previewStatus === "invalid"
@@ -198,7 +208,15 @@ export function WizardGenerateStep() {
                 : previewStatus === "idle"
                   ? "Choose dates above"
                   : "Loading report options…"
-            : copy.generateReport;
+            : csvMismatchActive
+              ? copy.csvTroubleshoot
+              : copy.generateReport;
+  const internalReviewCtaDisabled =
+    previewStatus === "invalid" ||
+    !generateStepPreviewReady ||
+    reportBrandingBlocksGenerate ||
+    previewRefreshing ||
+    csvTroubleshooting;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
@@ -525,6 +543,7 @@ export function WizardGenerateStep() {
                   verification={csvVerification}
                   refreshing={previewRefreshing}
                   clientId={clientId}
+                  troubleshooting={csvTroubleshooting}
                 />
               ) : null}
 
@@ -722,6 +741,7 @@ export function WizardGenerateStep() {
             <WizardGenerateSuccessPanel
               clientName={clientName}
               clientId={clientId}
+              generatedWithCsvMismatch={generatedWithCsvMismatch}
               reportId={reportId}
               reportTypeLabel={reportTypeLabel()}
               wizardSharePlatformLabel={wizardSharePlatformLabel()}
@@ -870,12 +890,22 @@ export function WizardGenerateStep() {
                 <div className="hidden md:block">
                   <button
                     type="button"
-                    onClick={handleGenerate}
+                    onClick={csvMismatchActive ? handleGenerateStepPrimary : handleGenerate}
                     disabled={generateCtaDisabled}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
                     {generateCtaLabel}
                   </button>
+                  {csvMismatchActive ? (
+                    <button
+                      type="button"
+                      onClick={handleGenerateForInternalReview}
+                      disabled={internalReviewCtaDisabled}
+                      className="mt-2 h-11 w-full rounded-md border border-dash-border bg-dash-card text-[15px] font-medium text-dash-ink hover:bg-dash-sidebar disabled:opacity-50"
+                    >
+                      {copy.generateForInternalReview}
+                    </button>
+                  ) : null}
                   <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
                 </div>
               )}
@@ -930,8 +960,12 @@ export function WizardGenerateStep() {
               primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
               primaryLoading={
                 generateStatus === "loading" ||
+                csvTroubleshooting ||
                 (previewStatus === "loading" && generateStatus === "idle")
               }
+              secondaryLabel={csvMismatchActive ? copy.generateForInternalReview : undefined}
+              onSecondary={csvMismatchActive ? handleGenerateForInternalReview : undefined}
+              secondaryDisabled={internalReviewCtaDisabled}
             />
           ) : null}
         </div>
