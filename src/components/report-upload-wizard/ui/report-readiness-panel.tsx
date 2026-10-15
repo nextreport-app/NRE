@@ -117,9 +117,9 @@ export function buildGenerateStepReadinessItems(input: {
   } else if (v?.status === "mismatch") {
     items.push({
       id: "csv",
-      label: "CSV verification",
+      label: "CSV cross-check",
       status: "warning",
-      detail: "Review mismatches before sharing with clients",
+      detail: "Preview differs from your CSV — contact support if the deck looks wrong",
     });
   } else if (v?.status === "skipped" && v.skipReason) {
     items.push({
