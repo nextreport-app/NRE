@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { fileEntriesFromFormData, type UploadedFileEntry } from "@/lib/http-file";
+import { fileEntriesFromFormData } from "@/lib/http-file";
 import {
   presignedPrivateBlobGetUrl,
   readReportFile,
