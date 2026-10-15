@@ -99,21 +99,10 @@ import {
   persistGenerateBaselineToServer,
   readGenerateBaselineForHappyPath,
 } from "./wizard-baseline-sync";
-import {
-  clearWizardDraft,
-  loadWizardDraft,
-  saveWizardDraft,
-  type WizardDraftSnapshot,
-} from "@/lib/nre/wizard-draft";
+import { clearWizardDraft } from "@/lib/nre/wizard-draft";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import type { ReportBrandingMode } from "@/lib/report-branding";
 import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
-
-function readRestorableLocalDraft(clientId: string): WizardDraftSnapshot | null {
-  if (typeof window === "undefined") return null;
-  const draft = loadWizardDraft(clientId);
-  return draft?.uploadSessionId ? draft : null;
-}
 
 export function useReportUploadWizard({
   clientId,
@@ -149,19 +138,15 @@ export function useReportUploadWizard({
   const { locale } = useSiteTheme();
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
-  const [step, setStepState] = useState<Step>(() => readRestorableLocalDraft(clientId)?.step ?? 1);
+  const [step, setStepState] = useState<Step>(1);
   // Which steps this session has actually passed through — the Google Ads
   // flow jumps straight from step 1 to step 6 (see dispatchAfterAnalyze),
   // so a plain "s < step" numeric check would wrongly offer steps 2-5 as
   // clickable/completed in the step indicator even though they were never
   // shown. Only grows (a step, once visited, stays "completed" even after
   // navigating back to it and forward again).
-  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(() => {
-    const draft = readRestorableLocalDraft(clientId);
-    if (draft?.visitedSteps?.length) return new Set(draft.visitedSteps);
-    return new Set([1]);
-  });
-  const stepRef = useRef<Step>(readRestorableLocalDraft(clientId)?.step ?? 1);
+  const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(() => new Set([1]));
+  const stepRef = useRef<Step>(1);
   const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
   /** User confirmed objectives (metrics continue or happy-path restore) — preview/generate use full objective map. */
   const [objectivesLockedForReport, setObjectivesLockedForReport] = useState(false);
@@ -194,7 +179,6 @@ export function useReportUploadWizard({
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
   }
 
-  const wizardDraftRestoredRef = useRef(false);
 
   useEffect(() => {
     stepRef.current = step;
@@ -312,9 +296,7 @@ export function useReportUploadWizard({
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
-  const [uploadSessionId, setUploadSessionId] = useState<string | null>(
-    () => readRestorableLocalDraft(clientId)?.uploadSessionId ?? null,
-  );
+  const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
@@ -430,7 +412,7 @@ export function useReportUploadWizard({
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(
-    () => readRestorableLocalDraft(clientId)?.dateBounds ?? null,
+    null,
   );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
@@ -455,8 +437,8 @@ export function useReportUploadWizard({
     last7: DateRangeIso;
     prev7: DateRangeIso;
     last14: DateRangeIso;
-  } | null>(() => readRestorableLocalDraft(clientId)?.weeklyOptions ?? null);
-  const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(() => readRestorableLocalDraft(clientId)?.mtdRange ?? null);
+  } | null>(null);
+  const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
   const [dateMode, setDateMode] = useState<DateMode>("last7");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -535,7 +517,6 @@ export function useReportUploadWizard({
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
-  const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
@@ -570,14 +551,13 @@ export function useReportUploadWizard({
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
     void hydrateGenerateBaseline(clientId);
-    const pendingDraft = readRestorableLocalDraft(clientId);
     const prefs = readClientWizardPreferences(clientId);
     if (prefs) {
-      if (!pendingDraft && prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
+      if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
         const coerced = coerceLaunchReportType(prefs.reportType);
         setReportType(coerced);
       }
-      if (!pendingDraft && prefs.dateMode) {
+      if (prefs.dateMode) {
         if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
           setDateMode("custom");
           setCustomStart(prefs.customStart);
@@ -984,19 +964,6 @@ export function useReportUploadWizard({
     void fetch(`/api/clients/${clientId}/wizard-draft`, { method: "DELETE" }).catch(() => undefined);
   }
 
-  const serverDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function queueServerDraftSave(snapshot: WizardDraftSnapshot) {
-    if (serverDraftSaveTimerRef.current) clearTimeout(serverDraftSaveTimerRef.current);
-    serverDraftSaveTimerRef.current = setTimeout(() => {
-      void fetch(`/api/clients/${clientId}/wizard-draft`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft: snapshot }),
-      }).catch(() => undefined);
-    }, 900);
-  }
-
   /** Populates data/comparisonData from a successful /preview response, and clears any stale generate/Drive state left over from a previous attempt. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyPreviewResult(json: any) {
@@ -1036,94 +1003,9 @@ export function useReportUploadWizard({
     }
   }
 
-  function buildWizardDraftSnapshot(): WizardDraftSnapshot | null {
-    if (!uploadSessionId) return null;
-    return {
-      version: 1,
-      savedAt: new Date().toISOString(),
-      step: stepRef.current,
-      visitedSteps: [...visitedSteps],
-      uploadSessionId,
-      platform,
-      reportType,
-      dateMode,
-      customStart,
-      customEnd,
-      selectedCampaigns: Array.from(selectedCampaigns),
-      selectedAdSets: Array.from(selectedAdSets),
-      campaigns,
-      perCampaignMetrics: [...perCampaignMetrics.entries()].map(([normalized, metrics]) => ({ normalized, metrics })),
-      campaignObjectives: [...campaignObjectives.entries()],
-      previewKind,
-      previewStatus,
-      data,
-      comparisonData,
-      historicalData,
-      dayBreakdownData,
-      mtdRange,
-      weeklyOptions,
-      dateBounds,
-      dailyRange,
-    };
-  }
-
-  function applyWizardDraft(draft: WizardDraftSnapshot) {
-    setUploadSessionId(draft.uploadSessionId);
-    if (draft.platform !== "GA4") {
-      setPlatform(coerceLaunchPlatform(draft.platform));
-    }
-    setReportType(coerceLaunchReportType(draft.reportType));
-    setDateMode(draft.dateMode);
-    setCustomStart(draft.customStart);
-    setCustomEnd(draft.customEnd);
-    setCampaigns(draft.campaigns);
-    setSelectedCampaigns(new Set(draft.selectedCampaigns));
-    setSelectedAdSets(new Set(draft.selectedAdSets));
-    setPerCampaignMetrics(new Map(draft.perCampaignMetrics.map((e) => [e.normalized, e.metrics])));
-    setCampaignObjectives(new Map(draft.campaignObjectives));
-    setPreviewKind(draft.previewKind);
-    setPreviewStatus(draft.previewStatus);
-    setData(draft.data);
-    setComparisonData(draft.comparisonData);
-    setHistoricalData(draft.historicalData);
-    setDayBreakdownData(draft.dayBreakdownData);
-    setMtdRange(draft.mtdRange);
-    if (draft.weeklyOptions !== undefined) setWeeklyOptions(draft.weeklyOptions);
-    if (draft.dateBounds !== undefined) setDateBounds(draft.dateBounds);
-    if (draft.dailyRange !== undefined) setDailyRange(draft.dailyRange);
-    stepRef.current = draft.step;
-    setStepState(draft.step);
-    setVisitedSteps(new Set(draft.visitedSteps));
-  }
-
-  async function hydrateUploadSessionDateContext(sessionId: string): Promise<boolean> {
-    const res = await fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uploadSessionId: sessionId }),
-    });
-    const json = await res.json().catch(() => null);
-    if (json?.uploadSessionExpired) {
-      handleUploadSessionExpired(json.error);
-      return false;
-    }
-    if (!json?.ok) return false;
-    setWeeklyOptions(json.weeklyOptions ?? null);
-    setDateBounds(json.dateBounds ?? null);
-    if (json.mtdRange) setMtdRange(json.mtdRange);
-    if (json.dailyRange) setDailyRange(json.dailyRange);
-    if (json.monthComparisonOptions) setMonthComparisonOptions(json.monthComparisonOptions);
-    if (json.weeklyOptions?.last7 && json.weeklyOptions?.prev7) {
-      setComparisonPeriodA(json.weeklyOptions.last7);
-      setComparisonPeriodB(json.weeklyOptions.prev7);
-    }
-    return true;
-  }
-
   useLayoutEffect(() => {
     if (resumeReportId) return;
-    const local = readRestorableLocalDraft(clientId);
-    if (local) applyWizardDraft(local);
+    clearAllWizardDrafts();
   }, [clientId, resumeReportId]);
 
   /** Legacy hook for import continue (UI no longer shows a second CTA). */
@@ -2167,72 +2049,7 @@ export function useReportUploadWizard({
 
     applyPreviewResult(json);
     setPreviewRefreshing(false);
-    const snap = buildWizardDraftSnapshot();
-    if (snap) saveWizardDraft(clientId, snap);
   }
-
-  useEffect(() => {
-    if (resumeReportId || wizardDraftRestoredRef.current) return;
-    let cancelled = false;
-    void (async () => {
-      const local = loadWizardDraft(clientId);
-      const res = await fetch(`/api/clients/${clientId}/wizard-draft`);
-      const json = await res.json().catch(() => null);
-      if (cancelled || wizardDraftRestoredRef.current) return;
-
-      const serverDraft =
-        json?.ok && json.draft && typeof json.draft === "object" ? (json.draft as WizardDraftSnapshot) : null;
-
-      let draft: WizardDraftSnapshot | null = local;
-      if (serverDraft?.uploadSessionId) {
-        const localTs = local?.savedAt ? Date.parse(local.savedAt) : 0;
-        const serverTs = Date.parse(serverDraft.savedAt);
-        if (!local || (Number.isFinite(serverTs) && serverTs >= localTs)) {
-          draft = serverDraft;
-        }
-      }
-
-      if (!draft?.uploadSessionId) return;
-      restoreWizardDraft(draft);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId, resumeReportId]);
-
-  useEffect(() => {
-    if (!uploadSessionId || step < 2 || generateStatus === "done") return;
-    const snap = buildWizardDraftSnapshot();
-    if (!snap) return;
-    saveWizardDraft(clientId, snap);
-    queueServerDraftSave(snap);
-  }, [
-    clientId,
-    uploadSessionId,
-    step,
-    visitedSteps,
-    platform,
-    reportType,
-    dateMode,
-    customStart,
-    customEnd,
-    selectedCampaigns,
-    selectedAdSets,
-    campaigns,
-    perCampaignMetrics,
-    campaignObjectives,
-    previewKind,
-    previewStatus,
-    data,
-    comparisonData,
-    historicalData,
-    dayBreakdownData,
-    mtdRange,
-    weeklyOptions,
-    dateBounds,
-    dailyRange,
-    generateStatus,
-  ]);
 
   // Google Ads has no Reporting Period section on Step 5 at all (see this
   // file's header) — dispatchAfterAnalyze already fetched its one-shot
@@ -2702,33 +2519,6 @@ export function useReportUploadWizard({
     if (href) router.push(href);
   }
 
-  function restoreWizardDraft(draft: WizardDraftSnapshot) {
-    wizardDraftRestoredRef.current = true;
-    applyWizardDraft(draft);
-    saveWizardDraft(clientId, draft);
-    setDraftRestoredBanner(true);
-    const needsDateContext = !draft.weeklyOptions && !!draft.uploadSessionId;
-    if (needsDateContext) {
-      void hydrateUploadSessionDateContext(draft.uploadSessionId).then((ok) => {
-        if (!ok) return;
-        const snap = buildWizardDraftSnapshot();
-        if (snap) saveWizardDraft(clientId, snap);
-      });
-    }
-    const needsPreview =
-      draft.step === 4 &&
-      !draft.data &&
-      !draft.comparisonData &&
-      !draft.historicalData &&
-      !draft.dayBreakdownData;
-    if (needsPreview) {
-      setPreviewStatus("loading");
-      queueMicrotask(() => {
-        void fetchPreview();
-      });
-    }
-  }
-
   const spanDays = customSpanDays();
   const needsLongRangeConfirm =
     reportType === "WEEKLY" &&
@@ -3177,8 +2967,6 @@ export function useReportUploadWizard({
     weeklyPeriodSummaryLabel,
     reportPeriodConfirmationLine,
     wizardSharePlatformLabel,
-    draftRestoredBanner,
-    setDraftRestoredBanner,
     happyPathSkippedSteps,
     wizardLeaveGuardActive,
     pendingLeaveHref,

@@ -162,21 +162,6 @@ function ReportUploadWizardBody() {
       </div>
       <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
 
-      {w.draftRestoredBanner ? (
-        <div className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-4 py-3">
-          <p className="text-[14px] leading-relaxed text-sky-100">
-            Restored your in-progress report setup (saved for this client on your account).{" "}
-            <button
-              type="button"
-              className="font-semibold text-sky-300 underline hover:no-underline"
-              onClick={() => w.setDraftRestoredBanner(false)}
-            >
-              Dismiss
-            </button>
-          </p>
-        </div>
-      ) : null}
-
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}
