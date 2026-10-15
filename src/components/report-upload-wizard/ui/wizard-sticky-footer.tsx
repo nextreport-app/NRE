@@ -11,6 +11,9 @@ export function WizardStickyFooter({
   onPrimary,
   primaryDisabled,
   primaryLoading,
+  secondaryLabel,
+  onSecondary,
+  secondaryDisabled,
   showBack = true,
   extra,
 }: {
@@ -21,6 +24,9 @@ export function WizardStickyFooter({
   onPrimary: () => void;
   primaryDisabled?: boolean;
   primaryLoading?: boolean;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  secondaryDisabled?: boolean;
   showBack?: boolean;
   extra?: ReactNode;
 }) {
@@ -50,6 +56,16 @@ export function WizardStickyFooter({
           >
             {primaryLoading ? "Loading…" : primaryLabel}
           </button>
+          {secondaryLabel && onSecondary ? (
+            <button
+              type="button"
+              onClick={onSecondary}
+              disabled={secondaryDisabled || primaryLoading}
+              className="mt-2 h-10 w-full rounded-md border border-dash-border bg-dash-card text-[14px] font-medium text-dash-ink hover:bg-dash-sidebar disabled:opacity-50"
+            >
+              {secondaryLabel}
+            </button>
+          ) : null}
         </div>
         {extra}
       </div>

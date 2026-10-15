@@ -10,6 +10,7 @@ type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
   clientId?: string;
+  troubleshooting?: boolean;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -28,7 +29,7 @@ function verifiedScopesLabel(scopes: string[] | undefined): string {
   return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
 }
 
-export function CsvVerificationPanel({ verification, refreshing, clientId }: Props) {
+export function CsvVerificationPanel({ verification, refreshing, clientId, troubleshooting }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
 
@@ -120,6 +121,13 @@ export function CsvVerificationPanel({ verification, refreshing, clientId }: Pro
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
+          <p className="text-[13px] leading-snug text-dash-ink-secondary">
+            {troubleshooting
+              ? copy.csvTroubleshooting
+              : verification.canAlignWithCsvExport
+                ? copy.csvTroubleshootHintAlign
+                : copy.csvTroubleshootHintRetry}
+          </p>
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
             <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">
