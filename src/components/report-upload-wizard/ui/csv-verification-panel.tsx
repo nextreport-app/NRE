@@ -3,14 +3,10 @@
 import { useState } from "react";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
-
 type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
   clientId?: string;
-  troubleshooting?: boolean;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -29,7 +25,7 @@ function verifiedScopesLabel(scopes: string[] | undefined): string {
   return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
 }
 
-export function CsvVerificationPanel({ verification, refreshing, clientId, troubleshooting }: Props) {
+export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
 
@@ -88,11 +84,6 @@ export function CsvVerificationPanel({ verification, refreshing, clientId, troub
     );
   }
 
-  const whatsappHint = mismatches
-    .slice(0, 3)
-    .map((c) => `${c.scope}: ${c.metric} — deck ${c.reportDisplay} vs CSV ${c.csvDisplay}`)
-    .join("; ");
-
   return (
     <div className="nre-wizard-callout-warn rounded-lg px-4 py-3.5">
       <button
@@ -121,13 +112,6 @@ export function CsvVerificationPanel({ verification, refreshing, clientId, troub
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
-          <p className="text-[13px] leading-snug text-dash-ink-secondary">
-            {troubleshooting
-              ? copy.csvTroubleshooting
-              : verification.canAlignWithCsvExport
-                ? copy.csvTroubleshootHintAlign
-                : copy.csvTroubleshootHintRetry}
-          </p>
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
             <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">
@@ -146,21 +130,6 @@ export function CsvVerificationPanel({ verification, refreshing, clientId, troub
               </div>
             </div>
           ))}
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium">
-            <SupportTicketLink
-              clientId={clientId}
-              openInNewTab
-              className="nre-wizard-callout-warn__title underline hover:no-underline"
-            />
-            <span className="text-dash-ink-muted">·</span>
-            <WhatsAppChatLink
-              className="nre-wizard-callout-warn__title underline hover:no-underline"
-              message={`Hi — my report preview doesn't match my CSV. ${whatsappHint}`}
-            >
-              Chat on WhatsApp
-            </WhatsAppChatLink>
-          </div>
         </div>
       ) : null}
     </div>

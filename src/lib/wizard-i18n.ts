@@ -17,18 +17,12 @@ const EN_UI = {
       ? "Deck preview differs from your CSV on 1 total"
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
-    "Your CSV is the reference. If deck totals differ, that's on our engine — not something you can fix in the wizard. Try Troubleshoot first (we may align result counting to your export). You can still generate for internal review; don't share with the client until totals look right.",
-  csvTroubleshoot: "Troubleshoot",
-  csvTroubleshooting: "Troubleshooting…",
-  csvTroubleshootHintAlign:
-    "We'll re-run the preview using CSV-style result counting where supported, then compare spend, results, and CPR again.",
-  csvTroubleshootHintRetry: "We'll refresh the preview and compare your CSV again.",
-  csvTroubleshootSuccess: "Totals now match your CSV.",
-  csvTroubleshootStillMismatch:
-    "Totals still differ after troubleshooting. Generate for internal review only, or contact support with the details below.",
+    "You can still generate and manually fix any mismatches in the deck. Raise a support ticket so we can fix this on our end — next time you should not see this error for the same setup.",
   generateForInternalReview: "Generate for internal review",
-  csvMismatchCtaFooter:
-    "Troubleshoot re-checks your CSV; internal review builds the deck without blocking you.",
+  confirmedPeriodWeeklyLead: "Your weekly report will cover:",
+  confirmedPeriodWeeklyWeekSuffix: "week",
+  confirmedPeriodWeeklyMtdPrefix: "MTD from",
+  confirmedPeriodWeeklyChart: "Last 30 days in a visual chart slide",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
     "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
