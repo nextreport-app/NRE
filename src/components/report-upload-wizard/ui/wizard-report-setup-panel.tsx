@@ -134,7 +134,7 @@ export function WizardReportSetupPanel({
   clientTimezone,
   onReportTypeChange,
   variant = "full",
-  allowInlineChange = false,
+  onEditSetup,
 }: {
   reportType: ReportTypeValue;
   reportTypeLabel: string;
@@ -142,13 +142,12 @@ export function WizardReportSetupPanel({
   clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
   variant?: "full" | "summary";
-  /** Generate step: expand report type cards in place instead of returning to Import. */
-  allowInlineChange?: boolean;
+  /** Generate step: jump back to Import to change report type (no duplicate picker). */
+  onEditSetup?: () => void;
 }) {
   const [moreOpen, setMoreOpen] = useState(() =>
     LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
-  const [pickerOpen, setPickerOpen] = useState(false);
   const copy = useWizardCopy();
 
   if (variant === "summary") {
@@ -159,33 +158,16 @@ export function WizardReportSetupPanel({
             <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
             <p className="text-[15px] font-semibold text-dash-ink">{reportTypeLabel}</p>
           </div>
-          {allowInlineChange ? (
+          {onEditSetup ? (
             <button
               type="button"
-              onClick={() => setPickerOpen((open) => !open)}
+              onClick={onEditSetup}
               className="text-[14px] font-medium text-dash-accent hover:underline"
-              aria-expanded={pickerOpen}
             >
-              {pickerOpen ? "Hide report types" : "Change report type →"}
+              Change on Import →
             </button>
           ) : null}
         </div>
-        {allowInlineChange && pickerOpen ? (
-          <div className="mt-4 space-y-4 border-t border-dash-border/70 pt-4">
-            <p className="text-[13px] text-dash-ink-secondary">
-              Switch type here — your upload, campaigns, and metrics stay as they are. Confirm dates below for the new
-              type.
-            </p>
-            <WizardReportTypePickerGrid
-              reportType={reportType}
-              clientTimezone={clientTimezone}
-              onReportTypeChange={onReportTypeChange}
-              moreOpen={moreOpen}
-              setMoreOpen={setMoreOpen}
-              onAfterSelect={() => setPickerOpen(false)}
-            />
-          </div>
-        ) : null}
       </div>
     );
   }
