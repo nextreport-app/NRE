@@ -64,7 +64,7 @@ const EN_STEPS = {
   heading2Google: "Select campaigns, ad groups & objectives",
   heading3: "Review metrics",
   heading4: "Generate report",
-  subtitle1: "Pick a report type, follow Download instructions for that type, then upload CSV.",
+  subtitle1: "Confirm your ad platform, pick a report type, follow CSV Download instructions, then upload.",
   subtitle2: "Choose campaigns and confirm each primary result objective.",
   subtitle3: "Metric chips are pre-selected from your CSV — tweak only if needed.",
   subtitle4: "Confirm dates and preview, then generate your deck.",

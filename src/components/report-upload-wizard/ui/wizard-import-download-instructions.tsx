@@ -126,7 +126,7 @@ export function WizardImportDownloadInstructions({
           onClick={toggleOpen}
         >
           <span className="flex min-w-0 flex-wrap items-center text-[14px] font-semibold text-dash-ink">
-            Download instructions
+            CSV Download instructions
             {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
           </span>
           <ChevronDownIcon

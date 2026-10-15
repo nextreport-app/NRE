@@ -111,14 +111,6 @@ export function WizardImportStep() {
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-      <WizardReportSetupPanel
-        reportType={reportType}
-        reportTypeLabel={reportTypeLabel()}
-        platform={setupPlatform}
-        clientTimezone={clientTimezone}
-        onReportTypeChange={handleReportTypeChange}
-      />
-
       {hasSavedPlatformPreference && selectedPlatformCard ? (
         <>
           <WizardPlatformCompactBar
@@ -166,6 +158,14 @@ export function WizardImportStep() {
           />
         </>
       )}
+
+      <WizardReportSetupPanel
+        reportType={reportType}
+        reportTypeLabel={reportTypeLabel()}
+        platform={setupPlatform}
+        clientTimezone={clientTimezone}
+        onReportTypeChange={handleReportTypeChange}
+      />
 
       {selectedPlatformCard && isPlatformBeta(selectedPlatformCard) ? (
         <PlatformBetaNotice platform={selectedPlatformCard} />
