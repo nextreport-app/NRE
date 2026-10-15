@@ -12,16 +12,14 @@ type Step = 1 | 2 | 3 | 4;
 const EN_UI = {
   reportingFor: "Reporting for",
   changeClient: "Change client →",
-  csvMismatchBlocked:
-    "Generate stays off until report totals match your CSV. That usually means a setup issue we can fix together — not a bad file.",
-  csvMismatchStepObjectives:
-    "1. Go to Campaigns and check each campaign’s objective dropdown matches Ads Manager (Results column for that campaign).",
-  csvMismatchStepExport:
-    "2. If objectives look right, re-export the CSV (day breakdown, same dates and campaigns) and upload again on Import.",
-  csvMismatchStepSupport:
-    "3. Still stuck? Send us the CSV via support or WhatsApp — this may be a product bug.",
-  csvMismatchReviewObjectives: "Review campaign objectives",
-  generateBlockedCsvMismatch: "Resolve CSV check above",
+  csvMismatchTitle: (count: number) =>
+    count === 1
+      ? "Deck preview differs from your CSV on 1 total"
+      : `Deck preview differs from your CSV on ${count} totals`,
+  csvMismatchBody:
+    "Your CSV is the file you exported from Ads Manager — we treat those numbers as the reference. If the deck preview below doesn't match, that's on our calculation engine, not something you can fix in the wizard. You can still generate; if the deck looks wrong, send us a ticket or WhatsApp message and we'll fix it on our side.",
+  csvMismatchFootnote:
+    "Include this screen (or the same CSV) when you contact us so we can align the engine with your export.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",

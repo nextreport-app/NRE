@@ -178,13 +178,10 @@ export function WizardGenerateStep() {
   if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
-  const csvVerificationBlocksGenerate =
-    csvVerification?.status === "mismatch" && usesFullAdWizard(platform);
   const generateCtaDisabled =
     previewStatus === "invalid" ||
     (previewStatus !== "error" && !generateStepPreviewReady) ||
     reportBrandingBlocksGenerate ||
-    csvVerificationBlocksGenerate ||
     previewRefreshing;
   const generateCtaLabel =
     generateStatus === "loading"
@@ -201,9 +198,7 @@ export function WizardGenerateStep() {
                 : previewStatus === "idle"
                   ? "Choose dates above"
                   : "Loading report options…"
-            : csvVerificationBlocksGenerate
-              ? copy.generateBlockedCsvMismatch
-              : copy.generateReport;
+            : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
@@ -530,7 +525,6 @@ export function WizardGenerateStep() {
                   verification={csvVerification}
                   refreshing={previewRefreshing}
                   clientId={clientId}
-                  onReviewCampaignObjectives={() => setStep(2)}
                 />
               ) : null}
 
