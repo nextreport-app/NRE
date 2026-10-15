@@ -16,7 +16,6 @@ import {
   isSpecificFieldError,
 } from "../utils";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
-import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
@@ -79,10 +78,8 @@ export function WizardGenerateStep() {
     handleCopyLink,
     handleCopyShareLink,
     handleGenerate,
-    handleGenerateForInternalReview,
     handleGenerateStepPrimary,
     handleGenerateAnother,
-    csvTroubleshooting,
     generatedWithCsvMismatch,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
@@ -146,6 +143,7 @@ export function WizardGenerateStep() {
     weeklyPeriodSummaryLabel,
     weeklyRangeIso,
     reportPeriodConfirmationLine,
+    reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
     happyPathSkippedSteps,
@@ -164,6 +162,7 @@ export function WizardGenerateStep() {
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
+  const periodConfirmationBullets = reportPeriodConfirmationBullets();
   const slideCount = estimatedSlideCount();
 
   const weeklyPeriodNeedsAttention =
@@ -189,16 +188,13 @@ export function WizardGenerateStep() {
     previewStatus === "invalid" ||
     (previewStatus !== "error" && !generateStepPreviewReady) ||
     reportBrandingBlocksGenerate ||
-    previewRefreshing ||
-    csvTroubleshooting;
+    previewRefreshing;
   const generateCtaLabel =
     generateStatus === "loading"
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
-        : csvTroubleshooting
-          ? copy.csvTroubleshooting
-          : previewStatus === "loading" || previewRefreshing
+        : previewStatus === "loading" || previewRefreshing
           ? "Loading report options…"
           : !generateStepPreviewReady
             ? previewStatus === "invalid"
@@ -209,14 +205,8 @@ export function WizardGenerateStep() {
                   ? "Choose dates above"
                   : "Loading report options…"
             : csvMismatchActive
-              ? copy.csvTroubleshoot
+              ? copy.generateForInternalReview
               : copy.generateReport;
-  const internalReviewCtaDisabled =
-    previewStatus === "invalid" ||
-    !generateStepPreviewReady ||
-    reportBrandingBlocksGenerate ||
-    previewRefreshing ||
-    csvTroubleshooting;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
 
@@ -224,16 +214,6 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              <WizardReportSetupPanel
-                variant="summary"
-                onEditSetup={() => setStep(1)}
-                reportType={reportType}
-                reportTypeLabel={reportTypeLabel()}
-                platform={platform}
-                clientTimezone={clientTimezone}
-                onReportTypeChange={w.handleReportTypeChange}
-              />
-
             {happyPathSkippedSteps ? (
               <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
                 <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
@@ -512,12 +492,25 @@ export function WizardGenerateStep() {
           )}
 
 
-            {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
+            {(periodConfirmation || periodConfirmationBullets) &&
+            generateStepPreviewReady &&
+            generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="nre-wizard-callout-success__label">Confirmed period</p>
-                    <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                    {periodConfirmationBullets ? (
+                      <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
+                        <p>{copy.confirmedPeriodWeeklyLead}</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] font-normal">
+                          {periodConfirmationBullets.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : periodConfirmation ? (
+                      <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                    ) : null}
                   </div>
                   {reportType === "WEEKLY" && !showWeeklyPeriodEditor ? (
                     <button
@@ -539,12 +532,7 @@ export function WizardGenerateStep() {
                 previewKind === "dayBreakdown") &&
               generateStepPreviewReady &&
               generateStatus === "idle" ? (
-                <CsvVerificationPanel
-                  verification={csvVerification}
-                  refreshing={previewRefreshing}
-                  clientId={clientId}
-                  troubleshooting={csvTroubleshooting}
-                />
+                <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
               ) : null}
 
               {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
@@ -890,29 +878,13 @@ export function WizardGenerateStep() {
                 <div className="hidden md:block">
                   <button
                     type="button"
-                    onClick={csvMismatchActive ? handleGenerateStepPrimary : handleGenerate}
+                    onClick={handleGenerateStepPrimary}
                     disabled={generateCtaDisabled}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
                     {generateCtaLabel}
                   </button>
-                  {csvMismatchActive ? (
-                    <button
-                      type="button"
-                      onClick={handleGenerateForInternalReview}
-                      disabled={internalReviewCtaDisabled}
-                      className="mt-2 h-11 w-full rounded-md border border-dash-border bg-dash-card text-[15px] font-medium text-dash-ink hover:bg-dash-sidebar disabled:opacity-50"
-                    >
-                      {copy.generateForInternalReview}
-                    </button>
-                  ) : null}
-                  {csvMismatchActive ? (
-                    <p className="mt-2 text-center text-[13px] leading-snug text-dash-ink-secondary">
-                      {copy.csvMismatchCtaFooter}
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
-                  )}
+                  <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
                 </div>
               )}
               {generateStatus === "loading" && (
@@ -941,15 +913,6 @@ export function WizardGenerateStep() {
             </div>
           )}
 
-          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-            Have a question or an issue with this report?{" "}
-            <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
-            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-            .
-          </p>
-
-          <WizardFeedbackLink />
-
           {showGenerateFooter ? (
             <WizardStickyFooter
               stepLabel={
@@ -966,13 +929,21 @@ export function WizardGenerateStep() {
               primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
               primaryLoading={
                 generateStatus === "loading" ||
-                csvTroubleshooting ||
                 (previewStatus === "loading" && generateStatus === "idle")
               }
-              secondaryLabel={csvMismatchActive ? copy.generateForInternalReview : undefined}
-              onSecondary={csvMismatchActive ? handleGenerateForInternalReview : undefined}
-              secondaryDisabled={internalReviewCtaDisabled}
             />
+          ) : null}
+
+          {generateStatus !== "done" ? (
+            <div className="mt-10 space-y-4 border-t border-dash-border pt-8">
+              <p className="text-center text-[14px] leading-relaxed text-dash-ink-secondary">
+                Have a question or an issue with this report?{" "}
+                <SupportTicketLink clientId={clientId} openInNewTab className="text-dash-accent" /> or{" "}
+                <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+                .
+              </p>
+              <WizardFeedbackLink />
+            </div>
           ) : null}
         </div>
 

@@ -129,7 +129,7 @@ export function useReportUploadWizard({
   ga4Connected = false,
   showTikTokOption = true,
   clientMonthlyBudget: initialClientMonthlyBudget = null,
-  clientShowBudgetPacingOnCover = false,
+  clientShowBudgetPacingOnCover: _clientShowBudgetPacingOnCover = false,
   initialAgencyName = null,
   initialReportBrandingMode = "nextreport",
   initialShowAgencyNameOnCover = true,
@@ -155,7 +155,6 @@ export function useReportUploadWizard({
   const [previewRefreshing, setPreviewRefreshing] = useState(false);
   const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
   const [csvAlignResults, setCsvAlignResults] = useState(false);
-  const [csvTroubleshooting, setCsvTroubleshooting] = useState(false);
   const [generatedWithCsvMismatch, setGeneratedWithCsvMismatch] = useState(false);
   const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -492,7 +491,7 @@ export function useReportUploadWizard({
   const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
   /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
   const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
-  const [showBudgetOnCover, setShowBudgetOnCover] = useState(clientShowBudgetPacingOnCover ?? false);
+  const [showBudgetOnCover, setShowBudgetOnCover] = useState(false);
   const [budgetToggleSaving, setBudgetToggleSaving] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
@@ -2498,7 +2497,8 @@ export function useReportUploadWizard({
     setCustomRangeError(null);
     setLongRangeConfirmed(false);
     setReportType("WEEKLY");
-    setShowBudgetOnCover(clientShowBudgetPacingOnCover ?? false);
+    const prefs = readClientWizardPreferences(clientId);
+    setShowBudgetOnCover(typeof prefs?.showBudgetOnCover === "boolean" ? prefs.showBudgetOnCover : false);
     setComparisonPreset("thisWeek");
     setComparisonPeriodA(null);
     setComparisonPeriodB(null);
@@ -2573,6 +2573,9 @@ export function useReportUploadWizard({
 
   /** Confirmed date line shown before Generate — makes the reporting window explicit. */
   function reportPeriodConfirmationLine(): string | null {
+    if (reportType === "WEEKLY" && weeklyRangeIso && mtdRange) {
+      return null;
+    }
     if (previewKind === "comparison" && comparisonData) {
       return `Your comparison report will cover Period A (${comparisonData.periodALabel}) vs Period B (${comparisonData.periodBLabel}).`;
     }
@@ -2581,13 +2584,6 @@ export function useReportUploadWizard({
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
       return `Your day-by-day report will cover ${dayBreakdownData.rangeLabel}.`;
-    }
-    if (reportType === "WEEKLY" && weeklyRangeIso && mtdRange) {
-      const base = `Your weekly report will cover ${formatIsoRange(weeklyRangeIso)} with MTD from ${formatIsoRange(mtdRange)}`;
-      if (previewKind === "normal" && data?.chart) {
-        return `${base} and Last 30 days in a visual chart slide.`;
-      }
-      return `${base}.`;
     }
     if (reportType === "MONTHLY" && mtdRange) {
       return `Your monthly report will cover ${formatIsoRange(mtdRange)}.`;
@@ -2599,6 +2595,20 @@ export function useReportUploadWizard({
       return `Your day breakdown will cover ${formatIsoRange(weeklyRangeIso)}.`;
     }
     return null;
+  }
+
+  /** Weekly Generate step — bullet list for confirmed period (see wizard-i18n lead line). */
+  function reportPeriodConfirmationBullets(): string[] | null {
+    if (reportType !== "WEEKLY" || !weeklyRangeIso || !mtdRange) return null;
+    const copy = wizardCopy(locale);
+    const items = [
+      `${formatIsoRange(weeklyRangeIso)} ${copy.confirmedPeriodWeeklyWeekSuffix}`,
+      `${copy.confirmedPeriodWeeklyMtdPrefix} ${formatIsoRange(mtdRange)}`,
+    ];
+    if (previewKind === "normal" && data?.chart) {
+      items.push(copy.confirmedPeriodWeeklyChart);
+    }
+    return items;
   }
 
   function wizardSharePlatformLabel(): string {
@@ -2719,43 +2729,9 @@ export function useReportUploadWizard({
     void fetchPreview();
   }
 
-  async function handleCsvTroubleshoot() {
-    if (!mtdFile && !uploadSessionId) return;
-    if (csvTroubleshooting || previewRefreshing) return;
-    const copy = wizardCopy(locale);
-    setCsvTroubleshooting(true);
-    const useAlign = Boolean(csvVerification?.canAlignWithCsvExport);
-    if (useAlign) {
-      setCsvAlignResults(true);
-    }
-    try {
-      const result = await fetchPreview({ csvAlignResults: useAlign || csvAlignResults });
-      if (!result) return;
-      if (result.status === "ok") {
-        showToast(copy.csvTroubleshootSuccess);
-      } else if (result.status === "mismatch") {
-        showToast(copy.csvTroubleshootStillMismatch, "error");
-      }
-    } finally {
-      setCsvTroubleshooting(false);
-    }
-  }
-
-  function handleGenerateForInternalReview() {
-    void handleGenerate();
-  }
-
   function handleGenerateStepPrimary() {
     if (previewStatus === "error") {
       retryPreview();
-      return;
-    }
-    if (
-      generateStepPreviewReady &&
-      generateStatus === "idle" &&
-      csvVerification?.status === "mismatch"
-    ) {
-      void handleCsvTroubleshoot();
       return;
     }
     void handleGenerate();
@@ -2977,11 +2953,8 @@ export function useReportUploadWizard({
     generateStatus,
     generateMessage,
     handleGenerate,
-    handleGenerateForInternalReview,
     handleGenerateStepPrimary,
-    handleCsvTroubleshoot,
     retryPreview,
-    csvTroubleshooting,
     generatedWithCsvMismatch,
     reportId,
     downloadUrl,
@@ -3017,6 +2990,7 @@ export function useReportUploadWizard({
     reportTypeLabel,
     weeklyPeriodSummaryLabel,
     reportPeriodConfirmationLine,
+    reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     happyPathSkippedSteps,
     wizardLeaveGuardActive,
