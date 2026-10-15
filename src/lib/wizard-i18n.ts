@@ -12,13 +12,6 @@ type Step = 1 | 2 | 3 | 4;
 const EN_UI = {
   reportingFor: "Reporting for",
   changeClient: "Change client →",
-  switchClient: "Switch client",
-  switchClientHint: "Click the client name to pick another account — your in-progress setup stays saved per client.",
-  switchClientList: "Switch client",
-  searchClients: "Search clients…",
-  noMatchingClients: "No clients match your search.",
-  currentClientBadge: "Current",
-  allClients: "All clients →",
   csvMismatchBlocked:
     "Generate stays off until report totals match your CSV. That usually means a setup issue we can fix together — not a bad file.",
   csvMismatchStepObjectives:
