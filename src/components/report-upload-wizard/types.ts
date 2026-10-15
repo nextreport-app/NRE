@@ -68,16 +68,9 @@ export type ApiSyncMeta = {
   metaAdAccountId?: string;
 };
 
-export type WizardClientListItem = {
-  id: string;
-  accountName: string;
-};
-
 export interface ReportUploadWizardProps {
   clientId: string;
   clientName: string;
-  /** All clients for the signed-in user — powers in-wizard client switcher. */
-  wizardClients?: WizardClientListItem[];
   clientTimezone: string;
   currencySymbol: string;
   hasGoogleDriveConnected: boolean;

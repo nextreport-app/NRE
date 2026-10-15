@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { getAdWizardFlow } from "@/lib/nre/platform-labels";
 import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
@@ -16,7 +16,6 @@ import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
 import { WizardGenerateStep } from "./steps/generate-step";
-import { WizardClientSwitcher } from "./ui/wizard-client-switcher";
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
   return (
@@ -26,9 +25,33 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
   );
 }
 
+function WizardClientLine({
+  clientName,
+  onChangeClientClick,
+}: {
+  clientName: string;
+  onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  const copy = useWizardCopy();
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-dash-card px-4 py-3.5 shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">{copy.reportingFor}</span>
+      <span className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#fbd38d] sm:text-[26px]" title={clientName}>
+        {clientName}
+      </span>
+      <Link
+        href="/clients"
+        onClick={onChangeClientClick}
+        className="shrink-0 text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
+      >
+        {copy.changeClient}
+      </Link>
+    </div>
+  );
+}
+
 function ReportUploadWizardBody() {
   const w = useWizardContext();
-  const router = useRouter();
   const { locale } = useSiteTheme();
   const copy = useWizardCopy();
   const wizardTopRef = useRef<HTMLDivElement>(null);
@@ -71,41 +94,21 @@ function ReportUploadWizardBody() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [w.wizardLeaveGuardActive]);
 
-  const guardedClientsNav = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const guardedClientChange = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!w.wizardLeaveGuardActive) return;
     event.preventDefault();
-    w.requestWizardLeave(href);
+    w.requestWizardLeave("/clients");
   };
 
-  const { wizardLeaveGuardActive, requestWizardLeave } = w;
-
-  const switchWizardClient = useCallback(
-    (nextClientId: string) => {
-      const href = `/clients/${nextClientId}/reports/new`;
-      if (wizardLeaveGuardActive) {
-        requestWizardLeave(href);
-        return;
-      }
-      router.push(href);
-    },
-    [router, wizardLeaveGuardActive, requestWizardLeave],
-  );
-
-  const clientSwitcher = (
-    <WizardClientSwitcher
-      clientId={w.clientId}
-      clientName={w.clientName}
-      clients={w.wizardClients}
-      onSwitchClient={switchWizardClient}
-      onAllClientsClick={(event) => guardedClientsNav(event, "/clients")}
-    />
+  const clientLine = (
+    <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
   );
 
   if (w.resumeBootstrapping) {
     return (
       <div className="space-y-6">
         <div>
-          {clientSwitcher}
+          {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
           <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
@@ -117,7 +120,7 @@ function ReportUploadWizardBody() {
     return (
       <div className="space-y-6">
         <div>
-          {clientSwitcher}
+          {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Google Analytics</h1>
           <p className="text-[14px] text-dash-ink-secondary">Sessions, channels, landing pages, and breakdown slides.</p>
         </div>
@@ -147,7 +150,7 @@ function ReportUploadWizardBody() {
   return (
     <div className="space-y-6">
       <div ref={wizardTopRef}>
-        {clientSwitcher}
+        {clientLine}
         <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
           {w.step === 4
             ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
