@@ -65,17 +65,30 @@ describe("buildCampaignShortLabels", () => {
   it("keeps a long name untruncated when it fits the split-panel bar label column", () => {
     const cols = resultBarColumns(true);
     const layout = resultBarLayout(1, false);
-    const labelWidthPt = cols.trackW - 96;
+    const labelWidthPt = cols.trackW;
     const short = "Website Retargeting";
     const fitted = fitCampaignNameForSingleBarLine(short, 1, labelWidthPt, layout.nameSizePt);
     expect(fitted).toBe(short);
   });
 
-  it("truncates Kaizen-style names before they would wrap behind the bar (regression)", () => {
+  it("shows more of Legacy-style campaign names with the full bar track width", () => {
+    const cols = resultBarColumns(true);
+    const layout = resultBarLayout(2, false);
+    const narrowWidth = cols.trackW - 96;
+    const fullWidth = cols.trackW;
+    const name = "LegacyLifeProductions_WebsiteLeads_Remarketing";
+    const narrow = fitCampaignNameForSingleBarLine(name, 1, narrowWidth, layout.nameSizePt);
+    const wide = fitCampaignNameForSingleBarLine(name, 1, fullWidth, layout.nameSizePt);
+    expect(wide.length).toBeGreaterThan(narrow.length);
+    expect(estimateTextWidthPt(`1. ${wide}`, layout.nameSizePt)).toBeLessThanOrEqual(fullWidth);
+  });
+
+  it("truncates extremely long names before they would wrap behind the bar (regression)", () => {
     const cols = resultBarColumns(true);
     const layout = resultBarLayout(1, false);
-    const labelWidthPt = cols.trackW - 96;
-    const longName = "New Leads campaign_Kaizen Homes - Website";
+    const labelWidthPt = cols.trackW;
+    const longName =
+      "New Leads campaign_Kaizen Homes - Website Performance Retargeting Broad Audience Test";
     const fitted = fitCampaignNameForSingleBarLine(longName, 1, labelWidthPt, layout.nameSizePt);
     expect(fitted.length).toBeLessThan(longName.length);
     expect(fitted).toMatch(/…$/);

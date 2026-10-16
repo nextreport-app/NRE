@@ -247,6 +247,30 @@ export function setShapeNormAutofit(xml: string, locatorText: string): string {
   return xml.slice(0, start) + newSp + xml.slice(end);
 }
 
+/** Sets wrap="none" | wrap="square" on the text body of the shape containing `locatorText`. */
+export function setShapeWrap(xml: string, locatorText: string, wrap: "none" | "square"): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  const sp = xml.slice(start, end);
+  const newSp = sp.includes('wrap="')
+    ? sp.replace(/wrap="(?:none|square)"/, `wrap="${wrap}"`)
+    : sp.replace("<a:bodyPr", `<a:bodyPr wrap="${wrap}"`);
+  return xml.slice(0, start) + newSp + xml.slice(end);
+}
+
+/** Widens or narrows a located shape's horizontal extent (cx, EMU). */
+export function setShapeExtCx(xml: string, locatorText: string, cx: number): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  const sp = xml.slice(start, end);
+  const newSp = sp.replace(/(<a:ext cx=")\d+(" cy=")/, `$1${Math.round(cx)}$2`);
+  return xml.slice(0, start) + newSp + xml.slice(end);
+}
+
 /**
  * Clones the `<p:sp>` shape whose sole text run is `sourceTag` (a
  * {{TAG}} placeholder), retargets that run to `newTag`, repositions it to

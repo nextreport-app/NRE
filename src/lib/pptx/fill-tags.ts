@@ -31,8 +31,10 @@ import {
   replaceLiteralText,
   replaceTagRun,
   replaceTagRunWithSuffixes,
+  setShapeExtCx,
   setShapeNormAutofit,
   setShapeOffsetY,
+  setShapeWrap,
   type StyleOverride,
 } from "./ooxml";
 import { textBox } from "./shapes";
@@ -168,6 +170,22 @@ const COVER_ROW_GAP_EMU = 32999; // the template's own existing ACCOUNT_NAME-to-
 const PREPARED_BY_SHIFT_UP_EMU = 310000;
 const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_HEIGHT_EMU + COVER_ROW_GAP_EMU;
 
+const COVER_SLIDE_WIDTH_EMU = 12192000;
+const COVER_BUDGET_SHAPE_X_EMU = 5892000;
+const COVER_BUDGET_RIGHT_MARGIN_EMU = 80000;
+const COVER_BUDGET_MAX_CX_EMU = COVER_SLIDE_WIDTH_EMU - COVER_BUDGET_SHAPE_X_EMU - COVER_BUDGET_RIGHT_MARGIN_EMU;
+
+function ensureCoverBudgetSingleLine(xml: string, budgetSummary: string): string {
+  const text = budgetSummary.trim();
+  if (!text) return xml;
+  const locator = text.length > 32 ? text.slice(0, 32) : text;
+  if (!xml.includes(locator)) return xml;
+  let out = setShapeWrap(xml, locator, "none");
+  out = setShapeExtCx(out, locator, COVER_BUDGET_MAX_CX_EMU);
+  out = setShapeNormAutofit(out, locator);
+  return out;
+}
+
 /**
  * PRESENTED_TO's actual top y at render time — shifted up when an agency
  * name is present (see buildCoverSlideXml above). Exported so other
@@ -271,7 +289,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
 
   const reportTitle = resolveCoverReportTitle(options.reportTitle, options.reportType);
 
-  return fillTags(
+  const filled = fillTags(
     xml,
     {
       ACCOUNT_NAME: cover.accountName,
@@ -304,6 +322,10 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate) },
     },
   );
+
+  return cover.budgetSummary?.trim()
+    ? ensureCoverBudgetSingleLine(filled, cover.budgetSummary)
+    : filled;
 }
 
 export interface AiCopy {
