@@ -41,9 +41,8 @@ export function SiteChromeFooter() {
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
             <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-              <Link href="/" className="inline-flex items-center gap-2">
-                <img src="/logo.png" alt="NextReport logo" className="h-8 w-8" />
-                <span className="text-base font-bold text-ink">NextReport</span>
+              <Link href="/" className="inline-block">
+                <span className="text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">NextReport</span>
               </Link>
               <p className="mt-3 text-sm leading-relaxed text-ink-muted">{marketing.brandTagline}</p>
             </div>

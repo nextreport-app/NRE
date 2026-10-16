@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import { SocialProofCounter } from "@/components/home/social-proof-counter";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
@@ -98,8 +97,6 @@ export function HeroSection({
             </Link>
           </div>
 
-          <CtaTrustBadges className="mt-4" />
-          {!loggedIn && <p className="mt-3 text-xs text-ink-muted">{marketing.heroNoCard}</p>}
           <SocialProofCounter initial={socialProofInitial} />
         </div>
 
