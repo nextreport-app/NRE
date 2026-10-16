@@ -51,8 +51,20 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-ink sm:text-[3rem]">
-            {marketing.heroHeadline}
+            {marketing.heroHeadlineAccent && marketing.heroHeadlineBefore !== undefined ? (
+              <>
+                {marketing.heroHeadlineBefore}
+                <span className="text-accent-orange">{marketing.heroHeadlineAccent}</span>
+                {marketing.heroHeadlineAfter}
+              </>
+            ) : (
+              marketing.heroHeadline
+            )}
           </h1>
+
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-secondary sm:text-lg">
+            {marketing.heroSubtext}
+          </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
             {loggedIn ? (

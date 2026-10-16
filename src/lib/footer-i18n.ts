@@ -16,7 +16,7 @@ const EN_LINKS: Record<string, string> = {
   "/pricing": "Pricing",
   "/about": "About Us",
   "/book-demo": "Book a Demo",
-  "/contact": "Contact",
+  "/contact": "Contact us",
   "/feedback": "Feedback",
   "/refer": "Refer an Agency",
   "/privacy": "Privacy Policy",
