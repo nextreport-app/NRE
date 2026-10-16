@@ -36,10 +36,10 @@ export const REFERRAL_PROGRAM_LINE =
 export const WHATSAPP_COMMUNITY_LINE =
   "Indian agencies: chat with us on WhatsApp for setup help, reporting tips, and early feature news.";
 
-/** Anonymized founder case study for About + launch story. */
-export const FOUNDER_CASE_STUDY = {
-  headline: "From the founder’s desk (anonymized)",
+/** About page — proof block (team voice, no individual backstory). */
+export const ABOUT_OPERATIONS_PROOF = {
+  headline: "Built with agency operators in the loop",
   body:
-    "Remote Meta specialist at a US agency — 25+ ad accounts, 5–6 client decks per day. Manual PPT updates took about 20–30 minutes each (~2–3 hours daily). First internal runs with NextReport cut that to under 5 minutes per report for standard weekly decks.",
-  stats: ["~22 min saved per report", "6+ clients / day reporting load", "US agency workflow, built in India"],
+    "We are a small product team focused on one job: turn Meta Ads Manager exports into client-ready decks without rebuilding slides by hand. Every release is checked against real anonymized exports and automated regression tests so spend, results, and cost-per-result stay aligned with Ads Manager.",
+  stats: ["Typical generate under 2 minutes", "CSV reconciliation in the wizard", "White-label decks, not client logins"],
 } as const;
