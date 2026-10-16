@@ -9,8 +9,7 @@ export function TryNextReportCtaSection({ loggedIn }: { loggedIn: boolean }) {
     marketing.tryCtaHeadlineAccent && marketing.tryCtaHeadlineBefore !== undefined;
 
   return (
-    <section className="nre-bottom-cta border-t border-navy-border bg-navy-panel px-6 py-20 text-center sm:py-24">
-      <div className="relative mx-auto max-w-3xl">
+    <section className="nre-bottom-cta border-t border-navy-border bg-navy-panel px-6 py-20 text-center">
       <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-4xl">
         {hasSplitHeadline ? (
           <>
@@ -36,7 +35,6 @@ export function TryNextReportCtaSection({ loggedIn }: { loggedIn: boolean }) {
       {marketing.tryCtaFinePrint ? (
         <p className="mx-auto mt-4 max-w-md text-xs text-ink-muted">{marketing.tryCtaFinePrint}</p>
       ) : null}
-      </div>
     </section>
   );
 }
