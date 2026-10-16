@@ -222,23 +222,6 @@ function reportPeriodResultsFromSlides(report: ReportData, resultLabel: string):
     .reduce((s, slide) => s + parseCellNum(slide.metrics.results), 0);
 }
 
-/** Results-weighted average CPR across weekly campaign slides (what clients read per slide). */
-function blendedCprFromSlides(report: ReportData, resultLabel: string): number {
-  let totalResults = 0;
-  let weighted = 0;
-  report.campaignSlides
-    .filter((slide) => slide.resultLabel === resultLabel)
-    .forEach((slide) => {
-      const results = parseCellNum(slide.metrics.results);
-      const cpr = parseCellNum(slide.metrics.cpr);
-      if (results > 0 && cpr > 0) {
-        totalResults += results;
-        weighted += cpr * results;
-      }
-    });
-  return totalResults > 0 ? weighted / totalResults : 0;
-}
-
 function isNonAdditiveReachStyleResult(resultLabel: string): boolean {
   const result = resultLabel.toUpperCase();
   return result === "REACH" || result.includes("IMPRESSION") || result.includes("RECALL");
@@ -591,19 +574,12 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     );
     const reportWeeklySpend = reportPeriodSpendFromSlides(report);
     const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
-    const blendedSlideCpr = blendedCprFromSlides(report, resultLabel);
     const reportWeeklyCpr =
-      blendedSlideCpr > 0
-        ? blendedSlideCpr
-        : reportWeeklyResults > 0 && reportWeeklySpend > 0
-          ? reportWeeklySpend / reportWeeklyResults
-          : 0;
+      reportWeeklyResults > 0 && reportWeeklySpend > 0 ? reportWeeklySpend / reportWeeklyResults : 0;
     const slideCpr =
-      blendedSlideCpr > 0
-        ? fmtCurrency(blendedSlideCpr, currencySymbol)
-        : reportWeeklyResults > 0 && reportWeeklySpend > 0
-          ? fmtCurrency(reportWeeklyCpr, currencySymbol)
-          : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+      reportWeeklyCpr > 0
+        ? fmtCurrency(reportWeeklyCpr, currencySymbol)
+        : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
     const csvWeeklyCpr =
       csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
     const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";

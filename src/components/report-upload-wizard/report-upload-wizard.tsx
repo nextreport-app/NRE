@@ -104,7 +104,7 @@ function ReportUploadWizardBody() {
     <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
   );
 
-  if (w.resumeBootstrapping) {
+  if (w.resumeBootstrapping || w.wizardDraftBootstrapping) {
     return (
       <div className="space-y-6">
         <div>

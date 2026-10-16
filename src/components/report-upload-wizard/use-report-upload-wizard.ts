@@ -99,7 +99,18 @@ import {
   persistGenerateBaselineToServer,
   readGenerateBaselineForHappyPath,
 } from "./wizard-baseline-sync";
-import { clearWizardDraft } from "@/lib/nre/wizard-draft";
+import {
+  clearWizardDraft,
+  isWizardServerDraftExpired,
+  loadWizardDraft,
+  parseWizardDraftSnapshot,
+  saveWizardDraft,
+} from "@/lib/nre/wizard-draft";
+import {
+  buildWizardDraftSnapshot,
+  campaignObjectivesFromDraft,
+  perCampaignMetricsFromDraft,
+} from "./wizard-draft-sync";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import type { ReportBrandingMode } from "@/lib/report-branding";
 import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
@@ -524,6 +535,16 @@ export function useReportUploadWizard({
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
+  const [wizardDraftBootstrapping, setWizardDraftBootstrapping] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const draft = loadWizardDraft(clientId);
+    return Boolean(
+      draft && draft.step >= 2 && draft.uploadSessionId && !isWizardServerDraftExpired(draft),
+    );
+  });
+  const draftRestoringRef = useRef(false);
+  const draftRestorePreviewPendingRef = useRef(false);
+  const draftPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
@@ -897,6 +918,230 @@ export function useReportUploadWizard({
     };
   }, [clientId, resumeReportId, router, showToast]);
 
+  useEffect(() => {
+    if (resumeReportId) return;
+
+    let cancelled = false;
+
+    async function bootstrapWizardDraft() {
+      let draft = loadWizardDraft(clientId);
+      if (!draft) {
+        try {
+          const res = await fetch(`/api/clients/${clientId}/wizard-draft`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.draft && typeof json.draft === "object") {
+              draft = parseWizardDraftSnapshot(JSON.stringify(json.draft));
+            }
+          }
+        } catch {
+          /* offline / transient */
+        }
+      }
+
+      if (cancelled || !draft || isWizardServerDraftExpired(draft)) {
+        if (draft && isWizardServerDraftExpired(draft)) clearWizardDraft(clientId);
+        return;
+      }
+      if (draft.step < 2 || !draft.uploadSessionId) return;
+
+      setWizardDraftBootstrapping(true);
+      draftRestoringRef.current = true;
+
+      try {
+        const ctxRes = await fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uploadSessionId: draft.uploadSessionId }),
+        });
+        const ctx = await ctxRes.json().catch(() => null);
+        if (cancelled) return;
+
+        if (!ctx?.ok || ctx.uploadSessionExpired) {
+          handleUploadSessionExpired(ctx?.error);
+          stepRef.current = 1;
+          setStepState(1);
+          setVisitedSteps(new Set([1]));
+          return;
+        }
+
+        setUploadSessionId(draft.uploadSessionId);
+        const platformChoice: WizardPlatformChoice =
+          draft.platform === "GOOGLE" || draft.platform === "TIKTOK" ? draft.platform : "META";
+        setPlatform(platformChoice);
+        setSelectedPlatformCard(platformChoice);
+        setPlatformPickerExpanded(false);
+        setHasSavedPlatformPreference(true);
+        setReportType(draft.reportType as ReportTypeValue);
+        setDateMode(draft.dateMode);
+        setCustomStart(draft.customStart);
+        setCustomEnd(draft.customEnd);
+        setCampaigns(draft.campaigns);
+        setSelectedCampaigns(
+          new Set(draft.selectedCampaigns.filter((name) => draft!.campaigns.includes(name))),
+        );
+        setSelectedAdSets(new Set(draft.selectedAdSets));
+        setPerCampaignMetrics(perCampaignMetricsFromDraft(draft.perCampaignMetrics));
+        setCampaignObjectives(campaignObjectivesFromDraft(draft.campaignObjectives));
+        setWeeklyOptions(ctx.weeklyOptions ?? draft.weeklyOptions ?? null);
+        setDateBounds(ctx.dateBounds ?? draft.dateBounds ?? null);
+        setMtdRange(ctx.mtdRange ?? draft.mtdRange ?? null);
+        setMonthComparisonOptions(ctx.monthComparisonOptions ?? null);
+        setDailyRange(ctx.dailyRange ?? draft.dailyRange ?? null);
+        const last7 = ctx.weeklyOptions?.last7 ?? draft.weeklyOptions?.last7 ?? null;
+        const prev7 = ctx.weeklyOptions?.prev7 ?? draft.weeklyOptions?.prev7 ?? null;
+        setComparisonPeriodA(last7);
+        setComparisonPeriodB(prev7);
+        setPreviewKind(draft.previewKind);
+        setPreviewStatus(draft.previewStatus);
+        setData(draft.data);
+        setComparisonData(draft.comparisonData);
+        setHistoricalData(draft.historicalData);
+        setDayBreakdownData(draft.dayBreakdownData);
+        setAnalyzeStatus("idle");
+
+        if (draft.step >= 3) {
+          setObjectivesLockedForReport(true);
+          const selectionKey = draft.selectedCampaigns.slice().sort().join("|");
+          setMetricsFetchedForSelection(selectionKey);
+          metricsFetchedKeyRef.current = selectionKey;
+        }
+
+        stepRef.current = draft.step;
+        setStepState(draft.step);
+        setVisitedSteps(new Set(draft.visitedSteps as Step[]));
+
+        const hasPreviewPayload =
+          draft.data || draft.comparisonData || draft.historicalData || draft.dayBreakdownData;
+        if (draft.step >= 4 && !hasPreviewPayload) {
+          draftRestorePreviewPendingRef.current = true;
+        }
+      } finally {
+        draftRestoringRef.current = false;
+        if (!cancelled) setWizardDraftBootstrapping(false);
+      }
+    }
+
+    void bootstrapWizardDraft();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore on mount
+  }, [clientId, resumeReportId]);
+
+  useEffect(() => {
+    if (wizardDraftBootstrapping || draftRestoringRef.current) return;
+    if (!draftRestorePreviewPendingRef.current) return;
+    if (step < 4 || !uploadSessionId) return;
+    draftRestorePreviewPendingRef.current = false;
+    void fetchPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional gate after draft restore
+  }, [wizardDraftBootstrapping, step, uploadSessionId]);
+
+  useEffect(() => {
+    if (resumeReportId) return;
+    if (draftRestoringRef.current || wizardDraftBootstrapping) return;
+    if (step < 2 || !uploadSessionId) return;
+    if (generateStatus === "done" || generateStatus === "loading") return;
+
+    const snapshot = buildWizardDraftSnapshot({
+      step,
+      visitedSteps,
+      uploadSessionId,
+      platform,
+      reportType,
+      dateMode,
+      customStart,
+      customEnd,
+      selectedCampaigns,
+      selectedAdSets,
+      campaigns,
+      perCampaignMetrics,
+      campaignObjectives,
+      previewKind,
+      previewStatus,
+      data,
+      comparisonData,
+      historicalData,
+      dayBreakdownData,
+      mtdRange,
+      weeklyOptions,
+      dateBounds,
+      dailyRange,
+    });
+
+    if (draftPersistTimerRef.current) clearTimeout(draftPersistTimerRef.current);
+    draftPersistTimerRef.current = setTimeout(() => {
+      saveWizardDraft(clientId, snapshot);
+      void fetch(`/api/clients/${clientId}/wizard-draft`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: snapshot }),
+      }).catch(() => undefined);
+    }, 400);
+
+    return () => {
+      if (draftPersistTimerRef.current) clearTimeout(draftPersistTimerRef.current);
+    };
+  }, [
+    clientId,
+    resumeReportId,
+    wizardDraftBootstrapping,
+    step,
+    visitedSteps,
+    uploadSessionId,
+    platform,
+    reportType,
+    dateMode,
+    customStart,
+    customEnd,
+    selectedCampaigns,
+    selectedAdSets,
+    campaigns,
+    perCampaignMetrics,
+    campaignObjectives,
+    previewKind,
+    previewStatus,
+    data,
+    comparisonData,
+    historicalData,
+    dayBreakdownData,
+    mtdRange,
+    weeklyOptions,
+    dateBounds,
+    dailyRange,
+    generateStatus,
+  ]);
+
+  useEffect(() => {
+    const refreshAccountBranding = () => {
+      void fetch("/api/account")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (!json) return;
+          const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
+          savedAgencyNameRef.current = name;
+          savedReportBrandingModeRef.current = json.reportBrandingMode ?? "nextreport";
+          savedShowAgencyNameOnCoverRef.current = json.showAgencyNameOnCover ?? true;
+          setAgencyName(name);
+          setReportBrandingMode(name ? (json.reportBrandingMode ?? "nextreport") : "nextreport");
+          setShowAgencyNameOnCover(Boolean(name && json.showAgencyNameOnCover));
+          setReportBrandingError(null);
+        })
+        .catch(() => undefined);
+    };
+
+    window.addEventListener("focus", refreshAccountBranding);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshAccountBranding();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refreshAccountBranding);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyAnalyzeResult(json: any, options?: { preserveProgress?: boolean }) {
@@ -1010,11 +1255,6 @@ export function useReportUploadWizard({
       resetGenerateState();
     }
   }
-
-  useLayoutEffect(() => {
-    if (resumeReportId) return;
-    clearAllWizardDrafts();
-  }, [clientId, resumeReportId]);
 
   /** Legacy hook for import continue (UI no longer shows a second CTA). */
   function handleImportContinue() {
@@ -2984,6 +3224,7 @@ export function useReportUploadWizard({
     handleCopyLink,
     handleGenerateAnother,
     resumeBootstrapping,
+    wizardDraftBootstrapping,
     spanDays,
     needsLongRangeConfirm,
     weeklyRangeIso,

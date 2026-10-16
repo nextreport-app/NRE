@@ -169,7 +169,7 @@ export function WizardReportBrandingPanel({
                 Account settings
               </Link>
               {" "}
-              (opens in a new tab) for agency logo.
+              for agency logo.
             </p>
             <button
               type="button"

@@ -17,7 +17,7 @@ const EN_UI = {
       ? "Deck preview differs from your CSV on 1 total"
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
-    "You can still generate and manually fix any mismatches in the deck. Raise a support ticket so we can fix this on our end — next time you should not see this error for the same setup.",
+    "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
   generateForInternalReview: "Generate for internal review",
   confirmedPeriodWeeklyLead: "Your weekly report will cover:",
   confirmedPeriodWeeklyWeekSuffix: "week",

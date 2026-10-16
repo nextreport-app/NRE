@@ -18,7 +18,7 @@ export const accountSettingsSchema = z
       .string()
       .trim()
       .max(150)
-      .optional()
+      .nullish()
       .transform((v) => (v === undefined ? undefined : v || null)),
     reportBrandingMode: reportBrandingModeSchema,
     showAgencyNameOnCover: z.boolean().optional(),
