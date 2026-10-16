@@ -19,36 +19,36 @@ export function StepIndicator({
   const { locale } = useSiteTheme();
   const steps = getVisibleWizardSteps(flow);
   return (
-    <nav className="nre-wizard-step-track" aria-label="Report wizard steps">
-      {steps.map((s) => {
+    <div className="flex flex-wrap items-center gap-2 text-[14px]">
+      {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
-        const isActive = s === step;
-
-        if (isCompleted) {
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onNavigate(s)}
-              className="nre-wizard-step-pill nre-wizard-step-pill--done inline-flex items-center gap-1.5"
-            >
-              <span className="nre-wizard-step-dot" aria-hidden="true" />
-              {wizardStepLabel(s, locale)}
-            </button>
-          );
-        }
-
         return (
-          <span
-            key={s}
-            className={`nre-wizard-step-pill ${isActive ? "nre-wizard-step-pill--active" : "nre-wizard-step-pill--idle"}`}
-            aria-current={isActive ? "step" : undefined}
-          >
-            {wizardStepLabel(s, locale)}
-          </span>
+          <div key={s} className="flex items-center gap-2">
+            {isCompleted ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(s)}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-dash-ink"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
+                {wizardStepLabel(s, locale)}
+              </button>
+            ) : (
+              <span
+                className={
+                  s === step
+                    ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
+                    : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
+                }
+              >
+                {wizardStepLabel(s, locale)}
+              </span>
+            )}
+            {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
+          </div>
         );
       })}
-    </nav>
+    </div>
   );
 }
 
