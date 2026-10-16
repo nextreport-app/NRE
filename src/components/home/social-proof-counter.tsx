@@ -10,7 +10,7 @@ export function SocialProofCounter({
   layout = "inline",
 }: {
   initial: Stats | null;
-  layout?: "inline" | "section";
+  layout?: "inline" | "section" | "merged";
 }) {
   const { home } = useSiteCopy();
   const [stats, setStats] = useState<Stats | null>(initial);
@@ -44,9 +44,11 @@ export function SocialProofCounter({
   if (!stats || stats.totalReports <= 0) return null;
 
   const boxClass =
-    layout === "section"
-      ? "w-full max-w-md rounded-xl border border-navy-border bg-navy px-5 py-4 text-center"
-      : "mt-6 rounded-xl border border-navy-border bg-navy-panel/80 px-4 py-3 text-left sm:inline-block";
+    layout === "merged"
+      ? "text-center"
+      : layout === "section"
+        ? "w-full max-w-md rounded-xl border border-navy-border bg-navy px-5 py-4 text-center"
+        : "mt-6 rounded-xl border border-navy-border bg-navy-panel/80 px-4 py-3 text-left sm:inline-block";
 
   return (
     <div className={boxClass} aria-live="polite">
