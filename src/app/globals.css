@@ -247,6 +247,25 @@ html[data-site-theme="light"] .nre-keep-dark-surface * {
   --color-ink-muted: #94a3b8;
 }
 
+html[data-site-theme="light"] .nre-keep-dark-surface .text-accent-orange,
+html[data-site-theme="light"] .nre-keep-dark-surface .text-accent {
+  color: var(--color-accent-orange);
+}
+
+/* Contact / public inset panels — dark on navy theme, white card on light theme. */
+html[data-site-theme="light"] .nre-contact-feedback-callout {
+  background-color: #ffffff;
+  border-color: #c9c9c4;
+}
+
+html[data-site-theme="light"] .nre-contact-feedback-callout .text-white {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-contact-feedback-callout .text-ink-secondary {
+  color: #475569;
+}
+
 html[data-site-theme="light"] .public-site-header a:not([class*="bg-ink"]):hover,
 html[data-site-theme="light"] .site-footer a:hover {
   color: #000000;
