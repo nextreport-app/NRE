@@ -131,7 +131,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
     const barY = rowY + layout.nameH + layout.nameBarGap;
     const footerY = barY + layout.barH + layout.barFooterGap;
     const rightLabel = visualResultBarRightLabel(bar);
-    const rightLabelW = 96;
+    const rightLabelW = rightLabel.trim() ? 96 : 0;
     const labelWidthPt = cols.trackW - rightLabelW;
     const displayName = fitCampaignNameForSingleBarLine(
       bar.name,
@@ -145,7 +145,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
     if (fillW > 0) {
       shapes.push(roundedBar({ x: cols.barX, y: barY, w: fillW, h: layout.barH, fillHex: bar.color }));
     }
-    shapes.push(
+    const nameBoxes = [
       textBox({
         x: cols.barX,
         y: footerY,
@@ -174,21 +174,26 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         clipOverflow: true,
         nowrap: true,
       }),
-      textBox({
-        x: cols.barX + cols.trackW - rightLabelW,
-        y: nameY,
-        w: rightLabelW,
-        h: layout.nameH,
-        text: rightLabel,
-        sizePt: layout.nameSizePt,
-        bold: false,
-        colorHex: c.ink,
-        align: "r",
-        anchor: "t",
-        clipOverflow: true,
-        nowrap: true,
-      }),
-    );
+    ];
+    if (rightLabelW > 0) {
+      nameBoxes.push(
+        textBox({
+          x: cols.barX + cols.trackW - rightLabelW,
+          y: nameY,
+          w: rightLabelW,
+          h: layout.nameH,
+          text: rightLabel,
+          sizePt: layout.nameSizePt,
+          bold: false,
+          colorHex: c.ink,
+          align: "r",
+          anchor: "t",
+          clipOverflow: true,
+          nowrap: true,
+        }),
+      );
+    }
+    shapes.push(...nameBoxes);
     rowY += layout.rowH;
   }
 }
