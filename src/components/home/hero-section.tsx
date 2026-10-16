@@ -91,7 +91,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             </Link>
           </div>
 
-          <CtaTrustBadges className="mt-4" />
+          <CtaTrustBadges className="mt-4 lg:justify-start" />
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">
