@@ -1,6 +1,7 @@
 "use client";
 
 import { useSiteCopy } from "@/hooks/use-site-copy";
+import { MarketingSection, MarketingSectionHeader } from "./marketing-section";
 
 const FEATURE_ICONS = ["📊", "📅", "🎯", "🤖", "🔀", "🌐"] as const;
 
@@ -8,28 +9,28 @@ export function FeaturesSection() {
   const { home } = useSiteCopy();
 
   return (
-    <section className="bg-navy-panel px-6 py-20">
-      <div className="mx-auto max-w-5xl">
-        <h2 className="text-center text-2xl font-semibold text-white sm:text-3xl">{home.featuresTitle}</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">{home.featuresSubtitle}</p>
+    <MarketingSection band="panel">
+      <MarketingSectionHeader title={home.featuresTitle} subtitle={home.featuresSubtitle} />
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {home.features.slice(0, FEATURE_ICONS.length).map((feature, index) => {
-            return (
-              <div key={feature.title} className="rounded-xl border border-navy-border bg-navy p-6">
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy-panel text-xl"
-                  aria-hidden="true"
-                >
-                  {FEATURE_ICONS[index] ?? "✦"}
-                </span>
-                <h3 className="mt-4 text-base font-semibold text-white">{feature.title}</h3>
-                <p className="mt-1.5 text-sm text-ink-muted">{feature.description}</p>
-              </div>
-            );
-          })}
-        </div>
+      <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {home.features.slice(0, FEATURE_ICONS.length).map((feature, index) => {
+          return (
+            <article
+              key={feature.title}
+              className="nre-marketing-card nre-marketing-card--interactive p-6"
+            >
+              <span
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-navy-border bg-navy text-xl"
+                aria-hidden="true"
+              >
+                {FEATURE_ICONS[index] ?? "✦"}
+              </span>
+              <h3 className="mt-4 text-base font-semibold tracking-tight text-white">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">{feature.description}</p>
+            </article>
+          );
+        })}
       </div>
-    </section>
+    </MarketingSection>
   );
 }

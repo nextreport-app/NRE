@@ -44,7 +44,11 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
 
   return (
     <section className="nre-hero-section bg-navy px-6 py-20 sm:py-28">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
+      <div
+        className="nre-marketing-hero-glow pointer-events-none absolute inset-0 opacity-70"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
             {marketing.heroBadge}
