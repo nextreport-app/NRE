@@ -2,7 +2,16 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { CopyIcon, MailIcon } from "./icons";
+import {
+  CopyIcon,
+  GoogleDriveIcon,
+  MailIcon,
+  PptxDownloadIcon,
+  SlackBrandIcon,
+  TeamsBrandIcon,
+  TelegramBrandIcon,
+  WhatsAppBrandIcon,
+} from "./icons";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import type { DriveView } from "../types";
 import {
@@ -167,9 +176,7 @@ export function WizardGenerateSuccessPanel({
                   rel="noopener noreferrer"
                   className={chipClass}
                 >
-                  <span className="text-[#25D366]" aria-hidden>
-                    ●
-                  </span>
+                  <WhatsAppBrandIcon />
                   WhatsApp
                 </a>
                 <a
@@ -184,9 +191,7 @@ export function WizardGenerateSuccessPanel({
                   rel="noopener noreferrer"
                   className={chipClass}
                 >
-                  <span className="text-[#e9d8fd]" aria-hidden>
-                    ●
-                  </span>
+                  <SlackBrandIcon />
                   Slack
                 </a>
                 <button type="button" onClick={() => void onCopyClientShareMessage()} className={chipClass}>
@@ -215,6 +220,7 @@ export function WizardGenerateSuccessPanel({
                     rel="noopener noreferrer"
                     className={chipClass}
                   >
+                    <TelegramBrandIcon />
                     Telegram
                   </a>
                   <a
@@ -229,6 +235,7 @@ export function WizardGenerateSuccessPanel({
                     rel="noopener noreferrer"
                     className={chipClass}
                   >
+                    <TeamsBrandIcon />
                     Teams
                   </a>
                   {driveSaveUrl ? (
@@ -255,8 +262,9 @@ export function WizardGenerateSuccessPanel({
           <div className={showDrive ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
             <a
               href={downloadUrl}
-              className="flex items-center justify-center rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80"
+              className="flex items-center justify-center gap-2 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22"
             >
+              <PptxDownloadIcon />
               Download PPTX
             </a>
             {showDrive ? (
@@ -264,8 +272,9 @@ export function WizardGenerateSuccessPanel({
                 type="button"
                 onClick={handleSaveButtonClick}
                 disabled={driveSaving}
-                className="flex items-center justify-center rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 rounded-lg border border-[#4285F4]/45 bg-[#4285F4]/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-[#4285F4]/22 disabled:opacity-50"
               >
+                <GoogleDriveIcon />
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
             ) : null}

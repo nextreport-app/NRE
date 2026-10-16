@@ -156,9 +156,6 @@ export function WizardGenerateStep() {
     reportBrandingBlocksGenerate,
     showAgencyNameOnCover,
     setShowAgencyNameOnCover,
-    initialAgencyName,
-    initialReportBrandingMode,
-    initialShowAgencyNameOnCover,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -209,6 +206,149 @@ export function WizardGenerateStep() {
               : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
+  const showGenerateSuccess = generateStatus === "done" && !!downloadUrl;
+
+  if (showGenerateSuccess) {
+    return (
+      <div className="space-y-6">
+        <WizardGenerateSuccessPanel
+          clientName={clientName}
+          clientId={clientId}
+          generatedWithCsvMismatch={generatedWithCsvMismatch}
+          reportId={reportId}
+          reportTypeLabel={reportTypeLabel()}
+          wizardSharePlatformLabel={wizardSharePlatformLabel()}
+          slideCount={slideCount}
+          dateRangeLabel={driveDateRangeLabel()}
+          downloadUrl={downloadUrl}
+          shareToken={shareToken}
+          publishedAt={publishedAt}
+          clientShareMessageCopied={clientShareMessageCopied}
+          onCopyClientShareMessage={handleCopyClientShareMessage}
+          onCopyShareLink={handleCopyShareLink}
+          persistGenerateSnapshot={persistGenerateSnapshot}
+          hasGoogleDriveConnected={hasGoogleDriveConnected}
+          driveView={driveView}
+          driveSaving={driveSaving}
+          handleSaveButtonClick={handleSaveButtonClick}
+          rememberedFolder={rememberedFolder}
+          setDriveView={setDriveView}
+          onEditDriveFolder={() => {
+            setDriveSaveError(null);
+            setDriveView("editing");
+          }}
+          copied={copied}
+          driveSaveUrl={driveSaveUrl}
+          handleCopyLink={handleCopyLink}
+          handleGenerateAnother={handleGenerateAnother}
+        >
+          {hasGoogleDriveConnected && driveView === "editing" && (
+            <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+              <div>
+                <label className="block text-[14px] text-dash-ink-secondary">Folder link:</label>
+                <input
+                  type="text"
+                  value={driveFolderLinkInput}
+                  onChange={(e) => {
+                    setDriveFolderLinkInput(e.target.value);
+                    setDriveLinkFormatError(null);
+                  }}
+                  placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
+                  className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
+                />
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
+                  Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it here
+                </p>
+                {driveLinkFormatError ? <p className="mt-1 text-[14px] text-red-400">{driveLinkFormatError}</p> : null}
+              </div>
+
+              <div>
+                <label className="block text-[14px] text-dash-ink-secondary">
+                  Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
+                </label>
+                <input
+                  type="text"
+                  value={driveFolderNameInput}
+                  onChange={(e) => setDriveFolderNameInput(e.target.value)}
+                  placeholder="e.g. Reports"
+                  className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
+                />
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
+                  Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleSaveToFolderLink}
+                  disabled={!driveFolderLinkInput.trim() || driveSaving}
+                  className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                >
+                  {driveSaving ? "Saving…" : "Save to this folder"}
+                </button>
+                <button
+                  type="button"
+                  disabled={driveSaving}
+                  onClick={() => {
+                    setDriveView("collapsed");
+                    setDriveFolderLinkInput("");
+                    setDriveFolderNameInput("");
+                    setDriveLinkFormatError(null);
+                    setDriveSaveError(null);
+                  }}
+                  className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {driveSaveError ? <p className="text-[14px] text-red-400">{driveSaveError}</p> : null}
+
+          {driveView === "success" && driveSaveUrl ? (
+            <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
+              <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">Saved to Google Drive ✓</p>
+              <a
+                href={driveSaveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all text-[14px] text-dash-accent hover:underline"
+              >
+                {driveDisplayLabel()}
+              </a>
+              <button
+                onClick={() => {
+                  setDriveView("editing");
+                  setDriveSaveUrl(null);
+                }}
+                className="mt-3 text-[14px] text-dash-ink-secondary hover:underline"
+              >
+                Save to a different folder
+              </button>
+            </div>
+          ) : null}
+
+          {reportType !== "COMPARISON" &&
+          reportType !== "HISTORICAL" &&
+          reportType !== "DAY_BREAKDOWN" &&
+          includePreviousMonthComparison &&
+          !previousMonthComparisonReady ? (
+            <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
+              <p className="font-semibold">Previous month comparison not set up</p>
+              <p className="mt-1 text-dash-ink-secondary">
+                Combined Total won&apos;t include a previous-month row.{" "}
+                <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
+                  Upload on the client page
+                </Link>{" "}
+                or add it when you start your next report.
+              </p>
+            </div>
+          ) : null}
+        </WizardGenerateSuccessPanel>
+      </div>
+    );
+  }
 
   return (
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
@@ -556,9 +696,6 @@ export function WizardGenerateStep() {
                   onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
                   reportBrandingMode={reportBrandingMode}
                   onReportBrandingModeChange={setReportBrandingMode}
-                  initialReportBrandingMode={initialReportBrandingMode}
-                  initialAgencyName={initialAgencyName}
-                  initialShowAgencyNameOnCover={initialShowAgencyNameOnCover}
                   saving={reportBrandingSaving}
                   error={reportBrandingError}
                 />
@@ -724,153 +861,6 @@ export function WizardGenerateStep() {
           {!generateStepPreviewReady && previewStatus === "loading" && generateStatus === "idle" ? (
             <p className="text-[14px] text-dash-ink-secondary">Loading report preview…</p>
           ) : null}
-
-          {generateStatus === "done" && downloadUrl && (
-            <WizardGenerateSuccessPanel
-              clientName={clientName}
-              clientId={clientId}
-              generatedWithCsvMismatch={generatedWithCsvMismatch}
-              reportId={reportId}
-              reportTypeLabel={reportTypeLabel()}
-              wizardSharePlatformLabel={wizardSharePlatformLabel()}
-              slideCount={slideCount}
-              dateRangeLabel={driveDateRangeLabel()}
-              downloadUrl={downloadUrl}
-              shareToken={shareToken}
-              publishedAt={publishedAt}
-              clientShareMessageCopied={clientShareMessageCopied}
-              onCopyClientShareMessage={handleCopyClientShareMessage}
-              onCopyShareLink={handleCopyShareLink}
-              persistGenerateSnapshot={persistGenerateSnapshot}
-              hasGoogleDriveConnected={hasGoogleDriveConnected}
-              driveView={driveView}
-              driveSaving={driveSaving}
-              handleSaveButtonClick={handleSaveButtonClick}
-              rememberedFolder={rememberedFolder}
-              setDriveView={setDriveView}
-              onEditDriveFolder={() => {
-                setDriveSaveError(null);
-                setDriveView("editing");
-              }}
-              copied={copied}
-              driveSaveUrl={driveSaveUrl}
-              handleCopyLink={handleCopyLink}
-              handleGenerateAnother={handleGenerateAnother}
-            >
-                {hasGoogleDriveConnected && driveView === "editing" && (
-                <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
-                  <div>
-                    <label className="block text-[14px] text-dash-ink-secondary">Folder link:</label>
-                    <input
-                      type="text"
-                      value={driveFolderLinkInput}
-                      onChange={(e) => {
-                        setDriveFolderLinkInput(e.target.value);
-                        setDriveLinkFormatError(null);
-                      }}
-                      placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                      Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it
-                      here
-                    </p>
-                    {driveLinkFormatError && <p className="mt-1 text-[14px] text-red-400">{driveLinkFormatError}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-[14px] text-dash-ink-secondary">
-                      Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
-                    </label>
-                    <input
-                      type="text"
-                      value={driveFolderNameInput}
-                      onChange={(e) => setDriveFolderNameInput(e.target.value)}
-                      placeholder="e.g. Reports"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                      Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={handleSaveToFolderLink}
-                      disabled={!driveFolderLinkInput.trim() || driveSaving}
-                      className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-                    >
-                      {driveSaving ? "Saving…" : "Save to this folder"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={driveSaving}
-                      onClick={() => {
-                        setDriveView("collapsed");
-                        setDriveFolderLinkInput("");
-                        setDriveFolderNameInput("");
-                        setDriveLinkFormatError(null);
-                        setDriveSaveError(null);
-                      }}
-                      className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {driveSaveError && <p className="text-[14px] text-red-400">{driveSaveError}</p>}
-
-              {/* State 3: button/input are both gone, replaced by the saved-file
-                  link. The share link + Email/WhatsApp/Copy Link row now live
-                  in the tertiary actions above (Fix 4) — no longer duplicated
-                  here. */}
-              {driveView === "success" && driveSaveUrl && (
-                <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-                  <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">
-                    Saved to Google Drive ✓
-                  </p>
-                  <a
-                    href={driveSaveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block break-all text-[14px] text-dash-accent hover:underline"
-                  >
-                    {driveDisplayLabel()}
-                  </a>
-                  <button
-                    onClick={() => {
-                      setDriveView("editing");
-                      setDriveSaveUrl(null);
-                    }}
-                    className="mt-3 text-[14px] text-dash-ink-secondary hover:underline"
-                  >
-                    Save to a different folder
-                  </button>
-                </div>
-              )}
-
-              {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
-              {reportType !== "COMPARISON" &&
-                reportType !== "HISTORICAL" &&
-                reportType !== "DAY_BREAKDOWN" &&
-                includePreviousMonthComparison &&
-                !previousMonthComparisonReady && (
-                <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
-                  <p className="font-semibold">Previous month comparison not set up</p>
-                  <p className="mt-1 text-dash-ink-secondary">
-                    Combined Total won&apos;t include a previous-month row.{" "}
-                    <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
-                      Upload on the client page
-                    </Link>{" "}
-                    or add it when you start your next report.
-                  </p>
-                </div>
-              )}
-
-            </WizardGenerateSuccessPanel>
-          )}
 
           {showGenerateFooter && (
             <div className="space-y-3">

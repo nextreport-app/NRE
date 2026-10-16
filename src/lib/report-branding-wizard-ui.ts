@@ -3,15 +3,6 @@ import { REPORT_BRANDING_MODE_LABELS } from "@/lib/report-branding";
 
 const COLLAPSED_STORAGE_KEY = "nre.reportBrandingWizardCollapsed";
 
-export function readReportBrandingWizardCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function markReportBrandingWizardCollapsed(): void {
   if (typeof window === "undefined") return;
   try {
@@ -19,19 +10,6 @@ export function markReportBrandingWizardCollapsed(): void {
   } catch {
     /* private mode */
   }
-}
-
-/** Expand on Generate only for first-time defaults; collapse after save or prior customization. */
-export function shouldExpandReportBrandingWizard(input: {
-  initialReportBrandingMode: ReportBrandingMode;
-  initialAgencyName: string | null;
-  initialShowAgencyNameOnCover: boolean;
-}): boolean {
-  if (readReportBrandingWizardCollapsed()) return false;
-  const hasAgency = Boolean(input.initialAgencyName?.trim());
-  const customizedLink = input.initialReportBrandingMode !== "nextreport";
-  const hideCoverName = !input.initialShowAgencyNameOnCover && hasAgency;
-  return !customizedLink && !hasAgency && !hideCoverName;
 }
 
 export function reportBrandingWizardSummary(input: {

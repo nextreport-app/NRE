@@ -72,8 +72,6 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   const cols = resultBarColumns(splitPanel);
   const barLayout = resultBarLayout(model.resultBars.length, hasSubheading);
-  const rightLabelW = 96;
-  const nameColW = Math.max(120, cols.trackW - rightLabelW);
   let rowY = barLayout.startY;
   for (const bar of model.resultBars) {
     const fillW = resultBarFillWidth(bar.barPct, cols.trackW);
@@ -82,6 +80,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     const footerY = barY + barLayout.barH + barLayout.barFooterGap + barLayout.metricsSizePt;
     const barRx = barLayout.barH / 2;
     const rightLabel = visualResultBarRightLabel(bar);
+    const rightLabelW = rightLabel.trim() ? 96 : 0;
     const labelWidthPt = cols.trackW - rightLabelW;
     const displayName = fitCampaignNameForSingleBarLine(
       bar.name,
@@ -97,8 +96,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
     parts.push(
       `<text x="${cols.barX}" y="${footerY}" fill="${MUTED}" font-family="Poppins" font-size="${barLayout.metricsSizePt}" font-weight="400">${escapeXml(bar.statLine)}</text>`,
       `<text x="${cols.barX}" y="${nameBaselineY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rankedLine)}</text>`,
-      `<text x="${cols.barX + nameColW + rightLabelW}" y="${nameBaselineY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
     );
+    if (rightLabelW > 0) {
+      parts.push(
+        `<text x="${cols.barX + cols.trackW}" y="${nameBaselineY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
+      );
+    }
     rowY += barLayout.rowH;
   }
 

@@ -146,21 +146,28 @@ function ReportUploadWizardBody() {
   }
 
   const wizardFlow = getAdWizardFlow(w.platform);
+  const generateSuccessScreen = w.step === 4 && w.generateStatus === "done";
 
   return (
     <div className="space-y-6">
       <div ref={wizardTopRef}>
         {clientLine}
-        <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
-          {w.step === 4
-            ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
-            : wizardStepHeading(w.step, w.platform, locale)}
-        </h1>
-        {wizardStepSubtitle(w.step, w.platform, locale) ? (
-          <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>
+        {!generateSuccessScreen ? (
+          <>
+            <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
+              {w.step === 4
+                ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
+                : wizardStepHeading(w.step, w.platform, locale)}
+            </h1>
+            {wizardStepSubtitle(w.step, w.platform, locale) ? (
+              <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>
+            ) : null}
+          </>
         ) : null}
       </div>
-      <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+      {!generateSuccessScreen ? (
+        <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+      ) : null}
 
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner

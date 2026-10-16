@@ -199,6 +199,27 @@ describe("buildCoverSlideXml — Prepared By line", () => {
   });
 });
 
+describe("buildCoverSlideXml — budget line single row", () => {
+  it("forces nowrap and widens the budget shape for long pacing copy", () => {
+    const budget =
+      "Monthly Ad Budget: C$1,165 of C$2,500 used (47%) — 15 days remaining";
+    const xml = buildCoverSlideXml(template.cover, {
+      ...BASE_COVER,
+      budgetSummary: budget,
+    });
+    expect(xml).toContain(budget);
+    const idx = xml.indexOf("Monthly Ad Budget");
+    const spStart = xml.lastIndexOf("<p:sp>", idx);
+    const spEnd = xml.indexOf("</p:sp>", idx);
+    const shape = xml.slice(spStart, spEnd);
+    expect(shape).toContain('wrap="none"');
+    expect(shape).toContain("<a:normAutofit/>");
+    const cxMatch = /<a:ext cx="(\d+)"/.exec(shape);
+    expect(cxMatch).not.toBeNull();
+    expect(Number(cxMatch![1])).toBeGreaterThanOrEqual(6200000);
+  });
+});
+
 describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon)", () => {
   function shapeY(xml: string, locator: string): number {
     const idx = xml.indexOf(locator);
