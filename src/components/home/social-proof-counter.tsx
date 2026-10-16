@@ -5,7 +5,13 @@ import { useSiteCopy } from "@/hooks/use-site-copy";
 
 type Stats = { totalReports: number; reportsLast7Days: number };
 
-export function SocialProofCounter({ initial }: { initial: Stats | null }) {
+export function SocialProofCounter({
+  initial,
+  layout = "inline",
+}: {
+  initial: Stats | null;
+  layout?: "inline" | "section";
+}) {
   const { home } = useSiteCopy();
   const [stats, setStats] = useState<Stats | null>(initial);
 
@@ -37,11 +43,13 @@ export function SocialProofCounter({ initial }: { initial: Stats | null }) {
 
   if (!stats || stats.totalReports <= 0) return null;
 
+  const boxClass =
+    layout === "section"
+      ? "w-full max-w-md rounded-xl border border-navy-border bg-navy px-5 py-4 text-center"
+      : "mt-6 rounded-xl border border-navy-border bg-navy-panel/80 px-4 py-3 text-left sm:inline-block";
+
   return (
-    <div
-      className="mt-6 rounded-xl border border-navy-border bg-navy-panel/80 px-4 py-3 text-left sm:inline-block"
-      aria-live="polite"
-    >
+    <div className={boxClass} aria-live="polite">
       <p className="text-sm font-semibold text-white">
         {home.socialProofTotal.replace("{count}", stats.totalReports.toLocaleString())}
       </p>
