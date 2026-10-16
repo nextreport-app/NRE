@@ -108,7 +108,7 @@ export const HOME_EN: HomeCopy = {
       agencySize: "Solo + 4 retainers",
     },
   ],
-  socialProofTotal: "{count} client reports on NextReport",
+  socialProofTotal: "{count} client reports generated on NextReport",
   socialProofWeek: "{count} this week",
   socialProofLiveHint: "Live",
   pricingComparison: {
