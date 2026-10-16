@@ -21,7 +21,10 @@ export function TestimonialsSection() {
               <footer className="mt-4 text-xs text-ink-muted">
                 <span className="font-medium text-white">{t.role}</span>
                 <span className="block">{t.company}</span>
-                <span className="block">{t.location}</span>
+                <span className="block">
+                  {t.location}
+                  {t.agencySize ? ` · ${t.agencySize}` : ""}
+                </span>
               </footer>
             </blockquote>
           ))}

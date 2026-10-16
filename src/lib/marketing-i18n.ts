@@ -29,10 +29,11 @@ export type MarketingCopy = {
   tryCtaFinePrint?: string;
   tryCtaStartTrial: string;
   tryCtaDashboard: string;
+  ctaTrustBadges: string[];
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Branded Meta Ads client reporting for agencies.",
+  brandTagline: "Client reporting for agencies — Meta Ads today; Google Ads, TikTok Ads, and GA4 on the roadmap.",
   navSignIn: "Log in",
   navContact: "Contact us",
   navSignOut: "Sign out",
@@ -44,7 +45,7 @@ const EN: MarketingCopy = {
   heroHeadlineAccent: "client reporting",
   heroHeadlineAfter: " for agencies in minutes.",
   heroSubtext:
-    "Upload Meta Ads CSV exports and deliver branded decks, live links, and share-ready client reports — without rebuilding slides every week.",
+    "Stop rebuilding client decks every week. Upload your Meta export once and ship polished, on-brand performance reports in minutes — so your team spends time on strategy, not slide formatting.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
@@ -60,6 +61,7 @@ const EN: MarketingCopy = {
   tryCtaFinePrint: "7-day free trial — no credit card required.",
   tryCtaStartTrial: "Sign up",
   tryCtaDashboard: "Go to Dashboard",
+  ctaTrustBadges: ["7-day free trial", "No credit card", "Cancel anytime", "CSV-backed numbers"],
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {

@@ -13,9 +13,10 @@ import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { CommunityReferralSection } from "@/components/home/community-referral-section";
+import { ReferralBottomSection } from "@/components/home/referral-bottom-section";
 import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
 import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
+import { getSocialProofStats } from "@/lib/social-proof-stats";
 
 export const metadata = pageMetadata({
   title: "Meta Ads Weekly Report Automation for Agencies",
@@ -33,6 +34,7 @@ export const metadata = pageMetadata({
 export default async function Home() {
   const session = await auth();
   const loggedIn = !!session?.user;
+  const socialProofInitial = await getSocialProofStats();
 
   return (
     <>
@@ -40,22 +42,18 @@ export default async function Home() {
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
-        <HeroSection loggedIn={loggedIn} />
+        <HeroSection loggedIn={loggedIn} socialProofInitial={socialProofInitial} />
         <SpecialistTimeSavingsSection />
         <HowItWorksSection />
-        {/* Homepage copy/structure overhaul — the time-comparison section
-            (the best copy on the page) moved up to position 3, right after
-            the hero and the 3-step "how it works" — it used to sit near the
-            bottom of the page, well past where most visitors scroll. */}
         <PainPointSection />
         <FeaturesSection />
         <TrustStrip />
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
-        <CommunityReferralSection />
         <LeadCaptureSection />
         <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
+        <ReferralBottomSection />
         <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>

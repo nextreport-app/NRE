@@ -33,8 +33,9 @@ export default async function BookDemoPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-accent-orange">Book a Demo</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">See NextReport in action</h1>
           <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
-            Tell us about your agency and what you report on. We&apos;ll schedule a short live demo — usually within one
-            business day.
+            Tell us about your agency and what you report on. We&apos;ll schedule a live walkthrough — typically{" "}
+            <span className="font-medium text-white">20–30 minutes</span> — and reply within one business day. No
+            high-pressure sales; we focus on your CSV workflow and report types.
           </p>
         </div>
 

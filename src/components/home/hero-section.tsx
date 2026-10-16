@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
+import { SocialProofCounter } from "@/components/home/social-proof-counter";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
@@ -39,7 +41,13 @@ function SlideMockup({
   );
 }
 
-export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
+export function HeroSection({
+  loggedIn,
+  socialProofInitial,
+}: {
+  loggedIn: boolean;
+  socialProofInitial: { totalReports: number; reportsLast7Days: number } | null;
+}) {
   const { marketing, home } = useSiteCopy();
 
   return (
@@ -90,7 +98,9 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             </Link>
           </div>
 
-          {!loggedIn && <p className="mt-4 text-xs text-ink-muted">{marketing.heroNoCard}</p>}
+          <CtaTrustBadges className="mt-4" />
+          {!loggedIn && <p className="mt-3 text-xs text-ink-muted">{marketing.heroNoCard}</p>}
+          <SocialProofCounter initial={socialProofInitial} />
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">
