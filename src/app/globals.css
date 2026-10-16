@@ -233,7 +233,8 @@ html[data-site-theme="light"] main .text-red-400 {
   color: #000000;
 }
 
-html[data-site-theme="light"] main .nre-marketing-accent-phrase {
+html[data-site-theme="light"] main .nre-marketing-accent-phrase,
+html[data-site-theme="light"] main h2.text-accent-orange {
   color: var(--color-accent-orange);
 }
 
