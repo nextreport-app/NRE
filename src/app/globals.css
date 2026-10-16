@@ -335,11 +335,194 @@ html[data-site-theme="light"] .nre-app-shell {
   }
 }
 
-.nre-about-hero-glow {
+.nre-about-hero-glow,
+.nre-marketing-hero-glow {
   background:
     radial-gradient(ellipse 60% 50% at 30% 40%, rgba(245, 180, 90, 0.35), transparent 70%),
     radial-gradient(ellipse 50% 45% at 70% 60%, rgba(56, 189, 248, 0.12), transparent 72%);
   animation: nre-about-glow-drift 14s ease-in-out infinite;
+}
+
+html[data-site-theme="light"] .nre-marketing-hero-glow {
+  opacity: 0.45;
+}
+
+/* Modal-inspired marketing rhythm — section bands, elevated cards, wizard chrome. */
+.nre-marketing-section {
+  position: relative;
+}
+
+.nre-marketing-card {
+  border: 1px solid var(--color-navy-border);
+  border-radius: 1rem;
+  background-color: var(--color-navy-panel);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.nre-marketing-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--color-accent-orange) 35%, var(--color-navy-border));
+  transform: translateY(-2px);
+}
+
+html[data-site-theme="light"] .nre-marketing-card {
+  background-color: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+html[data-site-theme="light"] .nre-marketing-card--interactive:hover {
+  box-shadow:
+    0 12px 32px rgba(38, 37, 30, 0.08),
+    0 0 0 1px rgba(38, 37, 30, 0.06);
+}
+
+.nre-marketing-card--highlight {
+  border-color: color-mix(in srgb, var(--color-accent-orange) 45%, var(--color-navy-border));
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--color-accent-orange) 8%, var(--color-navy-panel)) 0%,
+    var(--color-navy-panel) 55%
+  );
+}
+
+html[data-site-theme="light"] .nre-marketing-card--highlight {
+  background-image: linear-gradient(165deg, #fff9f0 0%, #ffffff 52%);
+}
+
+.nre-marketing-step-index {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background-color: color-mix(in srgb, var(--color-accent-orange) 18%, var(--color-navy));
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-accent-orange);
+}
+
+html[data-site-theme="light"] .nre-marketing-step-index {
+  background-color: #fff4e0;
+  color: #b45309;
+}
+
+.nre-marketing-vs-pill {
+  display: inline-flex;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--color-navy-border);
+  background-color: var(--color-navy);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+html[data-site-theme="light"] .nre-marketing-vs-pill {
+  background-color: #ffffff;
+}
+
+.nre-hero-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.nre-bottom-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.nre-bottom-cta::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(245, 180, 90, 0.12), transparent 68%);
+}
+
+.nre-wizard-client-bar {
+  border: 1px solid color-mix(in srgb, var(--nre-dash-accent) 35%, var(--nre-dash-border));
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--nre-dash-accent) 6%, var(--nre-dash-card)) 0%,
+    var(--nre-dash-card) 48%
+  );
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar {
+  box-shadow:
+    0 1px 2px rgba(38, 37, 30, 0.06),
+    0 0 0 1px rgba(38, 37, 30, 0.04);
+}
+
+.nre-wizard-step-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid var(--nre-dash-border);
+  background-color: color-mix(in srgb, var(--nre-dash-inset) 65%, transparent);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-step-track {
+  background-color: #efeeea;
+}
+
+.nre-wizard-step-pill {
+  border-radius: 9999px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.nre-wizard-step-pill--idle {
+  border: 1px solid transparent;
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-step-pill--active {
+  background-color: var(--nre-dash-accent);
+  color: var(--nre-dash-bg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-step-pill--active {
+  color: #0d1b2e;
+}
+
+.nre-wizard-step-pill--done {
+  border: 1px solid transparent;
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-step-pill--done:hover {
+  color: var(--nre-dash-ink);
+  background-color: color-mix(in srgb, var(--nre-dash-border) 35%, transparent);
+}
+
+.nre-wizard-step-dot {
+  height: 0.375rem;
+  width: 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--nre-dash-success);
 }
 
 /* Client cards + search — elevated white surfaces on Cursor-style canvas. */
@@ -356,6 +539,7 @@ html[data-site-theme="light"] .nre-app-shell .bg-dash-popover {
 /* Wizard + dashboard nested panels (replaces hardcoded #0d1b2e panels). */
 .nre-wizard-panel {
   border: 1px solid var(--nre-dash-border);
+  border-radius: 1rem;
   background-color: var(--nre-dash-inset);
 }
 
