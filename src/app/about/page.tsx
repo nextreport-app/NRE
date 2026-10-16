@@ -6,6 +6,8 @@ import { BetaBanner } from "@/components/beta-banner";
 import { pageMetadata } from "@/lib/seo";
 import { ABOUT_OPERATIONS_PROOF, PRODUCT_DIFFERENTIATOR_LINE } from "@/lib/product-positioning";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
+import { AboutHeroVisual } from "@/components/about/about-hero-visual";
+import { AboutStoryDivider } from "@/components/about/about-story-divider";
 
 export const metadata: Metadata = pageMetadata({
   title: "About — Built for Agency Reporting",
@@ -57,32 +59,42 @@ export default async function AboutPage() {
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
-        <section className="bg-navy px-6 py-20 text-center">
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">
-              A small team obsessed with agency reporting
-            </h1>
-            <p className="mt-4 text-sm text-ink-muted">
-              We automate the branded Meta deck — so strategists spend time on strategy, not slide formatting.
-            </p>
+        <section className="relative overflow-hidden bg-navy px-6 py-16 sm:py-24">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-orange/[0.06] via-transparent to-transparent"
+            aria-hidden
+          />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <div className="text-center lg:text-left">
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-tight">
+                A small team obsessed with agency reporting
+              </h1>
+              <p className="mt-5 text-base leading-relaxed text-ink-secondary sm:text-lg">
+                We automate the branded Meta deck — so strategists spend time on strategy, not slide formatting.
+              </p>
+            </div>
+            <AboutHeroVisual />
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          {STORY_SECTIONS.map((section) => (
-            <div key={section.heading} className="mb-12 last:mb-0">
-              <h2 className="text-2xl font-semibold text-accent-orange">{section.heading}</h2>
-              <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary">
-                {section.paragraphs.map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))}
-              </div>
+        <section className="mx-auto max-w-3xl px-6 pb-4 pt-16">
+          {STORY_SECTIONS.map((section, index) => (
+            <div key={section.heading}>
+              {index > 0 ? <AboutStoryDivider /> : null}
+              <article className="border-l-2 border-accent-orange/25 pl-6 sm:pl-8">
+                <h2 className="text-2xl font-semibold text-accent-orange">{section.heading}</h2>
+                <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary sm:text-[15px]">
+                  {section.paragraphs.map((p, i) => (
+                    <p key={i}>{p}</p>
+                  ))}
+                </div>
+              </article>
             </div>
           ))}
         </section>
 
-        <section className="px-6 pb-16">
-          <div className="mx-auto max-w-3xl rounded-2xl border border-navy-border bg-navy-panel p-8">
+        <section className="px-6 pb-16 pt-8">
+          <div className="mx-auto max-w-3xl rounded-2xl border border-navy-border bg-navy-panel p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.45)] sm:p-10">
             <h2 className="text-xl font-semibold text-white">{ABOUT_OPERATIONS_PROOF.headline}</h2>
             <p className="mt-3 text-sm leading-relaxed text-ink-secondary">{ABOUT_OPERATIONS_PROOF.body}</p>
             <ul className="mt-4 flex flex-wrap gap-3">
@@ -99,7 +111,11 @@ export default async function AboutPage() {
         </section>
 
         <section className="px-6 py-8">
-          <div className="mx-auto max-w-5xl rounded-2xl border border-navy-border bg-navy-panel p-8 sm:p-10">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-navy-border bg-navy-panel p-8 sm:p-10">
+            <div
+              className="pointer-events-none -mx-8 -mt-8 mb-6 h-1 bg-gradient-to-r from-accent-orange/80 via-accent-orange/30 to-transparent sm:-mx-10 sm:-mt-10"
+              aria-hidden
+            />
             <h2 className="text-2xl font-semibold text-accent-orange">Our mission</h2>
             <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-secondary">
               Give small and mid-size agencies the reporting speed larger shops buy with headcount — starting with Meta

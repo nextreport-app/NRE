@@ -49,7 +49,7 @@ html[data-site-theme="light"] {
 
 html[data-site-theme="light"] body {
   background-color: #f7f7f4;
-  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 42%, #f0efeb 100%);
 }
 
 .nre-app-shell {
@@ -124,16 +124,10 @@ html {
   letter-spacing: -0.011em;
 }
 
-/* Fix 3 — dot-grid texture applied directly to `body` instead of a
-   per-page `.dash-dot-grid` wrapper class (the wrapper approach kept
-   clipping short of the full page width on some pages). Painting it on
-   `body` covers 100% of every page's width/height automatically; opaque
-   page-level wrappers (e.g. /light-preview's own solid background) still
-   paint over it as before. */
+/* Marketing canvas — flat gradient (no dot grid); light theme overrides below. */
 body {
   background-color: var(--background);
-  background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: linear-gradient(180deg, #0f2239 0%, #0d1b2e 48%, #0a1628 100%);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
@@ -239,6 +233,15 @@ html[data-site-theme="light"] main .text-red-400 {
   color: #000000;
 }
 
+html[data-site-theme="light"] main .nre-marketing-accent-phrase {
+  color: var(--color-accent-orange);
+}
+
+html[data-site-theme="light"] .nre-bottom-cta .nre-hero-cta-primary {
+  background-color: #000000;
+  color: #ffffff;
+}
+
 /* Keep fixed dark marketing mockups (hero slide, carousel) on their own contrast. */
 html[data-site-theme="light"] .nre-keep-dark-surface,
 html[data-site-theme="light"] .nre-keep-dark-surface * {
@@ -310,14 +313,32 @@ html[data-site-theme="light"] .public-site-header {
 
 .nre-app-shell {
   background-color: var(--nre-dash-bg);
-  background-image: radial-gradient(circle, #1e3a5f 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: linear-gradient(180deg, #0f172a 0%, #0d1b2e 100%);
   color: var(--nre-dash-ink);
 }
 
 html[data-site-theme="light"] .nre-app-shell {
   color-scheme: light;
-  background-image: radial-gradient(circle, rgba(38, 37, 30, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
+}
+
+@keyframes nre-about-glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(6%, -4%, 0) scale(1.05);
+    opacity: 0.75;
+  }
+}
+
+.nre-about-hero-glow {
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(245, 180, 90, 0.35), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 70% 60%, rgba(56, 189, 248, 0.12), transparent 72%);
+  animation: nre-about-glow-drift 14s ease-in-out infinite;
 }
 
 /* Client cards + search — elevated white surfaces on Cursor-style canvas. */

@@ -22,7 +22,11 @@ export type MarketingCopy = {
   pricingSubtitle: string;
   pricingCurrencyLabel: string;
   tryCtaTitle: string;
+  tryCtaHeadlineBefore?: string;
+  tryCtaHeadlineAccent?: string;
+  tryCtaHeadlineAfter?: string;
   tryCtaSubtitle: string;
+  tryCtaFinePrint?: string;
   tryCtaStartTrial: string;
   tryCtaDashboard: string;
 };
@@ -49,7 +53,11 @@ const EN: MarketingCopy = {
   pricingSubtitle: "Start free for 7 days. No credit card required.",
   pricingCurrencyLabel: "Show prices in",
   tryCtaTitle: "Try NextReport now.",
-  tryCtaSubtitle: "7-day free trial — no credit card required.",
+  tryCtaHeadlineBefore: "Ship ",
+  tryCtaHeadlineAccent: "your first deck",
+  tryCtaHeadlineAfter: " in minutes",
+  tryCtaSubtitle: "Try NextReport now.",
+  tryCtaFinePrint: "7-day free trial — no credit card required.",
   tryCtaStartTrial: "Start free trial",
   tryCtaDashboard: "Go to Dashboard",
 };
