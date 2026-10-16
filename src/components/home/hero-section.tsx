@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
@@ -89,6 +90,8 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
               {marketing.heroRequestDemo} <span aria-hidden="true">→</span>
             </Link>
           </div>
+
+          <CtaTrustBadges className="mt-4" />
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">

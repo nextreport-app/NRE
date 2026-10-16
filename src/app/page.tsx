@@ -7,7 +7,7 @@ import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { PainPointSection } from "@/components/home/pain-point-section";
 import { FeaturesSection } from "@/components/home/features-section";
-import { TrustStrip } from "@/components/home/trust-strip";
+import { TrustAndSocialProofStrip } from "@/components/home/trust-and-social-proof-strip";
 import { ReportPreviewSection } from "@/components/home/report-preview-section";
 import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
@@ -16,7 +16,6 @@ import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { ReferralBottomSection } from "@/components/home/referral-bottom-section";
 import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
 import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
-import { SocialProofSection } from "@/components/home/social-proof-section";
 import { getSocialProofStats } from "@/lib/social-proof-stats";
 
 export const metadata = pageMetadata({
@@ -48,8 +47,7 @@ export default async function Home() {
         <HowItWorksSection />
         <PainPointSection />
         <FeaturesSection />
-        <TrustStrip />
-        <SocialProofSection initial={socialProofInitial} />
+        <TrustAndSocialProofStrip initial={socialProofInitial} />
         <ReportPreviewSection />
         <SampleReportSection />
         <TestimonialsSection />
