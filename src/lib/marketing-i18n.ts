@@ -9,6 +9,11 @@ export type MarketingCopy = {
   navDashboard: string;
   heroBadge: string;
   heroHeadline: string;
+  /** English hero — accent phrase split (other locales use heroHeadline only). */
+  heroHeadlineBefore?: string;
+  heroHeadlineAccent?: string;
+  heroHeadlineAfter?: string;
+  heroSubtext: string;
   heroStartTrial: string;
   heroGoDashboard: string;
   heroRequestDemo: string;
@@ -24,13 +29,18 @@ export type MarketingCopy = {
 
 const EN: MarketingCopy = {
   brandTagline: "Branded Meta Ads client reporting for agencies.",
-  navSignIn: "Sign in",
-  navContact: "Contact",
+  navSignIn: "Log in",
+  navContact: "Contact us",
   navSignOut: "Sign out",
-  navStartTrial: "Start free trial",
+  navStartTrial: "Sign up",
   navDashboard: "Dashboard",
   heroBadge: "Meta Ads reporting for agencies",
   heroHeadline: "Branded client reporting for agencies in minutes.",
+  heroHeadlineBefore: "Branded ",
+  heroHeadlineAccent: "client reporting",
+  heroHeadlineAfter: " for agencies in minutes.",
+  heroSubtext:
+    "Upload Meta Ads CSV exports and deliver branded decks, live links, and share-ready client reports — without rebuilding slides every week.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
