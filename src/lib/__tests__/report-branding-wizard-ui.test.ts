@@ -1,30 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  reportBrandingWizardSummary,
-  shouldExpandReportBrandingWizard,
-} from "../report-branding-wizard-ui";
-
-describe("shouldExpandReportBrandingWizard", () => {
-  it("expands for first-time NextReport defaults", () => {
-    expect(
-      shouldExpandReportBrandingWizard({
-        initialReportBrandingMode: "nextreport",
-        initialAgencyName: null,
-        initialShowAgencyNameOnCover: true,
-      }),
-    ).toBe(true);
-  });
-
-  it("starts collapsed when agency white-label was already configured", () => {
-    expect(
-      shouldExpandReportBrandingWizard({
-        initialReportBrandingMode: "agency",
-        initialAgencyName: "Acme Ads",
-        initialShowAgencyNameOnCover: true,
-      }),
-    ).toBe(false);
-  });
-});
+import { reportBrandingWizardSummary } from "../report-branding-wizard-ui";
 
 describe("reportBrandingWizardSummary", () => {
   it("combines cover and link labels", () => {
