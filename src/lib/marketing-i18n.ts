@@ -29,10 +29,11 @@ export type MarketingCopy = {
   tryCtaFinePrint?: string;
   tryCtaStartTrial: string;
   tryCtaDashboard: string;
+  ctaTrustBadges: string[];
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Branded Meta Ads client reporting for agencies.",
+  brandTagline: "Client reporting for agencies — Meta Ads today; Google Ads, TikTok Ads, and GA4 on the roadmap.",
   navSignIn: "Log in",
   navContact: "Contact us",
   navSignOut: "Sign out",
@@ -60,6 +61,7 @@ const EN: MarketingCopy = {
   tryCtaFinePrint: "7-day free trial — no credit card required.",
   tryCtaStartTrial: "Sign up",
   tryCtaDashboard: "Go to Dashboard",
+  ctaTrustBadges: ["7-day free trial", "No credit card", "Cancel anytime", "CSV-backed numbers"],
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {
