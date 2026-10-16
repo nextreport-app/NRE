@@ -61,7 +61,7 @@ const EN: MarketingCopy = {
   tryCtaFinePrint: "7-day free trial.",
   tryCtaStartTrial: "Sign up",
   tryCtaDashboard: "Go to Dashboard",
-  ctaTrustBadges: ["7-day free trial", "No credit card", "Cancel anytime", "CSV-backed numbers"],
+  ctaTrustBadges: ["7-day free trial", "No credit card", "CSV-backed numbers"],
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {
