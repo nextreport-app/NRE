@@ -45,7 +45,7 @@ const EN: MarketingCopy = {
   heroHeadlineAccent: "client reporting",
   heroHeadlineAfter: " for agencies in minutes.",
   heroSubtext:
-    "Upload Meta Ads CSV exports and deliver branded decks, live links, and share-ready client reports — without rebuilding slides every week.",
+    "Stop rebuilding client decks every week. Upload your Meta export once and ship polished, on-brand performance reports in minutes — so your team spends time on strategy, not slide formatting.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
