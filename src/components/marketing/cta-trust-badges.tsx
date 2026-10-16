@@ -9,7 +9,7 @@ export function CtaTrustBadges({ className = "" }: { className?: string }) {
 
   return (
     <ul
-      className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-ink-muted lg:justify-start ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-ink-muted ${className}`}
       aria-label="Trial and billing highlights"
     >
       {items.map((item) => (

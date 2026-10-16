@@ -67,7 +67,7 @@ export const HOME_EN: HomeCopy = {
       description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
     },
   ],
-  trustStrip: "Every number comes from your Meta account or CSV export. We never modify your campaign data.",
+  trustStrip: "All metrics come from your Meta account or CSV — we never modify campaign data.",
   reportPreviewTitle: "What your clients will receive",
   reportPreviewSubtitle:
     "A fully branded PowerPoint report with AI-written insights — automatically generated from your campaign data.",
@@ -108,9 +108,9 @@ export const HOME_EN: HomeCopy = {
       agencySize: "Solo + 4 retainers",
     },
   ],
-  socialProofTotal: "{count} client reports generated on NextReport",
-  socialProofWeek: "{count} in the last 7 days",
-  socialProofLiveHint: "Live count — updates when reports finish generating",
+  socialProofTotal: "{count} client reports on NextReport",
+  socialProofWeek: "{count} this week",
+  socialProofLiveHint: "Live",
   pricingComparison: {
     featureColumn: "Compare plans",
     agencyColumn: "Agency",
