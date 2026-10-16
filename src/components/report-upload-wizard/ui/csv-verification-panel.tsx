@@ -55,7 +55,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const byScope = groupByScope(mismatches);
 
   if (ok) {
-    const detailText = `Spend, results, and cost per result match your uploaded CSV for ${verifiedScopesLabel(verification.scopesVerified)} (every day in the weekly window must be present). Small spend rounding (about $2 either way) is ignored.`;
+    const detailText = copy.csvVerifiedDetail(verifiedScopesLabel(verification.scopesVerified));
     return (
       <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
         <details className="group">
@@ -67,7 +67,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
               ✓
             </span>
             <span className="nre-wizard-callout-success__title min-w-0 flex-1 text-[14px] font-medium">
-              Verified against your CSV
+              {copy.csvVerifiedTitle}
             </span>
             <span
               className="nre-wizard-callout-success__detail shrink-0 text-[15px] leading-none transition-transform group-open:rotate-180"
