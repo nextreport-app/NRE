@@ -43,7 +43,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
   const { marketing, home } = useSiteCopy();
 
   return (
-    <section className="bg-navy px-6 py-20 sm:py-28">
+    <section className="nre-hero-section bg-navy px-6 py-20 sm:py-28">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
@@ -70,21 +70,21 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
             {loggedIn ? (
               <Link
                 href="/clients"
-                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
+                className="nre-hero-cta-primary inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold sm:w-auto"
               >
                 {marketing.heroGoDashboard}
               </Link>
             ) : (
               <Link
                 href="/signup"
-                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
+                className="nre-hero-cta-primary inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold sm:w-auto"
               >
                 {marketing.heroStartTrial}
               </Link>
             )}
             <Link
               href="/book-demo"
-              className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-ink hover:bg-navy-panel sm:w-auto"
+              className="nre-hero-cta-secondary inline-flex w-full items-center justify-center gap-1 rounded-full px-6 py-3 text-sm font-medium sm:w-auto"
             >
               {marketing.heroRequestDemo} <span aria-hidden="true">→</span>
             </Link>

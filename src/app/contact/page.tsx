@@ -44,11 +44,11 @@ export default async function ContactPage() {
           WhatsApp is optional — add it if you want a faster reply there. We respond by email within one business day.
         </p>
 
-        <section className="mt-10 rounded-lg border border-navy-border bg-navy-panel/60 p-5 text-left">
+        <section className="nre-contact-feedback-callout mt-10 rounded-lg border border-navy-border bg-navy-panel/60 p-5 text-left">
           <h2 className="text-base font-semibold text-white">Product feedback</h2>
           <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
             Ideas, UX notes, or &quot;I wish the tool could…&quot; — use subject{" "}
-            <span className="text-white">Product Feedback</span> below, or{" "}
+            <span className="font-medium text-white">Product Feedback</span> below, or{" "}
             <Link href="/feedback" className="text-[#f5b45a] hover:underline">
               open the feedback page
             </Link>

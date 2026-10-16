@@ -136,7 +136,7 @@ export function ProductExplainerAnimation() {
   return (
     <div className="mx-auto w-full max-w-lg">
       <div
-        className="rounded-xl border border-navy-border p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)]"
+        className="nre-keep-dark-surface rounded-xl border border-navy-border p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)]"
         style={{ background: SLIDE_BG }}
         aria-live="polite"
       >
