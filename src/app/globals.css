@@ -160,6 +160,49 @@ html[data-site-theme="light"] .bg-navy-panel {
   background-color: var(--color-navy-panel);
 }
 
+html[data-site-theme="light"] .bg-navy-panel\/70 {
+  background-color: color-mix(in srgb, var(--color-navy-panel) 70%, transparent);
+}
+
+/* Hero CTAs — dark: white primary on navy; light: black primary, white secondary on cream. */
+.nre-hero-cta-primary {
+  background-color: #ffffff;
+  color: #0d1b2e;
+  transition: opacity 0.15s ease;
+}
+
+.nre-hero-cta-primary:hover {
+  opacity: 0.92;
+}
+
+.nre-hero-cta-secondary {
+  border: 1px solid var(--color-navy-border);
+  background-color: color-mix(in srgb, var(--color-navy-panel) 85%, transparent);
+  color: var(--color-ink);
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.nre-hero-cta-secondary:hover {
+  background-color: var(--color-navy-panel);
+  opacity: 0.95;
+}
+
+html[data-site-theme="light"] .nre-hero-cta-primary {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html[data-site-theme="light"] .nre-hero-cta-secondary {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #c9c9c4;
+}
+
+html[data-site-theme="light"] .nre-hero-cta-secondary:hover {
+  background-color: #efeeea;
+  opacity: 1;
+}
+
 html[data-site-theme="light"] .border-navy-border {
   border-color: var(--color-navy-border);
 }
