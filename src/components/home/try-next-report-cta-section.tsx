@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 export function TryNextReportCtaSection({ loggedIn }: { loggedIn: boolean }) {
@@ -33,7 +32,6 @@ export function TryNextReportCtaSection({ loggedIn }: { loggedIn: boolean }) {
           {loggedIn ? marketing.tryCtaDashboard : marketing.tryCtaStartTrial}
         </Link>
       </div>
-      <CtaTrustBadges className="mt-4" />
       {marketing.tryCtaFinePrint ? (
         <p className="mx-auto mt-4 max-w-md text-xs text-ink-muted">{marketing.tryCtaFinePrint}</p>
       ) : null}

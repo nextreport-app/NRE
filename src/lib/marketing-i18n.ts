@@ -58,7 +58,7 @@ const EN: MarketingCopy = {
   tryCtaHeadlineAccent: "your first deck",
   tryCtaHeadlineAfter: " in minutes",
   tryCtaSubtitle: "Try NextReport now.",
-  tryCtaFinePrint: "7-day free trial — no credit card required.",
+  tryCtaFinePrint: "7-day free trial.",
   tryCtaStartTrial: "Sign up",
   tryCtaDashboard: "Go to Dashboard",
   ctaTrustBadges: ["7-day free trial", "No credit card", "Cancel anytime", "CSV-backed numbers"],
