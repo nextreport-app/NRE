@@ -216,6 +216,7 @@ export function WizardGenerateStep() {
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
           reportId={reportId}
+          reportType={reportType}
           reportTypeLabel={reportTypeLabel()}
           wizardSharePlatformLabel={wizardSharePlatformLabel()}
           slideCount={slideCount}

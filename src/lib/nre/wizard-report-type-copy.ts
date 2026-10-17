@@ -20,7 +20,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
   WEEKLY: {
     pickerLabel: "Weekly Performance Report",
     cardHeading: "Weekly Performance Report",
-    cardOneLiner: "Last 7-day report.",
+    cardOneLiner: "Last week, MTD, and last-30-day chart.",
     cardYouGet: "Last week (7-days), MTD (month till date), last 30-day chart, optional previous month row.",
     defaultDeckTitle: "Weekly Performance Report",
   },

@@ -23,14 +23,20 @@ import {
   buildTelegramShareUrl,
 } from "../utils";
 import { formatRelativeReportDate } from "@/lib/client-display";
+import type { ReportTypeValue } from "../types";
+import { reportingWeekLabel } from "@/lib/nre/weekly-report-labels";
 
 const chipClass =
   "inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80";
+
+const primaryActionClass =
+  "flex items-center justify-center gap-2 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22";
 
 type WizardGenerateSuccessPanelProps = {
   clientName: string;
   clientId: string;
   reportId: string | null;
+  reportType: ReportTypeValue;
   reportTypeLabel: string;
   wizardSharePlatformLabel: string;
   slideCount: number;
@@ -61,6 +67,7 @@ export function WizardGenerateSuccessPanel({
   clientName,
   clientId,
   reportId,
+  reportType,
   reportTypeLabel,
   wizardSharePlatformLabel,
   slideCount,
@@ -90,6 +97,15 @@ export function WizardGenerateSuccessPanel({
   const reportUrl = shareToken ? `https://${buildShareReportUrl(shareToken)}` : null;
   const shareDateLabel = dateRangeLabel || "this period";
   const showDrive = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
+  const isWeekly = reportType === "WEEKLY";
+  const metaDateLine =
+    isWeekly && dateRangeLabel
+      ? reportingWeekLabel(dateRangeLabel)
+      : dateRangeLabel;
+  const slideMeta =
+    slideCount > 0
+      ? `${slideCount} slide${slideCount === 1 ? "" : "s"}${metaDateLine ? ` · ${metaDateLine}` : ""}`
+      : metaDateLine;
 
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
@@ -104,10 +120,10 @@ export function WizardGenerateSuccessPanel({
         <p className="mt-1 text-[15px] font-semibold text-dash-ink">
           {clientName} · {reportTypeLabel}
         </p>
-        <p className="mt-1 text-[14px] text-dash-ink-secondary">
-          {slideCount} slide{slideCount === 1 ? "" : "s"}
-          {dateRangeLabel ? ` · ${dateRangeLabel}` : ""}
-        </p>
+        {isWeekly ? (
+          <p className="mt-2 text-[13px] leading-snug text-dash-ink-secondary">{copy.weeklyReportScopeLine}</p>
+        ) : null}
+        {slideMeta ? <p className="mt-1 text-[14px] text-dash-ink-secondary">{slideMeta}</p> : null}
       </div>
 
       <div className="space-y-5 p-5">
@@ -124,14 +140,15 @@ export function WizardGenerateSuccessPanel({
 
         {shareToken && reportUrl ? (
           <>
-            <a
-              href={reportUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex w-full items-center justify-center rounded-lg bg-dash-accent px-4 py-3.5 text-[16px] font-semibold text-dash-ink shadow-sm hover:bg-dash-accent-hover"
-            >
-              View report in browser
-            </a>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={primaryActionClass}>
+                {copy.openLiveReportRecommended}
+              </a>
+              <a href={downloadUrl} className={primaryActionClass}>
+                <PptxDownloadIcon />
+                Download PPTX
+              </a>
+            </div>
 
             {reportId ? (
               <p className="text-center text-[14px] leading-relaxed text-dash-ink-secondary">
@@ -248,7 +265,12 @@ export function WizardGenerateSuccessPanel({
               </div>
             </details>
           </>
-        ) : null}
+        ) : (
+          <a href={downloadUrl} className={`${primaryActionClass} w-full`}>
+            <PptxDownloadIcon />
+            Download PPTX
+          </a>
+        )}
 
         {publishedAt ? (
           <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[14px] text-emerald-200">
@@ -257,41 +279,34 @@ export function WizardGenerateSuccessPanel({
           </div>
         ) : null}
 
-        <div>
-          <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-dash-ink-muted">Download</p>
-          <div className={showDrive ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
-            <a
-              href={downloadUrl}
-              className="flex items-center justify-center gap-2 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22"
+        {showDrive ? (
+          <div>
+            <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-dash-ink-muted">
+              Google Drive
+            </p>
+            <button
+              type="button"
+              onClick={handleSaveButtonClick}
+              disabled={driveSaving}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#4285F4]/45 bg-[#4285F4]/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-[#4285F4]/22 disabled:opacity-50"
             >
-              <PptxDownloadIcon />
-              Download PPTX
-            </a>
-            {showDrive ? (
-              <button
-                type="button"
-                onClick={handleSaveButtonClick}
-                disabled={driveSaving}
-                className="flex items-center justify-center gap-2 rounded-lg border border-[#4285F4]/45 bg-[#4285F4]/12 px-3 py-3 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-[#4285F4]/22 disabled:opacity-50"
-              >
-                <GoogleDriveIcon />
-                {driveSaving ? "Saving…" : "Save to Drive"}
-              </button>
+              <GoogleDriveIcon />
+              {driveSaving ? "Saving…" : "Save to Drive"}
+            </button>
+            {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
+              <p className="mt-2 text-[13px] text-dash-ink-secondary">
+                Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
+                <button
+                  type="button"
+                  onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
+                  className="text-dash-accent hover:underline"
+                >
+                  Change
+                </button>
+              </p>
             ) : null}
           </div>
-          {hasGoogleDriveConnected && rememberedFolder && (driveView === "collapsed" || driveView === "success") ? (
-            <p className="mt-2 text-[13px] text-dash-ink-secondary">
-              Drive folder: <span className="text-dash-ink">{rememberedFolder.name}</span>{" "}
-              <button
-                type="button"
-                onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
-                className="text-dash-accent hover:underline"
-              >
-                Change
-              </button>
-            </p>
-          ) : null}
-        </div>
+        ) : null}
 
         {children}
 
