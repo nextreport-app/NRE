@@ -14,6 +14,11 @@ import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
 import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons";
+import {
+  isWeeklyShareReportType,
+  reportingWeekLabel,
+  WEEKLY_REPORT_SCOPE_LINE,
+} from "@/lib/nre/weekly-report-labels";
 
 /**
  * The public share page's full presentational tree (app/r/[token]/page.tsx)
@@ -802,7 +807,16 @@ export function ShareReportView({
               <p className="mt-1.5 text-[13px] tracking-wide text-ink-muted sm:mt-2 sm:text-[16px]">
                 {reportTypeLabel(visibleData).toUpperCase()}
               </p>
-              <p className="mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]">{visibleData.cover.dateRange}</p>
+              {isWeeklyShareReportType(visibleData.reportType) ? (
+                <p className="mt-2 max-w-xl px-1 text-[12px] leading-snug text-ink-muted sm:text-[14px]">
+                  {WEEKLY_REPORT_SCOPE_LINE}
+                </p>
+              ) : null}
+              <p className="mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]">
+                {isWeeklyShareReportType(visibleData.reportType)
+                  ? reportingWeekLabel(visibleData.cover.dateRange)
+                  : visibleData.cover.dateRange}
+              </p>
               <div className="my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" />
               <p className="max-w-full break-words px-1 text-[13px] font-medium leading-snug text-ink sm:text-[16px]">
                 {visibleData.cover.healthBadge}

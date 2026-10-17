@@ -26,6 +26,9 @@ const EN_UI = {
   confirmedPeriodWeeklyWeekSuffix: "week",
   confirmedPeriodWeeklyMtdPrefix: "MTD from",
   confirmedPeriodWeeklyChart: "Last 30 days in a visual chart slide",
+  weeklyReportScopeLine: "Includes last week, MTD, and a last-30-day chart.",
+  reportingWeekLabel: "Reporting week",
+  openLiveReportRecommended: "Open live report (recommended)",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
     "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
@@ -111,6 +114,9 @@ const LOCALE_UI: Partial<Record<SiteLocaleId, Partial<typeof EN_UI>>> = {
     confirmationRequired: "Confirmación obligatoria",
     generateHeadingPrefix: "Generar:",
     moreReportTypes: "Más tipos de informe",
+    weeklyReportScopeLine: "Incluye la semana, MTD y un gráfico de 30 días.",
+    reportingWeekLabel: "Semana del informe",
+    openLiveReportRecommended: "Abrir informe en vivo (recomendado)",
   },
   fr: {
     reportingFor: "Rapport pour",
@@ -227,7 +233,7 @@ const LOCALE_STEPS: Partial<Record<SiteLocaleId, Partial<typeof EN_STEPS>>> = {
 const REPORT_TYPE_ES: Partial<Record<LaunchEnabledReportType, Partial<WizardReportTypeCopy>>> = {
   WEEKLY: {
     cardHeading: "Informe semanal",
-    cardOneLiner: "Informe de los últimos 7 días.",
+    cardOneLiner: "Semana, MTD y gráfico de 30 días.",
     pickerLabel: "Informe semanal",
   },
   MONTHLY: {

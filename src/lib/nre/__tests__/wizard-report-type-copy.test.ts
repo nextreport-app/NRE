@@ -20,7 +20,8 @@ describe("wizard report type copy", () => {
     }
   });
 
-  it("weekly one-liner matches short card label", () => {
-    expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toBe("Last 7-day report.");
+  it("weekly one-liner mentions MTD and chart bundle", () => {
+    expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toContain("MTD");
+    expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toContain("30");
   });
 });
