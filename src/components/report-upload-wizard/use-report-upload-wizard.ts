@@ -1057,6 +1057,10 @@ export function useReportUploadWizard({
     generateStatus,
   ]);
 
+  const accountBrandingSnapshotRef = useRef(
+    `${initialReportBrandingMode}|${initialAgencyName?.trim() ?? ""}`,
+  );
+
   useEffect(() => {
     const refreshAccountBranding = () => {
       void fetch("/api/account")
@@ -1064,13 +1068,21 @@ export function useReportUploadWizard({
         .then((json) => {
           if (!json) return;
           const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
-          savedAgencyNameRef.current = name;
           const mode = normalizeReportBrandingMode(json.reportBrandingMode);
+          const snapshot = `${mode}|${name}`;
+          const changed = snapshot !== accountBrandingSnapshotRef.current;
+          savedAgencyNameRef.current = name;
           savedReportBrandingModeRef.current = mode;
           savedShowAgencyNameOnCoverRef.current = json.showAgencyNameOnCover ?? true;
           setAgencyName(name);
           setReportBrandingMode(mode);
           setReportBrandingError(null);
+          if (changed) {
+            accountBrandingSnapshotRef.current = snapshot;
+            if (document.visibilityState === "visible") {
+              showToast("Branding updated from account settings.");
+            }
+          }
         })
         .catch(() => undefined);
     };
@@ -1084,7 +1096,7 @@ export function useReportUploadWizard({
       window.removeEventListener("focus", refreshAccountBranding);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [showToast]);
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
