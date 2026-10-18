@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
+import { agencyLogoUploadGuidance } from "@/lib/agency-logo-spec";
 import {
   ACCOUNT_REPORT_BRANDING_MODES,
   REPORT_BRANDING_MODE_LABELS,
@@ -227,9 +228,7 @@ export function AccountSettingsForm({
               />
             )}
             {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
-            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">
-              PNG, JPG, WebP, or SVG — max 2MB.
-            </p>
+            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">{agencyLogoUploadGuidance()}</p>
           </div>
         ) : null}
       </fieldset>
