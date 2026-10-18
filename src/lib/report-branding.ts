@@ -137,29 +137,43 @@ export function sharePageTitleSuffix(branding: ReportBrandingSettings): string {
   return "NextReport";
 }
 
+/** Where a single branding choice applies (same deck file is used for PPTX and typical Slides upload). */
+export const REPORT_BRANDING_SURFACES =
+  "PowerPoint download, Google Slides export, live share link, and client emails";
+
 export const REPORT_BRANDING_MODE_LABELS: Record<
   ReportBrandingMode,
   { title: string; description: string }
 > = {
   nextreport: {
-    title: "Show NextReport",
-    description: "Shared reports include NextReport in the header and footer (default).",
+    title: "NextReport (default)",
+    description: `“Prepared by NextReport” on the cover and NextReport on the ${REPORT_BRANDING_SURFACES}.`,
   },
   agency: {
     title: "Show my or agency name",
-    description: "Replace NextReport with your agency name and logo on shared reports and client emails.",
+    description: `Your name on the cover (“Prepared by …”), your logo and name on the ${REPORT_BRANDING_SURFACES}.`,
   },
   hidden: {
     title: "Hide — don't show any name",
-    description: "No NextReport or agency name on shared reports — only your report content and date.",
+    description: `No “Prepared by” line and no NextReport or agency name on the ${REPORT_BRANDING_SURFACES}.`,
   },
 };
 
-/** Share-link branding choices on Account settings (NextReport is the implicit default). */
-export const ACCOUNT_REPORT_BRANDING_SHARE_MODES = ["agency", "hidden"] as const satisfies readonly ReportBrandingMode[];
+/** Branding choices on Account settings — one applies everywhere. */
+export const ACCOUNT_REPORT_BRANDING_MODES = ["nextreport", "agency", "hidden"] as const satisfies readonly ReportBrandingMode[];
 
-export const REPORT_BRANDING_DEFAULT_SHARE_NOTE =
-  "NextReport branding on shared client reports unless you choose an option below.";
+/**
+ * Name used after “Prepared by” on the deck cover — driven by the same mode as share/email branding.
+ */
+export function reportCreditName(input: {
+  reportBrandingMode?: string | null;
+  agencyName?: string | null;
+}): string | null {
+  const mode = normalizeReportBrandingMode(input.reportBrandingMode);
+  if (mode === "hidden") return null;
+  if (mode === "nextreport") return "NextReport";
+  return input.agencyName?.trim() || null;
+}
 
 export const WHITE_LABEL_FEATURE =
   "White-label reports — hide or replace NextReport branding";

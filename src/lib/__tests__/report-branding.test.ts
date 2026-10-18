@@ -4,6 +4,7 @@ import {
   emailFooterPrimary,
   emailGeneratedByLine,
   reportBrandingFromShareJson,
+  reportCreditName,
   resolveShareBrandingDisplay,
   sharePageTitleSuffix,
 } from "../report-branding";
@@ -65,5 +66,13 @@ describe("report branding", () => {
     expect(sharePageTitleSuffix({ mode: "nextreport", agencyName: null })).toBe("NextReport");
     expect(sharePageTitleSuffix({ mode: "agency", agencyName: "Bright Path" })).toBe("Bright Path");
     expect(sharePageTitleSuffix({ mode: "hidden", agencyName: null })).toBe("Report");
+  });
+
+  it("aligns cover credit with branding mode", () => {
+    expect(reportCreditName({ reportBrandingMode: "nextreport" })).toBe("NextReport");
+    expect(reportCreditName({ reportBrandingMode: "agency", agencyName: "Bright Path" })).toBe(
+      "Bright Path",
+    );
+    expect(reportCreditName({ reportBrandingMode: "hidden", agencyName: "Bright Path" })).toBeNull();
   });
 });
