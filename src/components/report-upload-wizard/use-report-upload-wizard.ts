@@ -112,8 +112,7 @@ import {
   perCampaignMetricsFromDraft,
 } from "./wizard-draft-sync";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
-import type { ReportBrandingMode } from "@/lib/report-branding";
-import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
+import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/report-branding";
 
 export function useReportUploadWizard({
   clientId,
@@ -203,63 +202,10 @@ export function useReportUploadWizard({
   const savedReportBrandingModeRef = useRef<ReportBrandingMode>(initialReportBrandingMode);
   const savedShowAgencyNameOnCoverRef = useRef(initialShowAgencyNameOnCover);
   const [agencyName, setAgencyName] = useState(() => savedAgencyNameRef.current);
-  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(() =>
-    initialAgencyName?.trim() ? initialReportBrandingMode : "nextreport",
-  );
-  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(
-    () => Boolean(initialAgencyName?.trim() && initialShowAgencyNameOnCover),
+  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
+    () => initialReportBrandingMode,
   );
   const [reportBrandingError, setReportBrandingError] = useState<string | null>(null);
-  const [reportBrandingSaving, setReportBrandingSaving] = useState(false);
-
-  function handleWizardAgencyNameChange(value: string) {
-    setAgencyName(value);
-    setReportBrandingError(null);
-    setShowAgencyNameOnCover(!!value.trim());
-    if (!value.trim() && reportBrandingMode === "agency") {
-      setReportBrandingMode("nextreport");
-    }
-  }
-
-  async function persistReportBrandingSettings(): Promise<boolean> {
-    if (reportBrandingMode === "agency" && !agencyName.trim()) {
-      setReportBrandingError("Enter your agency name to show it on client reports.");
-      return false;
-    }
-
-    setReportBrandingSaving(true);
-    setReportBrandingError(null);
-    try {
-      const res = await fetch("/api/account", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agencyName: agencyName.trim() || null,
-          reportBrandingMode,
-          showAgencyNameOnCover: !!agencyName.trim(),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const message = (data.error as string) || "Could not save your agency name.";
-        setReportBrandingError(message);
-        showToast(message, "error");
-        return false;
-      }
-      savedAgencyNameRef.current = agencyName.trim();
-      savedReportBrandingModeRef.current = reportBrandingMode;
-      savedShowAgencyNameOnCoverRef.current = showAgencyNameOnCover;
-      markReportBrandingWizardCollapsed();
-      return true;
-    } catch {
-      const message = "Could not save your agency name. Check your connection and try again.";
-      setReportBrandingError(message);
-      showToast(message, "error");
-      return false;
-    } finally {
-      setReportBrandingSaving(false);
-    }
-  }
 
   const reportBrandingBlocksGenerate =
     reportBrandingMode === "agency" && !agencyName.trim();
@@ -1119,11 +1065,11 @@ export function useReportUploadWizard({
           if (!json) return;
           const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
           savedAgencyNameRef.current = name;
-          savedReportBrandingModeRef.current = json.reportBrandingMode ?? "nextreport";
+          const mode = normalizeReportBrandingMode(json.reportBrandingMode);
+          savedReportBrandingModeRef.current = mode;
           savedShowAgencyNameOnCoverRef.current = json.showAgencyNameOnCover ?? true;
           setAgencyName(name);
-          setReportBrandingMode(name ? (json.reportBrandingMode ?? "nextreport") : "nextreport");
-          setShowAgencyNameOnCover(Boolean(name && json.showAgencyNameOnCover));
+          setReportBrandingMode(mode);
           setReportBrandingError(null);
         })
         .catch(() => undefined);
@@ -2398,7 +2344,9 @@ export function useReportUploadWizard({
     if (!mtdFile && !uploadSessionId) return;
     if (usesFullAdWizard(platform) && !generateStepPreviewReady) return;
     if (reportBrandingBlocksGenerate) {
-      setReportBrandingError("Enter your agency name to show it on client reports.");
+      setReportBrandingError(
+        "Share branding is set to show your agency name, but no agency name is saved. Add one in Account settings.",
+      );
       return;
     }
     const csvMismatchAtGenerate = csvVerification?.status === "mismatch";
@@ -2413,12 +2361,6 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setShareToken(null);
-
-    const brandingSaved = await persistReportBrandingSettings();
-    if (!brandingSaved) {
-      setGenerateStatus("idle");
-      return;
-    }
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -3177,14 +3119,9 @@ export function useReportUploadWizard({
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
     agencyName,
-    handleWizardAgencyNameChange,
     reportBrandingMode,
-    setReportBrandingMode,
     reportBrandingError,
-    reportBrandingSaving,
     reportBrandingBlocksGenerate,
-    showAgencyNameOnCover,
-    setShowAgencyNameOnCover,
     initialAgencyName,
     initialReportBrandingMode,
     initialShowAgencyNameOnCover,

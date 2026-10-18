@@ -148,14 +148,9 @@ export function WizardGenerateStep() {
     driveDateRangeLabel,
     happyPathSkippedSteps,
     agencyName,
-    handleWizardAgencyNameChange,
     reportBrandingMode,
-    setReportBrandingMode,
     reportBrandingError,
-    reportBrandingSaving,
     reportBrandingBlocksGenerate,
-    showAgencyNameOnCover,
-    setShowAgencyNameOnCover,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -692,10 +687,7 @@ export function WizardGenerateStep() {
               {generateStepPreviewReady && generateStatus === "idle" ? (
                 <WizardReportBrandingPanel
                   agencyName={agencyName}
-                  onAgencyNameChange={handleWizardAgencyNameChange}
                   reportBrandingMode={reportBrandingMode}
-                  onReportBrandingModeChange={setReportBrandingMode}
-                  saving={reportBrandingSaving}
                   error={reportBrandingError}
                 />
               ) : null}
