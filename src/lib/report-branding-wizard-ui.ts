@@ -1,32 +1,50 @@
 import type { ReportBrandingMode } from "@/lib/report-branding";
-import {
-  REPORT_BRANDING_MODE_LABELS,
-  REPORT_BRANDING_SURFACES,
-  reportCreditName,
-} from "@/lib/report-branding";
+import { REPORT_BRANDING_SURFACES, reportCreditName } from "@/lib/report-branding";
+
+export type WizardUnifiedBrandingLines = {
+  line1: string;
+  line2: string;
+};
+
+export function wizardUnifiedBrandingLines(
+  reportBrandingMode: ReportBrandingMode,
+  agencyName: string,
+): WizardUnifiedBrandingLines {
+  if (reportBrandingMode === "hidden") {
+    return {
+      line1: "No “Prepared by” line on the cover.",
+      line2: `No NextReport or agency name on ${REPORT_BRANDING_SURFACES}.`,
+    };
+  }
+
+  const credit = reportCreditName({ reportBrandingMode, agencyName });
+
+  if (reportBrandingMode === "agency" && !credit) {
+    return {
+      line1: "Add your agency name in Account settings.",
+      line2: `Then matching branding applies on ${REPORT_BRANDING_SURFACES}.`,
+    };
+  }
+
+  return {
+    line1: `“Prepared by ${credit}” on the cover.`,
+    line2: `Matching branding on ${REPORT_BRANDING_SURFACES}.`,
+  };
+}
 
 export function reportBrandingWizardSummary(input: {
   reportBrandingMode: ReportBrandingMode;
   agencyName: string;
 }): string {
-  return wizardUnifiedBrandingDisplay(input.reportBrandingMode, input.agencyName);
+  const { line1, line2 } = wizardUnifiedBrandingLines(input.reportBrandingMode, input.agencyName);
+  return `${line1} ${line2}`;
 }
 
-/** Read-only wizard / account preview — one choice, all surfaces. */
+/** @deprecated Use wizardUnifiedBrandingLines for UI */
 export function wizardUnifiedBrandingDisplay(
   reportBrandingMode: ReportBrandingMode,
   agencyName: string,
 ): string {
-  const credit = reportCreditName({ reportBrandingMode, agencyName });
-  const modeLabel = REPORT_BRANDING_MODE_LABELS[reportBrandingMode].title;
-
-  if (reportBrandingMode === "hidden") {
-    return `${modeLabel} — no credit line on the cover; no names on ${REPORT_BRANDING_SURFACES}.`;
-  }
-
-  if (credit) {
-    return `${modeLabel} — “Prepared by ${credit}” on the cover; matching branding on ${REPORT_BRANDING_SURFACES}.`;
-  }
-
-  return `${modeLabel} — add an agency name in Account settings to use this option.`;
+  const { line1, line2 } = wizardUnifiedBrandingLines(reportBrandingMode, agencyName);
+  return `${line1} ${line2}`;
 }
