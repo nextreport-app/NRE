@@ -16,6 +16,6 @@ describe("reportBrandingWizardSummary", () => {
         agencyName: "",
         showAgencyNameOnCover: true,
       }),
-    ).toContain("Share link: Hide third-party branding");
+    ).toContain("Share link: Hide — don't show any name");
   });
 });

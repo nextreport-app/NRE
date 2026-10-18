@@ -105,7 +105,6 @@ export default async function AccountSettingsPage({
         <AccountSettingsForm
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
-          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
           hasAgencyLogo={!!user.agencyLogoUrl}
         />
       </section>

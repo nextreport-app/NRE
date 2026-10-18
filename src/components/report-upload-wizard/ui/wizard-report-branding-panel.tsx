@@ -7,8 +7,8 @@ import { markReportBrandingWizardCollapsed, reportBrandingWizardSummary } from "
 
 const WIZARD_SHARE_LINK_OPTIONS: { mode: ReportBrandingMode; label: string }[] = [
   { mode: "nextreport", label: "NextReport branding (default)" },
-  { mode: "agency", label: "My agency name on the link" },
-  { mode: "hidden", label: "No third-party branding" },
+  { mode: "agency", label: "Show my or agency name" },
+  { mode: "hidden", label: "Hide — don't show any name" },
 ];
 
 function DeliveryBadge({ children }: { children: string }) {
@@ -22,8 +22,6 @@ function DeliveryBadge({ children }: { children: string }) {
 export function WizardReportBrandingPanel({
   agencyName,
   onAgencyNameChange,
-  showAgencyNameOnCover,
-  onShowAgencyNameOnCoverChange,
   reportBrandingMode,
   onReportBrandingModeChange,
   saving,
@@ -31,8 +29,6 @@ export function WizardReportBrandingPanel({
 }: {
   agencyName: string;
   onAgencyNameChange: (value: string) => void;
-  showAgencyNameOnCover: boolean;
-  onShowAgencyNameOnCoverChange: (show: boolean) => void;
   reportBrandingMode: ReportBrandingMode;
   onReportBrandingModeChange: (mode: ReportBrandingMode) => void;
   saving?: boolean;
@@ -44,7 +40,6 @@ export function WizardReportBrandingPanel({
   const summary = reportBrandingWizardSummary({
     reportBrandingMode,
     agencyName,
-    showAgencyNameOnCover,
   });
 
   function collapseSection() {
@@ -101,17 +96,11 @@ export function WizardReportBrandingPanel({
                 className="mt-1 w-full rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[15px] text-dash-ink outline-none focus:border-dash-accent disabled:opacity-60"
               />
             </label>
-
-            <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px] text-dash-ink-secondary">
-              <input
-                type="checkbox"
-                checked={!showAgencyNameOnCover}
-                disabled={saving || !trimmed}
-                onChange={(e) => onShowAgencyNameOnCoverChange(!e.target.checked)}
-                className="mt-0.5 shrink-0"
-              />
-              <span>Hide name on the cover slide {trimmed ? "" : "(add a name first)"}</span>
-            </label>
+            <p className="mt-2 text-[12px] leading-snug text-dash-ink-muted">
+              {trimmed
+                ? `Appears as "Prepared by ${trimmed}" on the cover. Clear the field to omit it.`
+                : "Leave blank to omit \"Prepared by\" on the cover."}
+            </p>
           </div>
 
           <div className="rounded-lg border border-dash-border bg-dash-bg/40 p-4">

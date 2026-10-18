@@ -15,15 +15,14 @@ export function markReportBrandingWizardCollapsed(): void {
 export function reportBrandingWizardSummary(input: {
   reportBrandingMode: ReportBrandingMode;
   agencyName: string;
-  showAgencyNameOnCover: boolean;
+  showAgencyNameOnCover?: boolean;
 }): string {
   const name = input.agencyName.trim();
-  const coverPart = !name
-    ? "PPT cover: no agency name"
-    : input.showAgencyNameOnCover
-      ? `PPT cover: Prepared by ${name}`
-      : "PPT cover: name hidden";
+  const coverPart = !name ? "PPT cover: no agency name" : `PPT cover: Prepared by ${name}`;
 
-  const linkPart = REPORT_BRANDING_MODE_LABELS[input.reportBrandingMode].title;
+  const linkPart =
+    input.reportBrandingMode === "nextreport"
+      ? "NextReport branding (default)"
+      : REPORT_BRANDING_MODE_LABELS[input.reportBrandingMode].title;
   return `${coverPart} · Share link: ${linkPart}`;
 }
