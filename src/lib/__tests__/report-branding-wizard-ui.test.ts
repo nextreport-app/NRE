@@ -1,35 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
   reportBrandingWizardSummary,
-  wizardCoverBrandingDisplay,
-  wizardShareLinkBrandingDisplay,
+  wizardUnifiedBrandingDisplay,
 } from "../report-branding-wizard-ui";
 
 describe("reportBrandingWizardSummary", () => {
-  it("combines cover and link labels", () => {
+  it("matches unified display", () => {
     expect(
       reportBrandingWizardSummary({
-        reportBrandingMode: "nextreport",
-        agencyName: "Mohit Sharma",
+        reportBrandingMode: "agency",
+        agencyName: "DashClicks",
       }),
-    ).toContain("Prepared by Mohit Sharma");
-    expect(
-      reportBrandingWizardSummary({
-        reportBrandingMode: "hidden",
-        agencyName: "",
-      }),
-    ).toContain("Share link: Hide — don't show any name");
+    ).toBe(wizardUnifiedBrandingDisplay("agency", "DashClicks"));
   });
 });
 
-describe("wizard read-only branding display", () => {
-  it("describes cover with and without agency name", () => {
-    expect(wizardCoverBrandingDisplay("DashClicks")).toContain("Prepared by DashClicks");
-    expect(wizardCoverBrandingDisplay("  ")).toContain("No");
+describe("wizardUnifiedBrandingDisplay", () => {
+  it("describes NextReport default on all surfaces", () => {
+    expect(wizardUnifiedBrandingDisplay("nextreport", "")).toContain("Prepared by NextReport");
+    expect(wizardUnifiedBrandingDisplay("nextreport", "")).toContain("live share link");
   });
 
-  it("describes share link modes", () => {
-    expect(wizardShareLinkBrandingDisplay("nextreport")).toContain("default");
-    expect(wizardShareLinkBrandingDisplay("agency")).toContain("Show my or agency name");
+  it("describes agency white-label", () => {
+    expect(wizardUnifiedBrandingDisplay("agency", "DashClicks")).toContain("Prepared by DashClicks");
+  });
+
+  it("describes hidden branding", () => {
+    expect(wizardUnifiedBrandingDisplay("hidden", "DashClicks")).toContain("no credit line");
   });
 });
