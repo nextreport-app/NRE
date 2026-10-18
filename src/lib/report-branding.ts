@@ -146,14 +146,20 @@ export const REPORT_BRANDING_MODE_LABELS: Record<
     description: "Shared reports include NextReport in the header and footer (default).",
   },
   agency: {
-    title: "Show my agency name",
+    title: "Show my or agency name",
     description: "Replace NextReport with your agency name and logo on shared reports and client emails.",
   },
   hidden: {
-    title: "Hide third-party branding",
-    description: "No NextReport name on shared reports — only your report content and date.",
+    title: "Hide — don't show any name",
+    description: "No NextReport or agency name on shared reports — only your report content and date.",
   },
 };
+
+/** Share-link branding choices on Account settings (NextReport is the implicit default). */
+export const ACCOUNT_REPORT_BRANDING_SHARE_MODES = ["agency", "hidden"] as const satisfies readonly ReportBrandingMode[];
+
+export const REPORT_BRANDING_DEFAULT_SHARE_NOTE =
+  "NextReport branding on shared client reports unless you choose an option below.";
 
 export const WHITE_LABEL_FEATURE =
   "White-label reports — hide or replace NextReport branding";

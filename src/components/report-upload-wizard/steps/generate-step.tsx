@@ -693,8 +693,6 @@ export function WizardGenerateStep() {
                 <WizardReportBrandingPanel
                   agencyName={agencyName}
                   onAgencyNameChange={handleWizardAgencyNameChange}
-                  showAgencyNameOnCover={showAgencyNameOnCover}
-                  onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
                   reportBrandingMode={reportBrandingMode}
                   onReportBrandingModeChange={setReportBrandingMode}
                   saving={reportBrandingSaving}

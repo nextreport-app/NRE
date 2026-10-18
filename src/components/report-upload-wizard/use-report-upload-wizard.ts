@@ -215,11 +215,9 @@ export function useReportUploadWizard({
   function handleWizardAgencyNameChange(value: string) {
     setAgencyName(value);
     setReportBrandingError(null);
-    if (!value.trim()) {
-      setShowAgencyNameOnCover(false);
-      if (reportBrandingMode === "agency") {
-        setReportBrandingMode("nextreport");
-      }
+    setShowAgencyNameOnCover(!!value.trim());
+    if (!value.trim() && reportBrandingMode === "agency") {
+      setReportBrandingMode("nextreport");
     }
   }
 
@@ -238,7 +236,7 @@ export function useReportUploadWizard({
         body: JSON.stringify({
           agencyName: agencyName.trim() || null,
           reportBrandingMode,
-          showAgencyNameOnCover,
+          showAgencyNameOnCover: !!agencyName.trim(),
         }),
       });
       const data = await res.json().catch(() => ({}));
