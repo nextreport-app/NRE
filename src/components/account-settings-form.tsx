@@ -119,96 +119,119 @@ export function AccountSettingsForm({
     setRemoveLogo(true);
   }
 
+  function renderModeOption(mode: ReportBrandingMode) {
+    const option = REPORT_BRANDING_MODE_LABELS[mode];
+    const selected = reportBrandingMode === mode;
+
+    if (mode !== "agency") {
+      return (
+        <label
+          key={mode}
+          className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
+            selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+          }`}
+        >
+          <input
+            type="radio"
+            name="reportBrandingMode"
+            value={mode}
+            checked={selected}
+            onChange={() => setReportBrandingMode(mode)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
+              {option.description}
+            </span>
+          </span>
+        </label>
+      );
+    }
+
+    return (
+      <div
+        key={mode}
+        className={`rounded-md border px-3 py-3 ${
+          selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+        }`}
+      >
+        <label className="flex cursor-pointer gap-3">
+          <input
+            type="radio"
+            name="reportBrandingMode"
+            value={mode}
+            checked={selected}
+            onChange={() => setReportBrandingMode(mode)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
+              {option.description}
+            </span>
+          </span>
+        </label>
+
+        {selected ? (
+          <div className="mt-3 border-t border-dash-border/80 pt-3 pl-7">
+            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency or your name</label>
+            <input
+              value={agencyName}
+              onChange={(e) => setAgencyName(e.target.value)}
+              placeholder="e.g. Bright Path Marketing"
+              maxLength={150}
+              className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-0">
       <fieldset>
         <legend className="mb-1 block text-sm font-medium text-dash-ink">Client-facing credit on reports</legend>
         <p className="mb-4 text-[13px] leading-snug text-dash-ink-secondary">
-          Pick one option below. It applies to the same report everywhere: {REPORT_BRANDING_SURFACES}.
+          Pick one option below. It applies to the same report everywhere: {REPORT_BRANDING_SURFACES}. New accounts
+          start with <span className="text-dash-ink">NextReport (default)</span> until you change it here.
         </p>
-        <div className="space-y-2">
-          {ACCOUNT_REPORT_BRANDING_MODES.map((mode) => {
-            const option = REPORT_BRANDING_MODE_LABELS[mode];
-            return (
-              <label
-                key={mode}
-                className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
-                  reportBrandingMode === mode
-                    ? "border-dash-accent bg-dash-accent/5"
-                    : "border-dash-border"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="reportBrandingMode"
-                  value={mode}
-                  checked={reportBrandingMode === mode}
-                  onChange={() => setReportBrandingMode(mode)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
-                    {option.description}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <div className="space-y-2">{ACCOUNT_REPORT_BRANDING_MODES.map((mode) => renderModeOption(mode))}</div>
 
         {reportBrandingMode === "agency" ? (
-          <div className={`${sectionDividerClass} space-y-4`}>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-dash-ink">Agency or your name</label>
+          <div className={`${sectionDividerClass}`}>
+            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency logo — optional</label>
+            <p className="mb-3 text-[13px] leading-snug text-dash-ink-secondary">
+              Only for the live share link header when white-label is on. Not required for the PowerPoint cover.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
               <input
-                value={agencyName}
-                onChange={(e) => setAgencyName(e.target.value)}
-                placeholder="e.g. Bright Path Marketing"
-                maxLength={150}
-                className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+                type="file"
+                accept={ACCEPTED_LOGO_TYPES}
+                onChange={handleLogoChange}
+                className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
               />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-dash-ink">Agency logo — optional</label>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="file"
-                  accept={ACCEPTED_LOGO_TYPES}
-                  onChange={handleLogoChange}
-                  className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
-                />
-                {((hasAgencyLogo && !removeLogo) || logoFile) && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveLogo}
-                    className="text-sm text-dash-error hover:underline"
-                  >
-                    Remove logo
-                  </button>
-                )}
-              </div>
-              {logoPreviewSrc && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoPreviewSrc}
-                  alt="Agency logo preview"
-                  className="mt-3 h-12 w-auto max-w-[200px] object-contain"
-                />
+              {((hasAgencyLogo && !removeLogo) || logoFile) && (
+                <button type="button" onClick={handleRemoveLogo} className="text-sm text-dash-error hover:underline">
+                  Remove logo
+                </button>
               )}
-              {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
-              <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">
-                Shown on the live share link header. PNG, JPG, WebP, or SVG — max 2MB.
-              </p>
             </div>
+            {logoPreviewSrc && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoPreviewSrc}
+                alt="Agency logo preview"
+                className="mt-3 h-12 w-auto max-w-[200px] object-contain"
+              />
+            )}
+            {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
+            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">
+              PNG, JPG, WebP, or SVG — max 2MB.
+            </p>
           </div>
         ) : null}
-
-        <p className="mt-4 text-[13px] leading-snug text-dash-ink-secondary">
-          Applies to reports you generate from now on (existing share links keep the branding from when they were
-          created).
-        </p>
       </fieldset>
 
       {error && <p className={`text-sm text-dash-error ${sectionDividerClass}`}>{error}</p>}
