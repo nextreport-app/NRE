@@ -20,7 +20,7 @@ const EN_UI = {
     "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
   csvVerifiedTitle: "Verified against your CSV",
   csvVerifiedDetail: (scopesLabel: string) =>
-    `Spend, results, and cost per result match your CSV for ${scopesLabel}. Weekly needs every day in that window; spend within about $2 either way is OK.`,
+    `Spend, results, and cost per result match your CSV for ${scopesLabel}.`,
   generateForInternalReview: "Generate for internal review",
   confirmedPeriodWeeklyLead: "Your weekly report will cover:",
   confirmedPeriodWeeklyWeekSuffix: "week",
