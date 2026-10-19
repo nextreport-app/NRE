@@ -320,7 +320,25 @@ html[data-site-theme="light"] .public-site-header {
 
 html[data-site-theme="light"] .nre-app-shell {
   color-scheme: light;
-  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
+  background-color: #f7f7f4;
+  /* Match marketing light canvas (homepage) — off-white, not a flat #fff wizard page. */
+  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 42%, #f0efeb 100%);
+}
+
+/* Dashboard header — white bar, pure black nav copy on light theme. */
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav {
+  background-color: #ffffff;
+  border-bottom-color: var(--nre-dash-border);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav a,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav button,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav span {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav a:hover {
+  color: #000000;
 }
 
 @keyframes nre-about-glow-drift {

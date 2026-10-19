@@ -26,7 +26,7 @@ export function Nav() {
   const { dashboard: d } = useSiteCopy();
 
   return (
-    <header className="border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
+    <header className="nre-dash-nav border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 no-underline">
           <img src="/logo.png" alt="NextReport logo" className="block h-10 w-10" />
@@ -34,7 +34,7 @@ export function Nav() {
             NextReport
           </span>
         </Link>
-        <div className="flex min-w-0 max-w-[min(100%,52rem)] flex-1 items-center justify-end gap-x-3 gap-y-2 overflow-x-auto text-[14px] text-dash-ink-secondary sm:gap-x-4">
+        <div className="flex min-w-0 max-w-[min(100%,52rem)] flex-1 items-center justify-end gap-x-3 gap-y-2 overflow-x-auto text-[14px] sm:gap-x-4">
           {LINK_HREFS.map((link) => {
             const active = isActive(pathname, link.href);
             const label = d[link.key];
