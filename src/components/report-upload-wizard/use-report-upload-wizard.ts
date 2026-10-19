@@ -476,6 +476,10 @@ export function useReportUploadWizard({
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [clientShareMessageCopied, setClientShareMessageCopied] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const shareCopyInFlightRef = useRef(false);
+  const clientMessageCopyInFlightRef = useRef(false);
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
@@ -717,6 +721,9 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setPublishedAt(null);
+    setGeneratedAt(null);
+    setShareLinkCopied(false);
+    setClientShareMessageCopied(false);
     setGeneratedWithCsvMismatch(false);
   }
 
@@ -2447,6 +2454,7 @@ export function useReportUploadWizard({
     setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);
+    setGeneratedAt(new Date().toISOString());
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
     setGenerateStatus("done");
     clearAllWizardDrafts();
@@ -2548,22 +2556,38 @@ export function useReportUploadWizard({
     setPmsError(null);
   }
 
-  async function handleCopyShareLink() {
-    if (!shareToken) return;
-    await navigator.clipboard.writeText(buildShareReportUrl(shareToken));
-    showToast("Share link copied!");
-  }
-
-  async function handleCopyClientShareMessage() {
-    if (!shareToken) return;
-    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
-    const text = buildClientReportShareMessage({
+  function buildClientShareMessageInput(reportUrl: string) {
+    return {
       clientName,
+      reportTitle: defaultReportTitleFor(reportType),
       reportTypeLabel: reportTypeLabel(),
       platformLabel: wizardSharePlatformLabel(),
       dateRangeLabel: driveDateRangeLabel() || "this period",
       reportUrl,
-    });
+    };
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareToken || shareCopyInFlightRef.current) return;
+    shareCopyInFlightRef.current = true;
+    const fullUrl = `https://${buildShareReportUrl(shareToken)}`;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setShareLinkCopied(true);
+      showToast("Share link copied!");
+      window.setTimeout(() => setShareLinkCopied(false), 2000);
+    } catch {
+      showToast("Could not copy link — try again.");
+    } finally {
+      shareCopyInFlightRef.current = false;
+    }
+  }
+
+  async function handleCopyClientShareMessage() {
+    if (!shareToken || clientMessageCopyInFlightRef.current) return;
+    clientMessageCopyInFlightRef.current = true;
+    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const text = buildClientReportShareMessage(buildClientShareMessageInput(reportUrl));
     try {
       await navigator.clipboard.writeText(text);
       setClientShareMessageCopied(true);
@@ -2571,6 +2595,8 @@ export function useReportUploadWizard({
       window.setTimeout(() => setClientShareMessageCopied(false), 2000);
     } catch {
       showToast("Could not copy — try again or use Share on WhatsApp.");
+    } finally {
+      clientMessageCopyInFlightRef.current = false;
     }
   }
 
@@ -3166,6 +3192,8 @@ export function useReportUploadWizard({
     handleCopyShareLink,
     handleCopyClientShareMessage,
     clientShareMessageCopied,
+    shareLinkCopied,
+    generatedAt,
     handleSaveButtonClick,
     handleSaveToFolderLink,
     handleCopyLink,
