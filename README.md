@@ -48,7 +48,7 @@ campaign that didn't exist in any previous upload defaults to selected,
 the same as every other campaign the user never excluded.
 
 Every signup gets a 7-day free trial (`User.trialEndsAt`, no card required)
-with full access. Subscribing to **Starter** (₹999/mo, up to 5 clients) or
+with full access. Subscribing to **Agency (Starter)** (₹999/mo, up to 10 client workspaces) or
 **Professional** (₹2,499/mo, unlimited) is handled by Razorpay Checkout —
 see `/pricing` and `/billing`, `src/lib/razorpay.ts`, and
 `src/app/api/payments/`. Every payment is re-verified server-side against

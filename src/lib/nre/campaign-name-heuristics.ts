@@ -21,7 +21,11 @@ export function isMessagingCampaignHaystack(haystack: string): boolean {
 
 /** Meta instant-form lead campaigns — InstantForms, LeadGen, Leads (form), etc. */
 export function isMetaFormLeadsCampaignHaystack(haystack: string): boolean {
-  return /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack);
+  return (
+    /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack) ||
+    // "Form Leads Campaign" / "Leads Form" naming — must beat generic \bleads\b website heuristic.
+    /\bform[\s_\-]?leads?\b|\bleads?[\s_\-]?form\b/.test(haystack)
+  );
 }
 
 /** Traffic / link-click campaigns — excludes reach, website-leads, and instant-form naming. */
