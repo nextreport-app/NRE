@@ -10,7 +10,15 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 const PAGE_SIZE = 20;
 const REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE"] as const;
 
-type SearchParams = { page?: string; type?: string; from?: string; to?: string };
+type SearchParams = {
+  page?: string;
+  type?: string;
+  from?: string;
+  to?: string;
+  /** When set with resumeReport, back link returns to the wizard generate success screen. */
+  return?: string;
+  resumeReport?: string;
+};
 
 function isValidReportType(value: string | undefined): value is (typeof REPORT_TYPES)[number] {
   return !!value && (REPORT_TYPES as readonly string[]).includes(value);
@@ -24,6 +32,8 @@ function buildHref(clientId: string, sp: SearchParams, overrides: Partial<Search
   if (merged.from) params.set("from", merged.from);
   if (merged.to) params.set("to", merged.to);
   if (merged.page && merged.page !== "1") params.set("page", merged.page);
+  if (merged.return) params.set("return", merged.return);
+  if (merged.resumeReport) params.set("resumeReport", merged.resumeReport);
   const qs = params.toString();
   return `/clients/${clientId}/reports${qs ? `?${qs}` : ""}`;
 }
@@ -107,12 +117,18 @@ export default async function ClientAllReportsPage({
   }));
 
   const hasActiveFilters = !!(typeFilter || sp.from || sp.to);
+  const resumeReportId =
+    sp.return === "generate" && sp.resumeReport && /^[a-z0-9-]+$/i.test(sp.resumeReport) ? sp.resumeReport : null;
+  const backHref = resumeReportId
+    ? `/clients/${client.id}/reports/new?resumeReport=${encodeURIComponent(resumeReportId)}`
+    : `/clients/${client.id}`;
+  const backLabel = resumeReportId ? "← Back to Generate screen" : `← Back to ${client.accountName}`;
 
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6">
-        <Link href={`/clients/${client.id}`} className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
-          ← Back to {client.accountName}
+        <Link href={backHref} className="text-[13px] text-dash-ink-secondary hover:text-dash-ink">
+          {backLabel}
         </Link>
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">All Reports</h1>
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
