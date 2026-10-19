@@ -632,9 +632,17 @@ export function WizardGenerateStep() {
                     {periodConfirmationBullets ? (
                       <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
                         <p>{copy.confirmedPeriodWeeklyLead}</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] font-normal">
+                        <ul className="mt-2 space-y-2 text-[14px] font-normal leading-snug">
                           {periodConfirmationBullets.map((line) => (
-                            <li key={line}>{line}</li>
+                            <li key={line} className="flex items-start gap-2.5">
+                              <span
+                                className="nre-wizard-callout-success__icon mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[10px] font-semibold leading-none text-emerald-200"
+                                aria-hidden
+                              >
+                                ✓
+                              </span>
+                              <span className="min-w-0 text-dash-ink">{line}</span>
+                            </li>
                           ))}
                         </ul>
                       </div>
