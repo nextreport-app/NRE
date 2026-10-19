@@ -297,8 +297,10 @@ export function WizardGenerateStep() {
           {driveSaveError ? <p className="text-[14px] text-red-400">{driveSaveError}</p> : null}
 
           {driveView === "success" && driveSaveUrl ? (
-            <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-              <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">Saved to Google Drive ✓</p>
+            <div className="nre-wizard-drive-save-success rounded-lg border p-4">
+              <p className="nre-wizard-drive-save-success__title mb-2 text-[14px] uppercase tracking-wide">
+                Saved to Google Drive ✓
+              </p>
               <a
                 href={driveSaveUrl}
                 target="_blank"
