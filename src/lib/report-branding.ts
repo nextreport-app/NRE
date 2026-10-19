@@ -57,6 +57,15 @@ export function reportBrandingFromShareJson(value: unknown): ReportBrandingSetti
   return { mode: "nextreport", agencyName: record.agencyName?.trim() || null };
 }
 
+/** Full cover/header credit — “Prepared by …” on deck, live link, and share chrome. */
+export function preparedByCoverLine(branding: ReportBrandingSettings): string | null {
+  const credit = reportCreditName({
+    reportBrandingMode: branding.mode,
+    agencyName: branding.agencyName,
+  });
+  return credit ? `Prepared by ${credit}` : null;
+}
+
 export function resolveShareBrandingDisplay(
   branding: ReportBrandingSettings,
 ): ShareBrandingDisplay {
@@ -64,7 +73,7 @@ export function resolveShareBrandingDisplay(
     case "agency":
       return {
         showNextReportLogo: false,
-        headerTitle: branding.agencyName,
+        headerTitle: preparedByCoverLine(branding),
         showPoweredBy: false,
         footerPrimary: branding.agencyName ? `Report prepared by ${branding.agencyName}` : null,
         showGeneratedDate: true,
