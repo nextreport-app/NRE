@@ -26,7 +26,7 @@ export function Nav() {
   const { dashboard: d } = useSiteCopy();
 
   return (
-    <header className="nre-dash-nav border-b border-dash-border bg-dash-sidebar/95 backdrop-blur">
+    <header className="nre-dash-nav border-b border-dash-border">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 no-underline">
           <img src="/logo.png" alt="NextReport logo" className="block h-10 w-10" />

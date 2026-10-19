@@ -318,6 +318,11 @@ html[data-site-theme="light"] .public-site-header {
   color: var(--nre-dash-ink);
 }
 
+.nre-dash-nav {
+  background-color: color-mix(in srgb, var(--nre-dash-sidebar) 95%, transparent);
+  backdrop-filter: blur(8px);
+}
+
 html[data-site-theme="light"] .nre-app-shell {
   color-scheme: light;
   background-color: #f7f7f4;
@@ -328,6 +333,7 @@ html[data-site-theme="light"] .nre-app-shell {
 /* Dashboard header — white bar, pure black nav copy on light theme. */
 html[data-site-theme="light"] .nre-app-shell .nre-dash-nav {
   background-color: #ffffff;
+  backdrop-filter: none;
   border-bottom-color: var(--nre-dash-border);
 }
 
