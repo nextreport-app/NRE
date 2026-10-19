@@ -194,10 +194,14 @@ export function AccountSettingsForm({
     <form onSubmit={handleSubmit} className="space-y-0">
       <fieldset>
         <legend className="mb-1 block text-sm font-medium text-dash-ink">Client-facing credit on reports</legend>
-        <p className="mb-4 text-[13px] leading-snug text-dash-ink-secondary">
-          Pick one option below. It applies to the same report everywhere: {REPORT_BRANDING_SURFACES}. New accounts
-          start with <span className="text-dash-ink">NextReport (default)</span> until you change it here.
-        </p>
+        <div className="mb-4 space-y-1 text-[13px] leading-snug text-dash-ink-secondary">
+          <p>Pick one option below. It applies to the same report everywhere.</p>
+          <p>{REPORT_BRANDING_SURFACES}.</p>
+          <p>
+            New accounts start with <span className="text-dash-ink">NextReport (default)</span> until you change it
+            here.
+          </p>
+        </div>
         <div className="space-y-2">{ACCOUNT_REPORT_BRANDING_MODES.map((mode) => renderModeOption(mode))}</div>
 
         {reportBrandingMode === "agency" ? (
