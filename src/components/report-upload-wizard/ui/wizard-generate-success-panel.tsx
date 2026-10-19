@@ -140,6 +140,27 @@ export function WizardGenerateSuccessPanel({
       ? `/clients/${clientId}/reports/${reportId}/copy?from=generate`
       : null;
 
+  const allReportsHref =
+    reportId != null
+      ? `/clients/${clientId}/reports?return=generate&resumeReport=${encodeURIComponent(reportId)}`
+      : `/clients/${clientId}/reports`;
+
+  function persistSnapshotIfReady() {
+    if (reportId && shareToken) {
+      persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
+    }
+  }
+
+  /** Keep wizard success state in the original tab; fall back to same-tab nav with resume params if popups are blocked. */
+  function openExitLink(href: string, event: React.MouseEvent) {
+    event.preventDefault();
+    persistSnapshotIfReady();
+    const opened = window.open(href, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      window.location.assign(href);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
       {/* Section A — success header */}
@@ -410,22 +431,20 @@ export function WizardGenerateSuccessPanel({
             Generate another report for {clientName}
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
-            <Link
-              href={`/clients/${clientId}/reports`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <a
+              href={allReportsHref}
+              onClick={(event) => openExitLink(allReportsHref, event)}
               className="font-medium text-dash-accent hover:underline"
             >
               View all reports
-            </Link>
-            <Link
+            </a>
+            <a
               href="/clients"
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={(event) => openExitLink("/clients", event)}
               className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline"
             >
               All clients
-            </Link>
+            </a>
           </div>
         </section>
       </div>
