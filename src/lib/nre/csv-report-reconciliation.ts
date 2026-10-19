@@ -397,8 +397,15 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
 
   const now = input.now ?? new Date();
   const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const resolvedWeeklyForSplit =
+    input.weeklyRange ??
+    (reportType === "WEEKLY" ? computeWeeklyRangeOptions(filtered, now, timezone)?.last7 : undefined);
+  const effectiveWeeklyForSplit =
+    resolvedWeeklyForSplit && reportType === "WEEKLY"
+      ? capRangeToData(resolvedWeeklyForSplit, filtered, now, timezone)
+      : resolvedWeeklyForSplit;
   const split = splitMtdDaily(filtered, now, {
-    ...(input.weeklyRange ? { weeklyRange: input.weeklyRange } : {}),
+    ...(effectiveWeeklyForSplit ? { weeklyRange: effectiveWeeklyForSplit } : {}),
     timezone,
   });
   if (!split) {
@@ -525,13 +532,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   }
 
   // ── Weekly / report period (campaign summary slides) ───────────────────
-  const resolvedWeeklyRange =
-    input.weeklyRange ??
-    (reportType === "WEEKLY" ? computeWeeklyRangeOptions(filtered, now, timezone)?.last7 : undefined);
   const displayWeeklyRange =
-    reportType === "WEEKLY" && resolvedWeeklyRange
-      ? capRangeToData(resolvedWeeklyRange, filtered, now, timezone)
-      : resolvedWeeklyRange;
+    reportType === "WEEKLY" ? effectiveWeeklyForSplit : input.weeklyRange;
 
   let weeklyCalendarComplete = true;
   let weeklyCalendarNote: string | undefined;

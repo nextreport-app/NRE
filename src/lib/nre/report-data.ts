@@ -1186,8 +1186,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         : computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
   const resolvedWeeklyRange =
     weeklyRange ?? (!isCalendarSpanReport ? computeWeeklyRangeOptions(filteredMtdDailyRows, now, timezone).last7 : undefined);
+  // When the CSV ends before calendar yesterday, capRangeToData shifts the labeled
+  // week back (e.g. Oct 11–17). Aggregation must use that same window — not the
+  // uncapped calendar last7 (Oct 12–18), or deck totals drop the first day.
+  const effectiveWeeklyRange =
+    resolvedWeeklyRange && !isCalendarSpanReport
+      ? capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone)
+      : resolvedWeeklyRange;
   const split = splitMtdDaily(filteredMtdDailyRows, now, {
-    ...(weeklyRange ? { weeklyRange } : resolvedWeeklyRange ? { weeklyRange: resolvedWeeklyRange } : {}),
+    ...(effectiveWeeklyRange ? { weeklyRange: effectiveWeeklyRange } : {}),
     timezone,
   });
 
@@ -1378,8 +1385,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     : undefined;
   if (isCalendarSpanReport && displayCalendarRange) {
     globalWeekDateRange = getDateRangeShortLabel(displayCalendarRange.startIso, displayCalendarRange.endIso);
-  } else if (resolvedWeeklyRange) {
-    displayWeeklyRange = capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone);
+  } else if (effectiveWeeklyRange) {
+    displayWeeklyRange = effectiveWeeklyRange;
     globalWeekDateRange = getDateRangeShortLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso);
   } else {
     let globalWeekStart = "";
