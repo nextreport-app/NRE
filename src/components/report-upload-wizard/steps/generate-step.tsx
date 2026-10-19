@@ -9,6 +9,7 @@ import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner"
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
+  defaultReportTitleFor,
   formatIso,
   formatIsoRange,
   formatSummaryRange,
@@ -47,6 +48,8 @@ export function WizardGenerateStep() {
     comparisonPreset,
     copied,
     clientShareMessageCopied,
+    shareLinkCopied,
+    generatedAt,
     handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
@@ -211,6 +214,7 @@ export function WizardGenerateStep() {
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
           reportId={reportId}
+          reportTitle={defaultReportTitleFor(reportType)}
           reportType={reportType}
           reportTypeLabel={reportTypeLabel()}
           wizardSharePlatformLabel={wizardSharePlatformLabel()}
@@ -219,7 +223,9 @@ export function WizardGenerateStep() {
           downloadUrl={downloadUrl}
           shareToken={shareToken}
           publishedAt={publishedAt}
+          generatedAt={generatedAt}
           clientShareMessageCopied={clientShareMessageCopied}
+          shareLinkCopied={shareLinkCopied}
           onCopyClientShareMessage={handleCopyClientShareMessage}
           onCopyShareLink={handleCopyShareLink}
           persistGenerateSnapshot={persistGenerateSnapshot}
