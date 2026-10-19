@@ -599,6 +599,126 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
   color: #78350f;
 }
 
+/* Wizard — client bar (Reporting for …) */
+.nre-wizard-client-bar {
+  border-color: rgb(246 173 85 / 0.5);
+  border-left-color: #f6ad55;
+}
+
+.nre-wizard-client-bar__label {
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-client-bar__name {
+  color: #fbd38d;
+}
+
+.nre-wizard-client-bar__link {
+  color: #7dd3fc;
+  text-decoration-color: rgb(125 211 252 / 0.6);
+}
+
+.nre-wizard-client-bar__link:hover {
+  color: #bae6fd;
+  text-decoration-color: #bae6fd;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar {
+  border-color: #fdba74;
+  border-left-color: #f59e0b;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__label {
+  color: #57534e;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__name {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link {
+  color: #b45309;
+  text-decoration-color: rgb(180 83 9 / 0.45);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover {
+  color: #92400e;
+  text-decoration-color: #92400e;
+}
+
+/* Wizard — post-generate success card */
+.nre-wizard-generate-success {
+  border-color: rgb(6 78 59 / 0.45);
+}
+
+.nre-wizard-generate-success__header {
+  background-color: rgb(2 44 34 / 0.22);
+}
+
+.nre-wizard-generate-success__check {
+  background-color: rgb(16 185 129 / 0.2);
+  color: #6ee7b7;
+}
+
+.nre-wizard-generate-success__title {
+  color: #6ee7b7;
+}
+
+.nre-wizard-generate-success__meta {
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-generate-success__published {
+  border-color: rgb(6 78 59 / 0.5);
+  background-color: rgb(2 44 34 / 0.3);
+  color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success {
+  border-color: #6ee7b7;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__header {
+  background-color: #ecfdf5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__title {
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__meta {
+  color: #334155;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__published {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+.nre-wizard-drive-save-success {
+  border-color: rgb(6 78 59 / 0.55);
+  background-color: rgb(2 44 34 / 0.3);
+}
+
+.nre-wizard-drive-save-success__title {
+  color: #6ee7b7;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success__title {
+  color: #047857;
+}
+
 .nre-wizard-objective-pill {
   font-size: 14px;
   font-weight: 500;

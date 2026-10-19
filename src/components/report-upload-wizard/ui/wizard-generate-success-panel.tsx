@@ -163,20 +163,19 @@ export function WizardGenerateSuccessPanel({
     "inline-flex min-h-[44px] min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50 sm:min-w-[7.25rem]";
 
   return (
-    <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
+    <div className="nre-wizard-generate-success overflow-hidden rounded-xl border bg-dash-card nre-dash-surface">
       {/* Section A — success header */}
-      <div className="border-b border-dash-border bg-emerald-950/20 px-4 py-4 sm:px-5 sm:py-4">
+      <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-4 sm:px-5 sm:py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-          <div
-            className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xl text-emerald-300 sm:mx-0"
-            aria-hidden
-          >
+          <div className="nre-wizard-generate-success__check mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl sm:mx-0" aria-hidden>
             ✓
           </div>
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h2 className="text-[17px] font-bold text-emerald-300 sm:text-[18px]">Report generated successfully</h2>
+            <h2 className="nre-wizard-generate-success__title text-[17px] font-bold sm:text-[18px]">
+              Report generated successfully
+            </h2>
             <p className="mt-1 text-[15px] font-semibold text-dash-ink">{clientName}</p>
-            <dl className="mt-2 space-y-0.5 text-[13px] leading-snug text-dash-ink-secondary sm:text-[14px]">
+            <dl className="nre-wizard-generate-success__meta mt-2 space-y-0.5 text-[13px] leading-snug sm:text-[14px]">
               <div className="flex flex-wrap justify-center sm:justify-start">
                 <dt className="sr-only">Report title</dt>
                 <dd className="font-medium text-dash-ink">{reportTitle}</dd>
@@ -203,7 +202,7 @@ export function WizardGenerateSuccessPanel({
               ) : null}
             </dl>
             {isWeekly ? (
-              <p className="mt-2 text-[12px] leading-snug text-dash-ink-secondary sm:text-[13px]">
+              <p className="nre-wizard-generate-success__meta mt-2 text-[12px] leading-snug sm:text-[13px]">
                 {copy.weeklyReportScopeLine}
               </p>
             ) : null}
@@ -224,7 +223,7 @@ export function WizardGenerateSuccessPanel({
         ) : null}
 
         {publishedAt ? (
-          <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-4 py-3 text-[13px] text-emerald-200 sm:text-[14px]">
+          <div className="nre-wizard-generate-success__published rounded-lg border px-4 py-3 text-[13px] sm:text-[14px]">
             Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
             {driveSaveUrl ? " Re-save to Google Drive manually if you updated the PPT." : null}
           </div>
