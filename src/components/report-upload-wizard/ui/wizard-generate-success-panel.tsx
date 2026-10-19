@@ -410,10 +410,20 @@ export function WizardGenerateSuccessPanel({
             Generate another report for {clientName}
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
-            <Link href={`/clients/${clientId}/reports`} className="font-medium text-dash-accent hover:underline">
+            <Link
+              href={`/clients/${clientId}/reports`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-dash-accent hover:underline"
+            >
               View all reports
             </Link>
-            <Link href="/clients" className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline">
+            <Link
+              href="/clients"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline"
+            >
               All clients
             </Link>
           </div>
