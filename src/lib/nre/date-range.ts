@@ -273,6 +273,33 @@ export function computeMtdRangeIso(_rows: NreRow[], now: Date = new Date(), time
   return { startIso: toIsoDate(monthStart), endIso: toIsoDate(calendarYesterday) };
 }
 
+/** MTD through the last day with data (capped at calendar yesterday). */
+export function computeEffectiveMtdRangeIso(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): DateRangeIso {
+  const mtd = computeMtdRangeIso(rows, now, timezone);
+  return {
+    startIso: mtd.startIso,
+    endIso: capRangeEndToData(mtd.endIso, rows, now, timezone),
+  };
+}
+
+/**
+ * Rolling 7 days ending on effective yesterday (latest CSV day, capped at calendar yesterday).
+ * When a stale export ends Oct 17 but today is Oct 19, this is Oct 11–17 — not calendar Oct 12–18.
+ */
+export function computeEffectiveLast7RangeIso(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): DateRangeIso | null {
+  const effective = computeEffectiveYesterday(rows, now, timezone);
+  if (!effective) return null;
+  return { startIso: toIsoDate(addDays(effective, -6)), endIso: toIsoDate(effective) };
+}
+
 export interface CsvDateBounds {
   minIso: string;
   maxIso: string;
