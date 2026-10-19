@@ -113,7 +113,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings
           initialConnectedEmail={user.googleConnectedEmail}
