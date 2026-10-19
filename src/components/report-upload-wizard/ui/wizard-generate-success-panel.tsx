@@ -151,13 +151,12 @@ export function WizardGenerateSuccessPanel({
     }
   }
 
-  /** Keep wizard success state in the original tab; fall back to same-tab nav with resume params if popups are blocked. */
+  /** Open in a new tab only — never navigate this tab (see noopener note below). */
   function openExitLink(href: string) {
     persistSnapshotIfReady();
-    const opened = window.open(href, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      window.location.assign(href);
-    }
+    // With noopener/noreferrer, window.open often returns null even when the tab opened successfully.
+    // A null check must not trigger same-tab navigation — that caused duplicate navigation (new tab + current tab).
+    window.open(href, "_blank", "noopener,noreferrer");
   }
 
   const shareLinkActionClass =
