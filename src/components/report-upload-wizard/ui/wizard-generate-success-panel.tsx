@@ -155,14 +155,9 @@ export function WizardGenerateSuccessPanel({
             <h2 className="text-[17px] font-bold text-emerald-300 sm:text-[18px]">Report generated successfully</h2>
             <p className="mt-1 text-[15px] font-semibold text-dash-ink">{clientName}</p>
             <dl className="mt-2 space-y-0.5 text-[13px] leading-snug text-dash-ink-secondary sm:text-[14px]">
-              <div className="flex flex-wrap justify-center gap-x-1.5 sm:justify-start">
+              <div className="flex flex-wrap justify-center sm:justify-start">
                 <dt className="sr-only">Report title</dt>
                 <dd className="font-medium text-dash-ink">{reportTitle}</dd>
-                <span className="text-dash-ink-muted" aria-hidden>
-                  ·
-                </span>
-                <dt className="sr-only">Frequency</dt>
-                <dd>{reportTypeLabel}</dd>
               </div>
               {reportingPeriodLine ? (
                 <div>
@@ -246,11 +241,6 @@ export function WizardGenerateSuccessPanel({
               </button>
             ) : null}
           </div>
-          {!publishedAt && shareToken ? (
-            <p className="mt-2 text-[12px] leading-relaxed text-dash-ink-muted sm:text-[13px]">
-              Preview opens your internal review. The live link below is what your client sees — no editing controls.
-            </p>
-          ) : null}
         </section>
 
         {/* Section C — share with client */}
@@ -269,15 +259,25 @@ export function WizardGenerateSuccessPanel({
               >
                 {buildShareReportUrl(shareToken)}
               </div>
-              <button
-                type="button"
-                onClick={() => void onCopyShareLink()}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:opacity-50"
-                aria-live="polite"
-              >
-                <CopyIcon />
-                {shareLinkCopied ? "Copied!" : "Copy link"}
-              </button>
+              <div className="flex shrink-0 gap-2">
+                <a
+                  href={reportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:flex-initial"
+                >
+                  View
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void onCopyShareLink()}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:opacity-50 sm:flex-initial"
+                  aria-live="polite"
+                >
+                  <CopyIcon />
+                  {shareLinkCopied ? "Copied!" : "Copy link"}
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <a
@@ -345,12 +345,6 @@ export function WizardGenerateSuccessPanel({
                 </div>
               </div>
             </details>
-            <p className="text-[12px] text-dash-ink-muted sm:text-[13px]">
-              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-                Open client view
-              </a>{" "}
-              in a new tab to see exactly what they will see.
-            </p>
           </section>
         ) : (
           <section>
@@ -372,7 +366,8 @@ export function WizardGenerateSuccessPanel({
               <>
                 {rememberedFolder ? (
                   <p className="text-[13px] text-dash-ink-secondary">
-                    Destination folder: <span className="font-medium text-dash-ink">{rememberedFolder.name}</span>{" "}
+                    Destination Google drive folder:{" "}
+                    <span className="font-medium text-dash-ink">{rememberedFolder.name}</span>{" "}
                     <button
                       type="button"
                       onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
@@ -393,24 +388,11 @@ export function WizardGenerateSuccessPanel({
                     </button>
                   </p>
                 )}
-                <Link
-                  href={`/clients/${clientId}/reports`}
-                  className="inline-block text-[13px] font-medium text-dash-accent hover:underline"
-                >
-                  View all reports for {clientName}
-                </Link>
               </>
             ) : null}
             {children}
           </section>
-        ) : (
-          <Link
-            href={`/clients/${clientId}/reports`}
-            className="inline-block text-[13px] font-medium text-dash-accent hover:underline"
-          >
-            View all reports for {clientName}
-          </Link>
-        )}
+        ) : null}
 
         {/* Section E — continue working */}
         <section
