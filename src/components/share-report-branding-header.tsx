@@ -37,7 +37,7 @@ export function ShareReportBrandingHeader({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={agencyLogoSrc}
-                alt={brandingDisplay.headerTitle ? `${brandingDisplay.headerTitle} logo` : "Agency logo"}
+                alt={branding.agencyName ? `${branding.agencyName} logo` : "Agency logo"}
                 className="h-7 w-auto max-w-[120px] shrink-0 object-contain sm:h-9 sm:max-w-[160px]"
               />
               {brandingDisplay.headerTitle ? (

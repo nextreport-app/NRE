@@ -4,6 +4,7 @@ import {
   emailFooterPrimary,
   emailGeneratedByLine,
   reportBrandingFromShareJson,
+  preparedByCoverLine,
   reportCreditName,
   resolveShareBrandingDisplay,
   sharePageTitleSuffix,
@@ -38,8 +39,11 @@ describe("report branding", () => {
       buildReportBrandingSettings({ reportBrandingMode: "agency", agencyName: "Bright Path" }),
     );
     expect(display.showNextReportLogo).toBe(false);
-    expect(display.headerTitle).toBe("Bright Path");
+    expect(display.headerTitle).toBe("Prepared by Bright Path");
     expect(display.footerPrimary).toBe("Report prepared by Bright Path");
+    expect(preparedByCoverLine(buildReportBrandingSettings({ reportBrandingMode: "agency", agencyName: "Bright Path" }))).toBe(
+      "Prepared by Bright Path",
+    );
   });
 
   it("falls back to hidden when agency mode has no name", () => {

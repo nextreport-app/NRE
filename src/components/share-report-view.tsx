@@ -7,7 +7,11 @@ import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-tot
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
 import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
-import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
+import {
+  preparedByCoverLine,
+  reportBrandingFromShareJson,
+  resolveShareBrandingDisplay,
+} from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
 import { formatGroupedDonutLegendEntry, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
@@ -726,6 +730,7 @@ export function ShareReportView({
   const showCover = visibleData.visibility?.cover !== false;
   const branding = reportBrandingFromShareJson(visibleData);
   const brandingDisplay = resolveShareBrandingDisplay(branding);
+  const coverPreparedByLine = preparedByCoverLine(branding);
 
   return (
     <div
@@ -821,6 +826,11 @@ export function ShareReportView({
               <p className="max-w-full break-words px-1 text-[13px] font-medium leading-snug text-ink sm:text-[16px]">
                 {visibleData.cover.healthBadge}
               </p>
+              {coverPreparedByLine ? (
+                <p className="mt-3 max-w-full break-words px-1 text-[12px] text-ink-muted sm:mt-4 sm:text-[14px]">
+                  {coverPreparedByLine}
+                </p>
+              ) : null}
             </div>
           </div>
           {visibleData.isPaused && visibleData.pausedMessage && (
