@@ -152,14 +152,16 @@ export function WizardGenerateSuccessPanel({
   }
 
   /** Keep wizard success state in the original tab; fall back to same-tab nav with resume params if popups are blocked. */
-  function openExitLink(href: string, event: React.MouseEvent) {
-    event.preventDefault();
+  function openExitLink(href: string) {
     persistSnapshotIfReady();
     const opened = window.open(href, "_blank", "noopener,noreferrer");
     if (!opened) {
       window.location.assign(href);
     }
   }
+
+  const shareLinkActionClass =
+    "inline-flex min-h-[44px] min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-[14px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:min-w-[7.25rem]";
 
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-800/40 bg-dash-card nre-dash-surface">
@@ -280,19 +282,19 @@ export function WizardGenerateSuccessPanel({
               >
                 {buildShareReportUrl(shareToken)}
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex w-full shrink-0 gap-2 sm:w-[17.5rem]">
                 <a
                   href={reportUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex flex-1 items-center justify-center rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:flex-initial"
+                  className={`${shareLinkActionClass} border border-dash-border bg-dash-sidebar/60 text-dash-ink hover:bg-dash-border/80`}
                 >
                   View
                 </a>
                 <button
                   type="button"
                   onClick={() => void onCopyShareLink()}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:opacity-50 sm:flex-initial"
+                  className={`${shareLinkActionClass} border border-dash-accent/45 bg-dash-accent/12 text-dash-ink hover:bg-dash-accent/22 disabled:opacity-50`}
                   aria-live="polite"
                 >
                   <CopyIcon />
@@ -431,20 +433,20 @@ export function WizardGenerateSuccessPanel({
             Generate another report for {clientName}
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
-            <a
-              href={allReportsHref}
-              onClick={(event) => openExitLink(allReportsHref, event)}
-              className="font-medium text-dash-accent hover:underline"
+            <button
+              type="button"
+              onClick={() => openExitLink(allReportsHref)}
+              className="font-medium text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
             >
               View all reports
-            </a>
-            <a
-              href="/clients"
-              onClick={(event) => openExitLink("/clients", event)}
-              className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline"
+            </button>
+            <button
+              type="button"
+              onClick={() => openExitLink("/clients")}
+              className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
             >
               All clients
-            </a>
+            </button>
           </div>
         </section>
       </div>
