@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
-import { TEMPLATE_LABELS } from "@/lib/validators/client";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
-import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
@@ -19,7 +17,6 @@ import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
-import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
@@ -40,7 +37,6 @@ export function WizardGenerateStep() {
     clientId,
     clientMonthlyBudget,
     clientName,
-    clientTemplate,
     comparisonData,
     comparisonPeriodA,
     comparisonPeriodB,
@@ -71,7 +67,6 @@ export function WizardGenerateStep() {
     estimatedSlideCount,
     formatIso,
     formatIsoRange,
-    apiSyncHybridImport,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -134,7 +129,6 @@ export function WizardGenerateStep() {
     shareToken,
     showBudgetOnCover,
     spanDays,
-    summaryCampaignNames,
     updateComparisonPeriodA,
     updateComparisonPeriodB,
     weeklyOptions,
@@ -745,35 +739,6 @@ export function WizardGenerateStep() {
 
           {showGenerateFooter && (
             <div className="space-y-3">
-              {generateStepPreviewReady && generateStatus === "idle" ? (
-                <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
-                  {apiSyncHybridImport ? (
-                    <p className="mb-2 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-                      {META_HYBRID_API_CSV_IMPORT_NOTE}
-                    </p>
-                  ) : null}
-                  <p className="text-[14px] text-dash-ink-secondary">
-                    <span className="text-dash-ink">{summaryCampaignNames().length}</span> campaigns ·{" "}
-                    <span className="text-dash-ink">{slideCount}</span> slides ·{" "}
-                    <span className="text-dash-ink">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span> ·{" "}
-                    <WizardPlatformSummaryLabel platform={platform} />
-                  </p>
-                  {summaryCampaignNames().length > 0 ? (
-                    <details className="mt-2 group">
-                      <summary className="cursor-pointer list-none text-[13px] font-medium text-dash-accent hover:underline [&::-webkit-details-marker]:hidden">
-                        View campaigns
-                      </summary>
-                      <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto pl-1">
-                        {summaryCampaignNames().map((name) => (
-                          <li key={name} className="truncate text-[13px] text-dash-ink-secondary" title={name}>
-                            {name}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ) : null}
-                </div>
-              ) : null}
               {generateStatus === "idle" && (
                 <div className="hidden md:block">
                   <button
