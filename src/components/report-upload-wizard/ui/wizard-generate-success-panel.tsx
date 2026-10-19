@@ -374,42 +374,61 @@ export function WizardGenerateSuccessPanel({
         )}
 
         {/* Section D — save and organize */}
-        {hasGoogleDriveConnected ? (
-          <section aria-labelledby="success-drive-heading" className="space-y-2">
-            <h3 id="success-drive-heading" className={sectionTitleClass}>
-              Save and organize
-            </h3>
-            {showDriveCollapsed ? (
-              <>
-                {rememberedFolder ? (
-                  <p className="text-[13px] text-dash-ink-secondary">
-                    Destination Google drive folder:{" "}
-                    <span className="font-medium text-dash-ink">{rememberedFolder.name}</span>{" "}
-                    <button
-                      type="button"
-                      onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
-                      className="text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
-                    >
-                      Change
-                    </button>
-                  </p>
-                ) : (
-                  <p className="text-[13px] text-dash-ink-secondary">
-                    Choose a Google Drive folder for this report.{" "}
-                    <button
-                      type="button"
-                      onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
-                      className="text-dash-accent hover:underline"
-                    >
-                      Set folder
-                    </button>
-                  </p>
-                )}
-              </>
-            ) : null}
-            {children}
-          </section>
-        ) : null}
+        <section aria-labelledby="success-drive-heading" className="space-y-2">
+          <h3 id="success-drive-heading" className={sectionTitleClass}>
+            Save and organize
+          </h3>
+          {hasGoogleDriveConnected ? (
+            <>
+              {showDriveCollapsed ? (
+                <>
+                  {rememberedFolder ? (
+                    <p className="text-[13px] text-dash-ink-secondary">
+                      Destination Google drive folder:{" "}
+                      <span className="font-medium text-dash-ink">{rememberedFolder.name}</span>{" "}
+                      <button
+                        type="button"
+                        onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
+                        className="text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+                      >
+                        Change
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="text-[13px] text-dash-ink-secondary">
+                      Choose a Google Drive folder for this report.{" "}
+                      <button
+                        type="button"
+                        onClick={() => (onEditDriveFolder ? onEditDriveFolder() : setDriveView("editing"))}
+                        className="text-dash-accent hover:underline"
+                      >
+                        Set folder
+                      </button>
+                    </p>
+                  )}
+                </>
+              ) : null}
+              {children}
+            </>
+          ) : (
+            <div className="rounded-lg border border-dash-border bg-dash-sidebar/40 px-4 py-3">
+              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
+                Google Drive is not connected yet.{" "}
+                <Link
+                  href="/account#google-drive"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-dash-accent hover:underline"
+                >
+                  Connect in Account settings
+                </Link>{" "}
+                (opens in a new tab). On your next report you can use{" "}
+                <span className="font-medium text-dash-ink">Save to Drive</span> — pick a folder once and we&apos;ll
+                remember it for future reports.
+              </p>
+            </div>
+          )}
+        </section>
 
         {/* Section E — continue working */}
         <section
