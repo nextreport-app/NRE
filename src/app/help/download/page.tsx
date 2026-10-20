@@ -69,11 +69,11 @@ export default async function DownloadGuidePage() {
             <div>
               <h2 className="text-xl font-semibold text-white">Video walkthrough</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">
-                Ads Manager reporting export (day breakdown, metrics, CSV) through the full NextReport wizard — generate,
-                preview, and share.
+                Play the video and follow the numbered steps below — same order as the recording: Meta CSV export, then the
+                NextReport wizard through generate and share.
               </p>
             </div>
-            <MetaWalkthroughVideo />
+            <MetaWalkthroughVideo showChapters />
           </div>
 
           <section id="meta-ads" className="space-y-6 rounded-lg border border-navy-border bg-navy-panel p-6">

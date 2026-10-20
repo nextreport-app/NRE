@@ -28,9 +28,14 @@ Avoid third-party “Loom downloader” sites — they often break ToS and can i
 2. Place in `public/videos/meta-walkthrough.mp4` (or upload to Vercel Blob and use a `<video>` tag).
 3. Swap `MetaWalkthroughVideo` to a `<video controls src="...">` component when you want zero third-party dependency.
 
+## On-page steps + voiceover
+
+- **User-facing checklist:** rendered from `src/lib/meta-walkthrough-script.ts` next to the Loom embed.
+- **Narration script:** `docs/meta-walkthrough-voiceover.md` — paste into Loom speaker notes or read while re-recording.
+
 ## Recording checklist (matches product flow)
 
-See also `docs/youtube-tutorial-script.md`. Your Loom script covers:
+See also `docs/youtube-tutorial-script.md` and `docs/meta-walkthrough-voiceover.md`. Your Loom script covers:
 
 - Ads Manager live campaign → Ads Reporting → Create report
 - Last 30 days → breakdown **Day** → select metrics → save view → Export CSV

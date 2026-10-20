@@ -216,8 +216,8 @@ export default async function HowItWorksPage() {
                 and share.
               </p>
             </div>
-            <div className="mx-auto mt-10 max-w-3xl">
-              <MetaWalkthroughVideo />
+            <div className="mx-auto mt-10 max-w-3xl lg:max-w-5xl">
+              <MetaWalkthroughVideo showChapters />
             </div>
             <div className="mx-auto mt-14 max-w-2xl text-center">
               <h3 className="text-lg font-semibold text-white">Wizard flow preview</h3>
