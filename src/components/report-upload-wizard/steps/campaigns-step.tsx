@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 import { useWizardContext } from "../wizard-context";
+import {
+  csvResultTypeMatchesDetection,
+  expectedResultLabelsFromCsvSummary,
+} from "@/lib/nre/campaign-csv-result-type";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
@@ -35,6 +39,7 @@ export function WizardCampaignsStep() {
     LOW_SPEND_CAMPAIGN_THRESHOLD,
     OBJECTIVE_DROPDOWN_OPTIONS,
     adSetGroups,
+    campaignCsvResultTypes,
     campaignObjectiveConfidence,
     campaignObjectives,
     campaignRequiresConfirmation,
@@ -342,6 +347,12 @@ export function WizardCampaignsStep() {
                       : OBJECTIVE_DROPDOWN_OPTIONS;
                   const tier = campaignObjectiveConfidence.get(normalized);
                   const badge = objectiveConfidenceBadge(tier);
+                  const csvSummary = campaignCsvResultTypes.get(normalized);
+                  const detectedLabel = current?.resultLabel ?? "";
+                  const csvAlign =
+                    csvSummary && detectedLabel
+                      ? csvResultTypeMatchesDetection(csvSummary, detectedLabel)
+                      : null;
                   const isBlocking =
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
@@ -365,6 +376,52 @@ export function WizardCampaignsStep() {
                           ))}
                         </select>
                       </div>
+                      {csvSummary?.primary ? (
+                        <div
+                          className={`mt-2 rounded-md border px-3 py-2 text-[13px] leading-snug ${
+                            csvAlign === false
+                              ? "border-[#fc8181]/50 bg-red-950/15 text-[#fecaca]"
+                              : csvAlign === true
+                                ? "border-emerald-500/35 bg-emerald-950/15 text-emerald-100"
+                                : "border-dash-border bg-dash-bg text-dash-ink-secondary"
+                          }`}
+                        >
+                          <p className="font-medium text-dash-ink">
+                            {csvSummary.distinct.length > 1
+                              ? copy.csvResultTypesHeading
+                              : copy.csvResultTypeHeading}
+                          </p>
+                          <ul className="mt-1 space-y-0.5 font-normal text-dash-ink">
+                            {csvSummary.entries.map((entry) => (
+                              <li key={entry.resultType}>
+                                {entry.resultType}
+                                {entry.expectedResultLabel ? (
+                                  <span className="text-dash-ink-secondary"> → {entry.expectedResultLabel}</span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                          {csvSummary.distinct.length > 1 ? (
+                            <p className="mt-1.5 text-[12px] text-dash-ink-secondary">{copy.csvResultTypeMultipleHint}</p>
+                          ) : null}
+                          {csvAlign === true ? (
+                            <p className="mt-1 text-emerald-300/90">✓ {copy.csvResultTypeMatch}</p>
+                          ) : null}
+                          {csvAlign === false ? (
+                            <p className="mt-1">
+                              ✗{" "}
+                              {csvSummary.distinct.length > 1
+                                ? copy.csvResultTypeMismatchMulti(
+                                    expectedResultLabelsFromCsvSummary(csvSummary).join(", "),
+                                    detectedLabel,
+                                  )
+                                : csvSummary.expectedResultLabel
+                                  ? copy.csvResultTypeMismatch(csvSummary.expectedResultLabel, detectedLabel)
+                                  : copy.csvResultTypeMismatch("—", detectedLabel)}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {badge && badge.pill ? (
                         <div className="mt-2 flex justify-end">
                           <span

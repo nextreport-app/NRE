@@ -45,7 +45,9 @@ export function isWebsiteLeadsCampaignHaystack(haystack: string): boolean {
   if (isMetaFormLeadsCampaignHaystack(haystack)) return false;
   if (isLinkClicksCampaignHaystack(haystack)) return false;
   if (/whatsapp/.test(haystack)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
+  // Do not treat bare "Leads" in names like "New Leads campaign" as website leads —
+  // trust Result type / Website leads column instead (Ski Summit instant-form case).
+  return /website.?lead|web.?lead|_leads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
 export function isQuoteRequestCampaignHaystack(haystack: string): boolean {
