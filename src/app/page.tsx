@@ -25,7 +25,6 @@ import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
 import { PricingCtaSection } from "@/components/home/pricing-cta-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { ReferralBottomSection } from "@/components/home/referral-bottom-section";
 import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
 import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
 import { getSocialProofStats } from "@/lib/social-proof-stats";
@@ -66,7 +65,6 @@ export default async function Home() {
         <TestimonialsSection />
         <LeadCaptureSection />
         <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
-        <ReferralBottomSection />
         <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>
