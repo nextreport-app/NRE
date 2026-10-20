@@ -244,7 +244,7 @@ function SlideCarousel({
         </button>
 
         <div
-          className="min-h-[420px] w-full min-w-0 overflow-x-hidden rounded-xl border border-navy-border p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:min-h-[380px] sm:p-6"
+          className="nre-keep-dark-surface min-h-[420px] w-full min-w-0 overflow-x-hidden rounded-xl border border-navy-border p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:min-h-[380px] sm:p-6"
           style={{ background: SLIDE_BG }}
         >
           {slides[index].render()}
