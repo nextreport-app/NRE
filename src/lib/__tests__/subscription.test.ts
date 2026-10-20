@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getSubscriptionStatus, isAdminEmail } from "../subscription";
+import { calendarDaysUntilTrialEnd, getSubscriptionStatus, isAdminEmail } from "../subscription";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NON_ADMIN_EMAIL = "user@example.com";
@@ -20,13 +20,30 @@ describe("getSubscriptionStatus", () => {
     expect(status.isAdminOverride).toBe(false);
   });
 
-  it("rounds trialDaysLeft up so '6 days and 2 hours left' still reads as 7, not 6", () => {
-    const status = getSubscriptionStatus({
-      email: NON_ADMIN_EMAIL,
-      planId: "trial",
-      trialEndsAt: new Date(Date.now() + 6 * DAY + 2 * 60 * 60 * 1000),
-    });
-    expect(status.trialDaysLeft).toBe(7);
+  it("uses calendar days for trialDaysLeft (signup yesterday → 6 days left today)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-20T06:05:00.000Z"));
+    const trialEndsAt = new Date("2026-10-26T15:00:00.000Z"); // 7 days after Oct 19 signup
+    const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "trial", trialEndsAt });
+    expect(status.trialDaysLeft).toBe(6);
+    vi.useRealTimers();
+  });
+
+  it("shows 1 day left on the last calendar day before trialEndsAt", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-26T08:00:00.000Z"));
+    const trialEndsAt = new Date("2026-10-26T23:59:00.000Z");
+    const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "trial", trialEndsAt });
+    expect(status.trialDaysLeft).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it("calendarDaysUntilTrialEnd ignores time-of-day within the same UTC date", () => {
+    const end = new Date("2026-10-26T23:00:00.000Z");
+    const morning = new Date("2026-10-20T01:00:00.000Z");
+    const evening = new Date("2026-10-20T22:00:00.000Z");
+    expect(calendarDaysUntilTrialEnd(end, morning)).toBe(6);
+    expect(calendarDaysUntilTrialEnd(end, evening)).toBe(6);
   });
 
   it("reports 0 days left once the trial has just barely expired", () => {

@@ -50,6 +50,13 @@ const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: 10 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** UTC calendar-day gap from `now` until `trialEndsAt` (matches “signed up yesterday → 6 days left today”). */
+export function calendarDaysUntilTrialEnd(trialEndsAt: Date, now: Date = new Date()): number {
+  const endDay = Date.UTC(trialEndsAt.getUTCFullYear(), trialEndsAt.getUTCMonth(), trialEndsAt.getUTCDate());
+  const nowDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.max(0, Math.floor((endDay - nowDay) / MS_PER_DAY));
+}
+
 export interface SubscriptionUser {
   email: string;
   planId: string;
@@ -61,7 +68,7 @@ export interface SubscriptionStatus {
   /** starter or professional, currently active (not cancelled). */
   isSubscribed: boolean;
   isTrialing: boolean;
-  /** Whole days remaining until trialEndsAt, floored at 0. 0 whenever not trialing. */
+  /** Whole calendar days until trialEndsAt (UTC dates); 1 on the last day while still active. 0 when not trialing or expired. */
   trialDaysLeft: number;
   /** True only while still on the trial plan AND trialEndsAt has passed. */
   isTrialExpired: boolean;
@@ -91,8 +98,14 @@ export function getSubscriptionStatus(user: SubscriptionUser): SubscriptionStatu
   const isTrialing = planId === "trial";
   const isSubscribed = planId === "starter" || planId === "professional";
 
-  const msLeft = user.trialEndsAt.getTime() - Date.now();
-  const trialDaysLeft = isTrialing ? Math.max(0, Math.ceil(msLeft / MS_PER_DAY)) : 0;
+  const now = new Date();
+  const msLeft = user.trialEndsAt.getTime() - now.getTime();
+  let trialDaysLeft = 0;
+  if (isTrialing && msLeft > 0) {
+    trialDaysLeft = calendarDaysUntilTrialEnd(user.trialEndsAt, now);
+    // Last calendar day before trialEndsAt instant — still reads as “1 day”, not “0 days”.
+    if (trialDaysLeft === 0) trialDaysLeft = 1;
+  }
   const isTrialExpired = isTrialing && msLeft <= 0;
 
   const isBlocked = (isTrialing && isTrialExpired) || planId === "cancelled";
