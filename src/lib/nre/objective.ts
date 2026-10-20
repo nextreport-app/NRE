@@ -1492,6 +1492,7 @@ export function shouldAttributeSpendForObjective(
     // delivery (secondary ad set). Do not roll that spend into the lead bucket.
     if (
       (label === "WEBSITE LEADS" || label === "META FORM LEADS") &&
+      !hasRealRowDate(row) &&
       parseCellNum(row.landing_page_views) > 0 &&
       resultValueForObjective(row, label) === 0
     ) {
