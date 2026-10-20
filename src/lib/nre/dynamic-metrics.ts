@@ -18,6 +18,7 @@ import { formatMetricValue, parseCellNum } from "./format";
 import { META_METRIC_DICTIONARY } from "./meta-dictionary";
 import { GOOGLE_METRIC_DICTIONARY } from "./google-dictionary";
 import { aggregateReach } from "./reach-aggregation";
+import { combinedCtrCpcFromRows } from "./ctr-cpc";
 import type { MetricRow } from "./types";
 
 /** Any raw CSV row shape that still carries its original column values — both NreRow (Meta) and GoogleRow (Google) satisfy this. */
@@ -114,6 +115,11 @@ function aggregateCpc<T extends RawMetricRow>(
   totalSpend: number,
   metricKey: "cpc_all" | "cpc_link_click",
 ): number {
+  if (metricKey === "cpc_all") {
+    const { cpc } = combinedCtrCpcFromRows(rows as MetricRow[]);
+    if (cpc > 0) return cpc;
+  }
+
   const valueHeaders =
     metricKey === "cpc_link_click" ? CPC_LINK_VALUE_HEADER_CANDIDATES : CPC_ALL_VALUE_HEADER_CANDIDATES;
   const clickHeaders =

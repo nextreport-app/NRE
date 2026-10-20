@@ -65,6 +65,11 @@ describe("buildColumnMap — spend detection (regression)", () => {
     expect(buildColumnMap(["Cost per Result"]).cpr).toBe("Cost per Result");
     expect(buildColumnMap(["Cost per Click"]).cpc).toBe("Cost per Click");
   });
+
+  it("prefers CPC (all) over CPC (cost per link click) for the primary cpc field", () => {
+    const headers = ["CTR (all)", "CPC (cost per link click)", "CPC (all)", "Link clicks"];
+    expect(buildColumnMap(headers).cpc).toBe("CPC (all)");
+  });
 });
 
 describe("buildColumnMap — lead column disambiguation (regression)", () => {

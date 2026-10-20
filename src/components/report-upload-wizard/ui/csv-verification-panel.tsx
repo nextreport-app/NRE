@@ -56,9 +56,10 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
 
   if (ok) {
     const detailText = copy.csvVerifiedDetail(verifiedScopesLabel(verification.scopesVerified));
+    const scopeList = verification.scopesVerified ?? [];
     return (
       <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-        <details className="group">
+        <details className="group" open>
           <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
             <span
               className="nre-wizard-callout-success__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
@@ -76,9 +77,16 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
               ▾
             </span>
           </summary>
-          <p className="nre-wizard-callout-success__detail mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug">
-            {detailText}
-          </p>
+          <div className="nre-wizard-callout-success__detail mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug">
+            <p>{detailText}</p>
+            {scopeList.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[12px] text-emerald-100/90">
+                {scopeList.map((scope) => (
+                  <li key={scope}>{scope}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </details>
       </div>
     );

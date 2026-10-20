@@ -16,7 +16,9 @@ import { filterRowsByCampaigns } from "./campaigns";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
 import { filterNreRowsByDateRange } from "./date-range";
-import { parseCellNum, fmtCurrency, fmtNumber } from "./format";
+import { parseCellNum, fmtCurrency, fmtNumber, fmtPercent, fmtCurrency2dp } from "./format";
+import { combinedCtrCpcFromRows } from "./ctr-cpc";
+import { getDateRangeAbbrLabel } from "./dates";
 import {
   buildCampaignObjectiveMap,
   groupResultsByCampaignObjective,
@@ -81,6 +83,10 @@ const NON_META_SKIP_REASON =
 const SPEND_AMOUNT_TOLERANCE = 2;
 /** Cost per result may differ slightly when spend is in the band above. */
 const CPR_TOLERANCE = 1;
+/** Blended CTR (all) — percentage points. */
+const CTR_TOLERANCE = 0.2;
+/** Blended CPC (all) — currency units (display rounding). */
+const CPC_ALL_TOLERANCE = 0.06;
 
 function closeEnough(a: number, b: number, tol: number): boolean {
   return Math.abs(a - b) <= tol;
@@ -372,6 +378,66 @@ function scopedChecks(params: {
   return checks;
 }
 
+function appendCtrCpcChecks(params: {
+  checks: CsvVerificationCheck[];
+  scope: string;
+  rawRows: MetricRow[];
+  reportCtrDisplay: string;
+  reportCpcDisplay: string;
+  currencySymbol: string;
+  calendarComplete?: boolean;
+  campaignSuffix?: string;
+}): void {
+  const {
+    checks,
+    scope,
+    rawRows,
+    reportCtrDisplay,
+    reportCpcDisplay,
+    currencySymbol,
+    calendarComplete = true,
+    campaignSuffix,
+  } = params;
+  if (rawRows.length === 0) return;
+
+  const { ctr: csvCtr, cpc: csvCpc } = combinedCtrCpcFromRows(rawRows);
+  const reportCtr = parseCellNum(reportCtrDisplay);
+  const reportCpc = parseCellNum(reportCpcDisplay);
+  const suffix = campaignSuffix ? ` (${campaignSuffix})` : "";
+
+  if (csvCtr > 0 && reportCtr > 0) {
+    checks.push({
+      metric: `CTR (all)${suffix}`,
+      scope,
+      reportDisplay: reportCtrDisplay,
+      csvDisplay: fmtPercent(csvCtr),
+      status: calendarComplete && closeEnough(reportCtr, csvCtr, CTR_TOLERANCE) ? "ok" : "mismatch",
+      note:
+        !calendarComplete
+          ? undefined
+          : closeEnough(reportCtr, csvCtr, CTR_TOLERANCE)
+            ? undefined
+            : "CTR (all) is blended from your CSV (total all-clicks ÷ impressions), not a simple average of daily rows.",
+    });
+  }
+
+  if (csvCpc > 0 && reportCpc > 0) {
+    checks.push({
+      metric: `CPC (all)${suffix}`,
+      scope,
+      reportDisplay: reportCpcDisplay,
+      csvDisplay: fmtCurrency2dp(csvCpc, currencySymbol),
+      status: calendarComplete && closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
+      note:
+        !calendarComplete
+          ? undefined
+          : closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE)
+            ? undefined
+            : "CPC (all) is total spend ÷ all-clicks for this window — not cost per link click.",
+    });
+  }
+}
+
 export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInput): CsvVerificationResult {
   const {
     report,
@@ -455,9 +521,12 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
           ? reportMtdSpend / reportMtdResults
           : 0;
 
+    const mtdScope = report.mtdRow.monthLabel
+      ? `Month-to-date (${report.mtdRow.monthLabel})`
+      : "Month-to-date";
     checks.push(
       ...scopedChecks({
-        scope: "Month-to-date",
+        scope: mtdScope,
         currencySymbol,
         reportSpend: reportMtdSpend,
         csvSpend: csvMtdSpend,
@@ -478,6 +547,14 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         countingMode,
       }),
     );
+    appendCtrCpcChecks({
+      checks,
+      scope: mtdScope,
+      rawRows: mtdRawRows as MetricRow[],
+      reportCtrDisplay: report.mtdRow.ctr,
+      reportCpcDisplay: report.mtdRow.cpc,
+      currencySymbol,
+    });
   }
 
   // ── Previous month (Combined Total Period row, when included) ───────────
@@ -584,7 +661,14 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
     const csvWeeklyCpr =
       csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
-    const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";
+    const weeklyScope =
+      reportType === "DAILY"
+        ? displayWeeklyRange
+          ? `Selected day(s) (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
+          : "Selected day(s)"
+        : displayWeeklyRange
+          ? `Report week (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
+          : "Report week";
 
     if (!weeklyCalendarComplete && displayWeeklyRange) {
       checks.push({
@@ -622,6 +706,27 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         cprCsvSpend: weeklyAttributedSpend,
       }),
     );
+
+    for (const slide of report.campaignSlides) {
+      const campRaw = (weeklyRawRows as MetricRow[]).filter(
+        (r) => normalizeCampaignName(r.campaign_name ?? "") === normalizeCampaignName(slide.campaignName),
+      );
+      appendCtrCpcChecks({
+        checks,
+        scope: weeklyScope,
+        rawRows: campRaw,
+        reportCtrDisplay: slide.metrics.ctr,
+        reportCpcDisplay: slide.metrics.cpc,
+        currencySymbol,
+        calendarComplete: weeklyCalendarComplete,
+        campaignSuffix:
+          report.campaignSlides.length > 1
+            ? slide.campaignName.length > 36
+              ? `${slide.campaignName.slice(0, 33)}…`
+              : slide.campaignName
+            : undefined,
+      });
+    }
   }
 
   // ── Last 30 days (visual chart slide) ───────────────────────────────────
@@ -684,9 +789,12 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     const csvChartCpr =
       csvChartResults > 0 && chartAttributedSpend > 0 ? chartAttributedSpend / csvChartResults : 0;
 
+    const chartScope = report.chart.periodSubLabel
+      ? `Last 30 days (${report.chart.periodSubLabel})`
+      : "Last 30 days (chart)";
     checks.push(
       ...scopedChecks({
-        scope: "Last 30 days (chart)",
+        scope: chartScope,
         currencySymbol,
         reportSpend: reportChartSpend,
         csvSpend: csvChartSpend,

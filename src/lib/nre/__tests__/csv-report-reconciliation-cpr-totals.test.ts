@@ -43,7 +43,10 @@ describe("CSV reconciliation — CPR uses spend ÷ results (Ads Manager parity)"
 
     expect(verification.status).toBe("mismatch");
     const weeklyResults = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric !== "Amount spent" && c.metric !== "Daily rows in report week",
+      (c) =>
+        c.scope.startsWith("Report week") &&
+        c.metric !== "Amount spent" &&
+        c.metric !== "Daily rows in report week",
     );
     expect(weeklyResults?.status).toBe("mismatch");
   });

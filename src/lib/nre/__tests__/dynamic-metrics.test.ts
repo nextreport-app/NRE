@@ -150,13 +150,10 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     perUnitOf: "link_clicks",
   });
 
-  it("reads the CPC value directly off its own 'CPC (all)' column when present and non-zero, without recomputing", () => {
-    // Deliberately no "clicks (all)"/"link clicks"/"clicks" column at all —
-    // the old always-recompute-from-clicks behavior would have produced
-    // NaN ("—") here; reading the real column directly must win instead.
+  it("blends CPC (all) from spend ÷ all-clicks (via CPC column on each row), not a straight average of daily CPC cells", () => {
     const rows = [row({ "Amount spent": "100", "CPC (all)": "2.00" }), row({ "Amount spent": "100", "CPC (all)": "4.00" })];
     const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
-    expect(result.cpc_all).toBe(3); // average of the two non-zero raw values
+    expect(result.cpc_all).toBeCloseTo(200 / 75, 4);
   });
 
   it("tries 'avg. cpc' when 'cpc (all)' isn't present", () => {
