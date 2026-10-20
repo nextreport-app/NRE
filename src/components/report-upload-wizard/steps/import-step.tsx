@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
+import { WizardImportVideoPanel } from "../ui/wizard-import-video-panel";
 import Link from "next/link";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
@@ -182,6 +183,8 @@ export function WizardImportStep() {
               {importPipelineLabel}
             </p>
           ) : null}
+
+          {selectedPlatformCard === "META" ? <WizardImportVideoPanel /> : null}
 
           <WizardImportDownloadInstructions
             clientId={clientId}

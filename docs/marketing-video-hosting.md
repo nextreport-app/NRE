@@ -2,7 +2,14 @@
 
 ## Loom (current default)
 
-The Meta CSV → wizard walkthrough is embedded from Loom. **You do not need to download the MP4** to show it on nextreport.in — the site uses Loom’s embed player (`/help/download`, `/how-it-works`, and a link from the wizard Import step).
+The Meta CSV → wizard walkthrough is embedded from Loom. **You do not need to download the MP4** to show it on nextreport.in — the site uses Loom’s embed player on:
+
+- `/` (homepage, below hero)
+- `/book-demo`
+- `/help/download` (+ numbered checklist)
+- `/how-it-works`
+- `/clients` when you have no clients yet (getting started)
+- Report wizard → **Import** step (Meta), embedded panel
 
 - Share URL: `https://www.loom.com/share/<id>`
 - Embed URL: `https://www.loom.com/embed/<id>`
