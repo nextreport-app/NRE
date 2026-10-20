@@ -1,8 +1,15 @@
 # Marketing walkthrough videos
 
-## Loom (current default)
+## YouTube (current default)
 
-The Meta CSV → wizard walkthrough is embedded from Loom. **You do not need to download the MP4** to show it on nextreport.in — the site uses Loom’s embed player on:
+The Meta CSV → wizard walkthrough is embedded from **YouTube** (click-to-play facade — no iframe until the user taps Play). Default video: `7LfSMNzepP4` (`https://youtu.be/7LfSMNzepP4`).
+
+- Override id: `NEXT_PUBLIC_YOUTUBE_META_WALKTHROUGH_ID` in Vercel (use `off` to hide YouTube and fall back to Loom).
+- Same embed on:
+
+## Loom (fallback)
+
+If YouTube is set to `off`, the site uses the previous Loom embed on:
 
 - `/` (homepage, below hero)
 - `/book-demo`
@@ -12,10 +19,9 @@ The Meta CSV → wizard walkthrough is embedded from Loom. **You do not need to 
 - Report wizard → **Import** step (Meta), embedded panel
 
 - Share URL: `https://www.loom.com/share/<id>`
-- Embed URL: `https://www.loom.com/embed/<id>`
-- Override id: set `NEXT_PUBLIC_LOOM_META_WALKTHROUGH_ID` in Vercel (use `off` to hide the embed).
+- Override Loom id: `NEXT_PUBLIC_LOOM_META_WALKTHROUGH_ID` (use `off` when using YouTube only).
 
-**Performance:** embeds use a **Play walkthrough** facade — the Loom iframe loads only after click (or when opening `/help/download#video-walkthrough`). Do not switch back to auto-loading iframes on the homepage; Loom’s player is heavy on mobile.
+**Performance:** embeds use a **Play walkthrough** facade — the YouTube/Loom iframe loads only after click (or when opening `/help/download#video-walkthrough`). Do not auto-load iframes on the homepage; third-party players are heavy on mobile.
 
 ### Getting an MP4 from Loom
 

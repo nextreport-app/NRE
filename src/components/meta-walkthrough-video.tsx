@@ -3,9 +3,16 @@
 import Link from "next/link";
 import { LoomVideoEmbed } from "@/components/loom-video-embed";
 import { MetaWalkthroughChapters } from "@/components/meta-walkthrough-chapters";
-import { loomShareUrl, metaWalkthroughLoomId } from "@/lib/marketing-videos";
+import { YouTubeVideoEmbed } from "@/components/youtube-video-embed";
+import {
+  loomShareUrl,
+  metaWalkthroughVideoSource,
+  youtubeWatchUrl,
+} from "@/lib/marketing-videos";
 
-/** Full Meta CSV export → NextReport wizard walkthrough (Loom + on-page steps). */
+const WALKTHROUGH_TITLE = "Meta Ads Reporting CSV export and NextReport report wizard walkthrough";
+
+/** Full Meta CSV export → NextReport wizard walkthrough (YouTube or Loom + on-page steps). */
 export function MetaWalkthroughVideo({
   showChapters = true,
   id = "video-walkthrough",
@@ -15,33 +22,62 @@ export function MetaWalkthroughVideo({
   showChapters?: boolean;
   id?: string;
   className?: string;
+  /** Applies to YouTube and Loom embeds. */
   loomLoadStrategy?: "click" | "inView";
 }) {
-  const loomId = metaWalkthroughLoomId();
-  if (!loomId) {
+  const source = metaWalkthroughVideoSource();
+  if (!source) {
     return (
       <p className="rounded-lg border border-navy-border bg-navy-panel px-4 py-3 text-sm text-ink-secondary">
-        Video walkthrough is unavailable (check{" "}
-        <code className="text-xs text-ink-muted">NEXT_PUBLIC_LOOM_META_WALKTHROUGH_ID</code> — remove{" "}
-        <code className="text-xs text-ink-muted">off</code> to show the default Loom).
+        Video walkthrough is unavailable (set{" "}
+        <code className="text-xs text-ink-muted">NEXT_PUBLIC_YOUTUBE_META_WALKTHROUGH_ID</code> or{" "}
+        <code className="text-xs text-ink-muted">NEXT_PUBLIC_LOOM_META_WALKTHROUGH_ID</code> — avoid{" "}
+        <code className="text-xs text-ink-muted">off</code> on both).
       </p>
     );
   }
 
+  const hashActivate = id === "video-walkthrough" ? "#video-walkthrough" : undefined;
+
   return (
     <section id={id} className={`space-y-8 ${className}`.trim()}>
       <div>
-        <LoomVideoEmbed
-          loomId={loomId}
-          title="Meta Ads Reporting CSV export and NextReport report wizard walkthrough"
-          loadStrategy={loomLoadStrategy}
-          activateWhenHash={id === "video-walkthrough" ? "#video-walkthrough" : undefined}
-        />
+        {source.provider === "youtube" ? (
+          <YouTubeVideoEmbed
+            videoId={source.videoId}
+            title={WALKTHROUGH_TITLE}
+            loadStrategy={loomLoadStrategy}
+            activateWhenHash={hashActivate}
+          />
+        ) : (
+          <LoomVideoEmbed
+            loomId={source.loomId}
+            title={WALKTHROUGH_TITLE}
+            loadStrategy={loomLoadStrategy}
+            activateWhenHash={hashActivate}
+          />
+        )}
         <p className="mt-3 text-center text-xs text-ink-muted">
-          Prefer to open in Loom?{" "}
-          <Link href={loomShareUrl(loomId)} target="_blank" rel="noopener noreferrer" className="text-accent-orange hover:underline">
-            Watch on loom.com
-          </Link>
+          Prefer to open in a new tab?{" "}
+          {source.provider === "youtube" ? (
+            <Link
+              href={youtubeWatchUrl(source.videoId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-orange hover:underline"
+            >
+              Watch on YouTube
+            </Link>
+          ) : (
+            <Link
+              href={loomShareUrl(source.loomId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-orange hover:underline"
+            >
+              Watch on loom.com
+            </Link>
+          )}
         </p>
       </div>
       {showChapters ? <MetaWalkthroughChapters /> : null}
