@@ -2,7 +2,10 @@
 
 import { useEffect } from "react";
 import { useWizardContext } from "../wizard-context";
-import { csvResultTypeMatchesDetection } from "@/lib/nre/campaign-csv-result-type";
+import {
+  csvResultTypeMatchesDetection,
+  expectedResultLabelsFromCsvSummary,
+} from "@/lib/nre/campaign-csv-result-type";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
@@ -384,21 +387,37 @@ export function WizardCampaignsStep() {
                           }`}
                         >
                           <p className="font-medium text-dash-ink">
-                            {copy.csvResultTypeHeading}:{" "}
-                            <span className="font-normal">{csvSummary.primary}</span>
-                            {csvSummary.expectedResultLabel ? (
-                              <span className="font-normal text-dash-ink-secondary">
-                                {" "}
-                                → {csvSummary.expectedResultLabel}
-                              </span>
-                            ) : null}
+                            {csvSummary.distinct.length > 1
+                              ? copy.csvResultTypesHeading
+                              : copy.csvResultTypeHeading}
                           </p>
+                          <ul className="mt-1 space-y-0.5 font-normal text-dash-ink">
+                            {csvSummary.entries.map((entry) => (
+                              <li key={entry.resultType}>
+                                {entry.resultType}
+                                {entry.expectedResultLabel ? (
+                                  <span className="text-dash-ink-secondary"> → {entry.expectedResultLabel}</span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                          {csvSummary.distinct.length > 1 ? (
+                            <p className="mt-1.5 text-[12px] text-dash-ink-secondary">{copy.csvResultTypeMultipleHint}</p>
+                          ) : null}
                           {csvAlign === true ? (
                             <p className="mt-1 text-emerald-300/90">✓ {copy.csvResultTypeMatch}</p>
                           ) : null}
-                          {csvAlign === false && csvSummary.expectedResultLabel ? (
+                          {csvAlign === false ? (
                             <p className="mt-1">
-                              ✗ {copy.csvResultTypeMismatch(csvSummary.expectedResultLabel, detectedLabel)}
+                              ✗{" "}
+                              {csvSummary.distinct.length > 1
+                                ? copy.csvResultTypeMismatchMulti(
+                                    expectedResultLabelsFromCsvSummary(csvSummary).join(", "),
+                                    detectedLabel,
+                                  )
+                                : csvSummary.expectedResultLabel
+                                  ? copy.csvResultTypeMismatch(csvSummary.expectedResultLabel, detectedLabel)
+                                  : copy.csvResultTypeMismatch("—", detectedLabel)}
                             </p>
                           ) : null}
                         </div>

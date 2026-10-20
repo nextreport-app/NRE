@@ -3,6 +3,11 @@ import { normalizeCampaignName } from "./objective";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
 import { normalizeObjectiveLabel, resolveObjectiveFromResultType } from "./result-type-map";
 
+export interface CsvResultTypeEntry {
+  resultType: string;
+  expectedResultLabel: string | null;
+}
+
 export interface CampaignCsvResultTypeSummary {
   /** Most common non-empty Result type cell for this campaign. */
   primary: string | null;
@@ -10,6 +15,8 @@ export interface CampaignCsvResultTypeSummary {
   distinct: string[];
   /** Engine label implied by `primary`, when mappable. */
   expectedResultLabel: string | null;
+  /** Every distinct Result type with its mapped objective (for multi-type campaigns). */
+  entries: CsvResultTypeEntry[];
 }
 
 function displayResultType(raw: string): string {
@@ -25,15 +32,29 @@ export function summarizeCsvResultTypesForCampaign(rows: MetricRow[]): CampaignC
     counts.set(rt, (counts.get(rt) ?? 0) + 1);
   }
   if (counts.size === 0) {
-    return { primary: null, distinct: [], expectedResultLabel: null };
+    return { primary: null, distinct: [], expectedResultLabel: null, entries: [] };
   }
   const distinct = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
   const primary = distinct[0] ?? null;
+  const entries = distinct.map((resultType) => ({
+    resultType,
+    expectedResultLabel: expectedResultLabelFromCsvResultType(resultType),
+  }));
   return {
     primary,
     distinct,
     expectedResultLabel: primary ? expectedResultLabelFromCsvResultType(primary) : null,
+    entries,
   };
+}
+
+/** Distinct engine labels implied by all non-empty Result types in this campaign's CSV rows. */
+export function expectedResultLabelsFromCsvSummary(summary: CampaignCsvResultTypeSummary): string[] {
+  const labels = new Set<string>();
+  for (const entry of summary.entries) {
+    if (entry.expectedResultLabel) labels.add(normalizeObjectiveLabel(entry.expectedResultLabel));
+  }
+  return [...labels];
 }
 
 export function expectedResultLabelFromCsvResultType(resultType: string): string | null {
@@ -51,8 +72,9 @@ export function csvResultTypeMatchesDetection(
   summary: CampaignCsvResultTypeSummary,
   detectedResultLabel: string,
 ): boolean | null {
-  if (!summary.primary || !summary.expectedResultLabel) return null;
-  return normalizeObjectiveLabel(detectedResultLabel) === summary.expectedResultLabel;
+  const expected = expectedResultLabelsFromCsvSummary(summary);
+  if (expected.length === 0) return null;
+  return expected.includes(normalizeObjectiveLabel(detectedResultLabel));
 }
 
 export function buildCampaignCsvResultTypeMap(rows: MetricRow[]): Map<string, CampaignCsvResultTypeSummary> {

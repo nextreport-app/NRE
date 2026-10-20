@@ -53,9 +53,14 @@ const EN_UI = {
   addFromCsvHint: "Columns in this file that are not already chips.",
   detectedChangeIfWrong: "Detected — change if wrong",
   csvResultTypeHeading: "CSV Result type",
+  csvResultTypesHeading: "CSV Result types",
+  csvResultTypeMultipleHint:
+    "This campaign has more than one Result type in the CSV — pick the objective that matches the results you want in the deck.",
   csvResultTypeMatch: "Matches detected objective",
   csvResultTypeMismatch: (csvLabel: string, detectedLabel: string) =>
     `CSV maps to ${csvLabel} — engine picked ${detectedLabel}. Adjust the dropdown if needed.`,
+  csvResultTypeMismatchMulti: (expectedLabels: string, detectedLabel: string) =>
+    `CSV includes ${expectedLabels} — engine picked ${detectedLabel}. Adjust the dropdown if needed.`,
   detectedConfirmLead: "Detected — confirm lead type if wrong",
   previouslyConfirmed: "Previously confirmed",
   confirmationRequired: "Confirmation required",
