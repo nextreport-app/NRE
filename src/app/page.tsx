@@ -4,6 +4,7 @@ import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
 import { HOME_JSON_LD, pageMetadata } from "@/lib/seo";
 import { HeroSection } from "@/components/home/hero-section";
+import { MetaWalkthroughPromoSection } from "@/components/home/meta-walkthrough-promo-section";
 import { StoryAnimationSection } from "@/components/home/story-animation-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 import { PainPointSection } from "@/components/home/pain-point-section";
@@ -44,6 +45,7 @@ export default async function Home() {
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <HeroSection loggedIn={loggedIn} />
+        <MetaWalkthroughPromoSection />
         <StoryAnimationSection />
         <SpecialistTimeSavingsSection />
         <HowItWorksSection />
