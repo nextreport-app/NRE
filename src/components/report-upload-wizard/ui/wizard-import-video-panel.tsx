@@ -7,7 +7,7 @@ import { MetaWalkthroughVideoCompact } from "@/components/meta-walkthrough-video
 /** Import step — optional Loom walkthrough (Meta only). */
 export function WizardImportVideoPanel() {
   const panelId = useId();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <section className="rounded-lg border border-dash-border bg-dash-card p-4" aria-labelledby="wizard-import-video-heading">

@@ -10,10 +10,12 @@ export function MetaWalkthroughVideo({
   showChapters = true,
   id = "video-walkthrough",
   className = "",
+  loomLoadStrategy = "click",
 }: {
   showChapters?: boolean;
   id?: string;
   className?: string;
+  loomLoadStrategy?: "click" | "inView";
 }) {
   const loomId = metaWalkthroughLoomId();
   if (!loomId) {
@@ -32,6 +34,8 @@ export function MetaWalkthroughVideo({
         <LoomVideoEmbed
           loomId={loomId}
           title="Meta Ads Reporting CSV export and NextReport report wizard walkthrough"
+          loadStrategy={loomLoadStrategy}
+          activateWhenHash={id === "video-walkthrough" ? "#video-walkthrough" : undefined}
         />
         <p className="mt-3 text-center text-xs text-ink-muted">
           Prefer to open in Loom?{" "}
