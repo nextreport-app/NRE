@@ -150,6 +150,20 @@ export function WizardImportDownloadInstructions({
               <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
                 How to download your {platformLabel} CSV
               </Link>
+              {platform === "META" ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <Link
+                    href="/help/download#video-walkthrough"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-dash-accent hover:underline"
+                  >
+                    Watch video walkthrough
+                  </Link>
+                </>
+              ) : null}
             </p>
           </div>
         ) : null}

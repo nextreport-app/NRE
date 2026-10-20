@@ -5,6 +5,7 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
 import { ProductExplainerAnimation } from "@/components/home/product-explainer-animation";
+import { MetaWalkthroughVideo } from "@/components/meta-walkthrough-video";
 import {
   breadcrumbJsonLd,
   faqPageJsonLd,
@@ -209,12 +210,22 @@ export default async function HowItWorksPage() {
         <section className="border-b border-navy-border px-6 py-14">
           <div className="mx-auto max-w-5xl">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-semibold text-white">Watch the wizard flow</h2>
+              <h2 className="text-2xl font-semibold text-white">Full walkthrough (video)</h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
-                Mirrors the in-app report wizard. Auto-advances — use the dots to jump between steps.
+                Meta Ads Reporting → day-wise CSV export → upload and run the four-step NextReport wizard through generate
+                and share.
               </p>
             </div>
-            <div className="mt-10 rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
+            <div className="mx-auto mt-10 max-w-3xl">
+              <MetaWalkthroughVideo />
+            </div>
+            <div className="mx-auto mt-14 max-w-2xl text-center">
+              <h3 className="text-lg font-semibold text-white">Wizard flow preview</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+                Quick animated mock — auto-advances; use the dots to jump between steps.
+              </p>
+            </div>
+            <div className="mt-8 rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
               <ProductExplainerAnimation />
             </div>
             <p className="mx-auto mt-6 max-w-xl text-center text-xs text-ink-muted">
