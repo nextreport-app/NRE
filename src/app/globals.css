@@ -256,6 +256,14 @@ html[data-site-theme="light"] .nre-keep-dark-surface .text-accent {
   color: var(--color-accent-orange);
 }
 
+html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy {
+  background-color: #0d1b2e;
+}
+
+html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy-panel {
+  background-color: #111f35;
+}
+
 /* Contact / public inset panels — dark on navy theme, white card on light theme. */
 html[data-site-theme="light"] .nre-contact-feedback-callout {
   background-color: #ffffff;
