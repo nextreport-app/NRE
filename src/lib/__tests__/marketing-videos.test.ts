@@ -4,6 +4,7 @@ import {
   metaWalkthroughVideoSource,
   metaWalkthroughYouTubeId,
   youtubeEmbedUrl,
+  youtubeThumbnailUrl,
 } from "../marketing-videos";
 
 describe("marketing-videos", () => {
@@ -30,6 +31,11 @@ describe("marketing-videos", () => {
   it("respects custom YouTube id", () => {
     vi.stubEnv("NEXT_PUBLIC_YOUTUBE_META_WALKTHROUGH_ID", "custom123");
     expect(metaWalkthroughYouTubeId()).toBe("custom123");
+  });
+
+  it("builds YouTube thumbnail URL", () => {
+    expect(youtubeThumbnailUrl("abc123")).toBe("https://i.ytimg.com/vi/abc123/hqdefault.jpg");
+    expect(youtubeThumbnailUrl("abc123", "max")).toContain("maxresdefault.jpg");
   });
 
   it("builds YouTube embed URL with modest branding", () => {

@@ -69,11 +69,11 @@ export default async function DownloadGuidePage() {
             <div>
               <h2 className="text-xl font-semibold text-white">Video walkthrough</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">
-                Play the video and follow the numbered steps below — same order as the recording: Meta CSV export, then the
-                NextReport wizard through generate and share.
+                The walkthrough has no audio — use <strong className="font-medium text-white">Step guide</strong> beside the
+                player or the full checklist below while you watch.
               </p>
             </div>
-            <MetaWalkthroughVideo showChapters />
+            <MetaWalkthroughVideo showChapters showStepGuide />
           </div>
 
           <section id="meta-ads" className="space-y-6 rounded-lg border border-navy-border bg-navy-panel p-6">

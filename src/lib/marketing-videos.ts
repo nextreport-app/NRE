@@ -4,6 +4,9 @@
  */
 
 const DEFAULT_META_WALKTHROUGH_YOUTUBE_ID = "7LfSMNzepP4";
+
+/** Shown on the YouTube thumbnail facade (matches your YouTube upload title). */
+export const META_WALKTHROUGH_DISPLAY_TITLE = "NextReport Workflow Demo";
 const DEFAULT_META_WALKTHROUGH_LOOM_ID = "b4b96b3b627048bfaa6cd544e00dd977";
 
 export type MetaWalkthroughVideoSource =
@@ -38,6 +41,12 @@ export function metaWalkthroughVideoSource(): MetaWalkthroughVideoSource | null 
 
 export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+/** Static YouTube poster — loaded on our origin only as img, not the full player. */
+export function youtubeThumbnailUrl(videoId: string, quality: "hq" | "max" = "hq"): string {
+  const file = quality === "max" ? "maxresdefault.jpg" : "hqdefault.jpg";
+  return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${file}`;
 }
 
 export function youtubeEmbedUrl(videoId: string): string {

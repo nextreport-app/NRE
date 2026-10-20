@@ -1,25 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { youtubeEmbedUrl } from "@/lib/marketing-videos";
+import { META_WALKTHROUGH_DISPLAY_TITLE, youtubeEmbedUrl, youtubeThumbnailUrl } from "@/lib/marketing-videos";
 
 /**
- * YouTube iframes are heavy on mobile. Default: facade — iframe loads only after Play.
+ * YouTube iframes are heavy on mobile. Default: thumbnail facade — iframe loads only after Play.
  */
 export function YouTubeVideoEmbed({
   videoId,
   title,
+  displayTitle = META_WALKTHROUGH_DISPLAY_TITLE,
   className = "",
   loadStrategy = "click",
   activateWhenHash,
 }: {
   videoId: string;
   title: string;
+  /** Title overlay on the thumbnail (YouTube-style). */
+  displayTitle?: string;
   className?: string;
   loadStrategy?: "click" | "inView";
   activateWhenHash?: string;
 }) {
   const [active, setActive] = useState(false);
+  const [thumbSrc, setThumbSrc] = useState(() => youtubeThumbnailUrl(videoId, "max"));
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,21 +56,37 @@ export function YouTubeVideoEmbed({
   if (!active) {
     return (
       <div ref={containerRef} className={shellClass}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- YouTube CDN poster; avoids next/image remote config */}
+        <img
+          src={thumbSrc}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            if (thumbSrc.includes("maxresdefault")) {
+              setThumbSrc(youtubeThumbnailUrl(videoId, "hq"));
+            }
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-black/30" aria-hidden="true" />
+        <div className="pointer-events-none absolute left-3 top-3 right-14 z-[1]">
+          <p className="line-clamp-2 text-sm font-semibold text-white drop-shadow-md">{displayTitle}</p>
+        </div>
         <button
           type="button"
           onClick={() => setActive(true)}
-          className="group absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center transition-colors hover:bg-[#111f35]"
+          className="absolute inset-0 z-[2] flex items-center justify-center"
           aria-label={`Play video: ${title}`}
         >
           <span
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-orange text-lg text-navy shadow-md transition-transform group-hover:scale-105"
+            className="flex h-[68px] w-[68px] items-center justify-center rounded-2xl bg-[#ff0000] shadow-lg transition-transform hover:scale-105"
             aria-hidden="true"
           >
-            ▶
-          </span>
-          <span className="text-sm font-semibold text-white">Play walkthrough</span>
-          <span className="max-w-sm text-xs leading-relaxed text-ink-muted">
-            Video loads from YouTube when you tap play — the rest of the page stays fast.
+            <span
+              className="ml-1 h-0 w-0 border-y-[14px] border-l-[22px] border-y-transparent border-l-white"
+              style={{ borderRight: 0 }}
+            />
           </span>
         </button>
       </div>
