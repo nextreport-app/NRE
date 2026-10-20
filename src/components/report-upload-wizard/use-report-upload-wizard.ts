@@ -347,6 +347,9 @@ export function useReportUploadWizard({
   // (setCampaignObjective clears this the moment they do, alongside the
   // confidence tag above).
   const [campaignRequiresConfirmation, setCampaignRequiresConfirmation] = useState<Map<string, boolean>>(new Map());
+  const [campaignCsvResultTypes, setCampaignCsvResultTypes] = useState<
+    Map<string, import("@/lib/nre/campaign-csv-result-type").CampaignCsvResultTypeSummary>
+  >(new Map());
 
   // Step 4 — Metrics, Thing 3 (three-layer objective architecture rebuild):
   // each selected campaign gets its OWN independently-computed metric
@@ -1612,6 +1615,7 @@ export function useReportUploadWizard({
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
       setCampaignRequiresConfirmation(new Map());
+      setCampaignCsvResultTypes(new Map());
       return { ok: false };
     }
 
@@ -1621,6 +1625,7 @@ export function useReportUploadWizard({
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
     setCampaignRequiresConfirmation(requiresConfirmation);
+    setCampaignCsvResultTypes(new Map(Object.entries(json.campaignCsvResultTypes || {})));
     setMetricsStatus("idle");
     return {
       ok: true,
@@ -3074,6 +3079,7 @@ export function useReportUploadWizard({
     campaignObjectives,
     campaignObjectiveConfidence,
     campaignRequiresConfirmation,
+    campaignCsvResultTypes,
     touchedObjectiveCampaigns,
     setCampaignObjective,
     objectiveConfidenceBadge,

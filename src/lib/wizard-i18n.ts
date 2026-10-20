@@ -52,6 +52,10 @@ const EN_UI = {
   addFromCsv: "Add from your CSV",
   addFromCsvHint: "Columns in this file that are not already chips.",
   detectedChangeIfWrong: "Detected — change if wrong",
+  csvResultTypeHeading: "CSV Result type",
+  csvResultTypeMatch: "Matches detected objective",
+  csvResultTypeMismatch: (csvLabel: string, detectedLabel: string) =>
+    `CSV maps to ${csvLabel} — engine picked ${detectedLabel}. Adjust the dropdown if needed.`,
   detectedConfirmLead: "Detected — confirm lead type if wrong",
   previouslyConfirmed: "Previously confirmed",
   confirmationRequired: "Confirmation required",

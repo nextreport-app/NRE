@@ -31,6 +31,10 @@ describe("campaign-name-heuristics", () => {
     expect(isReachCampaignHaystack(campaignNameHaystack("Breach Protocol Leads", ""))).toBe(false);
   });
 
+  it("generic New Leads campaign naming is not website leads", () => {
+    expect(isWebsiteLeadsCampaignHaystack("new leads campaign")).toBe(false);
+  });
+
   it("Form Leads campaign naming is meta form, not generic website leads", () => {
     const haystack = campaignNameHaystack("Form Leads Campaign", "Set 1");
     expect(isMetaFormLeadsCampaignHaystack(haystack)).toBe(true);

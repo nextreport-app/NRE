@@ -1487,7 +1487,18 @@ export function shouldAttributeSpendForObjective(
 ): boolean {
   if (attributedValue > 0) return true;
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
-  if (ownLabel === label) return true;
+  if (ownLabel === label) {
+    // Campaign name can pin a row to WEBSITE LEADS while the row only has LPV
+    // delivery (secondary ad set). Do not roll that spend into the lead bucket.
+    if (
+      (label === "WEBSITE LEADS" || label === "META FORM LEADS") &&
+      parseCellNum(row.landing_page_views) > 0 &&
+      resultValueForObjective(row, label) === 0
+    ) {
+      return false;
+    }
+    return true;
+  }
   if (
     campaignObjectiveLabel === label &&
     campRows &&
