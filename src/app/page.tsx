@@ -3,9 +3,20 @@ import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { JsonLd } from "@/components/json-ld";
 import { HOME_JSON_LD, pageMetadata } from "@/lib/seo";
+import dynamic from "next/dynamic";
 import { HeroSection } from "@/components/home/hero-section";
-import { MetaWalkthroughPromoSection } from "@/components/home/meta-walkthrough-promo-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
+
+const MetaWalkthroughPromoSection = dynamic(
+  () => import("@/components/home/meta-walkthrough-promo-section").then((m) => m.MetaWalkthroughPromoSection),
+  {
+    loading: () => (
+      <section className="border-y border-navy-border bg-navy-panel/40 px-6 py-16 sm:py-20" aria-hidden="true">
+        <div className="mx-auto h-48 max-w-3xl animate-pulse rounded-lg bg-navy-border/30 sm:h-56" />
+      </section>
+    ),
+  },
+);
 import { PainPointSection } from "@/components/home/pain-point-section";
 import { FeaturesSection } from "@/components/home/features-section";
 import { TrustAndSocialProofStrip } from "@/components/home/trust-and-social-proof-strip";
@@ -44,8 +55,8 @@ export default async function Home() {
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <HeroSection loggedIn={loggedIn} />
-        <MetaWalkthroughPromoSection />
         <SpecialistTimeSavingsSection />
+        <MetaWalkthroughPromoSection />
         <HowItWorksSection />
         <PainPointSection />
         <FeaturesSection />

@@ -15,6 +15,8 @@ The Meta CSV → wizard walkthrough is embedded from Loom. **You do not need to 
 - Embed URL: `https://www.loom.com/embed/<id>`
 - Override id: set `NEXT_PUBLIC_LOOM_META_WALKTHROUGH_ID` in Vercel (use `off` to hide the embed).
 
+**Performance:** embeds use a **Play walkthrough** facade — the Loom iframe loads only after click (or when opening `/help/download#video-walkthrough`). Do not switch back to auto-loading iframes on the homepage; Loom’s player is heavy on mobile.
+
 ### Getting an MP4 from Loom
 
 Loom’s **download** button is on paid plans. On the free plan, legitimate options:
