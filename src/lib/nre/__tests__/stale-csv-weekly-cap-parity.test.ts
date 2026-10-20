@@ -54,7 +54,7 @@ describe("stale CSV weekly window — capRangeToData applied before aggregation"
 
     expect(verification.status).toBe("ok");
     const weeklySpend = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric === "Amount spent",
+      (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
     expect(weeklySpend?.status).toBe("ok");
   });

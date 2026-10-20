@@ -20,7 +20,7 @@ const EN_UI = {
     "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
   csvVerifiedTitle: "Verified against your CSV",
   csvVerifiedDetail: (scopesLabel: string) =>
-    `Spend, results, and cost per result match your CSV for ${scopesLabel}.`,
+    `Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each checked window: ${scopesLabel}. Report week, month-to-date, and last 30 days are separate ranges — their totals are not meant to match each other.`,
   generateForInternalReview: "Generate for internal review",
   confirmedPeriodWeeklyLead: "Your weekly report will cover:",
   confirmedPeriodWeeklyWeekSuffix: "week",

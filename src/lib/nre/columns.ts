@@ -83,6 +83,15 @@ function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords
   return true;
 }
 
+function isCpcAllHeader(header: string): boolean {
+  return /^cpc\s*\(\s*all\s*\)/i.test(String(header).trim());
+}
+
+function isCpcLinkClickHeader(header: string): boolean {
+  const h = String(header).toLowerCase();
+  return h.includes("cost per link click") || h.includes("cpc (cost per link click)");
+}
+
 /** Port of buildColumnMap_ — first header (in order) to match a metric's keywords wins. */
 export function buildColumnMap(headers: string[]): ColumnMap {
   const map: ColumnMap = {};
@@ -91,10 +100,32 @@ export function buildColumnMap(headers: string[]): ColumnMap {
     const h = String(header).toLowerCase().trim();
     (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(
       ([metric, keywords]) => {
+        if (metric === "cpc") {
+          // Defer — Meta often exports both link-click CPC and CPC (all).
+          return;
+        }
         if (!map[metric] && headerMatchesMetric(metric, h, keywords)) map[metric] = header;
       },
     );
   });
+
+  const cpcAll = headers.find((h) => h && isCpcAllHeader(h));
+  if (cpcAll) {
+    map.cpc = cpcAll;
+  } else {
+    headers.forEach((header) => {
+      if (!header || map.cpc) return;
+      const h = String(header).toLowerCase().trim();
+      if (headerMatchesMetric("cpc", h, COLUMN_KEYWORDS.cpc) && !isCpcLinkClickHeader(header)) {
+        map.cpc = header;
+      }
+    });
+    if (!map.cpc) {
+      const linkCpc = headers.find((h) => h && isCpcLinkClickHeader(h));
+      if (linkCpc) map.cpc = linkCpc;
+    }
+  }
+
   return map;
 }
 
