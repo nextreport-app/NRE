@@ -130,6 +130,27 @@ export const META_WALKTHROUGH_PARTS: readonly WalkthroughPart[] = [
   },
 ] as const;
 
+/** Short labels for the step-guide popover (Meta specialists — no hand-holding). */
+export const META_WALKTHROUGH_QUICK_GUIDE: readonly { label: string; steps: readonly string[] }[] = [
+  {
+    label: "Meta export",
+    steps: [
+      "Ads Reporting → Create report",
+      "Last 30 days · Breakdown: Day",
+      "Metrics for your objectives · Save view · Export CSV",
+    ],
+  },
+  {
+    label: "NextReport",
+    steps: [
+      "Client → Generate report",
+      "Import CSV · Analyze",
+      "Campaigns · Objectives · Metrics → Generate",
+      "Preview · Download · Share",
+    ],
+  },
+] as const;
+
 /** Flat list for Loom speaker notes or teleprompter — parts separated by blank lines. */
 export function metaWalkthroughVoiceoverScript(): string {
   return META_WALKTHROUGH_PARTS.map((part) =>
