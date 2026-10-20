@@ -22,6 +22,12 @@ Loom’s **download** button is on paid plans. On the free plan, legitimate opti
 
 Avoid third-party “Loom downloader” sites — they often break ToS and can inject malware.
 
+## Built-in animated explainer (homepage)
+
+The homepage includes **`NextReportStoryAnimation`** — a ~13s looping CSS animation (four scenes: manual pain → upload → build → share). It is not an MP4 file; it autoplays in the browser.
+
+To turn it into a real video for Instagram/YouTube: open the homepage after deploy, **Pause** when needed, and **screen-record** the player (OBS, Loom, or QuickTime). No Loom download required.
+
 ## Self-hosted MP4 (optional future)
 
 1. Export MP4 (1080p, H.264).
