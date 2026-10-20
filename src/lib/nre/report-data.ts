@@ -492,23 +492,8 @@ function average(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
-/**
- * A single row's own CTR/CPC columns are Meta-computed percentages/currency
- * amounts, not raw click counts — MetricRow never carries a raw "clicks"
- * field. To recalculate a combined CTR/CPC across many rows from real
- * totals (rather than summing/averaging percentages, which isn't
- * meaningful), each row's own click count is backed out from whichever of
- * its CTR or CPC columns is actually populated: CTR × impressions (Meta's
- * own CTR formula, so this recovers the exact click count) preferred, spend
- * ÷ CPC as a fallback when a row has CPC but no CTR.
- */
-export function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
-  const ctr = parseCellNum(row.ctr);
-  if (impressions > 0 && ctr > 0) return (ctr / 100) * impressions;
-  const cpc = parseCellNum(row.cpc);
-  if (cpc > 0 && spend > 0) return spend / cpc;
-  return 0;
-}
+export { impliedClicks } from "./ctr-cpc";
+import { combinedCtrCpcFromRows, impliedClicks } from "./ctr-cpc";
 
 function rowFrequency(row: MetricRow): number {
   const explicit = parseCellNum(row.frequency);
@@ -1041,8 +1026,8 @@ function buildLast30DaysChartSlide(params: {
     const rows = chartGroups[name] || [];
     const rawRowsForObjective = chartRawGroups[name] || [];
     const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
-    const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
-    const avgCtr = average(ctrs);
+    const chartRaw = rawRowsForObjective.length > 0 ? rawRowsForObjective : rows;
+    const { ctr: avgCtr } = combinedCtrCpcFromRows(chartRaw);
     const chartObjective = chartObjectiveMap.get(normalizeCampaignName(name)) ?? {
       resultLabel: "RESULTS",
       costLabel: "COST PER RESULT",
@@ -1823,21 +1808,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     let totalSpend = 0;
     let totalImpr = 0;
     let totalConversions = 0;
-    const ctrs: number[] = [];
-    const cpcs: number[] = [];
     campRows.forEach((row) => {
       totalSpend += parseCellNum(row.spend);
       totalImpr += parseCellNum(row.impressions);
       totalConversions += parseCellNum(row.results);
-      const ctr = parseCellNum(row.ctr);
-      const cpc = parseCellNum(row.cpc);
-      if (ctr > 0) ctrs.push(ctr);
-      if (cpc > 0) cpcs.push(cpc);
     });
     const campRaw = campaignRawGroups[campaignName] ?? [];
     const totalReach = aggregateReach(campRaw, weeklyReachOpts);
-    const avgCtr = average(ctrs);
-    const avgCpc = average(cpcs);
+    const { ctr: blendedCtr, cpc: blendedCpc } = combinedCtrCpcFromRows(campRaw.length > 0 ? campRaw : campRows);
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const campaignRaw = campaignRawGroups[campaignName] ?? [];
@@ -1870,9 +1848,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       reach: fmtNumber(totalReach),
       impressions: fmtNumber(totalImpr),
       results: resultValue,
-      ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
+      ctr: blendedCtr > 0 ? fmtPercent(blendedCtr) : "—",
       cpr: cprValue,
-      cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
+      cpc: blendedCpc > 0 ? fmtCurrency2dp(blendedCpc, currencySymbol) : "—",
     };
 
     // The campaign template's 8 fixed card slots — automatically assigned by
