@@ -22,7 +22,7 @@ export function MetaWalkthroughPromoSection({
         <h2 className="mt-2 text-center text-2xl font-bold text-white sm:text-3xl">{title}</h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-ink-secondary sm:text-base">{lead}</p>
         <div className="mt-10">
-          <MetaWalkthroughVideo showChapters={false} id="homepage-video-walkthrough" />
+          <MetaWalkthroughVideo showChapters={false} showStepGuide id="homepage-video-walkthrough" />
         </div>
         {showFullGuideLink ? (
           <p className="mt-6 text-center text-sm">

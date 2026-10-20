@@ -26,8 +26,8 @@ export function MetaWalkthroughChapters({ className = "" }: { className?: string
         </div>
       ))}
       <p className="text-[12px] leading-relaxed text-ink-muted">
-        Watching without sound? Follow these steps in order as the video plays. To add narration, re-record in Loom with your
-        microphone while reading the same steps aloud, or use any screen recorder plus a video editor to lay over a voice track.
+        Follow these steps in order as the video plays. YouTube chapters on the upload match this flow when you expand the
+        description on youtube.com.
       </p>
     </div>
   );

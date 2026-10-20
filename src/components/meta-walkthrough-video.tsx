@@ -1,25 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { LoomVideoEmbed } from "@/components/loom-video-embed";
 import { MetaWalkthroughChapters } from "@/components/meta-walkthrough-chapters";
+import { MetaWalkthroughStepGuide } from "@/components/meta-walkthrough-step-guide";
 import { YouTubeVideoEmbed } from "@/components/youtube-video-embed";
-import {
-  loomShareUrl,
-  metaWalkthroughVideoSource,
-  youtubeWatchUrl,
-} from "@/lib/marketing-videos";
+import { metaWalkthroughVideoSource } from "@/lib/marketing-videos";
 
 const WALKTHROUGH_TITLE = "Meta Ads Reporting CSV export and NextReport report wizard walkthrough";
 
 /** Full Meta CSV export → NextReport wizard walkthrough (YouTube or Loom + on-page steps). */
 export function MetaWalkthroughVideo({
   showChapters = true,
+  showStepGuide = true,
   id = "video-walkthrough",
   className = "",
   loomLoadStrategy = "click",
 }: {
   showChapters?: boolean;
+  /** Floating step guide for silent videos. */
+  showStepGuide?: boolean;
   id?: string;
   className?: string;
   /** Applies to YouTube and Loom embeds. */
@@ -42,6 +41,11 @@ export function MetaWalkthroughVideo({
   return (
     <section id={id} className={`space-y-8 ${className}`.trim()}>
       <div>
+        {showStepGuide ? (
+          <div className="mb-3 flex justify-end">
+            <MetaWalkthroughStepGuide />
+          </div>
+        ) : null}
         {source.provider === "youtube" ? (
           <YouTubeVideoEmbed
             videoId={source.videoId}
@@ -57,28 +61,6 @@ export function MetaWalkthroughVideo({
             activateWhenHash={hashActivate}
           />
         )}
-        <p className="mt-3 text-center text-xs text-ink-muted">
-          Prefer to open in a new tab?{" "}
-          {source.provider === "youtube" ? (
-            <Link
-              href={youtubeWatchUrl(source.videoId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-orange hover:underline"
-            >
-              Watch on YouTube
-            </Link>
-          ) : (
-            <Link
-              href={loomShareUrl(source.loomId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-orange hover:underline"
-            >
-              Watch on loom.com
-            </Link>
-          )}
-        </p>
       </div>
       {showChapters ? <MetaWalkthroughChapters /> : null}
     </section>
@@ -87,5 +69,7 @@ export function MetaWalkthroughVideo({
 
 /** Video player only (wizard import, compact panels). */
 export function MetaWalkthroughVideoCompact({ id = "video-walkthrough" }: { id?: string }) {
-  return <MetaWalkthroughVideo showChapters={false} id={id} className="space-y-0" />;
+  return (
+    <MetaWalkthroughVideo showChapters={false} showStepGuide={false} id={id} className="space-y-0" />
+  );
 }
