@@ -1966,6 +1966,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const adSetRaw = adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [];
+    const blendSource = adSetRaw.length > 0 ? adSetRaw : [row];
+    let adSetSpend = 0;
+    let adSetImpr = 0;
+    blendSource.forEach((r) => {
+      adSetSpend += parseCellNum(r.spend);
+      adSetImpr += parseCellNum(r.impressions);
+    });
+    const adSetReach = aggregateReach(blendSource, weeklyReachOpts);
     const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.singleRowResultDisplay(
       row,
       adSetRaw,
@@ -1974,19 +1982,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignObjectiveMap,
       currencySymbol,
     );
-    const rowFreq = rowFrequency(row);
+    const rowFreq = adSetReach > 0 && adSetImpr > 0 ? adSetImpr / adSetReach : rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
-    const rowSpend = parseCellNum(row.spend);
-    const rowReach = parseCellNum(row.reach);
-    const rowImpr = parseCellNum(row.impressions);
-    const blendSource = adSetRaw.length > 0 ? adSetRaw : [row];
     const { ctr: blendedCtr, cpc: blendedCpc } = combinedCtrCpcFromRows(blendSource);
 
     const metrics: SlideMetrics = {
-      spend: fmtCurrency(rowSpend, currencySymbol),
-      reach: fmtNumber(rowReach),
-      impressions: fmtNumber(rowImpr),
+      spend: fmtCurrency(adSetSpend, currencySymbol),
+      reach: fmtNumber(adSetReach),
+      impressions: fmtNumber(adSetImpr),
       results: resultValue,
       ctr: blendedCtr > 0 ? fmtPercent(blendedCtr) : "—",
       cpr: cprValue,
@@ -2038,13 +2042,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         cpr: metrics.cpr,
         ctr: metrics.ctr,
         cpc: metrics.cpc,
-        cpm: fmtCpm(rowSpend, rowImpr, currencySymbol),
+        cpm: fmtCpm(adSetSpend, adSetImpr, currencySymbol),
         resultLabel,
         costLabel,
         freq: rowFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
-        spendNum: rowSpend,
+        spendNum: adSetSpend,
         isInactive: statusIndicator !== null,
       },
     });
