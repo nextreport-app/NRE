@@ -838,12 +838,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       resultLabel,
       "meta-csv-export",
     );
-    const weeklyAttributedSpend = attributedSpendForLabelFromRawDailyRows(
-      weeklyRawRows,
-      reportObjectiveMap,
-      resultLabel,
-      countingMode,
-    );
     const reportWeeklySpend = reportPeriodSpendFromSlides(report);
     const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
     const reportWeeklyCpr =
@@ -852,8 +846,11 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       reportWeeklyCpr > 0
         ? fmtCurrency(reportWeeklyCpr, currencySymbol)
         : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+    // Campaign slides show CPR as total period spend ÷ results (see
+    // reportWeeklyCpr below). Attributed spend excludes zero-result days that
+    // still count toward Ad Spend — using it here falsely showed ~$10 vs ~$17.
     const csvWeeklyCpr =
-      csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
+      csvWeeklyResults > 0 && csvWeeklySpend > 0 ? csvWeeklySpend / csvWeeklyResults : 0;
     const weeklyScope =
       reportType === "DAILY"
         ? displayWeeklyRange
@@ -895,8 +892,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         countingMode,
         calendarComplete: weeklyCalendarComplete,
         calendarIncompleteNote: weeklyCalendarNote,
-        cprReportSpend: weeklyAttributedSpend,
-        cprCsvSpend: weeklyAttributedSpend,
+        cprReportSpend: reportWeeklySpend,
+        cprCsvSpend: csvWeeklySpend,
       }),
     );
 
