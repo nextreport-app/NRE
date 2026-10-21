@@ -11,7 +11,7 @@ import type { CsvDateWarning } from "./csv-date-guidance";
 import type { ReportData } from "./report-data";
 import { collectZeroMetricLabelsFromReport } from "./report-zero-metric-warnings";
 
-export type CsvZeroMetricWarning = CsvDateWarning & { kind: "missing_metric_values" | "missing_reach_values" };
+export type CsvZeroMetricWarning = CsvDateWarning;
 
 type MetricRule = {
   key: NreMetricKey;
