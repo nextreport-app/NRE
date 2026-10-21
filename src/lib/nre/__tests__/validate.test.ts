@@ -320,9 +320,28 @@ describe("validateMtdDailyCsv", () => {
       const result = validateMtdDailyCsv(colMap, parsedRows, NOW);
       expect(result.valid).toBe(false);
       const err = result.errors.find((e) => e.field === "date_granularity");
-      expect(err?.message).toBe(
-        "Your CSV appears to use weekly or monthly totals instead of daily data. Re-export from Meta Ads Manager → Reports → Export table data with Time breakdown: Day (the Campaigns-screen export cannot include daily rows).",
-      );
+      expect(err?.message).toContain("weekly or monthly totals");
+    });
+
+    it("accepts Campaigns-table export with Breakdown: Day (equal Reporting starts/ends per row)", () => {
+      const headers = [
+        "Reporting starts",
+        "Reporting ends",
+        "Campaign name",
+        "Amount spent (USD)",
+        "Results",
+        "Result indicator",
+        "Impressions",
+        "Reach",
+      ];
+      const rows = [
+        ["2026-10-04", "2026-10-04", "Camp A", "10", "1", "actions:custom", "100", "50"],
+        ["2026-10-05", "2026-10-05", "Camp A", "12", "0", "", "80", "40"],
+      ];
+      const { colMap, rows: parsedRows } = parse(headers, rows);
+      const result = validateMtdDailyCsv(colMap, parsedRows, new Date("2026-10-20T12:00:00Z"), headers, "META");
+      expect(result.errors.some((e) => e.field === "date_granularity")).toBe(false);
+      expect(result.valid).toBe(true);
     });
 
     it("does not flag a real daily export (per-row Day column) as weekly/monthly totals, even alongside Reporting starts/ends", () => {

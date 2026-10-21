@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildColumnMap, getRowDate, readRowsWithAutoMap, type NreRow } from "../columns";
+import {
+  buildColumnMap,
+  csvHasDailyGranularity,
+  getRowDate,
+  hasReportingStartsEndsDailyRow,
+  readRowsWithAutoMap,
+  type NreRow,
+} from "../columns";
 
 describe("getRowDate", () => {
   it("prefers an exact 'Day' header over decoy date-ish columns (regression)", () => {
@@ -37,6 +44,16 @@ describe("getRowDate", () => {
   it("falls back to date_start only when no Day/Date column exists at all", () => {
     const row: NreRow = { _raw: { "Reporting starts": "01-07-26" }, date_start: "01-07-26" };
     expect(getRowDate(row)).toBe("01-07-26");
+  });
+
+  it("treats equal Reporting starts/ends as daily campaign-export rows", () => {
+    const row: NreRow = {
+      _raw: { "Reporting starts": "2026-10-04", "Reporting ends": "2026-10-04" },
+      date_start: "2026-10-04",
+      date_end: "2026-10-04",
+    };
+    expect(hasReportingStartsEndsDailyRow(row)).toBe(true);
+    expect(csvHasDailyGranularity([row])).toBe(true);
   });
 });
 
