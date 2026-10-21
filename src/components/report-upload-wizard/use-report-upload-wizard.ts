@@ -166,6 +166,7 @@ export function useReportUploadWizard({
   const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
   const [csvAlignResults, setCsvAlignResults] = useState(false);
   const [generatedWithCsvMismatch, setGeneratedWithCsvMismatch] = useState(false);
+  const [generatedWithCsvVerifySkipped, setGeneratedWithCsvVerifySkipped] = useState(false);
   const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
@@ -726,6 +727,7 @@ export function useReportUploadWizard({
     setShareLinkCopied(false);
     setClientShareMessageCopied(false);
     setGeneratedWithCsvMismatch(false);
+    setGeneratedWithCsvVerifySkipped(false);
   }
 
   useEffect(() => {
@@ -2372,6 +2374,7 @@ export function useReportUploadWizard({
       return;
     }
     const csvMismatchAtGenerate = csvVerification?.status === "mismatch";
+    const csvSkippedAtGenerate = csvVerification?.status === "skipped";
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -2459,6 +2462,7 @@ export function useReportUploadWizard({
     setPublishedAt(null);
     setGeneratedAt(new Date().toISOString());
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
+    setGeneratedWithCsvVerifySkipped(csvSkippedAtGenerate);
     setGenerateStatus("done");
     clearAllWizardDrafts();
     persistGenerateSnapshot(
@@ -3171,6 +3175,7 @@ export function useReportUploadWizard({
     handleGenerateStepPrimary,
     retryPreview,
     generatedWithCsvMismatch,
+    generatedWithCsvVerifySkipped,
     reportId,
     downloadUrl,
     publishedAt,

@@ -21,6 +21,11 @@ const EN_UI = {
   csvVerifiedTitle: "Verified against your CSV",
   csvVerifiedDetail: (scopesLabel: string) =>
     `Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each checked window: ${scopesLabel}. Report week, month-to-date, and last 30 days are separate ranges — their totals are not meant to match each other.`,
+  csvSkippedTitle: "CSV cross-check not run",
+  csvSkippedLead:
+    "This is not a pass — deck totals were not compared to your CSV for this report setup.",
+  csvSkippedDefaultReason:
+    "We could not run an automatic CSV comparison for this preview (for example, missing data or an unsupported report type). You can still generate; review totals yourself before sharing.",
   generateForInternalReview: "Generate for internal review",
   confirmedPeriodWeeklyLead: "Your weekly report will cover:",
   confirmedPeriodWeeklyWeekSuffix: "week",
@@ -32,6 +37,9 @@ const EN_UI = {
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
     "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
+  csvSkippedShareWarningTitle: "CSV cross-check did not run when you generated",
+  csvSkippedShareWarningBody:
+    "Deck totals were not automatically compared to your CSV. Review the report yourself before sharing with the client.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",

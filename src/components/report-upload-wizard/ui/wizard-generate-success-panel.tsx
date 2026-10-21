@@ -80,6 +80,7 @@ type WizardGenerateSuccessPanelProps = {
   handleCopyLink: () => void;
   handleGenerateAnother: () => void;
   generatedWithCsvMismatch?: boolean;
+  generatedWithCsvVerifySkipped?: boolean;
   children?: ReactNode;
 };
 
@@ -114,6 +115,7 @@ export function WizardGenerateSuccessPanel({
   handleCopyLink,
   handleGenerateAnother,
   generatedWithCsvMismatch = false,
+  generatedWithCsvVerifySkipped = false,
   children,
 }: WizardGenerateSuccessPanelProps) {
   const copy = useWizardCopy();
@@ -218,6 +220,17 @@ export function WizardGenerateSuccessPanel({
             </p>
             <p className="nre-wizard-callout-warn__body mt-1.5 text-[13px] leading-relaxed">
               {copy.csvMismatchShareWarningBody}
+            </p>
+          </div>
+        ) : null}
+
+        {!generatedWithCsvMismatch && generatedWithCsvVerifySkipped ? (
+          <div className="nre-wizard-callout-neutral rounded-lg px-4 py-3.5">
+            <p className="nre-wizard-callout-neutral__title text-[14px] font-semibold">
+              {copy.csvSkippedShareWarningTitle}
+            </p>
+            <p className="nre-wizard-callout-neutral__body mt-1.5 text-[13px] leading-relaxed">
+              {copy.csvSkippedShareWarningBody}
             </p>
           </div>
         ) : null}
