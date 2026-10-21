@@ -1201,7 +1201,7 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(resolveCampaignObjective(cboRows).resultLabel).toBe("PURCHASES");
     const resolution = resolveCampaignObjectiveWithConfidence(cboRows);
     expect(resolution.resultLabel).toBe("PURCHASES");
-    expect(resolution.confidence).toBe("medium");
+    expect(resolution.confidence).toBe("high");
 
     const objectiveMap = buildCampaignObjectiveMap(
       rows.filter((r) =>

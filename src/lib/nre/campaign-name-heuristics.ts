@@ -66,6 +66,11 @@ export function isReachCampaignHaystack(haystack: string): boolean {
   return /(?:^|[\s_\-])reach(?:[\s_\-]|$)/.test(haystack);
 }
 
+/** Pipe-delimited Meta campaign names often use a dedicated "| Sales |" objective segment. */
+function hasSalesObjectiveNameSegment(haystack: string): boolean {
+  return haystack.split("|").some((seg) => seg.trim().toLowerCase() === "sales");
+}
+
 /** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
 export function isPurchaseCampaignHaystack(haystack: string): boolean {
   if (/\batc\b|add.?to.?cart/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
@@ -74,7 +79,11 @@ export function isPurchaseCampaignHaystack(haystack: string): boolean {
   if (/\bic\b|initiate.?checkout/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
     return false;
   }
-  return /purchase|purchases|conversion/.test(haystack);
+  if (hasSalesObjectiveNameSegment(haystack)) return true;
+  if (/purchase|purchases/.test(haystack)) return true;
+  // "Leads Conversion" ad set names are lead-gen, not purchase campaigns.
+  if (/leads?\s*conversion|conversion\s*leads?/.test(haystack)) return false;
+  return /\bconversion\b/.test(haystack);
 }
 
 export function isMessagingCampaignName(rows: MetricRow[]): boolean {
