@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { reconcileStandardReportWithCsv } from "../csv-report-reconciliation";
 import { buildReportData } from "../report-data";
 import { parseCsvText } from "../parse-csv";
+import { buildCampaignObjectiveMap } from "../objective";
 
 const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "dc-weekly-the-belle-oct2026.csv");
 
@@ -57,5 +58,9 @@ describe("The Belle weekly CSV — verification includes CTR/CPC and dated scope
     expect(report.campaignSlides[0]?.metrics.results).toBe("10");
     expect(report.mtdRow.resultColumns.find((c) => c.label === "META FORM LEADS")?.value).toBe("27");
     expect(report.chart?.campaigns[0]?.results).toBe(45);
+    expect(report.campaignSlides[0]?.resultLabel).toBe("META FORM LEADS");
+    expect(
+      buildCampaignObjectiveMap(rows).get("dc - leads - instant forms - q3 - july2026")?.resultLabel,
+    ).toBe("META FORM LEADS");
   });
 });
