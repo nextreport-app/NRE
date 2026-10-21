@@ -500,8 +500,6 @@ export function useReportUploadWizard({
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
   const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
-  /** Step 5 generate screen — Report Summary card collapsed by default to shorten the page. */
-  const [reportSummaryExpanded, setReportSummaryExpanded] = useState(false);
   const [showBudgetOnCover, setShowBudgetOnCover] = useState(false);
   const [budgetToggleSaving, setBudgetToggleSaving] = useState(false);
 
@@ -3171,8 +3169,6 @@ export function useReportUploadWizard({
     comparisonData,
     historicalData,
     dayBreakdownData,
-    reportSummaryExpanded,
-    setReportSummaryExpanded,
     showBudgetOnCover,
     handleShowBudgetOnCoverChange,
     budgetToggleSaving,
