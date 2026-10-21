@@ -25,6 +25,7 @@ import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
+import { csvZeroMetricWarnings, filterRowsForCampaignSelection } from "@/lib/nre/csv-zero-metric-guidance";
 import { parseObjectiveCache } from "@/lib/nre/objective-cache";
 import {
   campaignMetricOverridesSchema,
@@ -370,10 +371,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     periodRows: periodRowsForVerify,
   });
 
+  const campaignScopedRows = filterRowsForCampaignSelection(mtdParsed.rows, selectedCampaigns);
+  const zeroMetricWarnings = csvZeroMetricWarnings(mtdParsed.colMap, campaignScopedRows, platform);
+
   return NextResponse.json({
     valid: true,
     errors: [],
     warnings: validation.warnings,
+    csvZeroMetricWarnings: zeroMetricWarnings,
     data: built.data,
     csvVerification,
     suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),
