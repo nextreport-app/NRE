@@ -1472,6 +1472,20 @@ function isDailyOffDayInLeadCampaign(row: MetricRow, campRows: MetricRow[], ownL
     return parseCellNum(row.link_clicks) > 0;
   }
   if (ownLabel === "RESULTS") return !rt;
+  // Zero-result days in a converting ad set often resolve as WEBSITE LEADS from
+  // the campaign name even when the pinned objective is applications (Ascend
+  // Mastermind: $73 spend / 4 apps showed $10 CPR = costed days only).
+  if (
+    ownLabel === "WEBSITE LEADS" ||
+    ownLabel === "META FORM LEADS" ||
+    ownLabel === "WEBSITE SUBMIT APPLICATIONS"
+  ) {
+    return (
+      parseCellNum(row.link_clicks) > 0 ||
+      parseCellNum(row.landing_page_views) > 0 ||
+      parseCellNum(row.impressions) > 0
+    );
+  }
   return false;
 }
 
