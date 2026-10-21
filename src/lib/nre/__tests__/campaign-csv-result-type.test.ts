@@ -26,6 +26,16 @@ describe("campaign-csv-result-type", () => {
     expect(summary.entries).toHaveLength(2);
   });
 
+  it("maps Campaigns-table Result indicator custom conversions to WEBSITE LEADS", () => {
+    const summary = summarizeCsvResultTypesForCampaign([
+      row("DC", "actions:offsite_conversion.custom.446052571654985"),
+    ]);
+    expect(summary.primary).toBe("website submission (custom conversion)");
+    expect(summary.expectedResultLabel).toBe("WEBSITE LEADS");
+    expect(csvResultTypeMatchesDetection(summary, "WEBSITE LEADS")).toBe(true);
+    expect(summary.entries[0]?.resultType).toBe("website submission (custom conversion)");
+  });
+
   it("matches detection when detected label equals any CSV-mapped objective", () => {
     const summary = summarizeCsvResultTypesForCampaign([
       row("A", "Leads (form)"),
