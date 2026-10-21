@@ -7,7 +7,6 @@
 import type { ColumnMap, NreMetricKey, NreRow } from "./columns";
 import { parseCellNum } from "./format";
 import type { Platform } from "./google-columns";
-import { adsManagerName } from "./platform-reporting";
 import type { CsvDateWarning } from "./csv-date-guidance";
 import type { ReportData } from "./report-data";
 import { collectZeroMetricLabelsFromReport } from "./report-zero-metric-warnings";
@@ -93,44 +92,45 @@ export function detectBlankCsvMetricLabels(
   return labels;
 }
 
-function reExportHint(platform: Platform): string {
-  const manager = adsManagerName(platform);
-  return (
-    `If that looks wrong, re-export from ${manager} → Reports → Export table data with Time breakdown: Day ` +
-    `(Reach is sometimes missing from Meta exports even when Impressions are present).`
-  );
+function titleCaseMetricLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.replace(/\b\w+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
-function uniqueSortedLabels(labels: string[]): string[] {
-  return [...new Set(labels.map((l) => l.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+/** Dedupe Reach vs REACH; stable sort for display. */
+export function uniqueMetricDisplayLabels(labels: string[]): string[] {
+  const byKey = new Map<string, string>();
+  for (const raw of labels) {
+    const key = raw.trim().toLowerCase();
+    if (!key || byKey.has(key)) continue;
+    byKey.set(key, titleCaseMetricLabel(raw));
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function formatMetricList(labels: string[]): string {
+  if (labels.length <= 2) return labels.join(" and ");
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
 export function zeroMetricWarningsForLabels(labels: string[], platform: Platform = "META"): CsvZeroMetricWarning[] {
-  const unique = uniqueSortedLabels(labels);
+  const unique = uniqueMetricDisplayLabels(labels);
   if (unique.length === 0 || platform !== "META") return [];
 
-  const list = unique.join(", ");
-
-  if (unique.length === 1 && unique[0] === "Reach") {
-    return [
-      {
-        kind: "missing_reach_values",
-        title: "Reach will show as 0 on your slides",
-        message:
-          `Your report preview has Reach at 0 while other delivery metrics have data. ${reExportHint(platform)} You can still generate and double-check before sharing with your client.`,
-        suggestedDownload: "last_30_days",
-      },
-    ];
-  }
+  const count = unique.length;
+  const title = count === 1 ? `${unique[0]} will show as 0` : `${count} metrics will show as 0`;
+  const listPhrase = formatMetricList(unique);
+  const message =
+    count === 1
+      ? `${unique[0]} is 0 on your slides — often a blank column in the Meta export. Re-export with Day breakdown if that looks wrong, or generate anyway.`
+      : `${listPhrase} are 0 on your slides — often blank columns in the Meta export. Re-export with Day breakdown if that looks wrong, or generate anyway.`;
 
   return [
     {
-      kind: "missing_metric_values",
-      title: unique.length === 1 ? `${unique[0]} will show as 0` : `${unique.length} metrics will show as 0`,
-      message:
-        unique.length === 1
-          ? `Your report preview shows ${unique[0]} as 0 on campaign/ad set slides while spend or delivery metrics are non-zero. ${reExportHint(platform)} Review before sharing, or generate anyway if that is expected.`
-          : `Your report preview shows these metrics as 0 on slides: ${list}. ${reExportHint(platform)} Review before sharing, or generate anyway if that is expected.`,
+      kind: count === 1 && unique[0]?.toLowerCase() === "reach" ? "missing_reach_values" : "missing_metric_values",
+      title,
+      message,
       suggestedDownload: "last_30_days",
     },
   ];
