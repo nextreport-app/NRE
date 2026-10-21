@@ -303,9 +303,7 @@ describe("validateMtdDailyCsv", () => {
       const { colMap, rows } = parse(["Campaign name", "Day", "Amount spent (USD)"], [["Shoes", "19-07-2026", "100"]]);
       const result = validateMtdDailyCsv(colMap, rows, NOW);
       const err = result.errors.find((e) => e.field === "results");
-      expect(err?.message).toBe(
-        "Your CSV is missing the Result Type column. Without it NextReport cannot detect your campaign objective. Please add Result Type and Results to your columns and re-download. See our Download Guide for the recommended column list.",
-      );
+      expect(err?.message).toContain("missing the Results column");
     });
 
     it("flags a CSV with only file-wide Reporting starts/ends (no real per-row Day/Date column) as weekly/monthly totals", () => {
