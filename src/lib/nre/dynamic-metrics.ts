@@ -18,8 +18,10 @@ import { formatMetricValue, parseCellNum } from "./format";
 import { META_METRIC_DICTIONARY } from "./meta-dictionary";
 import { GOOGLE_METRIC_DICTIONARY } from "./google-dictionary";
 import { aggregateReach } from "./reach-aggregation";
-import { combinedCtrCpcFromRows } from "./ctr-cpc";
-import type { MetricRow } from "./types";
+import {
+  blendedCostPerLinkClickFromRawRows,
+  combinedCtrCpcFromRawRows,
+} from "./ctr-cpc";
 
 /** Any raw CSV row shape that still carries its original column values — both NreRow (Meta) and GoogleRow (Google) satisfy this. */
 export interface RawMetricRow {
@@ -116,27 +118,23 @@ function aggregateCpc<T extends RawMetricRow>(
   metricKey: "cpc_all" | "cpc_link_click",
 ): number {
   if (metricKey === "cpc_all") {
-    const { cpc } = combinedCtrCpcFromRows(rows as MetricRow[]);
+    const { cpc } = combinedCtrCpcFromRawRows(rows, headerMap);
     if (cpc > 0) return cpc;
   }
 
-  const valueHeaders =
-    metricKey === "cpc_link_click" ? CPC_LINK_VALUE_HEADER_CANDIDATES : CPC_ALL_VALUE_HEADER_CANDIDATES;
+  if (metricKey === "cpc_link_click") {
+    const blended = blendedCostPerLinkClickFromRawRows(rows, headerMap);
+    if (Number.isFinite(blended) && blended > 0) return blended;
+  }
+
   const clickHeaders =
     metricKey === "cpc_link_click" ? CPC_LINK_CLICKS_HEADER_CANDIDATES : CPC_ALL_CLICKS_HEADER_CANDIDATES;
-
-  for (const candidate of valueHeaders) {
-    const header = headerMap.get(candidate);
-    if (!header) continue;
-    const nonZero = rows.map((r) => parseCellNum(r._raw?.[header])).filter((v) => v > 0);
-    if (nonZero.length > 0) return nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length;
-  }
 
   for (const candidate of clickHeaders) {
     const header = headerMap.get(candidate);
     if (!header) continue;
     const totalClicks = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
-    if (totalClicks > 0) return totalSpend / totalClicks;
+    if (totalClicks > 0 && totalSpend > 0) return totalSpend / totalClicks;
   }
 
   return NaN;

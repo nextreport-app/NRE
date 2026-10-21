@@ -17,7 +17,7 @@ import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
 import { filterNreRowsByDateRange } from "./date-range";
 import { parseCellNum, fmtCurrency, fmtNumber, fmtPercent, fmtCurrency2dp } from "./format";
-import { combinedCtrCpcFromRows } from "./ctr-cpc";
+import { blendedCostPerLinkClickFromRows, combinedCtrCpcFromRows, sumLinkClicksFromRows } from "./ctr-cpc";
 import { getDateRangeAbbrLabel } from "./dates";
 import {
   buildCampaignObjectiveMap,
@@ -438,6 +438,77 @@ function appendCtrCpcChecks(params: {
   }
 }
 
+function parseDisplayNumber(display: string | undefined): number {
+  if (!display || display === "—") return 0;
+  return parseCellNum(display.replace(/[^0-9.\-]/g, ""));
+}
+
+/** Link clicks + cost per link click — must match blended CSV totals, not one day's cells. */
+function appendLinkClickCpcChecks(params: {
+  checks: CsvVerificationCheck[];
+  scope: string;
+  rawRows: MetricRow[];
+  reportLinkClicksDisplay?: string;
+  reportCplcDisplay?: string;
+  currencySymbol: string;
+  calendarComplete?: boolean;
+  campaignSuffix?: string;
+}): void {
+  const {
+    checks,
+    scope,
+    rawRows,
+    reportLinkClicksDisplay,
+    reportCplcDisplay,
+    currencySymbol,
+    calendarComplete = true,
+    campaignSuffix,
+  } = params;
+  if (rawRows.length === 0) return;
+  const suffix = campaignSuffix ? ` (${campaignSuffix})` : "";
+
+  const csvLinkClicks = sumLinkClicksFromRows(rawRows);
+  const reportLinkClicks = parseDisplayNumber(reportLinkClicksDisplay);
+  if (csvLinkClicks > 0 && reportLinkClicks > 0) {
+    checks.push({
+      metric: `Link clicks${suffix}`,
+      scope,
+      reportDisplay: reportLinkClicksDisplay ?? "—",
+      csvDisplay: fmtNumber(csvLinkClicks),
+      status: calendarComplete && reportLinkClicks === csvLinkClicks ? "ok" : "mismatch",
+      note:
+        reportLinkClicks === csvLinkClicks
+          ? undefined
+          : "Link clicks must be the sum of the CSV Link clicks column for this window — not Clicks (all).",
+    });
+  }
+
+  const csvCplc = blendedCostPerLinkClickFromRows(rawRows);
+  const reportCplc = parseDisplayNumber(reportCplcDisplay);
+  if (csvCplc > 0 && reportCplc > 0) {
+    checks.push({
+      metric: `Cost per link click${suffix}`,
+      scope,
+      reportDisplay: reportCplcDisplay ?? "—",
+      csvDisplay: fmtCurrency2dp(csvCplc, currencySymbol),
+      status: calendarComplete && closeEnough(reportCplc, csvCplc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
+      note: closeEnough(reportCplc, csvCplc, CPC_ALL_TOLERANCE)
+        ? undefined
+        : "Cost per link click = total spend ÷ total link clicks for the window — not an average of daily CPC cells.",
+    });
+  }
+}
+
+function linkClickMetricsFromSlide(slide: ReportData["campaignSlides"][number]): {
+  linkClicks?: string;
+  cplc?: string;
+} {
+  const metrics = [...(slide.dynamicMetrics ?? []), ...(slide.additionalMetricsSlide ?? [])];
+  const linkClicks = metrics.find((m) => m?.key === "link_clicks")?.value;
+  const cplc = metrics.find((m) => m?.key === "cpc_link_click")?.value;
+  return { linkClicks, cplc };
+}
+
 export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInput): CsvVerificationResult {
   const {
     report,
@@ -711,6 +782,12 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       const campRaw = (weeklyRawRows as MetricRow[]).filter(
         (r) => normalizeCampaignName(r.campaign_name ?? "") === normalizeCampaignName(slide.campaignName),
       );
+      const campaignSuffix =
+        report.campaignSlides.length > 1
+          ? slide.campaignName.length > 36
+            ? `${slide.campaignName.slice(0, 33)}…`
+            : slide.campaignName
+          : undefined;
       appendCtrCpcChecks({
         checks,
         scope: weeklyScope,
@@ -719,12 +796,18 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCpcDisplay: slide.metrics.cpc,
         currencySymbol,
         calendarComplete: weeklyCalendarComplete,
-        campaignSuffix:
-          report.campaignSlides.length > 1
-            ? slide.campaignName.length > 36
-              ? `${slide.campaignName.slice(0, 33)}…`
-              : slide.campaignName
-            : undefined,
+        campaignSuffix,
+      });
+      const { linkClicks, cplc } = linkClickMetricsFromSlide(slide);
+      appendLinkClickCpcChecks({
+        checks,
+        scope: weeklyScope,
+        rawRows: campRaw,
+        reportLinkClicksDisplay: linkClicks,
+        reportCplcDisplay: cplc,
+        currencySymbol,
+        calendarComplete: weeklyCalendarComplete,
+        campaignSuffix,
       });
     }
   }

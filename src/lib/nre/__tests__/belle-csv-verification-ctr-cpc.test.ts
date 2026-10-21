@@ -38,6 +38,8 @@ describe("The Belle weekly CSV — verification includes CTR/CPC and dated scope
     expect(verification.scopesVerified?.some((s) => s.includes("Last 30 days"))).toBe(true);
     expect(verification.checks.some((c) => c.metric.startsWith("CTR (all)"))).toBe(true);
     expect(verification.checks.some((c) => c.metric.startsWith("CPC (all)"))).toBe(true);
+    expect(verification.checks.some((c) => c.metric.startsWith("Link clicks"))).toBe(true);
+    expect(verification.checks.some((c) => c.metric.startsWith("Cost per link click"))).toBe(true);
   });
 
   it("matches Ads Manager Results totals (not orphan Meta leads on blank days)", () => {

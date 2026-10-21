@@ -280,6 +280,12 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         case "VIDEO VIEWS":
           actualResults = resolution.source === "priority1" ? g.thruplays : g.results;
           break;
+        case "LANDING PAGE VIEWS":
+          actualResults = g.landing_page_views;
+          break;
+        case "LINK CLICKS":
+          actualResults = g.link_clicks;
+          break;
         default:
           actualResults = g.results;
       }

@@ -163,7 +163,7 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
   });
 
   it("tries 'cpc (cost per link click)' and 'average cpc' too, in the documented priority order", () => {
-    const rowsLinkClick = [row({ "Amount spent": "100", "CPC (Cost per Link Click)": "0.75" })];
+    const rowsLinkClick = [row({ "Amount spent": "75", "Link clicks": "100", "CPC (Cost per Link Click)": "0.75" })];
     expect(aggregateDynamicMetrics(rowsLinkClick, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.75);
 
     const rowsAverage = [row({ "Amount spent": "100", "Average CPC": "0.60" })];
@@ -179,7 +179,7 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
         "Link clicks": "4",
       }),
     ];
-    expect(aggregateDynamicMetrics(rowsWithBoth, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.85);
+    expect(aggregateDynamicMetrics(rowsWithBoth, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
 
     const rowsFallback = [row({ "Amount spent": "100", "CPC (all)": "2.00", "Link clicks": "4" })];
     expect(aggregateDynamicMetrics(rowsFallback, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
