@@ -1839,14 +1839,8 @@ export function useReportUploadWizard({
    * dropdown — see setCampaignObjective — so nothing needs to be shown).
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
-    if (tier === "cached") {
-      return {
-        icon: "✓",
-        text: wizardObjectiveBadgeText(locale, "cached").text,
-        className: "nre-wizard-confidence--ok",
-        pill: false,
-      };
-    }
+    // Cached objectives still pre-fill the dropdown; CSV matchup line replaces the old badge.
+    if (tier === "cached") return null;
     if (tier === "high" || tier === "medium") {
       return {
         icon: "✓",
