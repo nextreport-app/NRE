@@ -10,10 +10,16 @@
  */
 
 import type { ColumnMap, NreRow } from "./columns";
-import { getRowDate, hasRealRowDate } from "./columns";
+import { csvHasDailyGranularity, getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
+import {
+  brokenSpendExportMessage,
+  classifyCsvSpendDelivery,
+  noDeliveryWarningMessage,
+} from "./csv-spend-delivery";
+import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
 
 export interface ValidationIssue {
   field: string;
@@ -117,24 +123,26 @@ export function validateMtdDailyCsv(
       field: "date",
       message: 'No date column found (expected a "Day", "Date", or "Reporting starts/ends" column).',
     });
-  } else if (!rows.some(hasRealRowDate)) {
-    // A date column exists (colMap.date_start/date_end matched "Reporting
-    // starts"/"Reporting ends"), but no row has a real per-row "Day"/"Date"
-    // value — every row would fall back to the SAME file-wide start date
-    // (see columns.ts's getRowDate), which is what a weekly- or monthly-
-    // granularity Meta export looks like, not a daily one. Caught here,
-    // before it ever reaches the weekly/MTD splitting logic downstream,
-    // which would otherwise silently produce a garbage or empty report.
+  } else if (!csvHasDailyGranularity(rows)) {
+    // No per-row Day/Date and no equal Reporting starts/ends pairs (Campaigns
+    // table + Breakdown: Day uses the latter). File-wide reporting ranges
+    // only → weekly/monthly-style totals.
     errors.push({
       field: "date_granularity",
-      message: `Your CSV appears to use weekly or monthly totals instead of daily data. Re-export from ${manager} → Reports → Export table data with Time breakdown: Day (the Campaigns-screen export cannot include daily rows).`,
+      message: `Your CSV looks like weekly or monthly totals, not daily rows. Re-export with day-level data: ${manager} → Reports → Export table data (Time breakdown: Day), or Campaigns → filter rows → Breakdown: Day → export.`,
     });
   }
   if (!colMap.results) {
     errors.push({
       field: "results",
       message:
-        "Your CSV is missing the Result Type column. Without it NextReport cannot detect your campaign objective. Please add Result Type and Results to your columns and re-download. See our Download Guide for the recommended column list.",
+        "Your CSV is missing the Results column. Without it NextReport cannot build result counts. Please add Results (and Result Type when available) and re-download. See our Download Guide for the recommended column list.",
+    });
+  } else if (platform === "META" && !colMap.result_type && csvHasDailyGranularity(rows)) {
+    warnings.push({
+      field: "result_type",
+      message:
+        "No Result Type column (common on Campaigns-table exports). Confirm each campaign's objective on the Metrics step — use Website submission / Meta leads columns if you added them.",
     });
   }
 
@@ -212,6 +220,34 @@ export function validateMtdDailyCsv(
           message: `The date range spans ${Math.round(spanDays)} days. For weekly/monthly reports use a single-month export (≤${MAX_RANGE_DAYS_STANDARD} days). For May–August-style requests, choose Multi-Month Historical Report on Step 5.`,
         });
       }
+    }
+  }
+
+  if (platform === "META" && colMap.spend) {
+    const spendDelivery = classifyCsvSpendDelivery(colMap, rows, platform);
+    if (spendDelivery === "broken_export") {
+      errors.push({
+        field: "spend",
+        message: brokenSpendExportMessage(platform),
+      });
+    } else if (spendDelivery === "no_delivery") {
+      warnings.push({
+        field: "spend",
+        message: noDeliveryWarningMessage(),
+      });
+    }
+  }
+
+  if (platform === "META") {
+    const blankMetrics = detectBlankCsvMetricLabels(colMap, rows, platform);
+    if (blankMetrics.length > 0) {
+      warnings.push({
+        field: "metrics",
+        message:
+          blankMetrics.length === 1
+            ? `${blankMetrics[0]} is blank on every row while your file has delivery data — it will show as 0 on slides until you re-export from ${manager} with that column populated (Reports → Export table data, Day breakdown).`
+            : `These columns are blank on every row while your file has delivery data — they will show as 0 on slides: ${blankMetrics.join(", ")}. Re-export from ${manager} (Reports → Export table data, Day breakdown).`,
+      });
     }
   }
 
