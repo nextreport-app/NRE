@@ -1,7 +1,11 @@
 /**
- * Independent result counting — mirrors summing Meta Ads Manager export columns
- * (primarily Results + Result type), used for CSV verification and optional
- * align-with-export report mode.
+ * Canonical Meta manual-export counting — same rules Ads Manager uses for period
+ * totals and what agencies sum in Excel: **Results** on rows where **Result type**
+ * matches the objective. Blank Result type + blank Results = **0 leads** for that
+ * day, even if optional columns (Meta leads, Leads, Website leads) show numbers.
+ *
+ * All report math (slides, MTD, chart, CPL) must go through these helpers — never
+ * sum Leads/Meta leads columns when Result type and Results are empty.
  */
 
 import type { MetricRow } from "./types";
