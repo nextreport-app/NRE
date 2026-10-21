@@ -18,7 +18,6 @@ import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
-import { CsvZeroMetricBanner } from "../ui/csv-zero-metric-banner";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
@@ -104,9 +103,6 @@ export function WizardGenerateStep() {
     previewRefreshing,
     generateStepPreviewReady,
     csvVerification,
-    csvZeroMetricWarnings,
-    csvZeroMetricWarningDismissed,
-    setCsvZeroMetricWarningDismissed,
     previousMonthComparisonReady,
     previousMonthHasFile,
     publishedAt,
@@ -648,16 +644,6 @@ export function WizardGenerateStep() {
             ) : null}
 
             <div className="space-y-4">
-              {csvZeroMetricWarnings.length > 0 &&
-              !csvZeroMetricWarningDismissed &&
-              generateStepPreviewReady &&
-              generateStatus === "idle" ? (
-                <CsvZeroMetricBanner
-                  warnings={csvZeroMetricWarnings}
-                  onDismiss={() => setCsvZeroMetricWarningDismissed(true)}
-                />
-              ) : null}
-
               {(previewKind === "normal" ||
                 previewKind === "comparison" ||
                 previewKind === "historical" ||

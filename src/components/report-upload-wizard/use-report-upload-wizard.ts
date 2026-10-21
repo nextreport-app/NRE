@@ -368,8 +368,6 @@ export function useReportUploadWizard({
   );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
-  const [csvZeroMetricWarnings, setCsvZeroMetricWarnings] = useState<CsvDateWarning[]>([]);
-  const [csvZeroMetricWarningDismissed, setCsvZeroMetricWarningDismissed] = useState(false);
   const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
   const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
@@ -1198,8 +1196,6 @@ export function useReportUploadWizard({
       setDayBreakdownData(null);
     }
     setCsvVerification(json.csvVerification ?? null);
-    setCsvZeroMetricWarnings(Array.isArray(json.csvZeroMetricWarnings) ? json.csvZeroMetricWarnings : []);
-    setCsvZeroMetricWarningDismissed(false);
     if (json.suggestCsvAlign && !csvAlignResults && !csvAlignAttemptedRef.current) {
       csvAlignAttemptedRef.current = true;
       setCsvAlignResults(true);
@@ -2927,9 +2923,6 @@ export function useReportUploadWizard({
     csvDateGuidance,
     csvWarningDismissed,
     setCsvWarningDismissed,
-    csvZeroMetricWarnings,
-    csvZeroMetricWarningDismissed,
-    setCsvZeroMetricWarningDismissed,
     setCsvDateGuidance,
     setMtdFile,
     setUploadSessionId,
