@@ -9,6 +9,7 @@
 import { hasRealRowDate } from "./columns";
 import {
   metaCsvExportResultValue,
+  metaFormLeadsFromMetaExportRow,
   websiteLeadsFromMetaExportRow,
   type ResultCountingMode,
 } from "./meta-csv-export-counting";
@@ -1400,7 +1401,7 @@ export function resultValueForObjective(row: MetricRow, label: string, mode: Res
       return websiteLeadsCountFromExportRow(row);
     }
     if (label === "META FORM LEADS") {
-      return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
+      return metaFormLeadsFromMetaExportRow(row);
     }
     if (label === "REACH") {
       return parseCellNum(row.reach) || parseCellNum(row.results);

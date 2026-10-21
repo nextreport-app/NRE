@@ -8,6 +8,18 @@ import type { MetricRow } from "./types";
 import { parseCellNum } from "./format";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
 
+/** Ads Manager period totals: Results for the row's Result type; ignore orphan Meta leads. */
+export function metaFormLeadsFromMetaExportRow(
+  row: Pick<MetricRow, "results" | "leads" | "meta_leads" | "result_type">,
+): number {
+  const results = parseCellNum(row.results);
+  if (results > 0) return results;
+  const rt = (row.result_type || "").trim();
+  if (!rt) return 0;
+  if (getMetaResultLabels(rt).resultLabel !== "META FORM LEADS") return 0;
+  return parseCellNum(row.meta_leads) || parseCellNum(row.leads) || 0;
+}
+
 /** Ads Manager period totals: Results for the row's Result type; ignore orphan Website leads. */
 export function websiteLeadsFromMetaExportRow(
   row: Pick<MetricRow, "results" | "website_leads" | "result_type">,
@@ -55,8 +67,7 @@ export function metaCsvExportResultValue(row: MetricRow, campaignObjectiveLabel:
   }
 
   if (campaignObjectiveLabel === "META FORM LEADS") {
-    if (rtLabel === "META FORM LEADS") return results;
-    return 0;
+    return metaFormLeadsFromMetaExportRow(row);
   }
 
   if (campaignObjectiveLabel === "REACH") {
