@@ -65,7 +65,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
     const scopeList = verification.scopesVerified ?? [];
     return (
       <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-        <details className="group" open>
+        <details className="group">
           <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
             <span
               className="nre-wizard-callout-success__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"

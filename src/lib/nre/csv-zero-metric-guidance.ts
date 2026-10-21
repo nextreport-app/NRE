@@ -123,8 +123,8 @@ export function zeroMetricWarningsForLabels(labels: string[], platform: Platform
   const listPhrase = formatMetricList(unique);
   const message =
     count === 1
-      ? `${unique[0]} is 0 on your slides — often a blank column in the Meta export. Re-export with Day breakdown if that looks wrong, or generate anyway.`
-      : `${listPhrase} are 0 on your slides — often blank columns in the Meta export. Re-export with Day breakdown if that looks wrong, or generate anyway.`;
+      ? `${unique[0]} is 0 on your slides — often a blank column in the Meta export. Re-export if that looks wrong, or generate anyway and manually edit it before sending the report to the client.`
+      : `${listPhrase} are 0 on your slides — often blank columns in the Meta export. Re-export if that looks wrong, or generate anyway and manually edit it before sending the report to the client.`;
 
   return [
     {

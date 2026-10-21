@@ -19,8 +19,8 @@ const EN_UI = {
   csvMismatchBody:
     "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
   csvVerifiedTitle: "Verified against your CSV",
-  csvVerifiedDetail: (scopesLabel: string) =>
-    `Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each checked window: ${scopesLabel}. Report week, month-to-date, and last 30 days are separate ranges — their totals are not meant to match each other.`,
+  csvVerifiedDetail: (_scopesLabel: string) =>
+    "Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each period below. Week, MTD, and last 30 days are separate — don’t compare totals across them.",
   csvSkippedTitle: "CSV cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your CSV for this report setup.",
