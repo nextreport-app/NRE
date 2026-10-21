@@ -1,3 +1,5 @@
+import { parseDate } from "./dates";
+
 /**
  * NRE v1 — column auto-detection.
  * Direct port of COLUMN_KEYWORDS / buildColumnMap_ / readTabWithAutoMap_
@@ -182,6 +184,7 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
 export type RowWithDate = {
   _raw?: Record<string, string>;
   date_start?: string | null;
+  date_end?: string | null;
 };
 
 /** The value of a real per-row "Day"/"Date" column, or null if this row has neither — shared by getRowDate (which additionally falls back to date_start) and hasRealRowDate (which deliberately does NOT). */
@@ -215,4 +218,24 @@ export function getRowDate(row: RowWithDate): string {
  */
 export function hasRealRowDate(row: RowWithDate): boolean {
   return findRealDayOrDateValue(row) !== null;
+}
+
+/**
+ * Campaigns-table export with Breakdown: Day — Meta uses equal
+ * "Reporting starts" / "Reporting ends" per row instead of a "Day" column.
+ */
+export function hasReportingStartsEndsDailyRow(row: RowWithDate): boolean {
+  const raw = row._raw ?? {};
+  const startRaw = String(raw["Reporting starts"] ?? row.date_start ?? "").trim();
+  const endRaw = String(raw["Reporting ends"] ?? row.date_end ?? "").trim();
+  if (!startRaw || !endRaw) return false;
+  const start = parseDate(startRaw);
+  const end = parseDate(endRaw);
+  if (!start || !end) return false;
+  return start.year === end.year && start.month === end.month && start.day === end.day;
+}
+
+/** Daily granularity: explicit Day/Date column, or per-day Reporting starts/ends pairs. */
+export function csvHasDailyGranularity(rows: RowWithDate[]): boolean {
+  return rows.some(hasRealRowDate) || rows.some(hasReportingStartsEndsDailyRow);
 }
