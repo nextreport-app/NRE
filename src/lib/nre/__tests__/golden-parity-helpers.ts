@@ -8,6 +8,9 @@ import { fetchMetaReportCsv } from "../fetch-meta-report-rows";
 import type { MetaInsightRow } from "@/lib/meta-api";
 import type { NreRow } from "../columns";
 import type { ReportData } from "../report-data";
+import { reconcileStandardReportWithCsv } from "../csv-report-reconciliation";
+import { DEFAULT_META_RESULT_COUNTING_MODE } from "../engine-defaults";
+import type { ReportType } from "../report-data";
 
 export const FIXTURES_DIR = resolve(process.cwd(), "src/lib/nre/__tests__/fixtures");
 
@@ -132,6 +135,25 @@ export function resultColumn(report: ReportData, label: string) {
 }
 
 /** Assert manual and API-sync reports agree on the numbers that matter for launch. */
+/** Wizard parity: generated deck must reconcile to the same CSV with export counting. */
+export function assertReportCsvVerificationOk(input: {
+  report: ReportData;
+  mtdDailyRows: NreRow[];
+  selectedCampaigns: string[];
+  reportType: ReportType;
+  timezone: string;
+  currencySymbol: string;
+  now?: Date;
+  weeklyRange?: { startIso: string; endIso: string };
+}) {
+  const verification = reconcileStandardReportWithCsv({
+    ...input,
+    now: input.now ?? new Date(),
+    resultCountingMode: DEFAULT_META_RESULT_COUNTING_MODE,
+  });
+  expect(verification.status).toBe("ok");
+}
+
 export function assertStandardReportParity(manual: ReportData, api: ReportData, resultLabel: string) {
   const manualCol = resultColumn(manual, resultLabel);
   const apiCol = resultColumn(api, resultLabel);
