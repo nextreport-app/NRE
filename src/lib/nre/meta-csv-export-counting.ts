@@ -44,6 +44,8 @@ export function metaCsvExportResultValue(row: MetricRow, campaignObjectiveLabel:
   const rtLabel = getMetaResultLabels(row.result_type).resultLabel;
 
   if (rtLabel === campaignObjectiveLabel) {
+    if (campaignObjectiveLabel === "WEBSITE LEADS") return websiteLeadsFromMetaExportRow(row);
+    if (campaignObjectiveLabel === "META FORM LEADS") return metaFormLeadsFromMetaExportRow(row);
     return results;
   }
 
@@ -60,18 +62,17 @@ export function metaCsvExportResultValue(row: MetricRow, campaignObjectiveLabel:
   }
 
   if (campaignObjectiveLabel === "WEBSITE LEADS") {
-    if (
-      rtLabel === "WEBSITE LEADS" ||
-      rtLabel === "WEBSITE SUBMIT APPLICATIONS" ||
-      rtLabel === "APPLICATIONS"
-    ) {
-      return websiteLeadsFromMetaExportRow(row);
-    }
-    return 0;
+    return websiteLeadsFromMetaExportRow(row);
   }
 
   if (campaignObjectiveLabel === "META FORM LEADS") {
     return metaFormLeadsFromMetaExportRow(row);
+  }
+
+  if (campaignObjectiveLabel === "PURCHASES") {
+    const purchases = parseCellNum(row.purchases);
+    if (purchases > 0) return purchases;
+    return rtLabel === "PURCHASES" ? results : 0;
   }
 
   if (campaignObjectiveLabel === "REACH") {

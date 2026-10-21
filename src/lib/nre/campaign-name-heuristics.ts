@@ -24,7 +24,9 @@ export function isMetaFormLeadsCampaignHaystack(haystack: string): boolean {
   return (
     /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack) ||
     // "Form Leads Campaign" / "Leads Form" naming — must beat generic \bleads\b website heuristic.
-    /\bform[\s_\-]?leads?\b|\bleads?[\s_\-]?form\b/.test(haystack)
+    /\bform[\s_\-]?leads?\b|\bleads?[\s_\-]?form\b/.test(haystack) ||
+    // "Meta Leads Campaign" — on-platform instant/form leads, not website leads.
+    /\bmeta[\s_\-]?leads?\b/.test(haystack)
   );
 }
 
@@ -45,6 +47,8 @@ export function isWebsiteLeadsCampaignHaystack(haystack: string): boolean {
   if (isMetaFormLeadsCampaignHaystack(haystack)) return false;
   if (isLinkClicksCampaignHaystack(haystack)) return false;
   if (/whatsapp/.test(haystack)) return false;
+  // Meta/on-platform lead campaigns — not website/offsite leads.
+  if (/\bmeta[\s_\-]?leads?\b/.test(haystack)) return false;
   // Do not treat bare "Leads" in names like "New Leads campaign" as website leads —
   // trust Result type / Website leads column instead (Ski Summit instant-form case).
   return /website.?lead|web.?lead|_leads\b|_website\b|website_|\bwebsite\b/.test(haystack);
