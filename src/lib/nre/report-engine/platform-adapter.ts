@@ -118,13 +118,17 @@ class MetaPlatformAdapter implements PlatformReportAdapter {
 
   singleRowResultDisplay(
     row: AggRow,
-    _rawRows: NreRow[],
+    rawRows: NreRow[],
     campaignName: string,
     _googleContext: GoogleCampaignContext | null,
     campaignObjectiveMap: Map<string, CampaignObjectiveRef>,
     currencySymbol: string,
   ): CampaignResultDisplay {
     const objective = this.slideObjective(campaignName, null, campaignObjectiveMap);
+    // Ad-set slides must sum daily export rows — same path as campaign slides.
+    if (rawRows.length > 0) {
+      return getGroupedResultDisplayForObjective(rawRows, objective, currencySymbol);
+    }
     return getSingleRowResultDisplayForObjective(row, objective, currencySymbol);
   }
 

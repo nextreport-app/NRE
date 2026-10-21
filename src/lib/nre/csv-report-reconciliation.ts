@@ -12,6 +12,7 @@ import type { MetricRow } from "./types";
 import type { ComparisonReportData, Platform, ReportData, ReportType, TableRowData } from "./report-data";
 import type { HistoricalReportData } from "./historical-report-data";
 import type { DayBreakdownReportData } from "./day-breakdown-report-data";
+import { adSetKey } from "./ad-sets";
 import { filterRowsByCampaigns } from "./campaigns";
 import { mergeComparisonPeriodRows } from "./comparison-coverage";
 import { splitMtdDaily, aggregateRows, type AggRow } from "./aggregate";
@@ -499,7 +500,10 @@ function appendLinkClickCpcChecks(params: {
   }
 }
 
-function linkClickMetricsFromSlide(slide: ReportData["campaignSlides"][number]): {
+function linkClickMetricsFromSlide(slide: {
+  dynamicMetrics?: ({ key: string; value: string } | null)[];
+  additionalMetricsSlide?: ({ key: string; value: string } | null)[];
+}): {
   linkClicks?: string;
   cplc?: string;
 } {
@@ -507,6 +511,124 @@ function linkClickMetricsFromSlide(slide: ReportData["campaignSlides"][number]):
   const linkClicks = metrics.find((m) => m?.key === "link_clicks")?.value;
   const cplc = metrics.find((m) => m?.key === "cpc_link_click")?.value;
   return { linkClicks, cplc };
+}
+
+function adSetSlideScope(parentScope: string, adSetName: string): string {
+  const short = adSetName.length > 36 ? `${adSetName.slice(0, 33)}…` : adSetName;
+  return `${parentScope} · Ad set: ${short}`;
+}
+
+function filterWeeklyRawForAdSet(rawRows: MetricRow[], campaignName: string, adSetName: string): MetricRow[] {
+  const want = adSetKey(campaignName.trim(), adSetName.trim());
+  return rawRows.filter((r) => adSetKey(String(r.campaign_name ?? "").trim(), String(r.ad_set_name ?? "").trim()) === want);
+}
+
+/** Per ad-set slide — same metrics as campaign slide checks for the report week. */
+function appendAdSetSlideChecks(params: {
+  checks: CsvVerificationCheck[];
+  parentScope: string;
+  currencySymbol: string;
+  adSlide: ReportData["adSetSlides"][number];
+  rawRows: MetricRow[];
+  objectiveMap: Map<string, ResultLabels>;
+  countingMode: ResultCountingMode;
+  calendarComplete?: boolean;
+  calendarIncompleteNote?: string;
+}): void {
+  const {
+    checks,
+    parentScope,
+    currencySymbol,
+    adSlide,
+    rawRows,
+    objectiveMap,
+    countingMode,
+    calendarComplete = true,
+    calendarIncompleteNote,
+  } = params;
+  if (rawRows.length === 0) return;
+
+  const scope = adSetSlideScope(parentScope, adSlide.adSetName);
+  const csvSpend = sumSpend(rawRows);
+  const reportSpend = parseCellNum(adSlide.metrics.spend);
+  const spendMatches = closeEnough(reportSpend, csvSpend, SPEND_AMOUNT_TOLERANCE);
+
+  checks.push({
+    metric: "Amount spent",
+    scope,
+    reportDisplay: adSlide.metrics.spend,
+    csvDisplay: fmtCurrency(csvSpend, currencySymbol),
+    status: calendarComplete && spendMatches ? "ok" : "mismatch",
+    note: !calendarComplete
+      ? calendarIncompleteNote
+      : spendMatches
+        ? undefined
+        : `Ad-set slide spend must match the CSV sum for this ad set in the report week.`,
+  });
+
+  if (shouldVerifyPrimaryResults(adSlide.resultLabel)) {
+    const csvResults = sumResultsForLabelFromRawDailyRows(rawRows, objectiveMap, adSlide.resultLabel, countingMode);
+    const reportResults = parseCellNum(adSlide.metrics.results);
+    const resultsOk = resultsMatch(reportResults, csvResults);
+    checks.push({
+      metric: adSlide.resultLabel,
+      scope,
+      reportDisplay: adSlide.metrics.results,
+      csvDisplay: fmtNumber(csvResults),
+      status: calendarComplete && resultsOk ? "ok" : "mismatch",
+      note: !calendarComplete
+        ? calendarIncompleteNote
+        : resultsOk
+          ? undefined
+          : `Ad-set slide results must match a fresh CSV sum for this ad set (export counting rules).`,
+    });
+
+    if (shouldVerifyCostPerResult(adSlide.costLabel, adSlide.resultLabel) && (reportResults > 0 || csvResults > 0)) {
+      const attributedSpend = attributedSpendForLabelFromRawDailyRows(
+        rawRows as NreRow[],
+        objectiveMap,
+        adSlide.resultLabel,
+        countingMode,
+      );
+      const reportCpr = parseCellNum(adSlide.metrics.cpr);
+      const csvCpr = csvResults > 0 && attributedSpend > 0 ? attributedSpend / csvResults : 0;
+      const impliedReportCpr = reportResults > 0 && attributedSpend > 0 ? attributedSpend / reportResults : 0;
+      const cprOk =
+        calendarComplete &&
+        closeEnough(reportCpr, csvCpr, CPR_TOLERANCE) &&
+        (impliedReportCpr <= 0 || closeEnough(reportCpr, impliedReportCpr, CPR_TOLERANCE));
+
+      checks.push({
+        metric: adSlide.costLabel,
+        scope,
+        reportDisplay: adSlide.metrics.cpr,
+        csvDisplay: csvCpr > 0 ? fmtCurrency(csvCpr, currencySymbol) : "—",
+        status: cprOk ? "ok" : "mismatch",
+        note: cprOk ? undefined : `Ad-set ${adSlide.costLabel} must match spend ÷ results for this window.`,
+      });
+    }
+  }
+
+  appendCtrCpcChecks({
+    checks,
+    scope,
+    rawRows,
+    reportCtrDisplay: adSlide.metrics.ctr,
+    reportCpcDisplay: adSlide.metrics.cpc,
+    currencySymbol,
+    calendarComplete,
+  });
+
+  const { linkClicks, cplc } = linkClickMetricsFromSlide(adSlide);
+  appendLinkClickCpcChecks({
+    checks,
+    scope,
+    rawRows,
+    reportLinkClicksDisplay: linkClicks,
+    reportCplcDisplay: cplc,
+    currencySymbol,
+    calendarComplete,
+  });
 }
 
 export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInput): CsvVerificationResult {
@@ -810,6 +932,21 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         campaignSuffix,
       });
     }
+
+    for (const adSlide of report.adSetSlides) {
+      const adRaw = filterWeeklyRawForAdSet(weeklyRawRows as MetricRow[], adSlide.campaignName, adSlide.adSetName);
+      appendAdSetSlideChecks({
+        checks,
+        parentScope: weeklyScope,
+        currencySymbol,
+        adSlide,
+        rawRows: adRaw,
+        objectiveMap: reportObjectiveMap,
+        countingMode,
+        calendarComplete: weeklyCalendarComplete,
+        calendarIncompleteNote: weeklyCalendarNote,
+      });
+    }
   }
 
   // ── Last 30 days (visual chart slide) ───────────────────────────────────
@@ -1090,19 +1227,27 @@ export function reconcileHistoricalReportWithCsv(input: ReconcileHistoricalRepor
     const monthRows = filterNreRowsByDateRange(filtered, monthRange);
     if (monthRows.length === 0) continue;
 
-    const agg = aggregateRows(monthRows) as MetricRow[];
-    const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(agg), input.campaignObjectives);
+    const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(monthRows), input.campaignObjectives);
     const col = primaryResultColumnFromTableRow(tableRow);
     if (!col) continue;
     primaryLabel = col.label;
 
-    const csvSpend = sumSpend(agg);
-    const csvStdResults = sumResultsForLabel(agg, objectiveMap, col.label, "standard");
-    const csvResults = sumResultsForLabel(agg, objectiveMap, col.label, countingMode);
-    const csvExportResults = sumResultsForLabel(agg, objectiveMap, col.label, "meta-csv-export");
-    const groups = groupResultsByCampaignObjective(agg, objectiveMap, undefined, countingMode);
-    const group = groups.find((g) => g.label === col.label);
-    const csvCpr = group?.avgCpr ?? 0;
+    const csvSpend = sumSpend(monthRows as MetricRow[]);
+    const csvStdResults = sumResultsForLabelFromRawDailyRows(monthRows, objectiveMap, col.label, "standard");
+    const csvResults = sumResultsForLabelFromRawDailyRows(monthRows, objectiveMap, col.label, countingMode);
+    const csvExportResults = sumResultsForLabelFromRawDailyRows(
+      monthRows,
+      objectiveMap,
+      col.label,
+      "meta-csv-export",
+    );
+    const attributedSpend = attributedSpendForLabelFromRawDailyRows(
+      monthRows,
+      objectiveMap,
+      col.label,
+      countingMode,
+    );
+    const csvCpr = csvResults > 0 && attributedSpend > 0 ? attributedSpend / csvResults : 0;
 
     checks.push(
       ...scopedChecks({
@@ -1158,8 +1303,7 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
 
   const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
   const canAlignRef = { value: false };
-  const agg = aggregateRows(rowsInRange) as MetricRow[];
-  const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(agg), input.campaignObjectives);
+  const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(rowsInRange), input.campaignObjectives);
 
   const sampleRow = input.report.dayRows.find((r) => r.hasData);
   const col = sampleRow ? primaryResultColumnFromTableRow(sampleRow) : null;
@@ -1186,13 +1330,22 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
   }
   const reportCpr = resultWeight > 0 ? weightedCpr / resultWeight : 0;
 
-  const csvSpend = sumSpend(agg);
-  const csvStdResults = sumResultsForLabel(agg, objectiveMap, col.label, "standard");
-  const csvResults = sumResultsForLabel(agg, objectiveMap, col.label, countingMode);
-  const csvExportResults = sumResultsForLabel(agg, objectiveMap, col.label, "meta-csv-export");
-  const groups = groupResultsByCampaignObjective(agg, objectiveMap, undefined, countingMode);
-  const group = groups.find((g) => g.label === col.label);
-  const csvCpr = group?.avgCpr ?? 0;
+  const csvSpend = sumSpend(rowsInRange as MetricRow[]);
+  const csvStdResults = sumResultsForLabelFromRawDailyRows(rowsInRange, objectiveMap, col.label, "standard");
+  const csvResults = sumResultsForLabelFromRawDailyRows(rowsInRange, objectiveMap, col.label, countingMode);
+  const csvExportResults = sumResultsForLabelFromRawDailyRows(
+    rowsInRange,
+    objectiveMap,
+    col.label,
+    "meta-csv-export",
+  );
+  const attributedSpend = attributedSpendForLabelFromRawDailyRows(
+    rowsInRange,
+    objectiveMap,
+    col.label,
+    countingMode,
+  );
+  const csvCpr = csvResults > 0 && attributedSpend > 0 ? attributedSpend / csvResults : 0;
 
   const checks = scopedChecks({
     scope: "Selected date range",
