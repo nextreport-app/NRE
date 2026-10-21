@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
@@ -43,7 +44,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
   const { marketing, home } = useSiteCopy();
 
   return (
-    <section className="bg-navy px-6 py-20 sm:py-28">
+    <section className="nre-hero-section bg-navy px-6 py-20 sm:py-28">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="max-w-xl text-center lg:text-left">
           <span className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-medium tracking-wide text-ink-secondary">
@@ -51,34 +52,46 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           </span>
 
           <h1 className="mt-5 text-[2.25rem] font-bold leading-tight tracking-tight text-ink sm:text-[3rem]">
-            {marketing.heroHeadline}
+            {marketing.heroHeadlineAccent && marketing.heroHeadlineBefore !== undefined ? (
+              <>
+                {marketing.heroHeadlineBefore}
+                <span className="text-accent-orange">{marketing.heroHeadlineAccent}</span>
+                {marketing.heroHeadlineAfter}
+              </>
+            ) : (
+              marketing.heroHeadline
+            )}
           </h1>
+
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-secondary sm:text-lg">
+            {marketing.heroSubtext}
+          </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
             {loggedIn ? (
               <Link
                 href="/clients"
-                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
+                className="nre-hero-cta-primary inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold sm:w-auto"
               >
                 {marketing.heroGoDashboard}
               </Link>
             ) : (
               <Link
                 href="/signup"
-                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-navy hover:opacity-90 sm:w-auto"
+                className="nre-hero-cta-primary inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold sm:w-auto"
               >
                 {marketing.heroStartTrial}
               </Link>
             )}
             <Link
               href="/book-demo"
-              className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-navy-border bg-navy-panel/70 px-6 py-3 text-sm font-medium text-ink hover:bg-navy-panel sm:w-auto"
+              className="nre-hero-cta-secondary inline-flex w-full items-center justify-center gap-1 rounded-full px-6 py-3 text-sm font-medium sm:w-auto"
             >
               {marketing.heroRequestDemo} <span aria-hidden="true">→</span>
             </Link>
           </div>
 
-          {!loggedIn && <p className="mt-4 text-xs text-ink-muted">{marketing.heroNoCard}</p>}
+          <CtaTrustBadges className="mt-4 lg:justify-start" />
         </div>
 
         <div className="flex w-full justify-center lg:w-auto">

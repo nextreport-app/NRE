@@ -3,11 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ReportBrandingMode } from "@/lib/report-branding";
-import {
-  markReportBrandingWizardCollapsed,
-  reportBrandingWizardSummary,
-  shouldExpandReportBrandingWizard,
-} from "@/lib/report-branding-wizard-ui";
+import { markReportBrandingWizardCollapsed, reportBrandingWizardSummary } from "@/lib/report-branding-wizard-ui";
 
 const WIZARD_SHARE_LINK_OPTIONS: { mode: ReportBrandingMode; label: string }[] = [
   { mode: "nextreport", label: "NextReport branding (default)" },
@@ -30,9 +26,6 @@ export function WizardReportBrandingPanel({
   onShowAgencyNameOnCoverChange,
   reportBrandingMode,
   onReportBrandingModeChange,
-  initialReportBrandingMode,
-  initialAgencyName,
-  initialShowAgencyNameOnCover,
   saving,
   error,
 }: {
@@ -42,20 +35,11 @@ export function WizardReportBrandingPanel({
   onShowAgencyNameOnCoverChange: (show: boolean) => void;
   reportBrandingMode: ReportBrandingMode;
   onReportBrandingModeChange: (mode: ReportBrandingMode) => void;
-  initialReportBrandingMode: ReportBrandingMode;
-  initialAgencyName: string | null;
-  initialShowAgencyNameOnCover: boolean;
   saving?: boolean;
   error?: string | null;
 }) {
   const trimmed = agencyName.trim();
-  const [expanded, setExpanded] = useState(() =>
-    shouldExpandReportBrandingWizard({
-      initialReportBrandingMode,
-      initialAgencyName,
-      initialShowAgencyNameOnCover,
-    }),
-  );
+  const [expanded, setExpanded] = useState(false);
 
   const summary = reportBrandingWizardSummary({
     reportBrandingMode,
@@ -82,9 +66,8 @@ export function WizardReportBrandingPanel({
             <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{summary}</p>
           ) : (
             <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-              Every report is a <span className="text-dash-ink">PowerPoint file</span> and a{" "}
-              <span className="text-dash-ink">browser share link</span>. Defaults use NextReport until you change
-              settings here or in Account.
+              Default: no name on the PowerPoint cover and NextReport branding on the share link. Add a name only if
+              you want white-label delivery.
             </p>
           )}
         </div>
@@ -160,18 +143,14 @@ export function WizardReportBrandingPanel({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <p className="text-[13px] text-dash-ink-secondary">
-              <Link
-                href="/account"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-dash-accent hover:underline"
-              >
-                Account settings
-              </Link>
-              {" "}
-              (opens in a new tab) for agency logo.
-            </p>
+            <Link
+              href="/account"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[13px] font-medium text-dash-accent hover:underline"
+            >
+              Account settings
+            </Link>
             <button
               type="button"
               onClick={collapseSection}

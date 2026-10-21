@@ -910,11 +910,12 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
   if (isMetaFormLeadsCampaignName(rows)) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
   }
+  // Export result_type (e.g. Quote Request Submitted) beats "website leads" in campaign naming.
+  if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) {
+    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
+  }
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
-  }
-  if (isQuoteRequestCampaignName(rows)) {
-    return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
   return null;
 }

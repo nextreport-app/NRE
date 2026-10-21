@@ -1,8 +1,7 @@
 "use client";
 
 import { useSiteCopy } from "@/hooks/use-site-copy";
-
-const FEATURE_ICONS = ["📊", "📅", "🎯", "🤖", "🔀", "🌐"] as const;
+import { HomeFeatureIcon } from "@/components/icons/home-feature-icons";
 
 export function FeaturesSection() {
   const { home } = useSiteCopy();
@@ -14,14 +13,11 @@ export function FeaturesSection() {
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-ink-muted">{home.featuresSubtitle}</p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {home.features.slice(0, FEATURE_ICONS.length).map((feature, index) => {
+          {home.features.map((feature, index) => {
             return (
               <div key={feature.title} className="rounded-xl border border-navy-border bg-navy p-6">
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy-panel text-xl"
-                  aria-hidden="true"
-                >
-                  {FEATURE_ICONS[index] ?? "✦"}
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-navy-border bg-navy-panel">
+                  <HomeFeatureIcon index={index} />
                 </span>
                 <h3 className="mt-4 text-base font-semibold text-white">{feature.title}</h3>
                 <p className="mt-1.5 text-sm text-ink-muted">{feature.description}</p>

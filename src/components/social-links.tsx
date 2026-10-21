@@ -1,4 +1,5 @@
 const SOCIAL_LINKS = [
+  { label: "GitHub", href: "https://github.com/nextreport", ariaLabel: "NextReport on GitHub" },
   { label: "X", href: "https://x.com/nextreportapp", ariaLabel: "X (Twitter)" },
   { label: "LinkedIn", href: "https://www.linkedin.com/company/nextreport", ariaLabel: "LinkedIn" },
   { label: "Facebook", href: "https://www.facebook.com/nextreportapp", ariaLabel: "Facebook" },

@@ -1,12 +1,14 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { CurrencyPricing } from "@/components/currency-pricing";
 import { PricingCurrencyBanner } from "@/components/pricing-currency-banner";
+import { PricingComparisonTable } from "@/components/pricing/pricing-comparison-table";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
+import { PRICING_FAQS } from "@/lib/pricing-faq";
+import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
@@ -14,69 +16,6 @@ export const metadata: Metadata = pageMetadata({
     "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
   path: "/pricing",
 });
-
-const FAQS = [
-  {
-    q: "Is there really no credit card required for the free trial?",
-    a: "Correct. Sign up and get 7 days of full access with no payment details required. You only need to subscribe when your trial ends and you want to continue.",
-  },
-  {
-    q: "Do you charge my card automatically each month?",
-    a: "Yes — subscriptions renew automatically each billing period (monthly or annual, depending on what you choose) through Razorpay until you cancel from your Billing page. We never store your card on our servers; Razorpay handles payment securely. Cancel anytime — no long-term lock-in.",
-  },
-  {
-    q: "What happens when my trial ends?",
-    a: "You will see a prompt to subscribe. If you choose not to subscribe, you will not be able to generate new reports but your account and all your client data stays safe and accessible.",
-  },
-  {
-    q: "Can I switch plans later?",
-    a: "Yes. You can upgrade or downgrade at any time from your billing page. Changes take effect immediately.",
-  },
-  {
-    q: "Can I connect Meta directly instead of uploading a CSV?",
-    a: "Meta reports use a day-wise CSV from Meta Ads Reporting today — upload on Step 1 of the wizard. Optional Meta API connection in Account settings is available when enabled for your account; CSV remains the supported path for parity with Ads Manager exports.",
-  },
-  {
-    q: "What file formats can I upload?",
-    a: "NextReport accepts CSV, Excel (xlsx, xls), TSV, and TXT files. Export from Meta Ads Reporting and upload directly — no conversion needed.",
-  },
-  {
-    q: "Do I need to include specific columns in my CSV?",
-    a: "For best results include: Campaign Name, Ad Set Name, Day, Result Type, Results, Amount Spent, Cost Per Result, CTR, CPC, Link Clicks, Reach, Impressions and Frequency. See our CSV Export Guide for the exact steps to download the right format from Meta Ads Reporting.",
-  },
-  {
-    q: "How many reports can I generate per month?",
-    a: "Unlimited on both plans. Generate as many reports as you need for as many clients as your plan allows — no per-report charges.",
-  },
-  {
-    q: "Is there a limit on ad accounts I can sync?",
-    a: "Each client workspace is one brand. Meta connection in Account settings can be shared across clients. Agency allows up to 10 client workspaces; Professional is unlimited.",
-  },
-  {
-    q: "Do you offer an Enterprise plan?",
-    a: "We keep pricing simple with two paid tiers — Agency and Professional — plus a 7-day free trial. Professional includes unlimited Meta client workspaces. If you need custom billing, onboarding, or agency-wide rollout, email hello@nextreport.in and we will help.",
-  },
-  {
-    q: "Do you offer annual billing?",
-    a: "Yes. Switch to Annual on the pricing page and save 20% compared to paying monthly (one payment for 12 months of access).",
-  },
-  {
-    q: "Can I connect Slack or Zapier?",
-    a: "Yes. In Account settings, add a Slack incoming webhook URL or an automation webhook (Zapier, Make, etc.). When a report finishes generating, NextReport posts a summary and share link automatically.",
-  },
-  {
-    q: "Is my client data secure?",
-    a: "Yes. Your CSV data is processed on our servers and used only to generate your report. We do not store your raw campaign data after the report is generated. All data is transmitted over encrypted HTTPS connections.",
-  },
-  {
-    q: "Can I hide NextReport branding on client reports?",
-    a: "Yes — on every plan, including the free trial. In Account settings, choose to show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely. PowerPoint cover slides already show \"Prepared by [your agency]\" when you set an agency name.",
-  },
-  {
-    q: "Which platforms are live today?",
-    a: "Meta Ads reporting only. Upload a day-wise CSV from Meta Ads Reporting on Import in the report wizard.",
-  },
-];
 
 export default async function PricingPage() {
   const session = await auth();
@@ -92,21 +31,18 @@ export default async function PricingPage() {
               { name: "Home", path: "/" },
               { name: "Pricing", path: "/pricing" },
             ]),
-            faqPageJsonLd(FAQS.map((faq) => ({ question: faq.q, answer: faq.a }))),
+            faqPageJsonLd(PRICING_FAQS.map((faq) => ({ question: faq.q, answer: faq.a }))),
           ],
         }}
       />
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
-        <Link href="/" className="text-sm text-accent hover:underline">
-          ← Back to NextReport
-        </Link>
-
-        <div className="mt-6 text-center">
+        <div className="text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            Meta Ads reporting — CSV upload, then share a live link, download PowerPoint (.pptx), or save to Google Slides.
+            {PLATFORM_LIST_SHORT} — Meta CSV reporting live today; share PowerPoint (.pptx), live links, or Google
+            Slides.
           </p>
         </div>
 
@@ -118,6 +54,8 @@ export default async function PricingPage() {
         </p>
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
+
+        <PricingComparisonTable />
 
         <p className="mx-auto mt-10 max-w-xl text-center text-sm text-ink-muted">
           Running a larger agency?{" "}
@@ -131,7 +69,7 @@ export default async function PricingPage() {
           <h2 className="text-center text-2xl font-semibold text-white">Frequently Asked Questions</h2>
 
           <div className="mx-auto mt-8 max-w-2xl space-y-3">
-            {FAQS.map((faq) => (
+            {PRICING_FAQS.map((faq) => (
               <details
                 key={faq.q}
                 className="group rounded-lg border border-navy-border bg-navy-panel p-4 open:pb-4"

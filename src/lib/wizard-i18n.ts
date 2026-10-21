@@ -12,23 +12,23 @@ type Step = 1 | 2 | 3 | 4;
 const EN_UI = {
   reportingFor: "Reporting for",
   changeClient: "Change client →",
-  switchClient: "Switch client",
-  switchClientHint: "Click the client name to pick another account — your in-progress setup stays saved per client.",
-  switchClientList: "Switch client",
-  searchClients: "Search clients…",
-  noMatchingClients: "No clients match your search.",
-  currentClientBadge: "Current",
-  allClients: "All clients →",
-  csvMismatchBlocked:
-    "Generate stays off until report totals match your CSV. That usually means a setup issue we can fix together — not a bad file.",
-  csvMismatchStepObjectives:
-    "1. Go to Campaigns and check each campaign’s objective dropdown matches Ads Manager (Results column for that campaign).",
-  csvMismatchStepExport:
-    "2. If objectives look right, re-export the CSV (day breakdown, same dates and campaigns) and upload again on Import.",
-  csvMismatchStepSupport:
-    "3. Still stuck? Send us the CSV via support or WhatsApp — this may be a product bug.",
-  csvMismatchReviewObjectives: "Review campaign objectives",
-  generateBlockedCsvMismatch: "Resolve CSV check above",
+  csvMismatchTitle: (count: number) =>
+    count === 1
+      ? "Deck preview differs from your CSV on 1 total"
+      : `Deck preview differs from your CSV on ${count} totals`,
+  csvMismatchBody:
+    "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
+  csvVerifiedTitle: "Verified against your CSV",
+  csvVerifiedDetail: (scopesLabel: string) =>
+    `Spend, results, and cost per result match your CSV for ${scopesLabel}. Weekly needs every day in that window; spend within about $2 either way is OK.`,
+  generateForInternalReview: "Generate for internal review",
+  confirmedPeriodWeeklyLead: "Your weekly report will cover:",
+  confirmedPeriodWeeklyWeekSuffix: "week",
+  confirmedPeriodWeeklyMtdPrefix: "MTD from",
+  confirmedPeriodWeeklyChart: "Last 30 days in a visual chart slide",
+  csvMismatchShareWarningTitle: "CSV check was not green when you generated",
+  csvMismatchShareWarningBody:
+    "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",
@@ -73,7 +73,7 @@ const EN_STEPS = {
   heading2Google: "Select campaigns, ad groups & objectives",
   heading3: "Review metrics",
   heading4: "Generate report",
-  subtitle1: "Pick a report type, follow Download instructions for that type, then upload CSV.",
+  subtitle1: "Confirm your ad platform, pick a report type, follow CSV Download instructions, then upload.",
   subtitle2: "Choose campaigns and confirm each primary result objective.",
   subtitle3: "Metric chips are pre-selected from your CSV — tweak only if needed.",
   subtitle4: "Confirm dates and preview, then generate your deck.",

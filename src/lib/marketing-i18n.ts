@@ -9,6 +9,11 @@ export type MarketingCopy = {
   navDashboard: string;
   heroBadge: string;
   heroHeadline: string;
+  /** English hero — accent phrase split (other locales use heroHeadline only). */
+  heroHeadlineBefore?: string;
+  heroHeadlineAccent?: string;
+  heroHeadlineAfter?: string;
+  heroSubtext: string;
   heroStartTrial: string;
   heroGoDashboard: string;
   heroRequestDemo: string;
@@ -17,20 +22,30 @@ export type MarketingCopy = {
   pricingSubtitle: string;
   pricingCurrencyLabel: string;
   tryCtaTitle: string;
+  tryCtaHeadlineBefore?: string;
+  tryCtaHeadlineAccent?: string;
+  tryCtaHeadlineAfter?: string;
   tryCtaSubtitle: string;
+  tryCtaFinePrint?: string;
   tryCtaStartTrial: string;
   tryCtaDashboard: string;
+  ctaTrustBadges: string[];
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Branded Meta Ads client reporting for agencies.",
-  navSignIn: "Sign in",
-  navContact: "Contact",
+  brandTagline: "Client reporting for agencies — Meta Ads today; Google Ads, TikTok Ads, and GA4 on the roadmap.",
+  navSignIn: "Log in",
+  navContact: "Contact us",
   navSignOut: "Sign out",
-  navStartTrial: "Start free trial",
+  navStartTrial: "Sign up",
   navDashboard: "Dashboard",
   heroBadge: "Meta Ads reporting for agencies",
   heroHeadline: "Branded client reporting for agencies in minutes.",
+  heroHeadlineBefore: "Branded ",
+  heroHeadlineAccent: "client reporting",
+  heroHeadlineAfter: " for agencies in minutes.",
+  heroSubtext:
+    "Stop rebuilding client decks every week. Upload your Meta export once and ship polished, on-brand performance reports in minutes — so your team spends time on strategy, not slide formatting.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
@@ -39,9 +54,14 @@ const EN: MarketingCopy = {
   pricingSubtitle: "Start free for 7 days. No credit card required.",
   pricingCurrencyLabel: "Show prices in",
   tryCtaTitle: "Try NextReport now.",
-  tryCtaSubtitle: "7-day free trial — no credit card required.",
-  tryCtaStartTrial: "Start free trial",
+  tryCtaHeadlineBefore: "Ship ",
+  tryCtaHeadlineAccent: "your first deck",
+  tryCtaHeadlineAfter: " in minutes",
+  tryCtaSubtitle: "Try NextReport now.",
+  tryCtaFinePrint: "7-day free trial.",
+  tryCtaStartTrial: "Sign up",
   tryCtaDashboard: "Go to Dashboard",
+  ctaTrustBadges: ["7-day free trial", "No credit card", "CSV-backed numbers"],
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {

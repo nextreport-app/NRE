@@ -20,7 +20,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   const session = await auth();
   if (!session?.user) notFound();
 
-  const [client, user, wizardClients] = await Promise.all([
+  const [client, user] = await Promise.all([
     prisma.client.findUnique({ where: { id } }),
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -41,11 +41,6 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         reportBrandingMode: true,
         showAgencyNameOnCover: true,
       },
-    }),
-    prisma.client.findMany({
-      where: { userId: session.user.id },
-      select: { id: true, accountName: true },
-      orderBy: { accountName: "asc" },
     }),
   ]);
   if (!client || client.userId !== session.user.id) notFound();
@@ -83,7 +78,6 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         <ReportUploadWizard
           clientId={client.id}
           clientName={client.accountName}
-          wizardClients={wizardClients}
           clientTimezone={client.timezone}
           currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
           hasGoogleDriveConnected={!!user.googleRefreshToken}
@@ -109,7 +103,9 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
           clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
-          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
+          initialShowAgencyNameOnCover={
+            user.agencyName?.trim() ? (user.showAgencyNameOnCover ?? false) : false
+          }
           accountDisplayName={user.name}
         />
       </Suspense>

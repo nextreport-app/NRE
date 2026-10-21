@@ -33,6 +33,7 @@ import {
 } from "./date-range";
 import { validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
 import { filterRawRowsToRange } from "./creative-report-data";
+import { getDateRangeAbbrLabel } from "./dates";
 
 export type CsvVerificationStatus = "ok" | "mismatch" | "skipped";
 
@@ -220,23 +221,6 @@ function reportPeriodResultsFromSlides(report: ReportData, resultLabel: string):
   return report.campaignSlides
     .filter((slide) => slide.resultLabel === resultLabel)
     .reduce((s, slide) => s + parseCellNum(slide.metrics.results), 0);
-}
-
-/** Results-weighted average CPR across weekly campaign slides (what clients read per slide). */
-function blendedCprFromSlides(report: ReportData, resultLabel: string): number {
-  let totalResults = 0;
-  let weighted = 0;
-  report.campaignSlides
-    .filter((slide) => slide.resultLabel === resultLabel)
-    .forEach((slide) => {
-      const results = parseCellNum(slide.metrics.results);
-      const cpr = parseCellNum(slide.metrics.cpr);
-      if (results > 0 && cpr > 0) {
-        totalResults += results;
-        weighted += cpr * results;
-      }
-    });
-  return totalResults > 0 ? weighted / totalResults : 0;
 }
 
 function isNonAdditiveReachStyleResult(resultLabel: string): boolean {
@@ -583,30 +567,27 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       resultLabel,
       "meta-csv-export",
     );
-    const weeklyAttributedSpend = attributedSpendForLabelFromRawDailyRows(
-      weeklyRawRows,
-      reportObjectiveMap,
-      resultLabel,
-      countingMode,
-    );
     const reportWeeklySpend = reportPeriodSpendFromSlides(report);
     const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
-    const blendedSlideCpr = blendedCprFromSlides(report, resultLabel);
     const reportWeeklyCpr =
-      blendedSlideCpr > 0
-        ? blendedSlideCpr
-        : reportWeeklyResults > 0 && reportWeeklySpend > 0
-          ? reportWeeklySpend / reportWeeklyResults
-          : 0;
+      reportWeeklyResults > 0 && reportWeeklySpend > 0 ? reportWeeklySpend / reportWeeklyResults : 0;
     const slideCpr =
-      blendedSlideCpr > 0
-        ? fmtCurrency(blendedSlideCpr, currencySymbol)
-        : reportWeeklyResults > 0 && reportWeeklySpend > 0
-          ? fmtCurrency(reportWeeklyCpr, currencySymbol)
-          : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+      reportWeeklyCpr > 0
+        ? fmtCurrency(reportWeeklyCpr, currencySymbol)
+        : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+    // Campaign slides show CPR as total period spend ÷ results (see
+    // reportWeeklyCpr below). Attributed spend excludes zero-result days that
+    // still count toward Ad Spend — using it here falsely showed ~$10 vs ~$17.
     const csvWeeklyCpr =
-      csvWeeklyResults > 0 && weeklyAttributedSpend > 0 ? weeklyAttributedSpend / csvWeeklyResults : 0;
-    const weeklyScope = reportType === "DAILY" ? "Selected day(s)" : "Weekly (last 7 days)";
+      csvWeeklyResults > 0 && csvWeeklySpend > 0 ? csvWeeklySpend / csvWeeklyResults : 0;
+    const weeklyScope =
+      reportType === "DAILY"
+        ? displayWeeklyRange
+          ? `Selected day(s) (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
+          : "Selected day(s)"
+        : displayWeeklyRange
+          ? `Report week (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
+          : "Report week";
 
     if (!weeklyCalendarComplete && displayWeeklyRange) {
       checks.push({
@@ -640,8 +621,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         countingMode,
         calendarComplete: weeklyCalendarComplete,
         calendarIncompleteNote: weeklyCalendarNote,
-        cprReportSpend: weeklyAttributedSpend,
-        cprCsvSpend: weeklyAttributedSpend,
+        cprReportSpend: reportWeeklySpend,
+        cprCsvSpend: csvWeeklySpend,
       }),
     );
   }

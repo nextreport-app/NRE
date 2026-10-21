@@ -16,7 +16,6 @@ import {
   isSpecificFieldError,
 } from "../utils";
 import { WeeklyPeriodOption } from "../ui/weekly-period-option";
-import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
@@ -81,8 +80,8 @@ export function WizardGenerateStep() {
     handleGenerate,
     handleGenerateStepPrimary,
     handleGenerateAnother,
+    generatedWithCsvMismatch,
     handleGeneratePreviousMonthSummary,
-    handleReportTypeChange,
     handleSaveButtonClick,
     clientTimezone,
     handleSaveToFolderLink,
@@ -144,6 +143,7 @@ export function WizardGenerateStep() {
     weeklyPeriodSummaryLabel,
     weeklyRangeIso,
     reportPeriodConfirmationLine,
+    reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
     happyPathSkippedSteps,
@@ -156,12 +156,10 @@ export function WizardGenerateStep() {
     reportBrandingBlocksGenerate,
     showAgencyNameOnCover,
     setShowAgencyNameOnCover,
-    initialAgencyName,
-    initialReportBrandingMode,
-    initialShowAgencyNameOnCover,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
+  const periodConfirmationBullets = reportPeriodConfirmationBullets();
   const slideCount = estimatedSlideCount();
 
   const weeklyPeriodNeedsAttention =
@@ -173,25 +171,20 @@ export function WizardGenerateStep() {
     if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
   }, [weeklyPeriodNeedsAttention]);
 
-  const weeklyPeriodSummary =
-    dateMode === "last7" && weeklyOptions
-      ? `Last 7 days · ${formatIsoRange(weeklyOptions.last7)}`
-      : dateMode === "custom" && customStart && customEnd
-        ? `Custom range · ${formatIsoRange({ startIso: customStart, endIso: customEnd })}`
-        : weeklyRangeIso
-          ? formatIsoRange(weeklyRangeIso)
-          : "Expand to choose dates";
+  const showWeeklyPeriodEditor =
+    reportType === "WEEKLY" && (weeklyPeriodNeedsAttention || weeklyPeriodExpanded);
 
   if (!stepActive) return null;
 
   const showGenerateFooter = generateStatus === "idle" || generateStatus === "loading" || generateStatus === "error";
-  const csvVerificationBlocksGenerate =
-    csvVerification?.status === "mismatch" && usesFullAdWizard(platform);
+  const csvMismatchActive =
+    generateStepPreviewReady &&
+    generateStatus === "idle" &&
+    csvVerification?.status === "mismatch";
   const generateCtaDisabled =
     previewStatus === "invalid" ||
     (previewStatus !== "error" && !generateStepPreviewReady) ||
     reportBrandingBlocksGenerate ||
-    csvVerificationBlocksGenerate ||
     previewRefreshing;
   const generateCtaLabel =
     generateStatus === "loading"
@@ -208,26 +201,159 @@ export function WizardGenerateStep() {
                 : previewStatus === "idle"
                   ? "Choose dates above"
                   : "Loading report options…"
-            : csvVerificationBlocksGenerate
-              ? copy.generateBlockedCsvMismatch
+            : csvMismatchActive
+              ? copy.generateForInternalReview
               : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
+  const showGenerateSuccess = generateStatus === "done" && !!downloadUrl;
+
+  if (showGenerateSuccess) {
+    return (
+      <div className="space-y-6">
+        <WizardGenerateSuccessPanel
+          clientName={clientName}
+          clientId={clientId}
+          generatedWithCsvMismatch={generatedWithCsvMismatch}
+          reportId={reportId}
+          reportTypeLabel={reportTypeLabel()}
+          wizardSharePlatformLabel={wizardSharePlatformLabel()}
+          slideCount={slideCount}
+          dateRangeLabel={driveDateRangeLabel()}
+          downloadUrl={downloadUrl}
+          shareToken={shareToken}
+          publishedAt={publishedAt}
+          clientShareMessageCopied={clientShareMessageCopied}
+          onCopyClientShareMessage={handleCopyClientShareMessage}
+          onCopyShareLink={handleCopyShareLink}
+          persistGenerateSnapshot={persistGenerateSnapshot}
+          hasGoogleDriveConnected={hasGoogleDriveConnected}
+          driveView={driveView}
+          driveSaving={driveSaving}
+          handleSaveButtonClick={handleSaveButtonClick}
+          rememberedFolder={rememberedFolder}
+          setDriveView={setDriveView}
+          onEditDriveFolder={() => {
+            setDriveSaveError(null);
+            setDriveView("editing");
+          }}
+          copied={copied}
+          driveSaveUrl={driveSaveUrl}
+          handleCopyLink={handleCopyLink}
+          handleGenerateAnother={handleGenerateAnother}
+        >
+          {hasGoogleDriveConnected && driveView === "editing" && (
+            <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+              <div>
+                <label className="block text-[14px] text-dash-ink-secondary">Folder link:</label>
+                <input
+                  type="text"
+                  value={driveFolderLinkInput}
+                  onChange={(e) => {
+                    setDriveFolderLinkInput(e.target.value);
+                    setDriveLinkFormatError(null);
+                  }}
+                  placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
+                  className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
+                />
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
+                  Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it here
+                </p>
+                {driveLinkFormatError ? <p className="mt-1 text-[14px] text-red-400">{driveLinkFormatError}</p> : null}
+              </div>
+
+              <div>
+                <label className="block text-[14px] text-dash-ink-secondary">
+                  Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
+                </label>
+                <input
+                  type="text"
+                  value={driveFolderNameInput}
+                  onChange={(e) => setDriveFolderNameInput(e.target.value)}
+                  placeholder="e.g. Reports"
+                  className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
+                />
+                <p className="mt-1 text-[14px] text-dash-ink-secondary">
+                  Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleSaveToFolderLink}
+                  disabled={!driveFolderLinkInput.trim() || driveSaving}
+                  className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                >
+                  {driveSaving ? "Saving…" : "Save to this folder"}
+                </button>
+                <button
+                  type="button"
+                  disabled={driveSaving}
+                  onClick={() => {
+                    setDriveView("collapsed");
+                    setDriveFolderLinkInput("");
+                    setDriveFolderNameInput("");
+                    setDriveLinkFormatError(null);
+                    setDriveSaveError(null);
+                  }}
+                  className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {driveSaveError ? <p className="text-[14px] text-red-400">{driveSaveError}</p> : null}
+
+          {driveView === "success" && driveSaveUrl ? (
+            <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
+              <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">Saved to Google Drive ✓</p>
+              <a
+                href={driveSaveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all text-[14px] text-dash-accent hover:underline"
+              >
+                {driveDisplayLabel()}
+              </a>
+              <button
+                onClick={() => {
+                  setDriveView("editing");
+                  setDriveSaveUrl(null);
+                }}
+                className="mt-3 text-[14px] text-dash-ink-secondary hover:underline"
+              >
+                Save to a different folder
+              </button>
+            </div>
+          ) : null}
+
+          {reportType !== "COMPARISON" &&
+          reportType !== "HISTORICAL" &&
+          reportType !== "DAY_BREAKDOWN" &&
+          includePreviousMonthComparison &&
+          !previousMonthComparisonReady ? (
+            <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
+              <p className="font-semibold">Previous month comparison not set up</p>
+              <p className="mt-1 text-dash-ink-secondary">
+                Combined Total won&apos;t include a previous-month row.{" "}
+                <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
+                  Upload on the client page
+                </Link>{" "}
+                or add it when you start your next report.
+              </p>
+            </div>
+          ) : null}
+        </WizardGenerateSuccessPanel>
+      </div>
+    );
+  }
 
   return (
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-              <WizardReportSetupPanel
-                variant="summary"
-                allowInlineChange
-                reportType={reportType}
-                reportTypeLabel={reportTypeLabel()}
-                platform={platform}
-                clientTimezone={clientTimezone}
-                onReportTypeChange={handleReportTypeChange}
-              />
-
             {happyPathSkippedSteps ? (
               <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
                 <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
@@ -286,102 +412,81 @@ export function WizardGenerateStep() {
               </p>
             )}
 
-          {reportType === "WEEKLY" && (
-            <section className="rounded-lg border border-dash-border bg-dash-card">
-              <button
-                type="button"
-                onClick={() => setWeeklyPeriodExpanded((open) => !open)}
-                aria-expanded={weeklyPeriodExpanded}
-                className="flex w-full items-start justify-between gap-3 p-4 text-left"
-              >
-                <div className="min-w-0">
-                  <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
-                  {!weeklyPeriodExpanded ? (
-                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">{weeklyPeriodSummary}</p>
-                  ) : (
-                    <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-                      Change only if you need a different week — Confirmed period below matches your choice.
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`mt-0.5 shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${weeklyPeriodExpanded ? " rotate-180" : ""}`}
-                  aria-hidden
-                >
-                  ▾
-                </span>
-              </button>
-
-              {weeklyPeriodExpanded ? (
-                <div className="space-y-4 border-t border-dash-border px-4 pb-4 pt-3">
-                  <div className="flex flex-wrap gap-3">
-                    {weeklyOptions ? (
-                      <WeeklyPeriodOption
-                        selected={dateMode === "last7"}
-                        label="Last 7 days"
-                        sublabel={formatIsoRange(weeklyOptions.last7)}
-                        onSelect={() => {
-                          editDateMode("last7");
-                          setCustomRangeError(null);
-                        }}
-                      />
-                    ) : null}
+          {showWeeklyPeriodEditor ? (
+            <section className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
+              <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
+                Default is last 7 days in your CSV. Change here only if you need a different week.
+              </p>
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  {weeklyOptions ? (
                     <WeeklyPeriodOption
-                      selected={dateMode === "custom"}
-                      label="Custom date range"
-                      sublabel={
-                        dateBounds
-                          ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
-                          : "Pick any start and end date in your CSV"
-                      }
+                      selected={dateMode === "last7"}
+                      label="Last 7 days"
+                      sublabel={formatIsoRange(weeklyOptions.last7)}
                       onSelect={() => {
-                        editDateMode("custom");
-                        setWeeklyPeriodExpanded(true);
+                        editDateMode("last7");
+                        setCustomRangeError(null);
+                        setWeeklyPeriodExpanded(false);
                       }}
                     />
-                  </div>
-
-                  {dateMode === "custom" ? (
-                    <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                      <WizardDateRangeFields
-                        startIso={customStart}
-                        endIso={customEnd}
-                        minIso={dateBounds?.minIso}
-                        maxIso={dateBounds?.maxIso}
-                        onStartChange={(iso) => editCustomStart(iso)}
-                        onEndChange={(iso) => editCustomEnd(iso)}
-                      />
-
-                      {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
-
-                      {needsLongRangeConfirm ? (
-                        <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                          <p className="mb-2 text-[14px] text-amber-200">
-                            You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with
-                            this longer period anyway?
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setLongRangeConfirmed(true)}
-                              className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              onClick={() => setCustomEnd("")}
-                              className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
-                            >
-                              No
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
                   ) : null}
+                  <WeeklyPeriodOption
+                    selected={dateMode === "custom"}
+                    label="Custom date range"
+                    sublabel={
+                      dateBounds
+                        ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
+                        : "Pick any start and end date in your CSV"
+                    }
+                    onSelect={() => {
+                      editDateMode("custom");
+                      setWeeklyPeriodExpanded(true);
+                    }}
+                  />
                 </div>
-              ) : null}
+
+                {dateMode === "custom" ? (
+                  <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
+                    <WizardDateRangeFields
+                      startIso={customStart}
+                      endIso={customEnd}
+                      minIso={dateBounds?.minIso}
+                      maxIso={dateBounds?.maxIso}
+                      onStartChange={(iso) => editCustomStart(iso)}
+                      onEndChange={(iso) => editCustomEnd(iso)}
+                    />
+
+                    {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
+
+                    {needsLongRangeConfirm ? (
+                      <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
+                        <p className="mb-2 text-[14px] text-amber-200">
+                          You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
+                          longer period anyway?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setLongRangeConfirmed(true)}
+                            className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setCustomEnd("")}
+                            className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </section>
-          )}
+          ) : null}
 
           {reportType === "DAY_BREAKDOWN" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
@@ -527,10 +632,36 @@ export function WizardGenerateStep() {
           )}
 
 
-            {periodConfirmation && generateStepPreviewReady && generateStatus === "idle" ? (
+            {(periodConfirmation || periodConfirmationBullets) &&
+            generateStepPreviewReady &&
+            generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-                <p className="nre-wizard-callout-success__label">Confirmed period</p>
-                <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="nre-wizard-callout-success__label">Confirmed period</p>
+                    {periodConfirmationBullets ? (
+                      <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
+                        <p>{copy.confirmedPeriodWeeklyLead}</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] font-normal">
+                          {periodConfirmationBullets.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : periodConfirmation ? (
+                      <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
+                    ) : null}
+                  </div>
+                  {reportType === "WEEKLY" && !showWeeklyPeriodEditor ? (
+                    <button
+                      type="button"
+                      onClick={() => setWeeklyPeriodExpanded(true)}
+                      className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
+                    >
+                      Change dates
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -541,12 +672,7 @@ export function WizardGenerateStep() {
                 previewKind === "dayBreakdown") &&
               generateStepPreviewReady &&
               generateStatus === "idle" ? (
-                <CsvVerificationPanel
-                  verification={csvVerification}
-                  refreshing={previewRefreshing}
-                  clientId={clientId}
-                  onReviewCampaignObjectives={() => setStep(2)}
-                />
+                <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
               ) : null}
 
               {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
@@ -570,9 +696,6 @@ export function WizardGenerateStep() {
                   onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
                   reportBrandingMode={reportBrandingMode}
                   onReportBrandingModeChange={setReportBrandingMode}
-                  initialReportBrandingMode={initialReportBrandingMode}
-                  initialAgencyName={initialAgencyName}
-                  initialShowAgencyNameOnCover={initialShowAgencyNameOnCover}
                   saving={reportBrandingSaving}
                   error={reportBrandingError}
                 />
@@ -739,159 +862,13 @@ export function WizardGenerateStep() {
             <p className="text-[14px] text-dash-ink-secondary">Loading report preview…</p>
           ) : null}
 
-          {generateStatus === "done" && downloadUrl && (
-            <WizardGenerateSuccessPanel
-              clientName={clientName}
-              clientId={clientId}
-              reportId={reportId}
-              reportTypeLabel={reportTypeLabel()}
-              wizardSharePlatformLabel={wizardSharePlatformLabel()}
-              slideCount={slideCount}
-              dateRangeLabel={driveDateRangeLabel()}
-              downloadUrl={downloadUrl}
-              shareToken={shareToken}
-              publishedAt={publishedAt}
-              clientShareMessageCopied={clientShareMessageCopied}
-              onCopyClientShareMessage={handleCopyClientShareMessage}
-              onCopyShareLink={handleCopyShareLink}
-              persistGenerateSnapshot={persistGenerateSnapshot}
-              hasGoogleDriveConnected={hasGoogleDriveConnected}
-              driveView={driveView}
-              driveSaving={driveSaving}
-              handleSaveButtonClick={handleSaveButtonClick}
-              rememberedFolder={rememberedFolder}
-              setDriveView={setDriveView}
-              onEditDriveFolder={() => {
-                setDriveSaveError(null);
-                setDriveView("editing");
-              }}
-              copied={copied}
-              driveSaveUrl={driveSaveUrl}
-              handleCopyLink={handleCopyLink}
-              handleGenerateAnother={handleGenerateAnother}
-            >
-                {hasGoogleDriveConnected && driveView === "editing" && (
-                <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
-                  <div>
-                    <label className="block text-[14px] text-dash-ink-secondary">Folder link:</label>
-                    <input
-                      type="text"
-                      value={driveFolderLinkInput}
-                      onChange={(e) => {
-                        setDriveFolderLinkInput(e.target.value);
-                        setDriveLinkFormatError(null);
-                      }}
-                      placeholder="https://drive.google.com/drive/folders/1ABC123xyz"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                      Open Google Drive → navigate to your folder → right-click → Get link → Copy link → paste it
-                      here
-                    </p>
-                    {driveLinkFormatError && <p className="mt-1 text-[14px] text-red-400">{driveLinkFormatError}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-[14px] text-dash-ink-secondary">
-                      Folder name <span className="text-dash-ink-secondary">— optional, but recommended</span>:
-                    </label>
-                    <input
-                      type="text"
-                      value={driveFolderNameInput}
-                      onChange={(e) => setDriveFolderNameInput(e.target.value)}
-                      placeholder="e.g. Reports"
-                      className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink outline-none focus:border-dash-accent"
-                    />
-                    <p className="mt-1 text-[14px] text-dash-ink-secondary">
-                      Type a name to help you identify this folder — shown as &quot;Saving to: ...&quot; next time.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={handleSaveToFolderLink}
-                      disabled={!driveFolderLinkInput.trim() || driveSaving}
-                      className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
-                    >
-                      {driveSaving ? "Saving…" : "Save to this folder"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={driveSaving}
-                      onClick={() => {
-                        setDriveView("collapsed");
-                        setDriveFolderLinkInput("");
-                        setDriveFolderNameInput("");
-                        setDriveLinkFormatError(null);
-                        setDriveSaveError(null);
-                      }}
-                      className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {driveSaveError && <p className="text-[14px] text-red-400">{driveSaveError}</p>}
-
-              {/* State 3: button/input are both gone, replaced by the saved-file
-                  link. The share link + Email/WhatsApp/Copy Link row now live
-                  in the tertiary actions above (Fix 4) — no longer duplicated
-                  here. */}
-              {driveView === "success" && driveSaveUrl && (
-                <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-                  <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">
-                    Saved to Google Drive ✓
-                  </p>
-                  <a
-                    href={driveSaveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block break-all text-[14px] text-dash-accent hover:underline"
-                  >
-                    {driveDisplayLabel()}
-                  </a>
-                  <button
-                    onClick={() => {
-                      setDriveView("editing");
-                      setDriveSaveUrl(null);
-                    }}
-                    className="mt-3 text-[14px] text-dash-ink-secondary hover:underline"
-                  >
-                    Save to a different folder
-                  </button>
-                </div>
-              )}
-
-              {/* Fix 1 — only for a real WEEKLY/MONTHLY report (comparison reports have no Previous Month Data row to be missing) and only when the client genuinely has none uploaded. */}
-              {reportType !== "COMPARISON" &&
-                reportType !== "HISTORICAL" &&
-                reportType !== "DAY_BREAKDOWN" &&
-                includePreviousMonthComparison &&
-                !previousMonthComparisonReady && (
-                <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
-                  <p className="font-semibold">Previous month comparison not set up</p>
-                  <p className="mt-1 text-dash-ink-secondary">
-                    Combined Total won&apos;t include a previous-month row.{" "}
-                    <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
-                      Upload on the client page
-                    </Link>{" "}
-                    or add it when you start your next report.
-                  </p>
-                </div>
-              )}
-
-            </WizardGenerateSuccessPanel>
-          )}
-
           {showGenerateFooter && (
             <div className="space-y-3">
               {generateStatus === "idle" && (
                 <div className="hidden md:block">
                   <button
                     type="button"
-                    onClick={handleGenerate}
+                    onClick={handleGenerateStepPrimary}
                     disabled={generateCtaDisabled}
                     className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
                   >
@@ -926,15 +903,6 @@ export function WizardGenerateStep() {
             </div>
           )}
 
-          <p className="rounded-lg border border-dash-border bg-dash-sidebar/60 px-4 py-3 text-[14px] leading-relaxed text-dash-ink-secondary">
-            Have a question or an issue with this report?{" "}
-            <SupportTicketLink clientId={clientId} openInNewTab /> or{" "}
-            <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-            .
-          </p>
-
-          <WizardFeedbackLink />
-
           {showGenerateFooter ? (
             <WizardStickyFooter
               stepLabel={
@@ -954,6 +922,18 @@ export function WizardGenerateStep() {
                 (previewStatus === "loading" && generateStatus === "idle")
               }
             />
+          ) : null}
+
+          {generateStatus !== "done" ? (
+            <div className="mt-10 space-y-4 border-t border-dash-border pt-8">
+              <p className="text-center text-[14px] leading-relaxed text-dash-ink-secondary">
+                Have a question or an issue with this report?{" "}
+                <SupportTicketLink clientId={clientId} openInNewTab className="text-dash-accent" /> or{" "}
+                <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
+                .
+              </p>
+              <WizardFeedbackLink />
+            </div>
           ) : null}
         </div>
 

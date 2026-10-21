@@ -5,7 +5,8 @@ import { BillingIntervalToggle } from "@/components/billing-interval-toggle";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
-import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
+import { AGENCY_CLIENT_LIMIT, getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
+import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
@@ -82,14 +83,16 @@ function PlanCard({
 
       <h3 className="text-lg font-semibold text-white">{name}</h3>
       <p className="mt-1 text-sm text-ink-muted">{planCopy.bestFor}</p>
+      <p className="mt-3 text-base font-semibold text-accent-orange">
+        {planId === "starter" ? `Up to ${AGENCY_CLIENT_LIMIT} client workspaces` : "Unlimited client workspaces"}
+      </p>
 
-      <div className="mt-6 flex items-baseline gap-1">
+      <div className="mt-5 flex items-baseline gap-1">
         <span className="text-4xl font-semibold text-white">{displayPrice}</span>
         <span className="text-sm text-ink-muted">{interval === "annual" ? p.perYear : p.perMonth}</span>
       </div>
       {interval === "annual" && <p className="mt-1 text-xs font-medium text-emerald-400">{p.saveAnnual}</p>}
-      <p className="mt-1 text-xs text-ink-muted">{currency === "INR" ? p.payInr : p.payUsd}</p>
-      <p className="mt-0.5 text-[11px] text-ink-muted/80">{currency === "INR" ? p.exclGst : p.exclTax}</p>
+      <p className="mt-1 text-[11px] text-ink-muted/80">{currency === "INR" ? p.exclGst : p.exclTax}</p>
 
       <ul className="mt-8 space-y-3 text-left text-sm text-ink-secondary">
         {planCopy.features.map((feature) => (
@@ -111,6 +114,7 @@ function PlanCard({
         label={`${p.subscribeToPrefix} ${name}`}
         loadingLabel={p.redirecting}
       />
+      <CtaTrustBadges className="mt-3" />
     </div>
   );
 }

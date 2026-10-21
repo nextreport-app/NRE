@@ -31,6 +31,7 @@ export function mergeHomeCopy(base: HomeCopy, patch: HomeCopyPatch): HomeCopy {
     heroMetrics: patch.heroMetrics ?? base.heroMetrics,
     reportSlideNames: patch.reportSlideNames ?? base.reportSlideNames,
     enquiry: { ...base.enquiry, ...patch.enquiry },
+    pricingComparison: { ...base.pricingComparison, ...patch.pricingComparison },
     pricing: {
       ...base.pricing,
       ...pricingPatch,

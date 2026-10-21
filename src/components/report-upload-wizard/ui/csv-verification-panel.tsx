@@ -3,14 +3,10 @@
 import { useState } from "react";
 import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
-
 type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
   clientId?: string;
-  onReviewCampaignObjectives?: () => void;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -29,12 +25,7 @@ function verifiedScopesLabel(scopes: string[] | undefined): string {
   return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
 }
 
-export function CsvVerificationPanel({
-  verification,
-  refreshing,
-  clientId,
-  onReviewCampaignObjectives,
-}: Props) {
+export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
 
@@ -48,7 +39,7 @@ export function CsvVerificationPanel({
           ○
         </span>
         <div>
-          <p className="text-[14px] font-medium text-dash-ink-secondary">CSV verification not run</p>
+          <p className="text-[14px] font-medium text-dash-ink-secondary">CSV check not run</p>
           <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-muted">{verification.skipReason}</p>
         </div>
       </div>
@@ -56,7 +47,7 @@ export function CsvVerificationPanel({
   }
 
   if (refreshing && verification.checks.length === 0) {
-    return <p className="text-[13px] text-dash-ink-secondary">Checking spend and results against your CSV…</p>;
+    return <p className="text-[13px] text-dash-ink-secondary">Comparing deck preview to your CSV…</p>;
   }
 
   const ok = verification.status === "ok";
@@ -64,7 +55,7 @@ export function CsvVerificationPanel({
   const byScope = groupByScope(mismatches);
 
   if (ok) {
-    const detailText = `Spend, results, and cost per result match your uploaded CSV for ${verifiedScopesLabel(verification.scopesVerified)} (every day in the weekly window must be present). Small spend rounding (about $2 either way) is ignored.`;
+    const detailText = copy.csvVerifiedDetail(verifiedScopesLabel(verification.scopesVerified));
     return (
       <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
         <details className="group">
@@ -76,7 +67,7 @@ export function CsvVerificationPanel({
               ✓
             </span>
             <span className="nre-wizard-callout-success__title min-w-0 flex-1 text-[14px] font-medium">
-              Verified against your CSV
+              {copy.csvVerifiedTitle}
             </span>
             <span
               className="nre-wizard-callout-success__detail shrink-0 text-[15px] leading-none transition-transform group-open:rotate-180"
@@ -93,11 +84,6 @@ export function CsvVerificationPanel({
     );
   }
 
-  const whatsappHint = mismatches
-    .slice(0, 3)
-    .map((c) => `${c.scope}: ${c.metric} — report ${c.reportDisplay} vs CSV ${c.csvDisplay}`)
-    .join("; ");
-
   return (
     <div className="nre-wizard-callout-warn rounded-lg px-4 py-3.5">
       <button
@@ -113,7 +99,7 @@ export function CsvVerificationPanel({
           !
         </span>
         <span className="nre-wizard-callout-warn__title min-w-0 flex-1 text-[14px] font-medium">
-          {mismatches.length} meaningful mismatch{mismatches.length === 1 ? "" : "es"} vs your CSV
+          {copy.csvMismatchTitle(mismatches.length)}
         </span>
         <span
           className={`shrink-0 text-[15px] leading-none text-dash-ink-secondary transition-transform${open ? " rotate-180" : ""}`}
@@ -123,66 +109,27 @@ export function CsvVerificationPanel({
         </span>
       </button>
 
-      {verification.canAlignWithCsvExport && !verification.alignedWithCsvExport ? (
-        <p className="nre-wizard-callout-warn__body mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed">
-          Results may match your export if you use CSV export counting — we turned that on automatically for this
-          preview. Generate again if totals still look off.
-        </p>
-      ) : null}
-
-      {verification.alignedWithCsvExport ? (
-        <p className="nre-wizard-callout-warn__body mt-3 border-t border-dash-border/30 pt-3 text-[12px] leading-relaxed">
-          Totals use CSV export counting. Generate uses the same rules.
-        </p>
-      ) : null}
-
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
+          <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
+
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
-            <div key={scope}>
-              <p className="text-[12px] font-medium uppercase tracking-wide text-dash-ink-muted">{scope}</p>
-              <dl className="mt-2 space-y-2">
+            <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-muted">{scope}</p>
+              <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-2 text-[12px]">
+                <span className="text-dash-ink-muted">Metric</span>
+                <span className="text-right text-dash-ink-muted">Deck preview</span>
+                <span className="text-right text-dash-ink-muted">Your CSV</span>
                 {scopeChecks.map((c) => (
-                  <div
-                    key={`${scope}-${c.metric}`}
-                    className="nre-wizard-callout-warn__body grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-0.5 text-[13px]"
-                  >
-                    <dt className="text-dash-ink-secondary">{c.metric}</dt>
-                    <dd className="text-right text-dash-ink tabular-nums">{c.reportDisplay}</dd>
-                    <dd className="text-right tabular-nums text-dash-ink-muted">CSV {c.csvDisplay}</dd>
-                    {c.note ? (
-                      <dd className="nre-wizard-callout-warn__body col-span-3 text-[12px] leading-snug">{c.note}</dd>
-                    ) : null}
+                  <div key={`${scope}-${c.metric}`} className="contents">
+                    <span className="text-dash-ink-secondary">{c.metric}</span>
+                    <span className="text-right font-medium tabular-nums text-dash-ink">{c.reportDisplay}</span>
+                    <span className="text-right tabular-nums text-dash-ink">{c.csvDisplay}</span>
                   </div>
                 ))}
-              </dl>
+              </div>
             </div>
           ))}
-          <p className="text-[12px] leading-relaxed text-dash-ink-muted">{copy.csvMismatchBlocked}</p>
-          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[12px] leading-relaxed text-dash-ink-secondary">
-            <li>{copy.csvMismatchStepObjectives}</li>
-            <li>{copy.csvMismatchStepExport}</li>
-            <li>{copy.csvMismatchStepSupport}</li>
-          </ol>
-          {onReviewCampaignObjectives ? (
-            <button
-              type="button"
-              onClick={onReviewCampaignObjectives}
-              className="mt-3 text-[13px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
-            >
-              {copy.csvMismatchReviewObjectives}
-            </button>
-          ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
-            <SupportTicketLink clientId={clientId} openInNewTab className="nre-wizard-callout-warn__title underline hover:no-underline" />
-            <span className="text-dash-ink-muted">·</span>
-            <WhatsAppChatLink
-              className="nre-wizard-callout-warn__title font-medium underline hover:no-underline"
-              message={`Hi — CSV verification mismatch on my report. ${whatsappHint}`}
-            >
-              Chat on WhatsApp
-            </WhatsAppChatLink>
-          </div>
         </div>
       ) : null}
     </div>

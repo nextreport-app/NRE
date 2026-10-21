@@ -11,6 +11,7 @@ import { useSiteCopy } from "@/hooks/use-site-copy";
 const ALL_LINKS: SiteLink[] = [
   ...PUBLIC_NAV_LINKS,
   { href: "/pricing", label: "Pricing", hideDuringBeta: true },
+  { href: "/contact", label: "Contact us" },
 ];
 
 /** Cursor-style compact marketing header type (13px, tight pills). */
@@ -71,9 +72,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
               <button type="button" onClick={handleSignOut} className={navText}>
                 {marketing.navSignOut}
               </button>
-              <Link href="/contact" className={navOutlinePill}>
-                {marketing.navContact}
-              </Link>
               <Link href="/clients" className={navPrimaryPill}>
                 {marketing.navDashboard}
               </Link>
@@ -82,9 +80,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
             <>
               <Link href="/login" className={navText}>
                 {marketing.navSignIn}
-              </Link>
-              <Link href="/contact" className={navOutlinePill}>
-                {marketing.navContact}
               </Link>
               <Link href="/signup" className={navPrimaryPill}>
                 {marketing.navStartTrial}
@@ -125,13 +120,6 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/contact"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-[13px] text-ink hover:bg-navy-panel hover:opacity-80"
-            >
-              {marketing.navContact}
-            </Link>
           </div>
           <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
             {loggedIn ? (

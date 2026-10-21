@@ -4,41 +4,42 @@ import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { pageMetadata } from "@/lib/seo";
-import { FOUNDER_CASE_STUDY, PRODUCT_DIFFERENTIATOR_LINE } from "@/lib/product-positioning";
+import { ABOUT_OPERATIONS_PROOF, PRODUCT_DIFFERENTIATOR_LINE } from "@/lib/product-positioning";
 import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
+import { AboutHeroVisual } from "@/components/about/about-hero-visual";
+import { AboutStoryDivider } from "@/components/about/about-story-divider";
 
 export const metadata: Metadata = pageMetadata({
   title: "About — Built for Agency Reporting",
   description:
-    "NextReport automates Meta Ads client reporting — born from 2–3 hours/day of manual PowerPoint work at a US agency. Meta CSV upload live; Google, TikTok & GA4 launching soon.",
+    "NextReport is a small team building Meta Ads reporting automation for agencies — branded decks from CSV exports in minutes. Meta live; Google, TikTok & GA4 on the roadmap.",
   path: "/about",
 });
 
 const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
   {
-    heading: "The problem was personal",
+    heading: "The problem agencies kept repeating",
     paragraphs: [
-      "I work as a Meta ads campaign specialist — more than three years in performance marketing, most recently at a US-based agency while working remotely from India.",
-      "The job came with 25–30 ad accounts and a weekly ritual every agency knows: download CSVs, open the agency PPT template, replace card after card with fresh numbers, rewrite campaign summaries, fix formatting, repeat.",
-      "One report took 20–30 minutes. Five or six clients a day meant 2–3 hours daily on work that felt boring, tedious, and time-consuming — and added almost no strategic value.",
-      "I kept asking: if AI can draft strategy and creative, why am I still the human copy-paste layer between Ads Manager and PowerPoint?",
+      "Performance teams running multiple Meta ad accounts know the weekly ritual: export day-wise CSVs, open the agency template, update card after card, rewrite summaries, fix formatting, and send before the client meeting.",
+      "A single client report often takes 20–30 minutes. Multiply that across a roster and reporting becomes hours of low-leverage work every week — work that rarely changes strategy but always has to look perfect.",
+      "Dashboards help internally, but most clients still expect the same branded PowerPoint or Slides deck their account manager has always delivered. We built NextReport for that deliverable — not another login for the client.",
     ],
   },
   {
     heading: "Why NextReport exists",
     paragraphs: [
-      "I could not find a tool that matched how agencies actually deliver work — not another dashboard for clients to log into, but the same branded deck the account manager already sends.",
+      "We looked for tooling that matched how agencies actually ship work: the export you already pull from Ads Manager, the template your team already uses, and a finished deck in minutes — not a generic dashboard.",
       PRODUCT_DIFFERENTIATOR_LINE,
-      "We started with Google Apps Script, then rebuilt as NextReport.in — a web app that reads Meta Ads Manager CSV exports, detects campaign objectives, picks the right metrics, and generates PowerPoint, a live browser link, or Google Slides with AI-written insights, often in under two minutes.",
-      "Today Meta CSV reporting is live. Google Ads, TikTok Ads, and GA4 are in the codebase but stay behind “launching soon” until we finish parity testing — the same bar we use for our own client work.",
+      "NextReport reads Meta Ads Manager CSV exports, detects campaign objectives, selects the right metrics, and generates PowerPoint, a live browser link, or Google Slides with AI-written insights — often in under two minutes.",
+      "Meta CSV reporting is live today. Google Ads, TikTok Ads, and GA4 are in active development and stay behind “launching soon” until each platform passes the same accuracy bar we use for production reports.",
     ],
   },
   {
-    heading: "Built in public",
+    heading: "How we work",
     paragraphs: [
-      "We have not shouted from rooftops yet — most energy went into making the numbers trustworthy and the slides match real agency templates. That meant hundreds of small fixes, regression tests on real anonymized accounts, and learning where Meta exports are ambiguous.",
-      "Now we are opening the doors: free trial and founder-led support on email and WhatsApp.",
-      "If you manage Meta for clients in India, the US, Europe, or anywhere else — and you still rebuild the same deck every week — this was built for you.",
+      "We are a lean team — product, engineering, and agency workflow experience — not a venture-sized suite. Most of our time goes into trustworthy numbers and slides that match real agency templates: regression tests on anonymized exports, reconciliation checks in the wizard, and fixes where Meta exports are ambiguous.",
+      "We are opening the product more broadly with a free trial and direct support on email and WhatsApp when you need a human.",
+      "If your agency still rebuilds the same Meta deck every week — in any market — NextReport is built for that workflow.",
     ],
   },
 ];
@@ -58,36 +59,46 @@ export default async function AboutPage() {
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
-        <section className="bg-navy px-6 py-20 text-center">
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">
-              Built by someone who still had to send the deck on Friday
-            </h1>
-            <p className="mt-4 text-sm text-ink-muted">
-              Agency reporting automation — Meta first, more platforms as we earn trust.
-            </p>
+        <section className="relative overflow-hidden bg-navy px-6 py-16 sm:py-24">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-accent-orange/[0.06] via-transparent to-transparent"
+            aria-hidden
+          />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <div className="text-center lg:text-left">
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-tight">
+                A small team obsessed with agency reporting
+              </h1>
+              <p className="mt-5 text-base leading-relaxed text-ink-secondary sm:text-lg">
+                We automate the branded Meta deck — so strategists spend time on strategy, not slide formatting.
+              </p>
+            </div>
+            <AboutHeroVisual />
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          {STORY_SECTIONS.map((section) => (
-            <div key={section.heading} className="mb-12 last:mb-0">
-              <h2 className="text-2xl font-semibold text-accent-orange">{section.heading}</h2>
-              <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary">
-                {section.paragraphs.map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))}
-              </div>
+        <section className="mx-auto max-w-3xl px-6 pb-4 pt-16">
+          {STORY_SECTIONS.map((section, index) => (
+            <div key={section.heading}>
+              {index > 0 ? <AboutStoryDivider /> : null}
+              <article className="border-l-2 border-accent-orange/25 pl-6 sm:pl-8">
+                <h2 className="text-2xl font-semibold text-accent-orange">{section.heading}</h2>
+                <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-secondary sm:text-[15px]">
+                  {section.paragraphs.map((p, i) => (
+                    <p key={i}>{p}</p>
+                  ))}
+                </div>
+              </article>
             </div>
           ))}
         </section>
 
-        <section className="px-6 pb-16">
-          <div className="mx-auto max-w-3xl rounded-2xl border border-navy-border bg-navy-panel p-8">
-            <h2 className="text-xl font-semibold text-white">{FOUNDER_CASE_STUDY.headline}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-secondary">{FOUNDER_CASE_STUDY.body}</p>
+        <section className="px-6 pb-16 pt-8">
+          <div className="mx-auto max-w-3xl rounded-2xl border border-navy-border bg-navy-panel p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.45)] sm:p-10">
+            <h2 className="text-xl font-semibold text-white">{ABOUT_OPERATIONS_PROOF.headline}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink-secondary">{ABOUT_OPERATIONS_PROOF.body}</p>
             <ul className="mt-4 flex flex-wrap gap-3">
-              {FOUNDER_CASE_STUDY.stats.map((stat) => (
+              {ABOUT_OPERATIONS_PROOF.stats.map((stat) => (
                 <li
                   key={stat}
                   className="rounded-full border border-navy-border bg-navy px-3 py-1 text-xs font-medium text-ink-secondary"
@@ -100,11 +111,15 @@ export default async function AboutPage() {
         </section>
 
         <section className="px-6 py-8">
-          <div className="mx-auto max-w-5xl rounded-2xl border border-navy-border bg-navy-panel p-8 sm:p-10">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-navy-border bg-navy-panel p-8 sm:p-10">
+            <div
+              className="pointer-events-none -mx-8 -mt-8 mb-6 h-1 bg-gradient-to-r from-accent-orange/80 via-accent-orange/30 to-transparent sm:-mx-10 sm:-mt-10"
+              aria-hidden
+            />
             <h2 className="text-2xl font-semibold text-accent-orange">Our mission</h2>
             <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-secondary">
-              Give small and mid-size agencies the same reporting speed large shops buy with headcount — starting with
-              Meta Ads CSV today, then Google, TikTok, and GA4 when each platform passes the same accuracy bar. Less
+              Give small and mid-size agencies the reporting speed larger shops buy with headcount — starting with Meta
+              Ads CSV today, then Google, TikTok, and GA4 when each platform passes the same accuracy bar. Less
               formatting, more strategy.
             </p>
           </div>

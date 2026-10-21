@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { fileEntryFromFormData } from "@/lib/http-file";
-import { saveSupportTicketAttachment } from "@/lib/storage";
+import { fileEntriesFromFormData } from "@/lib/http-file";
+import {
+  presignedPrivateBlobGetUrl,
+  readReportFile,
+  saveSupportTicketAttachment,
+} from "@/lib/storage";
 import { supportTicketFieldsSchema } from "@/lib/validators/support-ticket";
-import { autoReplyFireAndForget, sendInboundEmail } from "@/lib/inbound-notifications";
+import { autoReplyFireAndForget, sendInboundEmail, type InboundEmailAttachment } from "@/lib/inbound-notifications";
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+function parseIncludeReportDeck(formData: FormData): boolean {
+  const raw = formData.get("includeReportDeck");
+  if (raw === null || raw === undefined || raw === "") return true;
+  if (typeof raw === "string") return raw === "true" || raw === "1" || raw === "on";
+  return false;
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -38,6 +49,7 @@ export async function POST(req: Request) {
   }
 
   const fields = parsed.data;
+  const includeReportDeck = parseIncludeReportDeck(formData);
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { id: true, planId: true },
@@ -59,20 +71,53 @@ export async function POST(req: Request) {
   }
 
   let reportDisplayName: string | null = null;
+  let reportFilePath: string | null = null;
+  let reportFileName: string | null = null;
   if (fields.reportId) {
     const report = await prisma.report.findFirst({
       where: { id: fields.reportId, client: { userId: user.id } },
-      select: { displayName: true, fileName: true },
+      select: { displayName: true, fileName: true, filePath: true, status: true },
     });
     if (!report) {
       return NextResponse.json({ error: "Report not found." }, { status: 400 });
     }
     reportDisplayName = report.displayName ?? report.fileName;
+    if (includeReportDeck && report.status === "COMPLETE" && report.filePath) {
+      reportFilePath = report.filePath;
+      reportFileName = report.fileName || "report.pptx";
+    }
   }
 
-  const attachment = await fileEntryFromFormData(formData, "attachment");
-  if (attachment && attachment.buffer.length > MAX_ATTACHMENT_BYTES) {
-    return NextResponse.json({ error: "Attachment must be 10 MB or smaller." }, { status: 400 });
+  const uploadedFiles = await fileEntriesFromFormData(formData, "attachment");
+  for (const file of uploadedFiles) {
+    if (file.buffer.length > MAX_ATTACHMENT_BYTES) {
+      return NextResponse.json({ error: "Each attachment must be 10 MB or smaller." }, { status: 400 });
+    }
+  }
+
+  const emailAttachments: InboundEmailAttachment[] = uploadedFiles.map((file) => ({
+    fileName: file.fileName,
+    content: file.buffer,
+    contentType: file.contentType,
+  }));
+
+  if (reportFilePath && reportFileName) {
+    try {
+      const deckBuffer = await readReportFile(reportFilePath);
+      if (deckBuffer.length > MAX_ATTACHMENT_BYTES) {
+        return NextResponse.json(
+          { error: "Report deck is too large to attach. Download it from report history instead." },
+          { status: 400 },
+        );
+      }
+      emailAttachments.push({
+        fileName: reportFileName.endsWith(".pptx") ? reportFileName : `${reportFileName}.pptx`,
+        content: deckBuffer,
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+    } catch {
+      /* deck missing in storage — still send ticket with other files */
+    }
   }
 
   try {
@@ -92,22 +137,51 @@ export async function POST(req: Request) {
       },
     });
 
-    let attachmentUrl: string | null = null;
-    if (attachment && attachment.buffer.length > 0) {
-      attachmentUrl = await saveSupportTicketAttachment(
-        ticket.id,
-        attachment.buffer,
-        attachment.fileName,
-        attachment.contentType,
-      );
+    const storedDownloadLinks: { fileName: string; url: string }[] = [];
+    let primaryAttachmentUrl: string | null = null;
+    let primaryAttachmentFileName: string | null = null;
+
+    for (const file of uploadedFiles) {
+      if (file.buffer.length === 0) continue;
+      const url = await saveSupportTicketAttachment(ticket.id, file.buffer, file.fileName, file.contentType);
+      if (!primaryAttachmentUrl) {
+        primaryAttachmentUrl = url;
+        primaryAttachmentFileName = file.fileName;
+      }
+      try {
+        storedDownloadLinks.push({
+          fileName: file.fileName,
+          url: await presignedPrivateBlobGetUrl(url),
+        });
+      } catch {
+        storedDownloadLinks.push({ fileName: file.fileName, url });
+      }
+    }
+
+    if (primaryAttachmentUrl) {
       await prisma.supportTicket.update({
         where: { id: ticket.id },
         data: {
-          attachmentUrl,
-          attachmentFileName: attachment.fileName,
+          attachmentUrl: primaryAttachmentUrl,
+          attachmentFileName: primaryAttachmentFileName,
         },
       });
     }
+
+    const attachmentSummary =
+      emailAttachments.length > 0
+        ? emailAttachments.map((a) => a.fileName).join(", ")
+        : null;
+
+    const downloadLinksHtml =
+      storedDownloadLinks.length > 0
+        ? `<ul>${storedDownloadLinks
+            .map(
+              (l) =>
+                `<li><a href="${l.url.replace(/"/g, "&quot;")}">${l.fileName.replace(/</g, "&lt;")}</a> (link expires in 7 days)</li>`,
+            )
+            .join("")}</ul>`
+        : "";
 
     const teamSubject = `[Support] ${fields.category} — ${fields.name}`;
     const contextLines = [
@@ -132,8 +206,10 @@ export async function POST(req: Request) {
         contextLines,
         "",
         fields.message,
-        attachment ? `\nAttachment: ${attachment.fileName} (included in this email)` : "",
-        attachmentUrl ? `\nStored copy: ${attachmentUrl}` : "",
+        attachmentSummary ? `\nAttachments (also in this email): ${attachmentSummary}` : "",
+        storedDownloadLinks.length
+          ? `\nDownload links (expire in 7 days):\n${storedDownloadLinks.map((l) => `${l.fileName}: ${l.url}`).join("\n")}`
+          : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -148,25 +224,12 @@ ${reportDisplayName ? `<li><strong>Report:</strong> ${reportDisplayName}</li>` :
 </ul>
 <p style="white-space:pre-wrap">${fields.message.replace(/</g, "&lt;")}</p>
 ${
-  attachment
-    ? `<p><strong>Attachment:</strong> ${attachment.fileName.replace(/</g, "&lt;")} (attached to this email)${
-        attachmentUrl
-          ? `<br/><a href="${attachmentUrl.replace(/"/g, "&quot;")}">Download stored copy</a>`
-          : ""
-      }</p>`
+  attachmentSummary
+    ? `<p><strong>Attachments:</strong> ${attachmentSummary.replace(/</g, "&lt;")} (included in this email)</p>${downloadLinksHtml}`
     : ""
 }`,
       replyTo: fields.email,
-      attachments:
-        attachment && attachment.buffer.length > 0
-          ? [
-              {
-                fileName: attachment.fileName,
-                content: attachment.buffer,
-                contentType: attachment.contentType,
-              },
-            ]
-          : undefined,
+      attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
     });
 
     autoReplyFireAndForget({

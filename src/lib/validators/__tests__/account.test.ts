@@ -12,6 +12,11 @@ describe("accountSettingsSchema", () => {
     expect(cleared.agencyName).toBeNull();
   });
 
+  it("accepts JSON null for agencyName (wizard clears cover name)", () => {
+    const cleared = accountSettingsSchema.parse({ agencyName: null });
+    expect(cleared.agencyName).toBeNull();
+  });
+
   it("trims agencyName", () => {
     const parsed = accountSettingsSchema.parse({ agencyName: "  Acme  " });
     expect(parsed.agencyName).toBe("Acme");

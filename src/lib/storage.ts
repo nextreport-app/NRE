@@ -19,7 +19,7 @@
  * would ever need a presigned URL to fetch directly from Blob's CDN.
  */
 
-import { put, del, get } from "@vercel/blob";
+import { put, del, get, issueSignedToken, presignUrl } from "@vercel/blob";
 import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } from "./logo-processing";
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
@@ -171,6 +171,27 @@ export async function saveSupportTicketAttachment(
     contentType,
   });
   return blob.url;
+}
+
+/** Time-limited GET link for support emails — raw private blob URLs return Forbidden in a browser. */
+export async function presignedPrivateBlobGetUrl(
+  blobUrl: string,
+  validForMs = 7 * 24 * 60 * 60 * 1000,
+): Promise<string> {
+  const pathname = decodeURIComponent(new URL(blobUrl).pathname.replace(/^\//, ""));
+  const validUntil = Date.now() + validForMs;
+  const token = await issueSignedToken({
+    pathname,
+    operations: ["get"],
+    validUntil,
+  });
+  const { presignedUrl } = await presignUrl(token, {
+    operation: "get",
+    pathname,
+    access: "private",
+    validUntil,
+  });
+  return presignedUrl;
 }
 
 /** Recovers the originally-uploaded filename from a Previous Month Data Blob URL's own path — see this section's header for why there's no separate filename column to read instead. */
