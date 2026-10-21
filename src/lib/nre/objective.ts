@@ -236,6 +236,9 @@ function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLab
   if (isQuoteRequestCampaignName(rows)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
+  if (isPurchaseCampaignName(rows)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
   if (isReachCampaignName(rows)) {
     return { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
   }
@@ -971,10 +974,16 @@ function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {
   });
 }
 
-/** Named purchase campaign + Purchases column in export → PURCHASES even when only mid-funnel data exists. */
+/** Named purchase/sales campaign → PURCHASES even when Result type is blank (zero-sale weeks). */
 function purchaseObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
-  if (!isPurchaseCampaignName(rows) || !hasPurchasesColumnHeader(rows)) return null;
-  return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  if (!isPurchaseCampaignName(rows)) return null;
+  if (hasPurchasesColumnHeader(rows)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
+  if (rows.some((r) => parseCellNum(r.spend) > 0 || parseCellNum(r.impressions) > 0)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
+  return null;
 }
 
 function hasReachDelivery(rows: MetricRow[]): boolean {
@@ -1143,6 +1152,7 @@ function shouldOverrideDefinitiveProof(rows: MetricRow[], info: ObjectiveInfo): 
 function namedCampaignObjectiveFromRows(rows: MetricRow[]): ResultLabels | null {
   return (
     reachObjectiveIfNamedCampaign(rows) ??
+    purchaseObjectiveIfNamedCampaign(rows) ??
     metaFormLeadsObjectiveIfNamedCampaign(rows) ??
     linkClicksObjectiveIfNamedCampaign(rows) ??
     leadObjectiveFromCampaignNameOnly(rows)
