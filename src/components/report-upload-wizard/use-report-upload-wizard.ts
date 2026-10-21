@@ -63,7 +63,7 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
-import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
+import type { CsvDateGuidance, CsvDateWarning } from "@/lib/nre/csv-date-guidance";
 import {
   ADD_FROM_CSV_VISIBLE,
   ADSET_CHIP_CLASS,
@@ -382,6 +382,8 @@ export function useReportUploadWizard({
   );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
+  const [csvZeroMetricWarnings, setCsvZeroMetricWarnings] = useState<CsvDateWarning[]>([]);
+  const [csvZeroMetricWarningDismissed, setCsvZeroMetricWarningDismissed] = useState(false);
   const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
   const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
@@ -1212,6 +1214,8 @@ export function useReportUploadWizard({
       setDayBreakdownData(null);
     }
     setCsvVerification(json.csvVerification ?? null);
+    setCsvZeroMetricWarnings(Array.isArray(json.csvZeroMetricWarnings) ? json.csvZeroMetricWarnings : []);
+    setCsvZeroMetricWarningDismissed(false);
     if (json.suggestCsvAlign && !csvAlignResults && !csvAlignAttemptedRef.current) {
       csvAlignAttemptedRef.current = true;
       setCsvAlignResults(true);
@@ -3102,6 +3106,9 @@ export function useReportUploadWizard({
     csvDateGuidance,
     csvWarningDismissed,
     setCsvWarningDismissed,
+    csvZeroMetricWarnings,
+    csvZeroMetricWarningDismissed,
+    setCsvZeroMetricWarningDismissed,
     setCsvDateGuidance,
     setMtdFile,
     setUploadSessionId,
