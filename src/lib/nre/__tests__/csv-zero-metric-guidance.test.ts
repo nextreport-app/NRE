@@ -8,6 +8,8 @@ import {
   csvColumnPresentButAllZero,
   csvZeroMetricWarnings,
   detectBlankCsvMetricLabels,
+  uniqueMetricDisplayLabels,
+  zeroMetricWarningsForLabels,
 } from "../csv-zero-metric-guidance";
 import { collectZeroMetricLabelsFromReport } from "../report-zero-metric-warnings";
 import { buildReportData } from "../report-data";
@@ -56,8 +58,14 @@ describe("csv-zero-metric-guidance", () => {
     const warnings = csvZeroMetricWarnings(colMap, rows);
     expect(warnings.length).toBe(1);
     expect(warnings[0]?.kind).toBe("missing_metric_values");
-    expect(warnings[0]?.message).toMatch(/Reach/);
-    expect(warnings[0]?.message).toMatch(/Frequency/);
+    expect(warnings[0]?.title).toBe("2 metrics will show as 0");
+    expect(warnings[0]?.message).toMatch(/Reach and Frequency/);
+  });
+
+  it("dedupes Reach and REACH into one label", () => {
+    expect(uniqueMetricDisplayLabels(["Frequency", "Reach", "REACH"])).toEqual(["Frequency", "Reach"]);
+    const [w] = zeroMetricWarningsForLabels(["Reach", "REACH", "Frequency"], "META");
+    expect(w?.title).toBe("2 metrics will show as 0");
   });
 
   it("validateMtdDailyCsv warns but still passes", () => {
