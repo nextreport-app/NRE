@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
-import { TEMPLATE_LABELS } from "@/lib/validators/client";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
-import { WizardPlatformSummaryLabel } from "@/components/wizard-platform-banner";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
   formatIso,
   formatIsoRange,
-  formatSummaryRange,
   isNoDataRowsError,
   isSpecificFieldError,
 } from "../utils";
@@ -19,7 +16,6 @@ import { WeeklyPeriodOption } from "../ui/weekly-period-option";
 import { WizardDateRangeFields } from "../ui/wizard-date-picker";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
-import { META_HYBRID_API_CSV_IMPORT_NOTE } from "@/lib/nre/meta-api-sync/hybrid-import-note";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { SupportTicketLink } from "@/components/support-ticket-link";
 import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
@@ -40,7 +36,6 @@ export function WizardGenerateStep() {
     clientId,
     clientMonthlyBudget,
     clientName,
-    clientTemplate,
     comparisonData,
     comparisonPeriodA,
     comparisonPeriodB,
@@ -69,8 +64,6 @@ export function WizardGenerateStep() {
     estimatedSlideCount,
     formatIso,
     formatIsoRange,
-    formatSummaryRange,
-    apiSyncHybridImport,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -93,7 +86,6 @@ export function WizardGenerateStep() {
     historicalMonthCount,
     historicalMonthLabels,
     includePreviousMonthComparison,
-    mtdRange,
     needsLongRangeConfirm,
     persistGenerateSnapshot,
     platform,
@@ -112,7 +104,6 @@ export function WizardGenerateStep() {
     publishedAt,
     rememberedFolder,
     reportId,
-    reportSummaryExpanded,
     reportType,
     reportTypeLabel,
     setCustomEnd,
@@ -131,16 +122,13 @@ export function WizardGenerateStep() {
     setHistoricalMonthCount,
     editHistoricalMonthCount,
     setLongRangeConfirmed,
-    setReportSummaryExpanded,
     setStep,
     shareToken,
     showBudgetOnCover,
     spanDays,
-    summaryCampaignNames,
     updateComparisonPeriodA,
     updateComparisonPeriodB,
     weeklyOptions,
-    weeklyPeriodSummaryLabel,
     weeklyRangeIso,
     reportPeriodConfirmationLine,
     reportPeriodConfirmationBullets,
@@ -700,116 +688,6 @@ export function WizardGenerateStep() {
                   error={reportBrandingError}
                 />
               ) : null}
-
-              {/* Section 1 — Report summary card, amber left border. Merges
-                  what used to be two separate cards (Reporting Period +
-                  Ready to generate) into the one card the merged Step 3
-                  spec calls for. */}
-              <div className="rounded-lg border-l-4 border-l-[#f6ad55] bg-dash-card nre-dash-surface p-5">
-                <button
-                  type="button"
-                  onClick={() => setReportSummaryExpanded((open) => !open)}
-                  aria-expanded={reportSummaryExpanded}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <h3 className="text-[15px] font-semibold text-dash-ink">Report Summary</h3>
-                  <span
-                    className={`text-[15px] leading-none text-dash-ink-secondary transition-transform${reportSummaryExpanded ? " rotate-180" : ""}`}
-                    aria-hidden
-                  >
-                    ▾
-                  </span>
-                </button>
-                {reportSummaryExpanded && (
-                  <>
-                <hr className="my-3 border-t border-dash-border" />
-                <div className="space-y-2">
-                  {apiSyncHybridImport ? (
-                    <p className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] leading-relaxed text-[#94a3b8]">
-                      {META_HYBRID_API_CSV_IMPORT_NOTE}
-                    </p>
-                  ) : null}
-                  <p className="text-[14px] text-[#94a3b8]">
-                    Report type: <span className="text-[14px] text-dash-ink">{reportTypeLabel()}</span>
-                  </p>
-                  <p className="text-[14px] text-[#94a3b8]">
-                    Client: <span className="text-[14px] text-dash-ink">{clientName}</span>
-                  </p>
-                  <div>
-                    <p className="text-[14px] text-[#94a3b8]">
-                      Campaigns:{" "}
-                      <span className="text-[14px] text-dash-ink">{summaryCampaignNames().length} selected</span>
-                    </p>
-                    <ul className="mt-1 space-y-0.5 pl-4">
-                      {summaryCampaignNames().map((name) => (
-                        <li key={name} className="truncate text-[14px] text-[#64748b]" title={name}>
-                          {name}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  {previewKind === "comparison" && comparisonData ? (
-                    <p className="text-[14px] text-[#94a3b8]">
-                      Comparison periods:{" "}
-                      <span className="text-[14px] text-dash-ink">
-                        {comparisonData.periodALabel} vs {comparisonData.periodBLabel}
-                      </span>
-                    </p>
-                  ) : previewKind === "historical" && historicalData ? (
-                    <p className="text-[14px] text-[#94a3b8]">
-                      Months covered:{" "}
-                      <span className="text-[14px] text-dash-ink">{historicalData.monthsLabel}</span>
-                    </p>
-                  ) : previewKind === "dayBreakdown" && dayBreakdownData ? (
-                    <p className="text-[14px] text-[#94a3b8]">
-                      Date range:{" "}
-                      <span className="text-[14px] text-dash-ink">{dayBreakdownData.rangeLabel}</span>
-                      {" · "}
-                      {dayBreakdownData.dayCount} day{dayBreakdownData.dayCount === 1 ? "" : "s"} with data
-                    </p>
-                  ) : (
-                    <>
-                      {reportType === "DAILY" && dailyRange && (
-                        <p className="text-[14px] text-[#94a3b8]">
-                          Daily period: <span className="text-[14px] text-dash-ink">{formatSummaryRange(dailyRange)}</span>
-                        </p>
-                      )}
-                      {(reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso && (
-                        <p className="text-[14px] text-[#94a3b8]">
-                          {reportType === "DAY_BREAKDOWN" ? "Date range" : weeklyPeriodSummaryLabel()}:{" "}
-                          <span className="text-[14px] text-dash-ink">{formatSummaryRange(weeklyRangeIso)}</span>
-                        </p>
-                      )}
-                      {reportType === "MONTHLY" && mtdRange && (
-                        <p className="text-[14px] text-[#94a3b8]">
-                          Full month: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
-                        </p>
-                      )}
-                      {reportType === "CREATIVE" && mtdRange && (
-                        <p className="text-[14px] text-[#94a3b8]">
-                          Data window: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
-                        </p>
-                      )}
-                      {reportType === "WEEKLY" && mtdRange && (
-                        <p className="text-[14px] text-[#94a3b8]">
-                          Month to date: <span className="text-[14px] text-dash-ink">{formatSummaryRange(mtdRange)}</span>
-                        </p>
-                      )}
-                    </>
-                  )}
-                  <p className="text-[14px] text-[#94a3b8]">
-                    Template: <span className="text-[14px] text-dash-ink">{TEMPLATE_LABELS[clientTemplate] ?? clientTemplate}</span>
-                  </p>
-                  <p className="text-[14px] text-[#94a3b8]">
-                    Platform: <WizardPlatformSummaryLabel platform={platform} />
-                  </p>
-                  <p className="text-[14px] text-[#94a3b8]">
-                    Estimated slides: <span className="text-[14px] text-dash-ink">{estimatedSlideCount()}</span>
-                  </p>
-                </div>
-                  </>
-                )}
-              </div>
 
             {previewKind === "normal" && data?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
