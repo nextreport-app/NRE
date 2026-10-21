@@ -22,6 +22,7 @@ import {
   blendedCostPerLinkClickFromRawRows,
   combinedCtrCpcFromRawRows,
 } from "./ctr-cpc";
+import type { MetricRow } from "./types";
 
 /** Any raw CSV row shape that still carries its original column values — both NreRow (Meta) and GoogleRow (Google) satisfy this. */
 export interface RawMetricRow {
