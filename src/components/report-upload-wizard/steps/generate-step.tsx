@@ -142,7 +142,6 @@ export function WizardGenerateStep() {
     reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
-    happyPathSkippedSteps,
     agencyName,
     reportBrandingMode,
     reportBrandingError,
@@ -352,29 +351,6 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            {happyPathSkippedSteps ? (
-              <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
-                <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">{copy.happyPathBannerBody}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
-                  >
-                    {copy.happyPathReviewCampaigns}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep(3)}
-                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
-                  >
-                    {copy.happyPathReviewMetrics}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
             {reportType === "HISTORICAL" && (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
                 <h4 className="text-[15px] font-semibold text-dash-ink">Historical months</h4>
