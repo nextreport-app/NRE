@@ -14,6 +14,11 @@ import { csvHasDailyGranularity, getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
+import {
+  brokenSpendExportMessage,
+  classifyCsvSpendDelivery,
+  noDeliveryWarningMessage,
+} from "./csv-spend-delivery";
 import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
 
 export interface ValidationIssue {
@@ -215,6 +220,21 @@ export function validateMtdDailyCsv(
           message: `The date range spans ${Math.round(spanDays)} days. For weekly/monthly reports use a single-month export (≤${MAX_RANGE_DAYS_STANDARD} days). For May–August-style requests, choose Multi-Month Historical Report on Step 5.`,
         });
       }
+    }
+  }
+
+  if (platform === "META" && colMap.spend) {
+    const spendDelivery = classifyCsvSpendDelivery(colMap, rows, platform);
+    if (spendDelivery === "broken_export") {
+      errors.push({
+        field: "spend",
+        message: brokenSpendExportMessage(platform),
+      });
+    } else if (spendDelivery === "no_delivery") {
+      warnings.push({
+        field: "spend",
+        message: noDeliveryWarningMessage(),
+      });
     }
   }
 
