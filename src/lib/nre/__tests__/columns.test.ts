@@ -4,6 +4,7 @@ import {
   csvHasDailyGranularity,
   getRowDate,
   hasReportingStartsEndsDailyRow,
+  rowHasDailyDate,
   readRowsWithAutoMap,
   type NreRow,
 } from "../columns";
@@ -54,6 +55,7 @@ describe("getRowDate", () => {
     };
     expect(hasReportingStartsEndsDailyRow(row)).toBe(true);
     expect(csvHasDailyGranularity([row])).toBe(true);
+    expect(rowHasDailyDate(row)).toBe(true);
   });
 });
 

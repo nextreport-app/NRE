@@ -239,3 +239,8 @@ export function hasReportingStartsEndsDailyRow(row: RowWithDate): boolean {
 export function csvHasDailyGranularity(rows: RowWithDate[]): boolean {
   return rows.some(hasRealRowDate) || rows.some(hasReportingStartsEndsDailyRow);
 }
+
+/** True when this row carries its own calendar day (Day/Date column or equal Reporting starts/ends). */
+export function rowHasDailyDate(row: RowWithDate): boolean {
+  return hasRealRowDate(row) || hasReportingStartsEndsDailyRow(row);
+}

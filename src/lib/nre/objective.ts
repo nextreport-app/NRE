@@ -6,7 +6,7 @@
  * priority chain — see the comment above OBJECTIVE_CATALOG.
  */
 
-import { hasRealRowDate } from "./columns";
+import { hasRealRowDate, rowHasDailyDate } from "./columns";
 import {
   metaCsvExportResultValue,
   metaFormLeadsFromMetaExportRow,
@@ -1450,7 +1450,7 @@ export function resultValueForObjective(row: MetricRow, label: string, _mode: Re
  * Reach signals in tests) stay excluded.
  */
 function isDailyOffDayInLeadCampaign(row: MetricRow, campRows: MetricRow[], ownLabel: string): boolean {
-  if (!hasRealRowDate(row)) return false;
+  if (!rowHasDailyDate(row)) return false;
   if (parseCellNum(row.results) > 0) return false;
   if (parseCellNum(row.website_leads) > 0 || parseCellNum(row.meta_leads) > 0 || parseCellNum(row.leads) > 0) {
     return false;
@@ -1460,14 +1460,16 @@ function isDailyOffDayInLeadCampaign(row: MetricRow, campRows: MetricRow[], ownL
 
   const adSet = row.ad_set_name || "";
   const adSetHasLeadDays = campRows.some(
-    (r) => (r.ad_set_name || "") === adSet && parseCellNum(r.results) > 0 && hasRealRowDate(r),
+    (r) => (r.ad_set_name || "") === adSet && parseCellNum(r.results) > 0 && rowHasDailyDate(r),
   );
   if (!adSetHasLeadDays) return false;
 
   if (ownLabel === "LINK CLICKS") return parseCellNum(row.link_clicks) > 0;
   if (ownLabel === "LANDING PAGE VIEWS") {
     const lpv = parseCellNum(row.landing_page_views);
-    return lpv > 0 && lpv <= 3;
+    if (lpv > 0) return true;
+    // Campaigns-table off days sometimes resolve as LPV with only link clicks populated.
+    return parseCellNum(row.link_clicks) > 0;
   }
   if (ownLabel === "RESULTS") return !rt;
   return false;
