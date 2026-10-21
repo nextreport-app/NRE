@@ -1146,7 +1146,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     adNameColumn: adNameColumnInput,
     creativeOnly = false,
     platform: platformInput,
-    alignResultsWithCsvExport = true,
+    alignResultsWithCsvExport = true, // see engine-defaults.ts DEFAULT_META_RESULT_COUNTING_MODE
     metaCampaignPeriodReach,
   } = input;
   const platform = platformInput ?? "META";

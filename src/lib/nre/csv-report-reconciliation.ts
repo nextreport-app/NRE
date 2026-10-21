@@ -26,6 +26,7 @@ import {
   normalizeCampaignName,
   type ResultLabels,
 } from "./objective";
+import { DEFAULT_META_RESULT_COUNTING_MODE } from "./engine-defaults";
 import type { ResultCountingMode } from "./meta-csv-export-counting";
 import {
   capRangeToData,
@@ -523,6 +524,92 @@ function filterWeeklyRawForAdSet(rawRows: NreRow[], campaignName: string, adSetN
   return rawRows.filter((r) => adSetKey(String(r.campaign_name ?? "").trim(), String(r.ad_set_name ?? "").trim()) === want);
 }
 
+function sumImpressionsFromRows(rows: MetricRow[]): number {
+  return rows.reduce((s, r) => s + parseCellNum(r.impressions), 0);
+}
+
+/** Sum of daily Impressions — additive unlike reach. */
+function appendImpressionsVolumeCheck(params: {
+  checks: CsvVerificationCheck[];
+  scope: string;
+  rawRows: MetricRow[];
+  reportImpressionsDisplay: string;
+  calendarComplete?: boolean;
+  nameSuffix?: string;
+}): void {
+  const { checks, scope, rawRows, reportImpressionsDisplay, calendarComplete = true, nameSuffix } = params;
+  const csvImpr = sumImpressionsFromRows(rawRows);
+  const reportImpr = parseCellNum(reportImpressionsDisplay);
+  if (csvImpr <= 0 && reportImpr <= 0) return;
+  const metric = nameSuffix ? `Impressions (${nameSuffix})` : "Impressions";
+  checks.push({
+    metric,
+    scope,
+    reportDisplay: reportImpressionsDisplay,
+    csvDisplay: fmtNumber(csvImpr),
+    status: calendarComplete && reportImpr === csvImpr ? "ok" : "mismatch",
+    note:
+      reportImpr === csvImpr
+        ? undefined
+        : "Impressions on the slide must equal the sum of daily CSV Impressions for this window.",
+  });
+}
+
+/**
+ * Campaign slide totals must equal the sum of ad-set slides shown for that campaign
+ * (catches split code paths before the client sees the deck).
+ */
+function appendCampaignAdSetDeckConsistencyChecks(params: {
+  checks: CsvVerificationCheck[];
+  scope: string;
+  currencySymbol: string;
+  report: ReportData;
+}): void {
+  const { checks, scope, currencySymbol, report } = params;
+  const adSetsByCampaign = new Map<string, ReportData["adSetSlides"]>();
+  for (const slide of report.adSetSlides) {
+    const list = adSetsByCampaign.get(slide.campaignName) ?? [];
+    list.push(slide);
+    adSetsByCampaign.set(slide.campaignName, list);
+  }
+
+  for (const campSlide of report.campaignSlides) {
+    const adSlides = adSetsByCampaign.get(campSlide.campaignName) ?? [];
+    if (adSlides.length === 0) continue;
+
+    const campSpend = parseCellNum(campSlide.metrics.spend);
+    const sumAdSpend = adSlides.reduce((s, a) => s + parseCellNum(a.metrics.spend), 0);
+    const spendOk = closeEnough(campSpend, sumAdSpend, SPEND_AMOUNT_TOLERANCE);
+    checks.push({
+      metric: "Deck consistency: spend",
+      scope,
+      reportDisplay: campSlide.metrics.spend,
+      csvDisplay: fmtCurrency(sumAdSpend, currencySymbol),
+      status: spendOk ? "ok" : "mismatch",
+      note: spendOk
+        ? undefined
+        : "Campaign slide spend must equal the sum of ad-set slides for this campaign in the report week.",
+    });
+
+    const sameObjective = adSlides.every((a) => a.resultLabel === campSlide.resultLabel);
+    if (sameObjective && shouldVerifyPrimaryResults(campSlide.resultLabel)) {
+      const campResults = parseCellNum(campSlide.metrics.results);
+      const sumAdResults = adSlides.reduce((s, a) => s + parseCellNum(a.metrics.results), 0);
+      const resultsOk = resultsMatch(campResults, sumAdResults);
+      checks.push({
+        metric: `Deck consistency: ${campSlide.resultLabel}`,
+        scope,
+        reportDisplay: campSlide.metrics.results,
+        csvDisplay: fmtNumber(sumAdResults),
+        status: resultsOk ? "ok" : "mismatch",
+        note: resultsOk
+          ? undefined
+          : "Campaign slide results must equal the sum of ad-set slides when all ad sets share the same objective.",
+      });
+    }
+  }
+}
+
 /** Per ad-set slide — same metrics as campaign slide checks for the report week. */
 function appendAdSetSlideChecks(params: {
   checks: CsvVerificationCheck[];
@@ -629,6 +716,14 @@ function appendAdSetSlideChecks(params: {
     currencySymbol,
     calendarComplete,
   });
+
+  appendImpressionsVolumeCheck({
+    checks,
+    scope,
+    rawRows,
+    reportImpressionsDisplay: adSlide.metrics.impressions,
+    calendarComplete,
+  });
 }
 
 export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInput): CsvVerificationResult {
@@ -655,7 +750,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   }
 
   const now = input.now ?? new Date();
-  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? DEFAULT_META_RESULT_COUNTING_MODE;
   const resolvedWeeklyForSplit =
     input.weeklyRange ??
     (reportType === "WEEKLY" ? computeWeeklyRangeOptions(filtered, now, timezone)?.last7 : undefined);
@@ -931,6 +1026,14 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         calendarComplete: weeklyCalendarComplete,
         campaignSuffix,
       });
+      appendImpressionsVolumeCheck({
+        checks,
+        scope: weeklyScope,
+        rawRows: campRaw,
+        reportImpressionsDisplay: slide.metrics.impressions,
+        calendarComplete: weeklyCalendarComplete,
+        nameSuffix: campaignSuffix,
+      });
     }
 
     for (const adSlide of report.adSetSlides) {
@@ -947,6 +1050,13 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         calendarIncompleteNote: weeklyCalendarNote,
       });
     }
+
+    appendCampaignAdSetDeckConsistencyChecks({
+      checks,
+      scope: weeklyScope,
+      currencySymbol,
+      report,
+    });
   }
 
   // ── Last 30 days (visual chart slide) ───────────────────────────────────
@@ -1127,7 +1237,7 @@ export function reconcileComparisonReportWithCsv(input: ReconcileComparisonRepor
     return { status: "skipped", checks: [] };
   }
 
-  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? DEFAULT_META_RESULT_COUNTING_MODE;
   const canAlignRef = { value: false };
   const checks: CsvVerificationCheck[] = [];
   const objectiveMap = applyCampaignObjectiveOverrides(
@@ -1214,7 +1324,7 @@ export function reconcileHistoricalReportWithCsv(input: ReconcileHistoricalRepor
     return { status: "skipped", checks: [] };
   }
 
-  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? DEFAULT_META_RESULT_COUNTING_MODE;
   const canAlignRef = { value: false };
   const checks: CsvVerificationCheck[] = [];
   let primaryLabel: string | undefined;
@@ -1301,7 +1411,7 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
     return { status: "skipped", checks: [] };
   }
 
-  const countingMode: ResultCountingMode = input.resultCountingMode ?? "standard";
+  const countingMode: ResultCountingMode = input.resultCountingMode ?? DEFAULT_META_RESULT_COUNTING_MODE;
   const canAlignRef = { value: false };
   const objectiveMap = applyCampaignObjectiveOverrides(buildCampaignObjectiveMap(rowsInRange), input.campaignObjectives);
 
