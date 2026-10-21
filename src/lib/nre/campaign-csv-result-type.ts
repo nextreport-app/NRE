@@ -20,30 +20,39 @@ export interface CampaignCsvResultTypeSummary {
 }
 
 function displayResultType(raw: string): string {
-  return raw.trim();
+  const trimmed = raw.trim();
+  if (/^actions:offsite_conversion\.custom\./i.test(trimmed)) {
+    return "website submission (custom conversion)";
+  }
+  return trimmed.replace(/^actions:/i, "");
 }
 
 /** Summarize Ads Reporting "Result type" column for one campaign's rows. */
 export function summarizeCsvResultTypesForCampaign(rows: MetricRow[]): CampaignCsvResultTypeSummary {
   const counts = new Map<string, number>();
   for (const row of rows) {
-    const rt = displayResultType(row.result_type ?? "");
+    const raw = row._raw ?? {};
+    const rt =
+      (row.result_type ?? "").trim() ||
+      String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
     if (!rt) continue;
     counts.set(rt, (counts.get(rt) ?? 0) + 1);
   }
   if (counts.size === 0) {
     return { primary: null, distinct: [], expectedResultLabel: null, entries: [] };
   }
-  const distinct = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
-  const primary = distinct[0] ?? null;
-  const entries = distinct.map((resultType) => ({
-    resultType,
-    expectedResultLabel: expectedResultLabelFromCsvResultType(resultType),
+  const distinctRaw = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
+  const primaryRaw = distinctRaw[0] ?? null;
+  const distinct = distinctRaw.map((rt) => displayResultType(rt));
+  const primary = primaryRaw ? displayResultType(primaryRaw) : null;
+  const entries = distinctRaw.map((rawType) => ({
+    resultType: displayResultType(rawType),
+    expectedResultLabel: expectedResultLabelFromCsvResultType(rawType),
   }));
   return {
     primary,
     distinct,
-    expectedResultLabel: primary ? expectedResultLabelFromCsvResultType(primary) : null,
+    expectedResultLabel: primaryRaw ? expectedResultLabelFromCsvResultType(primaryRaw) : null,
     entries,
   };
 }
@@ -57,9 +66,26 @@ export function expectedResultLabelsFromCsvSummary(summary: CampaignCsvResultTyp
   return [...labels];
 }
 
+/** Meta Campaigns-table exports use Result indicator (actions:offsite_conversion…). */
+function resultIndicatorObjectiveHint(resultType: string): string | null {
+  const core = resultType.trim().replace(/^actions:/i, "");
+  if (/offsite_conversion\.custom\./i.test(core)) {
+    return normalizeObjectiveLabel("WEBSITE LEADS");
+  }
+  if (/offsite_conversion\.fb_pixel_lead/i.test(core)) {
+    return normalizeObjectiveLabel("WEBSITE LEADS");
+  }
+  if (/offsite_conversion\.fb_pixel_submit_application/i.test(core)) {
+    return normalizeObjectiveLabel("WEBSITE LEADS");
+  }
+  return null;
+}
+
 export function expectedResultLabelFromCsvResultType(resultType: string): string | null {
   const trimmed = resultType.trim();
   if (!trimmed) return null;
+  const fromIndicator = resultIndicatorObjectiveHint(trimmed);
+  if (fromIndicator) return fromIndicator;
   const exact = resolveObjectiveFromResultType(trimmed);
   if (exact) return normalizeObjectiveLabel(exact.resultLabel);
   const fuzzy = getMetaResultLabels(trimmed);

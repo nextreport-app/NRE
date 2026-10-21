@@ -69,7 +69,7 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   date_end: ["reporting ends", "date end", "end date", "to date"],
   delivery_status: ["delivery status", "effective status", "ad set delivery", "campaign delivery"],
   purchases: ["purchases"],
-  website_leads: ["website lead"],
+  website_leads: ["website lead", "website submission"],
   meta_leads: ["meta lead"],
   leads: ["leads"],
   landing_page_views: ["landing page view", "lpv"],
