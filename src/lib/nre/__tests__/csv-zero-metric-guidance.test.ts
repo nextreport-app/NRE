@@ -4,10 +4,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildColumnMap, readRowsWithAutoMap } from "../columns";
 import {
+  combinedZeroMetricWarnings,
   csvColumnPresentButAllZero,
   csvZeroMetricWarnings,
   detectBlankCsvMetricLabels,
 } from "../csv-zero-metric-guidance";
+import { collectZeroMetricLabelsFromReport } from "../report-zero-metric-warnings";
+import { buildReportData } from "../report-data";
+import { adSetKey } from "../ad-sets";
 import { parseCsvText } from "../parse-csv";
 import { aggregateReach } from "../reach-aggregation";
 import { getRowDate } from "../columns";
@@ -70,5 +74,32 @@ describe("csv-zero-metric-guidance", () => {
       [["Camp", "2026-10-14", "10", "1", "500"]],
     );
     expect(csvColumnPresentButAllZero(colMap, rows, "reach")).toBe(false);
+  });
+
+  it("flags Reach from report preview when CSV reach column is blank", () => {
+    const { rows } = parseCsvText(readFileSync(BLANK_REACH, "utf8"));
+    const campaign = "DC - LEADS - INSTANT FORMS - Q3 - JULY2026";
+    const adSet = "DC - LEADS - INSTANT FORMS - Q3 - JULY2026";
+    const report = buildReportData({
+      accountName: "The Belle",
+      currencySymbol: "$",
+      timezone: "America/Los_Angeles",
+      monthlyBudget: null,
+      mtdDailyRows: rows,
+      now: new Date("2026-10-21T12:00:00Z"),
+      reportType: "WEEKLY",
+      selectedCampaigns: [campaign],
+      selectedAdSets: [adSetKey(campaign, adSet)],
+      weeklyRange: { startIso: "2026-10-14", endIso: "2026-10-20" },
+    });
+
+    const zeroOnSlides = collectZeroMetricLabelsFromReport(report);
+    expect(zeroOnSlides.map((l) => l.toLowerCase())).toContain("reach");
+
+    const { headers } = parseCsvText(readFileSync(BLANK_REACH, "utf8"));
+    const colMap = buildColumnMap(headers);
+    const warnings = combinedZeroMetricWarnings(colMap, rows, report, "META");
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]?.message).toMatch(/Reach/);
   });
 });

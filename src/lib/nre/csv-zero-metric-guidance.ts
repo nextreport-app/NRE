@@ -9,6 +9,8 @@ import { parseCellNum } from "./format";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
 import type { CsvDateWarning } from "./csv-date-guidance";
+import type { ReportData } from "./report-data";
+import { collectZeroMetricLabelsFromReport } from "./report-zero-metric-warnings";
 
 export type CsvZeroMetricWarning = CsvDateWarning & { kind: "missing_metric_values" | "missing_reach_values" };
 
@@ -94,9 +96,44 @@ export function detectBlankCsvMetricLabels(
 function reExportHint(platform: Platform): string {
   const manager = adsManagerName(platform);
   return (
-    `Re-export from ${manager} → Reports → Export table data with Time breakdown: Day, ` +
-    `and confirm those columns show numbers in the preview before downloading.`
+    `If that looks wrong, re-export from ${manager} → Reports → Export table data with Time breakdown: Day ` +
+    `(Reach is sometimes missing from Meta exports even when Impressions are present).`
   );
+}
+
+function uniqueSortedLabels(labels: string[]): string[] {
+  return [...new Set(labels.map((l) => l.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+export function zeroMetricWarningsForLabels(labels: string[], platform: Platform = "META"): CsvZeroMetricWarning[] {
+  const unique = uniqueSortedLabels(labels);
+  if (unique.length === 0 || platform !== "META") return [];
+
+  const list = unique.join(", ");
+
+  if (unique.length === 1 && unique[0] === "Reach") {
+    return [
+      {
+        kind: "missing_reach_values",
+        title: "Reach will show as 0 on your slides",
+        message:
+          `Your report preview has Reach at 0 while other delivery metrics have data. ${reExportHint(platform)} You can still generate and double-check before sharing with your client.`,
+        suggestedDownload: "last_30_days",
+      },
+    ];
+  }
+
+  return [
+    {
+      kind: "missing_metric_values",
+      title: unique.length === 1 ? `${unique[0]} will show as 0` : `${unique.length} metrics will show as 0`,
+      message:
+        unique.length === 1
+          ? `Your report preview shows ${unique[0]} as 0 on campaign/ad set slides while spend or delivery metrics are non-zero. ${reExportHint(platform)} Review before sharing, or generate anyway if that is expected.`
+          : `Your report preview shows these metrics as 0 on slides: ${list}. ${reExportHint(platform)} Review before sharing, or generate anyway if that is expected.`,
+      suggestedDownload: "last_30_days",
+    },
+  ];
 }
 
 export function csvZeroMetricWarnings(
@@ -104,33 +141,19 @@ export function csvZeroMetricWarnings(
   rows: NreRow[],
   platform: Platform = "META",
 ): CsvZeroMetricWarning[] {
-  const labels = detectBlankCsvMetricLabels(colMap, rows, platform);
-  if (labels.length === 0) return [];
+  return zeroMetricWarningsForLabels(detectBlankCsvMetricLabels(colMap, rows, platform), platform);
+}
 
-  if (labels.length === 1 && labels[0] === "Reach") {
-    return [
-      {
-        kind: "missing_reach_values",
-        title: "Reach is blank in this CSV",
-        message:
-          `Your file has delivery data but every Reach cell is empty, so Reach will show as 0 on slides. ${reExportHint(platform)}`,
-        suggestedDownload: "last_30_days",
-      },
-    ];
-  }
-
-  const list = labels.join(", ");
-  return [
-    {
-      kind: "missing_metric_values",
-      title: labels.length === 1 ? `${labels[0]} will show as 0` : `${labels.length} metrics will show as 0`,
-      message:
-        labels.length === 1
-          ? `Your file has delivery data but every ${labels[0]} cell is empty, so slides will show 0. ${reExportHint(platform)}`
-          : `Your file has delivery data but these columns are blank on every row: ${list}. Those metrics will show as 0 on slides until you re-export. ${reExportHint(platform)}`,
-      suggestedDownload: "last_30_days",
-    },
-  ];
+/** CSV blank columns + built report preview zeros (Generate-step source of truth). */
+export function combinedZeroMetricWarnings(
+  colMap: ColumnMap,
+  rows: NreRow[],
+  report: ReportData | null | undefined,
+  platform: Platform = "META",
+): CsvZeroMetricWarning[] {
+  const fromCsv = detectBlankCsvMetricLabels(colMap, rows, platform);
+  const fromReport = report ? collectZeroMetricLabelsFromReport(report) : [];
+  return zeroMetricWarningsForLabels([...fromCsv, ...fromReport], platform);
 }
 
 /** @deprecated Use csvColumnPresentButAllZero(colMap, rows, "reach") */
