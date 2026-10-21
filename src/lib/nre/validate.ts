@@ -14,6 +14,12 @@ import { csvHasDailyGranularity, getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
+import {
+  brokenSpendExportMessage,
+  classifyCsvSpendDelivery,
+  noDeliveryWarningMessage,
+} from "./csv-spend-delivery";
+import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
 
 export interface ValidationIssue {
   field: string;
@@ -214,6 +220,34 @@ export function validateMtdDailyCsv(
           message: `The date range spans ${Math.round(spanDays)} days. For weekly/monthly reports use a single-month export (≤${MAX_RANGE_DAYS_STANDARD} days). For May–August-style requests, choose Multi-Month Historical Report on Step 5.`,
         });
       }
+    }
+  }
+
+  if (platform === "META" && colMap.spend) {
+    const spendDelivery = classifyCsvSpendDelivery(colMap, rows, platform);
+    if (spendDelivery === "broken_export") {
+      errors.push({
+        field: "spend",
+        message: brokenSpendExportMessage(platform),
+      });
+    } else if (spendDelivery === "no_delivery") {
+      warnings.push({
+        field: "spend",
+        message: noDeliveryWarningMessage(),
+      });
+    }
+  }
+
+  if (platform === "META") {
+    const blankMetrics = detectBlankCsvMetricLabels(colMap, rows, platform);
+    if (blankMetrics.length > 0) {
+      warnings.push({
+        field: "metrics",
+        message:
+          blankMetrics.length === 1
+            ? `${blankMetrics[0]} is blank on every row while your file has delivery data — it will show as 0 on slides until you re-export from ${manager} with that column populated (Reports → Export table data, Day breakdown).`
+            : `These columns are blank on every row while your file has delivery data — they will show as 0 on slides: ${blankMetrics.join(", ")}. Re-export from ${manager} (Reports → Export table data, Day breakdown).`,
+      });
     }
   }
 
