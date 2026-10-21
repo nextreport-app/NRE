@@ -631,6 +631,37 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
   color: #78350f;
 }
 
+.nre-wizard-callout-neutral {
+  border: 1px solid rgb(100 116 139 / 0.45);
+  background-color: rgb(15 23 42 / 0.35);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.nre-wizard-callout-neutral__title {
+  color: #e2e8f0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__title {
+  color: #334155;
+}
+
+.nre-wizard-callout-neutral__body {
+  color: rgb(203 213 225 / 0.95);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__body {
+  color: #475569;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
 /* Wizard — client bar (Reporting for …) */
 .nre-wizard-client-bar {
   border-color: rgb(246 173 85 / 0.5);

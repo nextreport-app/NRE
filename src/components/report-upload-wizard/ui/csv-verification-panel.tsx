@@ -32,15 +32,21 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   if (!verification) return null;
 
   if (verification.status === "skipped") {
-    if (!verification.skipReason) return null;
+    const reason = verification.skipReason?.trim() || copy.csvSkippedDefaultReason;
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-dash-border bg-dash-bg/50 px-4 py-3">
-        <span className="mt-0.5 text-[13px] text-dash-ink-muted" aria-hidden>
-          ○
-        </span>
-        <div>
-          <p className="text-[14px] font-medium text-dash-ink-secondary">CSV check not run</p>
-          <p className="mt-0.5 text-[13px] leading-snug text-dash-ink-muted">{verification.skipReason}</p>
+      <div className="nre-wizard-callout-neutral rounded-lg px-4 py-3.5" role="status">
+        <div className="flex items-start gap-3">
+          <span
+            className="nre-wizard-callout-neutral__icon mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700/50 text-[13px] font-semibold text-slate-200"
+            aria-hidden
+          >
+            —
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="nre-wizard-callout-neutral__title text-[14px] font-medium">{copy.csvSkippedTitle}</p>
+            <p className="nre-wizard-callout-neutral__body mt-1 text-[13px] leading-snug">{copy.csvSkippedLead}</p>
+            <p className="nre-wizard-callout-neutral__body mt-2 text-[13px] leading-snug">{reason}</p>
+          </div>
         </div>
       </div>
     );

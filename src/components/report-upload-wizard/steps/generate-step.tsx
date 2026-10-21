@@ -77,6 +77,7 @@ export function WizardGenerateStep() {
     handleGenerateStepPrimary,
     handleGenerateAnother,
     generatedWithCsvMismatch,
+    generatedWithCsvVerifySkipped,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
     clientTimezone,
@@ -201,6 +202,7 @@ export function WizardGenerateStep() {
           clientName={clientName}
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
+          generatedWithCsvVerifySkipped={generatedWithCsvVerifySkipped}
           reportId={reportId}
           reportTitle={defaultReportTitleFor(reportType)}
           reportType={reportType}
