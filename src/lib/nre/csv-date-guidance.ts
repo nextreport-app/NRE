@@ -23,7 +23,9 @@ export type CsvDateWarningKind =
   | "missing_month_start"
   | "early_month_last30"
   /** Default weekly period spans days before the account had any delivery. */
-  | "weekly_period_partial";
+  | "weekly_period_partial"
+  /** Reach header present but every row's reach cell is blank while impressions exist. */
+  | "missing_reach_values";
 
 export interface CsvDateWarning {
   kind: CsvDateWarningKind;

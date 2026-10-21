@@ -6,6 +6,7 @@ import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
+import { missingReachValuesWarning } from "@/lib/nre/csv-reach-guidance";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
@@ -127,6 +128,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
     const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone);
+    const reachWarning = missingReachValuesWarning(mtdParsed.colMap, mtdParsed.rows, platform);
+    if (reachWarning) {
+      csvDateGuidance.warnings.unshift(reachWarning);
+    }
 
     const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns);
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;

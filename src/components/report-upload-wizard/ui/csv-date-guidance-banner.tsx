@@ -14,7 +14,10 @@ export function CsvDateGuidanceBanner({
   const warning = guidance.warnings[0];
   if (!warning) return null;
 
-  const isExportGap = warning.kind === "missing_month_start" || warning.kind === "first_of_month";
+  const isExportGap =
+    warning.kind === "missing_month_start" ||
+    warning.kind === "first_of_month" ||
+    warning.kind === "missing_reach_values";
   const borderClass = isExportGap
     ? "border-[#f6ad55]/50 border-l-[#f6ad55]"
     : "border-dash-accent/40 border-l-dash-accent";

@@ -14,6 +14,7 @@ import { getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
+import { csvReachColumnPresentButEmpty } from "./csv-reach-guidance";
 
 export interface ValidationIssue {
   field: string;
@@ -213,6 +214,14 @@ export function validateMtdDailyCsv(
         });
       }
     }
+  }
+
+  if (platform === "META" && csvReachColumnPresentButEmpty(colMap, rows)) {
+    warnings.push({
+      field: "reach",
+      message:
+        `Reach column is present but every row is blank while Impressions has data — Reach will show as 0 until you re-export with populated Reach values from ${manager} (Reports → Export table data, Day breakdown).`,
+    });
   }
 
   return { valid: errors.length === 0, errors, warnings, noCampaignData: noUsableDatedRows };
