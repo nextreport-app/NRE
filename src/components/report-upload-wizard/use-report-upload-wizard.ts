@@ -88,18 +88,6 @@ import {
 } from "./platform-storage";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 import {
-  buildWizardGenerateBaseline,
-  evaluateHappyPathEligibility,
-  metricsMatchBaseline,
-  selectionFromBaseline,
-  type WizardGenerateBaseline,
-} from "@/lib/nre/wizard-generate-baseline";
-import {
-  hydrateGenerateBaseline,
-  persistGenerateBaselineToServer,
-  readGenerateBaselineForHappyPath,
-} from "./wizard-baseline-sync";
-import {
   clearWizardDraft,
   isWizardServerDraftExpired,
   loadWizardDraft,
@@ -157,7 +145,6 @@ export function useReportUploadWizard({
   // navigating back to it and forward again).
   const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(() => new Set([1]));
   const stepRef = useRef<Step>(1);
-  const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
   /** User confirmed objectives (metrics continue or happy-path restore) — preview/generate use full objective map. */
   const [objectivesLockedForReport, setObjectivesLockedForReport] = useState(false);
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
@@ -185,7 +172,6 @@ export function useReportUploadWizard({
   function setStep(s: Step) {
     const current = stepRef.current;
     if (s < current) invalidateDownstreamFromStep(s);
-    if (s < 4) setHappyPathSkippedSteps(false);
     stepRef.current = s;
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
@@ -530,7 +516,6 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
-    void hydrateGenerateBaseline(clientId);
     const prefs = readClientWizardPreferences(clientId);
     if (prefs) {
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
@@ -584,7 +569,6 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
-    setHappyPathSkippedSteps(false);
     if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
@@ -1640,140 +1624,16 @@ export function useReportUploadWizard({
     };
   }
 
-  function applyBaselineObjectivesAfterFetch(baseline: WizardGenerateBaseline) {
-    const nextObjectives = new Map<string, ObjectiveInfo>();
-    for (const [name, info] of baseline.campaignObjectives) {
-      const option =
-        OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
-        objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
-      nextObjectives.set(name, option);
-    }
-    setCampaignObjectives(nextObjectives);
-    setTouchedObjectiveCampaigns(new Set(baseline.touchedObjectiveCampaigns));
-    setCampaignRequiresConfirmation((prev) => {
-      const next = new Map(prev);
-      for (const name of baseline.touchedObjectiveCampaigns) {
-        next.delete(name);
-      }
-      return next;
-    });
-    setCampaignObjectiveConfidence((prev) => {
-      const next = new Map(prev);
-      for (const name of baseline.touchedObjectiveCampaigns) {
-        next.delete(name);
-      }
-      return next;
-    });
-    setPerCampaignMetrics((prev) => {
-      const merged = new Map(prev);
-      for (const entry of baseline.perCampaignMetrics) {
-        merged.set(
-          entry.normalized,
-          entry.metrics.map((m) => ({ ...m })) as SelectedMetric[],
-        );
-      }
-      return merged;
-    });
-  }
-
-  /**
-   * After a successful analyze, optionally restore last generate settings and jump to step 4.
-   * Falls back to campaigns step when anything differs or objectives still need confirmation.
-   */
+  /** After a successful analyze, always continue to campaign selection. */
   async function dispatchAfterAnalyze(
-    analyzeJson: {
+    _analyzeJson: {
       campaigns?: string[];
       headers?: string[];
       adSetGroups?: AdSetGroup[];
     },
-    adsPlatform: "META" | "GOOGLE" | "TIKTOK",
+    _adsPlatform: "META" | "GOOGLE" | "TIKTOK",
   ) {
-    setHappyPathSkippedSteps(false);
-    const baseline = readGenerateBaselineForHappyPath(clientId);
-    const campaignList: string[] = analyzeJson.campaigns || [];
-    const headers: string[] = Array.isArray(analyzeJson.headers) ? analyzeJson.headers : [];
-    const groups: AdSetGroup[] = analyzeJson.adSetGroups || [];
-    const validCampaigns = new Set(campaignList);
-    const validAdSetKeys = new Set(
-      groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
-    );
-
-    const eligibility = evaluateHappyPathEligibility({
-      baseline,
-      platform: adsPlatform,
-      reportType,
-      dateMode,
-      customStart,
-      customEnd,
-      includePreviousMonthComparison,
-      showBudgetOnCover,
-      dataSourceMode,
-      isApiSyncArtifact: isApiSyncArtifact(mtdFile),
-      apiSyncHybridImport,
-      csvHeaders: headers,
-      campaignNames: campaignList,
-      validCampaigns,
-      validAdSetKeys,
-    });
-
-    if (!eligibility.ok || !baseline) {
-      setStep(2);
-      return;
-    }
-
-    const applied = selectionFromBaseline(baseline, validCampaigns, validAdSetKeys);
-    setSelectedCampaigns(new Set(applied.selectedCampaigns));
-    setSelectedAdSets(new Set(applied.selectedAdSets));
-    setPerCampaignMetrics(applied.perCampaignMetrics);
-    setCampaignObjectives(
-      new Map(
-        applied.campaignObjectives.entries().map(([name, info]) => {
-          const option =
-            OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
-            objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
-          return [name, option] as const;
-        }),
-      ),
-    );
-    setTouchedObjectiveCampaigns(applied.touchedObjectiveCampaigns);
-
-    const selectionKey = [...applied.selectedCampaigns].sort().join("\0");
-    metricsFetchedKeyRef.current = null;
-    setMetricsFetchedForSelection(null);
-    const metricsResult = await fetchObjectivesAndMetrics(selectionKey, {
-      selectedCampaignsOverride: applied.selectedCampaigns,
-      skipResetTouched: true,
-      platformOverride: adsPlatform,
-    });
-    if (!metricsResult.ok) {
-      setStep(2);
-      return;
-    }
-
-    const fetchedMetrics = metricsResult.perCampaignSelection ?? {};
-    if (!metricsMatchBaseline(baseline, applied.selectedCampaigns, fetchedMetrics)) {
-      setStep(2);
-      return;
-    }
-
-    const stillBlocking = applied.selectedCampaigns.some((name) => {
-      const normalized = normalizeCampaignName(name);
-      return (
-        metricsResult.requiresConfirmation?.get(normalized) === true &&
-        !applied.touchedObjectiveCampaigns.has(normalized)
-      );
-    });
-    if (stillBlocking) {
-      setStep(2);
-      return;
-    }
-
-    applyBaselineObjectivesAfterFetch(baseline);
-    setObjectivesLockedForReport(true);
-
-    setHappyPathSkippedSteps(true);
-    setStep(4);
-    showToast("Using your last report setup — review dates below, then generate.");
+    setStep(2);
   }
 
   function selectedCampaignsKey(): string {
@@ -1924,10 +1784,10 @@ export function useReportUploadWizard({
    */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
     if (campaignObjectives.size === 0) return undefined;
-    // After metrics continue (or happy-path restore), every objective shown in
+    // After metrics continue, every objective shown in
     // the wizard is what preview verification and generate must use — matches
     // the /metrics step and avoids engine re-detection drift on first-time clients.
-    if (objectivesLockedForReport || happyPathSkippedSteps) {
+    if (objectivesLockedForReport) {
       const out: Record<string, { resultLabel: string; costLabel: string }> = {};
       for (const [name, info] of campaignObjectives) {
         out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
@@ -2478,39 +2338,6 @@ export function useReportUploadWizard({
       { publishedAt: null },
     );
 
-    if (dataSourceMode === "csv" && !isApiSyncArtifact(mtdFile) && !apiSyncHybridImport) {
-      const objectiveSnapshot = new Map<string, { key: string; resultLabel: string; costLabel: string }>();
-      for (const [name, info] of campaignObjectives) {
-        objectiveSnapshot.set(name, {
-          key: info.key,
-          resultLabel: info.resultLabel,
-          costLabel: info.costLabel,
-        });
-      }
-      const touchedForBaseline = new Set<string>([
-        ...touchedObjectiveCampaigns,
-        ...objectiveSnapshot.keys(),
-      ]);
-      const baseline = buildWizardGenerateBaseline({
-        platform,
-        reportType,
-        dateMode,
-        customStart,
-        customEnd,
-        includePreviousMonthComparison,
-        showBudgetOnCover,
-        csvHeaders,
-        campaignNames: campaigns,
-        selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
-        perCampaignMetrics,
-        campaignObjectives: objectiveSnapshot,
-        touchedObjectiveCampaigns: touchedForBaseline,
-      });
-      if (baseline) {
-        void persistGenerateBaselineToServer(clientId, baseline);
-      }
-    }
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -3222,7 +3049,6 @@ export function useReportUploadWizard({
     reportPeriodConfirmationLine,
     reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
-    happyPathSkippedSteps,
     wizardLeaveGuardActive,
     pendingLeaveHref,
     requestWizardLeave,
