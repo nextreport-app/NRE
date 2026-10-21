@@ -10,7 +10,7 @@
  */
 
 import type { ColumnMap, NreRow } from "./columns";
-import { getRowDate, hasRealRowDate } from "./columns";
+import { csvHasDailyGranularity, getRowDate, hasRealRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
@@ -118,17 +118,13 @@ export function validateMtdDailyCsv(
       field: "date",
       message: 'No date column found (expected a "Day", "Date", or "Reporting starts/ends" column).',
     });
-  } else if (!rows.some(hasRealRowDate)) {
-    // A date column exists (colMap.date_start/date_end matched "Reporting
-    // starts"/"Reporting ends"), but no row has a real per-row "Day"/"Date"
-    // value — every row would fall back to the SAME file-wide start date
-    // (see columns.ts's getRowDate), which is what a weekly- or monthly-
-    // granularity Meta export looks like, not a daily one. Caught here,
-    // before it ever reaches the weekly/MTD splitting logic downstream,
-    // which would otherwise silently produce a garbage or empty report.
+  } else if (!csvHasDailyGranularity(rows)) {
+    // No per-row Day/Date and no equal Reporting starts/ends pairs (Campaigns
+    // table + Breakdown: Day uses the latter). File-wide reporting ranges
+    // only → weekly/monthly-style totals.
     errors.push({
       field: "date_granularity",
-      message: `Your CSV appears to use weekly or monthly totals instead of daily data. Re-export from ${manager} → Reports → Export table data with Time breakdown: Day (the Campaigns-screen export cannot include daily rows).`,
+      message: `Your CSV looks like weekly or monthly totals, not daily rows. Re-export with day-level data: ${manager} → Reports → Export table data (Time breakdown: Day), or Campaigns → filter rows → Breakdown: Day → export.`,
     });
   }
   if (!colMap.results) {
