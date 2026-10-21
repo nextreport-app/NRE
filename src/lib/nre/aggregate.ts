@@ -17,6 +17,7 @@
  */
 
 import { combinedCtrCpcFromRows } from "./ctr-cpc";
+import { metaFormLeadsFromMetaExportRow } from "./meta-csv-export-counting";
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
 import {
@@ -38,10 +39,7 @@ function sumWebsiteLeadsFromRows(rows: NreRow[]): number {
 }
 
 function sumMetaFormLeadsFromRows(rows: MetricRow[]): number {
-  return rows.reduce(
-    (sum, row) => sum + (parseCellNum(row.results) || parseCellNum(row.leads) || parseCellNum(row.meta_leads)),
-    0,
-  );
+  return rows.reduce((sum, row) => sum + metaFormLeadsFromMetaExportRow(row), 0);
 }
 
 export interface AggRow {
@@ -282,6 +280,12 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         case "VIDEO VIEWS":
           actualResults = resolution.source === "priority1" ? g.thruplays : g.results;
           break;
+        case "LANDING PAGE VIEWS":
+          actualResults = g.landing_page_views;
+          break;
+        case "LINK CLICKS":
+          actualResults = g.link_clicks;
+          break;
         default:
           actualResults = g.results;
       }
@@ -294,8 +298,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       objectiveConfident = false;
       switch (resolution.resultLabel) {
         case "META FORM LEADS":
-          actualResults = g.meta_leads;
-          actualCpr = g.spend / g.meta_leads;
+          actualResults = sumMetaFormLeadsFromRows(g.sourceRows);
+          actualCpr = actualResults > 0 ? g.spend / actualResults : 0;
           break;
         case "LANDING PAGE VIEWS":
           actualResults = g.landing_page_views;

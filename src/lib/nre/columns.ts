@@ -60,7 +60,8 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   ctr: ["ctr", "click-through rate", "click through rate"],
   cpc: ["cpc", "cost per click", "cost per link click"],
   cpr: ["cost per result", "cost per conversion", "cost per lead", "cpl", "cpa"],
-  link_clicks: ["link clicks", "clicks (all)", "clicks (link)"],
+  // Never map "Clicks (all)" here — that is all click types, not link clicks.
+  link_clicks: ["link clicks", "clicks (link)"],
   frequency: ["frequency", "ad frequency", "avg. frequency"],
   date_start: ["reporting starts", "date start", "start date", "from date"],
   date_end: ["reporting ends", "date end", "end date", "to date"],
@@ -78,6 +79,9 @@ function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords
   if (!keywords.some((kw) => headerLower.includes(kw))) return false;
   // Generic "leads" must not steal "Website leads" / "Meta leads" headers.
   if (metric === "leads" && (headerLower.includes("website") || headerLower.includes("meta"))) {
+    return false;
+  }
+  if (metric === "link_clicks" && (headerLower.includes("(all)") || headerLower === "clicks (all)")) {
     return false;
   }
   return true;

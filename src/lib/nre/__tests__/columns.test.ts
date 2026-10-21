@@ -70,6 +70,11 @@ describe("buildColumnMap — spend detection (regression)", () => {
     const headers = ["CTR (all)", "CPC (cost per link click)", "CPC (all)", "Link clicks"];
     expect(buildColumnMap(headers).cpc).toBe("CPC (all)");
   });
+
+  it("maps link_clicks to Link clicks, never Clicks (all)", () => {
+    const headers = ["Link clicks", "Clicks (all)", "CTR (all)"];
+    expect(buildColumnMap(headers).link_clicks).toBe("Link clicks");
+  });
 });
 
 describe("buildColumnMap — lead column disambiguation (regression)", () => {

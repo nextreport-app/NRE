@@ -35,6 +35,12 @@ describe("campaign-name-heuristics", () => {
     expect(isWebsiteLeadsCampaignHaystack("new leads campaign")).toBe(false);
   });
 
+  it("Meta Leads Campaign naming is meta form, not website leads", () => {
+    const haystack = campaignNameHaystack("Meta Leads Campaign", "");
+    expect(isMetaFormLeadsCampaignHaystack(haystack)).toBe(true);
+    expect(isWebsiteLeadsCampaignHaystack(haystack)).toBe(false);
+  });
+
   it("Form Leads campaign naming is meta form, not generic website leads", () => {
     const haystack = campaignNameHaystack("Form Leads Campaign", "Set 1");
     expect(isMetaFormLeadsCampaignHaystack(haystack)).toBe(true);

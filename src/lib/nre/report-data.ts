@@ -1146,7 +1146,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     adNameColumn: adNameColumnInput,
     creativeOnly = false,
     platform: platformInput,
-    alignResultsWithCsvExport = false,
+    alignResultsWithCsvExport = true,
     metaCampaignPeriodReach,
   } = input;
   const platform = platformInput ?? "META";
@@ -1980,17 +1980,17 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const rowSpend = parseCellNum(row.spend);
     const rowReach = parseCellNum(row.reach);
     const rowImpr = parseCellNum(row.impressions);
-    const rowCtr = parseCellNum(row.ctr);
-    const rowCpc = parseCellNum(row.cpc);
+    const blendSource = adSetRaw.length > 0 ? adSetRaw : [row];
+    const { ctr: blendedCtr, cpc: blendedCpc } = combinedCtrCpcFromRows(blendSource);
 
     const metrics: SlideMetrics = {
       spend: fmtCurrency(rowSpend, currencySymbol),
       reach: fmtNumber(rowReach),
       impressions: fmtNumber(rowImpr),
       results: resultValue,
-      ctr: rowCtr > 0 ? fmtPercent(rowCtr) : "—",
+      ctr: blendedCtr > 0 ? fmtPercent(blendedCtr) : "—",
       cpr: cprValue,
-      cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
+      cpc: blendedCpc > 0 ? fmtCurrency2dp(blendedCpc, currencySymbol) : "—",
     };
 
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(

@@ -180,9 +180,9 @@ export function resolveIncludePreviousMonthComparison(formData: FormData | null)
   return parseBooleanFormField(formData, "includePreviousMonthComparison") ?? false;
 }
 
-/** When true, result totals use Meta export column rules (CSV verification align). */
+/** When true, result totals use Meta export column rules (CSV verification align). Defaults true. */
 export function resolveCsvAlignResults(formData: FormData | null): boolean {
-  return parseBooleanFormField(formData, "csvAlignResults") ?? false;
+  return parseBooleanFormField(formData, "csvAlignResults") ?? true;
 }
 
 /** Parses a FormData field expected to hold a JSON-encoded value, returning `undefined` if absent/blank/invalid. */
