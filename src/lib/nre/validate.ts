@@ -130,7 +130,13 @@ export function validateMtdDailyCsv(
     errors.push({
       field: "results",
       message:
-        "Your CSV is missing the Result Type column. Without it NextReport cannot detect your campaign objective. Please add Result Type and Results to your columns and re-download. See our Download Guide for the recommended column list.",
+        "Your CSV is missing the Results column. Without it NextReport cannot build result counts. Please add Results (and Result Type when available) and re-download. See our Download Guide for the recommended column list.",
+    });
+  } else if (platform === "META" && !colMap.result_type && csvHasDailyGranularity(rows)) {
+    warnings.push({
+      field: "result_type",
+      message:
+        "No Result Type column (common on Campaigns-table exports). Confirm each campaign's objective on the Metrics step — use Website submission / Meta leads columns if you added them.",
     });
   }
 
