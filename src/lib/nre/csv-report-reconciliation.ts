@@ -518,7 +518,7 @@ function adSetSlideScope(parentScope: string, adSetName: string): string {
   return `${parentScope} · Ad set: ${short}`;
 }
 
-function filterWeeklyRawForAdSet(rawRows: MetricRow[], campaignName: string, adSetName: string): MetricRow[] {
+function filterWeeklyRawForAdSet(rawRows: NreRow[], campaignName: string, adSetName: string): NreRow[] {
   const want = adSetKey(campaignName.trim(), adSetName.trim());
   return rawRows.filter((r) => adSetKey(String(r.campaign_name ?? "").trim(), String(r.ad_set_name ?? "").trim()) === want);
 }
@@ -529,7 +529,7 @@ function appendAdSetSlideChecks(params: {
   parentScope: string;
   currencySymbol: string;
   adSlide: ReportData["adSetSlides"][number];
-  rawRows: MetricRow[];
+  rawRows: NreRow[];
   objectiveMap: Map<string, ResultLabels>;
   countingMode: ResultCountingMode;
   calendarComplete?: boolean;
@@ -585,7 +585,7 @@ function appendAdSetSlideChecks(params: {
 
     if (shouldVerifyCostPerResult(adSlide.costLabel, adSlide.resultLabel) && (reportResults > 0 || csvResults > 0)) {
       const attributedSpend = attributedSpendForLabelFromRawDailyRows(
-        rawRows as NreRow[],
+        rawRows,
         objectiveMap,
         adSlide.resultLabel,
         countingMode,
@@ -934,7 +934,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     }
 
     for (const adSlide of report.adSetSlides) {
-      const adRaw = filterWeeklyRawForAdSet(weeklyRawRows as MetricRow[], adSlide.campaignName, adSlide.adSetName);
+      const adRaw = filterWeeklyRawForAdSet(weeklyRawRows, adSlide.campaignName, adSlide.adSetName);
       appendAdSetSlideChecks({
         checks,
         parentScope: weeklyScope,
