@@ -64,7 +64,7 @@ export default async function Home() {
         <SampleReportSection />
         <TestimonialsSection />
         <LeadCaptureSection />
-        <PricingTeaserStrip loggedIn={loggedIn} />
+        <PricingTeaserStrip />
         <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>
