@@ -54,7 +54,8 @@ function ForgotPasswordForm() {
             (expires in 1 hour). You can set or change your password even if you originally signed up with Google.
           </p>
           <p className="text-ink-muted">
-            Prefer Google sign-in? Use <strong className="text-ink-secondary">Continue with Google</strong> on the login page — your
+            Prefer Google sign-in when it&apos;s enabled? Use{" "}
+            <strong className="text-ink-secondary">Continue with Google</strong> on the login page — your
             password is optional in that case.
           </p>
           <Link href="/login" className="inline-block text-sm font-medium text-accent hover:underline">
