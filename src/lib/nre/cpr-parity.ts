@@ -37,6 +37,7 @@ export function assertCampaignSlideCprParity(slide: CampaignSlideData): void {
   }
 }
 
+/** MTD / Combined Total column CPR must match spendBasis ÷ column results (defaults to row spend for single-objective decks). */
 export function assertMtdResultColumnCprParity(
   mtdRow: TableRowData,
   resultLabel: string,
@@ -47,14 +48,22 @@ export function assertMtdResultColumnCprParity(
   const results = parseCellNum(col.value);
   if (results <= 0) return;
   if (resultLabel === "REACH") return;
-  const spend = spendBasis ?? parseCellNum(mtdRow.spend);
   const cpr = parseCprFromDisplay(col.cprValue);
+  const spend = spendBasis ?? parseCellNum(mtdRow.spend);
   const expected = impliedCpr(spend, results);
   if (!cprCloseEnough(cpr, expected)) {
     throw new Error(
       `MTD ${resultLabel}: ${col.cprValue} ≠ spend ÷ results (${spend}/${results} ≈ ${expected.toFixed(2)})`,
     );
   }
+}
+
+/** Every printed CPR on campaign slides and Last-30 chart bars must match spend ÷ results on that surface. */
+export function assertFullReportCprParity(report: ReportData): void {
+  for (const slide of report.campaignSlides) {
+    assertCampaignSlideCprParity(slide);
+  }
+  assertChartCampaignCprParity(report);
 }
 
 /** Last-30 chart campaign bars: CPR must match bar spend ÷ bar results. */

@@ -53,6 +53,7 @@ import {
   getMonthAbbrName,
   parseDate,
 } from "./dates";
+import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth } from "./health";
 import {
@@ -2313,31 +2314,19 @@ function comparisonObjectiveTotals(
   reachOpts?: ReachAggregationOptions,
 ): { count: number; cpr: number } {
   let count = 0;
-  let totalSpend = 0;
-  let totalReach = 0;
-  let campaignReachAdded = false;
   rows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, rows)) {
-      totalSpend += parseCellNum(row.spend);
-      if (!campaignReachAdded) {
-        totalReach = aggregateReach(rows, reachOpts);
-        campaignReachAdded = true;
-      }
-    }
   });
-  // Same uncounted-Reach special case as buildResultGroups/
-  // getGroupedResultDisplayForObjective: a real Reach objective rarely
-  // populates a `results` count, so its cost is derived from spend/reach
-  // (×1000) instead of spend/count.
+  const periodSpend = sumAllRowSpendInPeriod(rows);
+  const totalReach = rows.length > 0 ? aggregateReach(rows, reachOpts) : 0;
   const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
   const cpr = isUncountedReach
     ? totalReach > 0
-      ? (totalSpend * 1000) / totalReach
+      ? (periodSpend * 1000) / totalReach
       : 0
     : count > 0
-      ? totalSpend / count
+      ? periodSpend / count
       : 0;
   return { count, cpr };
 }
