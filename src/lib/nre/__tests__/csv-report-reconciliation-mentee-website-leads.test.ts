@@ -26,7 +26,7 @@ describe("CSV verification — Mentee website leads", () => {
       weeklyRange,
       reportType: "WEEKLY",
       now: NOW,
-      campaignObjectiveOverrides: { [CAMPAIGN]: OBJECTIVE },
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
     });
 
     const verification = reconcileStandardReportWithCsv({
@@ -59,7 +59,7 @@ describe("CSV verification — Mentee website leads", () => {
       weeklyRange,
       reportType: "WEEKLY",
       now: NOW,
-      campaignObjectiveOverrides: { [CAMPAIGN]: OBJECTIVE },
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
     });
 
     expect(report.chart).not.toBeNull();

@@ -1512,9 +1512,11 @@ export function shouldAttributeSpendForObjective(
   if (ownLabel === label) {
     // Campaign name can pin a row to WEBSITE LEADS while the row only has LPV
     // delivery (secondary ad set). Do not roll that spend into the lead bucket.
+    // Use rowHasDailyDate (not hasRealRowDate) so Campaigns-table Reporting
+    // starts/ends rows still count off-day spend toward CPL.
     if (
       (label === "WEBSITE LEADS" || label === "META FORM LEADS") &&
-      !hasRealRowDate(row) &&
+      !rowHasDailyDate(row) &&
       parseCellNum(row.landing_page_views) > 0 &&
       resultValueForObjective(row, label) === 0
     ) {

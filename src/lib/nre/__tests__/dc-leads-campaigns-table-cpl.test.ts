@@ -51,7 +51,7 @@ describe("DC Leads Campaigns-table CSV — CPL uses total spend ÷ Results (not 
       mtdDailyRows: rows,
       selectedCampaigns: [CAMPAIGN],
       now: NOW,
-      campaignObjectiveOverrides: { [CAMPAIGN]: OBJECTIVE },
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
     });
     const octRows = campRows.filter((r) => getRowDate(r).startsWith("2026-10"));
     const expected = blendedCpl(octRows);
@@ -71,7 +71,7 @@ describe("DC Leads Campaigns-table CSV — CPL uses total spend ÷ Results (not 
       mtdDailyRows: rows,
       selectedCampaigns: [CAMPAIGN],
       now: NOW,
-      campaignObjectiveOverrides: { [CAMPAIGN]: OBJECTIVE },
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
     });
     expect(report.chart).toBeTruthy();
     const bar = report.chart!.campaigns.find((c) => c.name === CAMPAIGN);
