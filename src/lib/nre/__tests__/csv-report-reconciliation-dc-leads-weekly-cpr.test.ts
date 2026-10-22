@@ -30,7 +30,7 @@ describe("CSV verification — DC Leads weekly CPR (Campaigns table export)", ()
       weeklyRange,
       reportType: "WEEKLY",
       now: NOW,
-      campaignObjectiveOverrides: { [CAMPAIGN]: OBJECTIVE },
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
     });
 
     const verification = reconcileStandardReportWithCsv({
