@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import authConfig from "@/lib/auth.config";
+import { isCronBearerAuthorized, isInternalWorkerPath } from "@/lib/internal-cron-auth";
 
 const PUBLIC_PATHS = [
   "/",
@@ -35,6 +36,13 @@ export default auth((req) => {
   // Crawlers must receive XML/text — never redirect sitemap or robots to login.
   if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
     return NextResponse.next();
+  }
+
+  // Vercel cron + internal report worker — Bearer CRON_SECRET, not a session cookie.
+  // Must pass through before the login redirect or workers receive HTML and never run.
+  if (isInternalWorkerPath(pathname)) {
+    if (isCronBearerAuthorized(req)) return NextResponse.next();
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const isPublic =
