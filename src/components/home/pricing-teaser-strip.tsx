@@ -19,7 +19,7 @@ export function PricingTeaserStrip() {
 
   return (
     <section
-      className="border-y border-navy-border bg-navy-panel/60 px-4 py-8 sm:px-6 sm:py-10"
+      className="nre-keep-dark-surface border-y border-navy-border bg-navy-panel px-4 py-8 sm:px-6 sm:py-10"
       aria-labelledby="pricing-teaser-heading"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -27,11 +27,11 @@ export function PricingTeaserStrip() {
           <h2 id="pricing-teaser-heading" className="text-xl font-semibold text-white sm:text-2xl">
             {marketing.pricingTitle}
           </h2>
-          <p className="mt-1.5 text-sm text-ink-muted">{marketing.pricingSubtitle}</p>
+          <p className="mt-1.5 text-sm text-ink-secondary">{marketing.pricingSubtitle}</p>
         </div>
 
         <div className="flex flex-col items-center gap-5 lg:items-end">
-          <p className="text-center text-sm text-ink-secondary lg:text-right">
+          <p className="text-center text-sm text-ink-secondary lg:text-right [&_span]:text-white">
             <span className="font-medium text-white">{getPlanDisplayName("starter")}</span>
             {" from "}
             <span className="font-semibold text-white">
