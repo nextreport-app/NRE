@@ -23,7 +23,7 @@ import { TrustAndSocialProofStrip } from "@/components/home/trust-and-social-pro
 import { ReportPreviewSection } from "@/components/home/report-preview-section";
 import { SampleReportSection } from "@/components/home/sample-report-section";
 import { LeadCaptureSection } from "@/components/home/lead-capture-section";
-import { PricingCtaSection } from "@/components/home/pricing-cta-section";
+import { PricingTeaserStrip } from "@/components/home/pricing-teaser-strip";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
 import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-savings-section";
@@ -64,7 +64,7 @@ export default async function Home() {
         <SampleReportSection />
         <TestimonialsSection />
         <LeadCaptureSection />
-        <PricingCtaSection loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
+        <PricingTeaserStrip loggedIn={loggedIn} />
         <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>
