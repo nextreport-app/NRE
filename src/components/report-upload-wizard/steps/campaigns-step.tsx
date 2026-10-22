@@ -11,6 +11,7 @@ import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
+import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
@@ -83,6 +84,7 @@ export function WizardCampaignsStep() {
     LOW_SPEND_CAMPAIGN_THRESHOLD,
     OBJECTIVE_DROPDOWN_OPTIONS,
     adSetGroups,
+    metaCsvExportProfile,
     campaignCsvResultTypes,
     campaignObjectiveConfidence,
     campaignObjectives,
@@ -145,6 +147,12 @@ export function WizardCampaignsStep() {
             setStep(1);
           }}
         />
+      ) : null}
+
+      {metaCsvExportProfile?.kind === "campaigns_table" ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[14px] text-amber-200">
+          {META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT}
+        </p>
       ) : null}
 
       <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-3">

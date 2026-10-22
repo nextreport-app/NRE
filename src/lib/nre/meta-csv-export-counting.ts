@@ -24,17 +24,39 @@ export function metaFormLeadsFromMetaExportRow(
   return parseCellNum(row.meta_leads) || parseCellNum(row.leads) || 0;
 }
 
+function websiteSubmissionColumnValue(
+  row: Pick<MetricRow, "website_leads" | "_raw">,
+): number {
+  const mapped = parseCellNum(row.website_leads);
+  if (mapped > 0) return mapped;
+  const raw = row._raw ?? {};
+  return parseCellNum(raw["website submission"] ?? raw["Website submission"]);
+}
+
+function campaignsTableLeadSignal(row: Pick<MetricRow, "result_type" | "_raw">): boolean {
+  const rt = (row.result_type || "").trim();
+  if (rt && getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return true;
+  const raw = row._raw ?? {};
+  const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+  if (!indicator) return false;
+  const core = indicator.replace(/^actions:/i, "");
+  return /offsite_conversion\.(custom\.|fb_pixel_lead|fb_pixel_submit)/i.test(core);
+}
+
 /** Ads Manager period totals: Results for the row's Result type; ignore orphan Website leads. */
 export function websiteLeadsFromMetaExportRow(
-  row: Pick<MetricRow, "results" | "website_leads" | "result_type">,
+  row: Pick<MetricRow, "results" | "website_leads" | "result_type" | "_raw">,
 ): number {
   const results = parseCellNum(row.results);
   if (results > 0) return results;
-  const wl = parseCellNum(row.website_leads);
+  const wl = websiteSubmissionColumnValue(row);
   if (wl <= 0) return 0;
   const rt = (row.result_type || "").trim();
-  if (!rt) return 0;
-  if (getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+  if (rt) {
+    if (getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+    return 0;
+  }
+  if (campaignsTableLeadSignal(row)) return wl;
   return 0;
 }
 

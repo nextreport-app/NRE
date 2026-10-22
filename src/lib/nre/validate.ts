@@ -20,6 +20,14 @@ import {
   noDeliveryWarningMessage,
 } from "./csv-spend-delivery";
 import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
+import {
+  detectMetaCsvExportProfile,
+  enrichMetaCampaignsTableRows,
+  metaCsvExportImportHint,
+  type MetaCsvExportProfile,
+} from "./meta-csv-export-profile";
+
+export type { MetaCsvExportProfile };
 
 export interface ValidationIssue {
   field: string;
@@ -44,6 +52,8 @@ export interface ValidationResult {
    * case on its own terms further downstream in report-data.ts).
    */
   noCampaignData: boolean;
+  /** Set for Meta uploads — Ads Reporting vs Campaigns-screen CSV shape. */
+  metaCsvExportProfile?: MetaCsvExportProfile;
 }
 
 const MAX_RANGE_DAYS_STANDARD = 90;
@@ -100,6 +110,15 @@ export function validateMtdDailyCsv(
     platform === "GOOGLE" ? "Cost" : platform === "TIKTOK" ? "Cost or Amount spent" : "Amount Spent";
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
+  let metaCsvExportProfile: MetaCsvExportProfile | undefined;
+  if (platform === "META" && rows.length > 0) {
+    metaCsvExportProfile = detectMetaCsvExportProfile(colMap, rows, headers);
+    enrichMetaCampaignsTableRows(rows, metaCsvExportProfile);
+    const importHint = metaCsvExportImportHint(metaCsvExportProfile);
+    if (importHint) {
+      warnings.push({ field: "meta_csv_export", message: importHint });
+    }
+  }
 
   if (!colMap.campaign_name) {
     errors.push({
@@ -138,11 +157,15 @@ export function validateMtdDailyCsv(
       message:
         "Your CSV is missing the Results column. Without it NextReport cannot build result counts. Please add Results (and Result Type when available) and re-download. See our Download Guide for the recommended column list.",
     });
-  } else if (platform === "META" && !colMap.result_type && csvHasDailyGranularity(rows)) {
+  } else if (
+    platform === "META" &&
+    !colMap.result_type &&
+    csvHasDailyGranularity(rows) &&
+    metaCsvExportProfile?.kind !== "campaigns_table"
+  ) {
     warnings.push({
       field: "result_type",
-      message:
-        "No Result Type column (common on Campaigns-table exports). Confirm each campaign's objective on the Metrics step — use Website submission / Meta leads columns if you added them.",
+      message: "No Result Type column — confirm each campaign’s objective on the Campaigns step.",
     });
   }
 
@@ -163,7 +186,7 @@ export function validateMtdDailyCsv(
 
   if (rows.length === 0) {
     errors.push({ field: "rows", message: noDataRowsMessage(platform) });
-    return { valid: false, errors, warnings, noCampaignData: true };
+    return { valid: false, errors, warnings, noCampaignData: true, metaCsvExportProfile };
   }
 
   // A row is usable once it has a campaign name and a resolvable date — that
@@ -251,5 +274,11 @@ export function validateMtdDailyCsv(
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings, noCampaignData: noUsableDatedRows };
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    noCampaignData: noUsableDatedRows,
+    metaCsvExportProfile,
+  };
 }
