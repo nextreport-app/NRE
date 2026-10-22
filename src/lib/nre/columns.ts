@@ -149,6 +149,7 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
 export type RowWithDate = {
   _raw?: Record<string, string>;
   date_start?: string | null;
+  date_end?: string | null;
 };
 
 /** The value of a real per-row "Day"/"Date" column, or null if this row has neither — shared by getRowDate (which additionally falls back to date_start) and hasRealRowDate (which deliberately does NOT). */
