@@ -10,7 +10,7 @@ const MONTHLY_FROM = {
   professional: { inr: "₹1,299", usd: "$15" },
 } as const;
 
-export function PricingTeaserStrip({ loggedIn }: { loggedIn: boolean }) {
+export function PricingTeaserStrip() {
   const { marketing, home } = useSiteCopy();
   const { currency } = usePricingCurrency();
   const perMonth = home.pricing.perMonth;
@@ -51,20 +51,12 @@ export function PricingTeaserStrip({ loggedIn }: { loggedIn: boolean }) {
             </span>
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center justify-center rounded-full border border-navy-border bg-navy/80 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:border-ink-muted hover:bg-navy"
-            >
-              View pricing
-            </Link>
-            <Link
-              href={loggedIn ? "/clients" : "/signup"}
-              className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-            >
-              {loggedIn ? marketing.tryCtaDashboard : marketing.tryCtaStartTrial}
-            </Link>
-          </div>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center justify-center rounded-full border border-navy-border bg-navy/80 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:border-ink-muted hover:bg-navy"
+          >
+            View pricing
+          </Link>
         </div>
       </div>
     </section>

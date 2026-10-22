@@ -142,4 +142,9 @@ describe("pricing currency preference", () => {
     writeCachedCountry("IN", storage);
     expect(resolveInitialPricingCurrency(storage)).toBe("INR");
   });
+
+  it("uses Vercel edge country when no preference or cache (India → INR)", () => {
+    expect(resolveInitialPricingCurrency(fakeStorage(), "IN")).toBe("INR");
+    expect(resolveInitialPricingCurrency(fakeStorage(), "US")).toBe("USD");
+  });
 });
