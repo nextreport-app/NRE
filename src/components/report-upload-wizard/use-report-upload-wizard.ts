@@ -297,6 +297,10 @@ export function useReportUploadWizard({
   // ad-sets.ts's file header). expandedCampaigns tracks which campaigns'
   // ad-set lists are currently shown — collapsed by default, per campaign.
   const [adSetGroups, setAdSetGroups] = useState<AdSetGroup[]>([]);
+  const [metaCsvExportProfile, setMetaCsvExportProfile] = useState<{
+    kind: "ads_reporting" | "campaigns_table";
+    includesAdSetBreakdown: boolean;
+  } | null>(null);
   const [selectedAdSets, setSelectedAdSets] = useState<Set<string>>(new Set());
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
 
@@ -1117,6 +1121,7 @@ export function useReportUploadWizard({
 
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
+    setMetaCsvExportProfile(json.metaCsvExportProfile ?? null);
     if (preserve) {
       setSelectedAdSets((prev) => {
         const validKeys = new Set(
@@ -2892,6 +2897,7 @@ export function useReportUploadWizard({
     setCampaignSearch,
     toggleCampaign,
     adSetGroups,
+    metaCsvExportProfile,
     selectedAdSets,
     expandedCampaigns,
     toggleCampaignExpanded,

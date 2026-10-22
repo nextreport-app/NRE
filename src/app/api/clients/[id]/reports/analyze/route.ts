@@ -181,6 +181,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       hasAdLevelCsv,
       dateSelection,
       csvDateGuidance,
+      metaCsvExportProfile: validation.metaCsvExportProfile ?? null,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:analyze");
