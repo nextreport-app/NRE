@@ -22,8 +22,15 @@ export default async function AdminSupportPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-dash-ink">Support tickets</h1>
-      <p className="mt-1 text-sm text-dash-ink-secondary">Latest 100 tickets from logged-in users.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-dash-ink">Support tickets</h1>
+          <p className="mt-1 text-sm text-dash-ink-secondary">Latest 100 tickets from logged-in users.</p>
+        </div>
+        <Link href="/admin/metrics" className="text-sm font-medium text-dash-accent hover:underline">
+          Product metrics →
+        </Link>
+      </div>
 
       {tickets.length === 0 ? (
         <p className="mt-8 text-sm text-dash-ink-muted">No tickets yet.</p>

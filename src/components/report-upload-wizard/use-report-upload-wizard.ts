@@ -2567,7 +2567,8 @@ export function useReportUploadWizard({
     setStep(1);
   }
 
-  const wizardLeaveGuardActive = step > 1 && generateStatus !== "done" && generateStatus !== "loading";
+  const wizardLeaveGuardActive =
+    step >= 2 && step <= 4 && generateStatus !== "done" && generateStatus !== "loading";
 
   function requestWizardLeave(href: string) {
     setPendingLeaveHref(href);
