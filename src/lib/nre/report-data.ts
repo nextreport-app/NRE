@@ -687,16 +687,10 @@ function computeTableRow(
   // own campaigns); the "Ad Spend" column above is the one place the FULL
   // combined total still belongs — the overall budget view, not any single
   // objective's cost math.
-  // Debug logging (reported bug: MTD row showing inflated Purchases counts)
-  // — logs every campaign's assigned objective, the per-row value actually
-  // summed, and the running total, straight from groupResultsByCampaignObjective
-  // itself (see objective.ts's own doc comment on that function/
-  // resultValueForObjective for the root cause and fix). Labeled "MTD" vs
-  // "Previous Month" so both rows' console output is easy to tell apart.
   const allGroupsRaw = groupResultsByCampaignObjective(
     rows,
     objectiveMap,
-    isMtdRow ? "MTD" : "Previous Month",
+    undefined,
     resultCountingMode,
     tableReachOpts,
   );

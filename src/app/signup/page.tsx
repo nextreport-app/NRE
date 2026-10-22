@@ -4,7 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -112,13 +112,10 @@ export default function SignupPage() {
         <div className="h-px flex-1 bg-navy-border" />
       </div>
 
-      <button
-        type="button"
-        onClick={() => signIn("google", { callbackUrl: "/clients" }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS)}
-        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border"
-      >
-        Continue with Google
-      </button>
+      <GoogleSignInButton
+        callbackUrl="/clients"
+        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border disabled:opacity-60"
+      />
 
       <p className="mt-6 text-center text-sm text-ink-muted">
         Already have an account?{" "}
