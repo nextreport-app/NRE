@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { auth } from "@/lib/auth";
@@ -11,6 +10,8 @@ import {
   META_CSV_HELP_BY_OBJECTIVE,
   META_CSV_HELP_PREVIOUS_MONTH,
 } from "@/lib/nre/meta-csv-export-guide";
+import { TryNextReportCtaSection } from "@/components/home/try-next-report-cta-section";
+import { MetaWalkthroughVideo } from "@/components/meta-walkthrough-video";
 
 export const metadata: Metadata = pageMetadata({
   title: "CSV Export Guide",
@@ -64,6 +65,16 @@ export default async function DownloadGuidePage() {
         </section>
 
         <div className="mx-auto max-w-3xl space-y-10 px-6 py-12">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Video walkthrough</h2>
+              <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">
+                Quick overview of the Meta CSV export → NextReport wizard flow. Open <strong className="font-medium text-white">Step guide</strong> for the short version.
+              </p>
+            </div>
+            <MetaWalkthroughVideo showChapters showStepGuide />
+          </div>
+
           <section id="meta-ads" className="space-y-6 rounded-lg border border-navy-border bg-navy-panel p-6">
             <h2 className="text-xl font-semibold text-accent-orange">Meta Ads</h2>
             <p className="text-[15px] leading-relaxed text-ink-secondary">
@@ -110,14 +121,7 @@ export default async function DownloadGuidePage() {
 
         </div>
 
-        <section className="bg-navy-panel px-6 py-12 text-center">
-          <Link
-            href={loggedIn ? "/clients" : "/signup"}
-            className="inline-block rounded-md bg-accent-orange px-6 py-3 text-sm font-semibold text-navy hover:bg-accent-orange-hover"
-          >
-            {loggedIn ? "Go to Dashboard" : "Start free trial"}
-          </Link>
-        </section>
+        <TryNextReportCtaSection loggedIn={loggedIn} />
       </main>
     </>
   );

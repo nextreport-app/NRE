@@ -3,23 +3,27 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
+import { agencyLogoUploadGuidance } from "@/lib/agency-logo-spec";
 import {
+  ACCOUNT_REPORT_BRANDING_MODES,
   REPORT_BRANDING_MODE_LABELS,
+  REPORT_BRANDING_SURFACES,
+  reportCreditName,
   type ReportBrandingMode,
 } from "@/lib/report-branding";
 
 const ACCEPTED_LOGO_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
+const sectionDividerClass = "border-t border-dash-border pt-6";
+
 export function AccountSettingsForm({
   initialAgencyName,
   initialReportBrandingMode,
-  initialShowAgencyNameOnCover = true,
   hasAgencyLogo = false,
 }: {
   initialAgencyName: string | null;
   initialReportBrandingMode: ReportBrandingMode;
-  initialShowAgencyNameOnCover?: boolean;
   hasAgencyLogo?: boolean;
 }) {
   const router = useRouter();
@@ -28,7 +32,6 @@ export function AccountSettingsForm({
   const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
     initialReportBrandingMode,
   );
-  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(initialShowAgencyNameOnCover);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -36,18 +39,32 @@ export function AccountSettingsForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const trimmedAgencyName = agencyName.trim();
   const logoPreviewSrc =
     logoPreviewUrl ?? (hasAgencyLogo && !removeLogo ? "/api/account/logo" : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (reportBrandingMode === "agency" && !trimmedAgencyName) {
+      setError("Enter your agency or your name to use white-label branding.");
+      return;
+    }
+
     setLoading(true);
+
+    const showAgencyNameOnCover =
+      reportCreditName({ reportBrandingMode, agencyName: trimmedAgencyName }) !== null;
 
     const res = await fetch("/api/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agencyName, reportBrandingMode, showAgencyNameOnCover }),
+      body: JSON.stringify({
+        agencyName: trimmedAgencyName || null,
+        reportBrandingMode,
+        showAgencyNameOnCover,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -103,112 +120,134 @@ export function AccountSettingsForm({
     setRemoveLogo(true);
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Agency name</label>
-        <input
-          value={agencyName}
-          onChange={(e) => setAgencyName(e.target.value)}
-          placeholder="e.g. Bright Path Marketing"
-          maxLength={150}
-          className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
-        />
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          {showAgencyNameOnCover
-            ? `Shown as "Prepared by ${agencyName || "..."}" on every report's cover slide.`
-            : "Hidden on the cover slide — your name can still appear on shared links when white-label is on."}
-        </p>
-        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-dash-ink-secondary">
+  function renderModeOption(mode: ReportBrandingMode) {
+    const option = REPORT_BRANDING_MODE_LABELS[mode];
+    const selected = reportBrandingMode === mode;
+
+    if (mode !== "agency") {
+      return (
+        <label
+          key={mode}
+          className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
+            selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+          }`}
+        >
           <input
-            type="checkbox"
-            checked={!showAgencyNameOnCover}
-            onChange={(e) => setShowAgencyNameOnCover(!e.target.checked)}
+            type="radio"
+            name="reportBrandingMode"
+            value={mode}
+            checked={selected}
+            onChange={() => setReportBrandingMode(mode)}
+            className="mt-1"
           />
-          Hide the name
+          <span>
+            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
+              {option.description}
+            </span>
+          </span>
         </label>
-      </div>
+      );
+    }
 
-      <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Agency logo — optional</label>
-        <div className="flex flex-wrap items-center gap-3">
+    return (
+      <div
+        key={mode}
+        className={`rounded-md border px-3 py-3 ${
+          selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+        }`}
+      >
+        <label className="flex cursor-pointer gap-3">
           <input
-            type="file"
-            accept={ACCEPTED_LOGO_TYPES}
-            onChange={handleLogoChange}
-            className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
+            type="radio"
+            name="reportBrandingMode"
+            value={mode}
+            checked={selected}
+            onChange={() => setReportBrandingMode(mode)}
+            className="mt-1"
           />
-          {((hasAgencyLogo && !removeLogo) || logoFile) && (
-            <button
-              type="button"
-              onClick={handleRemoveLogo}
-              className="text-sm text-dash-error hover:underline"
-            >
-              Remove logo
-            </button>
-          )}
-        </div>
-        {logoPreviewSrc && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoPreviewSrc} alt="Agency logo preview" className="mt-3 h-12 w-auto max-w-[200px] object-contain" />
-        )}
-        {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Shown in the header on shared client reports when &quot;Show my agency name&quot; is selected. PNG, JPG, WebP, or SVG — max 2MB.
-        </p>
-      </div>
+          <span>
+            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
+              {option.description}
+            </span>
+          </span>
+        </label>
 
+        {selected ? (
+          <div className="mt-3 border-t border-dash-border/80 pt-3 pl-7">
+            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency or your name</label>
+            <input
+              value={agencyName}
+              onChange={(e) => setAgencyName(e.target.value)}
+              placeholder="e.g. Bright Path Marketing"
+              maxLength={150}
+              className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-0">
       <fieldset>
-        <legend className="mb-2 block text-sm font-medium text-dash-ink-secondary">
-          Branding on shared client reports (also on wizard Step 4)
-        </legend>
-        <div className="space-y-2">
-          {(Object.keys(REPORT_BRANDING_MODE_LABELS) as ReportBrandingMode[]).map((mode) => {
-            const option = REPORT_BRANDING_MODE_LABELS[mode];
-            const disabled = mode === "agency" && !agencyName.trim();
-            return (
-              <label
-                key={mode}
-                className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
-                  reportBrandingMode === mode
-                    ? "border-dash-accent bg-dash-accent/5"
-                    : "border-dash-border"
-                } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="reportBrandingMode"
-                  value={mode}
-                  checked={reportBrandingMode === mode}
-                  disabled={disabled}
-                  onChange={() => setReportBrandingMode(mode)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
-                    {option.description}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
+        <legend className="mb-1 block text-sm font-medium text-dash-ink">Client-facing credit on reports</legend>
+        <div className="mb-4 space-y-1 text-[13px] leading-snug text-dash-ink-secondary">
+          <p>Pick one option below. It applies to the same report everywhere.</p>
+          <p>{REPORT_BRANDING_SURFACES}.</p>
+          <p>
+            New accounts start with <span className="text-dash-ink">NextReport (default)</span> until you change it
+            here.
+          </p>
         </div>
-        <p className="mt-2 text-[13px] text-dash-ink-secondary">
-          Applies to live share links and client emails for reports you generate from
-          now on. Included on free trial, Agency, and Professional plans.
-        </p>
+        <div className="space-y-2">{ACCOUNT_REPORT_BRANDING_MODES.map((mode) => renderModeOption(mode))}</div>
+
+        {reportBrandingMode === "agency" ? (
+          <div className={`${sectionDividerClass}`}>
+            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency logo — optional</label>
+            <p className="mb-3 text-[13px] leading-snug text-dash-ink-secondary">
+              Only for the live share link header when white-label is on. Not required for the PowerPoint cover.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                accept={ACCEPTED_LOGO_TYPES}
+                onChange={handleLogoChange}
+                className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
+              />
+              {((hasAgencyLogo && !removeLogo) || logoFile) && (
+                <button type="button" onClick={handleRemoveLogo} className="text-sm text-dash-error hover:underline">
+                  Remove logo
+                </button>
+              )}
+            </div>
+            {logoPreviewSrc && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoPreviewSrc}
+                alt="Agency logo preview"
+                className="mt-3 h-12 w-auto max-w-[200px] object-contain"
+              />
+            )}
+            {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
+            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">{agencyLogoUploadGuidance()}</p>
+          </div>
+        ) : null}
       </fieldset>
 
-      {error && <p className="text-sm text-dash-error">{error}</p>}
+      {error && <p className={`text-sm text-dash-error ${sectionDividerClass}`}>{error}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
-      >
-        {loading ? "Saving…" : "Save changes"}
-      </button>
+      <div className={sectionDividerClass}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+        >
+          {loading ? "Saving…" : "Save changes"}
+        </button>
+      </div>
     </form>
   );
 }

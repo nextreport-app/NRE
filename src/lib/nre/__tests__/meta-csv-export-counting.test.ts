@@ -26,3 +26,23 @@ describe("metaCsvExportResultValue — WEBSITE LEADS", () => {
     expect(metaCsvExportResultValue(row({ result_type: "", results: 0, website_leads: 1 }), "WEBSITE LEADS")).toBe(0);
   });
 });
+
+describe("metaCsvExportResultValue — META FORM LEADS", () => {
+  it("uses Results when Result type is Leads (form)", () => {
+    expect(
+      metaCsvExportResultValue(
+        row({ result_type: "Leads (form)", results: 2, meta_leads: 2, leads: 2 }),
+        "META FORM LEADS",
+      ),
+    ).toBe(2);
+  });
+
+  it("ignores orphan Meta leads on blank Result type days (The Belle +2 bug)", () => {
+    expect(
+      metaCsvExportResultValue(
+        row({ result_type: "", results: 0, meta_leads: 2, leads: 2 }),
+        "META FORM LEADS",
+      ),
+    ).toBe(0);
+  });
+});

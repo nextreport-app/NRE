@@ -16,7 +16,8 @@ export function getPlanDisplayName(planId: string): string {
 }
 
 /** Short platform list for marketing headlines and feature bullets. */
-export const PLATFORM_LIST_SHORT = "Meta Ads, Google Ads, TikTok Ads, and Google Analytics (GA4)";
+export const PLATFORM_LIST_SHORT =
+  "Meta Ads reporting today — Google Ads, TikTok Ads, and GA4 on the roadmap";
 
 /** API names for technical/how-it-works copy. */
 export const PLATFORM_LIST_API =
@@ -27,12 +28,13 @@ export const AGENCY_CLIENT_LIMIT = 10;
 
 /** Pricing feature bullets — one client workspace = one brand; all platforms included in that slot. */
 export const AGENCY_CLIENT_LIMIT_FEATURE =
-  "Up to 10 clients — Meta, Google, TikTok & GA4 included";
+  "Up to 10 client workspaces — Meta Ads reporting live today";
 
-export const PROFESSIONAL_CLIENT_LIMIT_FEATURE = "Unlimited clients — all platforms included";
+export const PROFESSIONAL_CLIENT_LIMIT_FEATURE =
+  "Unlimited client workspaces — Meta Ads reporting live today";
 
 export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
 
 /** Short explainer for paywall / upgrade screens. */
 export const CLIENT_LIMIT_EXPLAINER =
-  "Each client is one brand workspace. Meta, Google, TikTok, and GA4 reports for that brand all count as one client — not one slot per platform.";
+  "Each client is one brand workspace. Meta Ads CSV and API reporting for that brand uses one client slot. Additional ad platforms are on the roadmap.";

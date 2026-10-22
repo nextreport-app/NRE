@@ -1,4 +1,8 @@
-import { buildReportBrandingSettings, type ReportBrandingSettings } from "@/lib/report-branding";
+import {
+  buildReportBrandingSettings,
+  reportCreditName,
+  type ReportBrandingSettings,
+} from "@/lib/report-branding";
 import type { ShareReportExtras } from "./share-report";
 
 export const USER_REPORT_BRANDING_SELECT = {
@@ -15,14 +19,15 @@ export type UserReportBrandingRow = {
   showAgencyNameOnCover: boolean;
 };
 
-/** PPTX cover "Prepared by" line — independent of share-link white-label mode. */
+/** PPTX cover "Prepared by …" credit — same choice as live link and client emails. */
 export function agencyNameForCoverSlide(user: {
   agencyName?: string | null;
-  showAgencyNameOnCover?: boolean | null;
+  reportBrandingMode?: string | null;
 }): string | null {
-  if (user.showAgencyNameOnCover === false) return null;
-  const name = user.agencyName?.trim();
-  return name || null;
+  return reportCreditName({
+    reportBrandingMode: user.reportBrandingMode,
+    agencyName: user.agencyName,
+  });
 }
 
 export function shareReportExtrasFromUser(

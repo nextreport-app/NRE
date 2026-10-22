@@ -3,7 +3,11 @@
 import type { ComparisonChange, ComparisonCampaignData, ComparisonMetricSet } from "@/lib/nre/report-data";
 import type { ShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
-import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
+import {
+  preparedByCoverLine,
+  reportBrandingFromShareJson,
+  resolveShareBrandingDisplay,
+} from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
 
 function changeBadgeLabel(change: ComparisonChange): string {
@@ -103,6 +107,7 @@ export function ShareComparisonReportView({
 }) {
   const branding = reportBrandingFromShareJson(data);
   const brandingDisplay = resolveShareBrandingDisplay(branding);
+  const coverPreparedByLine = preparedByCoverLine(branding);
   const generatedDate = new Date(data.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -156,7 +161,7 @@ export function ShareComparisonReportView({
             <span className="mx-2 text-ink-muted">vs</span>
             {data.periodBLabel}
           </p>
-          {data.agencyName ? <p className="mt-4 text-sm text-ink-muted">Prepared by {data.agencyName}</p> : null}
+          {coverPreparedByLine ? <p className="mt-4 text-sm text-ink-muted">{coverPreparedByLine}</p> : null}
         </section>
 
         {data.isPaused ? (

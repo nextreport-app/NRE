@@ -42,7 +42,7 @@ describe("CSV reconciliation spend tolerance", () => {
     });
 
     const weeklySpend = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric === "Amount spent",
+      (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
     expect(weeklySpend?.status).toBe("ok");
     expect(verification.status).toBe("ok");

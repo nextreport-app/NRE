@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
+import { buildCampaignCsvResultTypeMap } from "@/lib/nre/campaign-csv-result-type";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
@@ -75,6 +76,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
 
+    const campaignCsvResultTypes =
+      platform === "META"
+        ? Object.fromEntries(buildCampaignCsvResultTypeMap(rowsForObjective))
+        : {};
+
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
 
@@ -94,6 +100,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       perCampaignSelection,
       perCampaignAvailable,
       campaignObjectives,
+      campaignCsvResultTypes,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:metrics");

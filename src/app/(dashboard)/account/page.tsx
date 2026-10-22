@@ -93,19 +93,13 @@ export default async function AccountSettingsPage({
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-2 text-[24px] font-bold text-dash-ink">Account settings</h1>
-      <p className="mb-8 text-[15px] text-dash-ink-secondary">
-        Agency name and white-label settings apply to every report you generate for any client. You can also set
-        these on <strong className="font-medium text-dash-ink">Step 4 (Generate)</strong> in the report wizard before
-        each run.
-      </p>
+      <h1 className="mb-8 text-[24px] font-bold text-dash-ink">Account settings</h1>
 
       <section className="mb-10">
         <SectionHeading>Agency &amp; white-label branding</SectionHeading>
         <AccountSettingsForm
           initialAgencyName={user.agencyName}
           initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
-          initialShowAgencyNameOnCover={user.showAgencyNameOnCover ?? true}
           hasAgencyLogo={!!user.agencyLogoUrl}
         />
       </section>
@@ -119,7 +113,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings
           initialConnectedEmail={user.googleConnectedEmail}

@@ -63,7 +63,7 @@ import type { ValidationIssue } from "@/lib/nre/validate";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
-import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
+import type { CsvDateGuidance, CsvDateWarning } from "@/lib/nre/csv-date-guidance";
 import {
   ADD_FROM_CSV_VISIBLE,
   ADSET_CHIP_CLASS,
@@ -88,18 +88,6 @@ import {
 } from "./platform-storage";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 import {
-  buildWizardGenerateBaseline,
-  evaluateHappyPathEligibility,
-  metricsMatchBaseline,
-  selectionFromBaseline,
-  type WizardGenerateBaseline,
-} from "@/lib/nre/wizard-generate-baseline";
-import {
-  hydrateGenerateBaseline,
-  persistGenerateBaselineToServer,
-  readGenerateBaselineForHappyPath,
-} from "./wizard-baseline-sync";
-import {
   clearWizardDraft,
   isWizardServerDraftExpired,
   loadWizardDraft,
@@ -112,8 +100,7 @@ import {
   perCampaignMetricsFromDraft,
 } from "./wizard-draft-sync";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
-import type { ReportBrandingMode } from "@/lib/report-branding";
-import { markReportBrandingWizardCollapsed } from "@/lib/report-branding-wizard-ui";
+import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/report-branding";
 
 export function useReportUploadWizard({
   clientId,
@@ -158,7 +145,6 @@ export function useReportUploadWizard({
   // navigating back to it and forward again).
   const [visitedSteps, setVisitedSteps] = useState<Set<Step>>(() => new Set([1]));
   const stepRef = useRef<Step>(1);
-  const [happyPathSkippedSteps, setHappyPathSkippedSteps] = useState(false);
   /** User confirmed objectives (metrics continue or happy-path restore) — preview/generate use full objective map. */
   const [objectivesLockedForReport, setObjectivesLockedForReport] = useState(false);
   const [uploadSessionRecovery, setUploadSessionRecovery] = useState<string | null>(null);
@@ -167,6 +153,7 @@ export function useReportUploadWizard({
   const [csvVerification, setCsvVerification] = useState<CsvVerificationResult | null>(null);
   const [csvAlignResults, setCsvAlignResults] = useState(false);
   const [generatedWithCsvMismatch, setGeneratedWithCsvMismatch] = useState(false);
+  const [generatedWithCsvVerifySkipped, setGeneratedWithCsvVerifySkipped] = useState(false);
   const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
@@ -185,7 +172,6 @@ export function useReportUploadWizard({
   function setStep(s: Step) {
     const current = stepRef.current;
     if (s < current) invalidateDownstreamFromStep(s);
-    if (s < 4) setHappyPathSkippedSteps(false);
     stepRef.current = s;
     setStepState(s);
     setVisitedSteps((prev) => (prev.has(s) ? prev : new Set(prev).add(s)));
@@ -203,65 +189,10 @@ export function useReportUploadWizard({
   const savedReportBrandingModeRef = useRef<ReportBrandingMode>(initialReportBrandingMode);
   const savedShowAgencyNameOnCoverRef = useRef(initialShowAgencyNameOnCover);
   const [agencyName, setAgencyName] = useState(() => savedAgencyNameRef.current);
-  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(() =>
-    initialAgencyName?.trim() ? initialReportBrandingMode : "nextreport",
-  );
-  const [showAgencyNameOnCover, setShowAgencyNameOnCover] = useState(
-    () => Boolean(initialAgencyName?.trim() && initialShowAgencyNameOnCover),
+  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
+    () => initialReportBrandingMode,
   );
   const [reportBrandingError, setReportBrandingError] = useState<string | null>(null);
-  const [reportBrandingSaving, setReportBrandingSaving] = useState(false);
-
-  function handleWizardAgencyNameChange(value: string) {
-    setAgencyName(value);
-    setReportBrandingError(null);
-    if (!value.trim()) {
-      setShowAgencyNameOnCover(false);
-      if (reportBrandingMode === "agency") {
-        setReportBrandingMode("nextreport");
-      }
-    }
-  }
-
-  async function persistReportBrandingSettings(): Promise<boolean> {
-    if (reportBrandingMode === "agency" && !agencyName.trim()) {
-      setReportBrandingError("Enter your agency name to show it on client reports.");
-      return false;
-    }
-
-    setReportBrandingSaving(true);
-    setReportBrandingError(null);
-    try {
-      const res = await fetch("/api/account", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agencyName: agencyName.trim() || null,
-          reportBrandingMode,
-          showAgencyNameOnCover,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const message = (data.error as string) || "Could not save your agency name.";
-        setReportBrandingError(message);
-        showToast(message, "error");
-        return false;
-      }
-      savedAgencyNameRef.current = agencyName.trim();
-      savedReportBrandingModeRef.current = reportBrandingMode;
-      savedShowAgencyNameOnCoverRef.current = showAgencyNameOnCover;
-      markReportBrandingWizardCollapsed();
-      return true;
-    } catch {
-      const message = "Could not save your agency name. Check your connection and try again.";
-      setReportBrandingError(message);
-      showToast(message, "error");
-      return false;
-    } finally {
-      setReportBrandingSaving(false);
-    }
-  }
 
   const reportBrandingBlocksGenerate =
     reportBrandingMode === "agency" && !agencyName.trim();
@@ -403,6 +334,9 @@ export function useReportUploadWizard({
   // (setCampaignObjective clears this the moment they do, alongside the
   // confidence tag above).
   const [campaignRequiresConfirmation, setCampaignRequiresConfirmation] = useState<Map<string, boolean>>(new Map());
+  const [campaignCsvResultTypes, setCampaignCsvResultTypes] = useState<
+    Map<string, import("@/lib/nre/campaign-csv-result-type").CampaignCsvResultTypeSummary>
+  >(new Map());
 
   // Step 4 — Metrics, Thing 3 (three-layer objective architecture rebuild):
   // each selected campaign gets its OWN independently-computed metric
@@ -530,6 +464,10 @@ export function useReportUploadWizard({
   const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [clientShareMessageCopied, setClientShareMessageCopied] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const shareCopyInFlightRef = useRef(false);
+  const clientMessageCopyInFlightRef = useRef(false);
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
@@ -576,7 +514,6 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
-    void hydrateGenerateBaseline(clientId);
     const prefs = readClientWizardPreferences(clientId);
     if (prefs) {
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
@@ -630,7 +567,6 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
-    setHappyPathSkippedSteps(false);
     if (reportTypeChoice === "DAY_BREAKDOWN") {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
@@ -771,7 +707,11 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setPublishedAt(null);
+    setGeneratedAt(null);
+    setShareLinkCopied(false);
+    setClientShareMessageCopied(false);
     setGeneratedWithCsvMismatch(false);
+    setGeneratedWithCsvVerifySkipped(false);
   }
 
   useEffect(() => {
@@ -1111,6 +1051,10 @@ export function useReportUploadWizard({
     generateStatus,
   ]);
 
+  const accountBrandingSnapshotRef = useRef(
+    `${initialReportBrandingMode}|${initialAgencyName?.trim() ?? ""}`,
+  );
+
   useEffect(() => {
     const refreshAccountBranding = () => {
       void fetch("/api/account")
@@ -1118,13 +1062,21 @@ export function useReportUploadWizard({
         .then((json) => {
           if (!json) return;
           const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
+          const mode = normalizeReportBrandingMode(json.reportBrandingMode);
+          const snapshot = `${mode}|${name}`;
+          const changed = snapshot !== accountBrandingSnapshotRef.current;
           savedAgencyNameRef.current = name;
-          savedReportBrandingModeRef.current = json.reportBrandingMode ?? "nextreport";
+          savedReportBrandingModeRef.current = mode;
           savedShowAgencyNameOnCoverRef.current = json.showAgencyNameOnCover ?? true;
           setAgencyName(name);
-          setReportBrandingMode(name ? (json.reportBrandingMode ?? "nextreport") : "nextreport");
-          setShowAgencyNameOnCover(Boolean(name && json.showAgencyNameOnCover));
+          setReportBrandingMode(mode);
           setReportBrandingError(null);
+          if (changed) {
+            accountBrandingSnapshotRef.current = snapshot;
+            if (document.visibilityState === "visible") {
+              showToast("Branding updated from account settings.");
+            }
+          }
         })
         .catch(() => undefined);
     };
@@ -1138,7 +1090,7 @@ export function useReportUploadWizard({
       window.removeEventListener("focus", refreshAccountBranding);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [showToast]);
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1649,6 +1601,7 @@ export function useReportUploadWizard({
       setCampaignObjectives(new Map());
       setCampaignObjectiveConfidence(new Map());
       setCampaignRequiresConfirmation(new Map());
+      setCampaignCsvResultTypes(new Map());
       return { ok: false };
     }
 
@@ -1658,6 +1611,7 @@ export function useReportUploadWizard({
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
     setCampaignRequiresConfirmation(requiresConfirmation);
+    setCampaignCsvResultTypes(new Map(Object.entries(json.campaignCsvResultTypes || {})));
     setMetricsStatus("idle");
     return {
       ok: true,
@@ -1666,140 +1620,16 @@ export function useReportUploadWizard({
     };
   }
 
-  function applyBaselineObjectivesAfterFetch(baseline: WizardGenerateBaseline) {
-    const nextObjectives = new Map<string, ObjectiveInfo>();
-    for (const [name, info] of baseline.campaignObjectives) {
-      const option =
-        OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
-        objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
-      nextObjectives.set(name, option);
-    }
-    setCampaignObjectives(nextObjectives);
-    setTouchedObjectiveCampaigns(new Set(baseline.touchedObjectiveCampaigns));
-    setCampaignRequiresConfirmation((prev) => {
-      const next = new Map(prev);
-      for (const name of baseline.touchedObjectiveCampaigns) {
-        next.delete(name);
-      }
-      return next;
-    });
-    setCampaignObjectiveConfidence((prev) => {
-      const next = new Map(prev);
-      for (const name of baseline.touchedObjectiveCampaigns) {
-        next.delete(name);
-      }
-      return next;
-    });
-    setPerCampaignMetrics((prev) => {
-      const merged = new Map(prev);
-      for (const entry of baseline.perCampaignMetrics) {
-        merged.set(
-          entry.normalized,
-          entry.metrics.map((m) => ({ ...m })) as SelectedMetric[],
-        );
-      }
-      return merged;
-    });
-  }
-
-  /**
-   * After a successful analyze, optionally restore last generate settings and jump to step 4.
-   * Falls back to campaigns step when anything differs or objectives still need confirmation.
-   */
+  /** After a successful analyze, always continue to campaign selection. */
   async function dispatchAfterAnalyze(
-    analyzeJson: {
+    _analyzeJson: {
       campaigns?: string[];
       headers?: string[];
       adSetGroups?: AdSetGroup[];
     },
-    adsPlatform: "META" | "GOOGLE" | "TIKTOK",
+    _adsPlatform: "META" | "GOOGLE" | "TIKTOK",
   ) {
-    setHappyPathSkippedSteps(false);
-    const baseline = readGenerateBaselineForHappyPath(clientId);
-    const campaignList: string[] = analyzeJson.campaigns || [];
-    const headers: string[] = Array.isArray(analyzeJson.headers) ? analyzeJson.headers : [];
-    const groups: AdSetGroup[] = analyzeJson.adSetGroups || [];
-    const validCampaigns = new Set(campaignList);
-    const validAdSetKeys = new Set(
-      groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
-    );
-
-    const eligibility = evaluateHappyPathEligibility({
-      baseline,
-      platform: adsPlatform,
-      reportType,
-      dateMode,
-      customStart,
-      customEnd,
-      includePreviousMonthComparison,
-      showBudgetOnCover,
-      dataSourceMode,
-      isApiSyncArtifact: isApiSyncArtifact(mtdFile),
-      apiSyncHybridImport,
-      csvHeaders: headers,
-      campaignNames: campaignList,
-      validCampaigns,
-      validAdSetKeys,
-    });
-
-    if (!eligibility.ok || !baseline) {
-      setStep(2);
-      return;
-    }
-
-    const applied = selectionFromBaseline(baseline, validCampaigns, validAdSetKeys);
-    setSelectedCampaigns(new Set(applied.selectedCampaigns));
-    setSelectedAdSets(new Set(applied.selectedAdSets));
-    setPerCampaignMetrics(applied.perCampaignMetrics);
-    setCampaignObjectives(
-      new Map(
-        applied.campaignObjectives.entries().map(([name, info]) => {
-          const option =
-            OBJECTIVE_DROPDOWN_OPTIONS.find((o) => o.key === info.key) ??
-            objectiveInfoForDetectedLabel(info.resultLabel, info.costLabel);
-          return [name, option] as const;
-        }),
-      ),
-    );
-    setTouchedObjectiveCampaigns(applied.touchedObjectiveCampaigns);
-
-    const selectionKey = [...applied.selectedCampaigns].sort().join("\0");
-    metricsFetchedKeyRef.current = null;
-    setMetricsFetchedForSelection(null);
-    const metricsResult = await fetchObjectivesAndMetrics(selectionKey, {
-      selectedCampaignsOverride: applied.selectedCampaigns,
-      skipResetTouched: true,
-      platformOverride: adsPlatform,
-    });
-    if (!metricsResult.ok) {
-      setStep(2);
-      return;
-    }
-
-    const fetchedMetrics = metricsResult.perCampaignSelection ?? {};
-    if (!metricsMatchBaseline(baseline, applied.selectedCampaigns, fetchedMetrics)) {
-      setStep(2);
-      return;
-    }
-
-    const stillBlocking = applied.selectedCampaigns.some((name) => {
-      const normalized = normalizeCampaignName(name);
-      return (
-        metricsResult.requiresConfirmation?.get(normalized) === true &&
-        !applied.touchedObjectiveCampaigns.has(normalized)
-      );
-    });
-    if (stillBlocking) {
-      setStep(2);
-      return;
-    }
-
-    applyBaselineObjectivesAfterFetch(baseline);
-    setObjectivesLockedForReport(true);
-
-    setHappyPathSkippedSteps(true);
-    setStep(4);
-    showToast("Using your last report setup — review dates below, then generate.");
+    setStep(2);
   }
 
   function selectedCampaignsKey(): string {
@@ -1950,10 +1780,10 @@ export function useReportUploadWizard({
    */
   function currentCampaignObjectivesPayload(): Record<string, { resultLabel: string; costLabel: string }> | undefined {
     if (campaignObjectives.size === 0) return undefined;
-    // After metrics continue (or happy-path restore), every objective shown in
+    // After metrics continue, every objective shown in
     // the wizard is what preview verification and generate must use — matches
     // the /metrics step and avoids engine re-detection drift on first-time clients.
-    if (objectivesLockedForReport || happyPathSkippedSteps) {
+    if (objectivesLockedForReport) {
       const out: Record<string, { resultLabel: string; costLabel: string }> = {};
       for (const [name, info] of campaignObjectives) {
         out[name] = { resultLabel: info.resultLabel, costLabel: info.costLabel };
@@ -2005,14 +1835,8 @@ export function useReportUploadWizard({
    * dropdown — see setCampaignObjective — so nothing needs to be shown).
    */
   function objectiveConfidenceBadge(tier: "cached" | "high" | "medium" | "low" | "verify" | undefined) {
-    if (tier === "cached") {
-      return {
-        icon: "✓",
-        text: wizardObjectiveBadgeText(locale, "cached").text,
-        className: "nre-wizard-confidence--ok",
-        pill: false,
-      };
-    }
+    // Cached objectives still pre-fill the dropdown; CSV matchup line replaces the old badge.
+    if (tier === "cached") return null;
     if (tier === "high" || tier === "medium") {
       return {
         icon: "✓",
@@ -2398,10 +2222,13 @@ export function useReportUploadWizard({
     if (!mtdFile && !uploadSessionId) return;
     if (usesFullAdWizard(platform) && !generateStepPreviewReady) return;
     if (reportBrandingBlocksGenerate) {
-      setReportBrandingError("Enter your agency name to show it on client reports.");
+      setReportBrandingError(
+        "Share branding is set to show your agency name, but no agency name is saved. Add one in Account settings.",
+      );
       return;
     }
     const csvMismatchAtGenerate = csvVerification?.status === "mismatch";
+    const csvSkippedAtGenerate = csvVerification?.status === "skipped";
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -2413,12 +2240,6 @@ export function useReportUploadWizard({
     setDriveSaveError(null);
     setCopied(false);
     setShareToken(null);
-
-    const brandingSaved = await persistReportBrandingSettings();
-    if (!brandingSaved) {
-      setGenerateStatus("idle");
-      return;
-    }
 
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
@@ -2493,7 +2314,9 @@ export function useReportUploadWizard({
     setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);
+    setGeneratedAt(new Date().toISOString());
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
+    setGeneratedWithCsvVerifySkipped(csvSkippedAtGenerate);
     setGenerateStatus("done");
     clearAllWizardDrafts();
     persistGenerateSnapshot(
@@ -2505,39 +2328,6 @@ export function useReportUploadWizard({
       { publishedAt: null },
     );
 
-    if (dataSourceMode === "csv" && !isApiSyncArtifact(mtdFile) && !apiSyncHybridImport) {
-      const objectiveSnapshot = new Map<string, { key: string; resultLabel: string; costLabel: string }>();
-      for (const [name, info] of campaignObjectives) {
-        objectiveSnapshot.set(name, {
-          key: info.key,
-          resultLabel: info.resultLabel,
-          costLabel: info.costLabel,
-        });
-      }
-      const touchedForBaseline = new Set<string>([
-        ...touchedObjectiveCampaigns,
-        ...objectiveSnapshot.keys(),
-      ]);
-      const baseline = buildWizardGenerateBaseline({
-        platform,
-        reportType,
-        dateMode,
-        customStart,
-        customEnd,
-        includePreviousMonthComparison,
-        showBudgetOnCover,
-        csvHeaders,
-        campaignNames: campaigns,
-        selectedCampaigns: Array.from(selectedCampaigns),
-        selectedAdSets: Array.from(selectedAdSets),
-        perCampaignMetrics,
-        campaignObjectives: objectiveSnapshot,
-        touchedObjectiveCampaigns: touchedForBaseline,
-      });
-      if (baseline) {
-        void persistGenerateBaselineToServer(clientId, baseline);
-      }
-    }
   }
 
   /** PreviousMonthSummaryOption's "Generate Previous Month Summary Report" button — see report-data.ts's buildPreviousMonthSummaryReportData and the generate route's own PREVIOUS_MONTH_SUMMARY branch. Sends the same (data-less) mtdFile the wizard already has in state purely because the route still expects an mtdDailyCsv field; none of its rows are actually used for this report. */
@@ -2594,22 +2384,38 @@ export function useReportUploadWizard({
     setPmsError(null);
   }
 
-  async function handleCopyShareLink() {
-    if (!shareToken) return;
-    await navigator.clipboard.writeText(buildShareReportUrl(shareToken));
-    showToast("Share link copied!");
-  }
-
-  async function handleCopyClientShareMessage() {
-    if (!shareToken) return;
-    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
-    const text = buildClientReportShareMessage({
+  function buildClientShareMessageInput(reportUrl: string) {
+    return {
       clientName,
+      reportTitle: defaultReportTitleFor(reportType),
       reportTypeLabel: reportTypeLabel(),
       platformLabel: wizardSharePlatformLabel(),
       dateRangeLabel: driveDateRangeLabel() || "this period",
       reportUrl,
-    });
+    };
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareToken || shareCopyInFlightRef.current) return;
+    shareCopyInFlightRef.current = true;
+    const fullUrl = `https://${buildShareReportUrl(shareToken)}`;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setShareLinkCopied(true);
+      showToast("Share link copied!");
+      window.setTimeout(() => setShareLinkCopied(false), 2000);
+    } catch {
+      showToast("Could not copy link — try again.");
+    } finally {
+      shareCopyInFlightRef.current = false;
+    }
+  }
+
+  async function handleCopyClientShareMessage() {
+    if (!shareToken || clientMessageCopyInFlightRef.current) return;
+    clientMessageCopyInFlightRef.current = true;
+    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const text = buildClientReportShareMessage(buildClientShareMessageInput(reportUrl));
     try {
       await navigator.clipboard.writeText(text);
       setClientShareMessageCopied(true);
@@ -2617,6 +2423,8 @@ export function useReportUploadWizard({
       window.setTimeout(() => setClientShareMessageCopied(false), 2000);
     } catch {
       showToast("Could not copy — try again or use Share on WhatsApp.");
+    } finally {
+      clientMessageCopyInFlightRef.current = false;
     }
   }
 
@@ -3096,6 +2904,7 @@ export function useReportUploadWizard({
     campaignObjectives,
     campaignObjectiveConfidence,
     campaignRequiresConfirmation,
+    campaignCsvResultTypes,
     touchedObjectiveCampaigns,
     setCampaignObjective,
     objectiveConfidenceBadge,
@@ -3175,14 +2984,9 @@ export function useReportUploadWizard({
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
     agencyName,
-    handleWizardAgencyNameChange,
     reportBrandingMode,
-    setReportBrandingMode,
     reportBrandingError,
-    reportBrandingSaving,
     reportBrandingBlocksGenerate,
-    showAgencyNameOnCover,
-    setShowAgencyNameOnCover,
     initialAgencyName,
     initialReportBrandingMode,
     initialShowAgencyNameOnCover,
@@ -3192,6 +2996,7 @@ export function useReportUploadWizard({
     handleGenerateStepPrimary,
     retryPreview,
     generatedWithCsvMismatch,
+    generatedWithCsvVerifySkipped,
     reportId,
     downloadUrl,
     publishedAt,
@@ -3215,6 +3020,8 @@ export function useReportUploadWizard({
     handleCopyShareLink,
     handleCopyClientShareMessage,
     clientShareMessageCopied,
+    shareLinkCopied,
+    generatedAt,
     handleSaveButtonClick,
     handleSaveToFolderLink,
     handleCopyLink,
@@ -3229,7 +3036,6 @@ export function useReportUploadWizard({
     reportPeriodConfirmationLine,
     reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
-    happyPathSkippedSteps,
     wizardLeaveGuardActive,
     pendingLeaveHref,
     requestWizardLeave,

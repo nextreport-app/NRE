@@ -34,15 +34,20 @@ function WizardClientLine({
 }) {
   const copy = useWizardCopy();
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#f6ad55]/50 border-l-4 border-l-[#f6ad55] bg-dash-card px-4 py-3.5 shadow-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-dash-ink-secondary">{copy.reportingFor}</span>
-      <span className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#fbd38d] sm:text-[26px]" title={clientName}>
+    <div className="nre-wizard-client-bar mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-l-4 bg-dash-card px-4 py-3.5 shadow-sm">
+      <span className="nre-wizard-client-bar__label text-[11px] font-semibold uppercase tracking-wider">
+        {copy.reportingFor}
+      </span>
+      <span
+        className="nre-wizard-client-bar__name min-w-0 flex-1 truncate text-[22px] font-bold leading-tight sm:text-[26px]"
+        title={clientName}
+      >
         {clientName}
       </span>
       <Link
         href="/clients"
         onClick={onChangeClientClick}
-        className="shrink-0 text-[14px] font-semibold text-[#7dd3fc] underline decoration-[#7dd3fc]/60 underline-offset-[3px] hover:text-[#bae6fd] hover:decoration-[#bae6fd]"
+        className="nre-wizard-client-bar__link shrink-0 text-[14px] font-semibold underline underline-offset-[3px]"
       >
         {copy.changeClient}
       </Link>

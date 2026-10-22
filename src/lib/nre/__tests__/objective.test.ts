@@ -1201,7 +1201,7 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(resolveCampaignObjective(cboRows).resultLabel).toBe("PURCHASES");
     const resolution = resolveCampaignObjectiveWithConfidence(cboRows);
     expect(resolution.resultLabel).toBe("PURCHASES");
-    expect(resolution.confidence).toBe("medium");
+    expect(resolution.confidence).toBe("high");
 
     const objectiveMap = buildCampaignObjectiveMap(
       rows.filter((r) =>
@@ -1613,7 +1613,7 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
   it("returns one confidence-tagged entry per normalized campaign name, matching buildCampaignObjectiveMap's own grouping", () => {
     const rows: MetricRow[] = [
       metricRow({ campaign_name: "Purchase Campaign", _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 }),
-      metricRow({ campaign_name: "Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
     ];
     const map = buildCampaignObjectiveMapWithConfidence(rows);
     expect(map.get("purchase campaign")).toEqual({
@@ -1622,7 +1622,7 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
       confidence: "high",
       requiresConfirmation: false,
     });
-    expect(map.get("leads campaign")).toEqual({
+    expect(map.get("website leads campaign")).toEqual({
       resultLabel: "WEBSITE LEADS",
       costLabel: "COST PER WEBSITE LEAD",
       confidence: "high",

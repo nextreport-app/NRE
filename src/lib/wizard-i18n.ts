@@ -19,16 +19,27 @@ const EN_UI = {
   csvMismatchBody:
     "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
   csvVerifiedTitle: "Verified against your CSV",
-  csvVerifiedDetail: (scopesLabel: string) =>
-    `Spend, results, and cost per result match your CSV for ${scopesLabel}. Weekly needs every day in that window; spend within about $2 either way is OK.`,
+  csvVerifiedDetail: (_scopesLabel: string) =>
+    "Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each period below. Week, MTD, and last 30 days are separate — don’t compare totals across them.",
+  csvSkippedTitle: "CSV cross-check not run",
+  csvSkippedLead:
+    "This is not a pass — deck totals were not compared to your CSV for this report setup.",
+  csvSkippedDefaultReason:
+    "We could not run an automatic CSV comparison for this preview (for example, missing data or an unsupported report type). You can still generate; review totals yourself before sharing.",
   generateForInternalReview: "Generate for internal review",
   confirmedPeriodWeeklyLead: "Your weekly report will cover:",
   confirmedPeriodWeeklyWeekSuffix: "week",
   confirmedPeriodWeeklyMtdPrefix: "MTD from",
   confirmedPeriodWeeklyChart: "Last 30 days in a visual chart slide",
+  weeklyReportScopeLine: "Includes last week, MTD, and a last-30-day chart.",
+  reportingWeekLabel: "Reporting week",
+  openLiveReportRecommended: "Open live report (recommended)",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
     "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
+  csvSkippedShareWarningTitle: "CSV cross-check did not run when you generated",
+  csvSkippedShareWarningBody:
+    "Deck totals were not automatically compared to your CSV. Review the report yourself before sharing with the client.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",
@@ -49,17 +60,21 @@ const EN_UI = {
   addFromCsv: "Add from your CSV",
   addFromCsvHint: "Columns in this file that are not already chips.",
   detectedChangeIfWrong: "Detected — change if wrong",
+  csvResultTypeHeading: "CSV Result type",
+  csvResultTypesHeading: "CSV Result types",
+  csvResultTypeMultipleHint:
+    "This campaign has more than one Result type in the CSV — pick the objective that matches the results you want in the deck.",
+  csvResultTypeMatch: "Matches detected objective",
+  csvResultTypeMismatch: (csvLabel: string, detectedLabel: string) =>
+    `CSV maps to ${csvLabel} — engine picked ${detectedLabel}. Adjust the dropdown if needed.`,
+  csvResultTypeMismatchMulti: (expectedLabels: string, detectedLabel: string) =>
+    `CSV includes ${expectedLabels} — engine picked ${detectedLabel}. Adjust the dropdown if needed.`,
   detectedConfirmLead: "Detected — confirm lead type if wrong",
   previouslyConfirmed: "Previously confirmed",
   confirmationRequired: "Confirmation required",
   stepOf: (step: number, total: number, label: string) => `Step ${step} of ${total} · ${label}`,
   generateHeadingPrefix: "Generate:",
   moreReportTypes: "More report types",
-  happyPathBannerTitle: "Using your saved setup for this client",
-  happyPathBannerBody:
-    "Campaigns, objectives, and metrics match your last successful report. Confirm dates below, or review campaigns or metrics if anything changed.",
-  happyPathReviewCampaigns: "Review campaigns",
-  happyPathReviewMetrics: "Review metrics",
 };
 
 const EN_STEPS = {
@@ -111,6 +126,9 @@ const LOCALE_UI: Partial<Record<SiteLocaleId, Partial<typeof EN_UI>>> = {
     confirmationRequired: "Confirmación obligatoria",
     generateHeadingPrefix: "Generar:",
     moreReportTypes: "Más tipos de informe",
+    weeklyReportScopeLine: "Incluye la semana, MTD y un gráfico de 30 días.",
+    reportingWeekLabel: "Semana del informe",
+    openLiveReportRecommended: "Abrir informe en vivo (recomendado)",
   },
   fr: {
     reportingFor: "Rapport pour",
@@ -227,7 +245,7 @@ const LOCALE_STEPS: Partial<Record<SiteLocaleId, Partial<typeof EN_STEPS>>> = {
 const REPORT_TYPE_ES: Partial<Record<LaunchEnabledReportType, Partial<WizardReportTypeCopy>>> = {
   WEEKLY: {
     cardHeading: "Informe semanal",
-    cardOneLiner: "Informe de los últimos 7 días.",
+    cardOneLiner: "Semana, MTD y gráfico de 30 días.",
     pickerLabel: "Informe semanal",
   },
   MONTHLY: {

@@ -31,6 +31,22 @@ describe("campaign-name-heuristics", () => {
     expect(isReachCampaignHaystack(campaignNameHaystack("Breach Protocol Leads", ""))).toBe(false);
   });
 
+  it("generic New Leads campaign naming is not website leads", () => {
+    expect(isWebsiteLeadsCampaignHaystack("new leads campaign")).toBe(false);
+  });
+
+  it("Meta Leads Campaign naming is meta form, not website leads", () => {
+    const haystack = campaignNameHaystack("Meta Leads Campaign", "");
+    expect(isMetaFormLeadsCampaignHaystack(haystack)).toBe(true);
+    expect(isWebsiteLeadsCampaignHaystack(haystack)).toBe(false);
+  });
+
+  it("Form Leads campaign naming is meta form, not generic website leads", () => {
+    const haystack = campaignNameHaystack("Form Leads Campaign", "Set 1");
+    expect(isMetaFormLeadsCampaignHaystack(haystack)).toBe(true);
+    expect(isWebsiteLeadsCampaignHaystack(haystack)).toBe(false);
+  });
+
   it("Southaven lead gen and traffic naming resolves to meta form vs link clicks, not website leads", () => {
     const leadGen = campaignNameHaystack("SouthavenRV&Marine_LeadGen_InstantForm", "");
     const traffic = campaignNameHaystack("SouthavenRV&Marine_Traffic_LinkClicks", "");

@@ -60,7 +60,7 @@ model User {
   showAgencyNameOnCover Boolean @default(true)
   agencyLogoUrl String?
   // Client-facing share/PDF branding: nextreport (default), agency (use agencyName), hidden.
-  reportBrandingMode String @default("agency")
+  reportBrandingMode String @default("nextreport")
 
   // Google Drive connection (account settings) — deliberately independent
   // of both the Credentials/Google sign-in above AND the NextAuth Account

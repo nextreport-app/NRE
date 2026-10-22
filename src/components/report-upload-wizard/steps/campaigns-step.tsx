@@ -2,6 +2,12 @@
 
 import { useEffect } from "react";
 import { useWizardContext } from "../wizard-context";
+import {
+  csvResultTypeMatchesDetection,
+  expectedResultLabelsFromCsvSummary,
+  type CampaignCsvResultTypeSummary,
+} from "@/lib/nre/campaign-csv-result-type";
+import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
@@ -11,6 +17,48 @@ import { WizardStepHelp } from "../ui/wizard-step-help";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { wizardStepLabel } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
+
+/** One-line CSV Result type ↔ objective status (Campaigns step). */
+function csvObjectiveStatusLine(
+  copy: WizardCopy,
+  csvSummary: CampaignCsvResultTypeSummary,
+  detectedLabel: string,
+  csvAlign: boolean | null,
+): string {
+  const heading = csvSummary.distinct.length > 1 ? copy.csvResultTypesHeading : copy.csvResultTypeHeading;
+
+  if (csvSummary.distinct.length === 1) {
+    if (csvAlign === true && detectedLabel) {
+      return `${heading} → ${detectedLabel} ✓ ${copy.csvResultTypeMatch}`;
+    }
+    if (csvAlign === false) {
+      const mismatch =
+        csvSummary.expectedResultLabel && detectedLabel
+          ? copy.csvResultTypeMismatch(csvSummary.expectedResultLabel, detectedLabel)
+          : copy.csvResultTypeMismatch("—", detectedLabel || "—");
+      return `${heading} ✗ ${mismatch}`;
+    }
+    const entry = csvSummary.entries[0];
+    if (entry?.expectedResultLabel) {
+      return `${heading}: ${entry.resultType} → ${entry.expectedResultLabel}`;
+    }
+    return `${heading}: ${csvSummary.primary ?? "—"}`;
+  }
+
+  const maps = csvSummary.entries
+    .map((e) => (e.expectedResultLabel ? `${e.resultType} → ${e.expectedResultLabel}` : e.resultType))
+    .join(", ");
+  if (csvAlign === true) {
+    return `${heading}: ${maps} ✓ ${copy.csvResultTypeMatch}`;
+  }
+  if (csvAlign === false) {
+    return `${heading}: ${maps} ✗ ${copy.csvResultTypeMismatchMulti(
+      expectedResultLabelsFromCsvSummary(csvSummary).join(", ") || "—",
+      detectedLabel || "—",
+    )}`;
+  }
+  return `${heading}: ${maps}`;
+}
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
@@ -35,6 +83,7 @@ export function WizardCampaignsStep() {
     LOW_SPEND_CAMPAIGN_THRESHOLD,
     OBJECTIVE_DROPDOWN_OPTIONS,
     adSetGroups,
+    campaignCsvResultTypes,
     campaignObjectiveConfidence,
     campaignObjectives,
     campaignRequiresConfirmation,
@@ -341,7 +390,16 @@ export function WizardCampaignsStep() {
                       ? [current, ...OBJECTIVE_DROPDOWN_OPTIONS]
                       : OBJECTIVE_DROPDOWN_OPTIONS;
                   const tier = campaignObjectiveConfidence.get(normalized);
-                  const badge = objectiveConfidenceBadge(tier);
+                  const csvSummary = campaignCsvResultTypes.get(normalized);
+                  const detectedLabel = current?.resultLabel ?? "";
+                  const csvAlign =
+                    csvSummary && detectedLabel
+                      ? csvResultTypeMatchesDetection(csvSummary, detectedLabel)
+                      : null;
+                  const badge =
+                    csvSummary?.primary && csvAlign === true
+                      ? null
+                      : objectiveConfidenceBadge(tier);
                   const isBlocking =
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
@@ -365,6 +423,24 @@ export function WizardCampaignsStep() {
                           ))}
                         </select>
                       </div>
+                      {csvSummary?.primary ? (
+                        <div
+                          className={`mt-2 rounded-md border px-3 py-1.5 text-[13px] leading-snug ${
+                            csvAlign === false
+                              ? "border-[#fc8181]/50 bg-red-950/15 text-[#fecaca]"
+                              : csvAlign === true
+                                ? "border-emerald-500/35 bg-emerald-950/15 text-emerald-100"
+                                : "border-dash-border bg-dash-bg text-dash-ink-secondary"
+                          }`}
+                        >
+                          <p className="font-normal text-dash-ink">
+                            {csvObjectiveStatusLine(copy, csvSummary, detectedLabel, csvAlign)}
+                          </p>
+                          {csvSummary.distinct.length > 1 ? (
+                            <p className="mt-1 text-[12px] text-dash-ink-secondary">{copy.csvResultTypeMultipleHint}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {badge && badge.pill ? (
                         <div className="mt-2 flex justify-end">
                           <span

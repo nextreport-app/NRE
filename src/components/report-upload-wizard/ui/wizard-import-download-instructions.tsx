@@ -147,8 +147,15 @@ export function WizardImportDownloadInstructions({
               ))}
             </ul>
             <p className="pt-1">
-              <Link href="/help/download" target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline">
-                How to download your {platformLabel} CSV
+              <Link
+                href={platform === "META" ? "/help/download#video-walkthrough" : "/help/download"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-dash-accent hover:underline"
+              >
+                {platform === "META"
+                  ? "How to download your Meta Ads CSV (Watch video)"
+                  : `How to download your ${platformLabel} CSV`}
               </Link>
             </p>
           </div>

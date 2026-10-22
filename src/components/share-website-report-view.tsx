@@ -1,6 +1,10 @@
 import type { ShareWebsiteReportData } from "@/lib/nre/share-website-report";
 import { shareBreakdowns } from "@/lib/nre/share-website-report";
-import { reportBrandingFromShareJson, resolveShareBrandingDisplay } from "@/lib/report-branding";
+import {
+  preparedByCoverLine,
+  reportBrandingFromShareJson,
+  resolveShareBrandingDisplay,
+} from "@/lib/report-branding";
 import { geoColumnHeader, geoSlideTitle } from "@/lib/nre/website-report-config";
 
 function MetricCardGrid({ title, metrics }: { title: string; metrics: ShareWebsiteReportData["overviewMetrics"] }) {
@@ -86,7 +90,9 @@ export function ShareWebsiteReportView({
 }) {
   const breakdowns = shareBreakdowns(data);
   const geoDim = data.geoDimension ?? "city";
-  const brandingDisplay = resolveShareBrandingDisplay(reportBrandingFromShareJson(data));
+  const branding = reportBrandingFromShareJson(data);
+  const brandingDisplay = resolveShareBrandingDisplay(branding);
+  const coverPreparedByLine = preparedByCoverLine(branding);
 
   return (
     <div
@@ -102,7 +108,7 @@ export function ShareWebsiteReportView({
           {data.comparisonRangeLabel ? (
             <p className="text-sm text-slate-500">Compared to {data.comparisonRangeLabel}</p>
           ) : null}
-          {data.agencyName ? <p className="mt-6 text-sm text-slate-400">Prepared by {data.agencyName}</p> : null}
+          {coverPreparedByLine ? <p className="mt-6 text-sm text-slate-400">{coverPreparedByLine}</p> : null}
         </section>
 
         <MetricCardGrid title="Traffic Overview" metrics={data.overviewMetrics} />

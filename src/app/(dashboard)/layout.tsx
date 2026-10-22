@@ -14,7 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const status = user ? getSubscriptionStatus(user) : null;
   return (
     <ToastProvider>
-      <div className={`${APP_SHELL_CLASS} flex min-h-screen flex-1 flex-col bg-dash-bg`}>
+      <div className={`${APP_SHELL_CLASS} flex min-h-screen flex-1 flex-col`}>
         <Nav />
         {status && <TrialBanner status={status} />}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>

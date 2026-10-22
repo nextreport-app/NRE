@@ -374,6 +374,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     valid: true,
     errors: [],
     warnings: validation.warnings,
+    csvZeroMetricWarnings: [],
     data: built.data,
     csvVerification,
     suggestCsvAlign: Boolean(csvVerification.canAlignWithCsvExport && !csvAlign),

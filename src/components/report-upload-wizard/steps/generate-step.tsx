@@ -7,6 +7,7 @@ import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
+  defaultReportTitleFor,
   formatIso,
   formatIsoRange,
   isNoDataRowsError,
@@ -42,6 +43,8 @@ export function WizardGenerateStep() {
     comparisonPreset,
     copied,
     clientShareMessageCopied,
+    shareLinkCopied,
+    generatedAt,
     handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
@@ -74,6 +77,7 @@ export function WizardGenerateStep() {
     handleGenerateStepPrimary,
     handleGenerateAnother,
     generatedWithCsvMismatch,
+    generatedWithCsvVerifySkipped,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
     clientTimezone,
@@ -134,16 +138,10 @@ export function WizardGenerateStep() {
     reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
-    happyPathSkippedSteps,
     agencyName,
-    handleWizardAgencyNameChange,
     reportBrandingMode,
-    setReportBrandingMode,
     reportBrandingError,
-    reportBrandingSaving,
     reportBrandingBlocksGenerate,
-    showAgencyNameOnCover,
-    setShowAgencyNameOnCover,
   } = w;
 
   const periodConfirmation = reportPeriodConfirmationLine();
@@ -203,7 +201,10 @@ export function WizardGenerateStep() {
           clientName={clientName}
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
+          generatedWithCsvVerifySkipped={generatedWithCsvVerifySkipped}
           reportId={reportId}
+          reportTitle={defaultReportTitleFor(reportType)}
+          reportType={reportType}
           reportTypeLabel={reportTypeLabel()}
           wizardSharePlatformLabel={wizardSharePlatformLabel()}
           slideCount={slideCount}
@@ -211,7 +212,9 @@ export function WizardGenerateStep() {
           downloadUrl={downloadUrl}
           shareToken={shareToken}
           publishedAt={publishedAt}
+          generatedAt={generatedAt}
           clientShareMessageCopied={clientShareMessageCopied}
+          shareLinkCopied={shareLinkCopied}
           onCopyClientShareMessage={handleCopyClientShareMessage}
           onCopyShareLink={handleCopyShareLink}
           persistGenerateSnapshot={persistGenerateSnapshot}
@@ -295,8 +298,10 @@ export function WizardGenerateStep() {
           {driveSaveError ? <p className="text-[14px] text-red-400">{driveSaveError}</p> : null}
 
           {driveView === "success" && driveSaveUrl ? (
-            <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4">
-              <p className="mb-2 text-[14px] uppercase tracking-wide text-emerald-300">Saved to Google Drive ✓</p>
+            <div className="nre-wizard-drive-save-success rounded-lg border p-4">
+              <p className="nre-wizard-drive-save-success__title mb-2 text-[14px] uppercase tracking-wide">
+                Saved to Google Drive ✓
+              </p>
               <a
                 href={driveSaveUrl}
                 target="_blank"
@@ -342,29 +347,6 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            {happyPathSkippedSteps ? (
-              <div className="rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-4 py-3">
-                <p className="text-[14px] font-semibold text-dash-ink">{copy.happyPathBannerTitle}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-dash-ink-secondary">{copy.happyPathBannerBody}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
-                  >
-                    {copy.happyPathReviewCampaigns}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep(3)}
-                    className="rounded-md border border-dash-border bg-dash-card px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-sidebar"
-                  >
-                    {copy.happyPathReviewMetrics}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
             {reportType === "HISTORICAL" && (
               <section className="rounded-lg border border-dash-border bg-dash-card p-5">
                 <h4 className="text-[15px] font-semibold text-dash-ink">Historical months</h4>
@@ -630,9 +612,17 @@ export function WizardGenerateStep() {
                     {periodConfirmationBullets ? (
                       <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
                         <p>{copy.confirmedPeriodWeeklyLead}</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] font-normal">
+                        <ul className="mt-2 space-y-2 text-[14px] font-normal leading-snug">
                           {periodConfirmationBullets.map((line) => (
-                            <li key={line}>{line}</li>
+                            <li key={line} className="flex items-start gap-2.5">
+                              <span
+                                className="nre-wizard-callout-success__icon mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[10px] font-semibold leading-none text-emerald-200"
+                                aria-hidden
+                              >
+                                ✓
+                              </span>
+                              <span className="min-w-0 text-dash-ink">{line}</span>
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -679,12 +669,7 @@ export function WizardGenerateStep() {
               {generateStepPreviewReady && generateStatus === "idle" ? (
                 <WizardReportBrandingPanel
                   agencyName={agencyName}
-                  onAgencyNameChange={handleWizardAgencyNameChange}
-                  showAgencyNameOnCover={showAgencyNameOnCover}
-                  onShowAgencyNameOnCoverChange={setShowAgencyNameOnCover}
                   reportBrandingMode={reportBrandingMode}
-                  onReportBrandingModeChange={setReportBrandingMode}
-                  saving={reportBrandingSaving}
                   error={reportBrandingError}
                 />
               ) : null}

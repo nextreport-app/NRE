@@ -57,6 +57,15 @@ export function reportBrandingFromShareJson(value: unknown): ReportBrandingSetti
   return { mode: "nextreport", agencyName: record.agencyName?.trim() || null };
 }
 
+/** Full cover/header credit — “Prepared by …” on deck, live link, and share chrome. */
+export function preparedByCoverLine(branding: ReportBrandingSettings): string | null {
+  const credit = reportCreditName({
+    reportBrandingMode: branding.mode,
+    agencyName: branding.agencyName,
+  });
+  return credit ? `Prepared by ${credit}` : null;
+}
+
 export function resolveShareBrandingDisplay(
   branding: ReportBrandingSettings,
 ): ShareBrandingDisplay {
@@ -64,7 +73,7 @@ export function resolveShareBrandingDisplay(
     case "agency":
       return {
         showNextReportLogo: false,
-        headerTitle: branding.agencyName,
+        headerTitle: preparedByCoverLine(branding),
         showPoweredBy: false,
         footerPrimary: branding.agencyName ? `Report prepared by ${branding.agencyName}` : null,
         showGeneratedDate: true,
@@ -137,23 +146,43 @@ export function sharePageTitleSuffix(branding: ReportBrandingSettings): string {
   return "NextReport";
 }
 
+/** Where a single branding choice applies (same deck file is used for PPTX and typical Slides upload). */
+export const REPORT_BRANDING_SURFACES =
+  "PowerPoint download, Google Slides export, live share link, and client emails";
+
 export const REPORT_BRANDING_MODE_LABELS: Record<
   ReportBrandingMode,
   { title: string; description: string }
 > = {
   nextreport: {
-    title: "Show NextReport",
-    description: "Shared reports include NextReport in the header and footer (default).",
+    title: "NextReport (default)",
+    description: `“Prepared by NextReport” on the cover and NextReport on the ${REPORT_BRANDING_SURFACES}.`,
   },
   agency: {
-    title: "Show my agency name",
-    description: "Replace NextReport with your agency name and logo on shared reports and client emails.",
+    title: "Show my or agency name",
+    description: `Your name on the cover (“Prepared by …”), your logo and name on the ${REPORT_BRANDING_SURFACES}.`,
   },
   hidden: {
-    title: "Hide third-party branding",
-    description: "No NextReport name on shared reports — only your report content and date.",
+    title: "Hide — don't show any name",
+    description: `No “Prepared by” line and no NextReport or agency name on the ${REPORT_BRANDING_SURFACES}.`,
   },
 };
+
+/** Branding choices on Account settings — one applies everywhere. */
+export const ACCOUNT_REPORT_BRANDING_MODES = ["nextreport", "agency", "hidden"] as const satisfies readonly ReportBrandingMode[];
+
+/**
+ * Name used after “Prepared by” on the deck cover — driven by the same mode as share/email branding.
+ */
+export function reportCreditName(input: {
+  reportBrandingMode?: string | null;
+  agencyName?: string | null;
+}): string | null {
+  const mode = normalizeReportBrandingMode(input.reportBrandingMode);
+  if (mode === "hidden") return null;
+  if (mode === "nextreport") return "NextReport";
+  return input.agencyName?.trim() || null;
+}
 
 export const WHITE_LABEL_FEATURE =
   "White-label reports — hide or replace NextReport branding";

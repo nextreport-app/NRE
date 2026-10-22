@@ -62,13 +62,14 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
   ctr: ["ctr", "click-through rate", "click through rate"],
   cpc: ["cpc", "cost per click", "cost per link click"],
   cpr: ["cost per result", "cost per conversion", "cost per lead", "cpl", "cpa"],
-  link_clicks: ["link clicks", "clicks (all)", "clicks (link)"],
+  // Never map "Clicks (all)" here — that is all click types, not link clicks.
+  link_clicks: ["link clicks", "clicks (link)"],
   frequency: ["frequency", "ad frequency", "avg. frequency"],
   date_start: ["reporting starts", "date start", "start date", "from date"],
   date_end: ["reporting ends", "date end", "end date", "to date"],
   delivery_status: ["delivery status", "effective status", "ad set delivery", "campaign delivery"],
   purchases: ["purchases"],
-  website_leads: ["website lead"],
+  website_leads: ["website lead", "website submission"],
   meta_leads: ["meta lead"],
   leads: ["leads"],
   landing_page_views: ["landing page view", "lpv"],
@@ -82,7 +83,19 @@ function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords
   if (metric === "leads" && (headerLower.includes("website") || headerLower.includes("meta"))) {
     return false;
   }
+  if (metric === "link_clicks" && (headerLower.includes("(all)") || headerLower === "clicks (all)")) {
+    return false;
+  }
   return true;
+}
+
+function isCpcAllHeader(header: string): boolean {
+  return /^cpc\s*\(\s*all\s*\)/i.test(String(header).trim());
+}
+
+function isCpcLinkClickHeader(header: string): boolean {
+  const h = String(header).toLowerCase();
+  return h.includes("cost per link click") || h.includes("cpc (cost per link click)");
 }
 
 /** Port of buildColumnMap_ — first header (in order) to match a metric's keywords wins. */
@@ -93,10 +106,32 @@ export function buildColumnMap(headers: string[]): ColumnMap {
     const h = String(header).toLowerCase().trim();
     (Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]).forEach(
       ([metric, keywords]) => {
+        if (metric === "cpc") {
+          // Defer — Meta often exports both link-click CPC and CPC (all).
+          return;
+        }
         if (!map[metric] && headerMatchesMetric(metric, h, keywords)) map[metric] = header;
       },
     );
   });
+
+  const cpcAll = headers.find((h) => h && isCpcAllHeader(h));
+  if (cpcAll) {
+    map.cpc = cpcAll;
+  } else {
+    headers.forEach((header) => {
+      if (!header || map.cpc) return;
+      const h = String(header).toLowerCase().trim();
+      if (headerMatchesMetric("cpc", h, COLUMN_KEYWORDS.cpc) && !isCpcLinkClickHeader(header)) {
+        map.cpc = header;
+      }
+    });
+    if (!map.cpc) {
+      const linkCpc = headers.find((h) => h && isCpcLinkClickHeader(h));
+      if (linkCpc) map.cpc = linkCpc;
+    }
+  }
+
   return map;
 }
 
@@ -185,7 +220,10 @@ export function hasRealRowDate(row: RowWithDate): boolean {
   return findRealDayOrDateValue(row) !== null;
 }
 
-/** Campaigns-table exports: one row per day with equal Reporting starts/ends (no Day column). */
+/**
+ * Campaigns-table export with Breakdown: Day — Meta uses equal
+ * "Reporting starts" / "Reporting ends" per row instead of a "Day" column.
+ */
 export function hasReportingStartsEndsDailyRow(row: RowWithDate): boolean {
   const raw = row._raw ?? {};
   const startRaw = String(raw["Reporting starts"] ?? row.date_start ?? "").trim();

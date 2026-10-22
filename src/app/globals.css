@@ -256,6 +256,14 @@ html[data-site-theme="light"] .nre-keep-dark-surface .text-accent {
   color: var(--color-accent-orange);
 }
 
+html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy {
+  background-color: #0d1b2e;
+}
+
+html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy-panel {
+  background-color: #111f35;
+}
+
 /* Contact / public inset panels — dark on navy theme, white card on light theme. */
 html[data-site-theme="light"] .nre-contact-feedback-callout {
   background-color: #ffffff;
@@ -318,9 +326,33 @@ html[data-site-theme="light"] .public-site-header {
   color: var(--nre-dash-ink);
 }
 
+.nre-dash-nav {
+  background-color: color-mix(in srgb, var(--nre-dash-sidebar) 95%, transparent);
+  backdrop-filter: blur(8px);
+}
+
 html[data-site-theme="light"] .nre-app-shell {
   color-scheme: light;
-  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
+  background-color: #f7f7f4;
+  /* Match marketing light canvas (homepage) — off-white, not a flat #fff wizard page. */
+  background-image: linear-gradient(180deg, #ffffff 0%, #f7f7f4 42%, #f0efeb 100%);
+}
+
+/* Dashboard header — white bar, pure black nav copy on light theme. */
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav {
+  background-color: #ffffff;
+  backdrop-filter: none;
+  border-bottom-color: var(--nre-dash-border);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav a,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav button,
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav span {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-dash-nav a:hover {
+  color: #000000;
 }
 
 @keyframes nre-about-glow-drift {
@@ -597,6 +629,157 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__title {
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
   color: #78350f;
+}
+
+.nre-wizard-callout-neutral {
+  border: 1px solid rgb(100 116 139 / 0.45);
+  background-color: rgb(15 23 42 / 0.35);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.nre-wizard-callout-neutral__title {
+  color: #e2e8f0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__title {
+  color: #334155;
+}
+
+.nre-wizard-callout-neutral__body {
+  color: rgb(203 213 225 / 0.95);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__body {
+  color: #475569;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+/* Wizard — client bar (Reporting for …) */
+.nre-wizard-client-bar {
+  border-color: rgb(246 173 85 / 0.5);
+  border-left-color: #f6ad55;
+}
+
+.nre-wizard-client-bar__label {
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-client-bar__name {
+  color: #fbd38d;
+}
+
+.nre-wizard-client-bar__link {
+  color: #7dd3fc;
+  text-decoration-color: rgb(125 211 252 / 0.6);
+}
+
+.nre-wizard-client-bar__link:hover {
+  color: #bae6fd;
+  text-decoration-color: #bae6fd;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar {
+  border-color: #fdba74;
+  border-left-color: #f59e0b;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__label {
+  color: #57534e;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__name {
+  color: #000000;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link {
+  color: #b45309;
+  text-decoration-color: rgb(180 83 9 / 0.45);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover {
+  color: #92400e;
+  text-decoration-color: #92400e;
+}
+
+/* Wizard — post-generate success card */
+.nre-wizard-generate-success {
+  border-color: rgb(6 78 59 / 0.45);
+}
+
+.nre-wizard-generate-success__header {
+  background-color: rgb(2 44 34 / 0.22);
+}
+
+.nre-wizard-generate-success__check {
+  background-color: rgb(16 185 129 / 0.2);
+  color: #6ee7b7;
+}
+
+.nre-wizard-generate-success__title {
+  color: #6ee7b7;
+}
+
+.nre-wizard-generate-success__meta {
+  color: var(--nre-dash-ink-secondary);
+}
+
+.nre-wizard-generate-success__published {
+  border-color: rgb(6 78 59 / 0.5);
+  background-color: rgb(2 44 34 / 0.3);
+  color: #a7f3d0;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success {
+  border-color: #6ee7b7;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__header {
+  background-color: #ecfdf5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__title {
+  color: #047857;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__meta {
+  color: #334155;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__published {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+.nre-wizard-drive-save-success {
+  border-color: rgb(6 78 59 / 0.55);
+  background-color: rgb(2 44 34 / 0.3);
+}
+
+.nre-wizard-drive-save-success__title {
+  color: #6ee7b7;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success {
+  border-color: #6ee7b7;
+  background-color: #ecfdf5;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success__title {
+  color: #047857;
 }
 
 .nre-wizard-objective-pill {

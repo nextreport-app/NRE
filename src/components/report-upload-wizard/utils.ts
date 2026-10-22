@@ -57,6 +57,8 @@ export function buildWhatsAppShareUrl(reportUrl: string): string {
 
 export type ClientReportShareMessageInput = {
   clientName: string;
+  /** Deck / report title shown to the client (defaults to reportTypeLabel when omitted). */
+  reportTitle?: string;
   reportTypeLabel: string;
   platformLabel: string;
   dateRangeLabel: string;
@@ -65,8 +67,18 @@ export type ClientReportShareMessageInput = {
 
 /** Plain-text client share blurb — WhatsApp, Slack, email, Teams, SMS, etc. */
 export function buildClientReportShareMessage(input: ClientReportShareMessageInput): string {
-  const typePhrase = input.reportTypeLabel.toLowerCase();
-  return `Hi ${input.clientName}, here's your ${typePhrase} ${input.platformLabel} report for ${input.dateRangeLabel}: ${input.reportUrl}`;
+  const title = (input.reportTitle?.trim() || input.reportTypeLabel).trim();
+  const period = input.dateRangeLabel.trim() || "this period";
+  return [
+    `Hi ${input.clientName},`,
+    "",
+    `Your ${title} (${input.platformLabel}) for ${period} is ready to review.`,
+    "",
+    "View the live report here:",
+    input.reportUrl,
+    "",
+    "Please take a look when you have a moment and share any questions.",
+  ].join("\n");
 }
 
 /** Pre-filled client share message for agencies (WhatsApp one-tap send). */
@@ -102,6 +114,14 @@ export function buildClientReportTeamsShareUrl(input: ClientReportShareMessageIn
 export function buildMailtoShareUrl(reportUrl: string, accountName: string): string {
   const subject = encodeURIComponent(`${accountName} — Performance Report`);
   const body = encodeURIComponent(`Hi,\n\nYour report is ready to view:\n${reportUrl}\n\n`);
+  return `mailto:?subject=${subject}&body=${body}`;
+}
+
+/** Mailto with the same client-ready body as WhatsApp / Copy message. */
+export function buildClientReportMailtoShareUrl(input: ClientReportShareMessageInput): string {
+  const title = (input.reportTitle?.trim() || input.reportTypeLabel).trim();
+  const subject = encodeURIComponent(`${title} — ${input.clientName}`);
+  const body = encodeURIComponent(buildClientReportShareMessage(input));
   return `mailto:?subject=${subject}&body=${body}`;
 }
 
