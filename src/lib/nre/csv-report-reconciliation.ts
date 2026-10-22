@@ -431,14 +431,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       resultLabel,
       "meta-csv-export",
     );
-    const mtdAttributedSpend = attributedSpendForLabelFromRawDailyRows(
-      mtdRawRows,
-      reportObjectiveMap,
-      resultLabel,
-      countingMode,
-    );
-    const csvMtdCpr =
-      csvMtdResults > 0 && mtdAttributedSpend > 0 ? mtdAttributedSpend / csvMtdResults : 0;
+    const csvMtdCpr = csvMtdResults > 0 && csvMtdSpend > 0 ? csvMtdSpend / csvMtdResults : 0;
     const reportMtdResults = parseCellNum(primaryCol.value);
     const reportMtdSpend = parseCellNum(report.mtdRow.spend);
     const mtdCprFromTable = parseCellNum(primaryCol.cprValue);
@@ -464,8 +457,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCpr: reportMtdCpr,
         csvCpr: csvMtdCpr,
         reportCprDisplay: primaryCol.cprValue,
-        cprReportSpend: mtdAttributedSpend,
-        cprCsvSpend: mtdAttributedSpend,
+        cprReportSpend: reportMtdSpend,
+        cprCsvSpend: csvMtdSpend,
         canAlignRef,
         csvStandardResults: csvStdMtdResults,
         csvExportResults: csvExportMtdResults,
@@ -662,30 +655,16 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       resultLabel,
       "meta-csv-export",
     );
-    const chartAttributedSpend = attributedSpendForLabelFromRawDailyRows(
-      chartRaw,
-      chartObjectiveMap,
-      resultLabel,
-      countingMode,
-    );
-
     const chartObjectiveEntry = report.chart.snapshot.objectives.find((o) => o.label === resultLabel);
     const reportChartResults = chartObjectiveEntry ? parseCellNum(chartObjectiveEntry.resultsValue) : 0;
     const reportChartSpend = report.chart.totalAllSpend;
-    const reportChartAttributed = attributedSpendForLabelFromRawDailyRows(
-      chartRaw,
-      chartObjectiveMap,
-      resultLabel,
-      countingMode,
-    );
     const reportChartCpr =
-      reportChartResults > 0 && reportChartAttributed > 0
-        ? reportChartAttributed / reportChartResults
+      reportChartResults > 0 && reportChartSpend > 0
+        ? reportChartSpend / reportChartResults
         : chartObjectiveEntry
           ? parseCellNum(chartObjectiveEntry.cprValue)
           : 0;
-    const csvChartCpr =
-      csvChartResults > 0 && chartAttributedSpend > 0 ? chartAttributedSpend / csvChartResults : 0;
+    const csvChartCpr = csvChartResults > 0 && csvChartSpend > 0 ? csvChartSpend / csvChartResults : 0;
 
     checks.push(
       ...scopedChecks({
@@ -709,8 +688,8 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         csvStandardResults: csvStdChartResults,
         csvExportResults: csvExportChartResults,
         countingMode,
-        cprReportSpend: reportChartAttributed,
-        cprCsvSpend: chartAttributedSpend,
+        cprReportSpend: reportChartSpend,
+        cprCsvSpend: csvChartSpend,
       }),
     );
   }
