@@ -7,6 +7,7 @@
  */
 
 import { hasRealRowDate, rowHasDailyDate } from "./columns";
+import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
 import {
   metaCsvExportResultValue,
   metaFormLeadsFromMetaExportRow,
@@ -1574,13 +1575,6 @@ export function groupResultsByCampaignObjective(
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label, resultCountingMode);
       groups[label].count += value;
-      if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
-        groups[label].totalSpend += parseCellNum(row.spend);
-        if (!campaignReachAdded) {
-          groups[label].totalReach += aggregateReach(campRows, reachOpts);
-          campaignReachAdded = true;
-        }
-      }
       campaignValueSum += value;
       if (debugLabel) {
         console.log(
@@ -1591,6 +1585,14 @@ export function groupResultsByCampaignObjective(
         );
       }
     });
+    const campaignPeriodSpend = sumAllRowSpendInPeriod(campRows);
+    if (campaignPeriodSpend > 0 || campaignValueSum > 0) {
+      groups[label].totalSpend += campaignPeriodSpend;
+      if (!campaignReachAdded && campRows.length > 0) {
+        groups[label].totalReach += aggregateReach(campRows, reachOpts);
+        campaignReachAdded = true;
+      }
+    }
     if (debugLabel) {
       console.log(`[${debugLabel}] campaign="${name}" TOTAL for objective=${label}: ${campaignValueSum} (bucket running total: ${groups[label].count})`);
     }
@@ -1660,19 +1662,14 @@ export function getGroupedResultDisplayForObjective(
   // campaign slide's shown count always matches what the Combined Total
   // table shows for that same campaign.
   let count = 0;
-  let totalSpend = 0;
+  const periodSpend = sumAllRowSpendInPeriod(campRows);
   let totalReach = 0;
-  let campaignReachAdded = false;
+  if (campRows.length > 0) {
+    totalReach = aggregateReach(campRows, reachOpts);
+  }
   campRows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
-      totalSpend += parseCellNum(row.spend);
-      if (!campaignReachAdded) {
-        totalReach = aggregateReach(campRows, reachOpts);
-        campaignReachAdded = true;
-      }
-    }
   });
 
   // Same uncounted-Reach special case as buildResultGroups: a real Reach
@@ -1681,11 +1678,11 @@ export function getGroupedResultDisplayForObjective(
   const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
   let cprValue: string;
   if (isUncountedReach) {
-    const reachCpr = totalReach > 0 ? (totalSpend * 1000) / totalReach : 0;
+    const reachCpr = totalReach > 0 ? (periodSpend * 1000) / totalReach : 0;
     cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
   } else if (count > 0) {
-    cprValue = fmtCurrency2dp(totalSpend / count, currencySymbol);
-  } else if (totalSpend > 0) {
+    cprValue = fmtCurrency2dp(periodSpend / count, currencySymbol);
+  } else if (periodSpend > 0) {
     // Real spend, zero results — the cost is genuinely undefined, not "$0.00".
     cprValue = "N/A";
   } else {

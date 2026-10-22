@@ -63,4 +63,41 @@ describe("CSV verification — DC Leads weekly CPR (Campaigns table export)", ()
     expect(blended).toBeCloseTo(16.93, 1);
     expect(parseCellNum(cprCheck!.csvDisplay.replace(/[^0-9.]/g, ""))).toBeCloseTo(blended, 0);
   });
+
+  it("fails verification when the printed deck CPR used attributed spend but Ad Spend ÷ Results did not", () => {
+    const report = buildReportData({
+      accountName: "DC",
+      currencySymbol: "$",
+      timezone: TZ,
+      monthlyBudget: 500,
+      mtdDailyRows: rows,
+      selectedCampaigns: [CAMPAIGN],
+      weeklyRange,
+      reportType: "WEEKLY",
+      now: NOW,
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
+    });
+
+    const slide = report.campaignSlides.find((s) => s.campaignName === CAMPAIGN);
+    expect(slide).toBeTruthy();
+    slide!.metrics.cpr = "$9.75";
+
+    const verification = reconcileStandardReportWithCsv({
+      report,
+      mtdDailyRows: rows,
+      selectedCampaigns: [CAMPAIGN],
+      weeklyRange,
+      reportType: "WEEKLY",
+      timezone: TZ,
+      currencySymbol: "$",
+      now: NOW,
+      campaignObjectives: { [CAMPAIGN]: OBJECTIVE },
+    });
+
+    const cprCheck = verification.checks.find(
+      (c) => c.scope.startsWith("Report week") && c.metric === "COST PER WEBSITE LEAD",
+    );
+    expect(cprCheck?.status).toBe("mismatch");
+    expect(cprCheck?.note).toMatch(/must match spend ÷ results/i);
+  });
 });

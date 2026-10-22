@@ -36,6 +36,7 @@ import {
 } from "./date-range";
 import { validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
 import { filterRawRowsToRange } from "./creative-report-data";
+import { parseCprFromDisplay } from "./cpr-parity";
 
 export type CsvVerificationStatus = "ok" | "mismatch" | "skipped";
 
@@ -229,6 +230,23 @@ function reportPeriodResultsFromSlides(report: ReportData, resultLabel: string):
     .reduce((s, slide) => s + parseCellNum(slide.metrics.results), 0);
 }
 
+/** CPR string shown on campaign slides — verification must match this, not a recomputed blend. */
+function printedWeeklyCprDisplay(
+  report: ReportData,
+  resultLabel: string,
+  blendedCpr: number,
+  currencySymbol: string,
+): string {
+  const slides = report.campaignSlides.filter((slide) => slide.resultLabel === resultLabel);
+  if (slides.length === 1) {
+    return slides[0]!.metrics.cpr;
+  }
+  if (blendedCpr > 0) {
+    return fmtCurrency(blendedCpr, currencySymbol);
+  }
+  return slides[0]?.metrics.cpr ?? "—";
+}
+
 function isNonAdditiveReachStyleResult(resultLabel: string): boolean {
   const result = resultLabel.toUpperCase();
   return result === "REACH" || result.includes("IMPRESSION") || result.includes("RECALL");
@@ -342,6 +360,11 @@ function scopedChecks(params: {
     const cprTotalsMatch = closeEnough(impliedReportCpr, impliedCsvCpr, CPR_TOLERANCE);
     const reportCprConsistent =
       impliedReportCpr <= 0 || closeEnough(reportCpr, impliedReportCpr, CPR_TOLERANCE);
+    const displayedCpr = parseCprFromDisplay(reportCprDisplay);
+    const displayMatchesPrinted =
+      impliedReportCpr <= 0 ||
+      displayedCpr <= 0 ||
+      closeEnough(displayedCpr, impliedReportCpr, CPR_TOLERANCE);
     const csvAttributedConsistent =
       impliedCsvCpr <= 0 || closeEnough(csvCpr, impliedCsvCpr, CPR_TOLERANCE) || closeEnough(csvCpr, impliedReportCpr, CPR_TOLERANCE);
     const cprOk =
@@ -349,6 +372,7 @@ function scopedChecks(params: {
       cprMatches &&
       cprTotalsMatch &&
       reportCprConsistent &&
+      displayMatchesPrinted &&
       (csvAttributedConsistent || cprTotalsMatch);
 
     checks.push({
@@ -359,11 +383,13 @@ function scopedChecks(params: {
       status: cprOk ? "ok" : "mismatch",
       note: !calendarComplete
         ? calendarIncompleteNote
-        : !cprTotalsMatch
-          ? `Cost per result should be spend ÷ results (${fmtCurrency(impliedReportCpr, currencySymbol)} vs CSV ${fmtCurrency(impliedCsvCpr, currencySymbol)}).`
-          : !reportCprConsistent
-            ? `Report ${costLabel} does not match spend ÷ results for this window.`
-            : undefined,
+        : !displayMatchesPrinted
+          ? `Report ${costLabel} on the deck (${reportCprDisplay}) must match spend ÷ results (${fmtCurrency(impliedReportCpr, currencySymbol)}).`
+          : !cprTotalsMatch
+            ? `Cost per result should be spend ÷ results (${fmtCurrency(impliedReportCpr, currencySymbol)} vs CSV ${fmtCurrency(impliedCsvCpr, currencySymbol)}).`
+            : !reportCprConsistent
+              ? `Report ${costLabel} does not match spend ÷ results for this window.`
+              : undefined,
     });
   }
 
@@ -835,10 +861,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     const reportWeeklyResults = reportPeriodResultsFromSlides(report, resultLabel);
     const reportWeeklyCpr =
       reportWeeklyResults > 0 && reportWeeklySpend > 0 ? reportWeeklySpend / reportWeeklyResults : 0;
-    const slideCpr =
-      reportWeeklyCpr > 0
-        ? fmtCurrency(reportWeeklyCpr, currencySymbol)
-        : (report.campaignSlides.find((s) => s.resultLabel === resultLabel)?.metrics.cpr ?? "—");
+    const slideCpr = printedWeeklyCprDisplay(report, resultLabel, reportWeeklyCpr, currencySymbol);
     // Campaign slides show CPR as total period spend ÷ results (see
     // reportWeeklyCpr below). Attributed spend excludes zero-result days that
     // still count toward Ad Spend — using it here falsely showed ~$10 vs ~$17.
@@ -1003,9 +1026,10 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCpr: reportChartCpr,
         csvCpr: csvChartCpr,
         reportCprDisplay:
-          reportChartResults > 0 && reportChartSpend > 0
+          chartObjectiveEntry?.cprValue ??
+          (reportChartResults > 0 && reportChartSpend > 0
             ? fmtCurrency(reportChartCpr, currencySymbol)
-            : (chartObjectiveEntry?.cprValue ?? "—"),
+            : "—"),
         canAlignRef,
         csvStandardResults: csvStdChartResults,
         csvExportResults: csvExportChartResults,
