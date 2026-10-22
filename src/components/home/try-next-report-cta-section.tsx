@@ -10,7 +10,7 @@ export function TryNextReportCtaSection({ loggedIn }: { loggedIn: boolean }) {
     marketing.tryCtaHeadlineAccent && marketing.tryCtaHeadlineBefore !== undefined;
 
   return (
-    <section className="nre-bottom-cta border-t border-navy-border bg-navy-panel px-6 py-10 text-center sm:py-12">
+    <section className="nre-keep-dark-surface nre-bottom-cta border-t border-navy-border bg-navy-panel px-6 py-10 text-center sm:py-12">
       <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
         {hasSplitHeadline ? (
           <>
