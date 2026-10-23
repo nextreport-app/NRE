@@ -957,6 +957,8 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
   if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
+  const scheduleFromResultType = scheduleObjectiveFromResultTypeRows(rows);
+  if (scheduleFromResultType) return scheduleFromResultType;
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
@@ -965,6 +967,27 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
 
 function hasQuoteRequestResultTypeRows(rows: MetricRow[]): boolean {
   return rows.some((r) => resolveObjectiveFromResultType(r.result_type)?.key === "quote_requests");
+}
+
+/** Result type column beats "website leads" in campaign naming (same rule as quote requests). */
+function scheduleObjectiveFromResultTypeRows(rows: MetricRow[]): ResultLabels | null {
+  let websiteScheduleRows = 0;
+  let appointmentRows = 0;
+  for (const row of rows) {
+    const rt = (row.result_type || "").trim();
+    if (!rt) continue;
+    const info = resolveObjectiveFromResultType(rt);
+    if (!info) continue;
+    if (info.key === "website_schedule") websiteScheduleRows++;
+    else if (info.key === "appointment_leads") appointmentRows++;
+  }
+  if (websiteScheduleRows > 0) {
+    return { resultLabel: "WEBSITE SCHEDULE", costLabel: "COST PER BOOKING" };
+  }
+  if (appointmentRows > 0) {
+    return { resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING" };
+  }
+  return null;
 }
 
 function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {

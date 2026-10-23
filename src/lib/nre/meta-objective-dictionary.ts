@@ -46,6 +46,7 @@ export const DEFINITIVE_PROOF_PRIORITY: readonly string[] = [
   "whatsapp_leads",
   "instagram_dm_leads",
   "phone_calls",
+  "website_schedule",
   "appointment_leads",
   "registrations",
   "applications",
@@ -249,6 +250,21 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "click_to_call",
       "call_confirm",
       "call placed",
+    ],
+  },
+  {
+    key: "website_schedule",
+    resultLabel: "WEBSITE SCHEDULE",
+    costLabel: "COST PER BOOKING",
+    isReach: false,
+    canonicalText: "Website appointments scheduled",
+    apiCsvLabel: "Website appointments scheduled",
+    definitiveProof: true,
+    aliases: [
+      "website appointments scheduled",
+      "website appointment scheduled",
+      "website schedule",
+      "website schedules",
     ],
   },
   {
@@ -796,6 +812,12 @@ export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
     costLabel: "COST PER CALL",
     pattern: /phone\s*calls?|call\s*leads?|\bcalls?\b/,
     canonicalText: "Phone call",
+  },
+  {
+    resultLabel: "WEBSITE SCHEDULE",
+    costLabel: "COST PER BOOKING",
+    pattern: /website\s*appointments?\s*scheduled|website\s*schedule/,
+    canonicalText: "Website appointments scheduled",
   },
   {
     resultLabel: "APPOINTMENT LEADS",
