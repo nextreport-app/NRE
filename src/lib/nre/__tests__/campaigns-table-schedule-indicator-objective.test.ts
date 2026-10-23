@@ -43,12 +43,39 @@ describe("Campaigns-table Result indicator — SCHEDULE_WEBSITE parity with Ad R
     expect(rows[0].result_type).toBe("Website appointments scheduled");
 
     const key = normalizeCampaignName("Unstoppable365_Website_Leads");
-    const detected = buildCampaignObjectiveMapWithConfidence(rows).get(key);
+    const detected = buildCampaignObjectiveMapWithConfidence(rows, catalog).get(key);
     expect(detected?.resultLabel).toBe("WEBSITE SCHEDULE");
 
     const csvMap = buildCampaignCsvResultTypeMap(rows, catalog);
     const summary = csvMap.get(key);
     expect(summary?.expectedResultLabel).toBe("WEBSITE SCHEDULE");
     expect(csvResultTypeMatchesDetection(summary!, "WEBSITE SCHEDULE")).toBe(true);
+  });
+
+  it("engine matches CSV banner when Result indicator is set but result_type was not enriched yet", () => {
+    const colMap = buildColumnMap(headers);
+    const profile = detectMetaCsvExportProfile(colMap, rows, headers);
+    expect(profile.kind).toBe("campaigns_table");
+    rows[0].result_type = undefined;
+
+    const key = normalizeCampaignName("Unstoppable365_Website_Leads");
+    const csvMap = buildCampaignCsvResultTypeMap(rows, catalog);
+    const summary = csvMap.get(key);
+    expect(summary?.expectedResultLabel).toBe("WEBSITE SCHEDULE");
+
+    const detected = buildCampaignObjectiveMapWithConfidence(rows, catalog).get(key);
+    expect(detected?.resultLabel).toBe("WEBSITE SCHEDULE");
+    expect(csvResultTypeMatchesDetection(summary!, detected!.resultLabel)).toBe(true);
+  });
+
+  it("catalog beats stale website submission on result_type (analyze without API catalog)", () => {
+    rows[0].result_type = "website submission";
+    const key = normalizeCampaignName("Unstoppable365_Website_Leads");
+    const csvMap = buildCampaignCsvResultTypeMap(rows, catalog);
+    const summary = csvMap.get(key)!;
+    expect(summary.expectedResultLabel).toBe("WEBSITE SCHEDULE");
+    const detected = buildCampaignObjectiveMapWithConfidence(rows, catalog).get(key);
+    expect(detected?.resultLabel).toBe("WEBSITE SCHEDULE");
+    expect(csvResultTypeMatchesDetection(summary, detected!.resultLabel)).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import type { MetricRow } from "./types";
-import { normalizeCampaignName } from "./objective";
+import { normalizeCampaignName, resultTypeTextForObjectiveDetection } from "./objective";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
 import {
   displayResultIndicatorLabel,
@@ -36,10 +36,7 @@ export function summarizeCsvResultTypesForCampaign(
 ): CampaignCsvResultTypeSummary {
   const counts = new Map<string, number>();
   for (const row of rows) {
-    const raw = row._raw ?? {};
-    const rt =
-      (row.result_type ?? "").trim() ||
-      String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+    const rt = resultTypeTextForObjectiveDetection(row, customConversionResultTypes);
     if (!rt) continue;
     counts.set(rt, (counts.get(rt) ?? 0) + 1);
   }
