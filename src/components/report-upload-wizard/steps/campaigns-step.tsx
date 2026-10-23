@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useWizardContext } from "../wizard-context";
 import {
+  campaignCsvSummaryHasWizardSignal,
   csvResultTypeMatchesDetection,
   expectedResultLabelsFromCsvSummary,
   type CampaignCsvResultTypeSummary,
@@ -419,10 +420,8 @@ export function WizardCampaignsStep() {
                     csvSummary && detectedLabel
                       ? csvResultTypeMatchesDetection(csvSummary, detectedLabel)
                       : null;
-                  const badge =
-                    csvSummary?.primary && csvAlign === true
-                      ? null
-                      : objectiveConfidenceBadge(tier);
+                  const showCsvObjectivePanel = campaignCsvSummaryHasWizardSignal(csvSummary);
+                  const badge = objectiveConfidenceBadge(tier);
                   const isBlocking =
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
@@ -446,7 +445,7 @@ export function WizardCampaignsStep() {
                           ))}
                         </select>
                       </div>
-                      {csvSummary?.primary ? (
+                      {showCsvObjectivePanel && csvSummary ? (
                         <div
                           className={`mt-2 rounded-md border px-3 py-1.5 text-[13px] leading-snug ${
                             csvAlign === false
