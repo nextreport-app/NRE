@@ -26,6 +26,20 @@ describe("campaign-csv-result-type", () => {
     expect(summary.entries).toHaveLength(2);
   });
 
+  it("surfaces Result indicator from _raw when result_type is blank", () => {
+    const summary = summarizeCsvResultTypesForCampaign(
+      [
+        {
+          campaign_name: "Unstoppable365_Website_Leads",
+          _raw: { "Result indicator": "actions:offsite_conversion.custom.888777666" },
+        },
+      ],
+      { "888777666": "CONVERSIONS:SCHEDULE_WEBSITE" },
+    );
+    expect(summary.primary).toBe("Website appointments scheduled");
+    expect(summary.expectedResultLabel).toBe("WEBSITE SCHEDULE");
+  });
+
   it("maps Campaigns-table Result indicator custom conversions to WEBSITE LEADS", () => {
     const summary = summarizeCsvResultTypesForCampaign([
       row("DC", "actions:offsite_conversion.custom.446052571654985"),
