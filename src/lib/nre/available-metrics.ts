@@ -111,7 +111,7 @@ function normalizeMetricLabel(label: string): string {
  * those as fake "Add from your CSV" extras.
  */
 const ADD_POOL_EQUIVALENT_KEYS: readonly (readonly string[])[] = [
-  ["results", "website_leads", "meta_form_leads"],
+  ["results", "website_leads", "meta_form_leads", "leads"],
   ["cost_per_result", "cost_per_lead", "cost_per_website_lead", "cost_per_meta_form_lead"],
 ];
 
@@ -126,7 +126,7 @@ function addPoolLabelFamily(label: string): string {
   ) {
     return "FAMILY:COST_PER_LEAD";
   }
-  if (n === "WEBSITE LEADS" || n === "META FORM LEADS" || n === "RESULTS" || n === "LEADS") {
+  if (n === "WEBSITE LEADS" || n === "META FORM LEADS" || n === "QUOTE REQUESTS" || n === "RESULTS" || n === "LEADS") {
     return "FAMILY:LEADS";
   }
   if (n === "COST PER CLICK" || n === "COST PER LINK CLICK" || n === "CPC (COST PER LINK CLICK)") {
@@ -336,6 +336,18 @@ const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
     "app_installs",
   ]),
   leads: withMessagingBlocked(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  quote_requests: withMessagingBlocked([
+    "leads",
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_lead",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs",
+  ]),
   purchases: withMessagingBlocked([
     "website_leads",
     "meta_form_leads",
@@ -454,10 +466,15 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
   const isForm = upper === "META FORM LEADS";
   const isWebsite = upper === "WEBSITE LEADS" || upper === "LEADS";
   const isPurchase = upper === "PURCHASES";
+  const isQuote = upper === "QUOTE REQUESTS";
   const hasResults = csvKeys.has("results") || csvKeys.has("meta_form_leads");
   const hasSpend = csvKeys.has("spend");
   const hasCpr =
-    csvKeys.has("cost_per_result") || csvKeys.has("cost_per_lead") || csvKeys.has("cost_per_meta_form_lead") || csvKeys.has("cost_per_website_lead");
+    csvKeys.has("cost_per_result") ||
+    csvKeys.has("cost_per_lead") ||
+    csvKeys.has("cost_per_meta_form_lead") ||
+    csvKeys.has("cost_per_website_lead") ||
+    hasHeader(headers, "cost per results", "cost per result");
 
   if (isForm && (metric.key === "meta_form_leads" || metric.key === "results") && hasResults) return true;
   if (
@@ -475,6 +492,8 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
   ) {
     return true;
   }
+  if (isQuote && (metric.key === "results" || metric.key === "quote_requests") && hasResults) return true;
+  if (isQuote && metric.key === "cost_per_result" && (hasCpr || (hasSpend && hasResults))) return true;
   if (isPurchase && (metric.key === "purchases" || metric.key === "results") && (csvKeys.has("purchases") || csvKeys.has("results"))) return true;
   if (
     isPurchase &&

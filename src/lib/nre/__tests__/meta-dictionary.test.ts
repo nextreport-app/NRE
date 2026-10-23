@@ -13,6 +13,12 @@ describe("findMetaMetric", () => {
     expect(findMetaMetric("Amount spent (AUD)")?.key).toBe("spend");
   });
 
+  it("maps campaigns-table Cost per results and currency-suffixed CPC to dictionary keys", () => {
+    expect(findMetaMetric("Cost per results")?.key).toBe("cost_per_result");
+    expect(findMetaMetric("CPC (cost per link click) (AUD)")?.key).toBe("cpc_link_click");
+    expect(findMetaMetric("Cost per landing page view (AUD)")?.key).toBe("cost_per_lpv");
+  });
+
   it("is case-insensitive and trims whitespace", () => {
     expect(findMetaMetric("  Amount Spent  ")?.key).toBe("spend");
   });
